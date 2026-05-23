@@ -5,22 +5,55 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "package:standalone": "bash scripts/package-standalone.sh",
     "start": "next start",
-    "lint": "eslint"
+    "start:prod": "NODE_ENV=production next start",
+    "lint": "eslint",
+    "db:generate": "npx prisma generate",
+    "db:migrate": "npx prisma migrate deploy",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset",
+    "setup": "bash scripts/setup.sh",
+    "setup:prod": "bash scripts/setup-production.sh",
+    "create-admin": "npx tsx scripts/create-admin.ts",
+    "prestart:prod": "node scripts/ensure-runtime-dirs.mjs"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@hookform/resolvers": "^5.2.2",
+    "@prisma/adapter-mariadb": "^7.5.0",
+    "@prisma/client": "^7.5.0",
+    "@tanstack/react-query": "^5.91.3",
+    "@tanstack/react-table": "^8.21.3",
+    "bcrypt": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^0.577.0",
+    "mariadb": "^3.5.2",
     "next": "16.2.1",
+    "next-auth": "^5.0.0-beta.30",
+    "prisma": "^7.5.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.71.2",
+    "recharts": "^3.8.0",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

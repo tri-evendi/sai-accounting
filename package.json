@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy": "bash scripts/deploy-on-server.sh",
+    "build:upload": "bash scripts/package-standalone.sh",
     "package:standalone": "bash scripts/package-standalone.sh",
     "start": "next start",
-    "start:prod": "NODE_ENV=production next start",
+    "start:prod": "bash scripts/start-production.sh",
+    "start:low-mem": "bash scripts/start-low-memory.sh",
     "lint": "eslint",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate deploy",
@@ -16,7 +19,7 @@
     "setup": "bash scripts/setup.sh",
     "setup:prod": "bash scripts/setup-production.sh",
     "create-admin": "npx tsx scripts/create-admin.ts",
-    "prestart:prod": "node scripts/ensure-runtime-dirs.mjs"
+    "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

@@ -6,6 +6,8 @@ import { loginSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Required behind nginx/reverse proxy when env vars are not loaded at runtime
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {

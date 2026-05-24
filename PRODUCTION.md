@@ -1,5 +1,7 @@
 # Production deployment — SAI Management
 
+> **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `npm run setup:prod`, `npm run start:prod` (no standalone zip).
+
 ## Prerequisites
 
 - Node.js 20+
@@ -48,6 +50,16 @@ npm run create-admin -- --username admin --password 'YourSecurePassword12!' --na
 
 ```bash
 npm run start:prod
+```
+
+This sets `NODE_ENV=production`, loads `.env`, checks required variables, then starts Next.js.
+
+**Standalone bundle** (after `npm run package:standalone`):
+
+```bash
+cd /var/www/sai
+cp .env.example .env   # edit DATABASE_URL, AUTH_SECRET, AUTH_URL
+bash scripts/start-production.sh
 ```
 
 Or with PM2:
@@ -125,6 +137,25 @@ pm2 restart sai-management   # or restart your process manager
 | Start | `npm run dev` | `npm run start:prod` |
 
 ## Troubleshooting
+
+**500 on `/api/auth/session`** — Almost always missing env vars on the server (not in the build). In the **same folder as `server.js`**, create `.env` with at least:
+
+```env
+DATABASE_URL="mysql://..."
+AUTH_SECRET="your-secret-from-openssl-rand-base64-32"
+AUTH_URL="https://inventory.suburanugerahindonesia.com"
+NODE_ENV=production
+```
+
+Then restart the app. Verify with:
+
+```bash
+cd /path/to/your/app
+node --env-file=.env scripts/check-env.mjs
+node --env-file=.env server.js
+```
+
+If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` or use `env_file`. Check server logs for `[auth][error]` — `MissingSecret` or `UntrustedHost`.
 
 **Redirect loop after login** — `AUTH_URL` must exactly match the URL in the browser (scheme + host).
 

@@ -15,6 +15,8 @@ Internal system for **PT Subur Anugerah Indonesia** — contracts, invoices, inv
 cp .env.example .env
 # Edit DATABASE_URL and AUTH_SECRET
 
+**Server deploy:** see [HOSTING.md](./HOSTING.md) (simple VPS hosting).
+
 npm run setup          # install, migrate, seed demo data, build
 npm run dev            # http://localhost:3000
 ```

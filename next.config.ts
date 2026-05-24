@@ -34,6 +34,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "recharts",
+      "@tanstack/react-table",
+      "date-fns",
+    ],
+  },
   turbopack: {
     root: import.meta.dirname,
   },

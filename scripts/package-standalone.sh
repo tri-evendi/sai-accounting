@@ -28,12 +28,21 @@ cp -R "$STANDALONE/." "$OUT/"
 cp -R "$ROOT/public" "$OUT/public"
 mkdir -p "$OUT/.next"
 cp -R "$ROOT/.next/static" "$OUT/.next/static"
-mkdir -p "$OUT/data/audit" "$OUT/public/uploads"
+mkdir -p "$OUT/data/audit" "$OUT/public/uploads" "$OUT/scripts"
+cp "$ROOT/scripts/load-env.mjs" "$OUT/scripts/load-env.mjs"
+cp "$ROOT/scripts/check-env.mjs" "$OUT/scripts/check-env.mjs"
+cp "$ROOT/scripts/ensure-runtime-dirs.mjs" "$OUT/scripts/ensure-runtime-dirs.mjs"
+cp "$ROOT/scripts/start-production.sh" "$OUT/scripts/start-production.sh"
+cp "$ROOT/scripts/start-low-memory.sh" "$OUT/scripts/start-low-memory.sh"
+cp "$ROOT/ecosystem.config.low-memory.cjs" "$OUT/ecosystem.config.low-memory.cjs"
+chmod +x "$OUT/scripts/start-production.sh" "$OUT/scripts/start-low-memory.sh"
 
 cat > "$OUT/.env.example" <<'EOF'
 DATABASE_URL="mysql://user:pass@localhost:3306/your_db"
 AUTH_SECRET="paste-output-of-openssl-rand-base64-32"
 AUTH_URL="https://your-domain.com"
+AUTH_TRUST_HOST=true
+NODE_ENV=production
 PORT=3000
 TZ="Asia/Jakarta"
 EOF
@@ -48,7 +57,7 @@ echo "    rsync -avz dist/sai-standalone/ user@server:/var/www/sai/"
 echo ""
 echo "  On server:"
 echo "    cd /var/www/sai"
-echo "    cp .env.example .env   # edit with your existing DB + secrets"
-echo "    node server.js"
-echo "    # or: PORT=3000 node server.js"
+echo "    cp .env.example .env   # MUST set DATABASE_URL, AUTH_SECRET, AUTH_URL"
+echo "    bash scripts/start-low-memory.sh    # low RAM servers"
+echo "    # See HOSTING-LOW-MEMORY.md"
 echo "═══════════════════════════════════════════════"

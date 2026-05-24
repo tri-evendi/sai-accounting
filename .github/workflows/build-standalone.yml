@@ -1,0 +1,47 @@
+# Build deploy bundle without Node on your server.
+# Download artifact from Actions → upload to hosting.
+name: Build standalone bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Build standalone
+        run: npm run package:standalone
+        env:
+          NODE_ENV: production
+          # Placeholder for build; real secrets go in server .env
+          DATABASE_URL: mysql://build:build@127.0.0.1:3306/build
+          AUTH_SECRET: ci-build-placeholder-secret-min-32-chars
+          AUTH_URL: https://example.com
+
+      - name: Zip bundle
+        run: |
+          cd dist
+          zip -r sai-standalone.zip sai-standalone
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sai-standalone
+          path: dist/sai-standalone.zip
+          retention-days: 14

@@ -1,16 +1,19 @@
-# SAI LuckyHands — full stack: MariaDB + one-shot migrations + the app.
+# SAI LuckyHands — fronted by Traefik (same convention as movin-partner /
+# wedding-movin). Traefik terminates TLS and routes ${APP_DOMAIN} to the app
+# over the shared external `traefik` network; the app is NOT published on the
+# host directly. MariaDB + one-shot Prisma migrations run on a private network.
 #
-# Quick start:
-#   cp .env.docker.example .env
-#   # edit .env: set AUTH_SECRET (openssl rand -base64 32), AUTH_URL, passwords
-#   docker compose up -d --build
+#   cp .env.docker.example .env      # set APP_DOMAIN, AUTH_*, DB_* / DATABASE_URL
+#   docker compose up --build -d
 #
-# The `migrate` service applies Prisma migrations once, then exits.
-# `app` only starts after the DB is healthy AND migrations succeeded.
+# `.env` is auto-loaded by Compose for the ${...} interpolation below and
+# injected at run time via env_file. Requires an existing Traefik instance
+# attached to the external `traefik_default` network with a `le` cert resolver.
 
 services:
   db:
     image: mariadb:11
+    container_name: sai-db
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: ${DB_NAME:-sai_production}
@@ -26,36 +29,87 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
-    # Uncomment to inspect the DB from the host:
-    # ports:
-    #   - "3306:3306"
+    networks:
+      - internal
 
   migrate:
     build:
       context: .
       target: migrator
+    image: sai-luckyhands-migrator:latest
     env_file: .env
     restart: "no"
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - internal
 
-  app:
+  web:
     build:
       context: .
       target: runner
-    env_file: .env
+    image: sai-luckyhands:latest
+    container_name: sai-web
     restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    ports:
-      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      # Node 22 ships global fetch — no curl/wget needed in the image.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - uploads:/app/public/uploads
       - audit:/app/data/audit
+    networks:
+      - traefik
+      - internal
+    labels:
+      - "traefik.enable=true"
+      # Attach routing to the shared Traefik network (not `internal`).
+      - "traefik.docker.network=traefik_default"
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.sai.entrypoints=web"
+      - "traefik.http.routers.sai.rule=Host(`${APP_DOMAIN:-inventory.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai.middlewares=sai-https"
+      - "traefik.http.middlewares.sai-https.redirectscheme.scheme=https"
+      # HTTPS router with the existing Let's Encrypt resolver
+      - "traefik.http.routers.sai-secure.entrypoints=websecure"
+      - "traefik.http.routers.sai-secure.rule=Host(`${APP_DOMAIN:-inventory.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-secure.tls=true"
+      - "traefik.http.routers.sai-secure.tls.certresolver=le"
+      # Which container port Traefik forwards to
+      - "traefik.http.services.sai.loadbalancer.server.port=3000"
+      # Traefik-side health probe
+      - "traefik.http.services.sai.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.sai.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.sai.loadbalancer.healthcheck.timeout=5s"
+
+networks:
+  traefik:
+    name: traefik_default
+    external: true
+  internal:
+    driver: bridge
 
 volumes:
   db_data:

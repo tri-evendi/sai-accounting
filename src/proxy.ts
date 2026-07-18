@@ -5,6 +5,8 @@ import { getToken } from "next-auth/jwt";
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  // Unauthenticated health probe for container / Traefik load-balancer checks.
+  if (pathname === "/api/health") return true;
   if (pathname.startsWith("/api/auth/")) {
     return !pathname.startsWith("/api/auth/change-password");
   }

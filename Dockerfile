@@ -72,8 +72,8 @@ RUN mkdir -p ./public/uploads ./data/audit \
 USER node
 EXPOSE 3000
 
-# Basic liveness check — any HTTP response (even a 3xx auth redirect) means up.
+# Readiness check via /api/health (Node 22 ships global fetch — no curl needed).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

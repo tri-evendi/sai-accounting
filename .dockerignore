@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (reinstalled inside the image)
+node_modules
+
+# Build artifacts (rebuilt inside the image)
+.next
+dist
+out
+build
+*.tsbuildinfo
+
+# Generated Prisma client (regenerated inside the image)
+src/generated
+
+# Env files — NEVER bake secrets into the image. Provided at runtime via env_file.
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Local / runtime data
+logs
+data/audit/*.jsonl
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Editor / OS junk
+.DS_Store
+**/.DS_Store
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Docs & misc that don't belong in the image
+*.md
+!prisma/**/*.md
+subt5236_sai.sql
+.github

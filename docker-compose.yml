@@ -1,0 +1,63 @@
+# SAI LuckyHands — full stack: MariaDB + one-shot migrations + the app.
+#
+# Quick start:
+#   cp .env.docker.example .env
+#   # edit .env: set AUTH_SECRET (openssl rand -base64 32), AUTH_URL, passwords
+#   docker compose up -d --build
+#
+# The `migrate` service applies Prisma migrations once, then exits.
+# `app` only starts after the DB is healthy AND migrations succeeded.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-sai_production}
+      MARIADB_USER: ${DB_USER:-sai}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    # Uncomment to inspect the DB from the host:
+    # ports:
+    #   - "3306:3306"
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    env_file: .env
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: runner
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/public/uploads
+      - audit:/app/data/audit
+
+volumes:
+  db_data:
+  uploads:
+  audit:

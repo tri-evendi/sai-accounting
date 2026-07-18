@@ -28,7 +28,21 @@ const ROLE_ROUTES: { prefix: string; roles: string[] }[] = [
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+  // Auth.js names the session cookie `__Secure-authjs.session-token` (and salts
+  // the JWT with that name) whenever the effective auth URL is HTTPS. getToken
+  // defaults secureCookie to false, so behind a TLS-terminating proxy (Traefik)
+  // it would read the wrong cookie/salt and never see the session — causing an
+  // endless /login ↔ /dashboard redirect loop. Mirror Auth.js's own signal.
+  const useSecureCookies =
+    process.env.AUTH_URL?.startsWith("https://") ||
+    request.headers.get("x-forwarded-proto") === "https" ||
+    request.nextUrl.protocol === "https:";
+
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+    secureCookie: useSecureCookies,
+  });
 
   if (pathname === "/login" && token) {
     const destination =

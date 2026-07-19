@@ -17,3 +17,14 @@ Setiap kali membuat/mengubah/mereview UI (halaman, komponen, warna, tipografi, l
 3. **Patuhi prinsip app ini:** *simple surface, standard engine* — ramah pengguna awam, tapi proses akuntansi tetap baku. Light-first; semantik warna uang (hijau masuk / merah keluar) tak boleh warna-saja; angka `tabular-nums` rata-kanan format `id-ID`.
 4. **Reuse** komponen `src/components/ui` (CVA) & ikon `lucide-react`. Warna/spacing dari token, bukan hex mentah.
 5. Sebelum menyerahkan UI, lewati **Pre-Delivery Checklist** di MASTER.md.
+
+# Database & Skema (WAJIB untuk perubahan data)
+
+Setiap perubahan model Prisma / migration / tabel **wajib** mengikuti `docs/DATABASE.md`. Inti:
+- **Inggris · `snake_case` di DB (via `@map`) · tabel jamak (`@@map`) · Prisma camelCase.**
+- Setiap tabel: `id` (Int autoincrement) + `created_at` + `updated_at`; master data + `is_active` (nonaktif, **bukan** hard-delete yang direferensikan).
+- **Uang = `Decimal(15,2)`, kuantitas `Decimal(15,3)`, kurs `Decimal(18,6)` — JANGAN Float/Int.**
+- Valas simpan `currency` + `rate` + `base_amount` (IDR).
+- Enum-like = `String @db.VarChar` + `z.enum` (nilai `snake_case`); `@unique` untuk code/number; `@@index` untuk FK/date/status.
+- Migration **ditulis tangan** `prisma/migrations/NNNN_<nama>/migration.sql`, diterapkan `npm run db:migrate` (`migrate deploy`); jalankan `npm run db:generate` setelahnya.
+- Lewati **Checklist tabel baru** di `docs/DATABASE.md` sebelum commit.

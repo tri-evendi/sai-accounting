@@ -13,6 +13,7 @@ import {
   Upload,
   Settings,
   UserCog,
+  BookOpen,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const allNavItems = [
   { href: "/invoices", label: "Invoices", icon: Receipt, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
+  { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["bos", "core"] },
   { href: "/documents", label: "Documents", icon: Upload, roles: ["bos", "core"] },

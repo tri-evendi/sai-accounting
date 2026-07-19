@@ -231,12 +231,59 @@ model Account {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  parent   Account?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children Account[] @relation("AccountHierarchy")
+  parent      Account?      @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Account[]     @relation("AccountHierarchy")
+  journalLines JournalLine[]
 
   @@index([parentId])
   @@index([type])
   @@map("accounts")
+}
+
+// ─── Accounting: Journals (double-entry) ─────────────────
+
+model Journal {
+  id           Int      @id @default(autoincrement())
+  number       String   @unique @db.VarChar(30)
+  date         DateTime
+  type         String   @default("general") @db.VarChar(20) // general, sales, purchase, cash, adjustment, reversal
+  sourceType   String?  @map("source_type") @db.VarChar(30) // auto-posting origin (e.g. invoice)
+  sourceId     Int?     @map("source_id")
+  note         String?  @db.Text
+  isReversed   Boolean  @default(false) @map("is_reversed")
+  reversalOfId Int?     @map("reversal_of_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lines      JournalLine[]
+  reversalOf Journal?      @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversals  Journal[]     @relation("JournalReversal")
+
+  @@index([date])
+  @@index([type])
+  @@index([sourceType, sourceId])
+  @@map("journals")
+}
+
+model JournalLine {
+  id         Int     @id @default(autoincrement())
+  journalId  Int     @map("journal_id")
+  accountId  Int     @map("account_id")
+  debit      Decimal @default(0) @db.Decimal(15, 2) // original currency
+  credit     Decimal @default(0) @db.Decimal(15, 2)
+  currency   String  @default("IDR") @db.VarChar(5)
+  rate       Decimal @default(1) @db.Decimal(18, 6) // to IDR base
+  baseDebit  Decimal @default(0) @map("base_debit") @db.Decimal(15, 2) // IDR base
+  baseCredit Decimal @default(0) @map("base_credit") @db.Decimal(15, 2)
+  memo       String? @db.VarChar(255)
+
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalId])
+  @@index([accountId])
+  @@map("journal_lines")
 }
 
 // ─── Documents ───────────────────────────────────────────

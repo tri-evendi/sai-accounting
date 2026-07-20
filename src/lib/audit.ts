@@ -8,6 +8,8 @@ export type AuditAction =
   | "item.create"
   | "supplier_transaction.purchase"
   | "supplier_transaction.payment"
+  /** Re-allocating an existing payment across purchases (issue #38). No journal. */
+  | "supplier_transaction.allocate"
   | "auth.password_change"
   | "period.close"
   | "period.reopen";

@@ -704,6 +704,22 @@ export interface PurchaseAllocationState {
   note: string | null;
 }
 
+export interface AllocationStateOptions {
+  /**
+   * Ignore allocations belonging to this payment when working out how much room
+   * each purchase has left (issue #38).
+   *
+   * This is what makes *editing* an allocation possible at all. When a user
+   * reopens a payment that already put 400k on purchase #2, that 400k is not a
+   * constraint on the new figure — it is the very thing being replaced. Counting
+   * it would leave the purchase looking 400k fuller than it is and reject any
+   * edit that keeps or raises the amount, the classic off-by-one of edit flows.
+   * Excluding the payment's own rows measures the room against *everyone else's*
+   * allocations, which is the only honest ceiling for a full-set replacement.
+   */
+  excludePaymentId?: number;
+}
+
 /**
  * Recorded allocation state of every purchase belonging to one supplier.
  *
@@ -713,7 +729,8 @@ export interface PurchaseAllocationState {
  */
 export async function getSupplierPurchaseAllocations(
   supplierId: number,
-  client = prisma
+  client = prisma,
+  options: AllocationStateOptions = {}
 ): Promise<PurchaseAllocationState[]> {
   const purchases = await client.supplierTransaction.findMany({
     where: { supplierId, type: "purchase" },
@@ -725,6 +742,8 @@ export async function getSupplierPurchaseAllocations(
     const totalBase = toBase(p);
     let allocatedBase = 0;
     for (const a of p.allocationsReceived ?? []) {
+      // The payment being edited does not compete with itself for room.
+      if (options.excludePaymentId != null && a.paymentId === options.excludePaymentId) continue;
       const base = toBase(a);
       // An allocation with no IDR value cannot reduce an IDR remainder.
       if (base != null) allocatedBase += base;

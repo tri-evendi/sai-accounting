@@ -74,8 +74,9 @@ export default async function PayablesPage({
             melunasi pembelian <strong>terlama lebih dulu</strong>. Baris tanpa tanda
             itu memakai alokasi pembayaran yang benar-benar dicatat. Total per supplier
             tepat pada kedua kasus; hanya pembagian per baris yang berbeda. Untuk
-            menghilangkan perkiraan, catat pembayaran baru dengan memilih pembelian yang
-            dilunasi.
+            menghilangkan perkiraan, klik <strong>Perbaiki alokasi</strong> pada baris
+            yang ditandai lalu pilih pembelian yang dilunasi — ini hanya memperbaiki
+            laporan dan <strong>tidak mengubah jurnal</strong>.
           </span>
         </p>
       ) : (
@@ -150,11 +151,22 @@ export default async function PayablesPage({
                       formatCurrency(r.outstandingBase, "IDR")
                     )}
                     {r.allocationEstimated && (
-                      <span
-                        className="mt-1 block"
-                        title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
-                      >
-                        <Badge variant="warning">Perkiraan</Badge>
+                      <span className="mt-1 block">
+                        <span
+                          title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
+                        >
+                          <Badge variant="warning">Perkiraan</Badge>
+                        </span>
+                        {/* The fix, offered where the problem is noticed (issue
+                            #38): this opens the allocation editor on the payment
+                            responsible, so the guess can be replaced with fact
+                            without deleting and re-posting the payment. */}
+                        <Link
+                          href={`${r.href}?alokasi=1`}
+                          className="mt-1 block cursor-pointer text-xs text-blue-700 transition-colors hover:underline"
+                        >
+                          Perbaiki alokasi
+                        </Link>
                       </span>
                     )}
                   </td>

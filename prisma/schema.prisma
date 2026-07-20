@@ -68,6 +68,10 @@ model ContractPayment {
   date       DateTime
   amount     Decimal  @db.Decimal(15, 2)
   currency   String   @default("USD") @db.VarChar(5)
+  // Nullable on purpose: legacy rows have no rate. Posting refuses to guess a
+  // rate for foreign currency — it demands an explicit one instead (issue #9).
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   note       String?  @db.Text
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
@@ -106,12 +110,14 @@ model InvoiceItem {
 }
 
 model InvoicePayment {
-  id        Int      @id @default(autoincrement())
-  invoiceId Int      @map("invoice_id")
-  date      DateTime
-  amount    Decimal  @db.Decimal(15, 2)
-  currency  String   @default("USD") @db.VarChar(5)
-  note      String?  @db.Text
+  id         Int      @id @default(autoincrement())
+  invoiceId  Int      @map("invoice_id")
+  date       DateTime
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("USD") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  note       String?  @db.Text
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -134,8 +140,11 @@ model Stock {
   id       Int      @id @default(autoincrement())
   itemId   Int      @map("item_id")
   quantity Decimal  @db.Decimal(10, 2)
-  type     String   @db.VarChar(10)
+  type     String   @db.VarChar(10) // enum-like: in, out
   date     DateTime
+  /// IDR cost per unit for `in` movements — the input to weighted-average COGS.
+  /// Nullable: legacy rows carry no cost and are skipped by the average.
+  unitCost Decimal? @map("unit_cost") @db.Decimal(15, 2)
   note     String?  @db.Text
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -163,9 +172,12 @@ model SupplierTransaction {
   id         Int      @id @default(autoincrement())
   supplierId Int      @map("supplier_id")
   date       DateTime
-  type       String   @db.VarChar(20)
+  type       String   @db.VarChar(20) // enum-like: purchase, payment
   amount     Decimal  @db.Decimal(15, 2)
   currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2) // PPN Masukan portion
   note       String?  @db.Text
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
@@ -197,6 +209,8 @@ model CashAccount {
   currency    String   @default("IDR") @db.VarChar(5)
   debit       Decimal  @default(0) @db.Decimal(15, 2)
   credit      Decimal  @default(0) @db.Decimal(15, 2)
+  rate        Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   note        String?  @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -234,10 +248,35 @@ model Account {
   parent      Account?      @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children    Account[]     @relation("AccountHierarchy")
   journalLines JournalLine[]
+  mappings     AccountMapping[]
 
   @@index([parentId])
   @@index([type])
   @@map("accounts")
+}
+
+// ─── Accounting: Auto-posting account mappings ───────────
+
+/// Maps a posting rule slot (`key`) to a real COA account, so posting rules never
+/// hardcode account codes. `currency` = "any" is the fallback/default mapping;
+/// a row with a concrete ISO code (e.g. "CNY") overrides it for that currency.
+/// Keys are enum-like lowercase snake_case — see src/lib/posting/mapping.ts.
+model AccountMapping {
+  id        Int      @id @default(autoincrement())
+  key       String   @db.VarChar(50) // ar_default, sales_default, vat_out, vat_in, ap_default, inventory, cogs, cash_default, ...
+  accountId Int      @map("account_id")
+  currency  String   @default("any") @db.VarChar(5) // ISO code, or "any" for the default mapping
+  isActive  Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([key, currency])
+  @@index([accountId])
+  @@index([key])
+  @@map("account_mappings")
 }
 
 // ─── Accounting: Journals (double-entry) ─────────────────

@@ -72,6 +72,24 @@ export function assertBalanced(prepared: ReturnType<typeof prepareLines>) {
   }
 }
 
+/** Either the root client or an interactive-transaction client. */
+export type LedgerClient = typeof prisma | Prisma.TransactionClient;
+
+/**
+ * Run `fn` in a transaction, joining the caller's if they already opened one.
+ * A `Prisma.TransactionClient` has no `$transaction`, so callers that pass one
+ * (auto-posting inside a source-record write) must reuse it rather than nest.
+ */
+function runInTx<T>(
+  client: LedgerClient,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<T> {
+  if (typeof (client as { $transaction?: unknown }).$transaction === "function") {
+    return (client as typeof prisma).$transaction(fn);
+  }
+  return fn(client as Prisma.TransactionClient);
+}
+
 /** Sequential journal number per year-month: JV.YYYY.MM.NNNNN */
 async function nextNumber(tx: Prisma.TransactionClient, date: Date): Promise<string> {
   const y = date.getFullYear();
@@ -82,11 +100,11 @@ async function nextNumber(tx: Prisma.TransactionClient, date: Date): Promise<str
 }
 
 /** Create a balanced journal (header + lines) atomically. */
-export async function postJournal(entry: JournalEntryInput, client = prisma) {
+export async function postJournal(entry: JournalEntryInput, client: LedgerClient = prisma) {
   const prepared = prepareLines(entry.lines);
   assertBalanced(prepared);
 
-  return client.$transaction(async (tx) => {
+  return runInTx(client, async (tx) => {
     const number = await nextNumber(tx, entry.date);
     return tx.journal.create({
       data: {
@@ -104,8 +122,8 @@ export async function postJournal(entry: JournalEntryInput, client = prisma) {
 }
 
 /** Reverse a journal by creating an opposite entry; the original is marked reversed (never deleted). */
-export async function reverseJournal(journalId: number, client = prisma) {
-  return client.$transaction(async (tx) => {
+export async function reverseJournal(journalId: number, client: LedgerClient = prisma) {
+  return runInTx(client, async (tx) => {
     const original = await tx.journal.findUnique({
       where: { id: journalId },
       include: { lines: true },

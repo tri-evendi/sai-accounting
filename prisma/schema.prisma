@@ -21,6 +21,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  closedPeriods Period[]
+
   @@map("users")
 }
 
@@ -354,6 +356,33 @@ model JournalLine {
   @@index([journalId])
   @@index([accountId])
   @@map("journal_lines")
+}
+
+// ─── Accounting: Period lock (tutup buku) ────────────────
+
+/// One row per calendar month that has ever been closed or explicitly opened.
+/// A month with no row is treated as open — closing is opt-in, so the lock can
+/// be introduced on an existing database without freezing history.
+model Period {
+  id       Int       @id @default(autoincrement())
+  year     Int
+  month    Int // 1-12
+  status   String    @default("open") @db.VarChar(20) // open, closed
+  closedAt DateTime? @map("closed_at")
+  /// Who performed the last close. Kept as a FK so the name stays correct if the
+  /// user is renamed; the full close/reopen history lives in the audit log.
+  closedById Int?    @map("closed_by_id")
+  note       String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  closedBy User? @relation(fields: [closedById], references: [id], onDelete: Restrict)
+
+  @@unique([year, month])
+  @@index([status])
+  @@index([closedById])
+  @@map("periods")
 }
 
 // ─── Documents ───────────────────────────────────────────

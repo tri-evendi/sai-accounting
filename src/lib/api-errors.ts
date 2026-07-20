@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { MissingMappingError, PostingRuleError, SourceNotFoundError } from "@/lib/posting";
 import { UnbalancedJournalError } from "@/lib/ledger";
+import { ClosedPeriodError } from "@/lib/period";
 
 /** Appended to every posting error so the user knows the write was rolled back. */
 export const NOT_SAVED_NOTICE =
@@ -25,6 +26,8 @@ export interface PostingErrorBody {
   /** Which account_mappings key to configure, when that is the cause. */
   mappingKey?: string;
   currency?: string | null;
+  /** The closed month that blocked the write, when that is the cause. */
+  period?: { year: number; month: number };
   /** Always false — makes "was my record saved?" unambiguous for the client. */
   saved: false;
 }
@@ -34,6 +37,27 @@ export interface PostingErrorBody {
  * (caller should rethrow — a genuine bug must not be disguised as a 422).
  */
 export function postingErrorResponse(e: unknown): NextResponse<PostingErrorBody> | null {
+  // 422, not a 400 Zod field error, on purpose. Issue #9's rule is that what is
+  // knowable at validation time belongs in Zod — and "is this month closed?" is
+  // precisely *not* knowable there: it is server state that needs a query
+  // against `periods`, while these Zod schemas are pure and synchronous. A date
+  // that is perfectly valid this morning is rejected this afternoon once a
+  // Manager closes the month, with the payload unchanged. That is the same
+  // shape as a missing account mapping: well-formed request, server state
+  // forbids it, retrying the identical payload fails identically. It also earns
+  // the `saved: false` notice, which matters here because the guard fires
+  // inside the source write's transaction and rolls the document back too.
+  if (e instanceof ClosedPeriodError) {
+    return NextResponse.json(
+      {
+        error: `${e.message} ${NOT_SAVED_NOTICE}`,
+        code: "period_closed",
+        period: { year: e.year, month: e.month },
+        saved: false as const,
+      },
+      { status: 422 }
+    );
+  }
   if (e instanceof MissingMappingError) {
     return NextResponse.json(
       {

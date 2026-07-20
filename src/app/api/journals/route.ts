@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { journalSchema } from "@/lib/validations/journal";
 import { postJournal, UnbalancedJournalError } from "@/lib/ledger";
 import { requireAuth } from "@/lib/auth-guard";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
   const result = await requireAuth(["bos"]);
@@ -39,9 +40,12 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(journal, { status: 201 });
   } catch (e) {
+    // An imbalance in a hand-typed journal IS knowable from the payload, so it
+    // stays a 400 here. A closed period is not — it is server state — so it
+    // falls through to the shared 422 mapping.
     if (e instanceof UnbalancedJournalError) {
       return NextResponse.json({ error: e.message }, { status: 400 });
     }
-    throw e;
+    return handlePostingError(e);
   }
 }

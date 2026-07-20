@@ -44,8 +44,19 @@ export interface FakeMapping {
   isActive: boolean;
 }
 
+/**
+ * A row in `periods`. Tests may push to / mutate the seeded array between calls
+ * to simulate a Manager closing a month mid-flight — the fake reads it live.
+ */
+export interface FakePeriod {
+  year: number;
+  month: number;
+  status: string;
+}
+
 export interface FakeSeed {
   mappings?: FakeMapping[];
+  periods?: FakePeriod[];
   invoices?: Record<number, unknown>;
   contracts?: Record<number, unknown>;
   invoicePayments?: Record<number, unknown>;
@@ -122,6 +133,14 @@ export function createFakeClient(seed: FakeSeed = {}) {
         journals.push(journal);
         return journal;
       },
+    },
+
+    // ── period lock ──
+    period: {
+      findFirst: async ({ where }: { where: Where }) =>
+        (seed.periods ?? []).find((p) =>
+          matches(p as unknown as Record<string, unknown>, where)
+        ) ?? null,
     },
 
     // ── account mappings ──

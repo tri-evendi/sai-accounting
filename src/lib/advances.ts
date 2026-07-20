@@ -323,7 +323,39 @@ export async function getAdvanceTargetState(
     where: { id },
     include: { allocationsReceived: true, advanceApplications: true },
   });
-  if (!purchase || purchase.type !== "purchase") return null;
+  if (!purchase) return null;
+  return purchaseTargetState(purchase, options);
+}
+
+/**
+ * One `supplier_transactions` purchase row, valued as a compensation target.
+ *
+ * Split out of `getAdvanceTargetState` so the supplier screen can value every
+ * purchase from a single query instead of one round trip per row (issue #41).
+ * It is the SAME arithmetic called from both places rather than restated — a
+ * second copy of "what is still owed on this purchase" is exactly how the picker
+ * and the save-time guard come to disagree. Returns null for a `payment` row:
+ * only a purchase carries an obligation to compensate.
+ */
+export function purchaseTargetState(
+  purchase: {
+    id: number;
+    date: Date;
+    type: string;
+    amount: unknown;
+    taxAmount: unknown;
+    currency: string | null;
+    rate: unknown;
+    baseAmount: unknown;
+    allocationsReceived: MoneyRow[];
+    advanceApplications: (MoneyRow & { id: number })[];
+  },
+  options: { excludeApplicationId?: number } = {}
+): AdvanceTargetState | null {
+  if (purchase.type !== "purchase") return null;
+
+  const keep = (applicationId: number) =>
+    options.excludeApplicationId == null || applicationId !== options.excludeApplicationId;
 
   // The obligation is net + input VAT — the same figure `base_amount` holds.
   const amount = round2(num(purchase.amount) + num(purchase.taxAmount));
@@ -342,7 +374,7 @@ export async function getAdvanceTargetState(
   settledBase = round2(settledBase);
 
   return {
-    kind,
+    kind: "purchase",
     id: purchase.id,
     label: `TRX-${purchase.id}`,
     date: purchase.date,
@@ -352,6 +384,51 @@ export async function getAdvanceTargetState(
     settledBase,
     remainingBase: totalBase == null ? null : Math.max(0, round2(totalBase - settledBase)),
   };
+}
+
+/**
+ * Every purchase of one supplier, valued as a compensation target (issue #41).
+ *
+ * The supplier screen asks of a whole list what the invoice screen asks of one
+ * document: how much room is left to compensate into. One query, then the shared
+ * pure function above, so the number the user picks from is the number
+ * `resolveApplicationLines` will re-check on save.
+ *
+ * Every purchase is returned, including full and unrated ones — deciding which
+ * are worth offering is the screen's business, not this function's, and one of
+ * them (a purchase settled to exactly zero BY a compensation) still has to be
+ * reachable so that compensation can be undone.
+ */
+export async function getSupplierPurchaseTargets(
+  supplierId: number,
+  client = prisma
+): Promise<AdvanceTargetState[]> {
+  const purchases = await client.supplierTransaction.findMany({
+    where: { supplierId, type: "purchase" },
+    include: { allocationsReceived: true, advanceApplications: true },
+    orderBy: { date: "asc" },
+  });
+
+  return purchases
+    .map((p) => purchaseTargetState(p))
+    .filter((s): s is AdvanceTargetState => s != null);
+}
+
+/**
+ * May this purchase be offered as a compensation target?
+ *
+ * Two reasons to offer one: it still has room, or it already carries a
+ * compensation that a user may want to undo. And one reason never to: no rate,
+ * hence no IDR remaining, hence nothing `resolveApplicationLines` can check —
+ * the API would reject it, so offering it would only produce a server error.
+ * Those are surfaced by the caller as a count, not silently dropped.
+ */
+export function isCompensationTarget(
+  state: AdvanceTargetState,
+  hasApplications: boolean
+): boolean {
+  if (state.remainingBase == null) return false;
+  return state.remainingBase > MONEY_EPSILON || hasApplications;
 }
 
 /* ────────────────────────────── The write guard ────────────────────────────── */

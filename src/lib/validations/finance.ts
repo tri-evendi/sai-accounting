@@ -32,6 +32,25 @@ export const cashTransactionSchema = z
   .superRefine(requireRateForForeign);
 
 /**
+ * One "this payment settles that purchase" line (issue #37).
+ *
+ * `amount` is denominated in the PAYMENT's currency — an allocation is a slice
+ * of one payment, so it cannot be in any other unit, and keeping it there means
+ * the "allocations must not exceed the payment" check below compares two numbers
+ * in the same currency. Converting to IDR is the API's job, using the payment's
+ * own rate. Whether the target purchase exists, belongs to this supplier and has
+ * room left cannot be known from the payload alone; the route checks that
+ * against the database.
+ */
+export const supplierPaymentAllocationSchema = z.object({
+  purchaseId: z.coerce.number().int().positive(),
+  amount: z.coerce.number().positive("Jumlah alokasi harus lebih besar dari 0"),
+});
+
+/** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
+const MONEY_EPSILON = 0.005;
+
+/**
  * Supplier purchases and payments. `type` is the engine's discriminator:
  * `purchase` → D: Persediaan (+ D: PPN Masukan) / K: Hutang Usaha,
  * `payment`  → D: Hutang Usaha / K: Kas & Bank.
@@ -51,6 +70,13 @@ export const supplierTransactionSchema = z
     /** PPN Masukan portion. Only meaningful on a purchase. */
     taxAmount: z.coerce.number().min(0).default(0),
     note: z.string().max(500).trim().optional(),
+    /**
+     * Which purchase(s) this payment settles (issue #37). Optional on purpose:
+     * a payment may legitimately be recorded without one (an advance, or a user
+     * who does not know yet), in which case it falls back to the FIFO estimate
+     * exactly as every legacy row does. Empty is never the same as wrong.
+     */
+    allocations: z.array(supplierPaymentAllocationSchema).max(100).optional(),
   })
   .superRefine((data, ctx) => {
     requireRateForForeign(data, ctx);
@@ -59,6 +85,42 @@ export const supplierTransactionSchema = z
         code: "custom",
         path: ["taxAmount"],
         message: "PPN hanya berlaku untuk transaksi pembelian, bukan pembayaran.",
+      });
+    }
+
+    const allocations = data.allocations ?? [];
+    if (allocations.length === 0) return;
+
+    // A purchase creates the debt; it cannot settle one.
+    if (data.type !== "payment") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allocations"],
+        message: "Alokasi hanya berlaku untuk transaksi pembayaran, bukan pembelian.",
+      });
+      return;
+    }
+
+    const seen = new Set<number>();
+    for (const [i, a] of allocations.entries()) {
+      if (seen.has(a.purchaseId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["allocations", i, "purchaseId"],
+          message: "Pembelian yang sama dialokasikan lebih dari sekali.",
+        });
+      }
+      seen.add(a.purchaseId);
+    }
+
+    // Over-allocation guard #1: a payment cannot hand out more than it is worth.
+    // Same currency on both sides by construction, so this comparison is safe.
+    const total = allocations.reduce((s, a) => s + a.amount, 0);
+    if (total > data.amount + MONEY_EPSILON) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allocations"],
+        message: `Total alokasi (${total.toLocaleString("id-ID")}) melebihi jumlah pembayaran (${data.amount.toLocaleString("id-ID")}).`,
       });
     }
   });

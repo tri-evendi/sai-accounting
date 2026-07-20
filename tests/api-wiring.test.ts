@@ -274,6 +274,114 @@ describe("supplier transaction schema", () => {
   });
 });
 
+/**
+ * Payment → purchase allocation (issue #37). The schema owns the half of the
+ * over-allocation guard that needs no database: a payment cannot hand out more
+ * than it is worth, and cannot name the same purchase twice. Whether the target
+ * purchase exists and still has room is the route's job (it needs a query).
+ */
+describe("supplier payment allocation schema", () => {
+  const payment = {
+    supplierId: 1,
+    date: "2026-03-15",
+    amount: 1_000_000,
+    currency: "IDR",
+    type: "payment" as const,
+  };
+
+  it("accepts a payment with no allocations — an unallocated payment is valid", () => {
+    // The FIFO fallback exists precisely for this row; refusing it would force
+    // users to invent an allocation they may not know.
+    expect(supplierTransactionSchema.safeParse(payment).success).toBe(true);
+  });
+
+  it("accepts one payment split across several purchases", () => {
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      allocations: [
+        { purchaseId: 10, amount: 600_000 },
+        { purchaseId: 11, amount: 400_000 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a partial allocation — less than the payment may be assigned", () => {
+    // The unassigned 700k stays in the FIFO pool rather than being rejected.
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      allocations: [{ purchaseId: 10, amount: 300_000 }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects allocating more than the payment is worth", () => {
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      allocations: [
+        { purchaseId: 10, amount: 700_000 },
+        { purchaseId: 11, amount: 400_000 },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("allocations");
+  });
+
+  it("rejects the same purchase allocated twice in one payload", () => {
+    // The DB unique index would also catch this, but as a 500 rather than a 400.
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      allocations: [
+        { purchaseId: 10, amount: 100_000 },
+        { purchaseId: 10, amount: 100_000 },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("allocations.1.purchaseId");
+  });
+
+  it("rejects allocations on a purchase — a purchase creates debt, it cannot settle it", () => {
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      type: "purchase",
+      allocations: [{ purchaseId: 10, amount: 100_000 }],
+    });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("allocations");
+  });
+
+  it("rejects a zero or negative allocation amount", () => {
+    expect(
+      supplierTransactionSchema.safeParse({
+        ...payment,
+        allocations: [{ purchaseId: 10, amount: 0 }],
+      }).success
+    ).toBe(false);
+    expect(
+      supplierTransactionSchema.safeParse({
+        ...payment,
+        allocations: [{ purchaseId: 10, amount: -5 }],
+      }).success
+    ).toBe(false);
+  });
+
+  it("allows allocating a foreign payment in its own currency, not IDR", () => {
+    // 1,000 USD may be split into 600 + 400 USD. The route converts to IDR at
+    // this payment's rate; the schema only checks like against like.
+    const result = supplierTransactionSchema.safeParse({
+      ...payment,
+      currency: "USD",
+      rate: 16_000,
+      amount: 1_000,
+      allocations: [
+        { purchaseId: 10, amount: 600 },
+        { purchaseId: 11, amount: 400 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("stock update schema", () => {
   const base = { itemId: 1, quantity: 10, date: "2026-03-15" };
 

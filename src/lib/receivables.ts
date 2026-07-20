@@ -323,6 +323,115 @@ export function allocatePaymentsFifo(purchases: FifoPurchase[], totalPaidBase: n
   return { applied, unapplied: Math.max(0, round2(remaining)) };
 }
 
+/**
+ * One recorded `supplier_payment_allocations` row, already reduced to IDR base.
+ *
+ * `base` is null when the underlying payment carries no usable rate — such an
+ * allocation states *which* purchase was settled but not *how much* in rupiah,
+ * so it is counted and excluded rather than valued 1:1.
+ */
+export interface RecordedAllocation {
+  purchaseId: number;
+  base: number | null;
+}
+
+export interface AllocationResult extends FifoResult {
+  /**
+   * Purchases whose applied total includes a FIFO-estimated component. The UI
+   * must label these as an assumption; purchases absent from this set are
+   * settled by explicitly recorded allocations only.
+   */
+  estimated: Set<number>;
+  /** Allocations with no determinable IDR value, so excluded from the sums. */
+  unratedAllocations: number;
+}
+
+/**
+ * Allocate supplier payments across purchases using recorded allocations first,
+ * then FIFO for whatever is left over (issue #37).
+ *
+ * Since migration 0009 a payment may name the purchase(s) it settles. Those rows
+ * are fact and are applied verbatim. But allocation was introduced into a live
+ * table: every payment recorded before it has no allocation and never will, its
+ * true target being nowhere on record. So the two mechanisms run side by side
+ * rather than one replacing the other — recorded allocations bind, and only the
+ * *unallocated remainder* (whole legacy payments, plus the unapplied part of a
+ * partially-allocated new one) is spread oldest-first as before. Purchases that
+ * absorb any of that remainder come back in `estimated` so the page can say the
+ * split is a guess instead of presenting it as data.
+ *
+ * THE INVARIANT: total applied is `min(total paid, total purchase value)` under
+ * every input, so a supplier's outstanding balance is byte-identical whether its
+ * payments are allocated or not — allocation redistributes the split across rows
+ * and never creates or destroys money. Two rules keep that true: an allocation is
+ * capped at its purchase's own value, and any excess spills back into the FIFO
+ * pool instead of vanishing.
+ *
+ * Everything here is IDR base, for the reason given in the file header: purchases
+ * and payments may be in different currencies and must never be added raw.
+ */
+export function allocatePayments(
+  purchases: FifoPurchase[],
+  recorded: RecordedAllocation[],
+  unallocatedPoolBase: number
+): AllocationResult {
+  const applied = new Map<number, number>();
+  const byId = new Map<number, FifoPurchase>();
+  for (const p of purchases) {
+    applied.set(p.id, 0);
+    byId.set(p.id, p);
+  }
+
+  let unratedAllocations = 0;
+  let pool = round2(unallocatedPoolBase);
+
+  // Phase 1 — recorded allocations. These are what the user actually said.
+  for (const a of recorded) {
+    const purchase = byId.get(a.purchaseId);
+    if (a.base == null || purchase == null || purchase.base == null) {
+      // No IDR value (or the purchase is not this supplier's / has no rate):
+      // cannot be summed, so it is surfaced instead of guessed at.
+      unratedAllocations += 1;
+      continue;
+    }
+    const already = applied.get(a.purchaseId) ?? 0;
+    const room = Math.max(0, round2(purchase.base - already));
+    const take = Math.min(a.base, room);
+    applied.set(a.purchaseId, round2(already + take));
+    // Allocated beyond what this document is worth: the excess did not settle
+    // this purchase, so it rejoins the pool. The API rejects over-allocation at
+    // write time; this keeps the supplier total exact even if data slips past.
+    if (a.base > take + EPSILON) pool = round2(pool + (a.base - take));
+  }
+
+  // Phase 2 — FIFO for the remainder, oldest purchase first.
+  const estimated = new Set<number>();
+  const ordered = [...purchases].sort((a, b) => {
+    const d = a.date.getTime() - b.date.getTime();
+    return d !== 0 ? d : a.id - b.id;
+  });
+
+  let remaining = pool;
+  for (const p of ordered) {
+    if (p.base == null) continue; // no IDR value: cannot absorb payment
+    if (remaining <= EPSILON) break;
+    const already = applied.get(p.id) ?? 0;
+    const room = Math.max(0, round2(p.base - already));
+    if (room <= EPSILON) continue;
+    const take = Math.min(room, remaining);
+    applied.set(p.id, round2(already + take));
+    estimated.add(p.id);
+    remaining = round2(remaining - take);
+  }
+
+  return {
+    applied,
+    estimated,
+    unapplied: Math.max(0, round2(remaining)),
+    unratedAllocations,
+  };
+}
+
 /* ──────────────────────────── Data access (AR) ─────────────────────────────── */
 
 export interface ReceivableRow extends OutstandingDocument {
@@ -443,17 +552,27 @@ export interface PayableRow extends OutstandingDocument {
   date: Date;
   terms: string | null;
   href: string;
+  /**
+   * True when part of this row's paid amount comes from the FIFO fallback rather
+   * than a recorded allocation — i.e. the per-row split is an assumption. The UI
+   * must mark these; see the note on `allocatePayments`.
+   */
+  allocationEstimated: boolean;
 }
 
 /**
- * Every open payable: `purchase` rows in `supplier_transactions`, each settled by
- * its FIFO share of that supplier's `payment` rows (see `allocatePaymentsFifo`).
+ * Every open payable: `purchase` rows in `supplier_transactions`, settled by the
+ * payments explicitly allocated to them (migration 0009) and, for the payment
+ * volume that carries no allocation, by an oldest-first FIFO estimate.
+ *
+ * See `allocatePayments` for why both mechanisms run at once and why the
+ * supplier's total is unaffected by which one does the work.
  */
 export async function getPayables(query: LedgerQuery = {}, client = prisma) {
   const asOf = query.asOf ?? new Date();
 
   const transactions = await client.supplierTransaction.findMany({
-    include: { supplier: true },
+    include: { supplier: true, allocationsMade: true },
     orderBy: { date: "desc" },
   });
 
@@ -470,17 +589,44 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
     const purchases = txs.filter((t) => t.type === "purchase");
     const payments = txs.filter((t) => t.type === "payment");
 
-    let paidBase = 0;
+    // Split every payment into the part it explicitly settles and the part it
+    // does not. Only the latter is guessed at.
+    const recorded: RecordedAllocation[] = [];
+    let unallocatedPool = 0;
     let unratedPayments = 0;
+
     for (const p of payments) {
-      const base = toBase(p);
-      if (base == null) unratedPayments += 1;
-      else paidBase += base;
+      const paymentBase = toBase(p);
+      const allocations = p.allocationsMade ?? [];
+
+      if (paymentBase == null) {
+        // Foreign payment with no rate: it has no IDR value at all, so neither
+        // its allocations nor its remainder can be counted. Surfaced, not folded
+        // in at face value (file header).
+        unratedPayments += 1;
+        for (const a of allocations) {
+          recorded.push({ purchaseId: a.purchaseId, base: null });
+        }
+        continue;
+      }
+
+      let allocatedBase = 0;
+      for (const a of allocations) {
+        const base = toBase(a);
+        recorded.push({ purchaseId: a.purchaseId, base });
+        if (base != null) allocatedBase += base;
+      }
+
+      // A payment allocated in part still leaves a remainder to estimate; a
+      // payment with no allocations at all (every legacy row) is all remainder.
+      const remainder = round2(paymentBase - allocatedBase);
+      if (remainder > EPSILON) unallocatedPool += remainder;
     }
 
-    const allocation = allocatePaymentsFifo(
+    const allocation = allocatePayments(
       purchases.map((p) => ({ id: p.id, date: p.date, base: toBase(p) })),
-      round2(paidBase)
+      recorded,
+      round2(unallocatedPool)
     );
 
     for (const p of purchases) {
@@ -512,21 +658,91 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
         totalBase,
         paidBase: applied,
         outstandingBase: totalBase == null ? null : Math.max(0, round2(totalBase - applied)),
-        // Payments are allocated in IDR base and are not tied to this specific
-        // purchase, so there is no defensible original-currency remainder.
+        // Payments are allocated in IDR base — a purchase may be settled partly
+        // by a recorded allocation and partly by the FIFO estimate, in different
+        // currencies — so there is no defensible original-currency remainder.
         outstanding: null,
-        unratedCount: unratedPayments,
+        unratedCount: unratedPayments + allocation.unratedAllocations,
         status,
         ageDays,
         ageFromIssue,
         bucket: agingBucket(ageDays),
         dueDate: p.dueDate,
+        allocationEstimated: allocation.estimated.has(p.id),
       });
     }
   }
 
   rows.sort((a, b) => b.date.getTime() - a.date.getTime());
   return finishLedger(rows, query);
+}
+
+/**
+ * A supplier purchase with the payment volume explicitly allocated to it.
+ *
+ * This is the *recorded* picture only — the FIFO estimate is deliberately not
+ * folded in. FIFO is a reporting assumption about rows nobody allocated; letting
+ * it consume a purchase's remaining room would stop a user from recording the
+ * truth ("this transfer paid invoice #3") merely because a guess had already
+ * spoken for it. The allocation form and the over-allocation guard therefore
+ * both work from recorded facts, and `getPayables` layers the estimate on top
+ * for display.
+ */
+export interface PurchaseAllocationState {
+  id: number;
+  date: Date;
+  dueDate: Date | null;
+  /** Purchase value in its own currency (net + tax, as posted). */
+  amount: number;
+  currency: string;
+  /** Purchase value in IDR base; null when a foreign purchase carries no rate. */
+  totalBase: number | null;
+  /** Sum of recorded allocations against this purchase, in IDR base. */
+  allocatedBase: number;
+  /** Room left for further allocation, IDR base. Null when `totalBase` is null. */
+  remainingBase: number | null;
+  note: string | null;
+}
+
+/**
+ * Recorded allocation state of every purchase belonging to one supplier.
+ *
+ * Used by the payment form (to show what is still outstanding per document) and
+ * by the API's over-allocation guard. Both need the same numbers, so they share
+ * one query rather than each reimplementing the arithmetic.
+ */
+export async function getSupplierPurchaseAllocations(
+  supplierId: number,
+  client = prisma
+): Promise<PurchaseAllocationState[]> {
+  const purchases = await client.supplierTransaction.findMany({
+    where: { supplierId, type: "purchase" },
+    include: { allocationsReceived: true },
+    orderBy: { date: "asc" },
+  });
+
+  return purchases.map((p) => {
+    const totalBase = toBase(p);
+    let allocatedBase = 0;
+    for (const a of p.allocationsReceived ?? []) {
+      const base = toBase(a);
+      // An allocation with no IDR value cannot reduce an IDR remainder.
+      if (base != null) allocatedBase += base;
+    }
+    allocatedBase = round2(allocatedBase);
+    return {
+      id: p.id,
+      date: p.date,
+      dueDate: p.dueDate,
+      // The obligation is net + input VAT — the same figure `base_amount` holds.
+      amount: round2(num(p.amount) + num(p.taxAmount)),
+      currency: p.currency || BASE_CURRENCY,
+      totalBase,
+      allocatedBase,
+      remainingBase: totalBase == null ? null : Math.max(0, round2(totalBase - allocatedBase)),
+      note: p.note ?? null,
+    };
+  });
 }
 
 /* ────────────────────────────── Shared shaping ─────────────────────────────── */

@@ -3,47 +3,20 @@
 /**
  * Compensating uang muka into this invoice (issue #26).
  *
- * This is the screen the whole feature exists for: a Chinese buyer paid months
- * ago, the invoice finally exists, and the down-payment has to come off the bill.
- *
- * The remaining balance of each advance is surfaced three ways, mirroring how
- * the #37/#38 allocation editor surfaces purchase room: per advance (in its own
- * currency, with the IDR base beneath), per line as a client-side ceiling check
- * before the round trip, and as a footer total against what the invoice still
- * owes. The server re-checks all of it in `resolveApplicationLines` — this is a
- * convenience, never the guard.
- *
- * Amounts are entered in the ADVANCE's currency, because an application is a
- * slice of one advance. Advances in a currency other than the invoice's are
- * offered but not pre-filled: cross-currency compensation is legitimate but the
- * app will not guess how much of one clears the other.
+ * The body of this component moved to
+ * `src/components/shared/advance-compensation.tsx` when issue #41 gave the
+ * purchase side the same flow. Nothing about the sales side changed — this is
+ * the invoice-shaped call into the shared component, kept as a named module so
+ * the invoice page reads as before and so "where is the down-payment panel on
+ * the invoice screen" still has an answer next to the page that uses it.
  */
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { Loader2, HandCoins, Info, Trash2 } from "lucide-react";
+import {
+  AdvanceCompensationSection,
+  type AdvanceOption,
+  type AppliedAdvance,
+} from "@/components/shared/advance-compensation";
 
-export interface AdvanceOption {
-  id: number;
-  advanceNo: string;
-  date: string;
-  currency: string;
-  remaining: number;
-  remainingBase: number | null;
-  partyName: string;
-}
-
-export interface AppliedAdvance {
-  id: number;
-  advanceNo: string;
-  date: string;
-  amount: number;
-  currency: string;
-  baseAmount: number | null;
-}
+export type { AdvanceOption, AppliedAdvance };
 
 export function InvoiceAdvanceSection({
   invoiceId,
@@ -59,285 +32,14 @@ export function InvoiceAdvanceSection({
   advances: AdvanceOption[];
   applied: AppliedAdvance[];
 }) {
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const [amounts, setAmounts] = useState<Record<number, string>>({});
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [saving, setSaving] = useState(false);
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const lines = advances
-    .map((a) => ({ advance: a, value: Number(amounts[a.id]) || 0 }))
-    .filter((l) => l.value > 0);
-
-  // IDR base of what is being applied — the only unit in which advances of
-  // different currencies may be added together.
-  const totalBase = lines.reduce((s, l) => {
-    if (l.advance.remainingBase == null || l.advance.remaining <= 0) return s;
-    const perUnit = l.advance.remainingBase / l.advance.remaining;
-    return s + l.value * perUnit;
-  }, 0);
-
-  const overTarget =
-    outstandingBase != null && totalBase > outstandingBase + 0.005;
-
-  async function handleApply(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (lines.length === 0) {
-      setError("Isi jumlah kompensasi pada minimal satu uang muka.");
-      return;
-    }
-    setSaving(true);
-
-    try {
-      const response = await fetch("/api/advances/applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetKind: "invoice",
-          targetId: invoiceId,
-          date,
-          lines: lines.map((l) => ({ advanceId: l.advance.id, amount: l.value })),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        const fieldErrors = data?.details?.fieldErrors as
-          | Record<string, string[]>
-          | undefined;
-        const first = fieldErrors
-          ? Object.values(fieldErrors).flat().find(Boolean)
-          : undefined;
-        setError(first ?? data?.error ?? "Gagal mengompensasi uang muka.");
-        return;
-      }
-
-      toast("Uang muka dikompensasi. Tagihan faktur berkurang.", "success");
-      setAmounts({});
-      router.refresh();
-    } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleRemove(applicationId: number) {
-    setBusyId(applicationId);
-    setError(null);
-    try {
-      const response = await fetch(
-        `/api/advances/applications?id=${applicationId}`,
-        { method: "DELETE" }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data?.error ?? "Gagal membatalkan kompensasi.");
-        return;
-      }
-      toast("Kompensasi dibatalkan. Jurnalnya dibalik, bukan dihapus.", "success");
-      router.refresh();
-    } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Already compensated */}
-      {applied.length > 0 && (
-        <div className="rounded-md border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-2 font-medium text-gray-500">Uang Muka</th>
-                <th className="px-4 py-2 font-medium text-gray-500">Tanggal</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">Jumlah</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">IDR</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {applied.map((a) => (
-                <tr key={a.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2 font-medium text-gray-900">{a.advanceNo}</td>
-                  <td className="px-4 py-2 text-gray-600">{formatDateShort(new Date(a.date))}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-900">
-                    {formatCurrency(a.amount, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">
-                    {a.baseAmount != null ? (
-                      formatCurrency(a.baseAmount, "IDR")
-                    ) : (
-                      <span className="text-xs text-amber-700">Kurs belum diisi</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(a.id)}
-                      disabled={busyId === a.id}
-                      aria-label={`Batalkan kompensasi ${a.advanceNo}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-red-700 transition-colors duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busyId === a.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      )}
-                      Batalkan
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {advances.length === 0 ? (
-        <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
-            {applied.length > 0
-              ? "Tidak ada sisa uang muka lain untuk pelanggan ini."
-              : "Belum ada uang muka yang bisa dikompensasi ke faktur ini."}
-          </span>
-        </p>
-      ) : (
-        <form onSubmit={handleApply} className="space-y-3">
-          <div className="rounded-md border border-gray-200">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-2 font-medium text-gray-500">Uang Muka</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-500">Sisa</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-500">
-                    Kompensasi ke faktur ini
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {advances.map((a) => {
-                  const value = Number(amounts[a.id]) || 0;
-                  const overLine = value > a.remaining + 0.005;
-                  const crossCurrency = a.currency !== invoiceCurrency;
-                  return (
-                    <tr key={a.id} className="border-b border-gray-100 last:border-0">
-                      <td className="px-4 py-2">
-                        <span className="font-medium text-gray-900">{a.advanceNo}</span>
-                        <span className="block text-xs text-gray-500">
-                          {a.partyName} · {formatDateShort(new Date(a.date))}
-                        </span>
-                        {crossCurrency && (
-                          <span className="mt-0.5 block text-xs text-amber-700">
-                            Mata uang berbeda dari faktur ({invoiceCurrency}) — isi
-                            jumlahnya sendiri.
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-900">
-                        {formatCurrency(a.remaining, a.currency)}
-                        <span className="block text-xs text-gray-500">
-                          {a.remainingBase != null
-                            ? formatCurrency(a.remainingBase, "IDR")
-                            : "Kurs belum diisi"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <Input
-                          id={`adv-${a.id}`}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max={a.remaining}
-                          disabled={a.remainingBase == null}
-                          aria-label={`Jumlah kompensasi dari ${a.advanceNo} (${a.currency})`}
-                          className="text-right tabular-nums"
-                          value={amounts[a.id] ?? ""}
-                          onChange={(e) =>
-                            setAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))
-                          }
-                        />
-                        {overLine && (
-                          <p className="mt-1 text-xs text-red-700" role="alert">
-                            Melebihi sisa uang muka.
-                          </p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="w-44">
-              <Input
-                id="apply-date"
-                type="date"
-                label="Tanggal kompensasi"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-            <div className="text-right text-xs">
-              <p className="flex justify-between gap-6">
-                <span className="text-gray-600">Sisa tagihan faktur</span>
-                <span className="font-medium tabular-nums text-gray-900">
-                  {outstandingBase != null
-                    ? formatCurrency(outstandingBase, "IDR")
-                    : "Kurs belum diisi"}
-                </span>
-              </p>
-              <p className="flex justify-between gap-6">
-                <span className="text-gray-600">Total dikompensasi</span>
-                <span
-                  className={`font-medium tabular-nums ${
-                    overTarget ? "text-red-700" : "text-gray-900"
-                  }`}
-                >
-                  {formatCurrency(totalBase, "IDR")}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          {overTarget && (
-            <p className="rounded-md bg-red-50 p-2 text-xs text-red-700" role="alert">
-              Total kompensasi melebihi sisa tagihan faktur ini.
-            </p>
-          )}
-
-          {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
-              {error}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            size="sm"
-            disabled={saving || lines.length === 0}
-            className="cursor-pointer"
-          >
-            {saving ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <HandCoins className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            )}
-            Kompensasi Uang Muka
-          </Button>
-        </form>
-      )}
-    </div>
+    <AdvanceCompensationSection
+      targetKind="invoice"
+      targetId={invoiceId}
+      targetCurrency={invoiceCurrency}
+      outstandingBase={outstandingBase}
+      advances={advances}
+      applied={applied}
+    />
   );
 }

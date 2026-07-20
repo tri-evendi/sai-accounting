@@ -12,13 +12,14 @@
 import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { getPayables } from "@/lib/receivables";
+import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { ArrowUpFromLine, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,17 @@ export default async function PayablesPage({
   const asOf = new Date(`${asOfStr}T23:59:59.999`);
   const overdueOnly = sp.overdue === "1";
 
-  const { rows, aging, byParty, overdueCount } = await getPayables({ asOf, overdueOnly });
+  const [{ rows, aging, byParty, overdueCount }, purchaseAdvances] = await Promise.all([
+    getPayables({ asOf, overdueOnly }),
+    // Uang muka pembelian still on account (issue #41). A RELATED balance, shown
+    // beside the payable and never inside it: this money has already left the
+    // bank and sits in an asset account, so netting it off the utang total would
+    // understate what is still owed. It reduces a payable only when it is
+    // compensated into a purchase — at which point `getPayables` already counts
+    // it, via `advanceApplications`.
+    getAdvances({ type: "purchase", openOnly: true }),
+  ]);
+  const advanceSummary = summarizeAdvances(purchaseAdvances);
 
   // Rows whose split leans on the FIFO fallback rather than a recorded allocation
   // (issue #37). Disclosed per row and in the banner — never presented as fact.
@@ -63,6 +74,49 @@ export default async function PayablesPage({
         unresolved={aging.unresolved}
         caption="Umur dihitung sejak jatuh tempo bila ada; bila tidak, sejak tanggal transaksi."
       />
+
+      {/* Related balance: uang muka already paid to suppliers (issue #41). */}
+      {advanceSummary.count > 0 && (
+        <Card className="mb-6 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="flex items-center gap-1.5 text-sm text-gray-500">
+                {/* Direction is stated in words and by the icon — not by colour. */}
+                <ArrowUpFromLine className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                Uang muka ke supplier (uang keluar, belum dikompensasi)
+              </p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+                {formatCurrency(advanceSummary.outstandingBase, "IDR")}
+              </p>
+              <p className="mt-1 max-w-2xl text-xs text-gray-600">
+                Dari {advanceSummary.count} uang muka yang masih bersisa.{" "}
+                <strong>Tidak</strong> dikurangkan dari total utang di atas — uangnya
+                sudah keluar dan tercatat sebagai <em>aset</em>. Sisa utang sebuah
+                pembelian baru berkurang setelah uang mukanya{" "}
+                <strong>dikompensasi</strong> ke pembelian itu, lewat panel{" "}
+                <strong>Uang Muka Pembelian</strong> di halaman supplier.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Belum berkurs</p>
+              <p className="text-xl font-bold tabular-nums text-gray-900">
+                {advanceSummary.unresolvedCount}
+              </p>
+              <p className="mt-0.5 max-w-48 text-xs text-gray-500">
+                Uang muka valas tanpa kurs — tidak ikut dijumlahkan.
+              </p>
+            </div>
+          </div>
+          <p className="mt-3">
+            <Link
+              href="/advances?type=purchase"
+              className="cursor-pointer text-xs text-blue-700 transition-colors hover:underline"
+            >
+              Lihat semua uang muka pembelian
+            </Link>
+          </p>
+        </Card>
+      )}
 
       {estimatedCount > 0 ? (
         <p className="mb-6 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">

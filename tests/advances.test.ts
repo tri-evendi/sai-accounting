@@ -23,7 +23,14 @@ import {
   PostingRuleError,
 } from "@/lib/posting/rules";
 import { postForSource, MAPPING_KEYS } from "@/lib/posting";
-import { advanceBalance, resolveApplicationLines, summarizeAdvances } from "@/lib/advances";
+import {
+  advanceBalance,
+  getSupplierPurchaseTargets,
+  isCompensationTarget,
+  purchaseTargetState,
+  resolveApplicationLines,
+  summarizeAdvances,
+} from "@/lib/advances";
 import { advancePaymentSchema, advanceApplicationsSchema } from "@/lib/validations/advance";
 import { getReceivables } from "@/lib/receivables";
 import { createFakeClient, type FakeJournal, type FakeLine } from "./fake-client";
@@ -979,5 +986,135 @@ describe("saldo piutang setelah kompensasi", () => {
     expect(summary.count).toBe(3);
     expect(summary.outstandingBase).toBe(265_000_000);
     expect(summary.unresolvedCount).toBe(1);
+  });
+});
+
+/* ─────────────── Purchase-side compensation targets (issue #41) ─────────────── */
+
+/**
+ * The supplier screen values every purchase as a compensation target from one
+ * query. That is the same arithmetic `getAdvanceTargetState` runs for a single
+ * document, so the risk is not that it is wrong today — it is that the two copies
+ * drift. These tests pin the shared function directly, on the three cases the UI
+ * depends on: what a purchase still owes, what is offerable, and what is not.
+ */
+describe("purchase compensation targets", () => {
+  const purchase = (over: Record<string, unknown> = {}) => ({
+    id: 7,
+    date: d("2026-07-01"),
+    type: "purchase",
+    amount: 100_000_000,
+    taxAmount: 11_000_000,
+    currency: "IDR",
+    rate: null,
+    baseAmount: null,
+    allocationsReceived: [],
+    advanceApplications: [],
+    ...over,
+  });
+
+  it("values a purchase at net + input VAT, and nets off payments and compensations", () => {
+    const state = purchaseTargetState(
+      purchase({
+        allocationsReceived: [{ amount: 30_000_000, currency: "IDR", rate: null, baseAmount: null }],
+        advanceApplications: [
+          { id: 1, amount: 20_000_000, currency: "IDR", rate: null, baseAmount: null },
+        ],
+      })
+    );
+
+    expect(state).not.toBeNull();
+    expect(state!.kind).toBe("purchase");
+    expect(state!.label).toBe("TRX-7");
+    // 100m net + 11m PPN Masukan — the same figure `base_amount` holds.
+    expect(state!.amount).toBe(111_000_000);
+    expect(state!.totalBase).toBe(111_000_000);
+    expect(state!.settledBase).toBe(50_000_000);
+    expect(state!.remainingBase).toBe(61_000_000);
+  });
+
+  it("excludes one application when asked, so an edit is not blocked by itself", () => {
+    const rows = purchase({
+      advanceApplications: [
+        { id: 1, amount: 20_000_000, currency: "IDR", rate: null, baseAmount: null },
+        { id: 2, amount: 5_000_000, currency: "IDR", rate: null, baseAmount: null },
+      ],
+    });
+
+    expect(purchaseTargetState(rows)!.remainingBase).toBe(86_000_000);
+    expect(purchaseTargetState(rows, { excludeApplicationId: 1 })!.remainingBase).toBe(
+      106_000_000
+    );
+  });
+
+  it("gives an unrated foreign purchase no IDR remaining rather than valuing it 1:1", () => {
+    const state = purchaseTargetState(
+      purchase({ currency: "CNY", amount: 100_000, taxAmount: 0, rate: null, baseAmount: null })
+    );
+
+    expect(state!.amount).toBe(100_000);
+    // 100.000 CNY is emphatically not Rp 100.000 — with no rate there is no
+    // IDR figure at all, which is the #35/#36 bug restated.
+    expect(state!.totalBase).toBeNull();
+    expect(state!.remainingBase).toBeNull();
+  });
+
+  it("converts a rated foreign purchase at its own stored rate", () => {
+    const state = purchaseTargetState(
+      purchase({
+        currency: "CNY",
+        amount: 100_000,
+        taxAmount: 0,
+        rate: 2_200,
+        baseAmount: 220_000_000,
+      })
+    );
+
+    expect(state!.totalBase).toBe(220_000_000);
+    expect(state!.remainingBase).toBe(220_000_000);
+  });
+
+  it("is not a target at all when the row is a payment", () => {
+    expect(purchaseTargetState(purchase({ type: "payment" }))).toBeNull();
+  });
+
+  it("offers a purchase with room, and one already compensated so it can be undone", () => {
+    const withRoom = purchaseTargetState(purchase())!;
+    const settled = purchaseTargetState(
+      purchase({
+        advanceApplications: [
+          { id: 1, amount: 111_000_000, currency: "IDR", rate: null, baseAmount: null },
+        ],
+      })
+    )!;
+    const unrated = purchaseTargetState(
+      purchase({ currency: "CNY", amount: 100_000, taxAmount: 0 })
+    )!;
+
+    expect(settled.remainingBase).toBe(0);
+
+    expect(isCompensationTarget(withRoom, false)).toBe(true);
+    // Full, but reachable — otherwise the compensation that filled it could
+    // never be reversed from the screen that made it.
+    expect(isCompensationTarget(settled, true)).toBe(true);
+    expect(isCompensationTarget(settled, false)).toBe(false);
+    // No rate means no IDR remaining, so the API would reject it as a target.
+    expect(isCompensationTarget(unrated, true)).toBe(false);
+  });
+
+  it("reads every purchase of one supplier and skips their payment rows", async () => {
+    const client = {
+      supplierTransaction: {
+        findMany: async ({ where }: { where: Record<string, unknown> }) => {
+          expect(where).toEqual({ supplierId: 4, type: "purchase" });
+          return [purchase({ id: 7 }), purchase({ id: 8, amount: 50_000_000, taxAmount: 0 })];
+        },
+      },
+    } as unknown as Parameters<typeof getSupplierPurchaseTargets>[1];
+
+    const targets = await getSupplierPurchaseTargets(4, client);
+
+    expect(targets.map((t) => t.label)).toEqual(["TRX-7", "TRX-8"]);
+    expect(targets.map((t) => t.remainingBase)).toEqual([111_000_000, 50_000_000]);
   });
 });

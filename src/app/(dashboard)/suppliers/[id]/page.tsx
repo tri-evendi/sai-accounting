@@ -8,6 +8,13 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
+import { SupplierAdvancePanel } from "./advance-panel";
+import {
+  getAdvances,
+  getSupplierPurchaseTargets,
+  isCompensationTarget,
+} from "@/lib/advances";
+import type { AppliedAdvance } from "@/components/shared/advance-compensation";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +39,53 @@ export default async function SupplierDetailPage({
   });
 
   if (!supplier) notFound();
+
+  // Uang muka pembelian (issue #41). Three reads, one round trip: the advances
+  // paid to this supplier with their balances, every purchase valued as a
+  // compensation target, and the compensations already recorded against those
+  // purchases (so each can be undone from where it is shown).
+  const [purchaseAdvances, purchaseTargets, applications, contracts] = await Promise.all([
+    getAdvances({ type: "purchase", supplierId: supplier.id }),
+    getSupplierPurchaseTargets(supplier.id),
+    prisma.advanceApplication.findMany({
+      where: { purchase: { supplierId: supplier.id } },
+      include: { advance: true },
+      orderBy: { date: "asc" },
+    }),
+    prisma.contract.findMany({
+      where: { status: { not: "canceled" } },
+      orderBy: { date: "desc" },
+      select: { id: true, contractNo: true, buyer: true },
+      take: 200,
+    }),
+  ]);
+
+  const appliedByPurchase: Record<number, AppliedAdvance[]> = {};
+  for (const a of applications) {
+    if (a.purchaseId == null) continue;
+    (appliedByPurchase[a.purchaseId] ??= []).push({
+      id: a.id,
+      advanceNo: a.advance.advanceNo,
+      date: a.date.toISOString(),
+      amount: Number(a.amount),
+      currency: a.currency,
+      baseAmount: a.baseAmount == null ? null : Number(a.baseAmount),
+    });
+  }
+
+  // IDR base only, and only from advances that HAVE an IDR value. An unrated
+  // foreign advance is counted out loud instead of being folded in at 1:1
+  // (issues #35/#36) — the panel shows the count next to the total.
+  const openAdvances = purchaseAdvances.filter((a) => !a.isFullyApplied);
+  const advanceOutstandingBase = Math.round(
+    openAdvances.reduce((s, a) => s + (a.remainingBase ?? 0), 0) * 100
+  ) / 100;
+  const unratedAdvanceCount = openAdvances.filter((a) => a.remainingBase == null).length;
+
+  const offerableTargets = purchaseTargets.filter((t) =>
+    isCompensationTarget(t, (appliedByPurchase[t.id]?.length ?? 0) > 0)
+  );
+  const unratedPurchaseCount = purchaseTargets.filter((t) => t.remainingBase == null).length;
 
   // Landing here from the "Perkiraan" badge means the user has just seen a row
   // whose split is a guess. Open the editor on the payment responsible for that
@@ -81,6 +135,46 @@ export default async function SupplierDetailPage({
               <dd className="text-sm text-gray-900">{supplier.email || "-"}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      {/* Uang muka pembelian (issue #41) — money paid to this supplier before
+          their goods/invoice arrived, and the flow that takes it off a purchase. */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Uang Muka Pembelian</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SupplierAdvancePanel
+            supplier={{ id: supplier.id, name: supplier.name }}
+            contracts={contracts}
+            advances={purchaseAdvances.map((a) => ({
+              id: a.id,
+              advanceNo: a.advanceNo,
+              date: a.date.toISOString(),
+              currency: a.currency,
+              amount: a.amount,
+              applied: a.applied,
+              remaining: a.remaining,
+              remainingBase: a.remainingBase,
+              unratedApplications: a.unratedApplications,
+              isFullyApplied: a.isFullyApplied,
+              contractNo: a.contractNo,
+            }))}
+            outstandingBase={advanceOutstandingBase}
+            unratedAdvanceCount={unratedAdvanceCount}
+            purchases={offerableTargets.map((t) => ({
+              id: t.id,
+              label: t.label,
+              date: t.date.toISOString(),
+              currency: t.currency,
+              amount: t.amount,
+              // `isCompensationTarget` has already excluded the null case.
+              remainingBase: t.remainingBase!,
+            }))}
+            unratedPurchaseCount={unratedPurchaseCount}
+            appliedByPurchase={appliedByPurchase}
+          />
         </CardContent>
       </Card>
 

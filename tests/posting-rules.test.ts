@@ -374,3 +374,222 @@ describe("rounding", () => {
     expectBalanced(lines);
   });
 });
+
+// ─── Selisih kurs / realized FX (issue #23) ──────────────
+
+/**
+ * A foreign receivable is booked at the invoice's rate and stays there. When the
+ * customer pays at a different rate the cash is worth a different number of
+ * rupiah, and the gap is realized gain/loss — these assert the gap lands on the
+ * right side of the right account, and that IDR base still balances every time.
+ */
+describe("selisih kurs — realized FX on settlement", () => {
+  const FX = 10;
+
+  /** The worked example from issue #23. */
+  it("books a gain when the receivable is collected at a higher rate", () => {
+    const lines = buildSalesReceiptLines({
+      cashAccountId: CASH,
+      arAccountId: AR,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 16_000, // settlement
+      settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }], // invoice
+    });
+
+    const prepared = expectBalanced(lines);
+    const cash = prepared.find((l) => l.accountId === CASH)!;
+    const ar = prepared.find((l) => l.accountId === AR)!;
+    const fx = prepared.find((l) => l.accountId === FX)!;
+
+    expect(cash.baseDebit).toBe(160_000_000);
+    // AR is relieved for exactly the rupiah it was raised for.
+    expect(ar.baseCredit).toBe(150_000_000);
+    expect(fx.baseCredit).toBe(10_000_000); // gain → credit (income)
+    expect(fx.currency).toBe("IDR");
+    expect(fx.rate).toBe(1);
+  });
+
+  it("books a loss when the receivable is collected at a lower rate", () => {
+    const lines = buildSalesReceiptLines({
+      cashAccountId: CASH,
+      arAccountId: AR,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 14_000,
+      settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }],
+    });
+
+    const prepared = expectBalanced(lines);
+    expect(prepared.find((l) => l.accountId === CASH)!.baseDebit).toBe(140_000_000);
+    expect(prepared.find((l) => l.accountId === AR)!.baseCredit).toBe(150_000_000);
+    expect(prepared.find((l) => l.accountId === FX)!.baseDebit).toBe(10_000_000);
+  });
+
+  it("relieves a partial payment proportionally, at the invoice's rate", () => {
+    // 4.000 of a 10.000 invoice: AR down by 4.000 × 15.000, FX on 4.000 only.
+    const lines = buildSalesReceiptLines({
+      cashAccountId: CASH,
+      arAccountId: AR,
+      fxAccountId: FX,
+      amount: 4_000,
+      currency: "USD",
+      rate: 16_000,
+      settles: [{ amount: 4_000, currency: "USD", rate: 15_000 }],
+    });
+
+    const prepared = expectBalanced(lines);
+    expect(prepared.find((l) => l.accountId === CASH)!.baseDebit).toBe(64_000_000);
+    expect(prepared.find((l) => l.accountId === AR)!.baseCredit).toBe(60_000_000);
+    expect(prepared.find((l) => l.accountId === FX)!.baseCredit).toBe(4_000_000);
+  });
+
+  it("instalments at the invoice rate sum back to the original base value", () => {
+    // The proportionality claim, checked rather than asserted: three uneven
+    // instalments must relieve AR for exactly the 150.000.000 it was raised for.
+    const relieved = [2_500, 3_500, 4_000]
+      .map((amount, i) =>
+        buildSalesReceiptLines({
+          cashAccountId: CASH,
+          arAccountId: AR,
+          fxAccountId: FX,
+          amount,
+          currency: "USD",
+          rate: 15_500 + i * 250,
+          settles: [{ amount, currency: "USD", rate: 15_000 }],
+        })
+      )
+      .map((lines) => expectBalanced(lines))
+      .reduce((s, p) => s + p.find((l) => l.accountId === AR)!.baseCredit, 0);
+
+    expect(relieved).toBe(150_000_000);
+  });
+
+  it("emits no FX line when settlement is at the document's own rate", () => {
+    const lines = buildSalesReceiptLines({
+      cashAccountId: CASH,
+      arAccountId: AR,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 15_000,
+      settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }],
+    });
+
+    expect(lines).toHaveLength(2);
+    expect(lines.some((l) => l.accountId === FX)).toBe(false);
+    expectBalanced(lines);
+  });
+
+  it("emits no FX line for an IDR document", () => {
+    const lines = buildSalesReceiptLines({
+      cashAccountId: CASH,
+      arAccountId: AR,
+      fxAccountId: FX,
+      amount: 5_000_000,
+      currency: "IDR",
+      rate: 1,
+      settles: [{ amount: 5_000_000, currency: "IDR", rate: 1 }],
+    });
+
+    expect(lines).toHaveLength(2);
+    expect(lines.some((l) => l.accountId === FX)).toBe(false);
+    expectBalanced(lines);
+  });
+
+  it("refuses to post a difference with no FX account mapped", () => {
+    expect(() =>
+      buildSalesReceiptLines({
+        cashAccountId: CASH,
+        arAccountId: AR,
+        amount: 10_000,
+        currency: "USD",
+        rate: 16_000,
+        settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }],
+      })
+    ).toThrow(PostingRuleError);
+  });
+
+  it("refuses legs that do not add up to the payment — an amount gap is not FX", () => {
+    expect(() =>
+      buildSalesReceiptLines({
+        cashAccountId: CASH,
+        arAccountId: AR,
+        fxAccountId: FX,
+        amount: 10_000,
+        currency: "USD",
+        rate: 16_000,
+        settles: [{ amount: 9_000, currency: "USD", rate: 15_000 }],
+      })
+    ).toThrow(PostingRuleError);
+  });
+
+  it("refuses a leg with no usable document rate", () => {
+    expect(() =>
+      buildSalesReceiptLines({
+        cashAccountId: CASH,
+        arAccountId: AR,
+        fxAccountId: FX,
+        amount: 10_000,
+        currency: "USD",
+        rate: 16_000,
+        settles: [{ amount: 10_000, currency: "USD", rate: 0 }],
+      })
+    ).toThrow(PostingRuleError);
+  });
+
+  it("books a LOSS on a payable paid at a higher rate than it was booked", () => {
+    // Mirror of the receivable: more rupiah out than the hutang was raised for.
+    const lines = buildSupplierPaymentLines({
+      apAccountId: AP,
+      cashAccountId: CASH,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 16_000,
+      settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }],
+    });
+
+    const prepared = expectBalanced(lines);
+    expect(prepared.find((l) => l.accountId === AP)!.baseDebit).toBe(150_000_000);
+    expect(prepared.find((l) => l.accountId === CASH)!.baseCredit).toBe(160_000_000);
+    expect(prepared.find((l) => l.accountId === FX)!.baseDebit).toBe(10_000_000);
+  });
+
+  it("books a GAIN on a payable paid at a lower rate than it was booked", () => {
+    const lines = buildSupplierPaymentLines({
+      apAccountId: AP,
+      cashAccountId: CASH,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 14_500,
+      settles: [{ amount: 10_000, currency: "USD", rate: 15_000 }],
+    });
+
+    const prepared = expectBalanced(lines);
+    expect(prepared.find((l) => l.accountId === FX)!.baseCredit).toBe(5_000_000);
+  });
+
+  it("nets FX across several purchases settled at different booked rates", () => {
+    const lines = buildSupplierPaymentLines({
+      apAccountId: AP,
+      cashAccountId: CASH,
+      fxAccountId: FX,
+      amount: 10_000,
+      currency: "USD",
+      rate: 16_000,
+      settles: [
+        { amount: 6_000, currency: "USD", rate: 15_000 }, // loss 6.000.000
+        { amount: 4_000, currency: "USD", rate: 16_500 }, // gain 2.000.000
+      ],
+    });
+
+    const prepared = expectBalanced(lines);
+    expect(prepared.filter((l) => l.accountId === AP).length).toBe(2);
+    // 90.000.000 + 66.000.000 = 156.000.000 hutang vs 160.000.000 cash out.
+    expect(prepared.find((l) => l.accountId === FX)!.baseDebit).toBe(4_000_000);
+  });
+});

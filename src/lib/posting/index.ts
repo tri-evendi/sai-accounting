@@ -18,7 +18,10 @@
  *   • Atomic — pass `tx` and posting commits/rolls back with the source write.
  *   • Immutable — corrections go through reverseJournal(); lines are never edited.
  *
- * OUT OF SCOPE: FX gain/loss on settlement — deferred to issue #23.
+ * Selisih kurs (issue #23): settlement entries relieve the receivable/payable at
+ * the rate its own document was booked at, not at the payment's rate, and post
+ * the difference to `fx_gain_loss`. See `settlementLegs` below for where the two
+ * rates come from and when the engine declines to compute a difference.
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -40,6 +43,7 @@ import {
   buildSupplierPaymentLines,
   resolveRate,
   round2,
+  type SettlementLeg,
 } from "./rules";
 import { averageUnitCostForItem, costOfMovement } from "./cogs";
 
@@ -89,6 +93,121 @@ async function findLiveJournals(
     where: { sourceType, sourceId, isReversed: false, type: { not: "reversal" } },
     orderBy: { id: "asc" },
   });
+}
+
+// ─── Selisih kurs (issue #23) ────────────────────────────
+
+/**
+ * Where the two rates come from.
+ *
+ * DOCUMENT rate — the rate stored on the invoice/contract/purchase itself
+ * (migrations 0005/0008). That is the rate the receivable or payable was booked
+ * into the ledger at, and it never moves afterwards.
+ *
+ * SETTLEMENT rate — the rate stored on the payment row. This is the rate the
+ * money actually converted at on the bank advice, which is a better number than
+ * any daily mid-rate table would hold.
+ *
+ * Both are already on the records, which is why issue #23 needs no
+ * `exchange_rates` table: introducing one would create a second, disagreeing
+ * source of truth for a fact the document already asserts, and would force a
+ * policy for "no row on this date" — every version of which (nearest, previous,
+ * interpolate) is a silent guess of exactly the kind `resolveRate` exists to
+ * refuse.
+ *
+ * Returns `undefined` when no FX difference can be computed *without inventing a
+ * number*, in which case the settlement is booked exactly as it was before #23:
+ *   • the document carries no rate (legacy row) — its booked rate is unknown, so
+ *     the difference from it is unknowable. `receivables.ts` surfaces these as
+ *     `unresolvedCount`; we likewise decline rather than guess.
+ *   • the payment is in a different currency from the document — how many
+ *     document-currency units a foreign payment clears cannot be derived without
+ *     a settlement-date rate for the document's currency, which nothing records.
+ */
+function settlementLegs(
+  doc: { currency: string | null; rate: unknown },
+  payCurrency: string,
+  payRate: number,
+  amount: number,
+  memo?: string
+): SettlementLeg[] | undefined {
+  const docCurrency = doc.currency || "IDR";
+  if (docCurrency !== payCurrency) return undefined;
+
+  const docRate = docCurrency === "IDR" ? 1 : num(doc.rate);
+  if (!(docRate > 0)) return undefined;
+  if (docRate === payRate) return undefined; // no difference to book
+
+  return [{ amount, currency: docCurrency, rate: docRate, memo }];
+}
+
+/** Add the FX slot to a mapping batch only when a difference will actually arise. */
+function withFxKey(keys: MappingKey[], legs: SettlementLeg[] | undefined): MappingKey[] {
+  return legs ? [...keys, MAPPING_KEYS.FX_GAIN_LOSS] : keys;
+}
+
+interface AllocationRow {
+  amount: unknown;
+  purchase?: { currency: string | null; rate: unknown } | null;
+}
+
+/**
+ * Payable legs for a supplier payment, one per allocated purchase.
+ *
+ * A supplier payment reaches its purchases through `supplier_payment_allocations`
+ * (issue #37), so unlike a receipt it may settle several documents booked at
+ * several different rates — hence a list rather than a single leg.
+ *
+ * NOTE ON THE COUPLING: that table's own docs describe it as reporting data that
+ * does not touch the ledger. From #23 on, it does — for foreign-currency payments
+ * it is what says which rate each slice of hutang was raised at. Editing an
+ * allocation therefore changes the correct journal, and the existing remedy
+ * applies: `repostForSource` reverses and re-posts. Allocation rows whose purchase
+ * carries no rate, or is in another currency, contribute no FX rather than a
+ * guessed one.
+ *
+ * The unallocated remainder is emitted as its own leg at the payment's own rate:
+ * it clears hutang with zero difference, which keeps the legs summing to the full
+ * payment so the FX plug can only ever absorb a rate gap, never an amount gap.
+ */
+function payableSettlementLegs(
+  trx: { allocationsMade?: AllocationRow[] | null },
+  currency: string,
+  rate: number,
+  amount: number,
+  memo?: string
+): SettlementLeg[] | undefined {
+  const allocations = trx.allocationsMade ?? [];
+  if (allocations.length === 0) return undefined;
+
+  const legs: SettlementLeg[] = [];
+  let allocated = 0;
+  let anyDifference = false;
+
+  for (const a of allocations) {
+    const legAmount = round2(num(a.amount));
+    if (legAmount <= 0) continue;
+    allocated = round2(allocated + legAmount);
+
+    // Allocation amounts are denominated in the PAYMENT's currency, so a
+    // purchase in another currency gives no common unit to relieve in.
+    const purchaseRate =
+      a.purchase && (a.purchase.currency || "IDR") === currency
+        ? currency === "IDR"
+          ? 1
+          : num(a.purchase.rate)
+        : 0;
+    const legRate = purchaseRate > 0 ? purchaseRate : rate;
+    if (legRate !== rate) anyDifference = true;
+    legs.push({ amount: legAmount, currency, rate: legRate, memo });
+  }
+
+  const remainder = round2(amount - allocated);
+  if (remainder > 0) legs.push({ amount: remainder, currency, rate, memo });
+
+  // Nothing to gain from restating a settlement that carries no rate difference.
+  if (!anyDifference) return undefined;
+  return legs;
 }
 
 // ─── Entry builders (source record → JournalEntryInput) ──
@@ -201,8 +320,10 @@ async function buildInvoicePaymentEntry(
   const amount = num(payment.amount);
   if (amount <= 0) return null;
 
+  const memo = payment.invoice.invoiceNo;
+  const settles = settlementLegs(payment.invoice, currency, rate, amount, memo);
   const acc = await resolveAccountIds(
-    [MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT],
+    withFxKey([MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT], settles),
     currency,
     client
   );
@@ -216,10 +337,12 @@ async function buildInvoicePaymentEntry(
     lines: buildSalesReceiptLines({
       cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
       arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
+      fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
       amount,
+      settles,
       currency,
       rate,
-      memo: payment.invoice.invoiceNo,
+      memo,
     }),
   };
 }
@@ -239,8 +362,10 @@ async function buildContractPaymentEntry(
   const amount = num(payment.amount);
   if (amount <= 0) return null;
 
+  const memo = payment.contract.contractNo;
+  const settles = settlementLegs(payment.contract, currency, rate, amount, memo);
   const acc = await resolveAccountIds(
-    [MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT],
+    withFxKey([MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT], settles),
     currency,
     client
   );
@@ -254,10 +379,12 @@ async function buildContractPaymentEntry(
     lines: buildSalesReceiptLines({
       cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
       arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
+      fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
       amount,
+      settles,
       currency,
       rate,
-      memo: payment.contract.contractNo,
+      memo,
     }),
   };
 }
@@ -268,7 +395,9 @@ async function buildSupplierTransactionEntry(
 ): Promise<JournalEntryInput | null> {
   const trx = await client.supplierTransaction.findUnique({
     where: { id: ctx.sourceId },
-    include: { supplier: true },
+    // Allocations (issue #37) name which purchase each slice of a payment
+    // settles, and therefore at which rate that slice of hutang was booked.
+    include: { supplier: true, allocationsMade: { include: { purchase: true } } },
   });
   if (!trx) throw new SourceNotFoundError("supplier_transaction", ctx.sourceId);
 
@@ -305,8 +434,9 @@ async function buildSupplierTransactionEntry(
   }
 
   if (trx.type === "payment") {
+    const settles = payableSettlementLegs(trx, currency, rate, amount, memo);
     const acc = await resolveAccountIds(
-      [MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.CASH_DEFAULT],
+      withFxKey([MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.CASH_DEFAULT], settles),
       currency,
       client
     );
@@ -319,7 +449,9 @@ async function buildSupplierTransactionEntry(
       lines: buildSupplierPaymentLines({
         apAccountId: acc[MAPPING_KEYS.AP_DEFAULT],
         cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
+        fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
         amount,
+        settles,
         currency,
         rate,
         memo,

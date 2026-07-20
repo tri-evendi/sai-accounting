@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema } from "@/lib/validations/contract";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
@@ -32,15 +32,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // `rate` has no column on contracts — it is passed to the posting engine so a
-  // foreign-currency contract books a correct IDR value (see contract schema).
   const { items, date, dueDate, rate, ...contractData } = parsed.data;
+  const fx = contractFx(contractData.currency, items, rate);
 
   try {
     const contract = await prisma.$transaction(async (tx) => {
       const created = await tx.contract.create({
         data: {
           ...contractData,
+          ...fx,
           date: new Date(date),
           dueDate: toDateOrNull(dueDate),
           items: { create: items },
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         include: { items: true },
       });
 
-      await postForSource({ sourceType: "contract", sourceId: created.id, tx, rate });
+      // No `rate` in the context: the contract carries its own now (issue #36).
+      await postForSource({ sourceType: "contract", sourceId: created.id, tx });
       return created;
     });
 

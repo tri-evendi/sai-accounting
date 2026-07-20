@@ -149,9 +149,12 @@ async function buildContractEntry(
   if (!contract) throw new SourceNotFoundError("contract", ctx.sourceId);
   if (contract.status === "canceled") return null;
 
+  // Issue #36: contracts now carry their own rate (migration 0008), so a USD
+  // contract is valued at the rate stored on the document and no caller has to
+  // hand one in. `ctx.rate` stays as a fallback for legacy rows whose rate was
+  // never recorded — reposting one still needs an explicit rate, exactly as before.
   const currency = contract.currency || "IDR";
-  // LEGACY GAP: `contracts` has no rate column — a non-IDR contract needs ctx.rate.
-  const rate = resolveRate(currency, null, ctx.rate);
+  const rate = resolveRate(currency, num(contract.rate) || null, ctx.rate);
   const subtotal = round2(
     contract.items.reduce(
       (s, i) => s + num(i.bags) * num(i.kgPerBag) * num(i.pricePerKg),

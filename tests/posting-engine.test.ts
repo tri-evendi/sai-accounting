@@ -350,6 +350,121 @@ describe("postForSource per transaction type", () => {
     expect(j.lines[0].currency).toBe("CNY");
   });
 
+  it("contract in USD posts from its own stored rate — no ctx.rate needed", async () => {
+    // Issue #36: the rate lives on the contract (migration 0008), so nothing has
+    // to be handed in at post time. A USD contract must also land in the USD
+    // receivable, not the IDR one.
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      contracts: {
+        31: {
+          id: 31,
+          contractNo: "SC.2026.03.00031",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: 16_250,
+          baseAmount: 812_500_000,
+          items: [{ bags: 100, kgPerBag: 25, pricePerKg: 20 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "contract", sourceId: 31, tx })) as unknown as FakeJournal
+    );
+
+    // 100 bags × 25 kg × USD 20 = USD 50,000 → IDR 812,500,000 at 16,250.
+    expect(debitOn(j, ACC.arUsd)).toBe(50_000);
+    expect(debitOn(j, ACC.arIdr)).toBe(0);
+    expect(j.lines[0].currency).toBe("USD");
+    expect(j.lines[0].rate).toBe(16_250);
+    expect(j.lines[0].baseDebit).toBe(812_500_000);
+    expect(creditOn(j, ACC.sales)).toBe(50_000);
+  });
+
+  it("stored contract rate wins over a ctx.rate handed in", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      contracts: {
+        32: {
+          id: 32,
+          contractNo: "SC.2026.03.00032",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: 16_000,
+          items: [{ bags: 1, kgPerBag: 1, pricePerKg: 1_000 }],
+        },
+      },
+    });
+
+    const j = (await postForSource({
+      sourceType: "contract",
+      sourceId: 32,
+      tx,
+      rate: 9_999,
+    })) as unknown as FakeJournal;
+    expect(j.lines[0].rate).toBe(16_000);
+    expect(j.lines[0].baseDebit).toBe(16_000_000);
+  });
+
+  it("reposting a rated contract recovers the rate without being given one", async () => {
+    // The gap #36 closes: before, an edit had to re-enter the rate because a
+    // repost had nowhere to read it from.
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      contracts: {
+        33: {
+          id: 33,
+          contractNo: "SC.2026.03.00033",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: 15_500,
+          items: [{ bags: 2, kgPerBag: 10, pricePerKg: 50 }],
+        },
+      },
+    });
+
+    await postForSource({ sourceType: "contract", sourceId: 33, tx });
+    const reposted = expectBalancedIdr(
+      (await repostForSource({
+        sourceType: "contract",
+        sourceId: 33,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    expect(reposted.lines[0].rate).toBe(15_500);
+    expect(reposted.lines[0].baseDebit).toBe(15_500_000);
+    // Original journal reversed, not mutated: original + reversal + fresh.
+    expect(tx._journals).toHaveLength(3);
+  });
+
+  it("an IDR contract needs no rate at all", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      contracts: {
+        34: {
+          id: 34,
+          contractNo: "SC.2026.03.00034",
+          date: DATE,
+          status: "pending",
+          currency: "IDR",
+          rate: null,
+          items: [{ bags: 10, kgPerBag: 25, pricePerKg: 4_000 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "contract", sourceId: 34, tx })) as unknown as FakeJournal
+    );
+    expect(debitOn(j, ACC.arIdr)).toBe(1_000_000);
+    expect(j.lines[0].rate).toBe(1);
+  });
+
   it("refuses a foreign-currency contract with no rate anywhere", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,

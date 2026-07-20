@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema } from "@/lib/validations/contract";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
@@ -46,6 +46,7 @@ export async function PUT(
 
   const { items, date, dueDate, rate, ...contractData } = parsed.data;
   const contractId = parseInt(id);
+  const fx = contractFx(contractData.currency, items, rate);
 
   try {
     const contract = await prisma.$transaction(async (tx) => {
@@ -55,6 +56,7 @@ export async function PUT(
         where: { id: contractId },
         data: {
           ...contractData,
+          ...fx,
           date: new Date(date),
           dueDate: toDateOrNull(dueDate),
           items: { create: items },
@@ -62,7 +64,9 @@ export async function PUT(
         include: { items: true },
       });
 
-      await repostForSource({ sourceType: "contract", sourceId: contractId, tx, rate });
+      // The rate is written above, so the repost reads it off the contract itself
+      // instead of being handed one (issue #36).
+      await repostForSource({ sourceType: "contract", sourceId: contractId, tx });
       return updated;
     });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { round2 } from "@/lib/posting/rules";
+import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 
 export const contractItemSchema = z.object({
@@ -27,10 +28,9 @@ export const contractSchema = z
     top2: z.string().max(200).trim().optional(),
     currency: currencyEnum.default("USD"),
     /**
-     * LEGACY GAP: `contracts` has no rate column, so this is NOT persisted — it
-     * is handed to the posting engine as `ctx.rate` so a USD/CNY contract books
-     * a correct IDR value. Adding the column belongs to a schema migration
-     * outside this issue's scope.
+     * Persisted to `contracts.rate` (migration 0008); drives `base_amount` and
+     * the IDR value of the journal. Stored rather than passed per-post, so an
+     * edit no longer has to re-enter it and a repost recovers the same value.
      */
     rate: rateField,
     status: z.enum(["signed", "pending", "canceled"]).default("pending"),
@@ -38,10 +38,41 @@ export const contractSchema = z
   })
   .superRefine((data, ctx) => {
     // A cancelled or zero-value contract produces no journal, so it needs no rate.
-    const subtotal = data.items.reduce((s, i) => s + i.bags * i.kgPerBag * i.pricePerKg, 0);
-    if (data.status === "canceled" || subtotal <= 0) return;
+    if (data.status === "canceled" || contractSubtotal(data.items) <= 0) return;
     requireRateForForeign(data, ctx);
   });
+
+/**
+ * Contract value in its own currency — bags × kg/bag × price/kg across items.
+ * This is the figure multiplied by the rate to become `base_amount`, and the
+ * amount debited to Piutang Usaha.
+ */
+export function contractSubtotal(
+  items: { bags: number; kgPerBag: number; pricePerKg: number }[]
+): number {
+  return round2(items.reduce((s, i) => s + i.bags * i.kgPerBag * i.pricePerKg, 0));
+}
+
+/**
+ * The `rate` / `base_amount` pair to persist on a contract (issue #36).
+ *
+ * Both stay NULL when a foreign contract genuinely has no rate. Validation only
+ * demands one for a contract that will actually post — a cancelled or zero-value
+ * contract never does — so this path is reachable, and defaulting it to 1 there
+ * would record a USD contract as worth its face value in rupiah, the very bug
+ * this issue fixes. Everything else goes through `fxAmounts`, which is the one
+ * place rate × amount is turned into an IDR base.
+ */
+export function contractFx(
+  currency: string,
+  items: { bags: number; kgPerBag: number; pricePerKg: number }[],
+  rate?: number
+): { rate: number | null; baseAmount: number | null } {
+  if (currency !== BASE_CURRENCY && !(rate && rate > 0)) {
+    return { rate: null, baseAmount: null };
+  }
+  return fxAmounts(currency, contractSubtotal(items), rate);
+}
 
 export const contractPaymentSchema = z
   .object({

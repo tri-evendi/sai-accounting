@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { invoiceSchema } from "@/lib/validations/invoice";
+import { invoiceSchema, invoiceTotal } from "@/lib/validations/invoice";
+import { fxAmounts } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -43,8 +44,15 @@ export async function PUT(
     );
   }
 
-  const { items, date, ...invoiceData } = parsed.data;
+  const { items, date, rate, currency, taxAmount, ...invoiceData } = parsed.data;
   const invoiceId = parseInt(id);
+  // Recomputed on every edit: changing an item, the tax or the rate has to move
+  // base_amount with it, or the stored IDR value drifts from the reposted journal.
+  const { rate: fxRate, baseAmount } = fxAmounts(
+    currency,
+    invoiceTotal(items, taxAmount),
+    rate
+  );
 
   try {
     const invoice = await prisma.$transaction(async (tx) => {
@@ -54,6 +62,10 @@ export async function PUT(
         where: { id: invoiceId },
         data: {
           ...invoiceData,
+          currency,
+          taxAmount,
+          rate: fxRate,
+          baseAmount,
           date: new Date(date),
           items: { create: items },
         },

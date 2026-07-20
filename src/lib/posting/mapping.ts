@@ -39,6 +39,12 @@ export const MAPPING_KEYS = {
   CASH_KAS_KECIL: "cash_kas_kecil",
   /** Non-inventory purchases land here (Beban Administrasi & Umum). */
   PURCHASE_EXPENSE: "purchase_expense",
+  /**
+   * Laba/Rugi Selisih Kurs — realized FX difference on settling a foreign
+   * receivable/payable at a rate other than the document's (issue #23).
+   * Currency-agnostic: the difference is already an IDR base amount.
+   */
+  FX_GAIN_LOSS: "fx_gain_loss",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -59,6 +65,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   cash_kas_besar: "Kas Besar",
   cash_kas_kecil: "Kas Kecil",
   purchase_expense: "Beban Pembelian",
+  fx_gain_loss: "Laba/Rugi Selisih Kurs",
 };
 
 /**
@@ -78,6 +85,10 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.INVENTORY, code: "1104" },
   { key: MAPPING_KEYS.COGS, code: "5101" },
   { key: MAPPING_KEYS.PURCHASE_EXPENSE, code: "610104" },
+  // 7101 Laba/Rugi Selisih Kurs. The live Accurate books use 720103 "Laba/Rugi
+  // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a
+  // company on a different chart just repoints the mapping row.
+  { key: MAPPING_KEYS.FX_GAIN_LOSS, code: "7101" },
 
   { key: MAPPING_KEYS.CASH_DEFAULT, code: "110102" },
   { key: MAPPING_KEYS.CASH_KAS_BESAR, code: "110102" },

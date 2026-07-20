@@ -926,3 +926,266 @@ describe("weighted-average COGS costing", () => {
     expect(costOfMovement(-50, 11_000)).toBe(550_000);
   });
 });
+
+// ─── Selisih kurs / realized FX end to end (issue #23) ───
+
+/**
+ * The engine reading two rates off two records: the invoice's booked rate and
+ * the payment's settlement rate. These also pin down when it deliberately
+ * DECLINES to compute a difference rather than invent one.
+ */
+describe("selisih kurs — realized FX through the posting engine", () => {
+  const FX_ACC = 401;
+  const FX_MAPPINGS: FakeMapping[] = [
+    ...MAPPINGS,
+    { key: MAPPING_KEYS.FX_GAIN_LOSS, currency: ANY_CURRENCY, accountId: FX_ACC, isActive: true },
+  ];
+
+  const baseDebitOn = (j: FakeJournal, accountId: number) =>
+    j.lines.filter((l) => l.accountId === accountId).reduce((s, l) => s + l.baseDebit, 0);
+  const baseCreditOn = (j: FakeJournal, accountId: number) =>
+    j.lines.filter((l) => l.accountId === accountId).reduce((s, l) => s + l.baseCredit, 0);
+
+  const usdPayment = (over: Record<string, unknown> = {}) => ({
+    id: 12,
+    date: DATE,
+    amount: 10_000,
+    currency: "USD",
+    rate: 16_000,
+    invoice: { invoiceNo: "SI.2026.03.00012", currency: "USD", rate: 15_000 },
+    ...over,
+  });
+
+  const post = async (seed: Parameters<typeof createFakeClient>[0], id = 12) => {
+    const tx = createFakeClient(seed);
+    return expectBalancedIdr(
+      (await postForSource({
+        sourceType: "invoice_payment",
+        sourceId: id,
+        tx,
+      })) as unknown as FakeJournal
+    );
+  };
+
+  /** The worked example from issue #23, end to end. */
+  it("USD 10.000 invoiced at 15.000 and collected at 16.000 books a 10.000.000 gain", async () => {
+    const j = await post({ mappings: FX_MAPPINGS, invoicePayments: { 12: usdPayment() } });
+
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(160_000_000);
+    expect(baseCreditOn(j, ACC.arUsd)).toBe(150_000_000);
+    expect(baseCreditOn(j, FX_ACC)).toBe(10_000_000);
+    // The receivable is still relieved for its full 10.000 USD of face value.
+    expect(creditOn(j, ACC.arUsd)).toBe(10_000);
+  });
+
+  it("collecting at a lower rate books a loss", async () => {
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: { 12: usdPayment({ rate: 14_000 }) },
+    });
+
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(140_000_000);
+    expect(baseCreditOn(j, ACC.arUsd)).toBe(150_000_000);
+    expect(baseDebitOn(j, FX_ACC)).toBe(10_000_000);
+  });
+
+  it("a partial payment books FX on the instalment only", async () => {
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: { 12: usdPayment({ amount: 2_500 }) },
+    });
+
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(40_000_000);
+    expect(baseCreditOn(j, ACC.arUsd)).toBe(37_500_000);
+    expect(baseCreditOn(j, FX_ACC)).toBe(2_500_000);
+  });
+
+  it("emits no FX line when the payment is at the invoice's own rate", async () => {
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: { 12: usdPayment({ rate: 15_000 }) },
+    });
+
+    expect(j.lines).toHaveLength(2);
+    expect(baseCreditOn(j, FX_ACC)).toBe(0);
+  });
+
+  it("emits no FX at all for an IDR invoice paid in IDR", async () => {
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: {
+        12: usdPayment({
+          amount: 5_000_000,
+          currency: "IDR",
+          rate: null,
+          invoice: { invoiceNo: "SI.2026.03.00013", currency: "IDR", rate: null },
+        }),
+      },
+    });
+
+    expect(j.lines).toHaveLength(2);
+    expect(j.lines.some((l) => l.accountId === FX_ACC)).toBe(false);
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(5_000_000);
+  });
+
+  it("declines to compute FX against a legacy invoice with no stored rate", async () => {
+    // Its booked rate is unknown, so the difference from it is unknowable.
+    // Guessing one is the 1:1 bug #35 exists to prevent — book it flat instead.
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: {
+        12: usdPayment({ invoice: { invoiceNo: "SI.2019.01.00001", currency: "USD", rate: null } }),
+      },
+    });
+
+    expect(j.lines).toHaveLength(2);
+    expect(baseCreditOn(j, ACC.arUsd)).toBe(160_000_000);
+  });
+
+  it("declines to compute FX when the payment currency differs from the invoice's", async () => {
+    // How many USD of receivable an IDR transfer clears needs a settlement-date
+    // USD rate that nothing records; the engine will not invent one.
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      invoicePayments: {
+        12: usdPayment({
+          amount: 150_000_000,
+          currency: "IDR",
+          rate: null,
+          invoice: { invoiceNo: "SI.2026.03.00014", currency: "USD", rate: 15_000 },
+        }),
+      },
+    });
+
+    expect(j.lines).toHaveLength(2);
+    expect(j.lines.some((l) => l.accountId === FX_ACC)).toBe(false);
+  });
+
+  it("refuses to post a difference when fx_gain_loss is not mapped", async () => {
+    const tx = createFakeClient({ mappings: MAPPINGS, invoicePayments: { 12: usdPayment() } });
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(MissingMappingError);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("contract_payment gets the same treatment from the contract's rate", async () => {
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      contractPayments: {
+        22: {
+          id: 22,
+          date: DATE,
+          amount: 20_000,
+          currency: "CNY",
+          rate: 2_250,
+          contract: { contractNo: "SC.2026.03.00009", currency: "CNY", rate: 2_200 },
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "contract_payment",
+        sourceId: 22,
+        tx,
+      })) as unknown as FakeJournal
+    );
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(45_000_000);
+    expect(baseCreditOn(j, ACC.arCny)).toBe(44_000_000);
+    expect(baseCreditOn(j, FX_ACC)).toBe(1_000_000);
+  });
+
+  it("a supplier payment books FX per allocated purchase, at each purchase's rate", async () => {
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      supplierTransactions: {
+        34: {
+          id: 34,
+          date: DATE,
+          type: "payment",
+          amount: 10_000,
+          taxAmount: 0,
+          currency: "USD",
+          rate: 16_000,
+          supplier: { name: "Jiangsu Trading" },
+          allocationsMade: [
+            { amount: 6_000, purchase: { currency: "USD", rate: 15_000 } },
+            { amount: 4_000, purchase: { currency: "USD", rate: 16_500 } },
+          ],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 34,
+        tx,
+      })) as unknown as FakeJournal
+    );
+    // 6.000×15.000 + 4.000×16.500 = 156.000.000 hutang vs 160.000.000 paid out.
+    expect(baseDebitOn(j, ACC.ap)).toBe(156_000_000);
+    expect(baseCreditOn(j, ACC.cashDefault)).toBe(160_000_000);
+    expect(baseDebitOn(j, FX_ACC)).toBe(4_000_000); // net loss
+  });
+
+  it("an unallocated remainder clears hutang at the payment's own rate", async () => {
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      supplierTransactions: {
+        35: {
+          id: 35,
+          date: DATE,
+          type: "payment",
+          amount: 10_000,
+          taxAmount: 0,
+          currency: "USD",
+          rate: 16_000,
+          supplier: { name: "Jiangsu Trading" },
+          allocationsMade: [{ amount: 6_000, purchase: { currency: "USD", rate: 15_000 } }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 35,
+        tx,
+      })) as unknown as FakeJournal
+    );
+    // Only the allocated 6.000 carries a difference; the rest is rate-neutral.
+    expect(baseDebitOn(j, ACC.ap)).toBe(154_000_000);
+    expect(baseDebitOn(j, FX_ACC)).toBe(6_000_000);
+  });
+
+  it("a supplier payment with no allocations posts flat, as before #23", async () => {
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      supplierTransactions: {
+        36: {
+          id: 36,
+          date: DATE,
+          type: "payment",
+          amount: 10_000,
+          taxAmount: 0,
+          currency: "USD",
+          rate: 16_000,
+          supplier: { name: "Jiangsu Trading" },
+          allocationsMade: [],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 36,
+        tx,
+      })) as unknown as FakeJournal
+    );
+    expect(j.lines).toHaveLength(2);
+    expect(baseDebitOn(j, ACC.ap)).toBe(160_000_000);
+  });
+});

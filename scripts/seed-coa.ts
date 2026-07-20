@@ -1,11 +1,13 @@
 /**
- * Seed the default Chart of Accounts (trading/export, Indonesia).
- * Idempotent: existing account codes are skipped.
+ * Seed the default Chart of Accounts (trading/export, Indonesia) and the
+ * auto-posting account mappings that reference it.
+ * Idempotent: existing account codes and mappings are skipped.
  * Run: npx tsx scripts/seed-coa.ts
  */
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { COA_TEMPLATE, normalBalanceFor } from "../src/lib/accounting";
+import { seedDefaultMappings } from "../src/lib/posting/mapping";
 
 function createClient() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -56,6 +58,14 @@ async function main() {
   }
 
   console.log(`Chart of Accounts seed complete: ${created} created, ${byCode.size - created} already existed.`);
+
+  // Posting rules resolve accounts through account_mappings, so seed them too.
+  const mappings = await seedDefaultMappings(prisma);
+  console.log(
+    `Account mappings seed complete: ${mappings.created} created` +
+      (mappings.skipped > 0 ? `, ${mappings.skipped} skipped (account code not found).` : ".")
+  );
+
   await prisma.$disconnect();
 }
 

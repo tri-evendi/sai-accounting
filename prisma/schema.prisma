@@ -82,17 +82,29 @@ model ContractPayment {
 // ─── Invoices (Faktur) ───────────────────────────────────
 
 model Invoice {
-  id        Int      @id @default(autoincrement())
-  invoiceNo String   @unique @map("invoice_no") @db.VarChar(50)
-  date      DateTime
-  status    String   @default("pending") @db.VarChar(20)
+  id         Int      @id @default(autoincrement())
+  invoiceNo  String   @unique @map("invoice_no") @db.VarChar(50)
+  date       DateTime
+  status     String   @default("pending") @db.VarChar(20)
+  /// Nullable: legacy invoices predate the customer link (issue #35).
+  customerId Int?     @map("customer_id")
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// Nullable on purpose — a DEFAULT 1 would value historical foreign-currency
+  /// invoices at 1:1 IDR, the exact bug #35 fixes. See InvoicePayment.rate.
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Gross invoice value (subtotal + tax) in IDR base.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// PPN Keluaran, in `currency`. 0 = untaxed document.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
 
+  @@index([customerId])
   @@map("invoices")
 }
 
@@ -195,6 +207,8 @@ model Customer {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoices Invoice[]
 
   @@map("customers")
 }

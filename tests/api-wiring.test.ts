@@ -10,7 +10,12 @@
  *     out loud that the record was not saved.
  */
 import { describe, expect, it } from "vitest";
-import { invoicePaymentSchema } from "@/lib/validations/invoice";
+import {
+  invoicePaymentSchema,
+  invoiceSchema,
+  invoiceSubtotal,
+  invoiceTotal,
+} from "@/lib/validations/invoice";
 import { contractPaymentSchema, contractSchema } from "@/lib/validations/contract";
 import { cashTransactionSchema, supplierTransactionSchema } from "@/lib/validations/finance";
 import { stockUpdateSchema } from "@/lib/validations/inventory";
@@ -54,6 +59,75 @@ describe("payment schemas require an FX rate", () => {
     const payment = { contractId: 1, date: "2026-03-15", amount: 500, currency: "CNY" };
     expect(contractPaymentSchema.safeParse(payment).success).toBe(false);
     expect(contractPaymentSchema.safeParse({ ...payment, rate: 2250 }).success).toBe(true);
+  });
+});
+
+describe("invoice schema carries currency, rate, tax and customer (issue #35)", () => {
+  const base = {
+    invoiceNo: "SI.2026.03.00001",
+    date: "2026-03-15",
+    items: [{ itemName: "Kopi Robusta", quantity: 10, price: 2_500 }],
+  };
+
+  it("rejects a foreign-currency invoice with no rate — a 400, not a 422 rollback", () => {
+    const result = invoiceSchema.safeParse({ ...base, currency: "USD" });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("rate");
+  });
+
+  it("accepts a foreign-currency invoice carrying a rate", () => {
+    const result = invoiceSchema.safeParse({ ...base, currency: "USD", rate: 16_250 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currency).toBe("USD");
+      expect(result.data.rate).toBe(16_250);
+    }
+  });
+
+  it("defaults to IDR, which needs no rate", () => {
+    const result = invoiceSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currency).toBe("IDR");
+      expect(result.data.taxAmount).toBe(0);
+    }
+  });
+
+  it("rejects a non-positive rate", () => {
+    const result = invoiceSchema.safeParse({ ...base, currency: "CNY", rate: 0 });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("rate");
+  });
+
+  it("rejects negative tax", () => {
+    const result = invoiceSchema.safeParse({ ...base, taxAmount: -1 });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("taxAmount");
+  });
+
+  it("accepts a customer link and leaves it optional for legacy documents", () => {
+    const linked = invoiceSchema.safeParse({ ...base, customerId: 42 });
+    expect(linked.success).toBe(true);
+    if (linked.success) expect(linked.data.customerId).toBe(42);
+
+    const unlinked = invoiceSchema.safeParse({ ...base, customerId: null });
+    expect(unlinked.success).toBe(true);
+  });
+
+  it("totals the document in its own currency, tax included", () => {
+    const items = [
+      { itemName: "A", quantity: 10, price: 150_000 },
+      { itemName: "B", quantity: 2, price: 250_000 },
+    ];
+    expect(invoiceSubtotal(items)).toBe(2_000_000);
+    expect(invoiceTotal(items, 220_000)).toBe(2_220_000);
+    expect(invoiceTotal(items)).toBe(2_000_000);
+  });
+
+  it("derives the IDR base from the gross document value", () => {
+    const items = [{ itemName: "A", quantity: 4, price: 2_500 }];
+    // USD 10,000 + USD 1,100 PPN, at 16,250 → IDR 180,375,000.
+    expect(fxAmounts("USD", invoiceTotal(items, 1_100), 16_250).baseAmount).toBe(180_375_000);
   });
 });
 

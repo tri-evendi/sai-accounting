@@ -156,6 +156,170 @@ describe("postForSource per transaction type", () => {
     expect(j.type).toBe("sales");
   });
 
+  // ── Issue #35: invoices carry their own currency, rate and PPN ──
+
+  it("invoice in USD uses the USD receivable account and the invoice's own rate", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        21: {
+          id: 21,
+          invoiceNo: "SI.2026.03.00021",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: 16_250,
+          taxAmount: 0,
+          items: [{ quantity: 4, price: 2_500 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 21, tx })) as unknown as FakeJournal
+    );
+
+    // USD 10,000 at 16,250 → IDR 162,500,000. Emphatically not 10,000.
+    expect(debitOn(j, ACC.arUsd)).toBe(10_000);
+    expect(debitOn(j, ACC.arIdr)).toBe(0);
+    expect(creditOn(j, ACC.sales)).toBe(10_000);
+    expect(j.lines[0].currency).toBe("USD");
+    expect(j.lines[0].rate).toBe(16_250);
+    expect(j.lines[0].baseDebit).toBe(162_500_000);
+  });
+
+  it("a taxed invoice credits Hutang PPN Keluaran and still balances", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        22: {
+          id: 22,
+          invoiceNo: "SI.2026.03.00022",
+          date: DATE,
+          status: "pending",
+          currency: "IDR",
+          rate: null,
+          taxAmount: 1_100_000,
+          items: [{ quantity: 1, price: 10_000_000 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 22, tx })) as unknown as FakeJournal
+    );
+
+    // AR carries the gross; sales stays net; the 11% PPN sits in its own account.
+    expect(debitOn(j, ACC.arIdr)).toBe(11_100_000);
+    expect(creditOn(j, ACC.sales)).toBe(10_000_000);
+    expect(creditOn(j, ACC.vatOut)).toBe(1_100_000);
+    expect(j.lines).toHaveLength(3);
+  });
+
+  it("a taxed foreign invoice values AR, sales and PPN at the same rate", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        23: {
+          id: 23,
+          invoiceNo: "SI.2026.03.00023",
+          date: DATE,
+          status: "pending",
+          currency: "CNY",
+          rate: 2_250,
+          taxAmount: 1_100,
+          items: [{ quantity: 100, price: 100 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 23, tx })) as unknown as FakeJournal
+    );
+
+    expect(debitOn(j, ACC.arCny)).toBe(11_100);
+    expect(creditOn(j, ACC.sales)).toBe(10_000);
+    expect(creditOn(j, ACC.vatOut)).toBe(1_100);
+    // CNY 11,100 × 2,250 = IDR 24,975,000 on the receivable.
+    const arLine = j.lines.find((l) => l.accountId === ACC.arCny)!;
+    expect(arLine.baseDebit).toBe(24_975_000);
+  });
+
+  it("refuses a foreign-currency invoice with no rate rather than booking it 1:1", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        24: {
+          id: 24,
+          invoiceNo: "SI.2026.03.00024",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: null,
+          taxAmount: 0,
+          items: [{ quantity: 1, price: 5_000 }],
+        },
+      },
+    });
+
+    await expect(postForSource({ sourceType: "invoice", sourceId: 24, tx })).rejects.toThrow(
+      PostingRuleError
+    );
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("an explicit posting rate covers an invoice whose own rate is missing", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        25: {
+          id: 25,
+          invoiceNo: "SI.2026.03.00025",
+          date: DATE,
+          status: "pending",
+          currency: "USD",
+          rate: null,
+          taxAmount: 0,
+          items: [{ quantity: 1, price: 5_000 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "invoice",
+        sourceId: 25,
+        tx,
+        rate: 16_000,
+      })) as unknown as FakeJournal
+    );
+    expect(j.lines[0].baseDebit).toBe(80_000_000);
+  });
+
+  it("treats a legacy invoice with no currency as IDR, exactly as before", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      invoices: {
+        26: {
+          id: 26,
+          invoiceNo: "SI.2024.01.00026",
+          date: DATE,
+          status: "pending",
+          // No currency / rate / taxAmount — a row written before migration 0005.
+          items: [{ quantity: 1, price: 750_000 }],
+        },
+      },
+    });
+
+    const j = expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 26, tx })) as unknown as FakeJournal
+    );
+    expect(debitOn(j, ACC.arIdr)).toBe(750_000);
+    expect(creditOn(j, ACC.sales)).toBe(750_000);
+    expect(j.lines[0].rate).toBe(1);
+    expect(j.lines).toHaveLength(2);
+  });
+
   it("contract in CNY uses the CNY receivable account and an explicit rate", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,

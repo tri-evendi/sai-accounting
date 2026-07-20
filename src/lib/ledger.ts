@@ -2,9 +2,15 @@
  * Double-entry ledger engine.
  * Invariant: every journal must balance on IDR base amounts (Σ base_debit = Σ base_credit).
  * Journals are immutable — correct mistakes with reverseJournal(), never edit/delete.
+ *
+ * These two functions are also the period lock's choke point (issue #13): every
+ * write to the ledger — hand-written Jurnal Umum and auto-posting from source
+ * documents alike — passes through postJournal or reverseJournal, so guarding
+ * them here cannot be bypassed by adding another API route.
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { assertPeriodOpen } from "@/lib/period";
 
 export interface JournalLineInput {
   accountId: number;
@@ -105,6 +111,10 @@ export async function postJournal(entry: JournalEntryInput, client: LedgerClient
   assertBalanced(prepared);
 
   return runInTx(client, async (tx) => {
+    // Period lock: nothing may be booked into a closed month. Checked inside the
+    // transaction so it sees the same snapshot as the write it is guarding.
+    await assertPeriodOpen(entry.date, tx);
+
     const number = await nextNumber(tx, entry.date);
     return tx.journal.create({
       data: {
@@ -133,6 +143,18 @@ export async function reverseJournal(journalId: number, client: LedgerClient = p
     if (original.type === "reversal") throw new Error("Jurnal pembalikan tidak dapat dibalik lagi.");
 
     const now = new Date();
+
+    // Period lock, both ends:
+    //  • the ORIGINAL's month — reversing marks it `is_reversed` and undoes a
+    //    transaction the closed books already reported. This is also the only
+    //    guard on the delete path: unpostForSource() reverses without ever
+    //    calling postJournal, so a postJournal-only check would let a
+    //    closed-period document be deleted.
+    //  • the REVERSAL's own month (today) — normally open, but nothing stops a
+    //    Manager from closing the current month.
+    await assertPeriodOpen(original.date, tx);
+    await assertPeriodOpen(now, tx);
+
     const number = await nextNumber(tx, now);
     const reversal = await tx.journal.create({
       data: {

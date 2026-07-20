@@ -72,6 +72,30 @@ export interface SettlementLeg {
   currency: string;
   /** Rate the document was booked at — NOT the settlement rate. */
   rate: number;
+  /**
+   * Receivable/payable account this leg relieves (issue #43). Defaults to the
+   * rule's own ar/apAccountId.
+   *
+   * A settlement is relieved in the DOCUMENT's currency, so the account must be
+   * the document currency's — 110202 Piutang Usaha (USD) for a USD invoice,
+   * whatever currency the money arrived in. One supplier payment can settle
+   * purchases in several currencies at once (issue #37 allocations), and those
+   * belong in several different Hutang accounts, which is why this is per leg
+   * rather than one account for the whole entry.
+   */
+  accountId?: number;
+  /**
+   * Rate of THIS leg's currency on the SETTLEMENT date (issue #43) — set only
+   * when the leg's currency differs from the payment's.
+   *
+   * Distinct from `rate` above, and the distinction is the whole of #43: `rate`
+   * is what the document was booked at and decides how much rupiah leaves the
+   * receivable; this is what the currency was worth when the money moved and
+   * decides how many document-currency units the payment covers. It never
+   * values a line — it exists so the "legs sum to the payment" guard has a unit
+   * to compare in when the two sides are in different currencies.
+   */
+  settlementRate?: number;
   memo?: string;
 }
 
@@ -128,7 +152,15 @@ function resolveLegs(
   amount: number,
   ctx: CurrencyContext,
   memo: string | undefined,
-  label: string
+  label: string,
+  /**
+   * Settlement-date rate of the ENTRY's own currency (issue #43). Defaults to
+   * `ctx.rate`, which is right for a cash settlement — a payment's rate IS the
+   * rate on the day it moved. An advance compensation is the exception: its
+   * `ctx.rate` is what Uang Muka was booked at months earlier, so the caller
+   * passes the compensation date's rate instead.
+   */
+  ownSettlementRate?: number
 ): SettlementLeg[] {
   if (!legs || legs.length === 0) {
     return [{ amount, currency: ctx.currency, rate: ctx.rate, memo }];
@@ -145,10 +177,8 @@ function resolveLegs(
     }
   }
 
-  // Sanity guard against the plug silently absorbing an AMOUNT error rather than
-  // a RATE difference. Only checkable when every leg shares the payment's
-  // currency; a cross-currency settlement has no common unit to compare in, and
-  // reconciling it is the caller's job.
+  // Guard against the plug silently absorbing an AMOUNT error rather than a
+  // RATE difference — the property issue #23 established and #43 must not lose.
   const sameCurrency = legs.every((l) => l.currency === ctx.currency);
   if (sameCurrency) {
     const settled = round2(legs.reduce((s, l) => s + round2(l.amount), 0));
@@ -159,6 +189,49 @@ function resolveLegs(
           `Selisihnya bukan selisih kurs, jadi jurnal tidak diposting.`
       );
     }
+    return legs;
+  }
+
+  // Cross-currency (issue #43). Before #43 this case was simply unchecked —
+  // "no common unit to compare in" — and that was true only because nothing
+  // recorded a settlement-date rate. Now each leg carries one, so the legs and
+  // the payment CAN be compared: convert both to IDR base, the unit they share.
+  //
+  // Dividing through by a single leg's settlement rate turns this back into
+  // literally "the legs sum to the payment amount in document currency"; stating
+  // it in base is the same guard generalised, so that one payment settling
+  // documents in several currencies at once is still covered by it.
+  //
+  // Without this the FX plug would quietly swallow a mis-stated allocation as
+  // if it were a rate movement — the exact failure the same-currency branch
+  // exists to prevent, and the one that would make relieving the *right*
+  // account pointless by relieving it for the wrong amount.
+  for (const leg of legs) {
+    if (leg.currency !== ctx.currency && !(leg.settlementRate! > 0)) {
+      throw new PostingRuleError(
+        `Kurs tanggal pelunasan ${leg.currency} untuk ${label} tidak tersedia. ` +
+          `Jurnal tidak diposting agar nilai yang dilunasi tidak ditebak.`
+      );
+    }
+  }
+  const ownRate = ownSettlementRate ?? ctx.rate;
+  const rateOf = (l: SettlementLeg) => (l.currency === ctx.currency ? ownRate : l.settlementRate!);
+  const paidBase = round2(round2(amount) * ownRate);
+  const settledBase = round2(
+    legs.reduce((s, l) => s + round2(round2(l.amount) * rateOf(l)), 0)
+  );
+  // Each leg amount is a 2-decimal figure, so converting the payment into the
+  // leg's currency can only ever land within half a cent — worth `rateOf(l)`
+  // rupiah — of it. A genuine allocation error is at least a whole cent, so
+  // this tolerance admits rounding without admitting a mistake.
+  const slack = legs.reduce((s, l) => s + 0.005 * rateOf(l), 0) + 1e-9;
+  if (Math.abs(settledBase - paidBase) > slack) {
+    throw new PostingRuleError(
+      `Rincian pelunasan ${label} (setara Rp ${settledBase.toLocaleString("id-ID")} ` +
+        `pada kurs tanggal pelunasan) tidak sama dengan nilai pembayaran ` +
+        `(${round2(amount)} ${ctx.currency} = Rp ${paidBase.toLocaleString("id-ID")}). ` +
+        `Selisihnya bukan selisih kurs, jadi jurnal tidak diposting.`
+    );
   }
   return legs;
 }
@@ -234,7 +307,7 @@ export function buildSalesReceiptLines(input: SalesReceiptInput): JournalLineInp
   const lines: JournalLineInput[] = [
     { accountId: input.cashAccountId, debit: amount, currency, rate, memo },
     ...legs.map((leg) => ({
-      accountId: input.arAccountId,
+      accountId: leg.accountId ?? input.arAccountId,
       credit: round2(leg.amount),
       currency: leg.currency,
       rate: leg.rate,
@@ -310,7 +383,7 @@ export function buildSupplierPaymentLines(input: SupplierPaymentInput): JournalL
 
   const lines: JournalLineInput[] = [
     ...legs.map((leg) => ({
-      accountId: input.apAccountId,
+      accountId: leg.accountId ?? input.apAccountId,
       debit: round2(leg.amount),
       currency: leg.currency,
       rate: leg.rate,
@@ -441,6 +514,13 @@ export interface AdvanceCompensationInput extends CurrencyContext {
    * no rate (see `advanceSettlementLegs` in ./index.ts).
    */
   settles?: SettlementLeg[];
+  /**
+   * Rate of the ADVANCE's own currency on the COMPENSATION date (issue #43).
+   * Only needed when the target document is in another currency, where it is
+   * what says how much of the target this advance actually covers. Distinct
+   * from `rate` above, which is what Uang Muka was booked at.
+   */
+  settlementRate?: number;
   /** Laba/Rugi Selisih Kurs. Required only when an FX difference arises. */
   fxAccountId?: number;
   memo?: string;
@@ -491,7 +571,7 @@ export function buildAdvanceCompensationLines(
   }
   const { currency, rate, memo } = input;
   const label = input.direction === "sales" ? "piutang" : "hutang";
-  const legs = resolveLegs(input.settles, amount, input, memo, label);
+  const legs = resolveLegs(input.settles, amount, input, memo, label, input.settlementRate);
 
   const advanceLine = {
     accountId: input.advanceAccountId,
@@ -500,7 +580,7 @@ export function buildAdvanceCompensationLines(
     memo,
   };
   const counterLines = legs.map((leg) => ({
-    accountId: input.counterAccountId,
+    accountId: leg.accountId ?? input.counterAccountId,
     currency: leg.currency,
     rate: leg.rate,
     memo: leg.memo ?? memo,

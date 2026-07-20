@@ -120,7 +120,54 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110302", currency: "USD" },
   { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110303", currency: "CNY" },
 
-  { key: MAPPING_KEYS.CASH_DEFAULT, code: "110102" },
+  // Cash (issue #40). NOTE WHAT IS MISSING: `cash_default` has no "any" row.
+  //
+  // Until #40 it had *only* an "any" row → 110102 Kas Besar, an IDR account, so
+  // a CNY payment landed in Kas Besar. The journal balanced in IDR base — the
+  // destination account was wrong, not the value — but the CNY cash account
+  // stayed empty while an IDR one absorbed foreign movements.
+  //
+  // The fix is not merely to add the missing rows; it is to stop having a
+  // fallback at all. An "any" mapping promises "this account can receive money
+  // in any currency". For sales, VAT, COGS or fx_gain_loss that is true — those
+  // slots are genuinely currency-agnostic. For cash it is a category error: a
+  // cash or bank account holds exactly one currency, so there is no honest
+  // account for "some currency nobody configured". With no "any" row,
+  // `resolveAccountIds` raises MissingMappingError — which already names the
+  // slot and the currency in Indonesian — instead of silently choosing an IDR
+  // account. That is the stance `resolveRate` takes on a missing rate, and it is
+  // strictly the safer failure: the remedy is a one-row insert, whereas a silent
+  // misposting has to be noticed before it can be fixed.
+  //
+  // IDR points at 110103 Bank (IDR) rather than 110102 Kas Besar, matching
+  // `cash_bank`'s IDR row. Settling an invoice, contract or advance is a
+  // transfer far more often than it is physical cash, and a company that really
+  // does take counter payments repoints this one row (or books them through
+  // Transaksi Kas, which resolves `cash_kas_besar` and is unaffected).
+  { key: MAPPING_KEYS.CASH_DEFAULT, code: "110103", currency: "IDR" },
+  { key: MAPPING_KEYS.CASH_DEFAULT, code: "110104", currency: "USD" },
+  { key: MAPPING_KEYS.CASH_DEFAULT, code: "110105", currency: "CNY" },
+
+  // ── LEGACY JOURNALS: DO NOT BULK-REPOST ────────────────────────────────────
+  // Foreign payments already posted into 110102 Kas Besar are wrong in the
+  // account, never in the rupiah, so nothing is misstated at the company level
+  // and there is no urgency to justify rewriting history in bulk. Correct them
+  // one document at a time, and only where it is worth it:
+  //
+  //   1. Confirm the payment really was in that currency and identify the cash
+  //      account it should have landed in.
+  //   2. Check the document's period is open. If it is closed, a Manager
+  //      reopens it deliberately (issue #13) — the lock is not to be bypassed.
+  //   3. `repostForSource({ sourceType: "invoice_payment", sourceId })`, which
+  //      reverses the old journal and posts a fresh one, leaving the audit
+  //      trail intact rather than editing it.
+  //
+  // A sweep over every historical payment is deliberately not offered: it would
+  // reverse and repost closed months wholesale, and each entry it touched would
+  // need the same human check anyway.
+  //
+  // The physical-cash slots stay currency-agnostic: they are reached only from
+  // an explicit CashAccount.type, where the user has already named the account.
   { key: MAPPING_KEYS.CASH_KAS_BESAR, code: "110102" },
   { key: MAPPING_KEYS.CASH_KAS_KECIL, code: "110101" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110103" },

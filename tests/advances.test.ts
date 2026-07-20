@@ -22,11 +22,16 @@ import {
   buildAdvanceCompensationLines,
   PostingRuleError,
 } from "@/lib/posting/rules";
-import { postForSource, MAPPING_KEYS } from "@/lib/posting";
+import { postForSource, MAPPING_KEYS, MissingSettlementRateError } from "@/lib/posting";
 import { advanceBalance, resolveApplicationLines, summarizeAdvances } from "@/lib/advances";
 import { advancePaymentSchema, advanceApplicationsSchema } from "@/lib/validations/advance";
 import { getReceivables } from "@/lib/receivables";
-import { createFakeClient, type FakeJournal, type FakeLine } from "./fake-client";
+import {
+  createFakeClient,
+  type FakeExchangeRate,
+  type FakeJournal,
+  type FakeLine,
+} from "./fake-client";
 
 const d = (s: string) => new Date(`${s}T00:00:00`);
 
@@ -65,6 +70,7 @@ const ACC = {
   advanceSales: 21, // 2102 Uang Muka Penjualan — LIABILITY
   advancePurchase: 22, // 1103 Uang Muka Pembelian — ASSET
   ar: 31,
+  arUsd: 33, // 110202 Piutang Usaha (USD) — issue #43
   ap: 32,
   fx: 41, // 7101 Laba/Rugi Selisih Kurs
   sales: 51, // must NEVER appear in an advance journal
@@ -76,6 +82,7 @@ const mappings = [
   { key: MAPPING_KEYS.ADVANCE_SALES, currency: "any", accountId: ACC.advanceSales, isActive: true },
   { key: MAPPING_KEYS.ADVANCE_PURCHASE, currency: "any", accountId: ACC.advancePurchase, isActive: true },
   { key: MAPPING_KEYS.AR_DEFAULT, currency: "any", accountId: ACC.ar, isActive: true },
+  { key: MAPPING_KEYS.AR_DEFAULT, currency: "USD", accountId: ACC.arUsd, isActive: true },
   { key: MAPPING_KEYS.AP_DEFAULT, currency: "any", accountId: ACC.ap, isActive: true },
   { key: MAPPING_KEYS.FX_GAIN_LOSS, currency: "any", accountId: ACC.fx, isActive: true },
   { key: MAPPING_KEYS.SALES_DEFAULT, currency: "any", accountId: ACC.sales, isActive: true },
@@ -877,9 +884,23 @@ describe("dokumen tujuan tanpa kurs — dibukukan flat", () => {
     expect(expectJournalBalanced(j).debit).toBe(220_000_000);
   });
 
-  it("books flat when the invoice is in a different currency from the advance", async () => {
-    const client = createFakeClient({
+  /**
+   * UPDATED FOR ISSUE #43 (was: "books flat when the invoice is in a different
+   * currency from the advance").
+   *
+   * That test pinned #26's stopgap: a CNY advance compensated into a USD
+   * invoice was booked flat, in CNY, against whichever Piutang the *advance's*
+   * currency resolved to. It documented the state of the world, not a rule —
+   * there was no settlement-date rate, so there was no honest alternative.
+   *
+   * With `exchange_rates` there is one, and the two cases below replace it: the
+   * receivable relieved is the INVOICE's (110202-equivalent), or nothing is
+   * posted at all.
+   */
+  const crossCurrencyApplication = (rates?: FakeExchangeRate[]) =>
+    createFakeClient({
       mappings,
+      exchangeRates: rates,
       advanceApplications: {
         7: {
           id: 7,
@@ -899,18 +920,47 @@ describe("dokumen tujuan tanpa kurs — dibukukan flat", () => {
             rate: 2_200,
             status: "open",
           },
-          // No common unit: deriving how many USD a CNY advance clears would need
-          // a settlement-date cross rate that nothing records.
           invoice: { id: 3, invoiceNo: "INV-USD", currency: "USD", rate: 16_000 },
           purchase: null,
         },
       },
     });
 
+  it("refuses to compensate into another currency with no settlement-date rate", async () => {
+    // Exactly the case the old test booked flat. How many USD a CNY advance
+    // covers is unknowable without both currencies' rates on the compensation
+    // date, and guessing decides how much receivable is discharged — so refuse.
+    const client = crossCurrencyApplication();
+    await expect(
+      postForSource({ sourceType: "advance_application", sourceId: 7, tx: client })
+    ).rejects.toThrow(MissingSettlementRateError);
+    expect(client._journals).toHaveLength(0);
+  });
+
+  it("compensates a CNY advance into a USD invoice, relieving the USD receivable", async () => {
+    const client = crossCurrencyApplication([
+      { currency: "CNY", rateDate: d("2026-07-20"), rate: 2_250 },
+      { currency: "USD", rateDate: d("2026-07-20"), rate: 16_500 },
+    ]);
+
     await postForSource({ sourceType: "advance_application", sourceId: 7, tx: client });
     const j = client._journals[0];
-    expect(lineFor(j, ACC.fx)).toBeUndefined();
-    expect(expectJournalBalanced(j).debit).toBe(220_000_000);
+
+    // CNY 100.000 at the compensation date's 2.250 is worth Rp 225.000.000,
+    // which is USD 13.636,36 at that day's 16.500.
+    const ar = lineFor(j, ACC.arUsd)!;
+    expect(ar.credit).toBe(13_636.36);
+    expect(ar.currency).toBe("USD");
+    // Relieved at the INVOICE's booked rate, not the settlement one.
+    expect(ar.rate).toBe(16_000);
+    // The generic "any" receivable is not touched at all — the whole point.
+    expect(lineFor(j, ACC.ar)).toBeUndefined();
+
+    // Uang Muka leaves at the rate it was booked at, for its full rupiah value.
+    expect(lineFor(j, ACC.advanceSales)!.baseDebit).toBe(220_000_000);
+    // The gap between the two booked rates is realized FX, via fxPlugLines.
+    expect(lineFor(j, ACC.fx)!.credit).toBe(1_818_240);
+    expectJournalBalanced(j);
   });
 
   it("omitting `settles` entirely is the same flat booking, with no FX", () => {

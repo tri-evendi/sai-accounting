@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FileDown, FileText, Truck, Package, Wallet } from "lucide-react";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
 
 interface ContractPDFData {
@@ -150,6 +151,39 @@ export function FinanceReportPDFButton({
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
       <Wallet className="h-4 w-4 mr-1" />
       {loading ? "Generating..." : "Export Finance PDF"}
+    </Button>
+  );
+}
+
+/**
+ * PDF export for the four financial statements (issue #18). One button serves all
+ * of them: the server component hands over an already-computed, serialisable
+ * payload, so nothing is recalculated here and the PDF can never disagree with
+ * the page the user is looking at.
+ */
+export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  async function handleExport() {
+    setLoading(true);
+    try {
+      const { generateStatementPDF, STATEMENT_TITLES } = await import("@/lib/pdf/statement-pdf");
+      const doc = generateStatementPDF(payload);
+      const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");
+      doc.save(`${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast("PDF berhasil diunduh");
+    } catch (err) {
+      console.error(err);
+      toast("Gagal membuat PDF", "error");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
+      <FileDown className="h-4 w-4 mr-1" />
+      {loading ? "Menyiapkan..." : "Unduh PDF"}
     </Button>
   );
 }

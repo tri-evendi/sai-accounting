@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DueDateField } from "@/components/shared/due-date-field";
 import {
   InvoiceFxFields,
   invoiceFxPayload,
@@ -61,6 +62,7 @@ export default function NewInvoicePage() {
     const body = {
       invoiceNo: formData.get("invoiceNo"),
       date: formData.get("date"),
+      dueDate: formData.get("dueDate"),
       status: formData.get("status"),
       ...invoiceFxPayload(fx),
       items,
@@ -102,6 +104,7 @@ export default function NewInvoicePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="invoiceNo" name="invoiceNo" label="Invoice Number" required />
               <Input id="date" name="date" type="date" label="Date" required />
+              <DueDateField />
               <Select
                 id="status"
                 name="status"

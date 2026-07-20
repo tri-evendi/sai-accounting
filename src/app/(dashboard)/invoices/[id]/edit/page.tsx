@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { DueDateField } from "@/components/shared/due-date-field";
 import {
   InvoiceFxFields,
   invoiceFxPayload,
@@ -30,6 +31,7 @@ export default function EditInvoicePage() {
   const [error, setError] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
   const [date, setDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [fx, setFx] = useState<InvoiceFxValues>({
@@ -50,6 +52,8 @@ export default function EditInvoicePage() {
       .then((data) => {
         setInvoiceNo(data.invoiceNo);
         setDate(new Date(data.date).toISOString().split("T")[0]);
+        // Blank stays blank: a null due date is "unknown", not "today".
+        setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
         setStatus(data.status);
         setFx({
           customerId: data.customerId ? String(data.customerId) : "",
@@ -94,7 +98,7 @@ export default function EditInvoicePage() {
     setError("");
     setLoading(true);
 
-    const body = { invoiceNo, date, status, ...invoiceFxPayload(fx), items };
+    const body = { invoiceNo, date, dueDate, status, ...invoiceFxPayload(fx), items };
 
     const res = await fetch(`/api/invoices/${params.id}`, {
       method: "PUT",
@@ -133,6 +137,7 @@ export default function EditInvoicePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="invoiceNo" label="Invoice Number" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
               <Input id="date" type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <DueDateField value={dueDate} onChange={setDueDate} />
               <Select
                 id="status" label="Status" value={status}
                 onChange={(e) => setStatus(e.target.value)}

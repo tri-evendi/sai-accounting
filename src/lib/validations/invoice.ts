@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { dueDateField } from "./common";
 
 export const invoiceItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required").max(100).trim(),
@@ -13,6 +14,9 @@ export const invoiceSchema = z
   .object({
     invoiceNo: z.string().min(1, "Invoice number is required").max(50).trim(),
     date: z.string().min(1, "Date is required"),
+    // Optional: drives the "Jatuh Tempo" status and the overdue filter in
+    // /receivables. Blank leaves the invoice aged from its issue date.
+    dueDate: dueDateField,
     status: z.enum(["signed", "pending", "canceled"]).default("pending"),
     // Nullable: legacy invoices carry no customer, and the picker may be left empty.
     customerId: z.coerce.number().int().positive().nullish(),

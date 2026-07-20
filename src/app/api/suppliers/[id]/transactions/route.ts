@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supplierTransactionSchema } from "@/lib/validations/finance";
 import { fxAmounts } from "@/lib/validations/fx";
+import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -55,7 +56,7 @@ export async function POST(
     );
   }
 
-  const { date, rate: rateInput, ...transactionData } = parsed.data;
+  const { date, dueDate, rate: rateInput, ...transactionData } = parsed.data;
   // base_amount covers the full obligation: net value plus input VAT.
   const { rate, baseAmount } = fxAmounts(
     transactionData.currency,
@@ -70,6 +71,8 @@ export async function POST(
         data: {
           ...transactionData,
           date: new Date(date),
+          // A payment has nothing to fall due; only a purchase carries a due date.
+          dueDate: transactionData.type === "purchase" ? toDateOrNull(dueDate) : null,
           rate,
           baseAmount,
         },

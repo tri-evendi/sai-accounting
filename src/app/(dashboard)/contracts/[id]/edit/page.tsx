@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { DueDateField } from "@/components/shared/due-date-field";
 
 interface ContractItem {
   itemName: string;
@@ -20,6 +21,7 @@ interface ContractData {
   id: number;
   contractNo: string;
   date: string;
+  dueDate: string | null;
   buyer: string;
   consignee: string | null;
   packaging: string | null;
@@ -93,6 +95,7 @@ export default function EditContractPage() {
     const body = {
       contractNo: formData.get("contractNo"),
       date: formData.get("date"),
+      dueDate: formData.get("dueDate"),
       buyer: formData.get("buyer"),
       consignee: formData.get("consignee"),
       packaging: formData.get("packaging"),
@@ -133,6 +136,8 @@ export default function EditContractPage() {
   }
 
   const dateStr = new Date(contract.date).toISOString().split("T")[0];
+  // Blank when null — an unknown due date must not default to the document date.
+  const dueDateStr = contract.dueDate ? new Date(contract.dueDate).toISOString().split("T")[0] : "";
 
   return (
     <div className="max-w-4xl">
@@ -151,6 +156,7 @@ export default function EditContractPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="contractNo" name="contractNo" label="Contract Number" defaultValue={contract.contractNo} required />
               <Input id="date" name="date" type="date" label="Date" defaultValue={dateStr} required />
+              <DueDateField defaultValue={dueDateStr} />
               <Input id="buyer" name="buyer" label="Buyer" defaultValue={contract.buyer} required />
               <Input id="consignee" name="consignee" label="Consignee" defaultValue={contract.consignee || ""} />
               <Input id="packaging" name="packaging" label="Packaging" defaultValue={contract.packaging || ""} />

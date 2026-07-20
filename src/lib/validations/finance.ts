@@ -51,6 +51,75 @@ export const supplierPaymentAllocationSchema = z.object({
 const MONEY_EPSILON = 0.005;
 
 /**
+ * The payload-only half of the over-allocation guard: no purchase may appear
+ * twice, and the lines together may not exceed the payment they slice up.
+ *
+ * Extracted so the create path (`supplierTransactionSchema`, issue #37) and the
+ * re-allocation path (`supplierPaymentAllocationsSchema`, issue #38) run the
+ * *same* code rather than two copies that can drift apart. An edit must never be
+ * laxer than a create — the cheapest way to guarantee that is to share the rule.
+ *
+ * `paymentAmount` is the payment's own amount in its own currency: on create it
+ * comes from the payload, on edit from the stored row. Both sides of the
+ * comparison are therefore the same currency, and no FX is involved here.
+ */
+export function checkAllocationSet(
+  allocations: { purchaseId: number; amount: number }[],
+  paymentAmount: number,
+  ctx: z.RefinementCtx,
+  path: (string | number)[] = ["allocations"]
+) {
+  if (allocations.length === 0) return;
+
+  const seen = new Set<number>();
+  for (const [i, a] of allocations.entries()) {
+    if (seen.has(a.purchaseId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: [...path, i, "purchaseId"],
+        message: "Pembelian yang sama dialokasikan lebih dari sekali.",
+      });
+    }
+    seen.add(a.purchaseId);
+  }
+
+  // Over-allocation guard #1: a payment cannot hand out more than it is worth.
+  // Same currency on both sides by construction, so this comparison is safe.
+  const total = allocations.reduce((s, a) => s + a.amount, 0);
+  if (total > paymentAmount + MONEY_EPSILON) {
+    ctx.addIssue({
+      code: "custom",
+      path,
+      message: `Total alokasi (${total.toLocaleString("id-ID")}) melebihi jumlah pembayaran (${paymentAmount.toLocaleString("id-ID")}).`,
+    });
+  }
+}
+
+/**
+ * Re-allocating an *existing* payment (issue #38).
+ *
+ * The whole allocation set is replaced in one go — that is what makes "edit a
+ * line", "remove a line" and "allocate a legacy payment that has none" the same
+ * operation, and it makes the result independent of what was there before. An
+ * empty array is meaningful and allowed: it clears every allocation and returns
+ * the payment to the FIFO estimate, which is exactly how it was before #37.
+ *
+ * A factory rather than a constant because the cap belongs to the *stored*
+ * payment, not the payload — a client must not be able to raise its own ceiling
+ * by sending a bigger `amount`. The route loads the payment first and passes its
+ * amount in. Duplicate + total checks are the shared `checkAllocationSet`, so
+ * this path is guard-for-guard identical to the create path.
+ */
+export function supplierPaymentAllocationsSchema(paymentAmount: number) {
+  return z
+    .object({
+      transactionId: z.coerce.number().int().positive(),
+      allocations: z.array(supplierPaymentAllocationSchema).max(100),
+    })
+    .superRefine((data, ctx) => checkAllocationSet(data.allocations, paymentAmount, ctx));
+}
+
+/**
  * Supplier purchases and payments. `type` is the engine's discriminator:
  * `purchase` → D: Persediaan (+ D: PPN Masukan) / K: Hutang Usaha,
  * `payment`  → D: Hutang Usaha / K: Kas & Bank.
@@ -101,28 +170,9 @@ export const supplierTransactionSchema = z
       return;
     }
 
-    const seen = new Set<number>();
-    for (const [i, a] of allocations.entries()) {
-      if (seen.has(a.purchaseId)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["allocations", i, "purchaseId"],
-          message: "Pembelian yang sama dialokasikan lebih dari sekali.",
-        });
-      }
-      seen.add(a.purchaseId);
-    }
-
-    // Over-allocation guard #1: a payment cannot hand out more than it is worth.
-    // Same currency on both sides by construction, so this comparison is safe.
-    const total = allocations.reduce((s, a) => s + a.amount, 0);
-    if (total > data.amount + MONEY_EPSILON) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["allocations"],
-        message: `Total alokasi (${total.toLocaleString("id-ID")}) melebihi jumlah pembayaran (${data.amount.toLocaleString("id-ID")}).`,
-      });
-    }
+    // Duplicate purchases and the "no more than the payment is worth" cap are
+    // shared with the re-allocation path (issue #38) — see `checkAllocationSet`.
+    checkAllocationSet(allocations, data.amount, ctx);
   });
 
 export const supplierSchema = z.object({

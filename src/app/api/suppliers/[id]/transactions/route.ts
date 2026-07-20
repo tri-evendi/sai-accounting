@@ -7,14 +7,18 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { supplierTransactionSchema } from "@/lib/validations/finance";
-import { fxAmounts } from "@/lib/validations/fx";
+import {
+  supplierTransactionSchema,
+  supplierPaymentAllocationsSchema,
+} from "@/lib/validations/finance";
+import { fxAmounts, BASE_CURRENCY } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { getSupplierPurchaseAllocations } from "@/lib/receivables";
+import { resolveAllocationLines } from "@/lib/supplier-allocations";
 
 export async function GET(
   request: Request,
@@ -30,6 +34,67 @@ export async function GET(
   // which purchases still have room, and how much. A separate shape from the
   // plain transaction list because it carries derived, not stored, numbers.
   const { searchParams } = new URL(request.url);
+
+  // `?allocations=1&paymentId=N` feeds the re-allocation editor (issue #38).
+  // Distinct from `?outstanding=1` in two ways that matter: it also returns what
+  // the payment currently allocates (so the form can be pre-filled with the
+  // truth rather than a blank slate), and it measures each purchase's room with
+  // this payment's own allocations set aside — otherwise a payment that already
+  // filled a purchase would find no room to re-state that very allocation.
+  if (searchParams.get("allocations") === "1") {
+    const paymentId = parseInt(searchParams.get("paymentId") ?? "");
+    if (!Number.isInteger(paymentId)) {
+      return NextResponse.json(
+        { error: 'Parameter "paymentId" wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    const payment = await prisma.supplierTransaction.findFirst({
+      where: { id: paymentId, supplierId, type: "payment" },
+      include: { allocationsMade: true },
+    });
+    if (!payment) {
+      return NextResponse.json({ error: "Pembayaran tidak ditemukan" }, { status: 404 });
+    }
+
+    const purchases = await getSupplierPurchaseAllocations(supplierId, prisma, {
+      excludePaymentId: paymentId,
+    });
+
+    return NextResponse.json({
+      payment: {
+        id: payment.id,
+        date: payment.date,
+        amount: Number(payment.amount),
+        currency: payment.currency,
+        rate: payment.rate == null ? null : Number(payment.rate),
+        note: payment.note,
+      },
+      // What this payment says today, in the payment's own currency.
+      current: payment.allocationsMade.map((a) => ({
+        purchaseId: a.purchaseId,
+        amount: Number(a.amount),
+      })),
+      // Every purchase of this supplier that has room, plus any this payment
+      // itself currently fills — those come back with room precisely because
+      // their own allocation was excluded above.
+      purchases: purchases
+        .filter((p) => p.remainingBase == null || p.remainingBase > 0.005)
+        .map((p) => ({
+          id: p.id,
+          date: p.date,
+          dueDate: p.dueDate,
+          amount: p.amount,
+          currency: p.currency,
+          totalBase: p.totalBase,
+          allocatedBase: p.allocatedBase,
+          remainingBase: p.remainingBase,
+          note: p.note,
+        })),
+    });
+  }
+
   if (searchParams.get("outstanding") === "1") {
     const purchases = await getSupplierPurchaseAllocations(supplierId);
     return NextResponse.json(
@@ -96,62 +161,18 @@ export async function POST(
   // What it cannot see is the other side: whether each target purchase belongs
   // to this supplier and still has room. Checked here, before anything is
   // written, so a rejected allocation never leaves a posted payment behind.
-  const allocationLines: { purchaseId: number; amount: number; base: number }[] = [];
-  if (allocations && allocations.length > 0) {
-    const state = await getSupplierPurchaseAllocations(supplierId);
-    const byId = new Map(state.map((p) => [p.id, p]));
-
-    for (const line of allocations) {
-      const purchase = byId.get(line.purchaseId);
-      if (!purchase) {
-        return NextResponse.json(
-          {
-            error: `Pembelian #${line.purchaseId} tidak ditemukan pada supplier ini.`,
-          },
-          { status: 400 }
-        );
-      }
-      if (purchase.remainingBase == null) {
-        // Foreign purchase with no rate: it has no IDR value, so "how much is
-        // left" has no answer and no allocation against it can be checked.
-        return NextResponse.json(
-          {
-            error: `Pembelian #${line.purchaseId} belum punya kurs, sehingga sisa utangnya dalam IDR tidak diketahui. Isi kurs pembelian tersebut lebih dulu.`,
-          },
-          { status: 400 }
-        );
-      }
-
-      // Convert the allocation to IDR at the PAYMENT's rate — the same rate the
-      // ledger posted this payment at — then compare like with like. Currencies
-      // are never added: both sides of this comparison are IDR base.
-      const { baseAmount: lineBase } = fxAmounts(
-        transactionData.currency,
-        line.amount,
-        rateInput
-      );
-
-      if (lineBase > purchase.remainingBase + 0.005) {
-        return NextResponse.json(
-          {
-            error: `Alokasi ke pembelian #${line.purchaseId} (Rp ${lineBase.toLocaleString("id-ID")}) melebihi sisa utangnya (Rp ${purchase.remainingBase.toLocaleString("id-ID")}).`,
-          },
-          { status: 400 }
-        );
-      }
-
-      allocationLines.push({
-        purchaseId: line.purchaseId,
-        amount: line.amount,
-        base: lineBase,
-      });
-      // Two lines in one payload could each fit alone but not together.
-      byId.set(line.purchaseId, {
-        ...purchase,
-        remainingBase: purchase.remainingBase - lineBase,
-      });
-    }
+  // Shared with the re-allocation path (PUT, issue #38) so an edit can never be
+  // laxer than a create.
+  const resolved = await resolveAllocationLines({
+    supplierId,
+    currency: transactionData.currency,
+    rate: rateInput,
+    allocations: allocations ?? [],
+  });
+  if (!resolved.ok) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
   }
+  const allocationLines = resolved.lines;
 
   let transaction;
   try {
@@ -218,6 +239,156 @@ export async function POST(
   });
 
   return NextResponse.json(transaction, { status: 201 });
+}
+
+/**
+ * Re-allocate an existing supplier payment (issue #38).
+ *
+ * Replaces the payment's whole allocation set: editing a line, deleting one, and
+ * allocating a legacy payment that never had any are all the same operation, and
+ * a full replacement makes the outcome independent of what was there before. An
+ * empty `allocations` array clears them and hands the payment back to the FIFO
+ * estimate — a deliberate, reachable state, not an error.
+ *
+ * ── WHAT THIS DELIBERATELY DOES NOT DO ────────────────────────────────────────
+ * It writes no journal. It calls neither `postForSource`, `repostForSource` nor
+ * `unpostForSource`, and it does not touch the payment row itself — only rows in
+ * `supplier_payment_allocations`. The purchase and the payment were each posted
+ * when they were recorded; saying which one settles which moves no money, so the
+ * ledger has nothing to learn from it. This is the entire reason the endpoint
+ * exists: before it, the only way to fix an allocation was to delete and re-post
+ * the payment, reversing correct journals to correct a reporting field.
+ *
+ * It follows that the period lock (issue #13) is not consulted and must never be
+ * reached: a locked month bars new *journals*, and there is no journal here. If
+ * this path ever trips the lock, it has started writing to the ledger and that
+ * is a bug in this handler, not a lock to work around.
+ *
+ * Role is `bos`/`core`, the same as creating the payment: a user allowed to
+ * state an allocation on the way in is allowed to correct it afterwards.
+ */
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const result = await requireAuth(["bos", "core"]);
+  if (!result.authorized) return result.response;
+
+  const { id } = await params;
+  const supplierId = parseInt(id);
+
+  const body = await request.json();
+  const transactionId = Number(body?.transactionId);
+  if (!Number.isInteger(transactionId) || transactionId <= 0) {
+    return NextResponse.json(
+      { error: 'Parameter "transactionId" wajib diisi.' },
+      { status: 400 }
+    );
+  }
+
+  // Ownership check before anything else: the payment must be this supplier's,
+  // and must be a payment — a purchase creates debt, it cannot settle any.
+  const payment = await prisma.supplierTransaction.findFirst({
+    where: { id: transactionId, supplierId },
+    include: { supplier: true, allocationsMade: true },
+  });
+  if (!payment) {
+    return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+  }
+  if (payment.type !== "payment") {
+    return NextResponse.json(
+      { error: "Alokasi hanya berlaku untuk transaksi pembayaran, bukan pembelian." },
+      { status: 400 }
+    );
+  }
+
+  const rate = payment.rate == null ? undefined : Number(payment.rate);
+  if (payment.currency !== BASE_CURRENCY && !rate) {
+    // A foreign payment with no rate has no IDR value, so no allocation of it
+    // can be measured against a purchase's IDR remainder. Refused out loud
+    // rather than valued 1:1 (see the header of `receivables.ts`).
+    return NextResponse.json(
+      {
+        error: `Pembayaran ini bermata uang ${payment.currency} tanpa kurs, sehingga nilai IDR-nya tidak diketahui dan alokasinya tidak bisa diperiksa.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  // The cap comes from the STORED payment amount, never from the payload — a
+  // client must not be able to raise its own ceiling. Duplicate purchases and
+  // the total cap are the same `checkAllocationSet` the create path runs.
+  const parsed = supplierPaymentAllocationsSchema(Number(payment.amount)).safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  // Same database-side guard as POST, with one difference: this payment's own
+  // current allocations are set aside, because they are what is being replaced.
+  const resolved = await resolveAllocationLines({
+    supplierId,
+    currency: payment.currency,
+    rate,
+    allocations: parsed.data.allocations,
+    excludePaymentId: payment.id,
+  });
+  if (!resolved.ok) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
+
+  const before = payment.allocationsMade.map((a) => ({
+    purchaseId: a.purchaseId,
+    amount: Number(a.amount),
+  }));
+
+  // Delete-then-insert inside one transaction: the set is replaced atomically,
+  // so a reader never sees a half-applied allocation. No posting call here, by
+  // design — see the note above.
+  await prisma.$transaction(async (tx) => {
+    await tx.supplierPaymentAllocation.deleteMany({ where: { paymentId: payment.id } });
+    if (resolved.lines.length > 0) {
+      await tx.supplierPaymentAllocation.createMany({
+        data: resolved.lines.map((line) => ({
+          paymentId: payment.id,
+          purchaseId: line.purchaseId,
+          amount: line.amount,
+          currency: payment.currency,
+          rate: rate ?? 1,
+          baseAmount: line.base,
+        })),
+      });
+    }
+  });
+
+  await writeAuditLog({
+    userId: result.session.user.id,
+    username: result.session.user.email,
+    action: "supplier_transaction.allocate",
+    entity: "supplier_transaction",
+    entityId: payment.id,
+    details: {
+      supplierId,
+      supplierName: payment.supplier.name,
+      currency: payment.currency,
+      // Allocation is a user assertion about which debt a payment cleared, so
+      // both what it used to say and what it now says belong in the trail.
+      before,
+      after: resolved.lines.map((l) => ({
+        purchaseId: l.purchaseId,
+        amount: l.amount,
+        baseAmount: l.base,
+      })),
+    },
+    request,
+  });
+
+  return NextResponse.json({
+    success: true,
+    allocations: resolved.lines.map((l) => ({ purchaseId: l.purchaseId, amount: l.amount })),
+  });
 }
 
 export async function DELETE(

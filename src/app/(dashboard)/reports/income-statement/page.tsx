@@ -3,6 +3,7 @@ import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { PeriodFilter } from "../report-filters";
+import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 
@@ -58,10 +59,25 @@ export default async function IncomeStatementPage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Laba / Rugi" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Laba / Rugi</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Periode {formatDate(from)} – {formatDate(to)}
-      </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Laba / Rugi</h1>
+          <p className="text-sm text-gray-500">
+            Periode {formatDate(from)} – {formatDate(to)} · nilai dalam IDR
+          </p>
+        </div>
+        <StatementPDFButton
+          payload={{
+            kind: "income-statement",
+            period: `Periode ${formatDate(from)} – ${formatDate(to)}`,
+            revenue: is.revenue,
+            expense: is.expense,
+            totalRevenue: is.totalRevenue,
+            totalExpense: is.totalExpense,
+            netIncome: is.netIncome,
+          }}
+        />
+      </div>
 
       <PeriodFilter basePath="/reports/income-statement" from={fromStr} to={toStr} />
 

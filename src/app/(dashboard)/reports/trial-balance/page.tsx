@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AsOfFilter } from "../report-filters";
+import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +28,22 @@ export default async function TrialBalancePage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Neraca Saldo" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca Saldo</h1>
-      <p className="text-sm text-gray-500 mb-6">Per {formatDate(asOf)}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca Saldo</h1>
+          <p className="text-sm text-gray-500">Per {formatDate(asOf)} · nilai dalam IDR</p>
+        </div>
+        <StatementPDFButton
+          payload={{
+            kind: "trial-balance",
+            period: `Per ${formatDate(asOf)}`,
+            rows: tb.rows,
+            totalDebit: tb.totalDebit,
+            totalCredit: tb.totalCredit,
+            balanced: tb.balanced,
+          }}
+        />
+      </div>
 
       <AsOfFilter basePath="/reports/trial-balance" asOf={asOfStr} />
 

@@ -12,7 +12,13 @@ export type AuditAction =
   | "supplier_transaction.allocate"
   | "auth.password_change"
   | "period.close"
-  | "period.reopen";
+  | "period.reopen"
+  /** Recording uang muka received/paid before any invoice exists (issue #26). */
+  | "advance.create"
+  | "advance.cancel"
+  /** Compensating an advance into an invoice/purchase. Posts its own journal. */
+  | "advance.apply"
+  | "advance.unapply";
 
 export type AuditEntity =
   | "cash_account"
@@ -20,7 +26,9 @@ export type AuditEntity =
   | "item"
   | "supplier_transaction"
   | "user"
-  | "period";
+  | "period"
+  | "advance_payment"
+  | "advance_application";
 
 export type AuditLogEntry = {
   id: string;

@@ -19,6 +19,7 @@ import {
   BarChart3,
   HandCoins,
   Wallet,
+  Coins,
   Lock,
   X,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const allNavItems = [
   { href: "/invoices", label: "Invoices", icon: Receipt, roles: ["bos", "core"] },
   { href: "/receivables", label: "Piutang", icon: HandCoins, roles: ["bos", "core"] },
   { href: "/payables", label: "Utang", icon: Wallet, roles: ["bos", "core"] },
+  { href: "/advances", label: "Uang Muka", icon: Coins, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },

@@ -8,6 +8,8 @@ import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
+import { InvoiceAdvanceSection } from "./advance-section";
+import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +22,27 @@ export default async function InvoiceDetailPage({
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true, payments: true, customer: true },
+    include: {
+      items: true,
+      payments: true,
+      customer: true,
+      // Uang muka already compensated into this invoice (issue #26).
+      advanceApplications: { include: { advance: true }, orderBy: { date: "asc" } },
+    },
   });
 
   if (!invoice) notFound();
+
+  // Sales advances this customer still has on account, plus what the invoice
+  // still owes — both needed by the compensation panel. Only offered once the
+  // invoice is linked to a customer: an advance belongs to a party, and without
+  // one there is no way to know whose money this is.
+  const [openAdvances, targetState] = await Promise.all([
+    invoice.customerId
+      ? getAdvances({ type: "sales", customerId: invoice.customerId, openOnly: true })
+      : Promise.resolve([]),
+    getAdvanceTargetState("invoice", invoice.id),
+  ]);
 
   // Everything on this document is denominated in the invoice's own currency —
   // formatting it as IDR would misstate a USD/CNY invoice by the exchange rate.
@@ -261,6 +280,37 @@ export default async function InvoiceDetailPage({
         <div className="px-6 pb-4">
           <InvoicePaymentSection invoiceId={invoice.id} />
         </div>
+      </Card>
+
+      {/* Uang muka (issue #26) — the down-payment coming off this bill. */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Uang Muka</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InvoiceAdvanceSection
+            invoiceId={invoice.id}
+            invoiceCurrency={currency}
+            outstandingBase={targetState?.remainingBase ?? null}
+            advances={openAdvances.map((a) => ({
+              id: a.id,
+              advanceNo: a.advanceNo,
+              date: a.date.toISOString(),
+              currency: a.currency,
+              remaining: a.remaining,
+              remainingBase: a.remainingBase,
+              partyName: a.partyName,
+            }))}
+            applied={invoice.advanceApplications.map((a) => ({
+              id: a.id,
+              advanceNo: a.advance.advanceNo,
+              date: a.date.toISOString(),
+              amount: Number(a.amount),
+              currency: a.currency,
+              baseAmount: a.baseAmount == null ? null : Number(a.baseAmount),
+            }))}
+          />
+        </CardContent>
       </Card>
     </div>
   );

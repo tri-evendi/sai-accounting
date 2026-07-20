@@ -473,7 +473,9 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
   const [invoices, contracts] = await Promise.all([
     client.invoice.findMany({
       where: { status: { not: "canceled" } },
-      include: { items: true, payments: true, customer: true },
+      // Uang muka compensated into the invoice reduces what the customer still
+      // owes exactly as a payment does (issue #26) — see the note in the loop.
+      include: { items: true, payments: true, customer: true, advanceApplications: true },
       orderBy: { date: "desc" },
     }),
     client.contract.findMany({
@@ -495,7 +497,14 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       rate: inv.rate == null ? null : num(inv.rate),
       date: inv.date,
       dueDate: inv.dueDate,
-      payments: inv.payments,
+      // A compensated advance settles the invoice as surely as cash does — the
+      // customer's money arrived early, and the ledger has already moved it from
+      // Uang Muka against Piutang (issue #26). Leaving it out would overstate AR
+      // by the whole down-payment, which for SAI's export flow is most of the
+      // invoice. Both are `MoneyRow`s carrying their own currency/rate, so
+      // `toBase` values each at the rate it was actually posted at and an
+      // unrated one is excluded and counted rather than folded in at face value.
+      payments: [...inv.payments, ...(inv.advanceApplications ?? [])],
       asOf,
     });
     rows.push({
@@ -572,7 +581,10 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
   const asOf = query.asOf ?? new Date();
 
   const transactions = await client.supplierTransaction.findMany({
-    include: { supplier: true, allocationsMade: true },
+    // `advanceApplications` are purchase advances compensated INTO a purchase
+    // row (issue #26): money already paid to the supplier before their invoice
+    // existed, now settling it. They reduce the payable like any allocation.
+    include: { supplier: true, allocationsMade: true, advanceApplications: true },
     orderBy: { date: "desc" },
   });
 
@@ -621,6 +633,18 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
       // payment with no allocations at all (every legacy row) is all remainder.
       const remainder = round2(paymentBase - allocatedBase);
       if (remainder > EPSILON) unallocatedPool += remainder;
+    }
+
+    // Purchase advances compensated into these purchases (issue #26). They enter
+    // as RECORDED allocations, never as FIFO pool: a compensation names its
+    // target explicitly, so there is nothing to estimate. The cash they represent
+    // left the bank as an `advance_payments` row, not a `supplier_transactions`
+    // payment, which is why it is not already in `unallocatedPool` — counting it
+    // in both places would settle each purchase twice.
+    for (const p of purchases) {
+      for (const a of p.advanceApplications ?? []) {
+        recorded.push({ purchaseId: p.id, base: toBase(a) });
+      }
     }
 
     const allocation = allocatePayments(
@@ -734,7 +758,7 @@ export async function getSupplierPurchaseAllocations(
 ): Promise<PurchaseAllocationState[]> {
   const purchases = await client.supplierTransaction.findMany({
     where: { supplierId, type: "purchase" },
-    include: { allocationsReceived: true },
+    include: { allocationsReceived: true, advanceApplications: true },
     orderBy: { date: "asc" },
   });
 
@@ -746,6 +770,14 @@ export async function getSupplierPurchaseAllocations(
       if (options.excludePaymentId != null && a.paymentId === options.excludePaymentId) continue;
       const base = toBase(a);
       // An allocation with no IDR value cannot reduce an IDR remainder.
+      if (base != null) allocatedBase += base;
+    }
+    // A purchase advance already compensated into this purchase has settled that
+    // much of it (issue #26), so it consumes allocation room too. Omitting it
+    // would let a supplier payment be allocated to a purchase the advance had
+    // already covered, and report the same obligation as settled twice.
+    for (const a of p.advanceApplications ?? []) {
+      const base = toBase(a);
       if (base != null) allocatedBase += base;
     }
     allocatedBase = round2(allocatedBase);

@@ -364,6 +364,164 @@ export function buildCashTransactionLines(input: CashTransactionInput): JournalL
       ];
 }
 
+// ─── Uang muka / advance payments (issue #26) ────────────
+
+/**
+ * Which way an advance points.
+ *
+ * `sales`    — the customer paid us early. We hold their money and owe them
+ *              goods, so Uang Muka Penjualan is a LIABILITY.
+ * `purchase` — we paid the supplier early. They hold our money and owe us
+ *              goods, so Uang Muka Pembelian is an ASSET.
+ */
+export type AdvanceDirection = "sales" | "purchase";
+
+export interface AdvanceInput extends CurrencyContext {
+  direction: AdvanceDirection;
+  cashAccountId: number;
+  /** Uang Muka Penjualan (sales) or Uang Muka Pembelian (purchase). */
+  advanceAccountId: number;
+  /** Cash moved, in the advance's own currency, valued at `rate`. */
+  amount: number;
+  memo?: string;
+}
+
+/**
+ * Terima/bayar uang muka — the first leg, before any invoice exists.
+ *
+ *   sales:    D: Kas/Bank            K: Uang Muka Penjualan (liability)
+ *   purchase: D: Uang Muka Pembelian K: Kas/Bank            (asset)
+ *
+ * THE POINT OF THIS RULE IS WHAT IT DOES NOT TOUCH. No revenue account appears
+ * on the sales side and no expense account on the purchase side, because nothing
+ * has been earned or consumed — only cash has moved against a promise. Revenue
+ * is recognised once, by the invoice; recognising it here as well would double
+ * the income the moment the invoice is raised. That is the single most important
+ * property of issue #26 and `tests/posting-rules.test.ts` asserts it directly.
+ *
+ * Both lines sit at the same rate, so no FX difference can arise on receipt:
+ * there is only one document and therefore only one rate. The difference appears
+ * later, at compensation, when the advance's rate meets the invoice's.
+ */
+export function buildAdvanceLines(input: AdvanceInput): JournalLineInput[] {
+  const amount = round2(input.amount);
+  if (amount <= 0) {
+    throw new PostingRuleError("Nilai uang muka harus lebih besar dari nol.");
+  }
+  if (input.cashAccountId === input.advanceAccountId) {
+    throw new PostingRuleError("Akun uang muka tidak boleh sama dengan akun kas.");
+  }
+  const { currency, rate, memo } = input;
+
+  return input.direction === "sales"
+    ? [
+        { accountId: input.cashAccountId, debit: amount, currency, rate, memo },
+        { accountId: input.advanceAccountId, credit: amount, currency, rate, memo },
+      ]
+    : [
+        { accountId: input.advanceAccountId, debit: amount, currency, rate, memo },
+        { accountId: input.cashAccountId, credit: amount, currency, rate, memo },
+      ];
+}
+
+export interface AdvanceCompensationInput extends CurrencyContext {
+  direction: AdvanceDirection;
+  advanceAccountId: number;
+  /** Piutang Usaha for a sales advance, Hutang Usaha for a purchase advance. */
+  counterAccountId: number;
+  /**
+   * Amount compensated, in the ADVANCE's currency. `currency`/`rate` on this
+   * input are the advance's own — the rate Uang Muka was booked at.
+   */
+  amount: number;
+  /**
+   * The invoice/purchase being compensated, at the rate THAT document was
+   * booked at. Omitted → compensated at the advance's own rate, i.e. flat, no
+   * FX difference. That is the honest fallback when the target document carries
+   * no rate (see `advanceSettlementLegs` in ./index.ts).
+   */
+  settles?: SettlementLeg[];
+  /** Laba/Rugi Selisih Kurs. Required only when an FX difference arises. */
+  fxAccountId?: number;
+  memo?: string;
+}
+
+/**
+ * Kompensasi uang muka — the second leg, when the invoice finally exists.
+ *
+ *   sales:    D: Uang Muka Penjualan  K: Piutang Usaha
+ *   purchase: D: Hutang Usaha         K: Uang Muka Pembelian
+ *
+ * The advance is *moved*, not spent: value leaves Uang Muka and lands against
+ * the receivable/payable, reducing what is still owed. No cash moves — it moved
+ * when the advance was received — and no revenue or expense is touched, because
+ * the invoice's own journal already recognised that in full. This is why the
+ * compensation is a posting source of its own rather than extra lines inside the
+ * invoice's entry: the invoice recognises the sale, this entry settles part of
+ * it, and keeping them separate means applying an advance to an already-posted
+ * invoice never has to rewrite the invoice's journal.
+ *
+ * ── SELISIH KURS (reuses issue #23, deliberately not a second FX path) ───────
+ * A CNY advance is booked at the advance's rate; the invoice is raised at the
+ * invoice's rate. Uang Muka is relieved at the rate it was booked at and the
+ * receivable at the rate IT was booked at, so each account is cleared for
+ * exactly the rupiah it was raised for — and the gap between the two is realized
+ * FX, exactly as when cash settles a receivable. It is derived by the very same
+ * `fxPlugLines` used by `buildSalesReceiptLines` and `buildSupplierPaymentLines`,
+ * so it is balanced by construction against the same rounded base amounts
+ * `prepareLines` will store.
+ *
+ * `resolveLegs` carries over #23's guard unchanged: the legs must sum to
+ * `amount` in the document currency, so the plug can only ever absorb a RATE
+ * gap, never an amount error. Partial compensation needs no proration for the
+ * same reason a partial payment does not — relieving `amount` document-units at
+ * the document's own rate is inherently proportional.
+ */
+export function buildAdvanceCompensationLines(
+  input: AdvanceCompensationInput
+): JournalLineInput[] {
+  const amount = round2(input.amount);
+  if (amount <= 0) {
+    throw new PostingRuleError("Nilai kompensasi uang muka harus lebih besar dari nol.");
+  }
+  if (input.advanceAccountId === input.counterAccountId) {
+    throw new PostingRuleError(
+      "Akun uang muka tidak boleh sama dengan akun piutang/hutang."
+    );
+  }
+  const { currency, rate, memo } = input;
+  const label = input.direction === "sales" ? "piutang" : "hutang";
+  const legs = resolveLegs(input.settles, amount, input, memo, label);
+
+  const advanceLine = {
+    accountId: input.advanceAccountId,
+    currency,
+    rate,
+    memo,
+  };
+  const counterLines = legs.map((leg) => ({
+    accountId: input.counterAccountId,
+    currency: leg.currency,
+    rate: leg.rate,
+    memo: leg.memo ?? memo,
+  }));
+
+  const lines: JournalLineInput[] =
+    input.direction === "sales"
+      ? [
+          // Liability down (debit), receivable down (credit).
+          { ...advanceLine, debit: amount },
+          ...counterLines.map((l, i) => ({ ...l, credit: round2(legs[i].amount) })),
+        ]
+      : [
+          // Payable down (debit), asset down (credit).
+          ...counterLines.map((l, i) => ({ ...l, debit: round2(legs[i].amount) })),
+          { ...advanceLine, credit: amount },
+        ];
+
+  return [...lines, ...fxPlugLines(lines, input.fxAccountId, memo)];
+}
+
 // ─── Inventory / COGS ────────────────────────────────────
 
 export interface CogsInput {

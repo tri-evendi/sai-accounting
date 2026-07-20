@@ -65,6 +65,9 @@ export interface FakeSeed {
   cashAccounts?: Record<number, unknown>;
   stocks?: Record<number, unknown>;
   stockMovements?: unknown[];
+  /** Uang muka (issue #26). Seed the nested advance/invoice/purchase inline. */
+  advancePayments?: Record<number, unknown>;
+  advanceApplications?: Record<number, unknown>;
 }
 
 type Where = Record<string, unknown>;
@@ -164,6 +167,14 @@ export function createFakeClient(seed: FakeSeed = {}) {
     },
     cashAccount: {
       findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.cashAccounts, where.id),
+    },
+    advancePayment: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.advancePayments, where.id),
+    },
+    advanceApplication: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.advanceApplications, where.id),
     },
     stock: {
       findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.stocks, where.id),

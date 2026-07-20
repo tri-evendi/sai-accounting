@@ -35,6 +35,8 @@ import {
 } from "./mapping";
 import {
   PostingRuleError,
+  buildAdvanceCompensationLines,
+  buildAdvanceLines,
   buildCashTransactionLines,
   buildCogsLines,
   buildPurchaseLines,
@@ -43,6 +45,7 @@ import {
   buildSupplierPaymentLines,
   resolveRate,
   round2,
+  type AdvanceDirection,
   type SettlementLeg,
 } from "./rules";
 import { averageUnitCostForItem, costOfMovement } from "./cogs";
@@ -58,7 +61,11 @@ export type PostingSourceType =
   | "contract_payment"
   | "cash_account"
   | "supplier_transaction"
-  | "stock_movement";
+  | "stock_movement"
+  /** Uang muka received/paid before any invoice exists (issue #26). */
+  | "advance_payment"
+  /** One compensation of an advance into an invoice/purchase (issue #26). */
+  | "advance_application";
 
 export interface PostingContext {
   sourceType: PostingSourceType;
@@ -506,6 +513,163 @@ async function buildCashAccountEntry(
   };
 }
 
+// ─── Uang muka / advances (issue #26) ────────────────────
+
+/** The Uang Muka slot for a direction: liability for sales, asset for purchase. */
+function advanceKeyFor(direction: AdvanceDirection): MappingKey {
+  return direction === "sales" ? MAPPING_KEYS.ADVANCE_SALES : MAPPING_KEYS.ADVANCE_PURCHASE;
+}
+
+/**
+ * Terima/bayar uang muka → cash against Uang Muka. No revenue, no expense.
+ *
+ * The cash slot is `cash_default`, the same one every other payment source uses.
+ * A company banking foreign advances into dedicated accounts adds a
+ * currency-specific `cash_default` mapping row (e.g. cash_default/CNY → 110105)
+ * and `resolveAccountIds` prefers it automatically — the designed escape hatch,
+ * rather than a second hardcoded rule here.
+ */
+async function buildAdvancePaymentEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const advance = await client.advancePayment.findUnique({ where: { id: ctx.sourceId } });
+  if (!advance) throw new SourceNotFoundError("advance_payment", ctx.sourceId);
+  if (advance.status === "canceled") return null;
+
+  const direction = advance.type as AdvanceDirection;
+  if (direction !== "sales" && direction !== "purchase") {
+    throw new PostingRuleError(
+      `Jenis uang muka "${advance.type}" belum punya aturan posting. ` +
+        `Gunakan "sales" atau "purchase".`
+    );
+  }
+
+  const currency = advance.currency || "IDR";
+  const rate = resolveRate(currency, num(advance.rate) || null, ctx.rate);
+  const amount = num(advance.amount);
+  if (amount <= 0) return null;
+
+  const advanceKey = advanceKeyFor(direction);
+  const acc = await resolveAccountIds([MAPPING_KEYS.CASH_DEFAULT, advanceKey], currency, client);
+
+  return {
+    date: advance.date,
+    type: "cash",
+    note:
+      direction === "sales"
+        ? `Uang Muka Penjualan ${advance.advanceNo}`
+        : `Uang Muka Pembelian ${advance.advanceNo}`,
+    sourceType: "advance_payment",
+    sourceId: advance.id,
+    lines: buildAdvanceLines({
+      direction,
+      cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
+      advanceAccountId: acc[advanceKey],
+      amount,
+      currency,
+      rate,
+      memo: advance.advanceNo,
+    }),
+  };
+}
+
+/**
+ * Kompensasi uang muka → Uang Muka against Piutang/Hutang (+ selisih kurs).
+ *
+ * ── WHICH RATE, AND WHEN WE DECLINE TO GUESS ────────────────────────────────
+ * The entry's own currency/rate are the ADVANCE's, because that is what Uang
+ * Muka is relieved at. The target document's rate reaches the rule through
+ * `settlementLegs` — the *same* helper issue #23 uses for cash settlements, not
+ * a parallel one — which returns `undefined`, meaning "book flat, no FX", in
+ * exactly the cases #23 already refuses to compute a difference for:
+ *
+ *   • the target invoice/purchase carries no rate (legacy row). Its booked rate
+ *     is unknown, so the difference from it is unknowable.
+ *   • the target is in a different currency from the advance. There is no
+ *     common unit, and inventing a settlement-date cross rate is the guess
+ *     `resolveRate` exists to refuse.
+ *
+ * A RATELESS LEGACY *ADVANCE* is the mirror case and is handled one line up, by
+ * `resolveRate`: a foreign advance with no rate has no IDR value at all, so its
+ * own receipt never posted either, and this refuses rather than invents one.
+ * "Book flat" therefore always means "at the advance's known rate", which is
+ * well-defined — never "at 1:1".
+ */
+async function buildAdvanceApplicationEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const application = await client.advanceApplication.findUnique({
+    where: { id: ctx.sourceId },
+    include: { advance: true, invoice: true, purchase: true },
+  });
+  if (!application) throw new SourceNotFoundError("advance_application", ctx.sourceId);
+
+  const advance = application.advance;
+  if (advance.status === "canceled") return null;
+
+  const direction = advance.type as AdvanceDirection;
+  if (direction !== "sales" && direction !== "purchase") {
+    throw new PostingRuleError(
+      `Jenis uang muka "${advance.type}" belum punya aturan posting. ` +
+        `Gunakan "sales" atau "purchase".`
+    );
+  }
+
+  // Uang Muka is relieved at the rate it was booked at — the advance's own.
+  const currency = advance.currency || "IDR";
+  const rate = resolveRate(currency, num(advance.rate) || null, ctx.rate);
+  const amount = num(application.amount);
+  if (amount <= 0) return null;
+
+  const target = direction === "sales" ? application.invoice : application.purchase;
+  if (!target) {
+    throw new PostingRuleError(
+      direction === "sales"
+        ? "Kompensasi uang muka penjualan harus menunjuk sebuah faktur."
+        : "Kompensasi uang muka pembelian harus menunjuk sebuah pembelian."
+    );
+  }
+
+  const memo =
+    direction === "sales"
+      ? application.invoice!.invoiceNo
+      : `TRX-${application.purchase!.id}`;
+
+  // The very same helper cash settlements use (issue #23) — one FX path, not two.
+  const settles = settlementLegs(target, currency, rate, amount, memo);
+
+  const advanceKey = advanceKeyFor(direction);
+  const counterKey = direction === "sales" ? MAPPING_KEYS.AR_DEFAULT : MAPPING_KEYS.AP_DEFAULT;
+  const acc = await resolveAccountIds(
+    withFxKey([advanceKey, counterKey], settles),
+    currency,
+    client
+  );
+
+  return {
+    date: application.date,
+    // A reclassification between balance-sheet accounts: no cash moves and no
+    // sale is recognised here, so neither "cash" nor "sales" describes it.
+    type: "adjustment",
+    note: `Kompensasi ${advance.advanceNo} → ${memo}`,
+    sourceType: "advance_application",
+    sourceId: application.id,
+    lines: buildAdvanceCompensationLines({
+      direction,
+      advanceAccountId: acc[advanceKey],
+      counterAccountId: acc[counterKey],
+      fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
+      amount,
+      settles,
+      currency,
+      rate,
+      memo,
+    }),
+  };
+}
+
 async function buildStockMovementEntry(
   client: Client,
   ctx: PostingContext
@@ -568,6 +732,10 @@ async function buildEntry(
       return buildCashAccountEntry(client, ctx);
     case "stock_movement":
       return buildStockMovementEntry(client, ctx);
+    case "advance_payment":
+      return buildAdvancePaymentEntry(client, ctx);
+    case "advance_application":
+      return buildAdvanceApplicationEntry(client, ctx);
     default: {
       const exhaustive: never = ctx.sourceType;
       throw new PostingRuleError(`Jenis sumber tidak dikenal: ${String(exhaustive)}`);

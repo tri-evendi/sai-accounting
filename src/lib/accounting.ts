@@ -82,7 +82,15 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   { code: "110202", name: "Piutang Usaha (USD)", type: "account_receivable", parent: "1102", currency: "USD" },
   { code: "110203", name: "Piutang Usaha (CNY)", type: "account_receivable", parent: "1102", currency: "CNY" },
 
+  // Uang Muka Pembelian — an ASSET: money paid before the supplier's invoice
+  // exists, so the supplier owes us goods. Currency sub-accounts mirror the
+  // 1102/110201-3 pattern, because a CNY advance must sit in a CNY account for
+  // the same reason a CNY receivable does (issue #26).
   { code: "1103", name: "Uang Muka Pembelian", type: "other_current_asset" },
+  { code: "110301", name: "Uang Muka Pembelian (IDR)", type: "other_current_asset", parent: "1103", currency: "IDR" },
+  { code: "110302", name: "Uang Muka Pembelian (USD)", type: "other_current_asset", parent: "1103", currency: "USD" },
+  { code: "110303", name: "Uang Muka Pembelian (CNY)", type: "other_current_asset", parent: "1103", currency: "CNY" },
+
   { code: "1104", name: "Persediaan Barang Dagang", type: "inventory" },
   { code: "1105", name: "PPN Masukan", type: "other_current_asset" },
 
@@ -92,7 +100,16 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
 
   // 2xxx LIABILITIES
   { code: "2101", name: "Hutang Usaha", type: "account_payable" },
+  // Uang Muka Penjualan — a LIABILITY: the customer has paid but we still owe
+  // the goods, so this is emphatically NOT revenue until the invoice compensates
+  // it. The live Accurate chart carries 210106 "Uang Muka Penjualan CNY"; these
+  // are the template's equivalent slots, and a company on another chart just
+  // repoints the `advance_sales` mapping row.
   { code: "2102", name: "Uang Muka Penjualan", type: "other_current_liability" },
+  { code: "210201", name: "Uang Muka Penjualan (IDR)", type: "other_current_liability", parent: "2102", currency: "IDR" },
+  { code: "210202", name: "Uang Muka Penjualan (USD)", type: "other_current_liability", parent: "2102", currency: "USD" },
+  { code: "210203", name: "Uang Muka Penjualan (CNY)", type: "other_current_liability", parent: "2102", currency: "CNY" },
+
   { code: "2103", name: "Hutang PPN Keluaran", type: "tax_payable" },
   { code: "2201", name: "Hutang Jangka Panjang", type: "long_term_liability" },
 

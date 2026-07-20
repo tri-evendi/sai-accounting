@@ -1,15 +1,19 @@
 /**
  * Utang (AP) — who we owe, how much is left, and how old it is (issue #12).
  *
- * The supplier mirror of /receivables. One structural difference is called out on
- * the page itself: `supplier_transactions` links no payment to any specific
- * purchase, so the per-row split is a FIFO assumption (oldest purchase settled
- * first). The per-supplier total is exact regardless — see `allocatePaymentsFifo`.
+ * The supplier mirror of /receivables. Since issue #37 a payment can name the
+ * purchase(s) it settles, so most rows here are backed by recorded allocations.
+ * Payments made before that — and any unallocated remainder of a newer one —
+ * still have to be spread by the old FIFO assumption (oldest purchase first);
+ * rows carrying any of that estimate are badged "Perkiraan" rather than being
+ * shown as fact. The per-supplier total is exact either way — see
+ * `allocatePayments`.
  */
 import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { getPayables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
@@ -36,6 +40,10 @@ export default async function PayablesPage({
 
   const { rows, aging, byParty, overdueCount } = await getPayables({ asOf, overdueOnly });
 
+  // Rows whose split leans on the FIFO fallback rather than a recorded allocation
+  // (issue #37). Disclosed per row and in the banner — never presented as fact.
+  const estimatedCount = rows.filter((r) => r.allocationEstimated).length;
+
   return (
     <div>
       <Breadcrumb items={[{ label: "Utang" }]} />
@@ -56,14 +64,29 @@ export default async function PayablesPage({
         caption="Umur dihitung sejak jatuh tempo bila ada; bila tidak, sejak tanggal transaksi."
       />
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-        <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>
-          Pembayaran supplier tidak ditautkan ke pembelian tertentu, sehingga pembayaran
-          dialokasikan ke pembelian <strong>terlama lebih dulu</strong>. Total per supplier
-          selalu tepat; pembagian per baris mengikuti asumsi tersebut.
-        </span>
-      </p>
+      {estimatedCount > 0 ? (
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            <strong>{estimatedCount} baris</strong> ditandai{" "}
+            <Badge variant="warning">Perkiraan</Badge> — sebagian pembayarannya belum
+            ditautkan ke pembelian tertentu, sehingga sisanya diperkirakan dengan
+            melunasi pembelian <strong>terlama lebih dulu</strong>. Baris tanpa tanda
+            itu memakai alokasi pembayaran yang benar-benar dicatat. Total per supplier
+            tepat pada kedua kasus; hanya pembagian per baris yang berbeda. Untuk
+            menghilangkan perkiraan, catat pembayaran baru dengan memilih pembelian yang
+            dilunasi.
+          </span>
+        </p>
+      ) : (
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            Setiap sisa utang di bawah dihitung dari alokasi pembayaran yang tercatat —
+            bukan perkiraan.
+          </span>
+        </p>
+      )}
 
       <PartyTotals rows={byParty} title="Sisa utang per supplier" />
 
@@ -125,6 +148,14 @@ export default async function PayablesPage({
                       <span className="text-amber-700">Kurs belum diisi</span>
                     ) : (
                       formatCurrency(r.outstandingBase, "IDR")
+                    )}
+                    {r.allocationEstimated && (
+                      <span
+                        className="mt-1 block"
+                        title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
+                      >
+                        <Badge variant="warning">Perkiraan</Badge>
+                      </span>
                     )}
                   </td>
                 </tr>

@@ -15,8 +15,10 @@ import {
   settleDocument,
   summarizeAging,
   allocatePaymentsFifo,
+  allocatePayments,
   getReceivables,
   getPayables,
+  getSupplierPurchaseAllocations,
   emptyAgingTotals,
 } from "@/lib/receivables";
 
@@ -750,5 +752,619 @@ describe("getPayables", () => {
     expect(overdue.rows).toHaveLength(1);
     expect(overdue.rows[0].id).toBe(1);
     expect(overdue.rows[0].status).toBe("overdue");
+  });
+});
+
+/* ──────────────────── Payment → purchase allocation (#37) ──────────────────── */
+
+/**
+ * Allocation replaces a *guess* with recorded fact, and must do so without
+ * moving a single rupiah. Two things are asserted throughout:
+ *
+ *  1. Recorded allocations decide the per-row split; FIFO handles only what is
+ *     left unallocated, and every row it touches is flagged `allocationEstimated`
+ *     so the page can label it instead of implying it is data.
+ *  2. The supplier's *total* outstanding is identical no matter how (or whether)
+ *     payments are allocated. That is the acceptance criterion "no money moves",
+ *     and it is asserted directly against the same data with and without
+ *     allocations rather than eyeballed per row.
+ */
+describe("allocatePayments — recorded allocations with a FIFO fallback", () => {
+  const purchases = [
+    { id: 1, date: d("2026-01-10"), base: 1_000_000 },
+    { id: 2, date: d("2026-02-10"), base: 500_000 },
+    { id: 3, date: d("2026-03-10"), base: 300_000 },
+  ];
+
+  it("applies a recorded allocation to its named purchase, not the oldest", () => {
+    // FIFO would have settled purchase 1. The user said purchase 2, so it is 2.
+    const r = allocatePayments(purchases, [{ purchaseId: 2, base: 500_000 }], 0);
+    expect(r.applied.get(1)).toBe(0);
+    expect(r.applied.get(2)).toBe(500_000);
+    expect(r.estimated.size).toBe(0);
+  });
+
+  it("splits one payment across several purchases", () => {
+    const r = allocatePayments(
+      purchases,
+      [
+        { purchaseId: 1, base: 400_000 },
+        { purchaseId: 3, base: 300_000 },
+      ],
+      0
+    );
+    expect(r.applied.get(1)).toBe(400_000);
+    expect(r.applied.get(2)).toBe(0);
+    expect(r.applied.get(3)).toBe(300_000);
+    // Nothing was guessed at, so nothing is flagged as an estimate.
+    expect(r.estimated.size).toBe(0);
+  });
+
+  it("handles a partial allocation — the purchase keeps the remainder open", () => {
+    const r = allocatePayments(purchases, [{ purchaseId: 2, base: 200_000 }], 0);
+    expect(r.applied.get(2)).toBe(200_000);
+    expect(r.estimated.has(2)).toBe(false);
+  });
+
+  it("falls back to FIFO for an unallocated pool, flagging what it touches", () => {
+    const r = allocatePayments(purchases, [], 1_200_000);
+    expect(r.applied.get(1)).toBe(1_000_000);
+    expect(r.applied.get(2)).toBe(200_000);
+    expect(r.applied.get(3)).toBe(0);
+    // Both rows the estimate touched are marked; the untouched one is not.
+    expect([...r.estimated].sort()).toEqual([1, 2]);
+  });
+
+  it("mixes both: allocations bind, and only the remainder is estimated", () => {
+    // 300k explicitly clears purchase 3; a separate legacy 600k is guessed.
+    const r = allocatePayments(purchases, [{ purchaseId: 3, base: 300_000 }], 600_000);
+    expect(r.applied.get(3)).toBe(300_000);
+    expect(r.applied.get(1)).toBe(600_000); // FIFO, oldest first
+    expect(r.estimated.has(3)).toBe(false); // recorded → fact
+    expect(r.estimated.has(1)).toBe(true); // FIFO → estimate
+  });
+
+  it("lets FIFO top up a partially allocated purchase, flagging it once topped", () => {
+    const r = allocatePayments(purchases, [{ purchaseId: 1, base: 400_000 }], 300_000);
+    expect(r.applied.get(1)).toBe(700_000);
+    // Part fact, part guess — the row as a whole is an estimate, so it is badged.
+    expect(r.estimated.has(1)).toBe(true);
+  });
+
+  it("caps an over-allocation at the purchase value and spills the rest to FIFO", () => {
+    // Defence in depth: the API rejects this, but if bad data ever lands, the
+    // excess must not vanish — that would silently shrink the supplier's debt.
+    const r = allocatePayments(purchases, [{ purchaseId: 3, base: 500_000 }], 0);
+    expect(r.applied.get(3)).toBe(300_000); // capped at its own value
+    expect(r.applied.get(1)).toBe(200_000); // spilled into the estimate pool
+    expect(r.estimated.has(1)).toBe(true);
+  });
+
+  it("counts an allocation with no IDR value instead of guessing one", () => {
+    const r = allocatePayments(purchases, [{ purchaseId: 1, base: null }], 0);
+    expect(r.unratedAllocations).toBe(1);
+    expect(r.applied.get(1)).toBe(0);
+  });
+
+  it("counts an allocation aimed at a purchase with no usable rate", () => {
+    const rateless = [{ id: 9, date: d("2026-01-01"), base: null }];
+    const r = allocatePayments(rateless, [{ purchaseId: 9, base: 100_000 }], 0);
+    expect(r.unratedAllocations).toBe(1);
+    expect(r.applied.get(9)).toBe(0);
+  });
+
+  it("reports payment left over once every purchase is covered", () => {
+    const r = allocatePayments(purchases, [{ purchaseId: 1, base: 1_000_000 }], 1_000_000);
+    expect(r.applied.get(2)).toBe(500_000);
+    expect(r.applied.get(3)).toBe(300_000);
+    expect(r.unapplied).toBe(200_000); // prepayment, owed to nothing yet
+  });
+
+  it("THE INVARIANT: total applied is identical however the payment is allocated", () => {
+    const paid = 1_200_000;
+    const totalOf = (r: ReturnType<typeof allocatePayments>) =>
+      [...r.applied.values()].reduce((s, v) => s + v, 0);
+
+    // Same money, four different allocation stories.
+    const legacy = allocatePayments(purchases, [], paid);
+    const oneDoc = allocatePayments(purchases, [{ purchaseId: 2, base: 500_000 }], 700_000);
+    const split = allocatePayments(
+      purchases,
+      [
+        { purchaseId: 2, base: 500_000 },
+        { purchaseId: 3, base: 300_000 },
+      ],
+      400_000
+    );
+    const overAllocated = allocatePayments(purchases, [{ purchaseId: 3, base: 900_000 }], 300_000);
+
+    for (const r of [legacy, oneDoc, split, overAllocated]) {
+      expect(totalOf(r)).toBe(paid);
+    }
+  });
+
+  it("THE INVARIANT holds when payments exceed the total debt", () => {
+    const capacity = 1_800_000; // 1,000k + 500k + 300k
+    const totalOf = (r: ReturnType<typeof allocatePayments>) =>
+      [...r.applied.values()].reduce((s, v) => s + v, 0);
+
+    const legacy = allocatePayments(purchases, [], 2_500_000);
+    const allocated = allocatePayments(
+      purchases,
+      [
+        { purchaseId: 1, base: 1_000_000 },
+        { purchaseId: 3, base: 300_000 },
+      ],
+      1_200_000
+    );
+
+    // 2.5m of payment against 1.8m of debt: 1.8m absorbed, 700k left over —
+    // and the leftover is invariant too, not just the absorbed part.
+    expect(totalOf(legacy)).toBe(capacity);
+    expect(totalOf(allocated)).toBe(capacity);
+    expect(legacy.unapplied).toBe(700_000);
+    expect(allocated.unapplied).toBe(legacy.unapplied);
+  });
+
+  it("matches the old FIFO-only result exactly when nothing is allocated", () => {
+    // Backwards compatibility: with no allocations the new path must reproduce
+    // `allocatePaymentsFifo` row for row, or every legacy screen would shift.
+    const oldWay = allocatePaymentsFifo(purchases, 1_200_000);
+    const newWay = allocatePayments(purchases, [], 1_200_000);
+    for (const p of purchases) {
+      expect(newWay.applied.get(p.id)).toBe(oldWay.applied.get(p.id));
+    }
+    expect(newWay.unapplied).toBe(oldWay.unapplied);
+  });
+});
+
+describe("getPayables — allocated and legacy rows side by side", () => {
+  const asOf = d("2026-07-20");
+  const supplier = { name: "CV Sumber" };
+
+  const purchase = (over: Record<string, unknown> = {}) => ({
+    id: 1,
+    supplierId: 5,
+    date: d("2026-01-10"),
+    dueDate: null,
+    type: "purchase",
+    amount: 1_000_000,
+    currency: "IDR",
+    rate: null,
+    baseAmount: null,
+    taxAmount: 0,
+    note: null,
+    supplier,
+    allocationsMade: [],
+    ...over,
+  });
+
+  const payment = (over: Record<string, unknown> = {}) => ({
+    ...purchase(),
+    id: 90,
+    type: "payment",
+    date: d("2026-03-01"),
+    ...over,
+  });
+
+  it("settles the purchase the payment names, not the oldest one", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, date: d("2026-01-10"), amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          payment({
+            id: 90,
+            amount: 500_000,
+            // Explicitly settles the NEWER purchase — FIFO would have said #1.
+            allocationsMade: [
+              { purchaseId: 2, amount: 500_000, currency: "IDR", rate: null, baseAmount: 500_000 },
+            ],
+          }),
+        ],
+      })
+    );
+
+    // Purchase 2 is cleared and drops off; purchase 1 remains fully open.
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].id).toBe(1);
+    expect(r.rows[0].outstandingBase).toBe(1_000_000);
+    // Nothing was guessed, so nothing is badged.
+    expect(r.rows[0].allocationEstimated).toBe(false);
+  });
+
+  it("spreads one payment across several purchases", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          payment({
+            amount: 900_000,
+            allocationsMade: [
+              { purchaseId: 1, amount: 600_000, currency: "IDR", rate: null, baseAmount: 600_000 },
+              { purchaseId: 2, amount: 300_000, currency: "IDR", rate: null, baseAmount: 300_000 },
+            ],
+          }),
+        ],
+      })
+    );
+
+    const byId = new Map(r.rows.map((x) => [x.id, x]));
+    expect(byId.get(1)!.outstandingBase).toBe(400_000);
+    expect(byId.get(2)!.outstandingBase).toBe(200_000);
+    expect(byId.get(1)!.allocationEstimated).toBe(false);
+    expect(byId.get(2)!.allocationEstimated).toBe(false);
+  });
+
+  it("flags a legacy payment's rows as estimated", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          // No `allocationsMade` at all — exactly how every pre-0009 row reads.
+          payment({ amount: 1_200_000 }),
+        ],
+      })
+    );
+
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].id).toBe(2);
+    expect(r.rows[0].outstandingBase).toBe(300_000);
+    expect(r.rows[0].allocationEstimated).toBe(true);
+  });
+
+  it("treats a row with an undefined allocations relation as legacy, not a crash", async () => {
+    // Defensive: older callers/queries may not include the relation at all.
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, amount: 1_000_000, allocationsMade: undefined }),
+          payment({ amount: 400_000, allocationsMade: undefined }),
+        ],
+      })
+    );
+    expect(r.rows[0].outstandingBase).toBe(600_000);
+    expect(r.rows[0].allocationEstimated).toBe(true);
+  });
+
+  it("mixes allocated and legacy payments for the SAME supplier", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, date: d("2026-01-10"), amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          purchase({ id: 3, date: d("2026-03-10"), amount: 300_000 }),
+          // Recorded: clears purchase 3 outright.
+          payment({
+            id: 90,
+            amount: 300_000,
+            allocationsMade: [
+              { purchaseId: 3, amount: 300_000, currency: "IDR", rate: null, baseAmount: 300_000 },
+            ],
+          }),
+          // Legacy: no allocation, so FIFO spreads it oldest-first.
+          payment({ id: 91, amount: 700_000 }),
+        ],
+      })
+    );
+
+    const byId = new Map(r.rows.map((x) => [x.id, x]));
+    // Purchase 3 is settled by fact and drops off entirely.
+    expect(byId.has(3)).toBe(false);
+    // The legacy 700k lands on the oldest purchase — a guess, and badged as one.
+    expect(byId.get(1)!.outstandingBase).toBe(300_000);
+    expect(byId.get(1)!.allocationEstimated).toBe(true);
+    // Purchase 2 is untouched by either mechanism, so it is not an estimate.
+    expect(byId.get(2)!.outstandingBase).toBe(500_000);
+    expect(byId.get(2)!.allocationEstimated).toBe(false);
+  });
+
+  it("estimates only the unallocated remainder of a partially allocated payment", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, date: d("2026-01-10"), amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          // 800k paid, but the user only said where 300k of it went.
+          payment({
+            amount: 800_000,
+            allocationsMade: [
+              { purchaseId: 2, amount: 300_000, currency: "IDR", rate: null, baseAmount: 300_000 },
+            ],
+          }),
+        ],
+      })
+    );
+
+    const byId = new Map(r.rows.map((x) => [x.id, x]));
+    expect(byId.get(2)!.outstandingBase).toBe(200_000);
+    expect(byId.get(2)!.allocationEstimated).toBe(false); // fact only
+    expect(byId.get(1)!.outstandingBase).toBe(500_000); // 500k of guessed money
+    expect(byId.get(1)!.allocationEstimated).toBe(true);
+  });
+
+  it("never lets an allocation cross supplier boundaries", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, supplierId: 5, amount: 400_000 }),
+          purchase({ id: 2, supplierId: 6, amount: 400_000, supplier: { name: "PT Lain" } }),
+          // Supplier 6's payment claims to settle supplier 5's purchase. It must
+          // not: allocation is applied within a supplier, so it is counted as
+          // unresolvable rather than quietly clearing another supplier's debt.
+          payment({
+            id: 90,
+            supplierId: 6,
+            amount: 400_000,
+            supplier: { name: "PT Lain" },
+            allocationsMade: [
+              { purchaseId: 1, amount: 400_000, currency: "IDR", rate: null, baseAmount: 400_000 },
+            ],
+          }),
+        ],
+      })
+    );
+
+    const byId = new Map(r.rows.map((x) => [x.id, x]));
+    expect(byId.get(1)!.outstandingBase).toBe(400_000); // untouched
+    expect(byId.get(2)!.outstandingBase).toBe(400_000); // its own payment went nowhere
+  });
+
+  it("excludes a rateless foreign payment's allocation instead of valuing it 1:1", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, amount: 16_000_000 }),
+          payment({
+            amount: 1_000,
+            currency: "USD",
+            rate: null,
+            baseAmount: null,
+            allocationsMade: [
+              { purchaseId: 1, amount: 1_000, currency: "USD", rate: null, baseAmount: null },
+            ],
+          }),
+        ],
+      })
+    );
+
+    // 1,000 USD must never be read as 1,000 rupiah — the debt stands in full.
+    expect(r.rows[0].outstandingBase).toBe(16_000_000);
+    expect(r.rows[0].unratedCount).toBeGreaterThan(0);
+  });
+
+  it("converts a foreign payment's allocation at its own rate", async () => {
+    const r = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, amount: 16_000_000 }),
+          payment({
+            amount: 500,
+            currency: "USD",
+            rate: 16_000,
+            baseAmount: 8_000_000,
+            allocationsMade: [
+              {
+                purchaseId: 1,
+                amount: 500,
+                currency: "USD",
+                rate: 16_000,
+                baseAmount: 8_000_000,
+              },
+            ],
+          }),
+        ],
+      })
+    );
+
+    expect(r.rows[0].outstandingBase).toBe(8_000_000);
+    expect(r.rows[0].allocationEstimated).toBe(false);
+  });
+
+  /**
+   * The headline acceptance criterion: "Total utang per supplier tetap sama
+   * persis sebelum & sesudah perubahan." Asserted by running the identical
+   * money through `getPayables` with and without allocations and comparing the
+   * supplier total, not by inspecting rows.
+   */
+  it("ACCEPTANCE: per-supplier total is byte-identical with and without allocations", async () => {
+    const purchases = [
+      purchase({ id: 1, date: d("2026-01-10"), amount: 1_000_000 }),
+      purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+      purchase({ id: 3, date: d("2026-03-10"), amount: 300_000 }),
+    ];
+
+    const legacy = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [...purchases, payment({ id: 90, amount: 1_200_000 })],
+      })
+    );
+
+    const allocated = await getPayables(
+      { asOf },
+      stubClient({
+        supplierTransactions: [
+          ...purchases,
+          payment({
+            id: 90,
+            amount: 1_200_000,
+            // Same 1.2m, deliberately allocated in the least FIFO-like way.
+            allocationsMade: [
+              { purchaseId: 3, amount: 300_000, currency: "IDR", rate: null, baseAmount: 300_000 },
+              { purchaseId: 2, amount: 500_000, currency: "IDR", rate: null, baseAmount: 500_000 },
+              { purchaseId: 1, amount: 400_000, currency: "IDR", rate: null, baseAmount: 400_000 },
+            ],
+          }),
+        ],
+      })
+    );
+
+    // Not a rupiah moved: same supplier total, same grand total.
+    expect(allocated.byParty[0].outstandingBase).toBe(legacy.byParty[0].outstandingBase);
+    expect(allocated.byParty[0].outstandingBase).toBe(600_000); // 1.8m - 1.2m
+    expect(allocated.aging.total).toBe(legacy.aging.total);
+
+    // ...but the per-row split genuinely differs, which is the whole point.
+    // FIFO clears the oldest and leaves 300k each on #2 and #3; the recorded
+    // allocation clears #2 and #3 outright and leaves 600k on #1 instead.
+    expect(legacy.rows.map((x) => x.id)).toEqual([3, 2]);
+    expect(allocated.rows.map((x) => x.id)).toEqual([1]);
+    expect(allocated.rows[0].outstandingBase).toBe(600_000);
+
+    // The FIFO row that actually absorbed guessed money is badged; the row FIFO
+    // never reached is left alone rather than blanket-flagged.
+    const legacyById = new Map(legacy.rows.map((x) => [x.id, x]));
+    expect(legacyById.get(2)!.allocationEstimated).toBe(true);
+    expect(legacyById.get(3)!.allocationEstimated).toBe(false);
+    expect(allocated.rows[0].allocationEstimated).toBe(false);
+  });
+
+  it("ACCEPTANCE: supplier total is unchanged for a partially allocated payment", async () => {
+    const build = (allocationsMade: unknown[]) =>
+      stubClient({
+        supplierTransactions: [
+          purchase({ id: 1, date: d("2026-01-10"), amount: 1_000_000 }),
+          purchase({ id: 2, date: d("2026-02-10"), amount: 500_000 }),
+          payment({ id: 90, amount: 900_000, allocationsMade }),
+        ],
+      });
+
+    const legacy = await getPayables({ asOf }, build([]));
+    const partial = await getPayables(
+      { asOf },
+      build([
+        { purchaseId: 2, amount: 400_000, currency: "IDR", rate: null, baseAmount: 400_000 },
+      ])
+    );
+
+    expect(partial.byParty[0].outstandingBase).toBe(legacy.byParty[0].outstandingBase);
+    expect(partial.byParty[0].outstandingBase).toBe(600_000); // 1.5m - 900k
+    expect(partial.aging.total).toBe(legacy.aging.total);
+  });
+});
+
+/**
+ * The numbers behind the allocation picker and the API's over-allocation guard.
+ *
+ * Note what this deliberately does NOT do: it never subtracts the FIFO estimate.
+ * Remaining room is computed from recorded allocations only, so a guess can
+ * never block a user from recording the truth.
+ */
+describe("getSupplierPurchaseAllocations — recorded room per purchase", () => {
+  const allocStub = (purchases: unknown[]) =>
+    ({
+      supplierTransaction: { findMany: async () => purchases },
+    }) as unknown as Parameters<typeof getSupplierPurchaseAllocations>[1];
+
+  const purchase = (over: Record<string, unknown> = {}) => ({
+    id: 1,
+    date: d("2026-01-10"),
+    dueDate: null,
+    amount: 1_000_000,
+    currency: "IDR",
+    rate: null,
+    baseAmount: null,
+    taxAmount: 0,
+    note: null,
+    allocationsReceived: [],
+    ...over,
+  });
+
+  it("reports the full value as remaining when nothing is allocated", async () => {
+    const [p] = await getSupplierPurchaseAllocations(5, allocStub([purchase()]));
+    expect(p.totalBase).toBe(1_000_000);
+    expect(p.allocatedBase).toBe(0);
+    expect(p.remainingBase).toBe(1_000_000);
+  });
+
+  it("includes input VAT in the purchase value — the debt is net + PPN", async () => {
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([purchase({ amount: 1_000_000, taxAmount: 110_000, baseAmount: 1_110_000 })])
+    );
+    expect(p.amount).toBe(1_110_000);
+    expect(p.remainingBase).toBe(1_110_000);
+  });
+
+  it("subtracts recorded allocations from the remaining room", async () => {
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([
+        purchase({
+          allocationsReceived: [
+            { amount: 300_000, currency: "IDR", rate: null, baseAmount: 300_000 },
+            { amount: 200_000, currency: "IDR", rate: null, baseAmount: 200_000 },
+          ],
+        }),
+      ])
+    );
+    expect(p.allocatedBase).toBe(500_000);
+    expect(p.remainingBase).toBe(500_000);
+  });
+
+  it("converts a foreign allocation before subtracting it", async () => {
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([
+        purchase({
+          allocationsReceived: [
+            { amount: 25, currency: "USD", rate: 16_000, baseAmount: 400_000 },
+          ],
+        }),
+      ])
+    );
+    // 25 USD is 400,000 IDR here — never 25 rupiah off the balance.
+    expect(p.allocatedBase).toBe(400_000);
+    expect(p.remainingBase).toBe(600_000);
+  });
+
+  it("ignores an allocation with no IDR value rather than guessing", async () => {
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([
+        purchase({
+          allocationsReceived: [{ amount: 50, currency: "USD", rate: null, baseAmount: null }],
+        }),
+      ])
+    );
+    expect(p.allocatedBase).toBe(0);
+    expect(p.remainingBase).toBe(1_000_000);
+  });
+
+  it("reports null remaining for a foreign purchase with no rate", async () => {
+    // The API refuses to allocate against this: "how much is left" has no answer.
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([purchase({ amount: 1_000, currency: "USD", rate: null, baseAmount: null })])
+    );
+    expect(p.totalBase).toBeNull();
+    expect(p.remainingBase).toBeNull();
+  });
+
+  it("floors remaining at zero for an over-allocated purchase", async () => {
+    const [p] = await getSupplierPurchaseAllocations(
+      5,
+      allocStub([
+        purchase({
+          allocationsReceived: [
+            { amount: 1_500_000, currency: "IDR", rate: null, baseAmount: 1_500_000 },
+          ],
+        }),
+      ])
+    );
+    // Never negative: the picker must not offer "room" that would be a refund.
+    expect(p.remainingBase).toBe(0);
   });
 });

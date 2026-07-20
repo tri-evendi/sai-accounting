@@ -217,9 +217,56 @@ model SupplierTransaction {
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  /// Allocations where THIS row is the payment (issue #37). Empty on a purchase,
+  /// and empty on a legacy payment that predates allocation — see `paidBase`
+  /// fallback in `getPayables`.
+  allocationsMade     SupplierPaymentAllocation[] @relation("allocation_payment")
+  /// Allocations where THIS row is the purchase being settled.
+  allocationsReceived SupplierPaymentAllocation[] @relation("allocation_purchase")
+
   @@index([supplierId, type])
   @@index([dueDate])
   @@map("supplier_transactions")
+}
+
+/// Links a supplier `payment` row to the `purchase` row(s) it settles (issue #37).
+///
+/// WHY A TABLE AND NOT A NULLABLE `applied_to_id` ON `supplier_transactions`:
+/// a single bank transfer routinely clears several invoices, and a single invoice
+/// is routinely cleared by several instalments. A self-FK models only one payment
+/// → one purchase, so the many-to-many case would have to be faked by splitting
+/// the payment row — which would invent journal entries that never happened. This
+/// table records the split without touching the ledger: `postJournal` still sees
+/// exactly one purchase and one payment, and allocation is pure reporting data.
+///
+/// `amount` is denominated in the PAYMENT's currency (it is a slice of that
+/// payment), and `base_amount` carries the IDR value at the payment's own `rate`
+/// — the same rate the ledger posted at. `getPayables` sums `base_amount` only,
+/// never `amount`, so allocations across currencies are never added together.
+/// `base_amount` is NULLable for the same reason it is everywhere else: a legacy
+/// foreign payment with no rate has no honest IDR value, and such rows are
+/// excluded from the sums and counted rather than valued 1:1.
+model SupplierPaymentAllocation {
+  id         Int      @id @default(autoincrement())
+  paymentId  Int      @map("payment_id")
+  purchaseId Int      @map("purchase_id")
+  /// Portion of the payment applied to this purchase, in the payment's currency.
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  payment  SupplierTransaction @relation("allocation_payment", fields: [paymentId], references: [id], onDelete: Cascade)
+  purchase SupplierTransaction @relation("allocation_purchase", fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  /// One row per (payment, purchase) pair: a second application of the same
+  /// payment to the same purchase is an edit of the first, not a new fact.
+  @@unique([paymentId, purchaseId])
+  @@index([purchaseId])
+  @@map("supplier_payment_allocations")
 }
 
 model Customer {

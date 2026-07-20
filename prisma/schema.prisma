@@ -57,6 +57,7 @@ model Contract {
   items     ContractItem[]
   payments  ContractPayment[]
   documents Document[]
+  advances  AdvancePayment[]
 
   @@index([dueDate])
   @@index([date])
@@ -121,6 +122,9 @@ model Invoice {
   customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
+  /// Sales advances compensated into this invoice (issue #26). Each row both
+  /// reduces what the customer still owes and carries its own journal.
+  advanceApplications AdvanceApplication[]
 
   @@index([customerId])
   @@index([dueDate])
@@ -196,6 +200,7 @@ model Supplier {
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
+  advances     AdvancePayment[]
 
   @@map("suppliers")
 }
@@ -223,6 +228,9 @@ model SupplierTransaction {
   allocationsMade     SupplierPaymentAllocation[] @relation("allocation_payment")
   /// Allocations where THIS row is the purchase being settled.
   allocationsReceived SupplierPaymentAllocation[] @relation("allocation_purchase")
+  /// Purchase advances compensated into THIS purchase row (issue #26). Empty on
+  /// a `payment` row — only a purchase carries an obligation to compensate.
+  advanceApplications AdvanceApplication[]
 
   @@index([supplierId, type])
   @@index([dueDate])
@@ -281,8 +289,129 @@ model Customer {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   invoices Invoice[]
+  advances AdvancePayment[]
 
   @@map("customers")
+}
+
+// ─── Uang Muka / Advance payments (issue #26) ────────────
+
+/// Money moved BEFORE the document that will justify it exists.
+///
+/// WHY A NEW TABLE AND NOT A TYPE/FLAG ON THE EXISTING PAYMENT MODELS:
+/// `InvoicePayment.invoiceId` and `ContractPayment.contractId` are NOT NULL, and
+/// that is the whole point of an advance — there is no invoice yet. Relaxing
+/// either FK to hold a "payment" that settles nothing would make the column a
+/// lie for every other row and force every existing reader (`settleDocument`,
+/// the posting engine, which dereferences `payment.invoice.invoiceNo`) to grow a
+/// null branch for a case that is not a payment at all.
+///
+/// `SupplierTransaction.type` is the precedent for discriminating *direction*
+/// inside one table, and that is exactly how it is used here: `sales` and
+/// `purchase` advances are the same fact pointing opposite ways, so they share
+/// this table and differ by `type`. What that precedent does NOT cover is the
+/// sales side — there is no customer-side equivalent of `supplier_transactions`
+/// to add a type to. One table serving both directions is the smaller change.
+///
+/// Remaining balance is DERIVED (`amount` − Σ applications), never stored, for
+/// the reason `receivables.ts` gives about `payment_status`: a denormalised copy
+/// drifts the instant an application is added, edited or reversed.
+model AdvancePayment {
+  id         Int      @id @default(autoincrement())
+  advanceNo  String   @unique @map("advance_no") @db.VarChar(50)
+  /// enum-like: sales (Uang Muka Penjualan, a LIABILITY — we owe goods)
+  ///          | purchase (Uang Muka Pembelian, an ASSET — supplier owes goods)
+  type       String   @db.VarChar(20)
+  date       DateTime
+  /// Exactly one of these two is set, per `type`. Both nullable because a sales
+  /// advance has no supplier and a purchase advance has no customer.
+  customerId Int?     @map("customer_id")
+  supplierId Int?     @map("supplier_id")
+  /// Optional link to the contract the advance was received against (issue #26
+  /// asks for it). Advisory only — compensation targets an invoice/purchase.
+  contractId Int?     @map("contract_id")
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// Nullable, no DEFAULT 1, no backfill — same posture as Invoice.rate and
+  /// Contract.rate: a foreign advance with no rate has NO honest IDR value and
+  /// is excluded from IDR sums and surfaced, never valued 1:1.
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// enum-like: open | canceled. "Fully compensated" is derived, not stored.
+  status     String   @default("open") @db.VarChar(20)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer     Customer?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier     Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  contract     Contract?            @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  applications AdvanceApplication[]
+
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([contractId])
+  @@index([date])
+  @@index([type, status])
+  @@map("advance_payments")
+}
+
+/// One compensation: part (or all) of an advance moved against an invoice or a
+/// supplier purchase, reducing what is still owed.
+///
+/// WHY A TABLE AND NOT A `compensated_invoice_id` ON `advance_payments`:
+/// the same argument migration 0009 makes for `supplier_payment_allocations`.
+/// One advance routinely covers several invoices (a 30% down-payment spread
+/// over three shipments) and one invoice is routinely covered by several
+/// advances. A single nullable FK models neither, and faking the many-to-many by
+/// splitting the advance row would invent cash receipts that never happened.
+///
+/// UNLIKE `supplier_payment_allocations`, THIS TABLE IS NOT REPORTING DATA.
+/// An allocation says which already-journalled payment settled which
+/// already-journalled purchase — no money moves, so it posts nothing. A
+/// compensation is itself an accounting event: it moves value out of Uang Muka
+/// and against Piutang/Hutang, and neither the advance's journal nor the
+/// invoice's journal contains that movement. So every row here is a posting
+/// source (`sourceType: "advance_application"`) with its own journal, and
+/// deleting one must reverse that journal rather than silently cascade.
+///
+/// `amount` is denominated in the ADVANCE's currency — it is a slice of the
+/// advance — and `base_amount` is its IDR value at the advance's own `rate`, the
+/// rate the ledger relieved Uang Muka at. Sums are taken over `base_amount`
+/// only, so no two currencies are ever added.
+model AdvanceApplication {
+  id         Int      @id @default(autoincrement())
+  advanceId  Int      @map("advance_id")
+  /// Target of the compensation: an invoice (sales advance) or a
+  /// `supplier_transactions` row of type `purchase` (purchase advance).
+  /// Exactly one is set — enforced in Zod, not by the DB, because MySQL has no
+  /// partial CHECK the way a filtered unique index would need.
+  invoiceId  Int?     @map("invoice_id")
+  purchaseId Int?     @map("purchase_id")
+  date       DateTime
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  advance  AdvancePayment       @relation(fields: [advanceId], references: [id], onDelete: Restrict)
+  invoice  Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  purchase SupplierTransaction? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+
+  /// One row per (advance, target) pair: compensating the same advance into the
+  /// same invoice twice is an edit of the first, not a second event. MySQL
+  /// treats NULLs as distinct, so the unused half of each pair never collides.
+  @@unique([advanceId, invoiceId])
+  @@unique([advanceId, purchaseId])
+  @@index([invoiceId])
+  @@index([purchaseId])
+  @@index([date])
+  @@map("advance_applications")
 }
 
 // ─── Financial ───────────────────────────────────────────

@@ -45,6 +45,18 @@ export const MAPPING_KEYS = {
    * Currency-agnostic: the difference is already an IDR base amount.
    */
   FX_GAIN_LOSS: "fx_gain_loss",
+  /**
+   * Uang Muka Penjualan (issue #26) — a LIABILITY. Credited when a customer pays
+   * before the invoice exists, debited when the invoice compensates it. Never
+   * revenue: the sale is not earned until the goods are invoiced.
+   */
+  ADVANCE_SALES: "advance_sales",
+  /**
+   * Uang Muka Pembelian (issue #26) — an ASSET. Debited when we pay a supplier
+   * before their invoice exists, credited when the purchase compensates it.
+   * Never an expense: nothing has been consumed yet.
+   */
+  ADVANCE_PURCHASE: "advance_purchase",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -66,6 +78,8 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   cash_kas_kecil: "Kas Kecil",
   purchase_expense: "Beban Pembelian",
   fx_gain_loss: "Laba/Rugi Selisih Kurs",
+  advance_sales: "Uang Muka Penjualan",
+  advance_purchase: "Uang Muka Pembelian",
 };
 
 /**
@@ -89,6 +103,22 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a
   // company on a different chart just repoints the mapping row.
   { key: MAPPING_KEYS.FX_GAIN_LOSS, code: "7101" },
+
+  // Uang muka (issue #26). Currency-specific like AR/cash: a CNY advance belongs
+  // in a CNY account, so the compensation's two legs sit in matching currencies
+  // and the only gap between them is the rate — which is what the FX plug is for.
+  // The "any" fallback points at the IDR *leaf*, not the 2102/1103 parent —
+  // same as ar_default's "any" → 110201. A parent is a summary line; posting
+  // into it would put balances at two levels of the same subtree.
+  { key: MAPPING_KEYS.ADVANCE_SALES, code: "210201" },
+  { key: MAPPING_KEYS.ADVANCE_SALES, code: "210201", currency: "IDR" },
+  { key: MAPPING_KEYS.ADVANCE_SALES, code: "210202", currency: "USD" },
+  { key: MAPPING_KEYS.ADVANCE_SALES, code: "210203", currency: "CNY" },
+
+  { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110301" },
+  { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110301", currency: "IDR" },
+  { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110302", currency: "USD" },
+  { key: MAPPING_KEYS.ADVANCE_PURCHASE, code: "110303", currency: "CNY" },
 
   { key: MAPPING_KEYS.CASH_DEFAULT, code: "110102" },
   { key: MAPPING_KEYS.CASH_KAS_BESAR, code: "110102" },

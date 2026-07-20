@@ -1,0 +1,199 @@
+/**
+ * Plain-language summary card for the dashboard (issue #3).
+ *
+ * One card answers one question an owner would ask out loud, in the words they
+ * would use, and then points at the report that owns the number. The card never
+ * computes anything — it is handed a figure and a link, and its whole job is to
+ * make the figure legible to somebody who has never read a ledger.
+ *
+ * ── Colour is never the only signal (MASTER.md §Anti-Patterns) ───────────────
+ * Money direction is carried three ways at once: a lucide icon, a word ("Masuk",
+ * "Keluar", "Untung", "Rugi", "Belum masuk", "Belum keluar"), and — for the net
+ * figure — an explicit +/− sign in front of the amount. Strip the colour out
+ * entirely and the card still reads correctly, which is the actual test.
+ *
+ * ── The explanation is visible, not hover-only ───────────────────────────────
+ * The issue asks for a one-sentence tooltip. It is rendered as permanent helper
+ * text instead: the audience is precisely the user who does not know to hover,
+ * and a hover tooltip is unreachable on touch and awkward for screen readers. The
+ * sentence is *also* set as the heading's `title`, so the hover affordance the
+ * issue asked for exists too — it is just not the only way to get the sentence.
+ */
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { cn, formatCurrency } from "@/lib/utils";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  HandCoins,
+  HelpCircle,
+  Receipt,
+  TrendingDown,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
+import type { CurrencyBreakdownRow } from "@/lib/dashboard-summary";
+
+/**
+ * What the number means in cash terms — drives icon, word, sign and colour.
+ *
+ * `receivable` / `payable` are money that has *not* moved yet, so they are amber
+ * ("menunggu", MASTER.md §Color Palette) rather than green or red: an unpaid
+ * invoice is neither income received nor a loss, and colouring it as either would
+ * tell a lay reader something untrue.
+ */
+export type MoneyDirection = "in" | "out" | "profit" | "loss" | "receivable" | "payable";
+
+interface DirectionStyle {
+  Icon: LucideIcon;
+  /** Word shown next to the icon. Carries the meaning when colour is unavailable. */
+  word: string;
+  value: string;
+  chip: string;
+  /** Explicit sign prefixed to the amount, for figures that can go either way. */
+  sign: "" | "+" | "−";
+}
+
+const DIRECTION: Record<MoneyDirection, DirectionStyle> = {
+  in: {
+    Icon: ArrowDownToLine,
+    word: "Masuk",
+    value: "text-green-700",
+    chip: "bg-green-50 text-green-800 border-green-200",
+    sign: "",
+  },
+  out: {
+    Icon: ArrowUpFromLine,
+    word: "Keluar",
+    value: "text-red-700",
+    chip: "bg-red-50 text-red-800 border-red-200",
+    sign: "",
+  },
+  profit: {
+    Icon: TrendingUp,
+    word: "Untung",
+    value: "text-green-700",
+    chip: "bg-green-50 text-green-800 border-green-200",
+    sign: "+",
+  },
+  loss: {
+    Icon: TrendingDown,
+    word: "Rugi",
+    value: "text-red-700",
+    chip: "bg-red-50 text-red-800 border-red-200",
+    sign: "−",
+  },
+  receivable: {
+    Icon: HandCoins,
+    word: "Belum masuk",
+    value: "text-gray-900",
+    chip: "bg-amber-50 text-amber-800 border-amber-200",
+    sign: "",
+  },
+  payable: {
+    Icon: Receipt,
+    word: "Belum keluar",
+    value: "text-gray-900",
+    chip: "bg-amber-50 text-amber-800 border-amber-200",
+    sign: "",
+  },
+};
+
+export interface SummaryCardProps {
+  /** Plain-language question-as-title, e.g. "Uang Masuk". No jargon. */
+  title: string;
+  /** Amount in IDR base. Pass the absolute value for profit/loss — the sign comes from `direction`. */
+  amount: number;
+  direction: MoneyDirection;
+  /** One sentence, in lay terms, explaining what the number is. */
+  explanation: string;
+  /** Period or as-of wording, e.g. "Juli 2026" or "per hari ini". */
+  period: string;
+  /** Where the number can be checked. Must be the report that owns it. */
+  href: string;
+  hrefLabel?: string;
+  /** Secondary fact, e.g. "3 dokumen sudah lewat jatuh tempo". */
+  note?: string;
+  /** Documents excluded from `amount` for want of an exchange rate. */
+  unresolved?: number;
+  /** Per-document-currency split. Totals are still IDR base — see lib header. */
+  breakdown?: CurrencyBreakdownRow[];
+}
+
+export function SummaryCard({
+  title,
+  amount,
+  direction,
+  explanation,
+  period,
+  href,
+  hrefLabel = "Lihat detail",
+  note,
+  unresolved = 0,
+  breakdown,
+}: SummaryCardProps) {
+  const style = DIRECTION[direction];
+  const { Icon } = style;
+  const showBreakdown = breakdown && breakdown.length > 1;
+
+  return (
+    <Card className="flex h-full flex-col p-5">
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-medium text-gray-600" title={explanation}>
+          {title}
+        </h3>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+            style.chip
+          )}
+        >
+          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {style.word}
+        </span>
+      </div>
+
+      <p className={cn("mt-2 text-2xl font-bold tabular-nums text-right", style.value)}>
+        {style.sign}
+        {formatCurrency(amount, "IDR")}
+      </p>
+      <p className="mt-0.5 text-xs text-gray-500 text-right">{period}</p>
+
+      <p className="mt-3 text-sm leading-snug text-gray-600">{explanation}</p>
+
+      {note && <p className="mt-2 text-xs font-medium text-gray-700">{note}</p>}
+
+      {showBreakdown && (
+        <ul className="mt-3 space-y-1 border-t border-gray-100 pt-2">
+          {breakdown.map((b) => (
+            <li key={b.currency} className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="text-gray-500">
+                {b.currency} · {b.count} dokumen
+              </span>
+              <span className="tabular-nums text-gray-700">
+                {formatCurrency(b.outstandingBase, "IDR")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {unresolved > 0 && (
+        <p className="mt-2 flex items-start gap-1 text-xs text-amber-700">
+          <HelpCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            {unresolved} dokumen valas belum berkurs, jadi <strong>tidak ikut dijumlahkan</strong>{" "}
+            di angka ini.
+          </span>
+        </p>
+      )}
+
+      <Link
+        href={href}
+        className="mt-auto pt-4 inline-flex cursor-pointer items-center gap-1 self-start text-sm font-medium text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+      >
+        {hrefLabel} <span aria-hidden="true">→</span>
+      </Link>
+    </Card>
+  );
+}

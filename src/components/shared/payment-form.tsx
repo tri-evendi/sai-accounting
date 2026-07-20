@@ -13,11 +13,17 @@ interface PaymentFormProps {
   onSuccess?: () => void;
 }
 
+const BASE_CURRENCY = "IDR";
+
 export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // A foreign-currency payment must carry its own rate — the ledger records IDR.
+  const [currency, setCurrency] = useState("USD");
   const { toast } = useToast();
+
+  const isForeign = currency !== BASE_CURRENCY;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,6 +35,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
       date: formData.get("date"),
       amount: Number(formData.get("amount")),
       currency: formData.get("currency"),
+      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
       note: formData.get("note") || undefined,
     };
 
@@ -40,7 +47,10 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to record payment");
+      const fieldMsg = data.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
+        : null;
+      setError(String(fieldMsg || data.error || "Failed to record payment"));
       setLoading(false);
     } else {
       toast("Payment recorded successfully");
@@ -68,17 +78,45 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
 
       <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
         <Input id="pay-date" name="date" type="date" label="Date" required />
-        <Input id="pay-amount" name="amount" type="number" step="0.01" label="Amount" required />
+        <Input
+          id="pay-amount"
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0"
+          className="text-right tabular-nums"
+          label="Amount"
+          required
+        />
         <Select
           id="pay-currency"
           name="currency"
           label="Currency"
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
           options={[
             { value: "USD", label: "USD" },
             { value: "CNY", label: "CNY" },
             { value: "IDR", label: "IDR" },
           ]}
         />
+        {isForeign && (
+          <div>
+            <Input
+              id="pay-rate"
+              name="rate"
+              type="number"
+              step="0.000001"
+              min="0"
+              className="text-right tabular-nums"
+              label={`Kurs 1 ${currency} ke IDR`}
+              required
+            />
+            <p className="mt-1 text-xs text-gray-600">
+              Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.
+            </p>
+          </div>
+        )}
         <Input id="pay-note" name="note" label="Note (optional)" />
         <div className="sm:col-span-2 flex gap-2">
           <Button type="submit" size="sm" disabled={loading}>

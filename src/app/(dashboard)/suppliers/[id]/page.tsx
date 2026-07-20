@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { SupplierTransactionForm } from "./transaction-form";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,9 @@ export default async function SupplierDetailPage({
       {/* Transactions */}
       <Card>
         <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
+        <div className="px-6 pb-2">
+          <SupplierTransactionForm supplierId={supplier.id} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -90,7 +94,7 @@ export default async function SupplierDetailPage({
                   <tr key={t.id} className="border-b border-gray-100">
                     <td className="px-6 py-3 text-gray-700">{formatDate(t.date)}</td>
                     <td className="px-6 py-3 text-gray-700 capitalize">{t.type}</td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium">
+                    <td className="px-6 py-3 text-gray-900 text-right font-medium tabular-nums">
                       {formatCurrency(Number(t.amount), t.currency)}
                     </td>
                     <td className="px-6 py-3 text-gray-500">{t.currency}</td>

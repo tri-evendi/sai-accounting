@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Info } from "lucide-react";
 
 interface ItemOption {
   id: number;
@@ -19,6 +20,9 @@ export default function StockUpdatePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [items, setItems] = useState<ItemOption[]>([]);
+  // Cost is captured on the way in; on the way out it is derived (weighted
+  // average) and posted as HPP, so the field only applies to `in`.
+  const [movementType, setMovementType] = useState<"in" | "out">("in");
 
   // New item form
   const [showNewItem, setShowNewItem] = useState(false);
@@ -90,6 +94,8 @@ export default function StockUpdatePage() {
       quantity: Number(formData.get("quantity")),
       type: formData.get("type"),
       date: formData.get("date"),
+      unitCost:
+        movementType === "in" ? Number(formData.get("unitCost")) || undefined : undefined,
       note: formData.get("note"),
     };
 
@@ -171,12 +177,49 @@ export default function StockUpdatePage() {
               id="type"
               name="type"
               label="Movement Type"
+              value={movementType}
+              onChange={(e) => setMovementType(e.target.value as "in" | "out")}
               options={[
                 { value: "in", label: "Stock In (Receive)" },
                 { value: "out", label: "Stock Out (Ship)" },
               ]}
             />
-            <Input id="quantity" name="quantity" type="number" step="0.01" label="Quantity" required />
+            <Input
+              id="quantity"
+              name="quantity"
+              type="number"
+              step="0.01"
+              min="0"
+              className="text-right tabular-nums"
+              label="Quantity"
+              required
+            />
+            {movementType === "in" ? (
+              <div>
+                <Input
+                  id="unitCost"
+                  name="unitCost"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="text-right tabular-nums"
+                  label="Harga Pokok per Unit (IDR)"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  Wajib diisi. Dipakai menghitung HPP (rata-rata tertimbang) saat barang keluar —
+                  tanpa ini, laba akan tercatat terlalu tinggi.
+                </p>
+              </div>
+            ) : (
+              <p className="flex items-start gap-1.5 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>
+                  HPP dihitung otomatis dari rata-rata harga pokok barang masuk, lalu diposting
+                  ke jurnal (D: Beban Pokok Penjualan / K: Persediaan).
+                </span>
+              </p>
+            )}
             <Input
               id="date"
               name="date"

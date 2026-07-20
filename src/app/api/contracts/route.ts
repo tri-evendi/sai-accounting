@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractSchema } from "@/lib/validations/contract";
 import { requireAuth } from "@/lib/auth-guard";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -29,16 +31,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, date, ...contractData } = parsed.data;
+  // `rate` has no column on contracts — it is passed to the posting engine so a
+  // foreign-currency contract books a correct IDR value (see contract schema).
+  const { items, date, rate, ...contractData } = parsed.data;
 
-  const contract = await prisma.contract.create({
-    data: {
-      ...contractData,
-      date: new Date(date),
-      items: { create: items },
-    },
-    include: { items: true },
-  });
+  try {
+    const contract = await prisma.$transaction(async (tx) => {
+      const created = await tx.contract.create({
+        data: {
+          ...contractData,
+          date: new Date(date),
+          items: { create: items },
+        },
+        include: { items: true },
+      });
 
-  return NextResponse.json(contract, { status: 201 });
+      await postForSource({ sourceType: "contract", sourceId: created.id, tx, rate });
+      return created;
+    });
+
+    return NextResponse.json(contract, { status: 201 });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

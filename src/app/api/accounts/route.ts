@@ -5,7 +5,9 @@ import { normalBalanceFor } from "@/lib/accounting";
 import { requireAuth } from "@/lib/auth-guard";
 
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  // `core` needs to read the chart of accounts to pick a counter account on the
+  // cash form. Writing accounts stays `bos`-only.
+  const result = await requireAuth(["bos", "core"]);
   if (!result.authorized) return result.response;
 
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });

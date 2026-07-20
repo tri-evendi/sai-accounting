@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { invoicePaymentSchema } from "@/lib/validations/invoice";
+import { fxAmounts } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function POST(
   request: Request,
@@ -28,14 +31,28 @@ export async function POST(
     );
   }
 
-  const { date, invoiceId: iId, ...paymentData } = parsed.data;
-  const payment = await prisma.invoicePayment.create({
-    data: {
-      ...paymentData,
-      invoiceId: iId,
-      date: new Date(date),
-    },
-  });
+  const { date, invoiceId: iId, rate: rateInput, ...paymentData } = parsed.data;
+  // Store the FX triple the ledger needs: amount + currency + rate + IDR base.
+  const { rate, baseAmount } = fxAmounts(paymentData.currency, paymentData.amount, rateInput);
 
-  return NextResponse.json(payment, { status: 201 });
+  try {
+    const payment = await prisma.$transaction(async (tx) => {
+      const created = await tx.invoicePayment.create({
+        data: {
+          ...paymentData,
+          invoiceId: iId,
+          date: new Date(date),
+          rate,
+          baseAmount,
+        },
+      });
+
+      await postForSource({ sourceType: "invoice_payment", sourceId: created.id, tx });
+      return created;
+    });
+
+    return NextResponse.json(payment, { status: 201 });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { invoiceSchema } from "@/lib/validations/invoice";
 import { requireAuth } from "@/lib/auth-guard";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -31,14 +33,25 @@ export async function POST(request: Request) {
 
   const { items, date, ...invoiceData } = parsed.data;
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      ...invoiceData,
-      date: new Date(date),
-      items: { create: items },
-    },
-    include: { items: true },
-  });
+  try {
+    // Invoice and journal commit together: if posting can't produce a correct
+    // journal, the invoice is rolled back rather than left unaccounted for.
+    const invoice = await prisma.$transaction(async (tx) => {
+      const created = await tx.invoice.create({
+        data: {
+          ...invoiceData,
+          date: new Date(date),
+          items: { create: items },
+        },
+        include: { items: true },
+      });
 
-  return NextResponse.json(invoice, { status: 201 });
+      await postForSource({ sourceType: "invoice", sourceId: created.id, tx });
+      return created;
+    });
+
+    return NextResponse.json(invoice, { status: 201 });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

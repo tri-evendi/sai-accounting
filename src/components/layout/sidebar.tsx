@@ -15,6 +15,7 @@ import {
   UserCog,
   BookOpen,
   BookText,
+  Library,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const allNavItems = [
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },
   { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"] },
+  { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["bos", "core"] },
   { href: "/documents", label: "Documents", icon: Upload, roles: ["bos", "core"] },

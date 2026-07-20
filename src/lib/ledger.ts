@@ -142,3 +142,105 @@ export async function reverseJournal(journalId: number, client = prisma) {
     return reversal;
   });
 }
+
+// ─── Buku Besar / General Ledger ─────────────────────────
+
+export interface LedgerRow {
+  lineId: number;
+  journalId: number;
+  number: string;
+  date: Date;
+  note: string | null;
+  memo: string | null;
+  debit: number; // IDR base
+  credit: number; // IDR base
+  balance: number; // running balance (signed per normal balance)
+}
+
+export interface AccountLedger {
+  account: { id: number; code: string; name: string; type: string; normalBalance: string; currency: string };
+  opening: number;
+  rows: LedgerRow[];
+  closing: number;
+  totalDebit: number;
+  totalCredit: number;
+}
+
+/**
+ * Mutations + running balance for one account over an optional date range.
+ * Running balance follows the account's normal balance:
+ *   debit-normal  → balance += (debit - credit)
+ *   credit-normal → balance += (credit - debit)
+ * Efficient: 1 aggregate (opening) + 1 findMany (range).
+ */
+export async function getAccountLedger(
+  accountId: number,
+  from?: Date,
+  to?: Date,
+  client = prisma
+): Promise<AccountLedger | null> {
+  const account = await client.account.findUnique({ where: { id: accountId } });
+  if (!account) return null;
+
+  const sign = account.normalBalance === "credit" ? -1 : 1;
+
+  const opening = from
+    ? await client.journalLine.aggregate({
+        _sum: { baseDebit: true, baseCredit: true },
+        where: { accountId, journal: { date: { lt: from } } },
+      })
+    : null;
+  let balance =
+    sign * (Number(opening?._sum.baseDebit ?? 0) - Number(opening?._sum.baseCredit ?? 0));
+  const openingBalance = balance;
+
+  const dateFilter: { gte?: Date; lte?: Date } = {};
+  if (from) dateFilter.gte = from;
+  if (to) dateFilter.lte = to;
+
+  const lines = await client.journalLine.findMany({
+    where: {
+      accountId,
+      ...(from || to ? { journal: { date: dateFilter } } : {}),
+    },
+    include: { journal: true },
+    orderBy: [{ journal: { date: "asc" } }, { id: "asc" }],
+  });
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+  const rows: LedgerRow[] = lines.map((l) => {
+    const debit = Number(l.baseDebit);
+    const credit = Number(l.baseCredit);
+    totalDebit += debit;
+    totalCredit += credit;
+    balance += sign * (debit - credit);
+    return {
+      lineId: l.id,
+      journalId: l.journalId,
+      number: l.journal.number,
+      date: l.journal.date,
+      note: l.journal.note,
+      memo: l.memo,
+      debit,
+      credit,
+      balance,
+    };
+  });
+
+  return {
+    account: {
+      id: account.id,
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      normalBalance: account.normalBalance,
+      currency: account.currency,
+    },
+    opening: openingBalance,
+    rows,
+    closing: balance,
+    totalDebit,
+    totalCredit,
+  };
+}

@@ -24,6 +24,12 @@ const REPORTS = [
     title: "Neraca",
     desc: "Posisi Aset = Liabilitas + Ekuitas pada satu tanggal.",
   },
+  {
+    href: "/reports/cash-flow",
+    icon: Waves,
+    title: "Arus Kas",
+    desc: "Kas masuk dan keluar per kategori: operasi, investasi, pendanaan.",
+  },
 ];
 
 export default async function ReportsPage() {
@@ -45,14 +51,6 @@ export default async function ReportsPage() {
             </Card>
           </Link>
         ))}
-
-        <Card className="h-full opacity-60">
-          <div className="p-5">
-            <Waves className="h-6 w-6 text-gray-400" />
-            <h2 className="mt-3 font-semibold text-gray-500">Arus Kas</h2>
-            <p className="mt-1 text-sm text-gray-400">Segera hadir.</p>
-          </div>
-        </Card>
       </div>
     </div>
   );

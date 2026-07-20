@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AsOfFilter } from "../report-filters";
+import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 
@@ -56,8 +57,27 @@ export default async function BalanceSheetPage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Neraca" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca</h1>
-      <p className="text-sm text-gray-500 mb-6">Per {formatDate(asOf)}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca</h1>
+          <p className="text-sm text-gray-500">Per {formatDate(asOf)} · nilai dalam IDR</p>
+        </div>
+        <StatementPDFButton
+          payload={{
+            kind: "balance-sheet",
+            period: `Per ${formatDate(asOf)}`,
+            assets: bs.assets,
+            liabilities: bs.liabilities,
+            equity: bs.equity,
+            totalAssets: bs.totalAssets,
+            totalLiabilities: bs.totalLiabilities,
+            totalEquity: bs.totalEquity,
+            netIncome: bs.netIncome,
+            totalLiabilitiesEquity: bs.totalLiabilitiesEquity,
+            balanced: bs.balanced,
+          }}
+        />
+      </div>
 
       <AsOfFilter basePath="/reports/balance-sheet" asOf={asOfStr} />
 

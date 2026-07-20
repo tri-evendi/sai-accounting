@@ -179,3 +179,157 @@ export function createFakeClient(seed: FakeSeed = {}) {
 
   return client as unknown as Prisma.TransactionClient & { _journals: FakeJournal[] };
 }
+
+// ─── Read-side fake: journal lines + accounts, for the report modules ────────
+
+/**
+ * A second in-memory stand-in, aimed at the *read* side rather than the posting
+ * engine. `src/lib/reports.ts` and `getAccountLedger` query journal lines through
+ * groupBy / aggregate / findMany with a nested journal-date filter, none of which
+ * the posting fake above needs — so those four operations are implemented here
+ * over a seeded set of journals.
+ *
+ * The point of driving trial balance, ledger and cash flow through *one* seed is
+ * that the reports can be cross-checked against each other on identical data,
+ * which is exactly what issue #18's "konsisten dengan Buku Besar" asks for.
+ */
+export interface FakeAccount {
+  id: number;
+  code: string;
+  name: string;
+  type: string;
+  normalBalance?: string;
+  currency?: string;
+}
+
+export interface FakeSeedLine {
+  accountId: number;
+  debit?: number;
+  credit?: number;
+  currency?: string;
+  rate?: number;
+  memo?: string | null;
+}
+
+export interface FakeSeedJournal {
+  id?: number;
+  number?: string;
+  date: Date;
+  note?: string | null;
+  lines: FakeSeedLine[];
+}
+
+interface ResolvedLine {
+  id: number;
+  journalId: number;
+  accountId: number;
+  debit: number;
+  credit: number;
+  currency: string;
+  rate: number;
+  baseDebit: number;
+  baseCredit: number;
+  memo: string | null;
+  journal: { id: number; number: string; date: Date; note: string | null };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Apply a Prisma date filter ({gte,lte,lt}) to a journal date. */
+function dateMatches(date: Date, filter: { gte?: Date; lte?: Date; lt?: Date } | undefined): boolean {
+  if (!filter) return true;
+  const t = date.getTime();
+  if (filter.gte && t < filter.gte.getTime()) return false;
+  if (filter.lte && t > filter.lte.getTime()) return false;
+  if (filter.lt && t >= filter.lt.getTime()) return false;
+  return true;
+}
+
+type LineWhere = {
+  accountId?: number;
+  journal?: { date?: { gte?: Date; lte?: Date; lt?: Date } };
+};
+
+export function createFakeReportClient(seed: {
+  accounts: FakeAccount[];
+  journals: FakeSeedJournal[];
+}) {
+  const accounts = seed.accounts.map((a) => ({
+    normalBalance: "debit",
+    currency: "IDR",
+    ...a,
+  }));
+
+  const lines: ResolvedLine[] = [];
+  let lineId = 0;
+  seed.journals.forEach((j, idx) => {
+    const journalId = j.id ?? idx + 1;
+    const journal = {
+      id: journalId,
+      number: j.number ?? `JV.TEST.${String(journalId).padStart(5, "0")}`,
+      date: j.date,
+      note: j.note ?? null,
+    };
+    for (const l of j.lines) {
+      lineId += 1;
+      const debit = l.debit ?? 0;
+      const credit = l.credit ?? 0;
+      const rate = l.rate ?? 1;
+      lines.push({
+        id: lineId,
+        journalId,
+        accountId: l.accountId,
+        debit,
+        credit,
+        currency: l.currency ?? "IDR",
+        rate,
+        baseDebit: round2(debit * rate),
+        baseCredit: round2(credit * rate),
+        memo: l.memo ?? null,
+        journal,
+      });
+    }
+  });
+
+  const select = (where: LineWhere | undefined) =>
+    lines.filter(
+      (l) =>
+        (where?.accountId === undefined || l.accountId === where.accountId) &&
+        dateMatches(l.journal.date, where?.journal?.date)
+    );
+
+  const client = {
+    account: {
+      findMany: async () => [...accounts].sort((a, b) => a.code.localeCompare(b.code)),
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        accounts.find((a) => a.id === where.id) ?? null,
+    },
+    journalLine: {
+      findMany: async ({ where }: { where?: LineWhere } = {}) =>
+        select(where).sort((a, b) => a.journal.date.getTime() - b.journal.date.getTime() || a.id - b.id),
+      groupBy: async ({ where }: { where?: LineWhere } = {}) => {
+        const sums = new Map<number, { baseDebit: number; baseCredit: number }>();
+        for (const l of select(where)) {
+          const s = sums.get(l.accountId) ?? { baseDebit: 0, baseCredit: 0 };
+          s.baseDebit += l.baseDebit;
+          s.baseCredit += l.baseCredit;
+          sums.set(l.accountId, s);
+        }
+        return [...sums.entries()].map(([accountId, _sum]) => ({ accountId, _sum }));
+      },
+      aggregate: async ({ where }: { where?: LineWhere } = {}) => {
+        let baseDebit = 0;
+        let baseCredit = 0;
+        for (const l of select(where)) {
+          baseDebit += l.baseDebit;
+          baseCredit += l.baseCredit;
+        }
+        return { _sum: { baseDebit, baseCredit } };
+      },
+    },
+  };
+
+  // The report modules take a `client = prisma` parameter; this fake implements
+  // exactly the slice of it they touch.
+  return client as unknown as typeof import("@/lib/prisma").prisma;
+}

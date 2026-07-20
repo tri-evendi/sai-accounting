@@ -6,9 +6,16 @@ export type AuditAction =
   | "stock.in"
   | "stock.out"
   | "item.create"
+  | "supplier_transaction.purchase"
+  | "supplier_transaction.payment"
   | "auth.password_change";
 
-export type AuditEntity = "cash_account" | "stock" | "item" | "user";
+export type AuditEntity =
+  | "cash_account"
+  | "stock"
+  | "item"
+  | "supplier_transaction"
+  | "user";
 
 export type AuditLogEntry = {
   id: string;

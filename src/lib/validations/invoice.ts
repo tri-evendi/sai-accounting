@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 
 export const invoiceItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required").max(100).trim(),
@@ -14,13 +15,17 @@ export const invoiceSchema = z.object({
   items: z.array(invoiceItemSchema).min(1, "At least one item is required").max(50),
 });
 
-export const invoicePaymentSchema = z.object({
-  invoiceId: z.coerce.number().int(),
-  date: z.string().min(1, "Date is required"),
-  amount: z.coerce.number().positive("Amount must be positive"),
-  currency: z.enum(["USD", "CNY", "IDR"]).default("USD"),
-  note: z.string().max(500).trim().optional(),
-});
+export const invoicePaymentSchema = z
+  .object({
+    invoiceId: z.coerce.number().int(),
+    date: z.string().min(1, "Date is required"),
+    amount: z.coerce.number().positive("Amount must be positive"),
+    currency: currencyEnum.default("USD"),
+    // Persisted to invoice_payments.rate; drives base_amount and the journal.
+    rate: rateField,
+    note: z.string().max(500).trim().optional(),
+  })
+  .superRefine(requireRateForForeign);
 
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
 export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;

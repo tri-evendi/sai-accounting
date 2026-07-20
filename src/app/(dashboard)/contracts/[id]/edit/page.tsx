@@ -39,6 +39,11 @@ export default function EditContractPage() {
   const [error, setError] = useState("");
   const [contract, setContract] = useState<ContractData | null>(null);
   const [items, setItems] = useState<ContractItem[]>([]);
+  // Not stored on the contract — re-supplied on every edit so the reposted
+  // journal converts to IDR at a rate the user has confirmed.
+  const [currency, setCurrency] = useState("USD");
+
+  const isForeign = currency !== "IDR";
 
   useEffect(() => {
     fetch(`/api/contracts/${params.id}`)
@@ -48,6 +53,7 @@ export default function EditContractPage() {
       })
       .then((data) => {
         setContract(data);
+        setCurrency(data.currency);
         setItems(
           data.items.map((item: ContractItem & { id?: number }) => ({
             itemName: item.itemName,
@@ -94,6 +100,7 @@ export default function EditContractPage() {
       top1: formData.get("top1"),
       top2: formData.get("top2"),
       currency: formData.get("currency"),
+      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
       status: formData.get("status"),
       items,
     };
@@ -106,7 +113,10 @@ export default function EditContractPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to update contract");
+      const fieldMsg = data.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
+        : null;
+      setError(String(fieldMsg || data.error || "Failed to update contract"));
       setLoading(false);
     } else {
       router.push(`/contracts/${params.id}`);
@@ -149,13 +159,31 @@ export default function EditContractPage() {
               <Input id="top2" name="top2" label="Terms of Payment 2" defaultValue={contract.top2 || ""} />
               <Select
                 id="currency" name="currency" label="Currency"
-                defaultValue={contract.currency}
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
                 options={[
                   { value: "USD", label: "USD" },
                   { value: "CNY", label: "CNY" },
                   { value: "IDR", label: "IDR (Rupiah)" },
                 ]}
               />
+              {isForeign && (
+                <div>
+                  <Input
+                    id="rate"
+                    name="rate"
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    className="text-right tabular-nums"
+                    label={`Kurs 1 ${currency} ke IDR`}
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-600">
+                    Wajib diisi ulang — jurnal kontrak dibalik lalu diposting ulang memakai kurs ini.
+                  </p>
+                </div>
+              )}
               <Select
                 id="status" name="status" label="Status"
                 defaultValue={contract.status}

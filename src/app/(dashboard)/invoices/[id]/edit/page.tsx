@@ -8,6 +8,12 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import {
+  InvoiceFxFields,
+  invoiceFxPayload,
+  type InvoiceFxValues,
+} from "@/components/shared/invoice-fx-fields";
+import { invoiceSubtotal } from "@/lib/validations/invoice";
 
 interface InvoiceItem {
   itemName: string;
@@ -26,6 +32,14 @@ export default function EditInvoicePage() {
   const [date, setDate] = useState("");
   const [status, setStatus] = useState("pending");
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [fx, setFx] = useState<InvoiceFxValues>({
+    customerId: "",
+    currency: "IDR",
+    rate: "",
+    taxAmount: "0",
+  });
+
+  const subtotal = invoiceSubtotal(items);
 
   useEffect(() => {
     fetch(`/api/invoices/${params.id}`)
@@ -37,6 +51,14 @@ export default function EditInvoicePage() {
         setInvoiceNo(data.invoiceNo);
         setDate(new Date(data.date).toISOString().split("T")[0]);
         setStatus(data.status);
+        setFx({
+          customerId: data.customerId ? String(data.customerId) : "",
+          // Legacy rows may predate the column; treat a missing value as IDR,
+          // which is how they have been posted all along.
+          currency: data.currency || "IDR",
+          rate: data.rate != null ? String(Number(data.rate)) : "",
+          taxAmount: data.taxAmount != null ? String(Number(data.taxAmount)) : "0",
+        });
         setItems(
           data.items.map((item: InvoiceItem & { id?: number }) => ({
             itemName: item.itemName,
@@ -72,7 +94,7 @@ export default function EditInvoicePage() {
     setError("");
     setLoading(true);
 
-    const body = { invoiceNo, date, status, items };
+    const body = { invoiceNo, date, status, ...invoiceFxPayload(fx), items };
 
     const res = await fetch(`/api/invoices/${params.id}`, {
       method: "PUT",
@@ -82,7 +104,10 @@ export default function EditInvoicePage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to update invoice");
+      const fieldMsg = data.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
+        : null;
+      setError(String(fieldMsg || data.error || "Failed to update invoice"));
       setLoading(false);
     } else {
       router.push(`/invoices/${params.id}`);
@@ -116,6 +141,11 @@ export default function EditInvoicePage() {
                   { value: "signed", label: "Signed" },
                   { value: "canceled", label: "Canceled" },
                 ]}
+              />
+              <InvoiceFxFields
+                value={fx}
+                onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+                subtotal={subtotal}
               />
             </div>
           </CardContent>

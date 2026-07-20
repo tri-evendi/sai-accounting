@@ -104,21 +104,20 @@ async function buildInvoiceEntry(
   if (!invoice) throw new SourceNotFoundError("invoice", ctx.sourceId);
   if (invoice.status === "canceled") return null;
 
-  // LEGACY GAP: `invoices` has no currency, rate or tax column, so a sales
-  // invoice is booked in IDR untaxed. Once those columns exist, read them here —
-  // buildSalesInvoiceLines already handles currency, rate and PPN Keluaran.
-  const currency = "IDR";
-  const rate = resolveRate(currency, null, ctx.rate);
+  // Issue #35: invoices now carry their own currency, rate and PPN Keluaran, so
+  // a USD document is valued at its own rate and lands in the USD receivable.
+  // Legacy rows default to IDR, which is how they were already being posted.
+  const currency = invoice.currency || "IDR";
+  const rate = resolveRate(currency, num(invoice.rate) || null, ctx.rate);
   const subtotal = round2(
     invoice.items.reduce((s, i) => s + num(i.quantity) * num(i.price), 0)
   );
+  const tax = round2(num(invoice.taxAmount));
   if (subtotal <= 0) return null;
 
-  const acc = await resolveAccountIds(
-    [MAPPING_KEYS.AR_DEFAULT, MAPPING_KEYS.SALES_DEFAULT],
-    currency,
-    client
-  );
+  const keys: MappingKey[] = [MAPPING_KEYS.AR_DEFAULT, MAPPING_KEYS.SALES_DEFAULT];
+  if (tax > 0) keys.push(MAPPING_KEYS.VAT_OUT);
+  const acc = await resolveAccountIds(keys, currency, client);
 
   return {
     date: invoice.date,
@@ -129,7 +128,9 @@ async function buildInvoiceEntry(
     lines: buildSalesInvoiceLines({
       arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
       salesAccountId: acc[MAPPING_KEYS.SALES_DEFAULT],
+      vatOutAccountId: tax > 0 ? acc[MAPPING_KEYS.VAT_OUT] : undefined,
       subtotal,
+      taxAmount: tax,
       currency,
       rate,
       memo: invoice.invoiceNo,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { invoiceSchema } from "@/lib/validations/invoice";
+import { invoiceSchema, invoiceTotal } from "@/lib/validations/invoice";
+import { fxAmounts } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -31,7 +32,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, date, ...invoiceData } = parsed.data;
+  const { items, date, rate, currency, taxAmount, ...invoiceData } = parsed.data;
+  // Gross document value in its own currency, then its IDR equivalent. Zod has
+  // already rejected a non-IDR invoice with no rate, so fxAmounts can't guess.
+  const { rate: fxRate, baseAmount } = fxAmounts(
+    currency,
+    invoiceTotal(items, taxAmount),
+    rate
+  );
 
   try {
     // Invoice and journal commit together: if posting can't produce a correct
@@ -40,6 +48,10 @@ export async function POST(request: Request) {
       const created = await tx.invoice.create({
         data: {
           ...invoiceData,
+          currency,
+          taxAmount,
+          rate: fxRate,
+          baseAmount,
           date: new Date(date),
           items: { create: items },
         },

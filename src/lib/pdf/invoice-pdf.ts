@@ -8,6 +8,11 @@ interface InvoiceData {
   invoiceNo: string;
   date: string;
   status: string;
+  /** Document currency — item prices and totals are denominated in it. */
+  currency?: string;
+  /** PPN Keluaran, in `currency`. */
+  taxAmount?: number;
+  customerName?: string | null;
   items: {
     itemName: string;
     quantity: number;
@@ -75,6 +80,8 @@ export function generateInvoicePDF(invoice: InvoiceData) {
     ["Invoice No", invoice.invoiceNo],
     ["Date", formatDate(invoice.date)],
     ["Status", invoice.status.toUpperCase()],
+    ["Currency", invoice.currency || "IDR"],
+    ...(invoice.customerName ? [["Customer", invoice.customerName]] : []),
   ];
 
   for (const [label, value] of infoRows) {
@@ -88,10 +95,13 @@ export function generateInvoicePDF(invoice: InvoiceData) {
   y += 5;
 
   // Items table
-  const totalValue = invoice.items.reduce(
+  const currency = invoice.currency || "IDR";
+  const taxAmount = invoice.taxAmount ?? 0;
+  const subtotal = invoice.items.reduce(
     (sum, item) => sum + item.quantity * item.price,
     0
   );
+  const totalValue = subtotal + taxAmount;
 
   autoTable(doc, {
     startY: y,
@@ -103,11 +113,15 @@ export function generateInvoicePDF(invoice: InvoiceData) {
         item.itemName,
         item.unit || "-",
         String(item.quantity),
-        formatCurrency(item.price),
-        formatCurrency(total),
+        formatCurrency(item.price, currency),
+        formatCurrency(total, currency),
       ];
     }),
-    foot: [["", "", "", "", "TOTAL", formatCurrency(totalValue)]],
+    foot: [
+      ["", "", "", "", "Subtotal", formatCurrency(subtotal, currency)],
+      ["", "", "", "", "PPN Keluaran", formatCurrency(taxAmount, currency)],
+      ["", "", "", "", `TOTAL (${currency})`, formatCurrency(totalValue, currency)],
+    ],
     theme: "grid",
     headStyles: { fillColor: [142, 68, 173], textColor: 255, fontStyle: "bold", fontSize: 9 },
     bodyStyles: { fontSize: 9 },

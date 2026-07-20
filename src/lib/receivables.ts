@@ -404,14 +404,15 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
   for (const c of contracts) {
     const total = contractSubtotal(c.items);
     if (total <= EPSILON) continue;
-    // `contracts` has no rate column (see validations/contract.ts), so a foreign
-    // contract has no stored IDR value. It still lists, with its base shown as
-    // unknown, rather than being silently valued 1:1.
+    // Contracts carry their own rate + IDR base since migration 0008 (issue #36),
+    // so a rated foreign contract now counts toward the IDR totals. Legacy rows
+    // predate the column and keep a NULL rate: `toBase` returns null for them and
+    // they stay listed-but-excluded, rather than being silently valued 1:1.
     const doc = settleDocument({
       total,
       currency: c.currency || BASE_CURRENCY,
-      totalBase: null,
-      rate: null,
+      totalBase: c.baseAmount == null ? null : num(c.baseAmount),
+      rate: c.rate == null ? null : num(c.rate),
       date: c.date,
       dueDate: c.dueDate,
       payments: c.payments,

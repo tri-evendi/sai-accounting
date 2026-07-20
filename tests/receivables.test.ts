@@ -492,6 +492,86 @@ describe("getReceivables", () => {
     expect(r.rows[0].ageFromIssue).toBe(true);
     expect(r.rows[0].total).toBe(500_000);
   });
+
+  const contract = (over: Record<string, unknown> = {}) => ({
+    id: 20,
+    contractNo: "CTR-20",
+    date: d("2026-07-01"),
+    dueDate: null,
+    buyer: "Buyer Co",
+    currency: "USD",
+    rate: null,
+    baseAmount: null,
+    top1: null,
+    top2: null,
+    // USD 1,000.
+    items: [{ bags: 10, kgPerBag: 10, pricePerKg: 10 }],
+    payments: [],
+    ...over,
+  });
+
+  it("counts a rated foreign contract toward the IDR totals (issue #36)", async () => {
+    const r = await getReceivables(
+      { asOf },
+      stubClient({
+        contracts: [contract({ rate: 16_250, baseAmount: 16_250_000 })],
+      })
+    );
+
+    expect(r.rows[0].currency).toBe("USD");
+    expect(r.rows[0].total).toBe(1_000);
+    expect(r.rows[0].totalBase).toBe(16_250_000);
+    expect(r.rows[0].outstandingBase).toBe(16_250_000);
+    expect(r.aging.total).toBe(16_250_000);
+    expect(r.aging.unresolved).toBe(0);
+    expect(r.unresolvedCount).toBe(0);
+  });
+
+  it("falls back to rate × amount when base_amount was never stored", async () => {
+    const r = await getReceivables(
+      { asOf },
+      stubClient({ contracts: [contract({ rate: 16_000, baseAmount: null })] })
+    );
+    expect(r.rows[0].totalBase).toBe(16_000_000);
+  });
+
+  it("keeps a legacy rateless contract listed but out of the totals", async () => {
+    // Contracts predating migration 0008 have no recorded rate and are not
+    // backfilled. They must stay visible and stay excluded — never valued 1:1.
+    const r = await getReceivables({ asOf }, stubClient({ contracts: [contract()] }));
+
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].totalBase).toBeNull();
+    expect(r.rows[0].outstandingBase).toBeNull();
+    expect(r.aging.total).toBe(0);
+    expect(r.aging.unresolved).toBe(1);
+    expect(r.unresolvedCount).toBe(1);
+  });
+
+  it("mixes rated and rateless contracts without contaminating the total", async () => {
+    const r = await getReceivables(
+      { asOf },
+      stubClient({
+        contracts: [
+          contract({ id: 21, contractNo: "CTR-21", rate: 16_250, baseAmount: 16_250_000 }),
+          contract({ id: 22, contractNo: "CTR-22" }),
+        ],
+      })
+    );
+
+    expect(r.rows).toHaveLength(2);
+    expect(r.aging.total).toBe(16_250_000);
+    expect(r.unresolvedCount).toBe(1);
+  });
+
+  it("needs no rate for an IDR contract — it is already base currency", async () => {
+    const r = await getReceivables(
+      { asOf },
+      stubClient({ contracts: [contract({ currency: "IDR", rate: null, baseAmount: null })] })
+    );
+    expect(r.rows[0].totalBase).toBe(1_000);
+    expect(r.unresolvedCount).toBe(0);
+  });
 });
 
 describe("getPayables", () => {

@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CurrencyRateFields,
+  baseUnknown,
+  currencyRatePayload,
+} from "@/components/shared/currency-rate-fields";
+import { formatCurrency } from "@/lib/utils";
 import { Trash2, Plus } from "lucide-react";
 
 interface ContractItem {
@@ -23,11 +29,11 @@ export default function NewContractPage() {
   const [items, setItems] = useState<ContractItem[]>([
     { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 },
   ]);
-  // Contracts have no rate column; the value is passed to the posting engine so
-  // a USD/CNY contract books a correct IDR journal.
+  // Stored on the contract since issue #36, so an edit no longer re-enters it.
   const [currency, setCurrency] = useState("USD");
+  const [rate, setRate] = useState("");
 
-  const isForeign = currency !== "IDR";
+  const subtotal = items.reduce((sum, i) => sum + i.bags * i.kgPerBag * i.pricePerKg, 0);
 
   function addItem() {
     setItems([...items, { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
@@ -62,8 +68,7 @@ export default function NewContractPage() {
       shipment: formData.get("shipment"),
       top1: formData.get("top1"),
       top2: formData.get("top2"),
-      currency: formData.get("currency"),
-      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
+      ...currencyRatePayload(currency, rate),
       status: formData.get("status"),
       items,
     };
@@ -112,35 +117,14 @@ export default function NewContractPage() {
               <Input id="shipment" name="shipment" label="Shipment" />
               <Input id="top1" name="top1" label="Terms of Payment 1" />
               <Input id="top2" name="top2" label="Terms of Payment 2" />
-              <Select
-                id="currency"
-                name="currency"
-                label="Currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                options={[
-                  { value: "USD", label: "USD" },
-                  { value: "CNY", label: "CNY" },
-                  { value: "IDR", label: "IDR (Rupiah)" },
-                ]}
+              <CurrencyRateFields
+                currency={currency}
+                rate={rate}
+                onCurrencyChange={setCurrency}
+                onRateChange={setRate}
+                currencyLabel="Currency"
+                rateHint="Wajib diisi — kurs disimpan pada kontrak dan dipakai untuk nilai IDR di buku besar."
               />
-              {isForeign && (
-                <div>
-                  <Input
-                    id="rate"
-                    name="rate"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    className="text-right tabular-nums"
-                    label={`Kurs 1 ${currency} ke IDR`}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-600">
-                    Wajib diisi — jurnal penjualan dicatat dalam IDR memakai kurs ini.
-                  </p>
-                </div>
-              )}
               <Select
                 id="status"
                 name="status"
@@ -223,14 +207,22 @@ export default function NewContractPage() {
         {/* Running Total */}
         <Card className="mb-6">
           <CardContent className="py-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="font-medium text-gray-500">Estimated Total</span>
-              <span className="text-lg font-bold text-gray-900">
-                {new Intl.NumberFormat("id-ID").format(
-                  items.reduce((sum, item) => sum + item.bags * item.kgPerBag * item.pricePerKg, 0)
-                )}
-              </span>
-            </div>
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between items-center">
+                <dt className="font-medium text-gray-500">Estimated Total ({currency})</dt>
+                <dd className="text-lg font-bold tabular-nums text-gray-900">
+                  {formatCurrency(subtotal, currency)}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center">
+                <dt className="text-gray-500">Nilai dasar buku besar (IDR)</dt>
+                <dd className="tabular-nums font-medium text-gray-900">
+                  {baseUnknown(currency, rate)
+                    ? "— isi kurs dulu"
+                    : formatCurrency(subtotal * (Number(rate) || 1), "IDR")}
+                </dd>
+              </div>
+            </dl>
           </CardContent>
         </Card>
 

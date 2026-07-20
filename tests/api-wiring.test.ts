@@ -16,7 +16,12 @@ import {
   invoiceSubtotal,
   invoiceTotal,
 } from "@/lib/validations/invoice";
-import { contractPaymentSchema, contractSchema } from "@/lib/validations/contract";
+import {
+  contractFx,
+  contractPaymentSchema,
+  contractSchema,
+  contractSubtotal,
+} from "@/lib/validations/contract";
 import { cashTransactionSchema, supplierTransactionSchema } from "@/lib/validations/finance";
 import { stockUpdateSchema } from "@/lib/validations/inventory";
 import { fxAmounts } from "@/lib/validations/fx";
@@ -150,6 +155,50 @@ describe("contract schema", () => {
     const zero = [{ itemName: "Kopi", bags: 0, kgPerBag: 0, pricePerKg: 0 }];
     const result = contractSchema.safeParse({ ...base, items: zero, currency: "USD" });
     expect(result.success).toBe(true);
+  });
+
+  it("accepts a foreign contract carrying a rate, and keeps it", () => {
+    const result = contractSchema.safeParse({ ...base, currency: "USD", rate: 16_250 });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.rate).toBe(16_250);
+  });
+
+  it("rejects a non-positive rate", () => {
+    const result = contractSchema.safeParse({ ...base, currency: "USD", rate: 0 });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("rate");
+  });
+
+  it("needs no rate for an IDR contract", () => {
+    const result = contractSchema.safeParse({ ...base, currency: "IDR", status: "signed" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("contracts persist their own rate + IDR base (issue #36)", () => {
+  // 100 bags × 60 kg × 3 = 18,000 in the contract's own currency.
+  const items = [{ itemName: "Kopi", bags: 100, kgPerBag: 60, pricePerKg: 3 }];
+
+  it("sums the item lines into the contract subtotal", () => {
+    expect(contractSubtotal(items)).toBe(18_000);
+  });
+
+  it("stores rate and IDR base for a foreign contract", () => {
+    expect(contractFx("USD", items, 16_250)).toEqual({
+      rate: 16_250,
+      baseAmount: 292_500_000,
+    });
+  });
+
+  it("stores 1:1 for an IDR contract — the base currency needs no rate", () => {
+    expect(contractFx("IDR", items)).toEqual({ rate: 1, baseAmount: 18_000 });
+  });
+
+  it("leaves both NULL for a rateless foreign contract rather than defaulting to 1", () => {
+    // Reachable for cancelled / zero-value contracts, which validation exempts
+    // from the rate rule. Writing rate=1 there would value USD 18,000 as
+    // IDR 18,000 — the exact bug #36 fixes.
+    expect(contractFx("USD", items)).toEqual({ rate: null, baseAmount: null });
   });
 });
 

@@ -8,15 +8,22 @@
  * own rate" has to read identically on both screens, and the IDR base preview is
  * the only place a user sees what will actually hit the ledger. Mirrors the
  * pattern already used by finance/new and shared/payment-form.
+ *
+ * The currency + rate pair itself lives in CurrencyRateFields, shared with the
+ * contract forms since issue #36 — only the customer picker, PPN and the invoice
+ * totals preview are invoice-specific.
  */
 
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  BASE_CURRENCY,
+  CurrencyRateFields,
+  currencyRatePayload,
+} from "@/components/shared/currency-rate-fields";
 import { formatCurrency } from "@/lib/utils";
 import { Info, Users } from "lucide-react";
-
-const BASE_CURRENCY = "IDR";
 
 interface CustomerOption {
   id: number;
@@ -85,40 +92,12 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
         </p>
       </div>
 
-      <Select
-        id="currency"
-        name="currency"
-        label="Mata Uang"
-        value={currency}
-        onChange={(e) => onChange({ currency: e.target.value })}
-        options={[
-          { value: "IDR", label: "IDR (Rupiah)" },
-          { value: "USD", label: "USD" },
-          { value: "CNY", label: "CNY" },
-        ]}
+      <CurrencyRateFields
+        currency={currency}
+        rate={rate}
+        onCurrencyChange={(c) => onChange({ currency: c })}
+        onRateChange={(r) => onChange({ rate: r })}
       />
-
-      {isForeign ? (
-        <div>
-          <Input
-            id="rate"
-            name="rate"
-            type="number"
-            step="0.000001"
-            min="0"
-            className="text-right tabular-nums"
-            label={`Kurs 1 ${currency} ke IDR`}
-            value={rate}
-            onChange={(e) => onChange({ rate: e.target.value })}
-            required
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.
-          </p>
-        </div>
-      ) : (
-        <div />
-      )}
 
       <div>
         <Input
@@ -169,11 +148,9 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
 
 /** Request body fields for the invoice API, from the form's string state. */
 export function invoiceFxPayload(value: InvoiceFxValues) {
-  const isForeign = value.currency !== BASE_CURRENCY;
   return {
     customerId: value.customerId ? Number(value.customerId) : null,
-    currency: value.currency,
-    rate: isForeign ? Number(value.rate) || undefined : undefined,
+    ...currencyRatePayload(value.currency, value.rate),
     taxAmount: Number(value.taxAmount) || 0,
   };
 }

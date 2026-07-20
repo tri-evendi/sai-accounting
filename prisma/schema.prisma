@@ -43,6 +43,12 @@ model Contract {
   top1        String?  @db.VarChar(200)
   top2        String?  @db.VarChar(200)
   currency    String   @default("USD") @db.VarChar(5)
+  /// Nullable on purpose — a DEFAULT 1 would value historical foreign-currency
+  /// contracts at 1:1 IDR, the exact bug #36 fixes. Legacy rows keep a NULL rate
+  /// and are reported as "kurs belum diisi" rather than guessed at. See Invoice.rate.
+  rate        Decimal? @db.Decimal(18, 6)
+  /// Contract value (sum of items) in IDR base, at `rate`.
+  baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   status      String   @default("pending") @db.VarChar(20)
 
   createdAt DateTime @default(now()) @map("created_at")

@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CurrencyRateFields,
+  currencyRatePayload,
+} from "@/components/shared/currency-rate-fields";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
 import { DueDateField } from "@/components/shared/due-date-field";
@@ -29,6 +33,8 @@ interface ContractData {
   top1: string | null;
   top2: string | null;
   currency: string;
+  /** Stored since issue #36; null on contracts created before migration 0008. */
+  rate: string | number | null;
   status: string;
   items: ContractItem[];
 }
@@ -41,11 +47,11 @@ export default function EditContractPage() {
   const [error, setError] = useState("");
   const [contract, setContract] = useState<ContractData | null>(null);
   const [items, setItems] = useState<ContractItem[]>([]);
-  // Not stored on the contract — re-supplied on every edit so the reposted
-  // journal converts to IDR at a rate the user has confirmed.
+  // Prefilled from the contract itself since issue #36 — an edit no longer has to
+  // re-enter the rate. Legacy contracts stored none, so theirs comes up blank and
+  // must be filled before the repost can value the journal.
   const [currency, setCurrency] = useState("USD");
-
-  const isForeign = currency !== "IDR";
+  const [rate, setRate] = useState("");
 
   useEffect(() => {
     fetch(`/api/contracts/${params.id}`)
@@ -56,6 +62,7 @@ export default function EditContractPage() {
       .then((data) => {
         setContract(data);
         setCurrency(data.currency);
+        setRate(data.rate == null ? "" : String(data.rate));
         setItems(
           data.items.map((item: ContractItem & { id?: number }) => ({
             itemName: item.itemName,
@@ -102,8 +109,7 @@ export default function EditContractPage() {
       shipment: formData.get("shipment"),
       top1: formData.get("top1"),
       top2: formData.get("top2"),
-      currency: formData.get("currency"),
-      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
+      ...currencyRatePayload(currency, rate),
       status: formData.get("status"),
       items,
     };
@@ -163,33 +169,14 @@ export default function EditContractPage() {
               <Input id="shipment" name="shipment" label="Shipment" defaultValue={contract.shipment || ""} />
               <Input id="top1" name="top1" label="Terms of Payment 1" defaultValue={contract.top1 || ""} />
               <Input id="top2" name="top2" label="Terms of Payment 2" defaultValue={contract.top2 || ""} />
-              <Select
-                id="currency" name="currency" label="Currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                options={[
-                  { value: "USD", label: "USD" },
-                  { value: "CNY", label: "CNY" },
-                  { value: "IDR", label: "IDR (Rupiah)" },
-                ]}
+              <CurrencyRateFields
+                currency={currency}
+                rate={rate}
+                onCurrencyChange={setCurrency}
+                onRateChange={setRate}
+                currencyLabel="Currency"
+                rateHint="Tersimpan pada kontrak — jurnal dibalik lalu diposting ulang memakai kurs ini."
               />
-              {isForeign && (
-                <div>
-                  <Input
-                    id="rate"
-                    name="rate"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    className="text-right tabular-nums"
-                    label={`Kurs 1 ${currency} ke IDR`}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-600">
-                    Wajib diisi ulang — jurnal kontrak dibalik lalu diposting ulang memakai kurs ini.
-                  </p>
-                </div>
-              )}
               <Select
                 id="status" name="status" label="Status"
                 defaultValue={contract.status}

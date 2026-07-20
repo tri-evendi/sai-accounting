@@ -8,14 +8,17 @@ export type AuditAction =
   | "item.create"
   | "supplier_transaction.purchase"
   | "supplier_transaction.payment"
-  | "auth.password_change";
+  | "auth.password_change"
+  | "period.close"
+  | "period.reopen";
 
 export type AuditEntity =
   | "cash_account"
   | "stock"
   | "item"
   | "supplier_transaction"
-  | "user";
+  | "user"
+  | "period";
 
 export type AuditLogEntry = {
   id: string;

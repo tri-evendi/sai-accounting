@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractSchema } from "@/lib/validations/contract";
+import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -43,7 +44,7 @@ export async function PUT(
     );
   }
 
-  const { items, date, rate, ...contractData } = parsed.data;
+  const { items, date, dueDate, rate, ...contractData } = parsed.data;
   const contractId = parseInt(id);
 
   try {
@@ -55,6 +56,7 @@ export async function PUT(
         data: {
           ...contractData,
           date: new Date(date),
+          dueDate: toDateOrNull(dueDate),
           items: { create: items },
         },
         include: { items: true },

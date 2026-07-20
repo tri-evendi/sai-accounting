@@ -17,6 +17,8 @@ import {
   BookText,
   Library,
   BarChart3,
+  HandCoins,
+  Wallet,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,8 @@ const allNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["bos", "core", "ptg"] },
   { href: "/contracts", label: "Contracts", icon: FileText, roles: ["bos", "core"] },
   { href: "/invoices", label: "Invoices", icon: Receipt, roles: ["bos", "core"] },
+  { href: "/receivables", label: "Piutang", icon: HandCoins, roles: ["bos", "core"] },
+  { href: "/payables", label: "Utang", icon: Wallet, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },

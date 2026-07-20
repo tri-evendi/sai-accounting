@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractSchema } from "@/lib/validations/contract";
+import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
   // `rate` has no column on contracts — it is passed to the posting engine so a
   // foreign-currency contract books a correct IDR value (see contract schema).
-  const { items, date, rate, ...contractData } = parsed.data;
+  const { items, date, dueDate, rate, ...contractData } = parsed.data;
 
   try {
     const contract = await prisma.$transaction(async (tx) => {
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
         data: {
           ...contractData,
           date: new Date(date),
+          dueDate: toDateOrNull(dueDate),
           items: { create: items },
         },
         include: { items: true },

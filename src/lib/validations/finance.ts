@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { dueDateField } from "./common";
 
 export const cashTransactionSchema = z
   .object({
@@ -40,6 +41,8 @@ export const supplierTransactionSchema = z
   .object({
     supplierId: z.coerce.number().int().positive(),
     date: z.string().min(1, "Date is required"),
+    /** Only meaningful on a purchase — a payment has nothing to fall due. */
+    dueDate: dueDateField,
     type: z.enum(["purchase", "payment"]),
     /** Net value, excluding tax — taxAmount is carried separately. */
     amount: z.coerce.number().positive("Amount must be positive"),

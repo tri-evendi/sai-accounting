@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export default function NewContractPage() {
     const body = {
       contractNo: formData.get("contractNo"),
       date: formData.get("date"),
+      dueDate: formData.get("dueDate"),
       buyer: formData.get("buyer"),
       consignee: formData.get("consignee"),
       packaging: formData.get("packaging"),
@@ -103,6 +105,7 @@ export default function NewContractPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="contractNo" name="contractNo" label="Contract Number" required />
               <Input id="date" name="date" type="date" label="Date" required />
+              <DueDateField />
               <Input id="buyer" name="buyer" label="Buyer" required />
               <Input id="consignee" name="consignee" label="Consignee" />
               <Input id="packaging" name="packaging" label="Packaging" />

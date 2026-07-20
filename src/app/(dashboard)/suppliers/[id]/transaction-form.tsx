@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,8 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
     const formData = new FormData(e.currentTarget);
     const body = {
       date: formData.get("date"),
+      // Only a purchase can fall due; the API ignores it for a payment anyway.
+      dueDate: isPurchase ? formData.get("dueDate") : null,
       type,
       amount: Number(formData.get("amount")),
       currency,
@@ -117,6 +120,8 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           defaultValue={new Date().toISOString().split("T")[0]}
           required
         />
+
+        {isPurchase && <DueDateField />}
 
         <Input
           id="trx-amount"

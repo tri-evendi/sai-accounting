@@ -30,6 +30,10 @@ model Contract {
   id          Int      @id @default(autoincrement())
   contractNo  String   @unique @map("contract_no") @db.VarChar(50)
   date        DateTime
+  /// Structured payment due date for AR aging (issue #12). NULL = unknown:
+  /// `top1`/`top2` are free-text commercial terms, never parsed into a date.
+  /// A contract with no due date is aged from `date` and never flagged overdue.
+  dueDate     DateTime? @map("due_date")
   buyer       String   @db.VarChar(100)
   consignee   String?  @db.VarChar(100)
   packaging   String?  @db.VarChar(100)
@@ -46,6 +50,8 @@ model Contract {
   payments  ContractPayment[]
   documents Document[]
 
+  @@index([dueDate])
+  @@index([date])
   @@map("contracts")
 }
 
@@ -85,6 +91,10 @@ model Invoice {
   id         Int      @id @default(autoincrement())
   invoiceNo  String   @unique @map("invoice_no") @db.VarChar(50)
   date       DateTime
+  /// Structured payment due date for AR aging (issue #12). NULL = unknown, and
+  /// deliberately never backfilled — an invented due date would drive a false
+  /// "Jatuh Tempo" alarm. NULL rows age from `date` instead.
+  dueDate    DateTime? @map("due_date")
   status     String   @default("pending") @db.VarChar(20)
   /// Nullable: legacy invoices predate the customer link (issue #35).
   customerId Int?     @map("customer_id")
@@ -105,6 +115,8 @@ model Invoice {
   payments InvoicePayment[]
 
   @@index([customerId])
+  @@index([dueDate])
+  @@index([date])
   @@map("invoices")
 }
 
@@ -184,6 +196,9 @@ model SupplierTransaction {
   id         Int      @id @default(autoincrement())
   supplierId Int      @map("supplier_id")
   date       DateTime
+  /// Structured payment due date for AP aging (issue #12). Meaningful only on
+  /// `purchase` rows; NULL = unknown, aged from `date` and never flagged overdue.
+  dueDate    DateTime? @map("due_date")
   type       String   @db.VarChar(20) // enum-like: purchase, payment
   amount     Decimal  @db.Decimal(15, 2)
   currency   String   @default("IDR") @db.VarChar(5)
@@ -194,6 +209,8 @@ model SupplierTransaction {
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  @@index([supplierId, type])
+  @@index([dueDate])
   @@map("supplier_transactions")
 }
 

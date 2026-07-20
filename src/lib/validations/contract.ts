@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { dueDateField } from "./common";
 
 export const contractItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required").max(100).trim(),
@@ -12,6 +13,12 @@ export const contractSchema = z
   .object({
     contractNo: z.string().min(1, "Contract number is required").max(50).trim(),
     date: z.string().min(1, "Date is required"),
+    /**
+     * Explicit due date for AR aging (issue #12). Deliberately separate from
+     * `top1`/`top2`: those stay free-text commercial terms and are shown as-is,
+     * because "30% advance, 70% on B/L" is not a date and must not be guessed at.
+     */
+    dueDate: dueDateField,
     buyer: z.string().min(1, "Buyer is required").max(100).trim(),
     consignee: z.string().max(100).trim().optional(),
     packaging: z.string().max(100).trim().optional(),

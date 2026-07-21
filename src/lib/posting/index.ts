@@ -44,8 +44,10 @@ import {
   PostingRuleError,
   buildAdvanceCompensationLines,
   buildAdvanceLines,
+  buildAssetDisposalLines,
   buildCashTransactionLines,
   buildCogsLines,
+  buildDepreciationLines,
   buildPurchaseLines,
   buildPurchaseReturnLines,
   buildSalesInvoiceLines,
@@ -80,6 +82,20 @@ export type PostingSourceType =
   | "sales_return"
   /** Retur pembelian — part of a purchase returned to a supplier (issue #27). */
   | "purchase_return"
+  /**
+   * Penyusutan periodik satu aset untuk satu bulan (issue #28). The source ROW is
+   * a `fixed_asset_depreciations` row, NOT the asset: a depreciation run posts a
+   * fresh journal every month, so keying each month as its own source restores
+   * `postForSource`'s one-journal-per-source idempotency. D: Beban Penyusutan,
+   * K: Akumulasi Penyusutan.
+   */
+  | "depreciation"
+  /**
+   * Pelepasan/penjualan satu aset tetap (issue #28). Source ROW is the
+   * `fixed_assets` row — an asset is disposed once. Removes cost + accumulated
+   * depreciation, books proceeds, and plugs the laba/rugi pelepasan.
+   */
+  | "fixed_asset_disposal"
   /**
    * Saldo Awal — the ONE opening journal that seeds the ledger's starting
    * position (issue #20). Unlike every other source above it has no queryable
@@ -1018,6 +1034,86 @@ async function buildStockMovementEntry(
   };
 }
 
+// ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
+
+/**
+ * Penyusutan → D: Beban Penyusutan, K: Akumulasi Penyusutan.
+ *
+ * The source is one `fixed_asset_depreciations` row (asset + period + amount);
+ * the expense/accumulated accounts come from the ASSET, so a company can point
+ * different asset classes at different beban/akumulasi accounts. Always IDR — no
+ * rate, no FX. The final-period true-up already lives in the amount computed by
+ * @/lib/fixed-assets before the row was written, so this only books it.
+ */
+async function buildDepreciationEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const dep = await client.fixedAssetDepreciation.findUnique({
+    where: { id: ctx.sourceId },
+    include: { asset: true },
+  });
+  if (!dep) throw new SourceNotFoundError("depreciation", ctx.sourceId);
+
+  const amount = round2(num(dep.amount));
+  if (amount <= 0) return null;
+
+  return {
+    date: dep.date,
+    type: "adjustment",
+    note: `Penyusutan ${dep.asset.assetNo} — ${String(dep.month).padStart(2, "0")}/${dep.year}`,
+    sourceType: "depreciation",
+    sourceId: dep.id,
+    lines: buildDepreciationLines({
+      expenseAccountId: dep.asset.expenseAccountId,
+      accumulatedAccountId: dep.asset.accumulatedAccountId,
+      amount,
+      memo: dep.asset.assetNo,
+    }),
+  };
+}
+
+/**
+ * Pelepasan aset → remove cost + accumulated depreciation, book proceeds, and
+ * plug the laba/rugi pelepasan (proceeds − net book value).
+ *
+ * The asset carries its own asset/accumulated accounts; proceeds land in
+ * `cash_default` (IDR) and the gain/loss in `disposal_gain_loss`. Everything IDR.
+ */
+async function buildAssetDisposalEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const asset = await client.fixedAsset.findUnique({ where: { id: ctx.sourceId } });
+  if (!asset) throw new SourceNotFoundError("fixed_asset_disposal", ctx.sourceId);
+  if (asset.status !== "disposed" || !asset.disposalDate) {
+    throw new PostingRuleError(
+      "Aset ini belum ditandai dilepas. Catat pelepasan lebih dulu sebelum menjurnal."
+    );
+  }
+
+  const cashAccountId = await resolveAccountId(MAPPING_KEYS.CASH_DEFAULT, "IDR", client);
+  const gainLossAccountId = await resolveAccountId(MAPPING_KEYS.DISPOSAL_GAIN_LOSS, "IDR", client);
+
+  return {
+    date: asset.disposalDate,
+    type: "adjustment",
+    note: `Pelepasan Aset ${asset.assetNo}`,
+    sourceType: "fixed_asset_disposal",
+    sourceId: asset.id,
+    lines: buildAssetDisposalLines({
+      assetAccountId: asset.assetAccountId,
+      accumulatedAccountId: asset.accumulatedAccountId,
+      cashAccountId,
+      gainLossAccountId,
+      cost: num(asset.acquisitionCost),
+      accumulatedDepreciation: num(asset.accumulatedDepreciation),
+      proceeds: num(asset.disposalProceeds),
+      memo: asset.assetNo,
+    }),
+  };
+}
+
 async function buildEntry(
   client: Client,
   ctx: PostingContext
@@ -1045,6 +1141,10 @@ async function buildEntry(
       return buildSalesReturnEntry(client, ctx);
     case "purchase_return":
       return buildPurchaseReturnEntry(client, ctx);
+    case "depreciation":
+      return buildDepreciationEntry(client, ctx);
+    case "fixed_asset_disposal":
+      return buildAssetDisposalEntry(client, ctx);
     case "opening_balance":
       // Saldo Awal has no source ROW to fetch — its lines come from the wizard's
       // opening balances, not a document. It is posted directly by

@@ -24,6 +24,7 @@ import {
   Scale,
   Ship,
   Undo2,
+  Building2,
   Wand2,
   X,
 } from "lucide-react";
@@ -50,6 +51,7 @@ const allNavItems = [
   { href: "/advances", label: "Uang Muka", icon: Coins, roles: ["bos", "core"] },
   { href: "/returns", label: "Retur", icon: Undo2, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
+  { href: "/fixed-assets", label: "Aset Tetap", icon: Building2, roles: ["bos", "core"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/reconciliation", label: "Rekonsiliasi Bank", icon: Scale, roles: ["bos", "core"] },
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"], accountingOnly: true },

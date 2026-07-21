@@ -1009,3 +1009,156 @@ model CompanySetting {
   @@index([isSetup])
   @@map("company_settings")
 }
+
+// ─── Aset Tetap / Fixed Assets (issue #28) ───────────────
+//
+// Kelola aset operasional (kendaraan, alat, bangunan gudang) + penyusutan garis
+// lurus otomatis, agar Neraca & Beban Penyusutan akurat.
+//
+// ── SCOPED TO IDR, DELIBERATELY ─────────────────────────────────────────────
+// Unlike invoices/purchases/advances, fixed assets carry NO currency/rate/
+// base_amount triplet. SAI's core is trading; its fixed assets are domestic
+// operational assets bought in rupiah. Depreciating a foreign-acquired asset
+// correctly means a non-monetary IAS-21 treatment (cost frozen at the
+// acquisition-date rate, never revalued) that is well beyond "garis lurus dulu",
+// and valuing one 1:1 would be the exact bug #35/#36 fixed. So `acquisition_cost`
+// and every derived amount are IDR base, the ledger's own unit — the same stance
+// COGS takes (`buildCogsLines` is always IDR). A genuinely foreign-acquired asset
+// is entered at its IDR cost on the acquisition date, which is the honest value.
+//
+// ── ACCOUNT REFERENCES ARE PLAIN Int + A MIGRATION FK, NOT A PRISMA RELATION ──
+// `asset_account_id` / `accumulated_account_id` / `expense_account_id` reference
+// `accounts.id` with an ON DELETE RESTRICT constraint added in migration 0019,
+// but are NOT declared as Prisma relations. That is the same posture as
+// CompanySetting.openingJournalId: declaring them would hang six back-relation
+// arrays off the shared Account hub for no query the app makes. Names for display
+// are fetched explicitly in @/lib/fixed-assets.
+
+/// A depreciation class: its default method + useful life and the accounts an
+/// asset in it capitalises / depreciates through. Master data → `is_active`,
+/// never hard-deleted once an asset references it (the FK is RESTRICT).
+model FixedAssetCategory {
+  id                      Int     @id @default(autoincrement())
+  name                    String  @unique @db.VarChar(100)
+  /// enum-like: straight_line (garis lurus). z.enum in validations/fixed-asset.ts.
+  defaultMethod           String  @default("straight_line") @map("default_method") @db.VarChar(20)
+  /// Default useful life in MONTHS (see @/lib/depreciation on the unit choice).
+  defaultUsefulLifeMonths Int     @map("default_useful_life_months")
+  /// Account-mapping DEFAULTS a new asset copies at creation (and may override).
+  /// Reference accounts.id; RESTRICT FK in migration 0019. See the block above.
+  assetAccountId          Int     @map("asset_account_id")
+  accumulatedAccountId    Int     @map("accumulated_account_id")
+  expenseAccountId        Int     @map("expense_account_id")
+  isActive                Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assets FixedAsset[]
+
+  @@index([isActive])
+  @@map("fixed_asset_categories")
+}
+
+/// One fixed asset and its depreciation state.
+model FixedAsset {
+  id                 Int      @id @default(autoincrement())
+  assetNo            String   @unique @map("asset_no") @db.VarChar(50)
+  name               String   @db.VarChar(150)
+  categoryId         Int      @map("category_id")
+  acquisitionDate    DateTime @map("acquisition_date")
+  /// Acquisition cost, IDR (see the IDR-only note above).
+  acquisitionCost    Decimal  @map("acquisition_cost") @db.Decimal(15, 2)
+  /// Residual / salvage value, IDR. 0 = depreciate to nil.
+  residualValue      Decimal  @default(0) @map("residual_value") @db.Decimal(15, 2)
+  /// Useful life in MONTHS.
+  usefulLifeMonths   Int      @map("useful_life_months")
+  /// enum-like: straight_line.
+  depreciationMethod String   @default("straight_line") @map("depreciation_method") @db.VarChar(20)
+  /// Account references, defaulted from the category at creation and overridable.
+  /// Reference accounts.id; RESTRICT FK in migration 0019. See the block above.
+  assetAccountId       Int    @map("asset_account_id")
+  accumulatedAccountId Int    @map("accumulated_account_id")
+  expenseAccountId     Int    @map("expense_account_id")
+  location           String?  @db.VarChar(150)
+  /// enum-like: active | disposed.
+  status             String   @default("active") @db.VarChar(20)
+  /// Running accumulated depreciation, IDR. Denormalised from the depreciation
+  /// rows for O(1) reads and as the periodic run's idempotency anchor; the
+  /// authoritative history is `fixed_asset_depreciations`.
+  accumulatedDepreciation Decimal @default(0) @map("accumulated_depreciation") @db.Decimal(15, 2)
+  /// Last period a depreciation journal was posted (idempotency). NULL = never.
+  /// year + month, not a string, so periods compare as integers.
+  lastDepreciationYear  Int? @map("last_depreciation_year")
+  lastDepreciationMonth Int? @map("last_depreciation_month")
+  /// Disposal record. Set once `status` flips to `disposed`; NULL while active.
+  disposalDate       DateTime? @map("disposal_date")
+  disposalProceeds   Decimal?  @map("disposal_proceeds") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category        FixedAssetCategory          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  depreciations   FixedAssetDepreciation[]
+  locationHistory FixedAssetLocationHistory[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([acquisitionDate])
+  @@map("fixed_assets")
+}
+
+/// One posted monthly depreciation for one asset — a posting source in its own
+/// right (`journals.source_type = "depreciation"`).
+///
+/// WHY A ROW PER PERIOD, NOT A RE-POST OF THE ASSET: `postForSource` is
+/// idempotent per (source_type, source_id), which is exactly right for a document
+/// posted once — but a depreciation run posts a NEW journal every month against
+/// the same asset. Keying each month as its own source row restores that
+/// idempotency (one journal per row) and adds a second, DB-level guard:
+/// `@@unique([assetId, year, month])` makes a duplicate period impossible even
+/// under a race. The asset's `lastDepreciation*` fields are the fast-path guard;
+/// this table is the ledger-backed truth.
+model FixedAssetDepreciation {
+  id      Int      @id @default(autoincrement())
+  assetId Int      @map("asset_id")
+  year    Int
+  month   Int // 1-12
+  /// Posting date — the last day of `(year, month)`.
+  date    DateTime
+  /// Depreciation booked this period, IDR.
+  amount  Decimal  @db.Decimal(15, 2)
+  /// Accumulated depreciation after this period, IDR — carried for audit/preview.
+  accumulatedAfter Decimal @map("accumulated_after") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset FixedAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([assetId, year, month])
+  @@index([assetId])
+  @@index([year, month])
+  @@map("fixed_asset_depreciations")
+}
+
+/// A location move (pindah lokasi). A simple audit trail — no journal, since a
+/// move changes where an asset sits, not its value (issue #28). The asset's
+/// `location` is updated to `toLocation` on each move.
+model FixedAssetLocationHistory {
+  id           Int      @id @default(autoincrement())
+  assetId      Int      @map("asset_id")
+  date         DateTime
+  fromLocation String?  @map("from_location") @db.VarChar(150)
+  toLocation   String?  @map("to_location") @db.VarChar(150)
+  note         String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset FixedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([date])
+  @@map("fixed_asset_location_histories")
+}

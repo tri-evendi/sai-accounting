@@ -12,7 +12,12 @@
  * mapping/rate would fail identically.
  */
 import { NextResponse } from "next/server";
-import { MissingMappingError, PostingRuleError, SourceNotFoundError } from "@/lib/posting";
+import {
+  MissingMappingError,
+  MissingSettlementRateError,
+  PostingRuleError,
+  SourceNotFoundError,
+} from "@/lib/posting";
 import { UnbalancedJournalError } from "@/lib/ledger";
 import { ClosedPeriodError } from "@/lib/period";
 
@@ -73,6 +78,22 @@ export function postingErrorResponse(e: unknown): NextResponse<PostingErrorBody>
   if (e instanceof PostingRuleError) {
     return NextResponse.json(
       { error: `${e.message} ${NOT_SAVED_NOTICE}`, code: "posting_rule", saved: false as const },
+      { status: 422 }
+    );
+  }
+  // A cross-currency settlement needs a rate nobody has recorded (issue #43). Like
+  // a missing mapping, it is server state a well-formed payload cannot satisfy, so
+  // it earns a 422 with the not-saved notice rather than a 500 stack trace. This
+  // is the message an allocation edit (issue #42) surfaces when the purchase it is
+  // moved onto is in another currency and that day's rate is absent.
+  if (e instanceof MissingSettlementRateError) {
+    return NextResponse.json(
+      {
+        error: `${e.message} ${NOT_SAVED_NOTICE}`,
+        code: "missing_settlement_rate",
+        currency: e.currency ?? null,
+        saved: false as const,
+      },
       { status: 422 }
     );
   }

@@ -26,7 +26,12 @@ import { cashTransactionSchema, supplierTransactionSchema } from "@/lib/validati
 import { stockUpdateSchema } from "@/lib/validations/inventory";
 import { fxAmounts } from "@/lib/validations/fx";
 import { handlePostingError, postingErrorResponse, NOT_SAVED_NOTICE } from "@/lib/api-errors";
-import { MissingMappingError, PostingRuleError, SourceNotFoundError } from "@/lib/posting";
+import {
+  MissingMappingError,
+  MissingSettlementRateError,
+  PostingRuleError,
+  SourceNotFoundError,
+} from "@/lib/posting";
 import { UnbalancedJournalError } from "@/lib/ledger";
 
 /** Paths of the issues a failed parse produced, for terse assertions. */
@@ -444,6 +449,21 @@ describe("posting errors become actionable responses", () => {
     const body = await response?.json();
     expect(body.code).toBe("posting_rule");
     expect(body.saved).toBe(false);
+  });
+
+  it("maps a missing settlement rate to 422, naming the currency to record", async () => {
+    // The refusal an allocation edit (issue #42) surfaces when it is moved onto a
+    // cross-currency purchase whose settlement-date rate is not on file.
+    const response = postingErrorResponse(
+      new MissingSettlementRateError("CNY", new Date("2026-03-15"))
+    );
+    expect(response?.status).toBe(422);
+
+    const body = await response?.json();
+    expect(body.code).toBe("missing_settlement_rate");
+    expect(body.currency).toBe("CNY");
+    expect(body.saved).toBe(false);
+    expect(body.error).toContain(NOT_SAVED_NOTICE);
   });
 
   it("maps an unbalanced journal to 422", async () => {

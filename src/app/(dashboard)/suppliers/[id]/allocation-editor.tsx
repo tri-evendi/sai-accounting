@@ -6,9 +6,13 @@
  * #37 let a user say which purchases a payment settles, but only while the
  * payment was being created. Getting it wrong — or recording a payment before
  * #37 existed at all — left no way back except deleting the payment and making
- * it again, which reverses and re-posts perfectly good journals to fix what is
- * only a reporting field. This panel edits that field directly: it PUTs the new
- * allocation set and writes nothing to the ledger.
+ * it again. This panel edits the allocation set directly: it PUTs the new set.
+ *
+ * For a PURE-IDR payment that write touches no journal — the allocation is
+ * reporting data. For a FOREIGN-currency payment it is ledger-affecting (issue
+ * #42): the allocation decides which slice of hutang is relieved at which
+ * document rate, hence the realised selisih kurs, so the PUT reposts the payment
+ * server-side. Either way the user just states the truth and the ledger follows.
  *
  * The set is always sent whole. Editing an amount, unticking a purchase and
  * allocating a payment that had nothing are then one operation with one

@@ -244,8 +244,16 @@ model SupplierTransaction {
 /// is routinely cleared by several instalments. A self-FK models only one payment
 /// → one purchase, so the many-to-many case would have to be faked by splitting
 /// the payment row — which would invent journal entries that never happened. This
-/// table records the split without touching the ledger: `postJournal` still sees
-/// exactly one purchase and one payment, and allocation is pure reporting data.
+/// table records the split without adding a journal of its own: `postJournal`
+/// still sees exactly one purchase and one payment.
+///
+/// LEDGER-AFFECTING FOR FOREIGN PAYMENTS (issue #42). For a PURE-IDR payment the
+/// allocation is reporting data — no rate, no selisih kurs, nothing to post. But
+/// since #23 a FOREIGN payment relieves each slice of hutang at the DOCUMENT rate
+/// of the purchase it settles, so the allocation determines which rate — and thus
+/// the realised FX difference — of each slice. Editing a foreign payment's
+/// allocation therefore changes the correct journal, and the write site reposts
+/// the payment (`repostForSource`) so the journal can never go stale.
 ///
 /// `amount` is denominated in the PAYMENT's currency (it is a slice of that
 /// payment), and `base_amount` carries the IDR value at the payment's own `rate`
@@ -267,8 +275,18 @@ model SupplierPaymentAllocation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Payment side stays CASCADE: deleting a payment reverses ITS journal first
+  // (the transactions DELETE route unposts before delete), so the allocations
+  // may fall away with a journal that is already reversed — nothing is orphaned.
   payment  SupplierTransaction @relation("allocation_payment", fields: [paymentId], references: [id], onDelete: Cascade)
-  purchase SupplierTransaction @relation("allocation_purchase", fields: [purchaseId], references: [id], onDelete: Cascade)
+  // Purchase side is RESTRICT (issue #42), NOT cascade. Deleting a purchase does
+  // NOT touch the paying payment's journal, so cascading its allocation away
+  // would leave that journal relieving a hutang slice — at this purchase's
+  // document rate — for a purchase that no longer exists: a stale journal. The
+  // route refuses the delete until the allocation is cleared (which reposts the
+  // payment). Same spirit as `advance_applications`' RESTRICT, one step removed:
+  // there the row owns a journal; here it feeds another row's journal.
+  purchase SupplierTransaction @relation("allocation_purchase", fields: [purchaseId], references: [id], onDelete: Restrict)
 
   /// One row per (payment, purchase) pair: a second application of the same
   /// payment to the same purchase is an edit of the first, not a new fact.
@@ -367,14 +385,17 @@ model AdvancePayment {
 /// advances. A single nullable FK models neither, and faking the many-to-many by
 /// splitting the advance row would invent cash receipts that never happened.
 ///
-/// UNLIKE `supplier_payment_allocations`, THIS TABLE IS NOT REPORTING DATA.
-/// An allocation says which already-journalled payment settled which
-/// already-journalled purchase — no money moves, so it posts nothing. A
-/// compensation is itself an accounting event: it moves value out of Uang Muka
+/// THIS TABLE HAS ITS OWN JOURNAL; `supplier_payment_allocations` DOES NOT.
+/// A supplier allocation carries no journal of its own — it only shapes the
+/// paying payment's journal, and does so only for a foreign payment (issue #42).
+/// A compensation is itself an accounting event: it moves value out of Uang Muka
 /// and against Piutang/Hutang, and neither the advance's journal nor the
 /// invoice's journal contains that movement. So every row here is a posting
 /// source (`sourceType: "advance_application"`) with its own journal, and
-/// deleting one must reverse that journal rather than silently cascade.
+/// deleting one must reverse that journal rather than silently cascade — which
+/// is why its FKs are RESTRICT. (A supplier allocation reaches the same "never
+/// orphan a journal" guarantee differently: RESTRICT on its purchase side, plus
+/// an auto-repost of the payment whenever its allocation set is edited.)
 ///
 /// `amount` is denominated in the ADVANCE's currency — it is a slice of the
 /// advance — and `base_amount` is its IDR value at the advance's own `rate`, the

@@ -1594,3 +1594,172 @@ describe("cross-currency supplier payments", () => {
     expect(tx._journals).toHaveLength(0);
   });
 });
+
+// ─── Allocation edits are ledger-affecting for foreign payments (issue #42) ──
+
+/**
+ * #23 made a foreign payment relieve each slice of hutang at the DOCUMENT rate of
+ * the purchase it settles. The allocation is what names those purchases, so
+ * editing it changes the correct journal — and the write site must repost. These
+ * drive that repost through `repostForSource` directly (the route calls the same
+ * function inside its transaction), and pin the two halves of the #42 rule: a
+ * foreign edit re-derives a non-stale journal; an IDR edit changes nothing.
+ */
+describe("allocation edits repost a foreign supplier payment (issue #42)", () => {
+  const FX_ACC = 401;
+  const FX_MAPPINGS: FakeMapping[] = [
+    ...MAPPINGS,
+    { key: MAPPING_KEYS.FX_GAIN_LOSS, currency: ANY_CURRENCY, accountId: FX_ACC, isActive: true },
+  ];
+
+  const baseDebitOn = (j: FakeJournal, accountId: number) =>
+    j.lines.filter((l) => l.accountId === accountId).reduce((s, l) => s + l.baseDebit, 0);
+  const baseCreditOn = (j: FakeJournal, accountId: number) =>
+    j.lines.filter((l) => l.accountId === accountId).reduce((s, l) => s + l.baseCredit, 0);
+
+  /** The one journal still in force: posted, not reversed, not itself a reversal. */
+  const liveJournals = (tx: { _journals: FakeJournal[] }) =>
+    tx._journals.filter((j) => !j.isReversed && j.type !== "reversal");
+
+  it("re-derives the journal from the NEW allocation set, never leaving it stale", async () => {
+    // USD 10.000 paid at 16.000, first split across purchases booked at 15.000 and
+    // 16.500 → hutang 156.000.000, FX loss 4.000.000 (the worked example above).
+    const seed = {
+      mappings: FX_MAPPINGS,
+      supplierTransactions: {
+        40: {
+          id: 40,
+          date: DATE,
+          type: "payment",
+          amount: 10_000,
+          taxAmount: 0,
+          currency: "USD",
+          rate: 16_000,
+          supplier: { name: "Jiangsu Trading" },
+          allocationsMade: [
+            { amount: 6_000, purchase: { currency: "USD", rate: 15_000 } },
+            { amount: 4_000, purchase: { currency: "USD", rate: 16_500 } },
+          ],
+        },
+      },
+    };
+    const tx = createFakeClient(seed);
+    const first = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 40,
+        tx,
+      })) as unknown as FakeJournal
+    );
+    expect(baseDebitOn(first, ACC.ap)).toBe(156_000_000);
+    expect(baseDebitOn(first, FX_ACC)).toBe(4_000_000);
+
+    // The user re-allocates: the whole 10.000 now settles the 15.000 purchase.
+    // The stored rows are what the engine reads, so mutate them exactly as the
+    // route's deleteMany + createMany would leave them, then repost.
+    (seed.supplierTransactions[40] as { allocationsMade: unknown[] }).allocationsMade = [
+      { amount: 10_000, purchase: { currency: "USD", rate: 15_000 } },
+    ];
+    const reposted = expectBalancedIdr(
+      (await repostForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 40,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    // Non-stale: hutang now relieved at 15.000 for the full 10.000 = 150.000.000,
+    // FX loss 10.000.000 — NOT the 156 / 4 the first journal carried.
+    expect(baseDebitOn(reposted, ACC.ap)).toBe(150_000_000);
+    expect(baseCreditOn(reposted, ACC.cashDefault)).toBe(160_000_000);
+    expect(baseDebitOn(reposted, FX_ACC)).toBe(10_000_000);
+
+    // Original reversed, not mutated: original + reversal + fresh, one live.
+    expect(tx._journals).toHaveLength(3);
+    expect(first.isReversed).toBe(true);
+    const live = liveJournals(tx);
+    expect(live).toHaveLength(1);
+    expect(live[0].id).toBe(reposted.id);
+    expect(baseDebitOn(live[0], ACC.ap)).toBe(150_000_000);
+  });
+
+  it("leaves an IDR payment's journal identical whatever the allocation says", async () => {
+    // No rate, no selisih kurs: the allocation is reporting data, so two different
+    // allocation sets of the same IDR payment post the SAME two-line journal.
+    // This is why the route may — and does — skip the repost entirely for IDR.
+    const make = (allocationsMade: unknown[]) =>
+      createFakeClient({
+        mappings: FX_MAPPINGS,
+        supplierTransactions: {
+          41: {
+            id: 41,
+            date: DATE,
+            type: "payment",
+            amount: 1_000_000,
+            taxAmount: 0,
+            currency: "IDR",
+            rate: null,
+            supplier: { name: "CV Sumber" },
+            allocationsMade,
+          },
+        },
+      });
+
+    const a = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 41,
+        tx: make([
+          { amount: 600_000, purchase: { currency: "IDR", rate: null } },
+          { amount: 400_000, purchase: { currency: "IDR", rate: null } },
+        ]),
+      })) as unknown as FakeJournal
+    );
+    const b = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 41,
+        tx: make([{ amount: 1_000_000, purchase: { currency: "IDR", rate: null } }]),
+      })) as unknown as FakeJournal
+    );
+
+    for (const j of [a, b]) {
+      expect(j.lines).toHaveLength(2); // D: Hutang / K: Kas — nothing else
+      expect(j.lines.some((l) => l.accountId === FX_ACC)).toBe(false);
+      expect(baseDebitOn(j, ACC.ap)).toBe(1_000_000);
+      expect(baseCreditOn(j, ACC.cashDefault)).toBe(1_000_000);
+    }
+  });
+
+  it("refuses loudly when a re-allocation needs a settlement rate nobody recorded", async () => {
+    // The USD payment is moved onto a CNY purchase. Relieving CNY hutang needs
+    // that day's CNY settlement rate; none is recorded, so the repost throws.
+    // Inside the route's $transaction the whole edit — the allocation write too —
+    // rolls back, so no stale or silent journal is ever left behind.
+    const seed = {
+      mappings: FX_MAPPINGS,
+      supplierTransactions: {
+        42: {
+          id: 42,
+          date: DATE,
+          type: "payment",
+          amount: 10_000,
+          taxAmount: 0,
+          currency: "USD",
+          rate: 16_000,
+          supplier: { name: "Jiangsu Trading" },
+          allocationsMade: [{ amount: 6_000, purchase: { currency: "USD", rate: 15_000 } }],
+        },
+      },
+    };
+    const tx = createFakeClient(seed);
+    await postForSource({ sourceType: "supplier_transaction", sourceId: 42, tx });
+
+    (seed.supplierTransactions[42] as { allocationsMade: unknown[] }).allocationsMade = [
+      { amount: 6_000, purchase: { currency: "CNY", rate: 2_200 } },
+    ];
+    await expect(
+      repostForSource({ sourceType: "supplier_transaction", sourceId: 42, tx })
+    ).rejects.toThrow(MissingSettlementRateError);
+  });
+});

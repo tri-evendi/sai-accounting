@@ -25,12 +25,15 @@
 -- single `compensated_invoice_id` column cannot hold the real shape, and faking
 -- it by splitting the advance row would invent cash receipts that never landed.
 --
--- BUT NOTE THE DIFFERENCE FROM 0009. A supplier allocation is pure reporting
--- data and posts nothing, because the payment and the purchase are each already
--- journalled. A compensation is NOT: moving value out of Uang Muka and against
--- Piutang/Hutang appears in neither the advance's journal nor the invoice's.
--- Every `advance_applications` row is therefore a posting source in its own
--- right and carries its own journal.
+-- BUT NOTE THE DIFFERENCE FROM 0009. A supplier allocation carries no journal of
+-- its OWN — the payment and the purchase are each already journalled. (It is not
+-- inert, though: for a foreign payment it shapes that payment's journal, since
+-- #23 relieves each hutang slice at the settled purchase's document rate — see
+-- #42's amendment to 0009. It is reporting-only for pure-IDR payments.) A
+-- compensation is different in kind: moving value out of Uang Muka and against
+-- Piutang/Hutang appears in neither the advance's journal nor the invoice's, so
+-- every `advance_applications` row is a posting source in its own right and
+-- carries its own journal.
 --
 -- ── FX COLUMNS: NULLABLE, NO DEFAULT 1, NO BACKFILL ─────────────────────────
 -- Following 0004/0005/0007/0008 exactly. A foreign advance with no rate has no

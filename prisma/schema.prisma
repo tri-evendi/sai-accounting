@@ -37,7 +37,16 @@ model Contract {
   /// A contract with no due date is aged from `date` and never flagged overdue.
   dueDate     DateTime? @map("due_date")
   buyer       String   @db.VarChar(100)
+  // ─── issue #22 — Master Consignee ──────────────────────
+  /// Legacy free-text consignee. Kept as a FALLBACK: when a contract resolves to
+  /// a `Consignee` master row it also carries `consigneeId`, but rows whose text
+  /// never matched a master keep this string and a NULL `consigneeId`, so no
+  /// legacy consignee information is ever lost. Shown only when the relation is
+  /// absent (the master name wins when present).
   consignee   String?  @db.VarChar(100)
+  /// Nullable FK to the Consignee master (issue #22). NULL on legacy rows whose
+  /// free text did not resolve — those fall back to the `consignee` string above.
+  consigneeId Int?     @map("consignee_id")
   packaging   String?  @db.VarChar(100)
   shipment    String?  @db.VarChar(200)
   top1        String?  @db.VarChar(200)
@@ -58,9 +67,13 @@ model Contract {
   payments  ContractPayment[]
   documents Document[]
   advances  AdvancePayment[]
+  // issue #22 — master consignee relation (RESTRICT: a consignee in use is
+  // deactivated, never hard-deleted; see Consignee).
+  consigneeRef Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
 
   @@index([dueDate])
   @@index([date])
+  @@index([consigneeId])
   @@map("contracts")
 }
 
@@ -330,6 +343,35 @@ model Customer {
   advances AdvancePayment[]
 
   @@map("customers")
+}
+
+// ─── issue #22 — Master Consignee (penerima barang ekspor) ─
+//
+// Modelled from legacy `tb_consignee` (company_name / address / phone / email /
+// pic). The export consignee used to live only as free text on `contracts`;
+// this promotes it to reusable master data so it can also feed Surat Jalan
+// (issue #14). Master data is DEACTIVATED (`is_active = false`), never
+// hard-deleted, once referenced by a contract — the FK from Contract is RESTRICT.
+model Consignee {
+  id      Int     @id @default(autoincrement())
+  name    String  @db.VarChar(100)
+  address String? @db.Text
+  /// Negara tujuan/penerima (ekspor). Free text — not an ISO code.
+  country String? @db.VarChar(60)
+  /// Kontak / PIC (nama, telepon, atau email) — free text, mirrors legacy `pic`.
+  contact String? @db.VarChar(100)
+  notes   String? @db.Text
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contracts Contract[]
+
+  @@index([isActive])
+  @@index([name])
+  @@map("consignees")
 }
 
 // ─── Uang Muka / Advance payments (issue #26) ────────────

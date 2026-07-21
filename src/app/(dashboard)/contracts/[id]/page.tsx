@@ -20,10 +20,13 @@ export default async function ContractDetailPage({
 
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true, payments: true, documents: true },
+    include: { items: true, payments: true, documents: true, consigneeRef: true },
   });
 
   if (!contract) notFound();
+
+  // Master name wins when linked (issue #22); legacy free text is the fallback.
+  const consigneeName = contract.consigneeRef?.name ?? contract.consignee ?? null;
 
   const totalValue = contract.items.reduce((sum, item) => {
     return sum + Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
@@ -67,7 +70,7 @@ export default async function ContractDetailPage({
               contractNo: contract.contractNo,
               date: contract.date.toISOString(),
               buyer: contract.buyer,
-              consignee: contract.consignee,
+              consignee: consigneeName,
               packaging: contract.packaging,
               shipment: contract.shipment,
               top1: contract.top1,
@@ -110,7 +113,18 @@ export default async function ContractDetailPage({
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Consignee</dt>
-              <dd className="text-sm text-gray-900">{contract.consignee || "-"}</dd>
+              <dd className="text-sm text-gray-900">
+                {contract.consigneeRef ? (
+                  <Link
+                    href={`/consignees/${contract.consigneeRef.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {contract.consigneeRef.name}
+                  </Link>
+                ) : (
+                  consigneeName || "-"
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Status</dt>

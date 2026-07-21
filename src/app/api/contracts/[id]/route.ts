@@ -16,7 +16,7 @@ export async function GET(
   const { id } = await params;
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true, payments: true, documents: true },
+    include: { items: true, payments: true, documents: true, consigneeRef: true },
   });
 
   if (!contract) {

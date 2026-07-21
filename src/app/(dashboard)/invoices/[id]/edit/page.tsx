@@ -33,6 +33,10 @@ export default function EditInvoicePage() {
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
+  // Kontrak sumber (issue #15). Not editable here, but it MUST be carried back to
+  // the API: the PUT body is authoritative, so omitting it would silently detach a
+  // pulled faktur from its contract and corrupt that contract's outstanding.
+  const [contractId, setContractId] = useState<number | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [fx, setFx] = useState<InvoiceFxValues>({
     customerId: "",
@@ -59,6 +63,7 @@ export default function EditInvoicePage() {
         // Blank stays blank: a null due date is "unknown", not "today".
         setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
         setStatus(data.status);
+        setContractId(data.contractId ?? null);
         // A legacy taxed row (taxable false but tax_amount > 0) is shown as taxed,
         // with the rate inferred from amount ÷ DPP so the user sees a sensible
         // percentage rather than a blank. A stored tax_rate always wins.
@@ -121,7 +126,15 @@ export default function EditInvoicePage() {
     setError("");
     setLoading(true);
 
-    const body = { invoiceNo, date, dueDate, status, ...invoiceFxPayload(fx), items };
+    const body = {
+      invoiceNo,
+      date,
+      dueDate,
+      status,
+      contractId,
+      ...invoiceFxPayload(fx),
+      items,
+    };
 
     const res = await fetch(`/api/invoices/${params.id}`, {
       method: "PUT",

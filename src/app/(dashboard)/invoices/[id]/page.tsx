@@ -26,6 +26,8 @@ export default async function InvoiceDetailPage({
       items: true,
       payments: true,
       customer: true,
+      /// issue #15 — kontrak sumber, untuk menautkan kembali ke rantai dokumen.
+      contract: { select: { id: true, contractNo: true } },
       // Uang muka already compensated into this invoice (issue #26).
       advanceApplications: { include: { advance: true }, orderBy: { date: "asc" } },
     },
@@ -147,6 +149,22 @@ export default async function InvoiceDetailPage({
               <dd className="text-sm text-gray-900">
                 {invoice.customer?.name ?? (
                   <span className="text-gray-500">Belum ditautkan</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              {/* Dokumen berantai (issue #15) — kontrak yang faktur ini tarik. */}
+              <dt className="text-sm font-medium text-gray-500">Kontrak Sumber</dt>
+              <dd className="text-sm text-gray-900">
+                {invoice.contract ? (
+                  <Link
+                    href={`/contracts/${invoice.contract.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {invoice.contract.contractNo}
+                  </Link>
+                ) : (
+                  <span className="text-gray-500">Faktur lepas (tanpa kontrak)</span>
                 )}
               </dd>
             </div>

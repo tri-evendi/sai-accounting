@@ -10,6 +10,7 @@ import {
   CurrencyRateFields,
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
+import { ConsigneeSelect } from "@/components/shared/consignee-select";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
 import { DueDateField } from "@/components/shared/due-date-field";
@@ -28,6 +29,8 @@ interface ContractData {
   dueDate: string | null;
   buyer: string;
   consignee: string | null;
+  consigneeId: number | null;
+  consigneeRef: { id: number; name: string; country: string | null; contact: string | null } | null;
   packaging: string | null;
   shipment: string | null;
   top1: string | null;
@@ -52,6 +55,8 @@ export default function EditContractPage() {
   // must be filled before the repost can value the journal.
   const [currency, setCurrency] = useState("USD");
   const [rate, setRate] = useState("");
+  // Master consignee link (issue #22); prefilled from the contract, free text kept.
+  const [consigneeId, setConsigneeId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`/api/contracts/${params.id}`)
@@ -63,6 +68,7 @@ export default function EditContractPage() {
         setContract(data);
         setCurrency(data.currency);
         setRate(data.rate == null ? "" : String(data.rate));
+        setConsigneeId(data.consigneeId ?? null);
         setItems(
           data.items.map((item: ContractItem & { id?: number }) => ({
             itemName: item.itemName,
@@ -105,6 +111,7 @@ export default function EditContractPage() {
       dueDate: formData.get("dueDate"),
       buyer: formData.get("buyer"),
       consignee: formData.get("consignee"),
+      consigneeId,
       packaging: formData.get("packaging"),
       shipment: formData.get("shipment"),
       top1: formData.get("top1"),
@@ -164,7 +171,12 @@ export default function EditContractPage() {
               <Input id="date" name="date" type="date" label="Date" defaultValue={dateStr} required />
               <DueDateField defaultValue={dueDateStr} />
               <Input id="buyer" name="buyer" label="Buyer" defaultValue={contract.buyer} required />
-              <Input id="consignee" name="consignee" label="Consignee" defaultValue={contract.consignee || ""} />
+              <ConsigneeSelect
+                consigneeId={consigneeId}
+                onConsigneeIdChange={setConsigneeId}
+                defaultText={contract.consignee || ""}
+                current={contract.consigneeRef}
+              />
               <Input id="packaging" name="packaging" label="Packaging" defaultValue={contract.packaging || ""} />
               <Input id="shipment" name="shipment" label="Shipment" defaultValue={contract.shipment || ""} />
               <Input id="top1" name="top1" label="Terms of Payment 1" defaultValue={contract.top1 || ""} />

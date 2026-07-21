@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
+import { normalizeConsigneeName } from "@/lib/consignee";
 
 export const cashTransactionSchema = z
   .object({
@@ -196,7 +197,28 @@ export const customerSchema = z.object({
   taxExempt: z.boolean().default(false),
 });
 
+/**
+ * Consignee master (issue #22) — export receiver promoted from free text.
+ * `name` is normalised (trim + collapse whitespace) so the same company always
+ * stores identically, the same rule the 0016 backfill deduped legacy text with.
+ */
+export const consigneeSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Consignee name is required")
+    .max(100)
+    .transform(normalizeConsigneeName),
+  address: z.string().max(500).trim().optional(),
+  country: z.string().max(60).trim().optional(),
+  contact: z.string().max(100).trim().optional(),
+  notes: z.string().max(1000).trim().optional(),
+  /** Master data is deactivated, not deleted, once referenced. Defaults active. */
+  isActive: z.boolean().default(true),
+});
+
 export type CashTransactionInput = z.infer<typeof cashTransactionSchema>;
 export type SupplierTransactionInput = z.infer<typeof supplierTransactionSchema>;
 export type SupplierInput = z.infer<typeof supplierSchema>;
 export type CustomerInput = z.infer<typeof customerSchema>;
+export type ConsigneeInput = z.infer<typeof consigneeSchema>;

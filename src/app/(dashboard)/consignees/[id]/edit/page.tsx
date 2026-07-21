@@ -1,0 +1,131 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoader } from "@/components/ui/loading";
+
+export default function EditConsigneePage() {
+  const router = useRouter();
+  const params = useParams();
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    country: "",
+    contact: "",
+    address: "",
+    notes: "",
+    isActive: true,
+  });
+
+  useEffect(() => {
+    fetch(`/api/consignees/${params.id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load consignee");
+        return res.json();
+      })
+      .then((data) => {
+        setForm({
+          name: data.name || "",
+          country: data.country || "",
+          contact: data.contact || "",
+          address: data.address || "",
+          notes: data.notes || "",
+          isActive: Boolean(data.isActive),
+        });
+        setFetching(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setFetching(false);
+      });
+  }, [params.id]);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const res = await fetch(`/api/consignees/${params.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Failed to update consignee");
+      setLoading(false);
+    } else {
+      router.push(`/consignees/${params.id}`);
+      router.refresh();
+    }
+  }
+
+  if (fetching) return <PageLoader message="Loading consignee..." />;
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Consignee</h1>
+
+      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+      <form onSubmit={handleSubmit}>
+        <Card className="mb-6">
+          <CardHeader><CardTitle>Consignee Details</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <Input id="name" label="Consignee Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input id="country" label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              <Input id="contact" label="Contact / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+              <div className="space-y-1">
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+                <textarea
+                  id="address"
+                  rows={3}
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  id="notes"
+                  rows={2}
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
+                <input
+                  id="isActive"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">
+                  Aktif
+                  <span className="block text-xs text-gray-500">
+                    Consignee nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-3">
+          <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+        </div>
+      </form>
+    </div>
+  );
+}

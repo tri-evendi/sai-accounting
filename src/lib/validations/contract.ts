@@ -21,7 +21,24 @@ export const contractSchema = z
      */
     dueDate: dueDateField,
     buyer: z.string().min(1, "Buyer is required").max(100).trim(),
+    /**
+     * Legacy free-text consignee, kept as a FALLBACK for un-migrated rows
+     * (issue #22). When `consigneeId` points at a master row the text is
+     * redundant but never dropped, so nothing is lost for rows that never
+     * resolved to a master.
+     */
     consignee: z.string().max(100).trim().optional(),
+    /**
+     * FK to the Consignee master (issue #22). Nullable: a contract may still
+     * carry only the legacy free text. "" / null / undefined coerce to null so
+     * the form can clear the selection.
+     */
+    consigneeId: z
+      .preprocess(
+        (v) => (v === "" || v === null || v === undefined ? null : v),
+        z.coerce.number().int().positive().nullable()
+      )
+      .default(null),
     packaging: z.string().max(100).trim().optional(),
     shipment: z.string().max(200).trim().optional(),
     top1: z.string().max(200).trim().optional(),

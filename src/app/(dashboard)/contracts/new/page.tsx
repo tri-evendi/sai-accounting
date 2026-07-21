@@ -12,6 +12,7 @@ import {
   baseUnknown,
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
+import { ConsigneeSelect } from "@/components/shared/consignee-select";
 import { formatCurrency } from "@/lib/utils";
 import { Trash2, Plus } from "lucide-react";
 
@@ -32,6 +33,8 @@ export default function NewContractPage() {
   // Stored on the contract since issue #36, so an edit no longer re-enters it.
   const [currency, setCurrency] = useState("USD");
   const [rate, setRate] = useState("");
+  // Master consignee link (issue #22); the free text stays a fallback.
+  const [consigneeId, setConsigneeId] = useState<number | null>(null);
 
   const subtotal = items.reduce((sum, i) => sum + i.bags * i.kgPerBag * i.pricePerKg, 0);
 
@@ -64,6 +67,7 @@ export default function NewContractPage() {
       dueDate: formData.get("dueDate"),
       buyer: formData.get("buyer"),
       consignee: formData.get("consignee"),
+      consigneeId,
       packaging: formData.get("packaging"),
       shipment: formData.get("shipment"),
       top1: formData.get("top1"),
@@ -112,7 +116,7 @@ export default function NewContractPage() {
               <Input id="date" name="date" type="date" label="Date" required />
               <DueDateField />
               <Input id="buyer" name="buyer" label="Buyer" required />
-              <Input id="consignee" name="consignee" label="Consignee" />
+              <ConsigneeSelect consigneeId={consigneeId} onConsigneeIdChange={setConsigneeId} />
               <Input id="packaging" name="packaging" label="Packaging" />
               <Input id="shipment" name="shipment" label="Shipment" />
               <Input id="top1" name="top1" label="Terms of Payment 1" />

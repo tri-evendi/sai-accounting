@@ -31,6 +31,7 @@ export default async function ContractsPage({
       { contractNo: { contains: params.search } },
       { buyer: { contains: params.search } },
       { consignee: { contains: params.search } },
+      { consigneeRef: { name: { contains: params.search } } },
     ];
   }
 
@@ -38,7 +39,7 @@ export default async function ContractsPage({
     prisma.contract.findMany({
       where,
       orderBy: { date: "desc" },
-      include: { items: true, payments: true },
+      include: { items: true, payments: true, consigneeRef: true },
       skip: (page - 1) * perPage,
       take: perPage,
     }),
@@ -112,7 +113,7 @@ export default async function ContractsPage({
                     </td>
                     <td className="px-6 py-3 text-gray-500">{formatDateShort(contract.date)}</td>
                     <td className="px-6 py-3 text-gray-700">{contract.buyer}</td>
-                    <td className="px-6 py-3 text-gray-500">{contract.consignee || "-"}</td>
+                    <td className="px-6 py-3 text-gray-500">{contract.consigneeRef?.name || contract.consignee || "-"}</td>
                     <td className="px-6 py-3 text-gray-500">{contract.items.length}</td>
                     <td className="px-6 py-3 text-gray-500">{contract.currency}</td>
                     <td className="px-6 py-3"><StatusBadge status={contract.status} /></td>

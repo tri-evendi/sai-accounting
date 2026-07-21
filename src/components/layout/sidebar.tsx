@@ -22,6 +22,7 @@ import {
   Coins,
   Lock,
   Scale,
+  Ship,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const allNavItems = [
   { href: "/periods", label: "Tutup Periode", icon: Lock, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["bos", "core"] },
+  { href: "/consignees", label: "Consignees", icon: Ship, roles: ["bos", "core"] },
   { href: "/documents", label: "Documents", icon: Upload, roles: ["bos", "core"] },
   { href: "/users", label: "Users", icon: UserCog, roles: ["bos"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["bos", "core", "ptg"] },

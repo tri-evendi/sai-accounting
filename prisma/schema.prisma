@@ -958,3 +958,42 @@ model BankStatementLine {
   @@index([matched])
   @@map("bank_statement_lines")
 }
+
+// ─── issue #20 — Company setup wizard + Saldo Awal ───────────────────────────
+//
+// Single-company identity + settings, plus the run-once flag for the setup
+// wizard. There is only ever ONE row (the app treats id = 1 as the singleton;
+// `@/lib/opening-balance` upserts it). Not master data — a settings record — so
+// it has no `is_active`. Company name/address used to be hardcoded in
+// `src/lib/constants.ts`; the wizard captures them here.
+//
+// The opening balances themselves are NOT stored as columns — they become ONE
+// balanced opening journal (`journals.source_type = "opening_balance"`), the
+// accounting truth. `openingJournalId` is a soft convenience pointer to it (kept
+// as a plain Int, not an FK, to avoid a back-relation on the shared Journal
+// model); the authoritative link is the journal's source_type/source_id.
+model CompanySetting {
+  id      Int     @id @default(autoincrement())
+  /// Nama perusahaan (identitas). Was constants.COMPANY_NAME.
+  name    String  @db.VarChar(150)
+  /// Alamat perusahaan. Was constants.COMPANY_ADDRESS.
+  address String? @db.Text
+  /// Mata uang pelaporan/base. Always "IDR" in practice — the ledger's base — but
+  /// stored so it is explicit and confirmable in the wizard. ISO code.
+  baseCurrency String @default("IDR") @map("base_currency") @db.VarChar(5)
+  /// Awal tahun buku (fiscal-year start). The opening journal is dated here, so
+  /// it precedes every operational transaction and sits in the first open period.
+  fiscalYearStart DateTime @map("fiscal_year_start")
+  /// Run-once flag: true once the wizard has completed and the opening journal is
+  /// posted. Re-entry then shows a read-only summary and refuses a second run.
+  isSetup Boolean @default(false) @map("is_setup")
+  /// Soft pointer to the posted opening journal (see note above). Nullable until
+  /// the wizard runs.
+  openingJournalId Int? @map("opening_journal_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isSetup])
+  @@map("company_settings")
+}

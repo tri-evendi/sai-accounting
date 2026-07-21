@@ -79,7 +79,17 @@ export type PostingSourceType =
   /** Retur penjualan — part of a sales invoice sent back (issue #27). */
   | "sales_return"
   /** Retur pembelian — part of a purchase returned to a supplier (issue #27). */
-  | "purchase_return";
+  | "purchase_return"
+  /**
+   * Saldo Awal — the ONE opening journal that seeds the ledger's starting
+   * position (issue #20). Unlike every other source above it has no queryable
+   * source ROW: its inputs are the wizard's opening balances, not a persisted
+   * document. It is therefore posted directly by `@/lib/opening-balance`
+   * (`applyOpeningBalances`) rather than through `postForSource`, and this
+   * literal exists so its journals can be tagged `source_type = "opening_balance"`
+   * and found for the run-once guard. `buildEntry` refuses it deliberately.
+   */
+  | "opening_balance";
 
 export interface PostingContext {
   sourceType: PostingSourceType;
@@ -1035,6 +1045,15 @@ async function buildEntry(
       return buildSalesReturnEntry(client, ctx);
     case "purchase_return":
       return buildPurchaseReturnEntry(client, ctx);
+    case "opening_balance":
+      // Saldo Awal has no source ROW to fetch — its lines come from the wizard's
+      // opening balances, not a document. It is posted directly by
+      // `applyOpeningBalances` in @/lib/opening-balance. Routing it through
+      // postForSource would have nothing to build from, so refuse loudly.
+      throw new PostingRuleError(
+        "Jurnal pembuka (saldo awal) diposting lewat applyOpeningBalances, " +
+          "bukan postForSource — sumbernya bukan sebuah dokumen."
+      );
     default: {
       const exhaustive: never = ctx.sourceType;
       throw new PostingRuleError(`Jenis sumber tidak dikenal: ${String(exhaustive)}`);

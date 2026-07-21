@@ -29,7 +29,9 @@ export type AuditAction =
   | "reconciliation.reopen"
   /** Retur penjualan & pembelian (issue #27). Each posts its own journal. */
   | "sales_return.create"
-  | "purchase_return.create";
+  | "purchase_return.create"
+  /** Setup perusahaan + saldo awal (issue #20). Posts the opening journal, once. */
+  | "setup.create";
 
 export type AuditEntity =
   | "cash_account"
@@ -43,7 +45,8 @@ export type AuditEntity =
   | "bank_statement"
   | "bank_statement_line"
   | "sales_return"
-  | "purchase_return";
+  | "purchase_return"
+  | "company_settings";
 
 export type AuditLogEntry = {
   id: string;

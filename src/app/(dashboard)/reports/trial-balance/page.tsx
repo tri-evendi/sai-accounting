@@ -4,15 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AsOfFilter } from "../report-filters";
-import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import { resolveAsOf } from "@/lib/report-catalog";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export const dynamic = "force-dynamic";
-
-function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default async function TrialBalancePage({
   searchParams,
@@ -21,9 +18,17 @@ export default async function TrialBalancePage({
 }) {
   await requirePageSession(["bos"]);
   const sp = await searchParams;
-  const asOfStr = sp.asOf ?? todayISO();
-  const asOf = new Date(`${asOfStr}T23:59:59.999`);
+  const { asOf, asOfISO } = resolveAsOf(sp.asOf);
   const tb = await getTrialBalance(asOf);
+
+  const payload: StatementPayload = {
+    kind: "trial-balance",
+    period: `Per ${formatDate(asOf)}`,
+    rows: tb.rows,
+    totalDebit: tb.totalDebit,
+    totalCredit: tb.totalCredit,
+    balanced: tb.balanced,
+  };
 
   return (
     <div>
@@ -33,19 +38,13 @@ export default async function TrialBalancePage({
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca Saldo</h1>
           <p className="text-sm text-gray-500">Per {formatDate(asOf)} · nilai dalam IDR</p>
         </div>
-        <StatementPDFButton
-          payload={{
-            kind: "trial-balance",
-            period: `Per ${formatDate(asOf)}`,
-            rows: tb.rows,
-            totalDebit: tb.totalDebit,
-            totalCredit: tb.totalCredit,
-            balanced: tb.balanced,
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <StatementPDFButton payload={payload} />
+          <StatementExcelButton payload={payload} />
+        </div>
       </div>
 
-      <AsOfFilter basePath="/reports/trial-balance" asOf={asOfStr} />
+      <AsOfFilter basePath="/reports/trial-balance" asOf={asOfISO} />
 
       <Card>
         <div className="overflow-x-auto">

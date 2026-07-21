@@ -4,16 +4,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { PeriodFilter } from "../report-filters";
-import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import { PlainSummary } from "@/components/reports/plain-summary";
+import { resolvePeriod } from "@/lib/report-catalog";
+import { cashFlowSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ArrowDownLeft, ArrowUpRight, AlertTriangle, Minus } from "lucide-react";
 import type { CashFlowGroup } from "@/lib/reports";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export const dynamic = "force-dynamic";
-
-function iso(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * Money with an explicit direction. Colour alone never carries the meaning — an
@@ -112,13 +112,35 @@ export default async function CashFlowPage({
 }) {
   await requirePageSession(["bos"]);
   const sp = await searchParams;
-  const now = new Date();
-  const fromStr = sp.from ?? iso(new Date(now.getFullYear(), 0, 1));
-  const toStr = sp.to ?? iso(now);
-  const from = new Date(`${fromStr}T00:00:00`);
-  const to = new Date(`${toStr}T23:59:59.999`);
+  const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const cf = await getCashFlow(from, to);
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+
+  const payload: StatementPayload = {
+    kind: "cash-flow",
+    period: periodLabel,
+    groups: cf.groups.map((g) => ({
+      label: g.label,
+      lines: g.lines.map((l) => ({
+        code: l.code,
+        name: l.name,
+        inflow: l.inflow,
+        outflow: l.outflow,
+        net: l.net,
+      })),
+      inflow: g.inflow,
+      outflow: g.outflow,
+      net: g.net,
+    })),
+    totalInflow: cf.totalInflow,
+    totalOutflow: cf.totalOutflow,
+    netChange: cf.netChange,
+    openingCash: cf.openingCash,
+    closingCash: cf.closingCash,
+    reconciled: cf.reconciled,
+    suspectUnrated: cf.suspectUnrated,
+  };
+  const summary = cashFlowSummary(cf, periodLabel);
 
   return (
     <div>
@@ -131,35 +153,15 @@ export default async function CashFlowPage({
             {periodLabel} · nilai dalam IDR
           </p>
         </div>
-        <StatementPDFButton
-          payload={{
-            kind: "cash-flow",
-            period: periodLabel,
-            groups: cf.groups.map((g) => ({
-              label: g.label,
-              lines: g.lines.map((l) => ({
-                code: l.code,
-                name: l.name,
-                inflow: l.inflow,
-                outflow: l.outflow,
-                net: l.net,
-              })),
-              inflow: g.inflow,
-              outflow: g.outflow,
-              net: g.net,
-            })),
-            totalInflow: cf.totalInflow,
-            totalOutflow: cf.totalOutflow,
-            netChange: cf.netChange,
-            openingCash: cf.openingCash,
-            closingCash: cf.closingCash,
-            reconciled: cf.reconciled,
-            suspectUnrated: cf.suspectUnrated,
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <StatementPDFButton payload={payload} />
+          <StatementExcelButton payload={payload} />
+        </div>
       </div>
 
-      <PeriodFilter basePath="/reports/cash-flow" from={fromStr} to={toStr} />
+      <PeriodFilter basePath="/reports/cash-flow" from={fromISO} to={toISO} />
+
+      <PlainSummary summary={summary} />
 
       {cf.suspectUnrated > 0 && (
         <Card className="mb-4 border-amber-200 bg-amber-50">

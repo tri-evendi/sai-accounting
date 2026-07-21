@@ -16,6 +16,8 @@ import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { LearnMore } from "@/components/ui/learn-more";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -58,13 +60,21 @@ export default async function PayablesPage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Utang" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Utang (Belum Dibayar)</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Pembelian dari supplier yang masih punya sisa per {formatDateShort(asOf)}.
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        <TermTooltip term="utang">Tagihan yang Harus Dibayar</TermTooltip>
+      </h1>
+      <p className="text-sm text-gray-500 mb-2">
+        Pembelian dari pemasok yang masih punya sisa per {formatDateShort(asOf)}.
         {overdueCount > 0 && !overdueOnly && (
           <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
         )}
       </p>
+      {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
+      <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2">
+        <LearnMore term="utang" />
+        <LearnMore term="uang_muka" />
+        <LearnMore term="jatuh_tempo" />
+      </div>
 
       <LedgerFilter basePath="/payables" asOf={asOfStr} overdueOnly={overdueOnly} />
 

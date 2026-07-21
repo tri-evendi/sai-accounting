@@ -88,7 +88,7 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-8" data-tour="pusat-laporan">
         <h1 className="text-2xl font-bold text-gray-900">Pusat Laporan</h1>
         <p className="mt-1 text-sm text-gray-500">
           Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur
@@ -97,8 +97,11 @@ export default async function ReportsPage() {
       </div>
 
       <div className="space-y-10">
-        {groups.map((group) => (
-          <section key={group.category}>
+        {groups.map((group, groupIndex) => (
+          <section
+            key={group.category}
+            data-tour={groupIndex === 0 ? "laporan-kategori-pertama" : undefined}
+          >
             <div className="mb-3">
               <h2 className="text-lg font-semibold text-gray-900">{group.label}</h2>
               <p className="text-sm text-gray-500">{group.description}</p>

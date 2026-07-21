@@ -356,13 +356,13 @@ export function NewInvoiceForm({
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card className="mb-6" data-tour="faktur-identitas">
           <CardHeader>
-            <CardTitle>Detail Faktur</CardTitle>
+            <CardTitle>Identitas Tagihan</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="invoiceNo" name="invoiceNo" label="Nomor Faktur" required />
+              <Input id="invoiceNo" name="invoiceNo" label="Nomor Tagihan" required />
               <Input id="date" name="date" type="date" label="Tanggal" required />
               <DueDateField />
               <Select
@@ -370,9 +370,9 @@ export function NewInvoiceForm({
                 name="status"
                 label="Status"
                 options={[
-                  { value: "pending", label: "Pending" },
-                  { value: "signed", label: "Signed" },
-                  { value: "canceled", label: "Canceled" },
+                  { value: "pending", label: "Menunggu" },
+                  { value: "signed", label: "Sah" },
+                  { value: "canceled", label: "Dibatalkan" },
                 ]}
               />
               <InvoiceFxFields
@@ -384,10 +384,10 @@ export function NewInvoiceForm({
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card className="mb-6" data-tour="faktur-barang">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Barang</CardTitle>
+              <CardTitle>Barang yang Dijual</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
                 <Plus className="mr-1 h-4 w-4" aria-hidden /> Tambah Barang
               </Button>
@@ -480,9 +480,9 @@ export function NewInvoiceForm({
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3" data-tour="faktur-simpan">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan…" : "Buat Faktur"}
+            {loading ? "Menyimpan…" : "Simpan Tagihan"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             Batal

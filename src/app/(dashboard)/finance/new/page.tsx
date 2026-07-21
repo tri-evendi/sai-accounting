@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownLeft, ArrowUpRight, Info, BookText } from "lucide-react";
+import { PageLoader } from "@/components/ui/loading";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
+import { cn } from "@/lib/utils";
 import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 
@@ -20,8 +24,33 @@ interface AccountOption {
 
 const BASE_CURRENCY = "IDR";
 
-export default function NewTransactionPage() {
+/**
+ * Judul & fokus awal mengikuti aksi cepat yang mengantar ke sini (issue #2):
+ * `?arah=masuk` datang dari "Terima Uang", `?arah=keluar` dari "Bayar".
+ * Pengaruhnya MURNI tampilan — isian, muatan POST, dan mesin jurnal tidak
+ * berubah sedikit pun; kedua kolom tetap bisa diisi seperti biasa.
+ */
+const ARAH_HEADINGS = {
+  masuk: {
+    title: "Terima Uang",
+    description: "Catat uang yang masuk ke kas atau rekening bank.",
+  },
+  keluar: {
+    title: "Bayar",
+    description: "Catat uang yang keluar dari kas atau rekening bank.",
+  },
+  default: {
+    title: "Catat Transaksi Kas & Bank",
+    description: "Catat uang masuk atau uang keluar beserta kategorinya.",
+  },
+} as const;
+
+function NewTransactionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const arahParam = searchParams.get("arah");
+  const arah = arahParam === "masuk" || arahParam === "keluar" ? arahParam : null;
+  const heading = ARAH_HEADINGS[arah ?? "default"];
   const { data: session } = useSession();
   // issue #11 — when Mode Akuntan is OFF we hide debit/kredit terminology; when
   // ON we keep it and add a read-only "Lihat jurnal" preview. Display-only: the
@@ -144,7 +173,13 @@ export default function NewTransactionPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Transaction</h1>
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          <TermTooltip term="kas_bank">{heading.title}</TermTooltip>
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">{heading.description}</p>
+        <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas & bank" />
+      </header>
 
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
@@ -154,32 +189,32 @@ export default function NewTransactionPage() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Transaction Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Rincian Transaksi</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
-                id="type" name="type" label="Account Type"
+                id="type" name="type" label="Jenis Kas"
                 value={type}
                 onChange={(e) => setType(e.target.value as CashType)}
                 options={[
                   { value: "bank", label: "Bank" },
-                  { value: "kas_besar", label: "Kas Besar (Large Cash)" },
-                  { value: "kas_kecil", label: "Kas Kecil (Small Cash)" },
+                  { value: "kas_besar", label: "Kas Besar" },
+                  { value: "kas_kecil", label: "Kas Kecil" },
                 ]}
               />
               <Input
                 id="date"
                 name="date"
                 type="date"
-                label="Date"
+                label="Tanggal"
                 defaultValue={new Date().toISOString().split("T")[0]}
                 required
               />
               <div className="sm:col-span-2">
-                <Input id="description" name="description" label="Description" required />
+                <Input id="description" name="description" label="Keterangan" required />
               </div>
               <Select
-                id="currency" name="currency" label="Currency"
+                id="currency" name="currency" label="Mata Uang"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 options={[
@@ -217,8 +252,12 @@ export default function NewTransactionPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="text-right tabular-nums"
-                  label={accountantOn ? "Debit — Uang Masuk (In)" : "Uang Masuk (In)"}
+                  autoFocus={arah === "masuk"}
+                  className={cn(
+                    "text-right tabular-nums",
+                    arah === "masuk" && "border-green-500 ring-1 ring-green-500"
+                  )}
+                  label={accountantOn ? "Debit — Uang Masuk" : "Uang Masuk"}
                   value={debit}
                   onChange={(e) => setDebit(e.target.value)}
                 />
@@ -234,8 +273,12 @@ export default function NewTransactionPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="text-right tabular-nums"
-                  label={accountantOn ? "Credit — Uang Keluar (Out)" : "Uang Keluar (Out)"}
+                  autoFocus={arah === "keluar"}
+                  className={cn(
+                    "text-right tabular-nums",
+                    arah === "keluar" && "border-red-500 ring-1 ring-red-500"
+                  )}
+                  label={accountantOn ? "Kredit — Uang Keluar" : "Uang Keluar"}
                   value={credit}
                   onChange={(e) => setCredit(e.target.value)}
                 />
@@ -249,7 +292,7 @@ export default function NewTransactionPage() {
                 <Select
                   id="counterAccountId"
                   name="counterAccountId"
-                  label={accountantOn ? "Akun Lawan (Counter Account)" : "Kategori"}
+                  label={accountantOn ? "Akun Lawan (jurnal otomatis)" : "Kategori"}
                   placeholder={accountantOn ? "-- Pilih akun lawan --" : "-- Pilih kategori --"}
                   value={counterAccountId}
                   onChange={(e) => setCounterAccountId(e.target.value)}
@@ -278,7 +321,7 @@ export default function NewTransactionPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <Input id="note" name="note" label="Note (optional)" />
+                <Input id="note" name="note" label="Catatan (opsional)" />
               </div>
             </div>
 
@@ -342,14 +385,31 @@ export default function NewTransactionPage() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving..." : "Create Transaction"}
+          <Button type="submit" className="cursor-pointer" disabled={loading}>
+            {loading ? "Menyimpan..." : "Simpan Transaksi"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => router.push("/finance")}>
-            Cancel
+          <Button
+            type="button"
+            variant="secondary"
+            className="cursor-pointer"
+            onClick={() => router.push("/finance")}
+          >
+            Batal
           </Button>
         </div>
       </form>
     </div>
+  );
+}
+
+/**
+ * `useSearchParams` harus berada di dalam batas <Suspense> (lihat dokumen
+ * Next.js `use-search-params`), jadi formulirnya dibungkus di sini.
+ */
+export default function NewTransactionPage() {
+  return (
+    <Suspense fallback={<PageLoader message="Menyiapkan formulir..." />}>
+      <NewTransactionForm />
+    </Suspense>
   );
 }

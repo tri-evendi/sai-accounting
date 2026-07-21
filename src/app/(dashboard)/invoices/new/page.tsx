@@ -1,6 +1,8 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 import { NewInvoiceForm } from "./invoice-form";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,22 @@ export default async function NewInvoicePage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Faktur", href: "/invoices" }, { label: "Buat" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Buat Faktur</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <Breadcrumb
+        items={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
+      />
+      <h1 className="text-2xl font-bold text-gray-900">
+        <TermTooltip term="faktur">Catat Penjualan</TermTooltip>
+      </h1>
+      <p className="mt-1 text-sm text-gray-500">
         Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
-        jumlah, dan harganya terisi sendiri.
+        jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
+        &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.
       </p>
+      <LearnMore
+        term="faktur"
+        className="mt-1 mb-6"
+        label="Pelajari ini: apa itu tagihan penjualan"
+      />
       <NewInvoiceForm
         contracts={contracts.map((c) => ({
           id: c.id,

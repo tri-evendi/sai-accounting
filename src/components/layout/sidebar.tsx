@@ -28,13 +28,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
+import { effectiveAccountantMode } from "@/lib/accountant-mode";
 
 interface SidebarProps {
   role: string;
+  // ─── issue #11 — raw Mode Akuntan preference (null = follow role default) ───
+  accountantMode?: boolean | null;
   open: boolean;
   onClose: () => void;
 }
 
+// `accountingOnly` items (Jurnal, Buku Besar, COA) are the accounting surfaces
+// hidden when Mode Akuntan is OFF (issue #11). Role still gates them first.
 const allNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["bos", "core", "ptg"] },
   { href: "/contracts", label: "Contracts", icon: FileText, roles: ["bos", "core"] },
@@ -46,9 +51,9 @@ const allNavItems = [
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/reconciliation", label: "Rekonsiliasi Bank", icon: Scale, roles: ["bos", "core"] },
-  { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },
-  { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"] },
-  { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"] },
+  { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"], accountingOnly: true },
+  { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"], accountingOnly: true },
+  { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"], accountingOnly: true },
   { href: "/reports", label: "Laporan", icon: BarChart3, roles: ["bos"] },
   { href: "/periods", label: "Tutup Periode", icon: Lock, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
@@ -59,9 +64,14 @@ const allNavItems = [
   { href: "/settings", label: "Settings", icon: Settings, roles: ["bos", "core", "ptg"] },
 ];
 
-export function Sidebar({ role, open, onClose }: SidebarProps) {
+export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const navItems = allNavItems.filter((item) => item.roles.includes(role));
+  // issue #11 — same pure decision the page guards use: an accountingOnly item
+  // shows only when the role allows it AND effective Mode Akuntan is ON.
+  const accountantOn = effectiveAccountantMode({ role, accountantMode });
+  const navItems = allNavItems.filter(
+    (item) => item.roles.includes(role) && (!item.accountingOnly || accountantOn)
+  );
 
   return (
     <>

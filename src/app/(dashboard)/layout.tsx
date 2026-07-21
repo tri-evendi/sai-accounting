@@ -22,6 +22,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         role={session.user.role}
+        accountantMode={session.user.accountantMode}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

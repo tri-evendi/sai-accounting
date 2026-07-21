@@ -4,6 +4,8 @@ declare module "next-auth" {
   interface User {
     role?: string;
     status?: number;
+    // issue #11 — Mode Akuntan preference (null = follow role default).
+    accountantMode?: boolean | null;
   }
 
   interface Session {
@@ -13,6 +15,8 @@ declare module "next-auth" {
       email: string;
       role: string;
       status: number;
+      // issue #11 — raw preference; effectiveAccountantMode() derives the boolean.
+      accountantMode?: boolean | null;
     };
   }
 }
@@ -22,5 +26,7 @@ declare module "next-auth/jwt" {
     role?: string;
     status?: number;
     userId?: string;
+    // issue #11 — Mode Akuntan preference carried across requests.
+    accountantMode?: boolean | null;
   }
 }

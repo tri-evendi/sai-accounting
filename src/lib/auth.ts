@@ -43,16 +43,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.username,
           role: user.role,
           status: user.status,
+          // issue #11 — carry the stored Mode Akuntan preference (may be null =
+          // follow role default). Effective mode is derived, not stored.
+          accountantMode: user.accountantMode,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as { role: string }).role;
         token.status = (user as { status: number }).status;
         token.userId = user.id;
+        // issue #11 — persist the Mode Akuntan preference into the JWT so both
+        // client (sidebar/navbar) and server (page guards) read it from auth().
+        token.accountantMode = (user as { accountantMode?: boolean | null }).accountantMode ?? null;
+      }
+      // issue #11 — when the navbar toggle calls useSession().update({ accountantMode }),
+      // reflect the new preference into the token without a re-login. This only
+      // updates the DISPLAY preference; role/status are never touched here.
+      if (trigger === "update" && session && typeof session === "object" && "accountantMode" in session) {
+        const next = (session as { accountantMode?: boolean | null }).accountantMode;
+        token.accountantMode = next === true || next === false ? next : null;
       }
       return token;
     },
@@ -61,6 +74,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.userId as string;
         (session.user as { role: string }).role = token.role as string;
         (session.user as { status: number }).status = token.status as number;
+        // issue #11 — expose the raw preference; effectiveAccountantMode() derives
+        // the boolean the UI/guards act on.
+        (session.user as { accountantMode?: boolean | null }).accountantMode =
+          (token.accountantMode as boolean | null | undefined) ?? null;
       }
       return session;
     },

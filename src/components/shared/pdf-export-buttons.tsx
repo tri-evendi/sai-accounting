@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileText, Truck, Package, Wallet } from "lucide-react";
+import { FileDown, FileText, Truck, Package, Wallet, FileSpreadsheet } from "lucide-react";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -189,6 +189,56 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
       <FileDown className="h-4 w-4 mr-1" />
       {loading ? "Menyiapkan..." : "Unduh PDF"}
+    </Button>
+  );
+}
+
+/**
+ * Excel (.xlsx) export for the four financial statements (issue #19). The genuine
+ * new capability alongside the PDF button: it POSTs the *same* `StatementPayload`
+ * to the server, which builds the workbook with ExcelJS and streams it back — so
+ * the numbers are identical to the page and to the PDF, and money lands in real
+ * (summable, exact) number cells rather than pre-formatted strings.
+ */
+export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  async function handleExport() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/reports/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? `Laporan_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Excel berhasil diunduh");
+    } catch (err) {
+      console.error(err);
+      toast("Gagal membuat Excel", "error");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
+      <FileSpreadsheet className="h-4 w-4 mr-1" />
+      {loading ? "Menyiapkan..." : "Unduh Excel"}
     </Button>
   );
 }

@@ -449,8 +449,21 @@ model CashAccount {
   baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   note        String?  @db.Text
 
+  // ── Bank reconciliation markers (issue #24) ──────────────
+  // Set when this book movement is matched to a bank-statement line. Purely a
+  // reconciliation flag — matching posts NO journal and moves no money.
+  reconciled   Boolean   @default(false)
+  reconciledAt DateTime? @map("reconciled_at")
+  /// The reconciliation (bank_statements row) this movement was matched under.
+  statementId  Int?      @map("statement_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
+  statement     BankStatement?     @relation("StatementMovements", fields: [statementId], references: [id], onDelete: SetNull)
+  statementLine BankStatementLine? @relation("LineMatch")
+
+  @@index([statementId])
+  @@index([reconciled])
   @@map("cash_accounts")
 }
 
@@ -650,4 +663,70 @@ model Document {
   contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
   @@map("documents")
+}
+
+// ─── Bank Reconciliation (issue #24) ─────────────────────
+// Rekonsiliasi Bank: cocokkan buku kas/bank internal (`cash_accounts`,
+// type = "bank") dengan rekening koran bank. Matching **tidak** memposting
+// jurnal — hanya menandai bahwa satu baris buku bersesuaian dengan satu baris
+// koran. Impor baris koran = manual atau CSV (SmartLink e-Banking di luar scope).
+
+/// One imported/entered bank statement for one bank account over one period.
+/// The "bank account" is the (`cashType`, `currency`) pair, mirroring how
+/// `cash_accounts` identifies a book — this schema has no bank-account master.
+model BankStatement {
+  id             Int       @id @default(autoincrement())
+  /// Which internal cash book this reconciles. Always `bank` in practice — kas
+  /// fisik has no rekening koran — but stored so (cashType, currency) names it.
+  cashType       String    @default("bank") @map("cash_type") @db.VarChar(20)
+  /// A bank account holds exactly one currency; the balances below are in it.
+  /// Never summed across currencies — foreign statements stay in their own unit.
+  currency       String    @default("IDR") @db.VarChar(5)
+  periodStart    DateTime  @map("period_start")
+  periodEnd      DateTime  @map("period_end")
+  openingBalance Decimal   @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  closingBalance Decimal   @default(0) @map("closing_balance") @db.Decimal(15, 2)
+  /// enum-like: draft = sedang direkonsiliasi; locked = selesai & dikunci.
+  /// A locked statement refuses further match/unmatch until reopened.
+  status         String    @default("draft") @db.VarChar(20)
+  lockedAt       DateTime? @map("locked_at")
+  note           String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lines     BankStatementLine[]
+  movements CashAccount[]       @relation("StatementMovements")
+
+  // One statement per account (cashType+currency) per exact period.
+  @@unique([cashType, currency, periodStart, periodEnd])
+  @@index([status])
+  @@index([periodStart])
+  @@map("bank_statements")
+}
+
+/// One line of a bank statement (one mutasi koran). Manual or CSV imported.
+model BankStatementLine {
+  id            Int      @id @default(autoincrement())
+  statementId   Int      @map("statement_id")
+  date          DateTime
+  description   String   @db.VarChar(255)
+  /// Signed money: positive = masuk ke rekening (menambah saldo bank),
+  /// negative = keluar. Sepadan dengan (debit − credit) di `cash_accounts`.
+  amount        Decimal  @db.Decimal(15, 2)
+  matched       Boolean  @default(false)
+  /// The single book movement (1:1) this line is matched to. SetNull so deleting
+  /// a cash row does not erase koran history — it only unmatches the line.
+  cashAccountId Int?     @unique @map("cash_account_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  cashAccount CashAccount?  @relation("LineMatch", fields: [cashAccountId], references: [id], onDelete: SetNull)
+
+  @@index([statementId])
+  @@index([date])
+  @@index([matched])
+  @@map("bank_statement_lines")
 }

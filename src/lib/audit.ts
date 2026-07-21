@@ -18,7 +18,15 @@ export type AuditAction =
   | "advance.cancel"
   /** Compensating an advance into an invoice/purchase. Posts its own journal. */
   | "advance.apply"
-  | "advance.unapply";
+  | "advance.unapply"
+  /** Bank reconciliation (issue #24) — none of these post a journal. */
+  | "reconciliation.create"
+  | "reconciliation.line.add"
+  | "reconciliation.import"
+  | "reconciliation.match"
+  | "reconciliation.unmatch"
+  | "reconciliation.lock"
+  | "reconciliation.reopen";
 
 export type AuditEntity =
   | "cash_account"
@@ -28,7 +36,9 @@ export type AuditEntity =
   | "user"
   | "period"
   | "advance_payment"
-  | "advance_application";
+  | "advance_application"
+  | "bank_statement"
+  | "bank_statement_line";
 
 export type AuditLogEntry = {
   id: string;

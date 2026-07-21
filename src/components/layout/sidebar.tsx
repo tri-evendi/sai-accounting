@@ -21,6 +21,7 @@ import {
   Wallet,
   Coins,
   Lock,
+  Scale,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ const allNavItems = [
   { href: "/advances", label: "Uang Muka", icon: Coins, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
+  { href: "/reconciliation", label: "Rekonsiliasi Bank", icon: Scale, roles: ["bos", "core"] },
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"] },
   { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"] },
   { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"] },

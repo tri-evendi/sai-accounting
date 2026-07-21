@@ -10,8 +10,18 @@
 -- payment into several rows — and every `supplier_transactions` row auto-posts a
 -- journal (D: Hutang Usaha / K: Kas & Bank), so a display concern would start
 -- fabricating cash movements that never left the bank. An allocation table keeps
--- the ledger exactly as it is: one purchase, one payment, one journal each, with
--- the split recorded beside them as reporting data. Allocation posts nothing.
+-- the ledger exactly as it is: one purchase, one payment, and no journal of its
+-- own for the link between them.
+--
+-- AMENDED BY #42 — "reporting data / posts nothing" WAS ONLY TRUE UNTIL #23:
+-- as first shipped (before #23) an allocation touched nothing in the ledger. From
+-- #23 on, a FOREIGN-currency payment relieves each slice of hutang at the DOCUMENT
+-- rate of the purchase it settles, so the allocation determines which rate each
+-- slice — and hence the realised selisih kurs — is booked at. It is therefore
+-- ledger-affecting for foreign payments (reporting-only for pure-IDR ones), and
+-- editing one reposts the payment. The purchase-side FK below was CASCADE when
+-- shipped; #42 (migration 0012) tightens it to RESTRICT so a purchase cannot be
+-- deleted out from under a payment whose journal still relies on it.
 --
 -- NULLABILITY / NO BACKFILL:
 -- there is deliberately no backfill. Every pre-existing payment genuinely has no
@@ -55,10 +65,19 @@ CREATE TABLE `supplier_payment_allocations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
--- CASCADE on both sides: an allocation is a line belonging to two parent rows and
--- is meaningless without either. Deleting a supplier transaction already reverses
--- its journal (see the transactions DELETE route); its allocations must go with
--- it rather than dangle at a row id that no longer exists.
+-- CASCADE on both sides AS SHIPPED: an allocation is a line belonging to two
+-- parent rows and is meaningless without either. Deleting a supplier transaction
+-- already reverses its journal (see the transactions DELETE route); its
+-- allocations must go with it rather than dangle at a row id that no longer exists.
+--
+-- AMENDED BY #42 (migration 0012): the PURCHASE side becomes RESTRICT. Reversing a
+-- transaction's journal on delete only reverses ITS OWN journal — deleting a
+-- purchase does not reverse the paying payment's journal, so cascading the
+-- allocation away would leave that payment's journal relieving a hutang slice, at
+-- this purchase's document rate, for a purchase that is gone (a stale journal).
+-- The PAYMENT side stays CASCADE, which is safe: a payment delete reverses the
+-- payment's journal first, so its allocations fall away behind an already-reversed
+-- journal. See 0012 for the ALTER.
 ALTER TABLE `supplier_payment_allocations`
     ADD CONSTRAINT `supplier_payment_allocations_payment_id_fkey`
     FOREIGN KEY (`payment_id`) REFERENCES `supplier_transactions`(`id`)

@@ -1,12 +1,18 @@
 /**
  * Supplier payment → purchase allocation: the write-path guard.
  *
- * Allocation is *reporting* data. It records which purchase a payment settled so
- * that AP aging can stop guessing (issue #37); it is not an accounting event and
- * nothing in this module posts, reverses or otherwise touches the ledger. The
- * purchase and the payment are each already journalled on their own — a journal
- * for the link between them would be inventing a cash movement that never
- * happened, and would double the money.
+ * Allocation records which purchase a payment settled so that AP aging can stop
+ * guessing (issue #37). For a PURE-IDR payment it is reporting data only: there
+ * is no rate and no selisih kurs, so the link between an already-journalled
+ * purchase and an already-journalled payment moves no money, and this module
+ * neither posts nor touches the ledger.
+ *
+ * For a FOREIGN-currency payment the allocation IS ledger-affecting (issue #42):
+ * since #23 a foreign payment relieves each slice of hutang at the DOCUMENT rate
+ * of the purchase it settles, so the allocation determines the realised FX. This
+ * module still only validates and shapes the rows — the repost that keeps the
+ * journal honest lives at the write site (the supplier transactions route), which
+ * calls `repostForSource` whenever a foreign payment's allocation set changes.
  *
  * The database-side half of the over-allocation guard lives here, extracted from
  * the create route so that creating a payment with allocations (POST) and

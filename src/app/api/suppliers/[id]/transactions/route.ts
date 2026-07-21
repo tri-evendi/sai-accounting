@@ -14,7 +14,7 @@ import {
 import { fxAmounts, BASE_CURRENCY } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
-import { postForSource, unpostForSource } from "@/lib/posting";
+import { postForSource, repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { getSupplierPurchaseAllocations } from "@/lib/receivables";
@@ -188,9 +188,13 @@ export async function POST(
         },
       });
 
-      // Allocation is reporting data, not accounting: it records which purchase
-      // this payment settles. It deliberately posts nothing — the ledger already
-      // has the purchase and the payment, and re-posting would double the money.
+      // Persist the allocation set; the journal is produced ONCE by the
+      // `postForSource` below, which reads these rows — the createMany never
+      // posts on its own, so the money is never doubled. For a pure-IDR payment
+      // the allocation is reporting-only (rate 1, no selisih kurs). For a
+      // foreign payment it is ledger-affecting (issue #42): it names which
+      // purchase — and therefore at which document rate — each slice of hutang
+      // is relieved, which is what makes the realised FX difference correct.
       if (allocationLines.length > 0) {
         await tx.supplierPaymentAllocation.createMany({
           data: allocationLines.map((line) => ({
@@ -250,19 +254,22 @@ export async function POST(
  * empty `allocations` array clears them and hands the payment back to the FIFO
  * estimate — a deliberate, reachable state, not an error.
  *
- * ── WHAT THIS DELIBERATELY DOES NOT DO ────────────────────────────────────────
- * It writes no journal. It calls neither `postForSource`, `repostForSource` nor
- * `unpostForSource`, and it does not touch the payment row itself — only rows in
- * `supplier_payment_allocations`. The purchase and the payment were each posted
- * when they were recorded; saying which one settles which moves no money, so the
- * ledger has nothing to learn from it. This is the entire reason the endpoint
- * exists: before it, the only way to fix an allocation was to delete and re-post
- * the payment, reversing correct journals to correct a reporting field.
+ * ── WHETHER THIS TOUCHES THE LEDGER DEPENDS ON THE CURRENCY (issue #42) ───────
+ * For a PURE-IDR payment the allocation is reporting data: there is no rate and
+ * no selisih kurs, so which purchase a payment settles moves no money and the
+ * ledger has nothing to learn from it. This is the original #37/#38 promise and
+ * it still holds — no journal is written and the period lock is not consulted.
  *
- * It follows that the period lock (issue #13) is not consulted and must never be
- * reached: a locked month bars new *journals*, and there is no journal here. If
- * this path ever trips the lock, it has started writing to the ledger and that
- * is a bug in this handler, not a lock to work around.
+ * For a FOREIGN-currency payment the allocation is ledger-affecting. Since #23 a
+ * foreign payment relieves each slice of hutang at the DOCUMENT rate of the
+ * purchase it settles, and the gap from the payment's own rate is realised FX
+ * (7101). The allocation is what names those purchases, so editing it changes the
+ * correct journal. We therefore reverse-and-repost the payment from the NEW
+ * allocation set with `repostForSource` — the very path a fresh post runs, never
+ * a second posting rule — so the journal can never go stale. That repost DOES
+ * pass through the period lock (issue #13): a repost into a closed month is
+ * refused by `postJournal`/`reverseJournal`, and the whole allocation change
+ * rolls back with it. A missing settlement rate is refused the same way.
  *
  * Role is `bos`/`core`, the same as creating the payment: a user allowed to
  * state an allocation on the way in is allowed to correct it afterwards.
@@ -345,23 +352,40 @@ export async function PUT(
   }));
 
   // Delete-then-insert inside one transaction: the set is replaced atomically,
-  // so a reader never sees a half-applied allocation. No posting call here, by
-  // design — see the note above.
-  await prisma.$transaction(async (tx) => {
-    await tx.supplierPaymentAllocation.deleteMany({ where: { paymentId: payment.id } });
-    if (resolved.lines.length > 0) {
-      await tx.supplierPaymentAllocation.createMany({
-        data: resolved.lines.map((line) => ({
-          paymentId: payment.id,
-          purchaseId: line.purchaseId,
-          amount: line.amount,
-          currency: payment.currency,
-          rate: rate ?? 1,
-          baseAmount: line.base,
-        })),
-      });
-    }
-  });
+  // so a reader never sees a half-applied allocation. For a FOREIGN payment the
+  // repost happens in the SAME transaction from the new set (issue #42) — see the
+  // note above for why IDR is exempt. `repostForSource` reads the rows we just
+  // wrote, so the journal is exactly what a fresh post of this payment produces.
+  // If it throws — a closed period, a missing settlement rate, an unmapped FX
+  // account — the transaction rolls back and no stale journal is left behind;
+  // the failure is turned into an actionable response by `handlePostingError`.
+  const isForeign = payment.currency !== BASE_CURRENCY;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.supplierPaymentAllocation.deleteMany({ where: { paymentId: payment.id } });
+      if (resolved.lines.length > 0) {
+        await tx.supplierPaymentAllocation.createMany({
+          data: resolved.lines.map((line) => ({
+            paymentId: payment.id,
+            purchaseId: line.purchaseId,
+            amount: line.amount,
+            currency: payment.currency,
+            rate: rate ?? 1,
+            baseAmount: line.base,
+          })),
+        });
+      }
+      if (isForeign) {
+        await repostForSource({
+          sourceType: "supplier_transaction",
+          sourceId: payment.id,
+          tx,
+        });
+      }
+    });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 
   await writeAuditLog({
     userId: result.session.user.id,
@@ -412,9 +436,29 @@ export async function DELETE(
 
   const existing = await prisma.supplierTransaction.findFirst({
     where: { id: transactionId, supplierId },
+    include: { _count: { select: { allocationsReceived: true } } },
   });
   if (!existing) {
     return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+  }
+
+  // A purchase a payment still claims to have settled cannot be deleted out from
+  // under that payment's journal (issue #42). Its purchase-side FK is RESTRICT,
+  // not CASCADE, precisely so the allocation cannot vanish and leave the paying
+  // payment's journal relieving a slice of hutang — at THIS purchase's document
+  // rate — for a purchase that no longer exists. We surface that as a clean 409
+  // rather than a raw FK error: clear the allocation first (edit the payment,
+  // which reposts it), then the purchase is free to delete. A payment is exempt —
+  // its allocations are its own to make, and its FK stays CASCADE.
+  if (existing.type === "purchase" && existing._count.allocationsReceived > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Pembelian ini masih dialokasikan oleh pembayaran supplier. Lepaskan alokasinya " +
+          "terlebih dulu (ubah pembayaran terkait) sebelum menghapus pembelian ini.",
+      },
+      { status: 409 }
+    );
   }
 
   try {

@@ -424,18 +424,21 @@ describe("supplierPaymentAllocationsSchema — the edit payload", () => {
   });
 });
 
-/* ───────────── INVARIANT 1: allocation never touches the ledger ────────────── */
+/* ─── INVARIANT 1: an edit keeps the journal honest, per currency (issue #42) ─── */
 
 /**
  * Asserted against the route source rather than by running it.
  *
- * The rule is "this code path may not call the posting engine", and that is a
- * statement about the code, not about one execution of it: a behavioural test
- * only shows that the calls did not happen for the inputs it happened to try.
- * Reading the source catches the regression that matters — someone adding a
- * `repostForSource` to the allocation handler because it felt symmetrical.
+ * The rule USED to be "this code path may not call the posting engine". Issue #42
+ * changed it: for a foreign-currency payment the allocation decides which slice of
+ * hutang is relieved at which document rate, hence the realised selisih kurs, so
+ * an edit MUST repost — while a pure-IDR payment stays reporting-only. The
+ * regression that now matters is either half slipping: someone deleting the repost
+ * because it "felt safe", or someone reposting an IDR payment for symmetry and
+ * churning journals that never change. Both are statements about the code, so both
+ * are checked by reading it — the same method #37/#38 used for the old rule.
  */
-describe("INVARIANT: the allocation endpoint writes no journal", () => {
+describe("INVARIANT: an allocation edit reposts a foreign payment, and only a foreign one", () => {
   const source = readFileSync(
     path.join(process.cwd(), "src/app/api/suppliers/[id]/transactions/route.ts"),
     "utf8"
@@ -450,32 +453,55 @@ describe("INVARIANT: the allocation endpoint writes no journal", () => {
     return end === -1 ? rest : rest.slice(0, end);
   }
 
-  const POSTING_CALLS = ["postForSource(", "repostForSource(", "unpostForSource("];
-
-  it("PUT calls no posting function at all", () => {
+  it("PUT reposts through the shared engine, never a bespoke posting path", () => {
     const put = handler("PUT");
-    for (const call of POSTING_CALLS) expect(put).not.toContain(call);
+    // The whole of #42: reuse the one engine entry point, so the reposted journal
+    // is exactly what a fresh post produces. Never touch the ledger tables direct.
+    expect(put).toContain("repostForSource(");
+    expect(put).not.toContain("postJournal");
+    expect(put).not.toContain("reverseJournal");
+    expect(put).not.toContain("journal.");
   });
 
-  it("PUT touches only the allocation table, never the transaction or the ledger", () => {
+  it("PUT gates the repost on currency — an IDR payment is reporting-only still", () => {
     const put = handler("PUT");
-    // It may read the payment (findFirst) but must not write it, and must not
-    // reach the journal tables directly either.
-    expect(put).not.toContain("supplierTransaction.update");
-    expect(put).not.toContain("supplierTransaction.delete");
-    expect(put).not.toContain("journal");
+    // The repost sits under an `isForeign` guard derived from BASE_CURRENCY. A
+    // pure-IDR payment has no rate and no FX, so its allocation moves no money.
+    const guardIdx = put.indexOf("isForeign");
+    const repostIdx = put.indexOf("repostForSource(");
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(repostIdx).toBeGreaterThan(guardIdx);
+    expect(put).toContain("BASE_CURRENCY");
+  });
+
+  it("PUT replaces the allocation set atomically and never writes the payment row", () => {
+    const put = handler("PUT");
     expect(put).toContain("supplierPaymentAllocation.deleteMany");
     expect(put).toContain("supplierPaymentAllocation.createMany");
+    expect(put).not.toContain("supplierTransaction.update");
+    expect(put).not.toContain("supplierTransaction.delete");
+    // The repost must share the allocation write's transaction, or a failed post
+    // could commit a half-edited set — so it takes `tx`, and the block catches
+    // posting failures the way the create path does.
+    expect(put).toContain("handlePostingError");
   });
 
-  it("the check is meaningful: the create and delete paths DO post", () => {
-    // Without this, the assertions above would pass on a file that had no
-    // posting anywhere and prove nothing.
+  it("DELETE guards the RESTRICT'd purchase FK so no journal is left stale", () => {
+    const del = handler("DELETE");
+    // A purchase a payment still points at cannot be deleted out from under that
+    // payment's journal; the route surfaces the RESTRICT as a clean 409.
+    expect(del).toContain("allocationsReceived");
+    expect(del).toContain("409");
+  });
+
+  it("the check is meaningful: the create path posts, the delete path unposts", () => {
     expect(handler("POST")).toContain("postForSource(");
     expect(handler("DELETE")).toContain("unpostForSource(");
   });
 
-  it("the allocation helper module never imports the posting engine", () => {
+  it("the allocation helper module still never imports the posting engine", () => {
+    // The repost is wired at the write SITE (the route), not buried in the shared
+    // validation helper — that module still only shapes and checks rows.
     const helper = readFileSync(path.join(process.cwd(), "src/lib/supplier-allocations.ts"), "utf8");
     expect(helper).not.toContain("@/lib/posting");
     expect(helper).not.toContain("@/lib/ledger");
@@ -598,5 +624,93 @@ describe("INVARIANT: per-supplier AP total is identical across every edit", () =
 
     expect(partial.byParty[0].outstandingBase).toBe(none.byParty[0].outstandingBase);
     expect(partial.aging.total).toBe(none.aging.total);
+  });
+});
+
+/* ─ INVARIANT 2, FX: the AP total holds even when the edit changes the FX (issue #42) ─ */
+
+/**
+ * The foreign-currency case of the same acceptance criterion. Editing a foreign
+ * payment's allocation genuinely changes its JOURNAL (which hutang slice is
+ * relieved at which rate, and hence the realised selisih kurs) — that is what #42
+ * is about. What must NOT change is the reported per-supplier AP total in IDR
+ * base: `getPayables` measures it as Σ(purchase base) − Σ(payment base), and
+ * neither sum depends on how a payment is split across purchases.
+ */
+describe("INVARIANT: a foreign payment's AP total is unmoved by any allocation edit", () => {
+  const asOf = d("2026-07-20");
+  const supplier = { name: "Jiangsu Trading" };
+
+  // Two USD purchases booked at the same 15.000 so the IDR base arithmetic is
+  // transparent: 4.000 USD = 60 juta, 6.000 USD = 90 juta, total 150 juta.
+  const usdPurchase = (id: number, date: Date, amountUsd: number) => ({
+    id,
+    supplierId: 7,
+    date,
+    dueDate: null,
+    type: "purchase",
+    amount: amountUsd,
+    currency: "USD",
+    rate: 15_000,
+    baseAmount: amountUsd * 15_000,
+    taxAmount: 0,
+    note: null,
+    supplier,
+    allocationsMade: [],
+  });
+
+  const usdAlloc = (purchaseId: number, amountUsd: number) => ({
+    purchaseId,
+    amount: amountUsd,
+    currency: "USD",
+    rate: 15_000,
+    baseAmount: amountUsd * 15_000,
+  });
+
+  // One USD 8.000 payment (120 juta base) against 150 juta of debt.
+  const build = (allocationsMade: unknown[]) =>
+    ({
+      invoice: { findMany: async () => [] },
+      contract: { findMany: async () => [] },
+      supplierTransaction: {
+        findMany: async () => [
+          usdPurchase(1, d("2026-01-10"), 4_000),
+          usdPurchase(2, d("2026-02-10"), 6_000),
+          {
+            ...usdPurchase(90, d("2026-03-01"), 8_000),
+            id: 90,
+            type: "payment",
+            date: d("2026-03-01"),
+            allocationsMade,
+          },
+        ],
+      },
+    }) as unknown as Parameters<typeof getPayables>[1];
+
+  it("ACCEPTANCE: reallocating a USD payment moves the split and the FX, not the AP total", async () => {
+    // Config A settles purchase 1 in full and 4.000 USD of purchase 2.
+    const a = await getPayables({ asOf }, build([usdAlloc(1, 4_000), usdAlloc(2, 4_000)]));
+    // Config B settles 2.000 USD of purchase 1 and purchase 2 in full — a
+    // different journal entirely (different slices, different realised FX).
+    const b = await getPayables({ asOf }, build([usdAlloc(1, 2_000), usdAlloc(2, 6_000)]));
+
+    // 150 juta of debt less 120 juta of payment = 30 juta, in BOTH configurations.
+    expect(a.byParty[0].outstandingBase).toBe(30_000_000);
+    expect(b.byParty[0].outstandingBase).toBe(a.byParty[0].outstandingBase);
+    expect(b.aging.total).toBe(a.aging.total);
+
+    // ...yet which purchase stays open genuinely differs — the split really moved.
+    expect(a.rows.map((r) => r.id)).toEqual([2]);
+    expect(b.rows.map((r) => r.id)).toEqual([1]);
+  });
+
+  it("holds when the edit hands part of the payment back to the FIFO estimate", async () => {
+    const full = await getPayables({ asOf }, build([usdAlloc(1, 4_000), usdAlloc(2, 4_000)]));
+    // Drop one line: the freed 4.000 USD returns to the pool and is estimated, but
+    // the supplier's IDR-base AP total is the same 30 juta.
+    const partial = await getPayables({ asOf }, build([usdAlloc(1, 4_000)]));
+
+    expect(partial.byParty[0].outstandingBase).toBe(full.byParty[0].outstandingBase);
+    expect(partial.byParty[0].outstandingBase).toBe(30_000_000);
   });
 });

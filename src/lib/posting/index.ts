@@ -272,13 +272,14 @@ interface AllocationRow {
  * (issue #37), so unlike a receipt it may settle several documents booked at
  * several different rates — hence a list rather than a single leg.
  *
- * NOTE ON THE COUPLING: that table's own docs describe it as reporting data that
+ * NOTE ON THE COUPLING: that table was first documented as reporting data that
  * does not touch the ledger. From #23 on, it does — for foreign-currency payments
  * it is what says which rate each slice of hutang was raised at. Editing an
- * allocation therefore changes the correct journal, and the existing remedy
- * applies: `repostForSource` reverses and re-posts. Allocation rows whose purchase
- * carries no rate, or is in another currency, contribute no FX rather than a
- * guessed one.
+ * allocation therefore changes the correct journal, and issue #42 wires the remedy
+ * in automatically: the supplier-transactions route reposts the payment
+ * (`repostForSource`) whenever a foreign payment's allocation set changes, and its
+ * docs/schema now say so. Allocation rows whose purchase carries no rate, or is in
+ * another currency, contribute no FX rather than a guessed one.
  *
  * The unallocated remainder is emitted as its own leg at the payment's own rate:
  * it clears hutang with zero difference, which keeps the legs summing to the full
@@ -294,8 +295,10 @@ interface AllocationRow {
  * the same entry and each hutang falls in its own account. That is why
  * `SettlementLeg.accountId` exists per leg rather than one account per entry.
  *
- * This reads `supplier_payment_allocations` exactly as #37 defined it and
- * changes neither its semantics nor its FKs (issue #42 is untouched).
+ * This reads `supplier_payment_allocations` exactly as #37 defined it. Issue #42
+ * changes nothing here — it aligns the docs with this behaviour, auto-reposts on
+ * allocation edits at the write site, and tightens the purchase-side FK to
+ * RESTRICT; the posting rule itself is unchanged.
  */
 async function payableSettlementLegs(
   trx: { allocationsMade?: AllocationRow[] | null },

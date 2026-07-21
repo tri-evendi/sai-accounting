@@ -37,7 +37,9 @@ export type AuditAction =
   | "fixed_asset.create"
   | "fixed_asset.depreciate"
   | "fixed_asset.dispose"
-  | "fixed_asset.transfer";
+  | "fixed_asset.transfer"
+  /** Surat Jalan / Delivery Order (issue #14). Reduces stock; HPP via stock-out. */
+  | "delivery_order.create";
 
 export type AuditEntity =
   | "cash_account"
@@ -54,7 +56,8 @@ export type AuditEntity =
   | "purchase_return"
   | "company_settings"
   | "fixed_asset_category"
-  | "fixed_asset";
+  | "fixed_asset"
+  | "delivery_order";
 
 export type AuditLogEntry = {
   id: string;

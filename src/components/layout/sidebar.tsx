@@ -28,6 +28,7 @@ import {
   Target,
   Wand2,
   FileSpreadsheet,
+  PackageCheck,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ const allNavItems = [
   { href: "/advances", label: "Uang Muka", icon: Coins, roles: ["bos", "core"] },
   { href: "/returns", label: "Retur", icon: Undo2, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
+  // ── issue #14 — Surat Jalan / Delivery Order (mengurangi stok saat terbit) ──
+  { href: "/delivery-orders", label: "Surat Jalan", icon: PackageCheck, roles: ["bos", "core"] },
   { href: "/fixed-assets", label: "Aset Tetap", icon: Building2, roles: ["bos", "core"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/reconciliation", label: "Rekonsiliasi Bank", icon: Scale, roles: ["bos", "core"] },

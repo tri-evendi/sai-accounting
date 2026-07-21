@@ -19,6 +19,7 @@ import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { getSupplierPurchaseAllocations } from "@/lib/receivables";
 import { resolveAllocationLines } from "@/lib/supplier-allocations";
+import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 
 export async function GET(
   request: Request,
@@ -175,8 +176,9 @@ export async function POST(
   const allocationLines = resolved.lines;
 
   let transaction;
+  let approval;
   try {
-    transaction = await prisma.$transaction(async (tx) => {
+    ({ transaction, approval } = await prisma.$transaction(async (tx) => {
       const created = await tx.supplierTransaction.create({
         data: {
           ...transactionData,
@@ -208,9 +210,33 @@ export async function POST(
         });
       }
 
+      // ── Approval (issue #25) ────────────────────────────────────────────
+      // Only a PAYMENT is gated here. Issue #25 names kontrak/faktur/pembayaran
+      // as the documents under management control; a purchase is the supplier's
+      // invoice arriving, i.e. a liability being recorded rather than money
+      // leaving, and withholding its journal would leave hutang understated on
+      // every report until somebody signed. A payment is money going out, which
+      // is exactly what an ambang is for.
+      const request =
+        created.type === "payment"
+          ? await ensureApprovalRequest({
+              client: tx,
+              sourceType: "supplier_transaction",
+              documentId: created.id,
+              // A supplier payment carries no number; the supplier's name is
+              // what identifies it to an approver (capped at VARCHAR(50)).
+              documentNo: supplier.name.slice(0, 50),
+              amount: Number(created.amount),
+              currency: created.currency,
+              rate,
+              baseAmount,
+              requestedById: parseInt(result.session.user.id, 10),
+            })
+          : null;
+
       await postForSource({ sourceType: "supplier_transaction", sourceId: created.id, tx });
-      return created;
-    });
+      return { transaction: created, approval: request };
+    }));
   } catch (e) {
     return handlePostingError(e);
   }
@@ -242,7 +268,29 @@ export async function POST(
     request,
   });
 
-  return NextResponse.json(transaction, { status: 201 });
+  if (approval) {
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: "approval.request",
+      entity: "approval_request",
+      entityId: approval.id,
+      details: {
+        sourceType: "supplier_transaction",
+        documentId: transaction.id,
+        documentNo: approval.documentNo,
+        baseAmount: Number(approval.baseAmount),
+        thresholdAmount: Number(approval.thresholdAmount),
+        approverRole: approval.approverRole,
+      },
+      request,
+    });
+  }
+
+  return NextResponse.json(
+    { ...transaction, approval: approvalNotice(approval, "Pembayaran supplier") },
+    { status: 201 }
+  );
 }
 
 /**

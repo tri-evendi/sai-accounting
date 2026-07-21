@@ -877,6 +877,141 @@ describe("idempotency, repost and unpost", () => {
   });
 });
 
+// ─── Approval gate (issue #25) ───────────────────────────
+
+/**
+ * The DB half of the approval gate, driven through the real `postForSource`.
+ * The pure decisions live in tests/approvals.test.ts; what is proved here is
+ * that the engine actually consults them at its one choke point — and, just as
+ * importantly, that a document with no approval request behaves exactly as it
+ * did before the feature existed.
+ */
+function gatedInvoiceClient(approvalRequests?: Record<string, { status: string }>) {
+  return createFakeClient({
+    mappings: MAPPINGS,
+    approvalRequests,
+    invoices: {
+      7: {
+        id: 7,
+        invoiceNo: "SI.2026.03.00007",
+        date: DATE,
+        status: "pending",
+        items: [{ quantity: 10, price: 100_000 }],
+      },
+    },
+  });
+}
+
+describe("approval gate withholds the journal until a document is approved", () => {
+  it("posts normally when the document has no approval request (every pre-#25 row)", async () => {
+    const tx = gatedInvoiceClient();
+    expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 7, tx })) as unknown as FakeJournal
+    );
+    expect(tx._journals).toHaveLength(1);
+  });
+
+  it("posts nothing while the document is waiting for approval", async () => {
+    const tx = gatedInvoiceClient({ "invoice:7": { status: "pending_approval" } });
+    const journal = await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    // Null, not a throw: "not approved yet" joins the engine's existing
+    // "nothing to post" answers, so the document itself is still saved.
+    expect(journal).toBeNull();
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("posts nothing for a rejected document", async () => {
+    const tx = gatedInvoiceClient({ "invoice:7": { status: "rejected" } });
+    expect(await postForSource({ sourceType: "invoice", sourceId: 7, tx })).toBeNull();
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("releases the journal the moment the request is approved", async () => {
+    // The shape of the API route: the status is flipped inside the same
+    // transaction, then postForSource is called and sees the approved row.
+    const requests = { "invoice:7": { status: "pending_approval" } };
+    const tx = gatedInvoiceClient(requests);
+    expect(await postForSource({ sourceType: "invoice", sourceId: 7, tx })).toBeNull();
+
+    requests["invoice:7"].status = "approved";
+    const journal = expectBalancedIdr(
+      (await postForSource({ sourceType: "invoice", sourceId: 7, tx })) as unknown as FakeJournal
+    );
+    expect(debitOn(journal, ACC.arIdr)).toBe(1_000_000);
+    expect(tx._journals).toHaveLength(1);
+  });
+
+  it("keeps a document editable while it waits — repost reverses but does not re-post", async () => {
+    const requests = { "invoice:7": { status: "approved" } };
+    const tx = gatedInvoiceClient(requests);
+    const original = await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+    expect(original).not.toBeNull();
+
+    // Something puts the document back in the queue; an edit reposts it.
+    requests["invoice:7"].status = "pending_approval";
+    const reposted = await repostForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    // No throw (the edit must not be refused), the live journal is reversed, and
+    // nothing replaces it until the document is approved again.
+    expect(reposted).toBeNull();
+    expect(tx._journals).toHaveLength(2);
+    expect(tx._journals.find((j) => j.id === original!.id)!.isReversed).toBe(true);
+    const net = tx._journals
+      .flatMap((j) => j.lines)
+      .reduce((s, l) => s + l.baseDebit - l.baseCredit, 0);
+    expect(net).toBe(0);
+  });
+
+  it("never hides a journal that is already live", async () => {
+    // Approval gates the CREATION of a journal. A document already in the ledger
+    // stays there — the idempotency lookup answers before the gate is consulted.
+    const requests = { "invoice:7": { status: "approved" } };
+    const tx = gatedInvoiceClient(requests);
+    const original = await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    requests["invoice:7"].status = "rejected";
+    const again = await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    expect(again!.id).toBe(original!.id);
+    expect(tx._journals).toHaveLength(1);
+  });
+
+  it("unpost is never gated — taking something back out is always allowed", async () => {
+    const requests = { "invoice:7": { status: "approved" } };
+    const tx = gatedInvoiceClient(requests);
+    await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    requests["invoice:7"].status = "rejected";
+    await unpostForSource({ sourceType: "invoice", sourceId: 7, tx });
+
+    expect(tx._journals).toHaveLength(2);
+    const net = tx._journals
+      .flatMap((j) => j.lines)
+      .reduce((s, l) => s + l.baseDebit - l.baseCredit, 0);
+    expect(net).toBe(0);
+  });
+
+  it("leaves sources approval never touches alone", async () => {
+    // A stock movement has no approval category at all, so the gate does not
+    // even query for it — proved here by the absence of any seeded request.
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      stocks: { 1: { id: 1, itemId: 5, quantity: 10, type: "out", date: DATE, item: { name: "Kopi" } } },
+      stockMovements: [
+        { id: 2, itemId: 5, type: "in", quantity: 100, unitCost: 25_000, date: new Date("2026-01-01") },
+      ],
+    });
+    expectBalancedIdr(
+      (await postForSource({
+        sourceType: "stock_movement",
+        sourceId: 1,
+        tx,
+      })) as unknown as FakeJournal
+    );
+  });
+});
+
 // ─── Weighted-average costing ────────────────────────────
 
 describe("weighted-average COGS costing", () => {

@@ -45,7 +45,21 @@ export type AuditAction =
    * outstanding contract promise. Posts NO new journal — a pulled faktur posts
    * exactly as a normal faktur does; only the document link is new.
    */
-  | "invoice.pull_from_contract";
+  | "invoice.pull_from_contract"
+  /**
+   * Approval transaksi (issue #25). `approval.request` is raised by the document
+   * route when a value crosses the ambang; `approval.approve` is the ONLY action
+   * here that reaches the ledger — it releases the withheld journal through
+   * `postForSource`. Rejecting posts nothing. Marking a decision as read is
+   * deliberately NOT audited: it is the requester dismissing their own
+   * notification, not a change to the record.
+   */
+  | "approval.request"
+  | "approval.approve"
+  | "approval.reject"
+  | "approval.rule.create"
+  | "approval.rule.update"
+  | "approval.rule.deactivate";
 
 export type AuditEntity =
   | "cash_account"
@@ -64,7 +78,10 @@ export type AuditEntity =
   | "fixed_asset_category"
   | "fixed_asset"
   | "delivery_order"
-  | "invoice";
+  | "invoice"
+  /** Approval transaksi (issue #25). */
+  | "approval_request"
+  | "approval_rule";
 
 export type AuditLogEntry = {
   id: string;

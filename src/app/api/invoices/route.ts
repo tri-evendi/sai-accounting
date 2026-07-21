@@ -26,6 +26,7 @@ import {
   contractOutstandingForInvoice,
   OverInvoiceError,
 } from "@/lib/document-chain";
+import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -81,12 +82,13 @@ export async function POST(request: Request) {
   }
 
   let invoice;
+  let approval;
   try {
     // Invoice and journal commit together: if posting can't produce a correct
     // journal, the invoice is rolled back rather than left unaccounted for.
-    invoice = await prisma.$transaction(async (tx) => {
-      // Outstanding guard, inside the transaction so it reads what is actually
-      // committed and rolls the faktur back with everything else if it fires.
+    ({ invoice, approval } = await prisma.$transaction(async (tx) => {
+      // Outstanding guard (issue #15), inside the transaction so it reads what is
+      // actually committed and rolls the faktur back with everything else if it fires.
       if (contractId != null) {
         const { lines } = await contractOutstandingForInvoice(tx, contractId);
         assertWithinContract(lines, items);
@@ -112,9 +114,25 @@ export async function POST(request: Request) {
         include: { items: true },
       });
 
+      // Approval (issue #25) — created before posting and in the same
+      // transaction, so the gate withholds the journal until it is decided.
+      // The gross value (subtotal + PPN) is what is put in front of the
+      // approver: that is the money the document actually commits.
+      const request = await ensureApprovalRequest({
+        client: tx,
+        sourceType: "invoice",
+        documentId: created.id,
+        documentNo: created.invoiceNo,
+        amount: tax.total,
+        currency,
+        rate: fxRate,
+        baseAmount,
+        requestedById: parseInt(result.session.user.id, 10),
+      });
+
       await postForSource({ sourceType: "invoice", sourceId: created.id, tx });
-      return created;
-    });
+      return { invoice: created, approval: request };
+    }));
   } catch (e) {
     if (e instanceof OverInvoiceError) {
       return NextResponse.json({ error: e.message, saved: false }, { status: 400 });
@@ -141,5 +159,27 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json(invoice, { status: 201 });
+  if (approval) {
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: "approval.request",
+      entity: "approval_request",
+      entityId: approval.id,
+      details: {
+        sourceType: "invoice",
+        documentId: invoice.id,
+        documentNo: invoice.invoiceNo,
+        baseAmount: Number(approval.baseAmount),
+        thresholdAmount: Number(approval.thresholdAmount),
+        approverRole: approval.approverRole,
+      },
+      request,
+    });
+  }
+
+  return NextResponse.json(
+    { ...invoice, approval: approvalNotice(approval, "Faktur") },
+    { status: 201 }
+  );
 }

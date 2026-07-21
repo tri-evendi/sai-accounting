@@ -27,6 +27,12 @@
  * See `settlementFor` below for where the three rates come from, and ./rates for
  * the settlement-date rate that makes a cross-currency settlement computable at
  * all rather than guessed.
+ *
+ * Approval (issue #25): this file is also where "dokumen yang belum disetujui
+ * tidak boleh masuk jurnal" is enforced, for the same reason the period lock
+ * (#13) lives in `postJournal` — every path that turns a document into a journal
+ * comes through `postForSource`/`repostForSource`, so guarding here cannot be
+ * bypassed by adding another API route. See `approvalGate` below.
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -60,6 +66,7 @@ import {
   type SettlementLeg,
 } from "./rules";
 import { averageUnitCostForItem, costOfMovement } from "./cogs";
+import { isPostingBlocked } from "@/lib/approval-requests";
 
 export * from "./mapping";
 export * from "./rules";
@@ -1161,6 +1168,32 @@ async function buildEntry(
   }
 }
 
+// ─── Approval gate (issue #25) ───────────────────────────
+/**
+ * Withhold the journal of a document that is waiting for — or was refused —
+ * approval.
+ *
+ * WHY IT RETURNS A BOOLEAN AND NOT A THROW. `postForSource` already has a
+ * well-understood "nothing to post" answer: null, used for a cancelled document,
+ * a zero-value one, incoming stock, uncosted inventory. "Not approved yet" is
+ * the same kind of fact — the write is perfectly valid, the ledger simply must
+ * not move yet — so it joins that set instead of becoming a 422 that would roll
+ * the document back. That single choice is what keeps the integration to a few
+ * lines: the five document routes call `postForSource` exactly as they always
+ * did and get no journal, and none of them grew a branch.
+ *
+ * It matters just as much on the EDIT path. A pending contract is still being
+ * revised; `repostForSource` there must reverse whatever is live (nothing, for a
+ * never-posted document) and then decline to post — not explode and make the
+ * document uneditable until somebody signs it.
+ *
+ * `unpostForSource` is deliberately NOT gated: reversing is how a mistake is
+ * undone, and approval never stands in the way of taking something back out.
+ */
+async function approvalGate(client: Client, ctx: PostingContext): Promise<boolean> {
+  return isPostingBlocked(client, ctx.sourceType, ctx.sourceId);
+}
+
 /** Run against the caller's transaction if given, otherwise open our own. */
 function withClient<T>(
   ctx: PostingContext,
@@ -1176,12 +1209,18 @@ function withClient<T>(
  * Post the journal for a source record.
  * Idempotent: returns the existing journal if the source was already posted.
  * Returns null when the source has nothing to post (zero value, cancelled,
- * incoming stock, uncosted inventory).
+ * incoming stock, uncosted inventory) — or, since issue #25, when the document
+ * is still waiting for approval or was rejected.
  */
 export async function postForSource(ctx: PostingContext): Promise<Journal | null> {
   return withClient(ctx, async (client) => {
     const live = await findLiveJournals(client, ctx.sourceType, ctx.sourceId);
     if (live.length > 0) return live[0];
+
+    // Checked AFTER the idempotency lookup on purpose: a document that is
+    // already in the ledger stays in the ledger — approval gates the creation
+    // of a journal, it never retroactively hides one.
+    if (await approvalGate(client, ctx)) return null;
 
     const entry = await buildEntry(client, ctx);
     if (!entry) return null;
@@ -1200,6 +1239,11 @@ export async function repostForSource(ctx: PostingContext): Promise<Journal | nu
     for (const journal of live) {
       await reverseJournal(journal.id, client);
     }
+    // Reverse first, then decline to re-post (issue #25). An unapproved document
+    // must not be left with a stale journal either: whatever was live is taken
+    // back out, and nothing replaces it until the document is approved.
+    if (await approvalGate(client, ctx)) return null;
+
     const entry = await buildEntry(client, ctx);
     if (!entry) return null;
     return postJournal(entry, client);

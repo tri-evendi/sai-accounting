@@ -21,6 +21,14 @@ const ACTION_LABELS: Record<string, string> = {
   "stock.out": "Stock out",
   "item.create": "New item",
   "auth.password_change": "Password changed",
+  // issue #25 — approval trail. `approval.approve` is the one that releases a
+  // withheld journal, so it is worth naming rather than showing raw.
+  "approval.request": "Approval requested",
+  "approval.approve": "Approval granted",
+  "approval.reject": "Approval rejected",
+  "approval.rule.create": "Approval rule created",
+  "approval.rule.update": "Approval rule updated",
+  "approval.rule.deactivate": "Approval rule deactivated",
 };
 
 export function AuditLogPanel() {

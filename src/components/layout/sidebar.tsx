@@ -32,6 +32,7 @@ import {
   Wand2,
   FileSpreadsheet,
   PackageCheck,
+  ShieldCheck,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -90,6 +91,7 @@ const ICONS: Record<string, LucideIcon> = {
   Wand2,
   FileSpreadsheet,
   PackageCheck,
+  ShieldCheck,
 };
 
 function NavLink({

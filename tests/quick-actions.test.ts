@@ -79,8 +79,10 @@ describe("quickActionsForRole", () => {
 });
 
 describe("kelompok menu berbasis tugas", () => {
-  it("memakai enam area tugas issue #2", () => {
+  it("memakai enam area tugas issue #2, dengan Persetujuan (#25) di atasnya", () => {
     expect(NAV_GROUPS.map((g) => g.id)).toEqual([
+      // issue #25 — antrean yang menahan pekerjaan orang lain berdiri paling atas.
+      "persetujuan",
       "penjualan",
       "pembelian",
       "kas",
@@ -102,10 +104,13 @@ describe("kelompok menu berbasis tugas", () => {
     expect(laporan?.items.map((i) => i.href)).toContain("/reports");
   });
 
-  it("ptg hanya melihat stok, beranda, kamus, dan pengaturan", () => {
+  it("ptg hanya melihat persetujuan, stok, beranda, kamus, dan pengaturan", () => {
     const groups = visibleNavGroups({ role: "ptg" });
-    expect(groups.map((g) => g.id)).toEqual(["stok", "pengaturan"]);
-    expect(groups[1].items.map((i) => i.href)).toEqual(["/glossary", "/settings"]);
+    // Antrean persetujuan terbuka untuk semua peran — ptg memakainya untuk
+    // melihat kabar pengajuannya sendiri — tetapi ATURANNYA tetap bos-only.
+    expect(groups.map((g) => g.id)).toEqual(["persetujuan", "stok", "pengaturan"]);
+    expect(groups[0].items.map((i) => i.href)).toEqual(["/approvals"]);
+    expect(groups[2].items.map((i) => i.href)).toEqual(["/glossary", "/settings"]);
   });
 
   it("core tidak melihat menu khusus bos (Pusat Laporan, Pengguna)", () => {
@@ -132,7 +137,9 @@ describe("kelompok menu berbasis tugas", () => {
   });
 
   it("isNavItemVisible menolak peran yang tidak terdaftar", () => {
-    const item = NAV_GROUPS[0].items[0];
+    // Dicari lewat href, bukan posisi: menyisipkan kelompok baru di atas (mis.
+    // Persetujuan #25) tidak boleh diam-diam mengubah item yang diuji.
+    const item = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === "/contracts")!;
     expect(isNavItemVisible(item, { role: "ptg" })).toBe(false);
     expect(isNavItemVisible(item, { role: "core" })).toBe(true);
   });

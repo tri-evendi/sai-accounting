@@ -50,6 +50,29 @@ export const NAV_HOME: NavItem = {
 };
 
 export const NAV_GROUPS: NavGroup[] = [
+  // ── issue #25 — Persetujuan. Kelompoknya berdiri di atas alur dokumen karena
+  // antrean ini menahan pekerjaan orang lain: menunda keputusan berarti jurnal
+  // dokumen tertahan. Antreannya terbuka untuk semua peran (penyetuju melihat
+  // yang harus ia putuskan, pemohon melihat kabar pengajuannya); aturan ambang
+  // & peran bos-only, permukaan kebijakan seperti Kunci Bulan.
+  {
+    id: "persetujuan",
+    label: "Persetujuan",
+    items: [
+      {
+        href: "/approvals",
+        label: "Perlu Persetujuan",
+        icon: "ClipboardCheck",
+        roles: ["bos", "core", "ptg"],
+      },
+      {
+        href: "/approvals/rules",
+        label: "Aturan Persetujuan",
+        icon: "ShieldCheck",
+        roles: ["bos"],
+      },
+    ],
+  },
   {
     id: "penjualan",
     label: "Penjualan",

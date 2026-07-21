@@ -88,6 +88,13 @@ export interface FakeSeed {
    *  fixed_asset_depreciations row with its asset nested inline. */
   fixedAssets?: Record<number, unknown>;
   fixedAssetDepreciations?: Record<number, unknown>;
+  /**
+   * Pengajuan persetujuan (issue #25), keyed `"<sourceType>:<documentId>"` —
+   * the same `(source_type, document_id)` pair the real unique index uses.
+   * Seeding NONE is the realistic default and the one that matters most: it is
+   * every document that predates approval, and it must post exactly as before.
+   */
+  approvalRequests?: Record<string, { status: string; approverRole?: string }>;
 }
 
 type Where = Record<string, unknown>;
@@ -233,6 +240,19 @@ export function createFakeClient(seed: FakeSeed = {}) {
     fixedAssetDepreciation: {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.fixedAssetDepreciations, where.id),
+    },
+
+    // ── approval gate (issue #25) ──
+    approvalRequest: {
+      findUnique: async ({
+        where,
+      }: {
+        where: { sourceType_documentId: { sourceType: string; documentId: number } };
+      }) => {
+        const { sourceType, documentId } = where.sourceType_documentId;
+        const row = (seed.approvalRequests ?? {})[`${sourceType}:${documentId}`];
+        return row ? { id: 1, approverRole: "bos", ...row } : null;
+      },
     },
 
     /** Test helper — every journal created so far, in creation order. */

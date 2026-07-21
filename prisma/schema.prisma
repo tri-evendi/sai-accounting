@@ -140,6 +140,9 @@ model Invoice {
   /// Sales advances compensated into this invoice (issue #26). Each row both
   /// reduces what the customer still owes and carries its own journal.
   advanceApplications AdvanceApplication[]
+  /// Retur penjualan against this invoice (issue #27). The origin document of
+  /// every sales return; the total returned is capped at what was invoiced.
+  salesReturns SalesReturn[]
 
   @@index([customerId])
   @@index([dueDate])
@@ -156,6 +159,9 @@ model InvoiceItem {
   unit      String? @db.VarChar(20)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  /// Retur penjualan lines that reference THIS invoice line (issue #27). Used to
+  /// sum how much of this line has already been returned, per source line.
+  salesReturnItems SalesReturnItem[]
 
   @@map("invoice_items")
 }
@@ -183,6 +189,9 @@ model Item {
   unit  String? @db.VarChar(20)
 
   stock Stock[]
+  /// Return lines that move THIS item back in/out of stock (issue #27).
+  salesReturnItems    SalesReturnItem[]
+  purchaseReturnItems PurchaseReturnItem[]
 
   @@map("items")
 }
@@ -216,6 +225,7 @@ model Supplier {
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
   advances     AdvancePayment[]
+  purchaseReturns PurchaseReturn[]
 
   @@map("suppliers")
 }
@@ -246,6 +256,9 @@ model SupplierTransaction {
   /// Purchase advances compensated into THIS purchase row (issue #26). Empty on
   /// a `payment` row — only a purchase carries an obligation to compensate.
   advanceApplications AdvanceApplication[]
+  /// Retur pembelian against THIS purchase row (issue #27). Empty on a `payment`
+  /// row — only a `purchase` is a document goods can be returned against.
+  purchaseReturns PurchaseReturn[]
 
   @@index([supplierId, type])
   @@index([dueDate])
@@ -328,6 +341,7 @@ model Customer {
 
   invoices Invoice[]
   advances AdvancePayment[]
+  salesReturns SalesReturn[]
 
   @@map("customers")
 }
@@ -453,6 +467,158 @@ model AdvanceApplication {
   @@index([purchaseId])
   @@index([date])
   @@map("advance_applications")
+}
+
+// ─── Retur penjualan & pembelian (issue #27) ─────────────
+
+/// A sales return (retur penjualan) — goods a customer sent back, reversing part
+/// of an invoice.
+///
+/// WHY IT REFERENCES THE ORIGIN INVOICE, NOT A FREE-STANDING CREDIT NOTE:
+/// a return can never exceed what was sold, so the acceptance criterion "tidak
+/// bisa meretur melebihi kuantitas/nilai dokumen asal" is enforced against the
+/// origin. The header carries `invoiceId`; each item carries `invoiceItemId`, so
+/// the cap is checked per source line, netting off returns already made.
+///
+/// CURRENCY DISCIPLINE (issue #43 posture, applied to returns): a return inherits
+/// the origin invoice's `currency` and `rate` and is booked at THAT rate — it is a
+/// partial reversal of the invoice, valued exactly as the invoice was. No
+/// settlement rate is re-resolved: nothing here is "settled at today's rate", so
+/// there is no realised FX and no `fx_gain_loss` leg. `rate` is NULLable with the
+/// same posture as everywhere else — a foreign origin with no rate has no honest
+/// IDR value; Zod refuses to create such a return rather than book it 1:1.
+model SalesReturn {
+  id         Int      @id @default(autoincrement())
+  returnNo   String   @unique @map("return_no") @db.VarChar(50)
+  /// Origin invoice this return reverses part of (issue #27). RESTRICT: an
+  /// invoice with returns against it cannot be deleted out from under them.
+  invoiceId  Int      @map("invoice_id")
+  /// Copied from the invoice for convenience; a sales return has a customer only
+  /// insofar as the invoice does (legacy invoices may carry none).
+  customerId Int?     @map("customer_id")
+  date       DateTime
+  /// Inherited from the origin invoice, never re-chosen.
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// The invoice's own rate. NULLable/no-DEFAULT-1: see the model comment.
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Net returned value (Σ line qty × price), in `currency`. Excludes PPN.
+  subtotal   Decimal  @default(0) @db.Decimal(15, 2)
+  /// Reversed PPN Keluaran, proportional to the returned value, in `currency`.
+  /// 0 when the origin invoice was untaxed / 0% export → no VAT leg is posted.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  /// Effective PPN rate reversed, in percent. NULL when the origin was untaxed.
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// Gross returned value (subtotal + tax) in IDR base — the amount credited to
+  /// Piutang Usaha. NULLable for an unrated foreign origin, as elsewhere.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// enum-like: posted | canceled. A canceled return is excluded from the caps.
+  status     String   @default("posted") @db.VarChar(20)
+  reason     String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice  Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer Customer?         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items    SalesReturnItem[]
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([date])
+  @@index([status])
+  @@map("sales_returns")
+}
+
+model SalesReturnItem {
+  id            Int     @id @default(autoincrement())
+  salesReturnId Int     @map("sales_return_id")
+  /// The invoice line being returned — the source line the over-return cap is
+  /// measured against. RESTRICT so the line cannot vanish under a return.
+  invoiceItemId Int     @map("invoice_item_id")
+  itemName      String  @map("item_name") @db.VarChar(100)
+  /// Returned quantity, capped at the source line's quantity net of prior
+  /// returns. Decimal(15,3) per docs/DATABASE.md.
+  quantity      Decimal @db.Decimal(15, 3)
+  /// Unit price, copied from the invoice line (the value being reversed).
+  price         Decimal @default(0) @db.Decimal(15, 2)
+  /// Optional link to the stock Item so the goods can move back IN (issue #27).
+  /// NULL = this line is not tracked in inventory (the app couples sales and
+  /// stock loosely; invoice lines are free-text, not FKs to Item).
+  itemId        Int?    @map("item_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  invoiceItem InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  item        Item?       @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([salesReturnId])
+  @@index([invoiceItemId])
+  @@index([itemId])
+  @@map("sales_return_items")
+}
+
+/// A purchase return (retur pembelian) — goods we sent back to a supplier,
+/// reversing part of a purchase.
+///
+/// ASYMMETRY WITH SALES: a purchase (`supplier_transactions` of type `purchase`)
+/// has NO line items in this schema — it is a single net `amount` plus
+/// `tax_amount`. So a purchase return references the origin purchase DOCUMENT and
+/// the over-return cap is enforced by VALUE (net subtotal) against the purchase's
+/// amount, netting off prior returns — there is no source line to reference. Its
+/// items are free-text (like invoice items), for the nota retur and stock only.
+model PurchaseReturn {
+  id         Int      @id @default(autoincrement())
+  returnNo   String   @unique @map("return_no") @db.VarChar(50)
+  /// Origin purchase (a `supplier_transactions` row of type `purchase`).
+  purchaseId Int      @map("purchase_id")
+  supplierId Int?     @map("supplier_id")
+  date       DateTime
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Net returned value, in `currency`, capped at the purchase's remaining net.
+  subtotal   Decimal  @default(0) @db.Decimal(15, 2)
+  /// Reversed PPN Masukan, proportional to the returned value. 0 → no VAT leg.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// Gross returned value in IDR base — the amount debited to Hutang Usaha.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  status     String   @default("posted") @db.VarChar(20)
+  reason     String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchase SupplierTransaction  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  supplier Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items    PurchaseReturnItem[]
+
+  @@index([purchaseId])
+  @@index([supplierId])
+  @@index([date])
+  @@index([status])
+  @@map("purchase_returns")
+}
+
+model PurchaseReturnItem {
+  id               Int     @id @default(autoincrement())
+  purchaseReturnId Int     @map("purchase_return_id")
+  itemName         String  @map("item_name") @db.VarChar(100)
+  quantity         Decimal @db.Decimal(15, 3)
+  price            Decimal @default(0) @db.Decimal(15, 2)
+  /// Optional link to the stock Item so the goods can move OUT (issue #27).
+  itemId           Int?    @map("item_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  item           Item?          @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseReturnId])
+  @@index([itemId])
+  @@map("purchase_return_items")
 }
 
 // ─── Financial ───────────────────────────────────────────

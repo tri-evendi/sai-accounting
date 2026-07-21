@@ -81,6 +81,9 @@ export interface FakeSeed {
   /** Uang muka (issue #26). Seed the nested advance/invoice/purchase inline. */
   advancePayments?: Record<number, unknown>;
   advanceApplications?: Record<number, unknown>;
+  /** Retur penjualan & pembelian (issue #27). */
+  salesReturns?: Record<number, unknown>;
+  purchaseReturns?: Record<number, unknown>;
 }
 
 type Where = Record<string, unknown>;
@@ -210,6 +213,14 @@ export function createFakeClient(seed: FakeSeed = {}) {
         (seed.stockMovements ?? []).filter((m) =>
           matches(m as Record<string, unknown>, where)
         ),
+    },
+    salesReturn: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.salesReturns, where.id),
+    },
+    purchaseReturn: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.purchaseReturns, where.id),
     },
 
     /** Test helper — every journal created so far, in creation order. */

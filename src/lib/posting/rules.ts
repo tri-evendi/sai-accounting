@@ -317,6 +317,104 @@ export function buildSalesReceiptLines(input: SalesReceiptInput): JournalLineInp
   return [...lines, ...fxPlugLines(lines, input.fxAccountId, memo)];
 }
 
+// ─── Retur penjualan / sales return (issue #27) ──────────
+
+export interface SalesReturnInput extends CurrencyContext {
+  arAccountId: number;
+  salesAccountId: number;
+  vatOutAccountId?: number;
+  /** Net returned value, excluding tax. */
+  subtotal: number;
+  /** Reversed PPN Keluaran. 0 / omitted = the origin invoice was untaxed / 0%. */
+  taxAmount?: number;
+  memo?: string;
+}
+
+/**
+ * Retur Penjualan → the sales invoice, reversed proportionally to the returned
+ * value: D: Penjualan, (D: Hutang PPN Keluaran), K: Piutang Usaha.
+ *
+ * The mirror image of `buildSalesInvoiceLines`: everything the invoice credited
+ * is now debited and vice versa. Revenue falls, the output-VAT liability falls by
+ * the proportional PPN, and the receivable the customer owes falls by the gross.
+ * A 0% / export return carries no `taxAmount`, so no VAT leg is emitted — never a
+ * zero one. Booked in the origin invoice's own currency/rate: a return is a
+ * partial reversal of the invoice, valued exactly as the invoice was, so there is
+ * no settlement and no FX leg.
+ */
+export function buildSalesReturnLines(input: SalesReturnInput): JournalLineInput[] {
+  const subtotal = round2(input.subtotal);
+  const tax = round2(input.taxAmount ?? 0);
+  if (subtotal < 0 || tax < 0) {
+    throw new PostingRuleError("Nilai retur penjualan tidak boleh negatif.");
+  }
+  if (subtotal <= 0) {
+    throw new PostingRuleError("Nilai retur penjualan harus lebih besar dari nol.");
+  }
+  if (tax > 0 && !input.vatOutAccountId) {
+    throw new PostingRuleError(
+      "Retur kena PPN tetapi akun Hutang PPN Keluaran belum dipetakan (vat_out)."
+    );
+  }
+  const { currency, rate, memo } = input;
+
+  return compact([
+    { accountId: input.salesAccountId, debit: subtotal, currency, rate, memo },
+    ...(tax > 0
+      ? [{ accountId: input.vatOutAccountId!, debit: tax, currency, rate, memo }]
+      : []),
+    { accountId: input.arAccountId, credit: round2(subtotal + tax), currency, rate, memo },
+  ]);
+}
+
+// ─── Retur pembelian / purchase return (issue #27) ───────
+
+export interface PurchaseReturnInput extends CurrencyContext {
+  apAccountId: number;
+  inventoryAccountId: number;
+  vatInAccountId?: number;
+  /** Net returned value, excluding tax. */
+  subtotal: number;
+  /** Reversed PPN Masukan. 0 / omitted = the origin purchase was untaxed. */
+  taxAmount?: number;
+  memo?: string;
+}
+
+/**
+ * Retur Pembelian → the purchase, reversed proportionally: D: Hutang Usaha,
+ * K: Persediaan, (K: PPN Masukan).
+ *
+ * The mirror of `buildPurchaseLines`. The payable we owe the supplier falls by
+ * the gross, inventory falls by the returned net value (the goods left), and the
+ * input-VAT reclaim falls by the proportional PPN Masukan. Because the original
+ * purchase capitalised straight into Persediaan (there is no separate COGS leg on
+ * the way in), the return credits Persediaan directly here — the accompanying
+ * stock `out` movement is recorded for QUANTITY only and posts no journal of its
+ * own, so inventory is never double-credited.
+ */
+export function buildPurchaseReturnLines(input: PurchaseReturnInput): JournalLineInput[] {
+  const subtotal = round2(input.subtotal);
+  const tax = round2(input.taxAmount ?? 0);
+  if (subtotal < 0 || tax < 0) {
+    throw new PostingRuleError("Nilai retur pembelian tidak boleh negatif.");
+  }
+  if (subtotal <= 0) {
+    throw new PostingRuleError("Nilai retur pembelian harus lebih besar dari nol.");
+  }
+  if (tax > 0 && !input.vatInAccountId) {
+    throw new PostingRuleError(
+      "Retur kena PPN tetapi akun PPN Masukan belum dipetakan (vat_in)."
+    );
+  }
+  const { currency, rate, memo } = input;
+
+  return compact([
+    { accountId: input.apAccountId, debit: round2(subtotal + tax), currency, rate, memo },
+    { accountId: input.inventoryAccountId, credit: subtotal, currency, rate, memo },
+    ...(tax > 0 ? [{ accountId: input.vatInAccountId!, credit: tax, currency, rate, memo }] : []),
+  ]);
+}
+
 // ─── Purchases ───────────────────────────────────────────
 
 export interface PurchaseInput extends CurrencyContext {

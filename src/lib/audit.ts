@@ -26,7 +26,10 @@ export type AuditAction =
   | "reconciliation.match"
   | "reconciliation.unmatch"
   | "reconciliation.lock"
-  | "reconciliation.reopen";
+  | "reconciliation.reopen"
+  /** Retur penjualan & pembelian (issue #27). Each posts its own journal. */
+  | "sales_return.create"
+  | "purchase_return.create";
 
 export type AuditEntity =
   | "cash_account"
@@ -38,7 +41,9 @@ export type AuditEntity =
   | "advance_payment"
   | "advance_application"
   | "bank_statement"
-  | "bank_statement_line";
+  | "bank_statement_line"
+  | "sales_return"
+  | "purchase_return";
 
 export type AuditLogEntry = {
   id: string;

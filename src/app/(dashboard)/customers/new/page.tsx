@@ -23,6 +23,7 @@ export default function NewCustomerPage() {
       phone: formData.get("phone"),
       email: formData.get("email"),
       pic: formData.get("pic"),
+      npwp: formData.get("npwp"),
       taxExempt: formData.get("taxExempt") === "on",
     };
 
@@ -60,6 +61,7 @@ export default function NewCustomerPage() {
               <Input id="phone" name="phone" label="Phone" />
               <Input id="email" name="email" type="email" label="Email" />
               <Input id="pic" name="pic" label="Person In Charge (PIC)" />
+              <Input id="npwp" name="npwp" label="NPWP (untuk e-Faktur)" />
               <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
                 <input
                   id="taxExempt"

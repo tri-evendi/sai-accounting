@@ -38,6 +38,9 @@ export default function NewInvoicePage() {
     rate: "",
     taxable: true,
     taxRate: "11",
+    pebNumber: "",
+    pebDate: "",
+    exportNote: "",
   });
 
   const subtotal = invoiceSubtotal(items);

@@ -96,6 +96,10 @@ export interface OpeningBalancesInput {
     address?: string | null;
     baseCurrency: string;
     fiscalYearStart: Date;
+    // ── Seller tax identity for e-Faktur (issue #17) — all optional. ──
+    npwp?: string | null;
+    taxName?: string | null;
+    taxAddress?: string | null;
   };
   cash: OpeningCashInput[];
   receivables: OpeningPartnerInput[];
@@ -248,6 +252,9 @@ export async function applyOpeningBalances(
             address: input.company.address ?? null,
             baseCurrency: input.company.baseCurrency,
             fiscalYearStart: input.company.fiscalYearStart,
+            npwp: input.company.npwp ?? null,
+            taxName: input.company.taxName ?? null,
+            taxAddress: input.company.taxAddress ?? null,
             isSetup: false,
           },
         });
@@ -288,6 +295,9 @@ export async function applyOpeningBalances(
         address: input.company.address ?? null,
         baseCurrency: input.company.baseCurrency,
         fiscalYearStart: input.company.fiscalYearStart,
+        npwp: input.company.npwp ?? null,
+        taxName: input.company.taxName ?? null,
+        taxAddress: input.company.taxAddress ?? null,
         isSetup: true,
         openingJournalId: journal.id,
       },

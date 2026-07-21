@@ -102,6 +102,9 @@ export default async function InvoiceDetailPage({
               taxAmount,
               taxable,
               taxRate,
+              pebNumber: invoice.pebNumber ?? null,
+              pebDate: invoice.pebDate ? invoice.pebDate.toISOString() : null,
+              exportNote: invoice.exportNote ?? null,
               customerName: invoice.customer?.name ?? null,
               items: invoice.items.map((i) => ({
                 itemName: i.itemName,
@@ -160,6 +163,24 @@ export default async function InvoiceDetailPage({
                 )}
               </dd>
             </div>
+            {/* Dokumen ekspor / PEB (issue #17) — only when captured. */}
+            {invoice.pebNumber && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Nomor PEB</dt>
+                <dd className="text-sm text-gray-900 tabular-nums">
+                  {invoice.pebNumber}
+                  {invoice.pebDate && (
+                    <span className="text-gray-500"> · {formatDate(invoice.pebDate)}</span>
+                  )}
+                </dd>
+              </div>
+            )}
+            {invoice.exportNote && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Keterangan Ekspor</dt>
+                <dd className="text-sm text-gray-900">{invoice.exportNote}</dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </Card>

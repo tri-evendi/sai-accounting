@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, date, dueDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
+  const { items, date, dueDate, pebDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
     parsed.data;
   // Server is authoritative on tax: PPN is recomputed from the rate when taxable,
   // so a stale client amount never reaches the ledger. A 0% / non-taxable invoice
@@ -60,6 +60,8 @@ export async function POST(request: Request) {
           baseAmount,
           date: new Date(date),
           dueDate: toDateOrNull(dueDate),
+          // pebNumber / exportNote flow through invoiceData; pebDate needs coercion.
+          pebDate: toDateOrNull(pebDate),
           items: { create: items },
         },
         include: { items: true },

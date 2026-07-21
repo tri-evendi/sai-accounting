@@ -156,6 +156,20 @@ model Invoice {
   /// subtotal is still recomputed from `items` (see the invoice detail page).
   dpp        Decimal? @db.Decimal(15, 2)
 
+  // ── issue #17 — Persiapan & ekspor e-Faktur (dokumen ekspor / PEB) ──────────
+  /// PEB — nomor Pemberitahuan Ekspor Barang. On an EXPORT invoice (0% PPN,
+  /// foreign currency) the customs PEB number stands in for the Faktur Pajak
+  /// number — it is what the e-Faktur/CTAS export carries for an export sale.
+  /// NULLable, no backfill: a domestic invoice has none, and legacy exports were
+  /// never captured here (the number lived only in free-text notes). See #16 for
+  /// the taxable=false / foreign-currency shape of an export invoice.
+  pebNumber  String?   @map("peb_number") @db.VarChar(50)
+  /// Tanggal PEB (customs clearance date). NULLable for the same reason as above.
+  pebDate    DateTime? @map("peb_date")
+  /// Free-text export-document note (e.g. shipping/BL reference). Optional; shown
+  /// on the invoice and available to the e-Faktur export as `keterangan`.
+  exportNote String?   @map("export_note") @db.Text
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -360,6 +374,12 @@ model Customer {
   /// non-taxable; the form control can still override it per document. DEFAULT
   /// FALSE, so existing customers keep the standard domestic 11% default.
   taxExempt Boolean @default(false) @map("tax_exempt")
+  /// NPWP pembeli (issue #17) — the buyer's tax id, carried into the e-Faktur
+  /// export as the lawan-transaksi NPWP for a DOMESTIC (faktur keluaran) sale.
+  /// NULLable, no backfill: an export buyer has no Indonesian NPWP (its identity
+  /// on a PEB is name/country), and legacy customers were never captured. Stored
+  /// as free text (digits/dots/dashes) — not validated as a check-digit here.
+  npwp String? @db.VarChar(30)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -996,6 +1016,18 @@ model CompanySetting {
   /// Awal tahun buku (fiscal-year start). The opening journal is dated here, so
   /// it precedes every operational transaction and sits in the first open period.
   fiscalYearStart DateTime @map("fiscal_year_start")
+  // ── issue #17 — Identitas pajak penjual (untuk output e-Faktur / CTAS) ──────
+  /// NPWP perusahaan (penjual). The seller tax id every e-Faktur row needs.
+  /// NULLable: legacy setups predate it; the e-Faktur export refuses to build
+  /// until it is filled rather than emitting a blank that would fail DJP import.
+  /// Stored as free text (digits/dots/dashes), not check-digit validated.
+  npwp String? @db.VarChar(30)
+  /// Nama sesuai NPWP, when it differs from the trading `name` above. NULL → the
+  /// e-Faktur export falls back to `name`.
+  taxName String? @map("tax_name") @db.VarChar(150)
+  /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
+  /// `address`. Reported on the seller identity line of any e-Faktur output.
+  taxAddress String? @map("tax_address") @db.Text
   /// Run-once flag: true once the wizard has completed and the opening journal is
   /// posted. Re-entry then shows a read-only summary and refuses a second run.
   isSetup Boolean @default(false) @map("is_setup")

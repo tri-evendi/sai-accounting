@@ -26,7 +26,7 @@ import {
 } from "@/components/shared/currency-rate-fields";
 import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 import { formatCurrency } from "@/lib/utils";
-import { Info, Users, ReceiptText } from "lucide-react";
+import { Info, Users, ReceiptText, Ship } from "lucide-react";
 
 interface CustomerOption {
   id: number;
@@ -42,6 +42,13 @@ export interface InvoiceFxValues {
   taxable: boolean;
   /** PPN rate in percent, as a form string (e.g. "11"). */
   taxRate: string;
+  // ── Dokumen ekspor / PEB (issue #17) — only meaningful on an export/0% invoice.
+  /** Nomor PEB (Pemberitahuan Ekspor Barang). */
+  pebNumber: string;
+  /** Tanggal PEB, as a `YYYY-MM-DD` string. */
+  pebDate: string;
+  /** Free-text export-document note. */
+  exportNote: string;
 }
 
 interface InvoiceFxFieldsProps {
@@ -53,10 +60,13 @@ interface InvoiceFxFieldsProps {
 
 export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsProps) {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const { customerId, currency, rate, taxable, taxRate } = value;
+  const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
 
   const isForeign = currency !== BASE_CURRENCY;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
+  // An export / 0% document is where a PEB (not a Faktur Pajak) applies: foreign
+  // currency, or PPN not charged. A domestic taxable invoice hides the PEB block.
+  const isExportDoc = isForeign || !taxable || effectiveRate === 0;
   // Reuse the exact server-side computation for the preview so the figure shown
   // and the figure posted can never disagree.
   const { dpp, taxAmount, total } = computeTax(subtotal, effectiveRate);
@@ -187,6 +197,49 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
         )}
       </div>
 
+      {/* Dokumen ekspor / PEB (issue #17) — shown only for an export/0% invoice. */}
+      {isExportDoc && (
+        <div className="sm:col-span-2 rounded-md border border-gray-200 p-3">
+          <p className="flex items-center gap-1 text-sm font-medium text-gray-700">
+            <Ship className="h-4 w-4 text-gray-400" aria-hidden="true" />
+            Dokumen Ekspor (PEB)
+          </p>
+          <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              Untuk penjualan ekspor (PPN 0%), nomor PEB menggantikan nomor Faktur Pajak
+              dan dipakai pada ekspor e-Faktur. Opsional.
+            </span>
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Input
+              id="pebNumber"
+              name="pebNumber"
+              label="Nomor PEB"
+              value={pebNumber}
+              onChange={(e) => onChange({ pebNumber: e.target.value })}
+            />
+            <Input
+              id="pebDate"
+              name="pebDate"
+              type="date"
+              label="Tanggal PEB"
+              value={pebDate}
+              onChange={(e) => onChange({ pebDate: e.target.value })}
+            />
+            <div className="sm:col-span-2">
+              <Input
+                id="exportNote"
+                name="exportNote"
+                label="Keterangan ekspor"
+                value={exportNote}
+                onChange={(e) => onChange({ exportNote: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
         <dl className="space-y-1">
           <div className="flex items-center justify-between">
@@ -217,10 +270,17 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
 
 /** Request body fields for the invoice API, from the form's string state. */
 export function invoiceFxPayload(value: InvoiceFxValues) {
+  const effectiveRate = value.taxable ? Number(value.taxRate) || 0 : 0;
+  // PEB only belongs on an export/0% document; a domestic taxable invoice clears
+  // it so a value typed before switching modes is not persisted by accident.
+  const isExportDoc = value.currency !== BASE_CURRENCY || !value.taxable || effectiveRate === 0;
   return {
     customerId: value.customerId ? Number(value.customerId) : null,
     ...currencyRatePayload(value.currency, value.rate),
     taxable: value.taxable,
     taxRate: value.taxable ? Number(value.taxRate) || 0 : 0,
+    pebNumber: isExportDoc ? value.pebNumber || null : null,
+    pebDate: isExportDoc ? value.pebDate || null : null,
+    exportNote: isExportDoc ? value.exportNote || null : null,
   };
 }

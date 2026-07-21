@@ -16,6 +16,10 @@ interface InvoiceData {
   taxable?: boolean;
   /** PPN rate in percent (e.g. 11). Shown in the PPN row when taxable. */
   taxRate?: number | null;
+  /** Dokumen ekspor / PEB (issue #17) — shown when present. */
+  pebNumber?: string | null;
+  pebDate?: string | null;
+  exportNote?: string | null;
   customerName?: string | null;
   items: {
     itemName: string;
@@ -86,6 +90,11 @@ export function generateInvoicePDF(invoice: InvoiceData) {
     ["Status", invoice.status.toUpperCase()],
     ["Currency", invoice.currency || "IDR"],
     ...(invoice.customerName ? [["Customer", invoice.customerName]] : []),
+    // Dokumen ekspor / PEB (issue #17) — only when captured.
+    ...(invoice.pebNumber
+      ? [["No. PEB", `${invoice.pebNumber}${invoice.pebDate ? ` (${formatDate(invoice.pebDate)})` : ""}`]]
+      : []),
+    ...(invoice.exportNote ? [["Ket. Ekspor", invoice.exportNote]] : []),
   ];
 
   for (const [label, value] of infoRows) {

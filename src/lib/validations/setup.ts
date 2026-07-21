@@ -31,13 +31,28 @@ export const openingPartnerSchema = z
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
 
-export const companyIdentitySchema = z.object({
-  name: z.string().min(1, "Nama perusahaan wajib diisi").max(150).trim(),
-  address: z.string().max(1000).trim().optional(),
-  baseCurrency: currencyEnum.default("IDR"),
-  /** Awal tahun buku (YYYY-MM-DD). The opening journal is dated here. */
-  fiscalYearStart: z.string().min(1, "Awal tahun buku wajib diisi"),
+/**
+ * Seller tax identity (issue #17) — the NPWP + tax name/address any e-Faktur
+ * output needs. All optional: a legacy setup predates them, and the e-Faktur
+ * export surfaces a missing NPWP rather than the wizard forcing it here.
+ */
+export const companyTaxIdentitySchema = z.object({
+  npwp: z.string().max(30).trim().optional(),
+  taxName: z.string().max(150).trim().optional(),
+  taxAddress: z.string().max(1000).trim().optional(),
 });
+
+export const companyIdentitySchema = z
+  .object({
+    name: z.string().min(1, "Nama perusahaan wajib diisi").max(150).trim(),
+    address: z.string().max(1000).trim().optional(),
+    baseCurrency: currencyEnum.default("IDR"),
+    /** Awal tahun buku (YYYY-MM-DD). The opening journal is dated here. */
+    fiscalYearStart: z.string().min(1, "Awal tahun buku wajib diisi"),
+  })
+  .merge(companyTaxIdentitySchema);
+
+export type CompanyTaxIdentityInput = z.infer<typeof companyTaxIdentitySchema>;
 
 /**
  * The whole wizard submission. `superRefine` enforces that SOMETHING is being

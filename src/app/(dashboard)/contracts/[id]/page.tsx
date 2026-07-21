@@ -3,9 +3,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
+import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { buildContractChain, loadContractChain } from "@/lib/document-chain";
+import { Receipt, Truck } from "lucide-react";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
 
@@ -54,6 +58,23 @@ export default async function ContractDetailPage({
     return (p.currency || "IDR") === "IDR" ? sum + Number(p.amount) : sum;
   }, 0);
 
+  // ── Dokumen berantai (issue #15) ──────────────────────────────────────────
+  // Surat jalan and faktur that name this contract, plus the per-line outstanding
+  // derived from them. Read-only; nothing here posts or values anything.
+  const chain = await loadContractChain(prisma, contract.id);
+  const { lines: outstandingLines, totals } = chain.outstanding;
+  const stages = buildContractChain({
+    contractStatus: contract.status,
+    totals,
+    deliveryOrderCount: chain.deliveryOrders.length,
+    invoiceCount: chain.invoices.length,
+    // Cash received FOR this contract: its own down payments plus payments made
+    // against the faktur drawn from it. Both only add up in IDR base.
+    paymentCount: contract.payments.length + chain.invoicePaymentCount,
+    paidBase: totalPaidBase + chain.invoicePaidBase,
+    contractBase: baseAmount,
+  });
+
   return (
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Contracts", href: "/contracts" }, { label: contract.contractNo }]} />
@@ -91,6 +112,13 @@ export default async function ContractDetailPage({
               })),
             }}
           />
+          {/* Pola "Ambil" (issue #15): buka form faktur dengan kontrak ini terpilih,
+              barisnya sudah terisi sisa yang belum difakturkan. */}
+          <Link href={`/invoices/new?contractId=${contract.id}`}>
+            <Button>
+              <Receipt className="mr-1 h-4 w-4" aria-hidden /> Buat Faktur
+            </Button>
+          </Link>
           <Link href={`/contracts/${contract.id}/edit`}>
             <Button variant="secondary">Edit</Button>
           </Link>
@@ -98,6 +126,213 @@ export default async function ContractDetailPage({
             <Button variant="ghost">Back</Button>
           </Link>
         </div>
+      </div>
+
+      {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Rantai Dokumen</CardTitle>
+          <p className="mt-1 text-sm text-gray-500">
+            Perjalanan kontrak ini: dikirim lewat surat jalan, ditagih lewat faktur,
+            lalu dibayar. Angka pembayaran dijumlahkan dalam IDR (nilai dasar buku besar).
+          </p>
+        </CardHeader>
+        <CardContent>
+          <DocumentChainTimeline stages={stages} />
+        </CardContent>
+      </Card>
+
+      {/* Sisa per baris kontrak — dikirim & difakturkan vs sisa (issue #15) */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Sisa per Barang</CardTitle>
+          <p className="mt-1 text-sm text-gray-500">
+            Berapa kilogram tiap barang sudah dikirim dan sudah difakturkan, dan berapa
+            sisanya. Sisa inilah yang ditarik otomatis saat membuat faktur.
+          </p>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left">
+                <th className="px-6 py-3 font-medium text-gray-500">Barang</th>
+                <th className="px-6 py-3 text-right font-medium text-gray-500">Kontrak (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-gray-500">Dikirim (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-gray-500">Difakturkan (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-gray-500">Sisa (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-gray-500">Sisa Nilai</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Status Faktur</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outstandingLines.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    Kontrak ini belum punya baris barang.
+                  </td>
+                </tr>
+              ) : (
+                outstandingLines.map((line) => (
+                  <tr key={line.key} className="border-b border-gray-100">
+                    <td className="px-6 py-3 text-gray-900">{line.itemName}</td>
+                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                      {formatNumber(line.contractedKg)}
+                    </td>
+                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                      {formatNumber(line.deliveredKg)}
+                    </td>
+                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                      {formatNumber(line.invoicedKg)}
+                    </td>
+                    <td className="px-6 py-3 text-right font-medium tabular-nums text-gray-900">
+                      {formatNumber(line.remainingKg)}
+                    </td>
+                    <td className="px-6 py-3 text-right tabular-nums text-gray-900">
+                      {formatCurrency(line.remainingValue, contract.currency)}
+                    </td>
+                    <td className="px-6 py-3">
+                      <Badge
+                        variant={
+                          line.invoiceStatus === "selesai"
+                            ? "success"
+                            : line.invoiceStatus === "sebagian"
+                              ? "warning"
+                              : "default"
+                        }
+                      >
+                        {line.invoiceStatus === "selesai"
+                          ? "Lunas difakturkan"
+                          : line.invoiceStatus === "sebagian"
+                            ? "Sebagian"
+                            : "Belum"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {outstandingLines.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 font-semibold text-gray-900">
+                  <td className="px-6 py-3">Total</td>
+                  <td className="px-6 py-3 text-right tabular-nums">
+                    {formatNumber(totals.contractedKg)}
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums">
+                    {formatNumber(totals.deliveredKg)}
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums">
+                    {formatNumber(totals.invoicedKg)}
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums">
+                    {formatNumber(totals.remainingKg)}
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums">
+                    {formatCurrency(totals.remainingValue, contract.currency)}
+                  </td>
+                  <td className="px-6 py-3" />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        {(totals.unmatchedDeliveredKg > 0 || totals.unmatchedInvoicedKg > 0) && (
+          <CardContent className="pt-0">
+            <p className="text-xs text-amber-700">
+              Ada baris dokumen dengan nama barang di luar kontrak ini
+              {totals.unmatchedDeliveredKg > 0 &&
+                ` — surat jalan ${formatNumber(totals.unmatchedDeliveredKg)} kg`}
+              {totals.unmatchedInvoicedKg > 0 &&
+                ` — faktur ${formatNumber(totals.unmatchedInvoicedKg)} kg`}
+              . Baris tersebut tidak dihitung sebagai pemenuhan kontrak.
+            </p>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Surat jalan & faktur yang menyebut kontrak ini (issue #15) */}
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-4 w-4 text-gray-400" aria-hidden /> Surat Jalan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chain.deliveryOrders.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Belum ada surat jalan.{" "}
+                <Link href="/delivery-orders/new" className="text-blue-600 hover:underline">
+                  Buat surat jalan →
+                </Link>
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-100 text-sm">
+                {chain.deliveryOrders.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/delivery-orders/${d.id}`}
+                        className="truncate font-medium text-blue-600 hover:underline"
+                      >
+                        {d.no}
+                      </Link>
+                      <p className="text-xs text-gray-500">{formatDate(d.date)}</p>
+                    </div>
+                    <span className="shrink-0 tabular-nums text-gray-900">
+                      {formatNumber(d.totalKg)} kg
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-gray-400" aria-hidden /> Faktur
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chain.invoices.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Belum ada faktur dari kontrak ini.{" "}
+                <Link
+                  href={`/invoices/new?contractId=${contract.id}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  Buat faktur →
+                </Link>
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-100 text-sm">
+                {chain.invoices.map((inv) => (
+                  <li key={inv.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/invoices/${inv.id}`}
+                        className="truncate font-medium text-blue-600 hover:underline"
+                      >
+                        {inv.invoiceNo}
+                      </Link>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(inv.date)} · Terbayar (IDR){" "}
+                        <span className="tabular-nums">
+                          {formatCurrency(inv.paidBase, "IDR")}
+                        </span>
+                      </p>
+                    </div>
+                    <span className="shrink-0 tabular-nums text-gray-900">
+                      {formatCurrency(inv.total, inv.currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Contract Info */}

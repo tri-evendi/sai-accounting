@@ -39,7 +39,13 @@ export type AuditAction =
   | "fixed_asset.dispose"
   | "fixed_asset.transfer"
   /** Surat Jalan / Delivery Order (issue #14). Reduces stock; HPP via stock-out. */
-  | "delivery_order.create";
+  | "delivery_order.create"
+  /**
+   * Faktur ditarik ("Ambil") dari sebuah kontrak (issue #15). Consumes part of an
+   * outstanding contract promise. Posts NO new journal — a pulled faktur posts
+   * exactly as a normal faktur does; only the document link is new.
+   */
+  | "invoice.pull_from_contract";
 
 export type AuditEntity =
   | "cash_account"
@@ -57,7 +63,8 @@ export type AuditEntity =
   | "company_settings"
   | "fixed_asset_category"
   | "fixed_asset"
-  | "delivery_order";
+  | "delivery_order"
+  | "invoice";
 
 export type AuditLogEntry = {
   id: string;

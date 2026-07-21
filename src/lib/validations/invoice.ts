@@ -20,6 +20,19 @@ export const invoiceSchema = z
     status: z.enum(["signed", "pending", "canceled"]).default("pending"),
     // Nullable: legacy invoices carry no customer, and the picker may be left empty.
     customerId: z.coerce.number().int().positive().nullish(),
+    /**
+     * Kontrak sumber (dokumen berantai #15). Set when the faktur was created with
+     * the "Ambil" pull; it is what the server-side outstanding guard measures
+     * against. "" / null / undefined coerce to null — the same posture as
+     * `consigneeId` on a contract and `contractId` on a surat jalan (#14).
+     * Purely a document link: a pulled faktur posts exactly as a normal one does.
+     */
+    contractId: z
+      .preprocess(
+        (v) => (v === "" || v === null || v === undefined ? null : v),
+        z.coerce.number().int().positive().nullable()
+      )
+      .default(null),
     currency: currencyEnum.default("IDR"),
     // Persisted to invoices.rate; drives base_amount and the IDR value of the journal.
     rate: rateField,

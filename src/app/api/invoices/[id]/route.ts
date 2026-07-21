@@ -7,6 +7,11 @@ import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import {
+  assertWithinContract,
+  contractOutstandingForInvoice,
+  OverInvoiceError,
+} from "@/lib/document-chain";
 
 export async function GET(
   _request: Request,
@@ -46,8 +51,19 @@ export async function PUT(
     );
   }
 
-  const { items, date, dueDate, pebDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
-    parsed.data;
+  const {
+    items,
+    date,
+    dueDate,
+    pebDate,
+    rate,
+    currency,
+    taxable,
+    taxRate,
+    taxAmount,
+    contractId,
+    ...invoiceData
+  } = parsed.data;
   const invoiceId = parseInt(id);
   // Recomputed on every edit: changing an item, the taxable flag, the rate or the
   // PPN rate has to move DPP/PPN/base_amount with it, or the stored values drift
@@ -55,14 +71,29 @@ export async function PUT(
   const tax = resolveInvoiceTax(invoiceSubtotal(items), { taxable, taxRate, taxAmount });
   const { rate: fxRate, baseAmount } = fxAmounts(currency, tax.total, rate);
 
+  // Friendly check for the source document (an FK violation would otherwise be an
+  // opaque 500). Nullable — an edit may also detach the faktur from its contract.
+  if (contractId != null && !(await prisma.contract.findUnique({ where: { id: contractId } }))) {
+    return NextResponse.json({ error: "Kontrak sumber tidak ditemukan." }, { status: 400 });
+  }
+
   try {
     const invoice = await prisma.$transaction(async (tx) => {
+      // Outstanding guard (issue #15), inside the transaction — an edit can
+      // overdraw a contract just as a new faktur can. THIS invoice's own lines are
+      // excluded from "already invoiced", or every save would collide with itself.
+      if (contractId != null) {
+        const { lines } = await contractOutstandingForInvoice(tx, contractId, invoiceId);
+        assertWithinContract(lines, items);
+      }
+
       await tx.invoiceItem.deleteMany({ where: { invoiceId } });
 
       const updated = await tx.invoice.update({
         where: { id: invoiceId },
         data: {
           ...invoiceData,
+          contractId: contractId ?? null,
           currency,
           taxable: tax.taxable,
           taxRate: tax.taxRate,
@@ -87,6 +118,9 @@ export async function PUT(
 
     return NextResponse.json(invoice);
   } catch (e) {
+    if (e instanceof OverInvoiceError) {
+      return NextResponse.json({ error: e.message, saved: false }, { status: 400 });
+    }
     return handlePostingError(e);
   }
 }

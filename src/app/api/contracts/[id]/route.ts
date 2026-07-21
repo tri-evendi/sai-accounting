@@ -86,6 +86,29 @@ export async function DELETE(
   const { id } = await params;
   const contractId = parseInt(id);
 
+  // Dokumen berantai (issue #15): a contract that has already been drawn on is
+  // RESTRICTed by the FKs on `invoices.contract_id` / `delivery_orders.contract_id`.
+  // Say so in Indonesian instead of letting the driver raise an opaque 500.
+  const [invoiceCount, deliveryOrderCount] = await Promise.all([
+    prisma.invoice.count({ where: { contractId } }),
+    prisma.deliveryOrder.count({ where: { contractId } }),
+  ]);
+  if (invoiceCount > 0 || deliveryOrderCount > 0) {
+    const parts = [
+      invoiceCount > 0 ? `${invoiceCount} faktur` : null,
+      deliveryOrderCount > 0 ? `${deliveryOrderCount} surat jalan` : null,
+    ].filter(Boolean);
+    return NextResponse.json(
+      {
+        error:
+          `Kontrak ini sudah dipakai oleh ${parts.join(" dan ")}, jadi tidak bisa dihapus. ` +
+          `Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontrak ` +
+          `(status "canceled") agar rantai dokumennya tetap utuh.`,
+      },
+      { status: 400 }
+    );
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       // Payments cascade-delete with the contract — reverse their journals too.

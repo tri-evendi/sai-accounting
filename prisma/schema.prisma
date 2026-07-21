@@ -81,6 +81,9 @@ model Contract {
   advances  AdvancePayment[]
   // issue #14 — surat jalan yang menyebut kontrak ini sebagai dokumen sumber.
   deliveryOrders DeliveryOrder[]
+  /// issue #15 — faktur yang ditarik ("Ambil") dari kontrak ini. Dasar pelacakan
+  /// sisa: berapa kg/nilai kontrak yang sudah difakturkan vs sisa.
+  invoices       Invoice[]
   // issue #22 — master consignee relation (RESTRICT: a consignee in use is
   // deactivated, never hard-deleted; see Consignee).
   consigneeRef Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
@@ -172,12 +175,26 @@ model Invoice {
   /// on the invoice and available to the e-Faktur export as `keterangan`.
   exportNote String?   @map("export_note") @db.Text
 
+  // ── issue #15 — dokumen berantai (Kontrak → Surat Jalan → Faktur → Pembayaran) ──
+  /// Kontrak sumber. Sebuah faktur yang dibuat lewat pola "Ambil" menarik baris
+  /// dari kontrak ini, dan pelacakan sisa (outstanding) diukur terhadapnya.
+  /// Nullable & tanpa backfill — faktur lepas / legacy tak menyebut kontrak.
+  /// RESTRICT, sejalan dengan DeliveryOrder.contractId (#14): kontrak yang sudah
+  /// difakturkan tak boleh dihapus dari bawah fakturnya.
+  ///
+  /// TIDAK ADA ATURAN JURNAL BARU: faktur "tarikan" memposting persis seperti
+  /// faktur biasa (`postForSource sourceType: "invoice"`). Kolom ini murni
+  /// penelusuran dokumen, bukan masukan akuntansi.
+  contractId Int?      @map("contract_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
+  /// issue #15 — kontrak sumber faktur ini (pola "Ambil"). RESTRICT.
+  contract Contract?        @relation(fields: [contractId], references: [id], onDelete: Restrict)
   // issue #14 — surat jalan yang menyebut faktur ini sebagai dokumen sumber.
   deliveryOrders DeliveryOrder[]
   /// Sales advances compensated into this invoice (issue #26). Each row both
@@ -188,6 +205,7 @@ model Invoice {
   salesReturns SalesReturn[]
 
   @@index([customerId])
+  @@index([contractId])
   @@index([dueDate])
   @@index([date])
   @@map("invoices")

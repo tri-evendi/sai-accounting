@@ -79,6 +79,8 @@ model Contract {
   payments  ContractPayment[]
   documents Document[]
   advances  AdvancePayment[]
+  // issue #14 — surat jalan yang menyebut kontrak ini sebagai dokumen sumber.
+  deliveryOrders DeliveryOrder[]
   // issue #22 — master consignee relation (RESTRICT: a consignee in use is
   // deactivated, never hard-deleted; see Consignee).
   consigneeRef Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
@@ -176,6 +178,8 @@ model Invoice {
   customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
+  // issue #14 — surat jalan yang menyebut faktur ini sebagai dokumen sumber.
+  deliveryOrders DeliveryOrder[]
   /// Sales advances compensated into this invoice (issue #26). Each row both
   /// reduces what the customer still owes and carries its own journal.
   advanceApplications AdvanceApplication[]
@@ -231,6 +235,8 @@ model Item {
   /// Return lines that move THIS item back in/out of stock (issue #27).
   salesReturnItems    SalesReturnItem[]
   purchaseReturnItems PurchaseReturnItem[]
+  /// Surat jalan lines that move THIS item OUT of stock on issue (issue #14).
+  deliveryOrderItems  DeliveryOrderItem[]
 
   @@map("items")
 }
@@ -414,6 +420,8 @@ model Consignee {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   contracts Contract[]
+  // issue #14 — surat jalan yang dikirim ke consignee ini.
+  deliveryOrders DeliveryOrder[]
 
   @@index([isActive])
   @@index([name])
@@ -1270,4 +1278,81 @@ model SalesTarget {
   @@index([customerId])
   @@index([itemId])
   @@map("sales_targets")
+}
+
+// ─── Surat Jalan / Delivery Order (issue #14) ────────────────────────────────
+//
+// Menjadikan Surat Jalan dokumen kelas satu (bukan sekadar PDF pada detail
+// kontrak): tersimpan, dapat dicetak, dan MENGURANGI STOK saat diterbitkan.
+//
+// ── Akuntansi (keputusan kunci) ─────────────────────────────────────────────
+// HPP di aplikasi ini HANYA diakui pada pergerakan stok `out` (lihat
+// `buildStockMovementEntry` di src/lib/posting/index.ts → D: HPP, K: Persediaan
+// pada biaya rata-rata tertimbang). Faktur & kontrak HANYA memposting pendapatan
+// (D: Piutang, K: Penjualan) — tak pernah HPP, tak pernah mengurangi stok. Maka
+// menerbitkan Surat Jalan = titik barang keluar = titik pengakuan HPP. DO TIDAK
+// membuat aturan jurnal baru: ia membuat baris `stock` bertipe `out`, lalu setiap
+// baris diposting lewat jalur yang SUDAH ADA `postForSource({ sourceType:
+// "stock_movement" })`. Tidak ada `sourceType` baru, tidak ada builder HPP kedua.
+model DeliveryOrder {
+  id          Int      @id @default(autoincrement())
+  /// Nomor surat jalan — UNIK. Format `SJ.YYYY.MM.NNNNN` (lihat delivery-orders.ts).
+  no          String   @unique @db.VarChar(50)
+  date        DateTime
+  /// Dokumen sumber (dokumen berantai #16). Sebuah DO boleh menyebut kontrak
+  /// dan/atau faktur. Nullable; RESTRICT — dokumen sumber yang dipakai tak
+  /// boleh dihapus dari bawah surat jalannya.
+  contractId  Int?     @map("contract_id")
+  invoiceId   Int?     @map("invoice_id")
+  /// Consignee master (#22). Nullable — sebuah DO bisa hanya mengandalkan teks
+  /// tujuan pada `notes`. RESTRICT sejalan dengan Contract.consigneeId.
+  consigneeId Int?     @map("consignee_id")
+  /// Kendaraan/kontainer pengangkut (mirror legacy `truk_no`/`container`).
+  vehicleNo   String?  @map("vehicle_no") @db.VarChar(50)
+  containerNo String?  @map("container_no") @db.VarChar(50)
+  notes       String?  @db.Text
+  /// enum-like: `issued` | `canceled`. Dibuat `issued`; penerbitan mengurangi
+  /// stok. (Nilai `canceled` disediakan untuk pembalikan di masa depan.)
+  status      String   @default("issued") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items     DeliveryOrderItem[]
+  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  invoice   Invoice?   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  consignee Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([contractId])
+  @@index([invoiceId])
+  @@index([consigneeId])
+  @@index([status])
+  @@map("delivery_orders")
+}
+
+model DeliveryOrderItem {
+  id              Int      @id @default(autoincrement())
+  deliveryOrderId Int      @map("delivery_order_id")
+  /// Barang stok yang dikeluarkan — FK ke master Item, RESTRICT (seperti
+  /// SalesReturnItem.itemId). `itemName` disimpan sebagai snapshot untuk PDF.
+  itemId          Int      @map("item_id")
+  itemName        String   @map("item_name") @db.VarChar(100)
+  /// Bentuk bags/kg mengikuti ContractItem persis: `bags` Int + `kgPerBag`.
+  bags            Int      @default(0)
+  kgPerBag        Decimal  @default(0) @map("kg_per_bag") @db.Decimal(10, 2)
+  /// Kuantitas yang dikeluarkan dari stok, dalam KG (= bags × kgPerBag).
+  /// Decimal(15,3) per docs/DATABASE.md. KG adalah unit fungible stok/HPP di
+  /// app ini (unit_cost = IDR per kg; kontrak berharga per kg).
+  quantity        Decimal  @db.Decimal(15, 3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryOrderId])
+  @@index([itemId])
+  @@map("delivery_order_items")
 }

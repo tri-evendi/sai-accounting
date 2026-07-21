@@ -24,6 +24,7 @@ import {
   Scale,
   Ship,
   Undo2,
+  Wand2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,8 @@ const allNavItems = [
   { href: "/consignees", label: "Consignees", icon: Ship, roles: ["bos", "core"] },
   { href: "/documents", label: "Documents", icon: Upload, roles: ["bos", "core"] },
   { href: "/users", label: "Users", icon: UserCog, roles: ["bos"] },
+  // ── issue #20 — Setup wizard perusahaan + Saldo Awal (run-once) ──
+  { href: "/setup", label: "Setup & Saldo Awal", icon: Wand2, roles: ["bos"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["bos", "core", "ptg"] },
 ];
 

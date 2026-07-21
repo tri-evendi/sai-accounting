@@ -57,6 +57,14 @@ export const MAPPING_KEYS = {
    * Never an expense: nothing has been consumed yet.
    */
   ADVANCE_PURCHASE: "advance_purchase",
+  /**
+   * Modal/Ekuitas untuk Saldo Awal (issue #20) — the equity account the opening
+   * journal's balancing figure lands in. Currency-agnostic: the plug is derived
+   * in IDR base. Defaults to 3101 Modal in the template COA; a company on another
+   * chart (or one using a dedicated "Opening Balance Equity" account) just
+   * repoints this one mapping row.
+   */
+  OPENING_EQUITY: "opening_equity",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -80,6 +88,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   fx_gain_loss: "Laba/Rugi Selisih Kurs",
   advance_sales: "Uang Muka Penjualan",
   advance_purchase: "Uang Muka Pembelian",
+  opening_equity: "Modal/Ekuitas (Saldo Awal)",
 };
 
 /**
@@ -174,6 +183,12 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.CASH_BANK, code: "110103", currency: "IDR" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110104", currency: "USD" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110105", currency: "CNY" },
+
+  // Saldo Awal / opening equity (issue #20). The opening journal's balancing
+  // figure — assets − liabilities — lands here as Modal. Reuses the existing
+  // 3101 Modal account (no new COA code needed); currency-agnostic like
+  // fx_gain_loss because the plug is already an IDR base amount.
+  { key: MAPPING_KEYS.OPENING_EQUITY, code: "3101" },
 ];
 
 /** Cash slot for a CashAccount.type value. Unknown types fall back to cash_default. */

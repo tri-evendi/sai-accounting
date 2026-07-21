@@ -700,6 +700,134 @@ export function buildAdvanceCompensationLines(
   return [...lines, ...fxPlugLines(lines, input.fxAccountId, memo)];
 }
 
+// ─── Saldo Awal / Opening balances (issue #20) ───────────
+
+/**
+ * One known opening balance, sitting on the side its account normally carries:
+ * assets on the debit side, liabilities on the credit side.
+ *
+ * A foreign opening balance carries its own `currency` + `rate`, exactly like
+ * every other line the ledger stores; the IDR base is `amount × rate`. Balances
+ * are never summed across currencies in their own units — only in IDR base, the
+ * one unit `assertBalanced` checks in.
+ */
+export interface OpeningBalanceLine {
+  accountId: number;
+  /** debit for assets (kas, piutang, persediaan); credit for liabilities (utang). */
+  side: "debit" | "credit";
+  /** Amount in the line's own currency (> 0). */
+  amount: number;
+  /** ISO currency; "IDR" for base. */
+  currency: string;
+  /** Rate to IDR base; 1 for IDR (> 0). A foreign line with no rate is refused. */
+  rate: number;
+  memo?: string;
+}
+
+export interface OpeningBalanceInput {
+  /** Known opening balances — assets on the debit side, liabilities on the credit side. */
+  lines: OpeningBalanceLine[];
+  /** Modal/Ekuitas account that absorbs the balancing figure (booked in IDR base). */
+  equityAccountId: number;
+  /** Memo for the balancing equity line. */
+  equityMemo?: string;
+}
+
+/**
+ * The Modal/Ekuitas balancing figure (IDR base) for a set of opening balances.
+ *
+ * Positive → assets exceed liabilities, i.e. net worth is positive, so equity is
+ * CREDITED that much. Negative → liabilities exceed assets, so equity is DEBITED.
+ *
+ * Uses the very same rounding `ledger.prepareLines` applies (`round2(amount ×
+ * rate)` on already-2-dp amounts), so the figure the UI previews is the exact
+ * figure that will make `assertBalanced` pass — the plug can only ever absorb the
+ * assets-minus-liabilities gap, never a rounding artefact.
+ */
+export function openingEquityPlug(lines: OpeningBalanceLine[]): number {
+  let debitBase = 0;
+  let creditBase = 0;
+  for (const l of lines) {
+    const base = round2(round2(l.amount) * l.rate);
+    if (l.side === "debit") debitBase = round2(debitBase + base);
+    else creditBase = round2(creditBase + base);
+  }
+  return round2(debitBase - creditBase);
+}
+
+/**
+ * Saldo Awal → ONE balanced opening journal (jurnal pembuka).
+ *
+ *   D: Kas/Bank, Piutang Usaha, Persediaan        (assets, at their own rate)
+ *   K: Hutang Usaha                                (liabilities, at their own rate)
+ *   K/D: Modal/Ekuitas (Saldo Awal)               (the balancing figure, IDR base)
+ *
+ * The equity line is DERIVED as the plug that balances the entry in IDR base —
+ * never taken from user input — so the journal is balanced by construction and
+ * `assertBalanced` stays authoritative. A fully-specified set whose assets and
+ * liabilities already net to zero equity emits no modal line at all (rather than
+ * a zero one).
+ */
+export function buildOpeningBalanceLines(input: OpeningBalanceInput): JournalLineInput[] {
+  const { lines, equityAccountId } = input;
+  if (lines.length === 0) {
+    throw new PostingRuleError("Saldo awal kosong: tidak ada nilai untuk dicatat.");
+  }
+
+  let debitBase = 0;
+  let creditBase = 0;
+  const journalLines: JournalLineInput[] = lines.map((l) => {
+    const amount = round2(l.amount);
+    if (amount <= 0) {
+      throw new PostingRuleError("Nilai saldo awal harus lebih besar dari nol.");
+    }
+    if (!(l.rate > 0)) {
+      throw new PostingRuleError(
+        `Kurs untuk saldo awal mata uang ${l.currency} tidak tersedia. ` +
+          `Isi kurs agar nilai IDR tidak ditebak. Jurnal pembuka tidak diposting.`
+      );
+    }
+    if (l.accountId === equityAccountId) {
+      throw new PostingRuleError(
+        "Akun Modal/Ekuitas tidak boleh menjadi baris saldo awal aset/kewajiban — " +
+          "ia adalah angka penyeimbang, bukan saldo yang diinput."
+      );
+    }
+    const base = round2(amount * l.rate);
+    if (l.side === "debit") debitBase = round2(debitBase + base);
+    else creditBase = round2(creditBase + base);
+    return {
+      accountId: l.accountId,
+      ...(l.side === "debit" ? { debit: amount } : { credit: amount }),
+      currency: l.currency,
+      rate: l.rate,
+      memo: l.memo,
+    };
+  });
+
+  // Balancing figure to Modal/Ekuitas, in IDR base (rate 1 — it is already base).
+  const plug = round2(debitBase - creditBase);
+  if (plug > 0) {
+    journalLines.push({
+      accountId: equityAccountId,
+      credit: plug,
+      currency: "IDR",
+      rate: 1,
+      memo: input.equityMemo,
+    });
+  } else if (plug < 0) {
+    journalLines.push({
+      accountId: equityAccountId,
+      debit: -plug,
+      currency: "IDR",
+      rate: 1,
+      memo: input.equityMemo,
+    });
+  }
+
+  return compact(journalLines);
+}
+
 // ─── Inventory / COGS ────────────────────────────────────
 
 export interface CogsInput {

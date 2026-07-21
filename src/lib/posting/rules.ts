@@ -857,3 +857,112 @@ export function buildCogsLines(input: CogsInput): JournalLineInput[] {
     },
   ];
 }
+
+// ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
+
+export interface DepreciationInput {
+  /** Beban Penyusutan — the expense recognised this period. */
+  expenseAccountId: number;
+  /** Akumulasi Penyusutan — the contra-asset that grows against the asset. */
+  accumulatedAccountId: number;
+  /** Depreciation for one period, in IDR. */
+  amount: number;
+  memo?: string;
+}
+
+/**
+ * Penyusutan periodik → D: Beban Penyusutan, K: Akumulasi Penyusutan.
+ *
+ * Always IDR: fixed assets are carried at IDR cost (see @/lib/depreciation), so
+ * there is no rate and the base equals the amount. Balanced by construction — a
+ * single debit and its equal credit. The final-period true-up lives in the pure
+ * math (`nextPeriodDepreciation`), not here: this rule just books whatever amount
+ * it is handed, so accumulated can never overshoot cost − residual.
+ */
+export function buildDepreciationLines(input: DepreciationInput): JournalLineInput[] {
+  const amount = round2(input.amount);
+  if (amount <= 0) {
+    throw new PostingRuleError("Nilai penyusutan harus lebih besar dari nol.");
+  }
+  if (input.expenseAccountId === input.accumulatedAccountId) {
+    throw new PostingRuleError(
+      "Akun beban penyusutan tidak boleh sama dengan akun akumulasi penyusutan."
+    );
+  }
+  const { memo } = input;
+  return [
+    { accountId: input.expenseAccountId, debit: amount, currency: "IDR", rate: 1, memo },
+    { accountId: input.accumulatedAccountId, credit: amount, currency: "IDR", rate: 1, memo },
+  ];
+}
+
+export interface AssetDisposalInput {
+  /** The fixed-asset account the cost sits in (credited to remove it). */
+  assetAccountId: number;
+  /** Akumulasi Penyusutan (debited to remove the accumulated depreciation). */
+  accumulatedAccountId: number;
+  /** Kas/Bank that receives the sale proceeds (may be 0 for a scrapped asset). */
+  cashAccountId: number;
+  /** Laba/Rugi Pelepasan Aset Tetap — takes the gain (credit) or loss (debit). */
+  gainLossAccountId: number;
+  /** Acquisition cost, IDR (> 0). */
+  cost: number;
+  /** Accumulated depreciation to date, IDR (0..cost). */
+  accumulatedDepreciation: number;
+  /** Sale proceeds, IDR (>= 0). */
+  proceeds: number;
+  memo?: string;
+}
+
+/**
+ * Pelepasan/penjualan aset → remove the asset and book the gain/loss.
+ *
+ *   D: Akumulasi Penyusutan        (remove the contra-asset)
+ *   D: Kas/Bank                    (proceeds received)
+ *   K: Aktiva Tetap                (remove the asset at cost)
+ *   K/D: Laba/Rugi Pelepasan       (the balancing plug — gain if proceeds > NBV)
+ *
+ * The gain/loss is DERIVED as the plug that balances the entry in IDR base, the
+ * same technique the FX and opening-equity rules use: it is balanced by
+ * construction, and the only thing that can make the fixed legs disagree is the
+ * gap between proceeds and net book value — which is precisely the laba/rugi
+ * pelepasan. `disposalGainLoss` in @/lib/depreciation exposes the same figure
+ * for the UI. Everything IDR, so base = amount.
+ */
+export function buildAssetDisposalLines(input: AssetDisposalInput): JournalLineInput[] {
+  const cost = round2(input.cost);
+  const accumulated = round2(input.accumulatedDepreciation);
+  const proceeds = round2(input.proceeds);
+  if (cost <= 0) {
+    throw new PostingRuleError("Nilai perolehan aset harus lebih besar dari nol.");
+  }
+  if (accumulated < 0 || proceeds < 0) {
+    throw new PostingRuleError("Akumulasi penyusutan dan hasil pelepasan tidak boleh negatif.");
+  }
+  if (accumulated > cost + 0.005) {
+    throw new PostingRuleError(
+      "Akumulasi penyusutan tidak boleh melebihi nilai perolehan aset."
+    );
+  }
+  const { memo } = input;
+
+  const fixed: JournalLineInput[] = compact([
+    { accountId: input.accumulatedAccountId, debit: accumulated, currency: "IDR", rate: 1, memo },
+    { accountId: input.cashAccountId, debit: proceeds, currency: "IDR", rate: 1, memo },
+    { accountId: input.assetAccountId, credit: cost, currency: "IDR", rate: 1, memo },
+  ]);
+
+  // Plug = Σdebit − Σcredit = accumulated + proceeds − cost = proceeds − NBV.
+  // > 0 → base debits exceed credits, so the plug is a CREDIT: a GAIN (income).
+  // < 0 → a DEBIT: a LOSS. Booked in IDR at rate 1 like the fixed legs.
+  const totalDebit = fixed.reduce((s, l) => s + (l.debit ?? 0), 0);
+  const totalCredit = fixed.reduce((s, l) => s + (l.credit ?? 0), 0);
+  const gain = round2(totalDebit - totalCredit);
+
+  if (gain > 0) {
+    fixed.push({ accountId: input.gainLossAccountId, credit: gain, currency: "IDR", rate: 1, memo });
+  } else if (gain < 0) {
+    fixed.push({ accountId: input.gainLossAccountId, debit: -gain, currency: "IDR", rate: 1, memo });
+  }
+  return fixed;
+}

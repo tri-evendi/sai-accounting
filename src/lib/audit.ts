@@ -31,7 +31,13 @@ export type AuditAction =
   | "sales_return.create"
   | "purchase_return.create"
   /** Setup perusahaan + saldo awal (issue #20). Posts the opening journal, once. */
-  | "setup.create";
+  | "setup.create"
+  /** Aset tetap (issue #28). Depreciation & disposal post journals; the rest don't. */
+  | "fixed_asset.category.create"
+  | "fixed_asset.create"
+  | "fixed_asset.depreciate"
+  | "fixed_asset.dispose"
+  | "fixed_asset.transfer";
 
 export type AuditEntity =
   | "cash_account"
@@ -46,7 +52,9 @@ export type AuditEntity =
   | "bank_statement_line"
   | "sales_return"
   | "purchase_return"
-  | "company_settings";
+  | "company_settings"
+  | "fixed_asset_category"
+  | "fixed_asset";
 
 export type AuditLogEntry = {
   id: string;

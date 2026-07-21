@@ -84,6 +84,10 @@ export interface FakeSeed {
   /** Retur penjualan & pembelian (issue #27). */
   salesReturns?: Record<number, unknown>;
   purchaseReturns?: Record<number, unknown>;
+  /** Aset tetap (issue #28). Disposal reads the asset; depreciation reads a
+   *  fixed_asset_depreciations row with its asset nested inline. */
+  fixedAssets?: Record<number, unknown>;
+  fixedAssetDepreciations?: Record<number, unknown>;
 }
 
 type Where = Record<string, unknown>;
@@ -221,6 +225,14 @@ export function createFakeClient(seed: FakeSeed = {}) {
     purchaseReturn: {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.purchaseReturns, where.id),
+    },
+    fixedAsset: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.fixedAssets, where.id),
+    },
+    fixedAssetDepreciation: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.fixedAssetDepreciations, where.id),
     },
 
     /** Test helper — every journal created so far, in creation order. */

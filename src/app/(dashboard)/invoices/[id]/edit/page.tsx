@@ -40,6 +40,9 @@ export default function EditInvoicePage() {
     rate: "",
     taxable: false,
     taxRate: "11",
+    pebNumber: "",
+    pebDate: "",
+    exportNote: "",
   });
 
   const subtotal = invoiceSubtotal(items);
@@ -79,6 +82,9 @@ export default function EditInvoicePage() {
           rate: data.rate != null ? String(Number(data.rate)) : "",
           taxable: Boolean(data.taxable) || legacyTaxed,
           taxRate: String(inferredRate),
+          pebNumber: data.pebNumber || "",
+          pebDate: data.pebDate ? new Date(data.pebDate).toISOString().split("T")[0] : "",
+          exportNote: data.exportNote || "",
         });
         setItems(
           data.items.map((item: InvoiceItem & { id?: number }) => ({

@@ -80,6 +80,8 @@ export function SetupWizard({
   // Step 1–2: identity + settings
   const [name, setName] = useState(defaults.name);
   const [address, setAddress] = useState(defaults.address);
+  // Seller NPWP for e-Faktur (issue #17) — optional at setup, editable later.
+  const [npwp, setNpwp] = useState("");
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
 
@@ -170,6 +172,7 @@ export function SetupWizard({
         address: address || undefined,
         baseCurrency,
         fiscalYearStart,
+        npwp: npwp || undefined,
       },
       cash: cash
         .filter((r) => r.accountId && (Number(r.amount) || 0) > 0)
@@ -286,6 +289,14 @@ export function SetupWizard({
                 maxLength={1000}
               />
             </div>
+            <Input
+              id="npwp"
+              label="NPWP (untuk e-Faktur)"
+              value={npwp}
+              onChange={(e) => setNpwp(e.target.value)}
+              maxLength={30}
+              placeholder="Opsional — bisa diisi nanti"
+            />
           </div>
         )}
 

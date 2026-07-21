@@ -114,6 +114,9 @@ export async function POST(request: Request) {
       address: company.address ?? null,
       baseCurrency: company.baseCurrency,
       fiscalYearStart: new Date(company.fiscalYearStart),
+      npwp: company.npwp ?? null,
+      taxName: company.taxName ?? null,
+      taxAddress: company.taxAddress ?? null,
     },
     cash: cash.map((c) => ({
       accountId: c.accountId,

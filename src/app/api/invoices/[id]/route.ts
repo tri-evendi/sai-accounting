@@ -46,7 +46,7 @@ export async function PUT(
     );
   }
 
-  const { items, date, dueDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
+  const { items, date, dueDate, pebDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
     parsed.data;
   const invoiceId = parseInt(id);
   // Recomputed on every edit: changing an item, the taxable flag, the rate or the
@@ -72,6 +72,8 @@ export async function PUT(
           baseAmount,
           date: new Date(date),
           dueDate: toDateOrNull(dueDate),
+          // pebNumber / exportNote flow through invoiceData; pebDate needs coercion.
+          pebDate: toDateOrNull(pebDate),
           items: { create: items },
         },
         include: { items: true },

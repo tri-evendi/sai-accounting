@@ -195,6 +195,12 @@ export const customerSchema = z.object({
    * default; when TRUE it flips the invoice form's default to non-taxable.
    */
   taxExempt: z.boolean().default(false),
+  /**
+   * NPWP pembeli (issue #17) — the buyer's tax id, carried into the e-Faktur
+   * export as the lawan-transaksi NPWP on a domestic faktur keluaran. Optional
+   * (an export buyer has none); free text, not check-digit validated.
+   */
+  npwp: z.string().max(30).trim().optional(),
 });
 
 /**

@@ -26,6 +26,7 @@ import {
   Undo2,
   Building2,
   Wand2,
+  FileSpreadsheet,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,8 @@ const allNavItems = [
   { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"], accountingOnly: true },
   { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"], accountingOnly: true },
   { href: "/reports", label: "Laporan", icon: BarChart3, roles: ["bos"] },
+  // ── issue #17 — Ekspor e-Faktur (DJP/CTAS) ──
+  { href: "/tax/efaktur", label: "Ekspor e-Faktur", icon: FileSpreadsheet, roles: ["bos"] },
   { href: "/periods", label: "Tutup Periode", icon: Lock, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["bos", "core"] },

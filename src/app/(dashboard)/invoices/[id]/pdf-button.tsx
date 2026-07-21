@@ -11,6 +11,9 @@ interface Props {
     taxAmount?: number;
     taxable?: boolean;
     taxRate?: number | null;
+    pebNumber?: string | null;
+    pebDate?: string | null;
+    exportNote?: string | null;
     customerName?: string | null;
     items: { itemName: string; quantity: number; price: number; unit: string | null }[];
     payments: { date: string; amount: number; currency: string; note: string | null }[];

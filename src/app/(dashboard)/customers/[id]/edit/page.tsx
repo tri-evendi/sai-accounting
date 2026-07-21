@@ -19,6 +19,7 @@ export default function EditCustomerPage() {
     phone: "",
     email: "",
     pic: "",
+    npwp: "",
     taxExempt: false,
   });
 
@@ -35,6 +36,7 @@ export default function EditCustomerPage() {
           phone: data.phone || "",
           email: data.email || "",
           pic: data.pic || "",
+          npwp: data.npwp || "",
           taxExempt: Boolean(data.taxExempt),
         });
         setFetching(false);
@@ -84,6 +86,7 @@ export default function EditCustomerPage() {
               <Input id="phone" label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <Input id="email" type="email" label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               <Input id="pic" label="Person In Charge (PIC)" value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} />
+              <Input id="npwp" label="NPWP (untuk e-Faktur)" value={form.npwp} onChange={(e) => setForm({ ...form, npwp: e.target.value })} />
               <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
                 <input
                   id="taxExempt"

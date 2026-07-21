@@ -36,6 +36,13 @@ export const invoiceSchema = z
     // predates `taxable`/`taxRate`; the route recomputes it authoritatively from
     // the rate when `taxable`. Posted to Hutang PPN Keluaran (2103).
     taxAmount: z.coerce.number().min(0, "Pajak tidak boleh negatif").default(0),
+    // ── Dokumen ekspor / PEB (issue #17) ──
+    // Relevant on an export/0% invoice: the PEB number+date stand in for the
+    // Faktur Pajak, and feed the e-Faktur export. All optional and normalised to
+    // null so an untouched field clears the column (a domestic invoice has none).
+    pebNumber: z.string().trim().max(50).optional().nullable().transform((v) => v || null),
+    pebDate: dueDateField,
+    exportNote: z.string().trim().max(1000).optional().nullable().transform((v) => v || null),
     items: z.array(invoiceItemSchema).min(1, "At least one item is required").max(50),
   })
   .superRefine(requireRateForForeign);

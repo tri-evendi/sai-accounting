@@ -1,5 +1,6 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
+import { listClosedPeriods } from "@/lib/period";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -23,12 +24,15 @@ export default async function NewInvoicePage({
   await requirePageSession(["bos", "core"]);
 
   const { contractId } = await searchParams;
-  const contracts = await prisma.contract.findMany({
-    where: { status: { not: "canceled" } },
-    orderBy: { date: "desc" },
-    take: 300,
-    select: { id: true, contractNo: true, buyer: true, currency: true },
-  });
+  const [contracts, closedPeriods] = await Promise.all([
+    prisma.contract.findMany({
+      where: { status: { not: "canceled" } },
+      orderBy: { date: "desc" },
+      take: 300,
+      select: { id: true, contractNo: true, buyer: true, currency: true },
+    }),
+    listClosedPeriods(),
+  ]);
 
   const preselected = Number(contractId);
 
@@ -58,6 +62,7 @@ export default async function NewInvoicePage({
           currency: c.currency || "IDR",
         }))}
         initialContractId={Number.isFinite(preselected) && preselected > 0 ? preselected : null}
+        closedPeriods={closedPeriods}
       />
     </div>
   );

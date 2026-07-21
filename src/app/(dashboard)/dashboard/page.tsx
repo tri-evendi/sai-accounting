@@ -15,6 +15,8 @@ import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FileText, Package } from "lucide-react";
 import {
   ContractStatusChart,
   MonthlyActivityChart,
@@ -425,8 +427,14 @@ export default async function DashboardPage() {
               <tbody>
                 {recentMovements.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
-                      Belum ada pergerakan stok
+                    <td colSpan={4}>
+                      <EmptyState
+                        icon={<Package className="h-12 w-12" />}
+                        title="Belum ada pergerakan stok"
+                        description="Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama."
+                        actionLabel="Tambah / Kurangi Stok"
+                        actionHref="/inventory/update"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -626,8 +634,14 @@ export default async function DashboardPage() {
                 <tbody>
                   {latestContracts.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
-                        Belum ada kontrak
+                      <td colSpan={4}>
+                        <EmptyState
+                          icon={<FileText className="h-12 w-12" />}
+                          title="Belum ada kontrak"
+                          description="Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya."
+                          actionLabel="+ Buat Kontrak"
+                          actionHref="/contracts/new"
+                        />
                       </td>
                     </tr>
                   ) : (

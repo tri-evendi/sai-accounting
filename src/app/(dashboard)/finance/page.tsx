@@ -9,7 +9,8 @@ import { Pagination } from "@/components/ui/pagination";
 import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Wallet } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MONTH_NAMES } from "@/lib/month-names";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -241,8 +242,14 @@ export default async function FinancePage({
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada transaksi
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={<Wallet className="h-12 w-12" />}
+                      title="Belum ada transaksi kas & bank"
+                      description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
+                      actionLabel="+ Catat Transaksi"
+                      actionHref="/finance/new"
+                    />
                   </td>
                 </tr>
               ) : (

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { MONTH_NAMES } from "@/lib/month-names";
 import { formatCurrency } from "@/lib/utils";
@@ -208,20 +209,27 @@ export function SalesTargetClient({
                       {formatCurrency(t.amount, "IDR")}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(t.id)}
-                        disabled={deleting === t.id}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                        aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
-                      >
-                        {deleting === t.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        )}
-                        Hapus
-                      </button>
+                      <ConfirmDialog
+                        title="Hapus target penjualan ini?"
+                        message={`Target ${MONTH_NAMES[t.month - 1]} ${t.year} (${t.customerName ?? "semua pelanggan"} · ${t.itemName ?? "semua barang"}) akan dihapus. Laporan pencapaian bulan itu akan kehilangan pembandingnya. Penjualan yang sudah tercatat tidak berubah.`}
+                        confirmLabel="Hapus Target"
+                        onConfirm={() => handleDelete(t.id)}
+                        trigger={
+                          <button
+                            type="button"
+                            disabled={deleting === t.id}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 disabled:opacity-50"
+                            aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
+                          >
+                            {deleting === t.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            Hapus
+                          </button>
+                        }
+                      />
                     </td>
                   </tr>
                 ))}

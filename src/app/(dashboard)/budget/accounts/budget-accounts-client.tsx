@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { MONTH_NAMES } from "@/lib/month-names";
 import { formatCurrency } from "@/lib/utils";
@@ -192,20 +193,30 @@ export function BudgetAccountsClient({
                       {formatCurrency(b.amount, "IDR")}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(b.id)}
-                        disabled={deleting === b.id}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                        aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
-                      >
-                        {deleting === b.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        )}
-                        Hapus
-                      </button>
+                      {/* Menghapus anggaran mengubah angka "Realisasi vs Anggaran"
+                          yang mungkin sudah dibaca orang lain, jadi dikonfirmasi
+                          dulu (issue #6). */}
+                      <ConfirmDialog
+                        title="Hapus anggaran ini?"
+                        message={`Anggaran ${b.accountCode} — ${b.accountName} untuk ${MONTH_NAMES[b.month - 1]} ${b.year} akan dihapus. Laporan Realisasi vs Anggaran bulan itu akan kehilangan pembandingnya. Jurnal dan transaksi tidak berubah.`}
+                        confirmLabel="Hapus Anggaran"
+                        onConfirm={() => handleDelete(b.id)}
+                        trigger={
+                          <button
+                            type="button"
+                            disabled={deleting === b.id}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 disabled:opacity-50"
+                            aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
+                          >
+                            {deleting === b.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            Hapus
+                          </button>
+                        }
+                      />
                     </td>
                   </tr>
                 ))}

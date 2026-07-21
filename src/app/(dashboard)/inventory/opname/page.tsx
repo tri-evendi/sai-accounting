@@ -17,6 +17,8 @@ import { Pagination } from "@/components/ui/pagination";
 import { formatDateShort } from "@/lib/utils";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Package } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +104,15 @@ export default async function StockOpnamePage({
             <tbody>
               {inventory.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Belum ada barang di stok</td>
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={<Package className="h-12 w-12" />}
+                      title="Belum ada barang di stok"
+                      description="Stok opname membandingkan catatan dengan hitungan fisik. Catat barang masuk pertama Anda supaya ada yang dibandingkan."
+                      actionLabel="Tambah / Kurangi Stok"
+                      actionHref="/inventory/update"
+                    />
+                  </td>
                 </tr>
               ) : (
                 inventory.map((item) => {

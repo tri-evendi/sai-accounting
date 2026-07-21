@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BookText } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -76,8 +78,14 @@ export default async function JournalPage() {
               })
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                  Belum ada jurnal. Buat jurnal manual pertama Anda.
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={<BookText className="h-12 w-12" />}
+                    title="Belum ada jurnal"
+                    description="Sebagian besar jurnal dibuat otomatis dari faktur, kontrak, kas, dan stok. Jurnal manual dipakai untuk koreksi dan penyesuaian."
+                    actionLabel="+ Buat Jurnal Manual"
+                    actionHref="/journal/new"
+                  />
                 </td>
               </tr>
             )}

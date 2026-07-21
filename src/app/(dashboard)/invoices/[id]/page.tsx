@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePageSession } from "@/lib/page-auth";
+import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Banknote } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -19,6 +23,7 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requirePageSession(["bos", "core"]);
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parseInt(id) },
@@ -125,6 +130,22 @@ export default async function InvoiceDetailPage({
           <Link href={`/invoices/${id}/edit`}>
             <Button variant="secondary">Edit</Button>
           </Link>
+          {/* Hanya Manager yang boleh menghapus — cermin dari
+              `requireAuth(["bos"])` di route DELETE-nya (issue #6). */}
+          {session.user.role === "bos" && (
+            <DeleteDocumentButton
+              endpoint={`/api/invoices/${invoice.id}`}
+              label="Hapus Tagihan"
+              title={`Hapus tagihan ${invoice.invoiceNo}?`}
+              message={
+                `Tagihan ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
+                `dibalik di transaksi yang sama — termasuk piutang dan PPN keluarannya. ` +
+                `Tindakan ini tidak bisa dibatalkan. Kalau tagihannya batal tetapi riwayatnya ingin ` +
+                `disimpan, ubah statusnya menjadi "Dibatalkan" saja.`
+              }
+              redirectTo="/invoices"
+            />
+          )}
           <Link href="/invoices">
             <Button variant="ghost">Back</Button>
           </Link>
@@ -309,8 +330,12 @@ export default async function InvoiceDetailPage({
             <tbody>
               {invoice.payments.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
-                    No payments recorded
+                  <td colSpan={3}>
+                    <EmptyState
+                      icon={<Banknote className="h-12 w-12" />}
+                      title="Belum ada pembayaran"
+                      description="Seluruh nilai tagihan ini masih tercatat sebagai piutang. Catat pembayaran pertamanya lewat formulir di atas."
+                    />
                   </td>
                 </tr>
               ) : (

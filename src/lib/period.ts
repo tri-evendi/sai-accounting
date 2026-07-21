@@ -91,6 +91,25 @@ export async function isPeriodClosed(
   return row != null;
 }
 
+/**
+ * Every month that is currently closed, as plain `{year, month}` pairs.
+ *
+ * Read-only convenience for the *forms* (issue #6): a create page hands this to
+ * its client form so a date inside a locked month is refused on screen before
+ * Simpan is pressed, instead of after a round-trip. It changes nothing about the
+ * guard itself — `assertPeriodOpen` still runs inside the same transaction as
+ * the document write and remains the only authority.
+ */
+export async function listClosedPeriods(
+  client: PeriodClient = prisma
+): Promise<{ year: number; month: number }[]> {
+  return client.period.findMany({
+    where: { status: "closed" },
+    select: { year: true, month: true },
+    orderBy: [{ year: "desc" }, { month: "desc" }],
+  });
+}
+
 /** Throw ClosedPeriodError unless the month containing `date` is open. */
 export async function assertPeriodOpen(
   date: Date,

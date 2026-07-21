@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils";
 import { forwardRef, type SelectHTMLAttributes } from "react";
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
+  /** ReactNode agar label boleh membawa `TermTooltip` (issue #6) — lihat `Input`. */
+  label?: React.ReactNode;
   error?: string;
   placeholder?: string;
   options: { value: string; label: string }[];

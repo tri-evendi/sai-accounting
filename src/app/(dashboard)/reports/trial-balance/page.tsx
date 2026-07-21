@@ -7,6 +7,8 @@ import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { resolveAsOf } from "@/lib/report-catalog";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Scale } from "lucide-react";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +70,15 @@ export default async function TrialBalancePage({
               ))}
               {tb.rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Belum ada saldo.</td>
+                  <td colSpan={4}>
+                    <EmptyState
+                      icon={<Scale className="h-12 w-12" />}
+                      title="Belum ada saldo sampai tanggal ini"
+                      description="Neraca saldo dibangun dari jurnal. Catat transaksi pertama Anda, atau pilih tanggal yang lebih akhir."
+                      actionLabel="+ Catat Transaksi"
+                      actionHref="/finance/new"
+                    />
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePageSession } from "@/lib/page-auth";
+import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +11,8 @@ import { DocumentChainTimeline } from "@/components/shared/document-chain-timeli
 import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { buildContractChain, loadContractChain } from "@/lib/document-chain";
-import { Receipt, Truck } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Banknote, Package, Receipt, Truck } from "lucide-react";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
 
@@ -21,6 +24,7 @@ export default async function ContractDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requirePageSession(["bos", "core"]);
 
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
@@ -122,6 +126,22 @@ export default async function ContractDetailPage({
           <Link href={`/contracts/${contract.id}/edit`}>
             <Button variant="secondary">Edit</Button>
           </Link>
+          {/* Hanya Manager yang boleh menghapus — cermin dari
+              `requireAuth(["bos"])` di route DELETE-nya (issue #6). */}
+          {session.user.role === "bos" && (
+            <DeleteDocumentButton
+              endpoint={`/api/contracts/${contract.id}`}
+              label="Hapus Kontrak"
+              title={`Hapus kontrak ${contract.contractNo}?`}
+              message={
+                `Kontrak ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
+                `dibalik di transaksi yang sama. Tindakan ini tidak bisa dibatalkan. ` +
+                `Kalau kontraknya batal tetapi riwayatnya ingin disimpan, ubah statusnya menjadi ` +
+                `"Dibatalkan" saja.`
+              }
+              redirectTo="/contracts"
+            />
+          )}
           <Link href="/contracts">
             <Button variant="ghost">Back</Button>
           </Link>
@@ -167,8 +187,14 @@ export default async function ContractDetailPage({
             <tbody>
               {outstandingLines.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    Kontrak ini belum punya baris barang.
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={<Package className="h-12 w-12" />}
+                      title="Kontrak ini belum punya baris barang"
+                      description="Tanpa baris barang, tidak ada sisa yang bisa dikirim atau difakturkan. Tambahkan barangnya lewat Edit."
+                      actionLabel="Edit Kontrak"
+                      actionHref={`/contracts/${contract.id}/edit`}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -480,8 +506,12 @@ export default async function ContractDetailPage({
             <tbody>
               {contract.payments.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
-                    No payments recorded
+                  <td colSpan={3}>
+                    <EmptyState
+                      icon={<Banknote className="h-12 w-12" />}
+                      title="Belum ada pembayaran"
+                      description="Belum ada uang muka atau pelunasan yang dicatat untuk kontrak ini. Catat yang pertama lewat formulir di atas."
+                    />
                   </td>
                 </tr>
               ) : (

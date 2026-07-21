@@ -54,8 +54,21 @@ export interface FakePeriod {
   status: string;
 }
 
+/**
+ * A row in `exchange_rates` (issue #43) — the settlement-date rate of one
+ * currency against IDR. Seeding none is the realistic default: it is what makes
+ * a cross-currency settlement refuse to post.
+ */
+export interface FakeExchangeRate {
+  currency: string;
+  rateDate: Date;
+  rate: number;
+  isActive?: boolean;
+}
+
 export interface FakeSeed {
   mappings?: FakeMapping[];
+  exchangeRates?: FakeExchangeRate[];
   periods?: FakePeriod[];
   invoices?: Record<number, unknown>;
   contracts?: Record<number, unknown>;
@@ -82,8 +95,15 @@ const matchesIn = (value: unknown, cond: unknown): boolean => {
   if (cond && typeof cond === "object" && "startsWith" in (cond as Where)) {
     return String(value).startsWith(String((cond as { startsWith: string }).startsWith));
   }
-  if (cond && typeof cond === "object" && "lte" in (cond as Where)) {
-    return new Date(value as Date).getTime() <= new Date((cond as { lte: Date }).lte).getTime();
+  // Date comparators, ANDed rather than short-circuited: the exchange-rate
+  // lookup (issue #43) sends {gte, lte} together to pin one calendar day, and
+  // honouring only the first would silently widen it to "any date up to".
+  if (cond && typeof cond === "object" && ("lte" in (cond as Where) || "gte" in (cond as Where))) {
+    const t = new Date(value as Date).getTime();
+    const { gte, lte } = cond as { gte?: Date; lte?: Date };
+    if (gte !== undefined && t < new Date(gte).getTime()) return false;
+    if (lte !== undefined && t > new Date(lte).getTime()) return false;
+    return true;
   }
   return value === cond;
 };
@@ -150,6 +170,14 @@ export function createFakeClient(seed: FakeSeed = {}) {
     accountMapping: {
       findMany: async ({ where }: { where: Where }) =>
         mappings.filter((m) => matches(m as unknown as Record<string, unknown>, where)),
+    },
+
+    // ── settlement-date exchange rates (issue #43) ──
+    exchangeRate: {
+      findFirst: async ({ where }: { where: Where }) =>
+        (seed.exchangeRates ?? [])
+          .map((r) => ({ isActive: true, ...r }))
+          .find((r) => matches(r as unknown as Record<string, unknown>, where)) ?? null,
     },
 
     // ── source records ──

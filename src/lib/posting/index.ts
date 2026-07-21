@@ -20,8 +20,13 @@
  *
  * Selisih kurs (issue #23): settlement entries relieve the receivable/payable at
  * the rate its own document was booked at, not at the payment's rate, and post
- * the difference to `fx_gain_loss`. See `settlementLegs` below for where the two
- * rates come from and when the engine declines to compute a difference.
+ * the difference to `fx_gain_loss`.
+ *
+ * Which account is relieved (issue #43) follows the DOCUMENT's currency, not the
+ * payment's — a USD invoice settled by an IDR transfer clears the USD receivable.
+ * See `settlementFor` below for where the three rates come from, and ./rates for
+ * the settlement-date rate that makes a cross-currency settlement computable at
+ * all rather than guessed.
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -30,9 +35,11 @@ import { postJournal, reverseJournal, type JournalEntryInput } from "@/lib/ledge
 import {
   MAPPING_KEYS,
   cashKeyForType,
+  resolveAccountId,
   resolveAccountIds,
   type MappingKey,
 } from "./mapping";
+import { resolveSettlementRate } from "./rates";
 import {
   PostingRuleError,
   buildAdvanceCompensationLines,
@@ -53,6 +60,7 @@ import { averageUnitCostForItem, costOfMovement } from "./cogs";
 export * from "./mapping";
 export * from "./rules";
 export * from "./cogs";
+export * from "./rates";
 
 export type PostingSourceType =
   | "invoice"
@@ -102,55 +110,154 @@ async function findLiveJournals(
   });
 }
 
-// ─── Selisih kurs (issue #23) ────────────────────────────
+// ─── Selisih kurs (issues #23, #43) ──────────────────────
 
 /**
- * Where the two rates come from.
+ * Where the rates come from. There are three, and keeping them straight is the
+ * whole of #23 and #43.
  *
  * DOCUMENT rate — the rate stored on the invoice/contract/purchase itself
  * (migrations 0005/0008). That is the rate the receivable or payable was booked
  * into the ledger at, and it never moves afterwards.
  *
- * SETTLEMENT rate — the rate stored on the payment row. This is the rate the
- * money actually converted at on the bank advice, which is a better number than
- * any daily mid-rate table would hold.
+ * PAYMENT rate — the rate stored on the payment row. This is the rate the money
+ * actually converted at on the bank advice, which is a better number than any
+ * daily mid-rate table would hold. For a payment these two are enough, which is
+ * why #23 needed no `exchange_rates` table and refused to add one: it would
+ * have been a second, disagreeing source of truth for a fact the document
+ * already asserts.
  *
- * Both are already on the records, which is why issue #23 needs no
- * `exchange_rates` table: introducing one would create a second, disagreeing
- * source of truth for a fact the document already asserts, and would force a
- * policy for "no row on this date" — every version of which (nearest, previous,
- * interpolate) is a silent guess of exactly the kind `resolveRate` exists to
- * refuse.
+ * SETTLEMENT-DATE rate of the DOCUMENT's currency (issue #43) — read from
+ * `exchange_rates` via ./rates, and ONLY when the payment is in a different
+ * currency from the document. #23's objection is met by scope: this rate values
+ * nothing, it only says how many document-currency units a foreign payment
+ * covers, which is the one thing neither record above can answer and the reason
+ * a USD invoice paid in rupiah used to relieve the IDR receivable. A missing
+ * row fails loudly — nearest, previous and interpolate are all the silent guess
+ * `resolveRate` exists to refuse.
  *
- * Returns `undefined` when no FX difference can be computed *without inventing a
- * number*, in which case the settlement is booked exactly as it was before #23:
+ * `legs` is `undefined` when no FX difference can be computed *without inventing
+ * a number*, in which case the settlement is booked exactly as it was before #23:
  *   • the document carries no rate (legacy row) — its booked rate is unknown, so
  *     the difference from it is unknowable. `receivables.ts` surfaces these as
  *     `unresolvedCount`; we likewise decline rather than guess.
- *   • the payment is in a different currency from the document — how many
- *     document-currency units a foreign payment clears cannot be derived without
- *     a settlement-date rate for the document's currency, which nothing records.
  */
-function settlementLegs(
+interface Settlement {
+  /**
+   * Currency the receivable/payable is denominated in — i.e. WHICH AR/AP
+   * account this settlement relieves (issue #43). Taken from the document, not
+   * from the payment: a USD invoice raises 110202 Piutang Usaha (USD) and must
+   * be relieved there whatever currency the money arrives in. Resolving it from
+   * the payment left 110202 hanging forever while 110201 was eroded by a debt
+   * that was never its own.
+   */
+  docCurrency: string;
+  /** Legs to relieve, or undefined for "book flat at the payment's own rate". */
+  legs?: SettlementLeg[];
+}
+
+/**
+ * How much of a document a payment settles, and in which currency's account.
+ *
+ * Same-currency is untouched from #23. Cross-currency is #43: the payment's IDR
+ * value is converted into document-currency units at the SETTLEMENT-date rate,
+ * so the receivable falls by the number of dollars the transfer actually
+ * covered, while still being relieved at the rate it was BOOKED at. The gap
+ * between those two rates is realized FX and reaches the ledger through
+ * `fxPlugLines` — the same single FX path #23 built, not a second one.
+ */
+async function settlementFor(
   doc: { currency: string | null; rate: unknown },
   payCurrency: string,
   payRate: number,
   amount: number,
+  date: Date,
+  client: Client,
   memo?: string
-): SettlementLeg[] | undefined {
+): Promise<Settlement> {
   const docCurrency = doc.currency || "IDR";
-  if (docCurrency !== payCurrency) return undefined;
-
   const docRate = docCurrency === "IDR" ? 1 : num(doc.rate);
-  if (!(docRate > 0)) return undefined;
-  if (docRate === payRate) return undefined; // no difference to book
 
-  return [{ amount, currency: docCurrency, rate: docRate, memo }];
+  if (docCurrency === payCurrency) {
+    if (!(docRate > 0)) return { docCurrency }; // legacy rateless document
+    if (docRate === payRate) return { docCurrency }; // no difference to book
+    return { docCurrency, legs: [{ amount, currency: docCurrency, rate: docRate, memo }] };
+  }
+
+  // ── Cross-currency settlement (issue #43) ────────────────────────────────
+  // A rateless foreign document cannot be relieved in its own currency at all:
+  // we would know how many dollars to take off the receivable but not what they
+  // were booked at, so the rupiah coming off 110202 would be a guess. Before
+  // #43 this fell through to relieving the payment's account instead, which is
+  // the defect. Refusing is the honest option, and the remedy is the same one
+  // #35/#36 established: record the document's rate, then repost it.
+  if (!(docRate > 0)) {
+    throw new PostingRuleError(
+      `Dokumen dalam mata uang ${docCurrency} ini tidak menyimpan kurs, ` +
+        `sedangkan pembayarannya dalam ${payCurrency}. ` +
+        `Nilai ${docCurrency} yang dilunasi bisa dihitung, tetapi nilai rupiah yang ` +
+        `harus keluar dari piutang/hutang tidak — itu tergantung kurs dokumennya. ` +
+        `Isi kurs pada dokumen tersebut lalu posting ulang. Jurnal tidak diposting.`
+    );
+  }
+
+  const settlementRate = await resolveSettlementRate(docCurrency, date, client);
+  // What the money is worth (IDR base), restated in the document's units.
+  // Deliberately not short-circuited when this rounds to zero: falling back to
+  // "no legs" would book flat against the *document's* account in the payment's
+  // currency, which is incoherent. `resolveLegs` rejects a zero leg loudly.
+  const docAmount = round2((round2(amount) * payRate) / settlementRate);
+
+  return {
+    docCurrency,
+    legs: [{ amount: docAmount, currency: docCurrency, rate: docRate, settlementRate, memo }],
+  };
 }
 
 /** Add the FX slot to a mapping batch only when a difference will actually arise. */
 function withFxKey(keys: MappingKey[], legs: SettlementLeg[] | undefined): MappingKey[] {
   return legs ? [...keys, MAPPING_KEYS.FX_GAIN_LOSS] : keys;
+}
+
+/**
+ * Cash at the PAYMENT's currency, receivable/payable at the DOCUMENT's (#43).
+ *
+ * The two used to be resolved in one batch at the payment's currency, which is
+ * exactly how a USD receivable came to be credited in 110201. They agree for
+ * every same-currency settlement — the overwhelming majority — so that case
+ * still costs a single query.
+ */
+async function resolveSettlementAccounts(
+  client: Client,
+  docKey: MappingKey,
+  docCurrency: string,
+  payCurrency: string,
+  needFx: boolean
+): Promise<{ cash: number; doc: number; fx?: number }> {
+  const fxKeys = needFx ? [MAPPING_KEYS.FX_GAIN_LOSS] : [];
+
+  if (docCurrency === payCurrency) {
+    const acc = await resolveAccountIds(
+      [MAPPING_KEYS.CASH_DEFAULT, docKey, ...fxKeys],
+      payCurrency,
+      client
+    );
+    return {
+      cash: acc[MAPPING_KEYS.CASH_DEFAULT],
+      doc: acc[docKey],
+      fx: needFx ? acc[MAPPING_KEYS.FX_GAIN_LOSS] : undefined,
+    };
+  }
+
+  // fx_gain_loss is currency-agnostic (the difference is already an IDR amount),
+  // so it rides along with whichever batch; the cash one is always present.
+  const pay = await resolveAccountIds([MAPPING_KEYS.CASH_DEFAULT, ...fxKeys], payCurrency, client);
+  const docAccountId = await resolveAccountId(docKey, docCurrency, client);
+  return {
+    cash: pay[MAPPING_KEYS.CASH_DEFAULT],
+    doc: docAccountId,
+    fx: needFx ? pay[MAPPING_KEYS.FX_GAIN_LOSS] : undefined,
+  };
 }
 
 interface AllocationRow {
@@ -176,14 +283,29 @@ interface AllocationRow {
  * The unallocated remainder is emitted as its own leg at the payment's own rate:
  * it clears hutang with zero difference, which keeps the legs summing to the full
  * payment so the FX plug can only ever absorb a rate gap, never an amount gap.
+ *
+ * ── CROSS-CURRENCY ALLOCATIONS (issue #43) ──────────────────────────────────
+ * Allocation amounts are denominated in the PAYMENT's currency. Before #43, an
+ * allocation naming a purchase in another currency was relieved in the payment's
+ * currency and therefore out of the payment currency's Hutang account — the same
+ * defect as on the receivable side. Now it is restated into the purchase's own
+ * currency at that currency's settlement-date rate and carries its own
+ * `accountId`, so one payment can settle an IDR purchase and a USD purchase in
+ * the same entry and each hutang falls in its own account. That is why
+ * `SettlementLeg.accountId` exists per leg rather than one account per entry.
+ *
+ * This reads `supplier_payment_allocations` exactly as #37 defined it and
+ * changes neither its semantics nor its FKs (issue #42 is untouched).
  */
-function payableSettlementLegs(
+async function payableSettlementLegs(
   trx: { allocationsMade?: AllocationRow[] | null },
   currency: string,
   rate: number,
   amount: number,
+  date: Date,
+  client: Client,
   memo?: string
-): SettlementLeg[] | undefined {
+): Promise<SettlementLeg[] | undefined> {
   const allocations = trx.allocationsMade ?? [];
   if (allocations.length === 0) return undefined;
 
@@ -196,17 +318,35 @@ function payableSettlementLegs(
     if (legAmount <= 0) continue;
     allocated = round2(allocated + legAmount);
 
-    // Allocation amounts are denominated in the PAYMENT's currency, so a
-    // purchase in another currency gives no common unit to relieve in.
-    const purchaseRate =
-      a.purchase && (a.purchase.currency || "IDR") === currency
-        ? currency === "IDR"
-          ? 1
-          : num(a.purchase.rate)
-        : 0;
-    const legRate = purchaseRate > 0 ? purchaseRate : rate;
-    if (legRate !== rate) anyDifference = true;
-    legs.push({ amount: legAmount, currency, rate: legRate, memo });
+    const purchaseCurrency = a.purchase ? a.purchase.currency || "IDR" : currency;
+    const purchaseRate = purchaseCurrency === "IDR" ? 1 : num(a.purchase?.rate);
+
+    if (purchaseCurrency === currency) {
+      const legRate = purchaseRate > 0 ? purchaseRate : rate;
+      if (legRate !== rate) anyDifference = true;
+      legs.push({ amount: legAmount, currency, rate: legRate, memo });
+      continue;
+    }
+
+    // A rateless foreign purchase cannot be relieved in its own currency: the
+    // rupiah that should leave hutang depends on the rate it was booked at.
+    if (!(purchaseRate > 0)) {
+      throw new PostingRuleError(
+        `Pembelian dalam mata uang ${purchaseCurrency} yang dilunasi pembayaran ini ` +
+          `tidak menyimpan kurs. Isi kurs pada pembelian tersebut lalu posting ulang. ` +
+          `Jurnal tidak diposting agar hutang tidak berkurang dengan nilai yang salah.`
+      );
+    }
+    const settlementRate = await resolveSettlementRate(purchaseCurrency, date, client);
+    legs.push({
+      amount: round2((legAmount * rate) / settlementRate),
+      currency: purchaseCurrency,
+      rate: purchaseRate,
+      settlementRate,
+      accountId: await resolveAccountId(MAPPING_KEYS.AP_DEFAULT, purchaseCurrency, client),
+      memo,
+    });
+    anyDifference = true;
   }
 
   const remainder = round2(amount - allocated);
@@ -328,11 +468,21 @@ async function buildInvoicePaymentEntry(
   if (amount <= 0) return null;
 
   const memo = payment.invoice.invoiceNo;
-  const settles = settlementLegs(payment.invoice, currency, rate, amount, memo);
-  const acc = await resolveAccountIds(
-    withFxKey([MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT], settles),
+  const { docCurrency, legs: settles } = await settlementFor(
+    payment.invoice,
     currency,
-    client
+    rate,
+    amount,
+    payment.date,
+    client,
+    memo
+  );
+  const acc = await resolveSettlementAccounts(
+    client,
+    MAPPING_KEYS.AR_DEFAULT,
+    docCurrency,
+    currency,
+    !!settles
   );
 
   return {
@@ -342,9 +492,9 @@ async function buildInvoicePaymentEntry(
     sourceType: "invoice_payment",
     sourceId: payment.id,
     lines: buildSalesReceiptLines({
-      cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
-      arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
-      fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
+      cashAccountId: acc.cash,
+      arAccountId: acc.doc,
+      fxAccountId: acc.fx,
       amount,
       settles,
       currency,
@@ -370,11 +520,21 @@ async function buildContractPaymentEntry(
   if (amount <= 0) return null;
 
   const memo = payment.contract.contractNo;
-  const settles = settlementLegs(payment.contract, currency, rate, amount, memo);
-  const acc = await resolveAccountIds(
-    withFxKey([MAPPING_KEYS.CASH_DEFAULT, MAPPING_KEYS.AR_DEFAULT], settles),
+  const { docCurrency, legs: settles } = await settlementFor(
+    payment.contract,
     currency,
-    client
+    rate,
+    amount,
+    payment.date,
+    client,
+    memo
+  );
+  const acc = await resolveSettlementAccounts(
+    client,
+    MAPPING_KEYS.AR_DEFAULT,
+    docCurrency,
+    currency,
+    !!settles
   );
 
   return {
@@ -384,9 +544,9 @@ async function buildContractPaymentEntry(
     sourceType: "contract_payment",
     sourceId: payment.id,
     lines: buildSalesReceiptLines({
-      cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
-      arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
-      fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
+      cashAccountId: acc.cash,
+      arAccountId: acc.doc,
+      fxAccountId: acc.fx,
       amount,
       settles,
       currency,
@@ -441,7 +601,15 @@ async function buildSupplierTransactionEntry(
   }
 
   if (trx.type === "payment") {
-    const settles = payableSettlementLegs(trx, currency, rate, amount, memo);
+    const settles = await payableSettlementLegs(
+      trx,
+      currency,
+      rate,
+      amount,
+      trx.date,
+      client,
+      memo
+    );
     const acc = await resolveAccountIds(
       withFxKey([MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.CASH_DEFAULT], settles),
       currency,
@@ -638,15 +806,36 @@ async function buildAdvanceApplicationEntry(
       : `TRX-${application.purchase!.id}`;
 
   // The very same helper cash settlements use (issue #23) — one FX path, not two.
-  const settles = settlementLegs(target, currency, rate, amount, memo);
+  //
+  // ── ISSUE #43 ON THE ADVANCE SIDE ────────────────────────────────────────
+  // `settlementFor` needs the settlement-date rate of the currency the money is
+  // coming FROM. For a cash payment that is the payment's own `rate` — a
+  // payment's rate IS the rate on the day it moved. An advance is different:
+  // its `rate` is what Uang Muka was booked at, possibly months before this
+  // compensation. So when the target is in another currency, both sides are
+  // valued at the COMPENSATION date and the advance's own settlement-date rate
+  // is handed to the rule for its "legs sum to the amount" guard, while each
+  // account is still relieved at the rate it was BOOKED at.
+  const crossCurrency = (target.currency || "IDR") !== currency;
+  const ownSettlementRate = crossCurrency
+    ? await resolveSettlementRate(currency, application.date, client)
+    : rate;
+  const { docCurrency, legs: settles } = await settlementFor(
+    target,
+    currency,
+    ownSettlementRate,
+    amount,
+    application.date,
+    client,
+    memo
+  );
 
   const advanceKey = advanceKeyFor(direction);
   const counterKey = direction === "sales" ? MAPPING_KEYS.AR_DEFAULT : MAPPING_KEYS.AP_DEFAULT;
-  const acc = await resolveAccountIds(
-    withFxKey([advanceKey, counterKey], settles),
-    currency,
-    client
-  );
+  // Uang Muka stays in the advance's currency; the receivable/payable is
+  // relieved in the TARGET document's (issue #43).
+  const acc = await resolveAccountIds(withFxKey([advanceKey], settles), currency, client);
+  const counterAccountId = await resolveAccountId(counterKey, docCurrency, client);
 
   return {
     date: application.date,
@@ -659,10 +848,11 @@ async function buildAdvanceApplicationEntry(
     lines: buildAdvanceCompensationLines({
       direction,
       advanceAccountId: acc[advanceKey],
-      counterAccountId: acc[counterKey],
+      counterAccountId,
       fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
       amount,
       settles,
+      settlementRate: crossCurrency ? ownSettlementRate : undefined,
       currency,
       rate,
       memo,

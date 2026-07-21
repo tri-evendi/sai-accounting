@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ANY_CURRENCY,
+  DEFAULT_MAPPINGS,
   MAPPING_KEYS,
   MissingMappingError,
   cashKeyForType,
@@ -17,6 +18,7 @@ import {
   weightedAverageUnitCost,
   costOfMovement,
   PostingRuleError,
+  MissingSettlementRateError,
 } from "@/lib/posting";
 import { createFakeClient, type FakeJournal, type FakeMapping } from "./fake-client";
 
@@ -496,7 +498,11 @@ describe("postForSource per transaction type", () => {
           amount: 1_000,
           currency: "USD",
           rate: 16_000,
-          invoice: { invoiceNo: "SI.2026.03.00007" },
+          // The invoice's currency and rate are stated explicitly (issue #43):
+          // which receivable a payment relieves is now decided by the DOCUMENT,
+          // so a fixture that leaves them off would silently be testing an IDR
+          // invoice paid in dollars — a different scenario, covered below.
+          invoice: { invoiceNo: "SI.2026.03.00007", currency: "USD", rate: 16_000 },
         },
       },
     });
@@ -1042,23 +1048,142 @@ describe("selisih kurs — realized FX through the posting engine", () => {
     expect(baseCreditOn(j, ACC.arUsd)).toBe(160_000_000);
   });
 
-  it("declines to compute FX when the payment currency differs from the invoice's", async () => {
-    // How many USD of receivable an IDR transfer clears needs a settlement-date
-    // USD rate that nothing records; the engine will not invent one.
+  // ── Cross-currency settlement (issue #43) ─────────────────────────────────
+  //
+  // UPDATED FROM: "declines to compute FX when the payment currency differs
+  // from the invoice's". That test pinned the state of the world at #23 — an
+  // IDR transfer against a USD invoice was booked flat and, because the account
+  // came from the *payment's* currency, credited 110201 Piutang Usaha (IDR) for
+  // a debt raised in 110202. It documented the gap rather than endorsing it,
+  // and #43 closes the gap by recording the settlement-date rate that was
+  // missing. The three tests below replace it.
+
+  /** The worked example from issue #43. */
+  const idrPaymentOnUsdInvoice = (over: Record<string, unknown> = {}) =>
+    usdPayment({
+      amount: 155_000_000,
+      currency: "IDR",
+      rate: null,
+      invoice: { invoiceNo: "SI.2026.03.00014", currency: "USD", rate: 15_000 },
+      ...over,
+    });
+
+  it("a USD invoice paid by IDR transfer relieves the USD receivable, not the IDR one", async () => {
+    const j = await post({
+      mappings: FX_MAPPINGS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      invoicePayments: { 12: idrPaymentOnUsdInvoice() },
+    });
+
+    // Rp 155.000.000 at the settlement date's 15.500 settles USD 10.000 …
+    expect(creditOn(j, ACC.arUsd)).toBe(10_000);
+    // … relieved at the rate the INVOICE was booked at, so the receivable gives
+    // up exactly the rupiah it was raised for.
+    expect(baseCreditOn(j, ACC.arUsd)).toBe(150_000_000);
+    // 110201 is not touched. Before #43 it took the whole 155.000.000.
+    expect(creditOn(j, ACC.arIdr)).toBe(0);
+    expect(baseCreditOn(j, ACC.arIdr)).toBe(0);
+
+    // Cash lands in the IDR account, because the money really was rupiah.
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(155_000_000);
+    // The 500/USD the rate moved between invoice and settlement is realized FX.
+    expect(baseCreditOn(j, FX_ACC)).toBe(5_000_000);
+  });
+
+  it("refuses to post a cross-currency settlement with no settlement-date rate", async () => {
+    // The acceptance criterion this issue turns on: silence is not an option,
+    // and neither is a nearest/previous rate. Ask for the number.
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      invoicePayments: { 12: idrPaymentOnUsdInvoice() },
+    });
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(MissingSettlementRateError);
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(/Kurs USD untuk tanggal pelunasan .* belum dicatat/);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("will not read a rate from a neighbouring day", async () => {
+    // Nearest / previous / interpolate are all the silent guess `resolveRate`
+    // exists to refuse — the lookup matches one calendar day or fails.
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      exchangeRates: [
+        { currency: "USD", rateDate: new Date("2026-03-14T00:00:00.000Z"), rate: 15_400 },
+        { currency: "USD", rateDate: new Date("2026-03-16T00:00:00.000Z"), rate: 15_600 },
+      ],
+      invoicePayments: { 12: idrPaymentOnUsdInvoice() },
+    });
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(MissingSettlementRateError);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("refuses when the foreign document carries no rate of its own", async () => {
+    // We could work out how many dollars the transfer covers, but not what
+    // those dollars were booked at — so the rupiah leaving 110202 would be a
+    // guess. Before #43 this quietly relieved the IDR receivable instead.
+    const tx = createFakeClient({
+      mappings: FX_MAPPINGS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      invoicePayments: {
+        12: idrPaymentOnUsdInvoice({
+          invoice: { invoiceNo: "SI.2019.01.00002", currency: "USD", rate: null },
+        }),
+      },
+    });
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(PostingRuleError);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("an IDR invoice paid in USD relieves the IDR receivable, with no FX", async () => {
+    // The mirror case. The receivable is denominated in rupiah, so the dollars
+    // simply convert into it at the settlement rate and nothing is left over.
     const j = await post({
       mappings: FX_MAPPINGS,
       invoicePayments: {
         12: usdPayment({
-          amount: 150_000_000,
-          currency: "IDR",
-          rate: null,
-          invoice: { invoiceNo: "SI.2026.03.00014", currency: "USD", rate: 15_000 },
+          amount: 10_000,
+          currency: "USD",
+          rate: 15_500,
+          invoice: { invoiceNo: "SI.2026.03.00015", currency: "IDR", rate: null },
         }),
       },
     });
 
-    expect(j.lines).toHaveLength(2);
+    expect(creditOn(j, ACC.arIdr)).toBe(155_000_000);
+    expect(creditOn(j, ACC.arUsd)).toBe(0);
+    expect(baseDebitOn(j, ACC.cashDefault)).toBe(155_000_000);
     expect(j.lines.some((l) => l.accountId === FX_ACC)).toBe(false);
+  });
+
+  it("keeps total AR unchanged in IDR base — only which account holds it moves", async () => {
+    // Issue #40/#43 are both "the value is right, the account is wrong". This
+    // pins the half that must NOT change: the rupiah coming off receivables is
+    // the same 150.000.000 whether the customer pays in USD or in IDR.
+    const inUsd = await post({
+      mappings: FX_MAPPINGS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      invoicePayments: { 12: usdPayment({ rate: 15_500 }) },
+    });
+    const inIdr = await post({
+      mappings: FX_MAPPINGS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      invoicePayments: { 12: idrPaymentOnUsdInvoice() },
+    });
+
+    const arBase = (j: FakeJournal) => baseCreditOn(j, ACC.arIdr) + baseCreditOn(j, ACC.arUsd);
+    expect(arBase(inUsd)).toBe(150_000_000);
+    expect(arBase(inIdr)).toBe(150_000_000);
+    // Both relieve the USD receivable, and only it.
+    expect(baseCreditOn(inUsd, ACC.arIdr)).toBe(0);
+    expect(baseCreditOn(inIdr, ACC.arIdr)).toBe(0);
   });
 
   it("refuses to post a difference when fx_gain_loss is not mapped", async () => {
@@ -1187,5 +1312,285 @@ describe("selisih kurs — realized FX through the posting engine", () => {
     );
     expect(j.lines).toHaveLength(2);
     expect(baseDebitOn(j, ACC.ap)).toBe(160_000_000);
+  });
+});
+
+// ─── Per-currency cash accounts (issue #40) ──────────────
+
+/**
+ * `account_mappings` has been currency-aware since #9, but `cash_default` was
+ * seeded with only an "any" row → 110102 Kas Besar, an IDR account. So a CNY
+ * payment was booked into an IDR cash account: balanced in rupiah, but the CNY
+ * cash balance stayed at zero while an IDR one absorbed foreign movements.
+ * Same shape of defect as #43 — right value, wrong account.
+ */
+describe("cash account resolution per currency", () => {
+  const CASH = { idr: 311, usd: 312, cny: 313 };
+
+  /** What DEFAULT_MAPPINGS now seeds: one row per currency, and no fallback. */
+  const CURRENCY_CASH: FakeMapping[] = [
+    ...MAPPINGS.filter((m) => m.key !== MAPPING_KEYS.CASH_DEFAULT),
+    { key: MAPPING_KEYS.CASH_DEFAULT, currency: "IDR", accountId: CASH.idr, isActive: true },
+    { key: MAPPING_KEYS.CASH_DEFAULT, currency: "USD", accountId: CASH.usd, isActive: true },
+    { key: MAPPING_KEYS.CASH_DEFAULT, currency: "CNY", accountId: CASH.cny, isActive: true },
+  ];
+
+  const paymentIn = (currency: string, amount: number, rate: number | null) => ({
+    12: {
+      id: 12,
+      date: DATE,
+      amount,
+      currency,
+      rate,
+      invoice: { invoiceNo: "SI.2026.03.00021", currency, rate },
+    },
+  });
+
+  it("a CNY payment lands in the CNY cash account, not Kas Besar", async () => {
+    const tx = createFakeClient({
+      mappings: CURRENCY_CASH,
+      invoicePayments: paymentIn("CNY", 100_000, 2_200),
+    });
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "invoice_payment",
+        sourceId: 12,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    expect(debitOn(j, CASH.cny)).toBe(100_000);
+    expect(debitOn(j, CASH.idr)).toBe(0);
+    // The value was never in question — only where it landed.
+    expect(j.lines[0].baseDebit).toBe(220_000_000);
+    expect(creditOn(j, ACC.arCny)).toBe(100_000);
+  });
+
+  it("a USD payment lands in the USD cash account", async () => {
+    const tx = createFakeClient({
+      mappings: CURRENCY_CASH,
+      invoicePayments: paymentIn("USD", 10_000, 15_000),
+    });
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "invoice_payment",
+        sourceId: 12,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    expect(debitOn(j, CASH.usd)).toBe(10_000);
+    expect(debitOn(j, CASH.idr)).toBe(0);
+  });
+
+  it("an IDR payment still lands in the IDR cash account", async () => {
+    const tx = createFakeClient({
+      mappings: CURRENCY_CASH,
+      invoicePayments: paymentIn("IDR", 5_000_000, null),
+    });
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "invoice_payment",
+        sourceId: 12,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    expect(debitOn(j, CASH.idr)).toBe(5_000_000);
+  });
+
+  it("refuses to post a currency with no cash mapping rather than using an IDR account", async () => {
+    // The decision issue #40 asks for, asserted. There is no "any" cash row to
+    // fall back to, because no real cash account holds an arbitrary currency —
+    // so an unconfigured currency fails the way a missing rate does.
+    const tx = createFakeClient({
+      mappings: CURRENCY_CASH,
+      invoicePayments: paymentIn("EUR", 8_000, 18_000),
+    });
+
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(MissingMappingError);
+    await expect(
+      postForSource({ sourceType: "invoice_payment", sourceId: 12, tx })
+    ).rejects.toThrow(/Kas\/Bank \(default\).*mata uang EUR.*belum diatur/);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("seeds a cash_default row per currency and deliberately no 'any' fallback", () => {
+    const cash = DEFAULT_MAPPINGS.filter((m) => m.key === MAPPING_KEYS.CASH_DEFAULT);
+
+    expect(cash.map((m) => [m.currency, m.code])).toEqual([
+      ["IDR", "110103"],
+      ["USD", "110104"],
+      ["CNY", "110105"],
+    ]);
+    // The absent row is the fix: with one, an unmapped currency silently
+    // resolves to whatever it points at, which was 110102 Kas Besar (IDR).
+    expect(cash.some((m) => m.currency === undefined)).toBe(false);
+
+    // The currency-agnostic slots keep theirs — those accounts really are
+    // currency-neutral, so a fallback is honest there.
+    for (const key of [MAPPING_KEYS.SALES_DEFAULT, MAPPING_KEYS.COGS, MAPPING_KEYS.FX_GAIN_LOSS]) {
+      expect(DEFAULT_MAPPINGS.some((m) => m.key === key && m.currency === undefined)).toBe(true);
+    }
+  });
+
+  it("physical cash slots are reached by account type and keep their 'any' row", () => {
+    // `cash_kas_besar`/`cash_kas_kecil` come from an explicit CashAccount.type,
+    // where the user has already named the account, so there is nothing to
+    // resolve by currency and nothing to guess.
+    for (const key of [MAPPING_KEYS.CASH_KAS_BESAR, MAPPING_KEYS.CASH_KAS_KECIL]) {
+      expect(DEFAULT_MAPPINGS.some((m) => m.key === key && m.currency === undefined)).toBe(true);
+    }
+  });
+});
+
+// ─── Cross-currency on the payable side (issue #43) ──────
+
+/**
+ * The mirror of the receivable case. A supplier payment reaches its purchases
+ * through `supplier_payment_allocations` (#37), so one payment can settle
+ * several purchases — and, once currencies differ, several *different* Hutang
+ * accounts. That is why a settlement leg carries its own `accountId`.
+ *
+ * Reads the allocation table exactly as #37 defined it; neither its semantics
+ * nor its FKs change here (issue #42 is untouched).
+ */
+describe("cross-currency supplier payments", () => {
+  const FX_ACC = 401;
+  const AP_USD = 402;
+  const CASH_IDR = 403;
+
+  const MAPS: FakeMapping[] = [
+    ...MAPPINGS.filter((m) => m.key !== MAPPING_KEYS.CASH_DEFAULT),
+    { key: MAPPING_KEYS.CASH_DEFAULT, currency: "IDR", accountId: CASH_IDR, isActive: true },
+    { key: MAPPING_KEYS.AP_DEFAULT, currency: "USD", accountId: AP_USD, isActive: true },
+    { key: MAPPING_KEYS.FX_GAIN_LOSS, currency: ANY_CURRENCY, accountId: FX_ACC, isActive: true },
+  ];
+
+  const baseDebitOn = (j: FakeJournal, accountId: number) =>
+    j.lines.filter((l) => l.accountId === accountId).reduce((s, l) => s + l.baseDebit, 0);
+
+  /** Rp 155.000.000 paid against a USD purchase booked at 15.000. */
+  const payment = {
+    34: {
+      id: 34,
+      date: DATE,
+      type: "payment",
+      amount: 155_000_000,
+      taxAmount: 0,
+      currency: "IDR",
+      rate: null,
+      supplier: { name: "Jiangsu Trading" },
+      allocationsMade: [{ amount: 155_000_000, purchase: { currency: "USD", rate: 15_000 } }],
+    },
+  };
+
+  it("relieves the USD payable, not the IDR one, and books the FX difference", async () => {
+    const tx = createFakeClient({
+      mappings: MAPS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      supplierTransactions: payment,
+    });
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 34,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    // Rp 155.000.000 at 15.500 settles USD 10.000 of hutang …
+    expect(debitOn(j, AP_USD)).toBe(10_000);
+    // … relieved at the rate the purchase was booked at.
+    expect(baseDebitOn(j, AP_USD)).toBe(150_000_000);
+    // The generic Hutang account keeps out of it.
+    expect(debitOn(j, ACC.ap)).toBe(0);
+    expect(baseDebitOn(j, ACC.ap)).toBe(0);
+
+    // Paying 155 juta to clear a 150 juta liability is a 5 juta loss.
+    expect(baseDebitOn(j, FX_ACC)).toBe(5_000_000);
+  });
+
+  it("refuses without a settlement-date rate rather than relieving the IDR payable", async () => {
+    const tx = createFakeClient({ mappings: MAPS, supplierTransactions: payment });
+    await expect(
+      postForSource({ sourceType: "supplier_transaction", sourceId: 34, tx })
+    ).rejects.toThrow(MissingSettlementRateError);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("refuses when the foreign purchase carries no rate of its own", async () => {
+    const tx = createFakeClient({
+      mappings: MAPS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      supplierTransactions: {
+        34: {
+          ...payment[34],
+          allocationsMade: [{ amount: 155_000_000, purchase: { currency: "USD", rate: null } }],
+        },
+      },
+    });
+    await expect(
+      postForSource({ sourceType: "supplier_transaction", sourceId: 34, tx })
+    ).rejects.toThrow(PostingRuleError);
+    expect(tx._journals).toHaveLength(0);
+  });
+
+  it("settles an IDR and a USD purchase in one entry, each in its own account", async () => {
+    // The case that forced `accountId` onto the leg rather than onto the entry.
+    const tx = createFakeClient({
+      mappings: MAPS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      supplierTransactions: {
+        34: {
+          ...payment[34],
+          amount: 175_000_000,
+          allocationsMade: [
+            { amount: 155_000_000, purchase: { currency: "USD", rate: 15_000 } },
+            { amount: 20_000_000, purchase: { currency: "IDR", rate: null } },
+          ],
+        },
+      },
+    });
+    const j = expectBalancedIdr(
+      (await postForSource({
+        sourceType: "supplier_transaction",
+        sourceId: 34,
+        tx,
+      })) as unknown as FakeJournal
+    );
+
+    expect(debitOn(j, AP_USD)).toBe(10_000);
+    expect(baseDebitOn(j, AP_USD)).toBe(150_000_000);
+    // The IDR slice stays in the IDR payable, at face value.
+    expect(baseDebitOn(j, ACC.ap)).toBe(20_000_000);
+    // Cash out is the full payment; the plug is the USD slice's rate gap only.
+    expect(j.lines.filter((l) => l.accountId === CASH_IDR)[0].baseCredit).toBe(175_000_000);
+    expect(baseDebitOn(j, FX_ACC)).toBe(5_000_000);
+  });
+
+  it("rejects allocations that do not add up, instead of hiding it in the FX plug", async () => {
+    // Issue #23's guard, carried into the cross-currency case: the plug absorbs
+    // a RATE gap, never an AMOUNT error. Without a shared unit this used to be
+    // unenforceable; the settlement rate supplies one.
+    const tx = createFakeClient({
+      mappings: MAPS,
+      exchangeRates: [{ currency: "USD", rateDate: DATE, rate: 15_500 }],
+      supplierTransactions: {
+        34: {
+          ...payment[34],
+          allocationsMade: [
+            // Deliberately overstated: 200 juta allocated against a 155 juta payment.
+            { amount: 200_000_000, purchase: { currency: "USD", rate: 15_000 } },
+          ],
+        },
+      },
+    });
+    await expect(
+      postForSource({ sourceType: "supplier_transaction", sourceId: 34, tx })
+    ).rejects.toThrow(/bukan selisih kurs/);
+    expect(tx._journals).toHaveLength(0);
   });
 });

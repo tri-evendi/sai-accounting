@@ -445,6 +445,55 @@ model CurrencyConversion {
   @@map("currency_conversions")
 }
 
+// ─── Accounting: settlement-date exchange rates (issue #43) ──
+
+/// The rate of one foreign currency against IDR on one calendar day.
+///
+/// ── WHY THIS EXISTS, GIVEN #23 REJECTED IT ──────────────────────────────────
+/// Issue #23 refused an `exchange_rates` table because a second rate source can
+/// contradict the rate a document already asserts. That objection stands and is
+/// enforced by *scope*, not by good intentions: nothing values a document from
+/// this table. An invoice, contract, purchase, advance or payment is valued at
+/// the rate stored on itself, resolved by `resolveRate`, exactly as before.
+///
+/// This table answers the one question no document can answer — the question
+/// #43 is about: "a customer wired IDR against a USD invoice; how many USD did
+/// that transfer settle?" The IDR payment knows its own rate (1). The USD
+/// invoice knows the rate it was *booked* at, months ago. Neither knows what a
+/// dollar was worth on the day the money landed. So this COMPLEMENTS document
+/// rates rather than overriding them: it is read only on the cross-currency
+/// settlement path, and only for the currency of the document being relieved.
+///
+/// ── EXACT DATE ONLY ─────────────────────────────────────────────────────────
+/// Lookups match one calendar day. There is deliberately no nearest / previous /
+/// interpolate fallback: every one of those is a silent guess of the kind
+/// `resolveRate` exists to refuse, and here the guess would decide how much
+/// receivable is discharged. A missing row fails loudly instead
+/// (`MissingSettlementRateError`), and the user records the rate from the bank
+/// advice — the same number they would have typed onto the payment anyway.
+///
+/// `@@unique([currency, rateDate])` is the anti-contradiction guard: one rate
+/// per currency per day, so the table can never hold two answers at once.
+model ExchangeRate {
+  id       Int      @id @default(autoincrement())
+  currency String   @db.VarChar(5) // ISO code of the FOREIGN currency; the quote is always against IDR
+  rateDate DateTime @map("rate_date") @db.Date
+  /// Units of IDR per 1 unit of `currency` — same direction as every `rate`
+  /// column on the documents, so the two are never accidentally inverted.
+  rate     Decimal  @db.Decimal(18, 6)
+  /// Where the number came from (bank advice no., Kurs Pajak, BI middle rate).
+  source   String?  @db.VarChar(100)
+  isActive Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([currency, rateDate])
+  @@index([rateDate])
+  @@index([currency])
+  @@map("exchange_rates")
+}
+
 // ─── Accounting: Chart of Accounts ───────────────────────
 
 model Account {

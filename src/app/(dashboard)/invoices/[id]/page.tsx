@@ -50,6 +50,13 @@ export default async function InvoiceDetailPage({
   const isForeign = currency !== "IDR";
   const rate = invoice.rate != null ? Number(invoice.rate) : null;
   const taxAmount = Number(invoice.taxAmount ?? 0);
+  // PPN as a first-class field (issue #16). A legacy row (taxable false but a
+  // stored amount) still reads as taxed so its PPN row stays labelled.
+  const taxable = invoice.taxable ?? taxAmount > 0;
+  const taxRate = invoice.taxRate != null ? Number(invoice.taxRate) : null;
+  const ppnLabel = taxable
+    ? `PPN${taxRate != null ? ` (${taxRate}%)` : " Keluaran"}`
+    : "PPN 0% (Ekspor)";
 
   const subtotal = invoice.items.reduce((sum, item) => {
     return sum + Number(item.quantity) * Number(item.price);
@@ -93,6 +100,8 @@ export default async function InvoiceDetailPage({
               status: invoice.status,
               currency,
               taxAmount,
+              taxable,
+              taxRate,
               customerName: invoice.customer?.name ?? null,
               items: invoice.items.map((i) => ({
                 itemName: i.itemName,
@@ -191,14 +200,16 @@ export default async function InvoiceDetailPage({
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-200">
-                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">Subtotal</td>
+                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                  DPP · Dasar Pengenaan Pajak
+                </td>
                 <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
                   {formatCurrency(subtotal, currency)}
                 </td>
               </tr>
               <tr>
                 <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
-                  PPN Keluaran
+                  {ppnLabel}
                 </td>
                 <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
                   {formatCurrency(taxAmount, currency)}

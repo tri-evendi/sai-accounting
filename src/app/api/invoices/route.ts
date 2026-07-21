@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { invoiceSchema, invoiceTotal } from "@/lib/validations/invoice";
+import { invoiceSchema, invoiceSubtotal } from "@/lib/validations/invoice";
+import { resolveInvoiceTax } from "@/lib/tax";
 import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
@@ -33,14 +34,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, date, dueDate, rate, currency, taxAmount, ...invoiceData } = parsed.data;
+  const { items, date, dueDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
+    parsed.data;
+  // Server is authoritative on tax: PPN is recomputed from the rate when taxable,
+  // so a stale client amount never reaches the ledger. A 0% / non-taxable invoice
+  // yields PPN 0 → the posting engine emits no VAT line (issue #16).
+  const tax = resolveInvoiceTax(invoiceSubtotal(items), { taxable, taxRate, taxAmount });
   // Gross document value in its own currency, then its IDR equivalent. Zod has
   // already rejected a non-IDR invoice with no rate, so fxAmounts can't guess.
-  const { rate: fxRate, baseAmount } = fxAmounts(
-    currency,
-    invoiceTotal(items, taxAmount),
-    rate
-  );
+  const { rate: fxRate, baseAmount } = fxAmounts(currency, tax.total, rate);
 
   try {
     // Invoice and journal commit together: if posting can't produce a correct
@@ -50,7 +52,10 @@ export async function POST(request: Request) {
         data: {
           ...invoiceData,
           currency,
-          taxAmount,
+          taxable: tax.taxable,
+          taxRate: tax.taxRate,
+          dpp: tax.dpp,
+          taxAmount: tax.taxAmount,
           rate: fxRate,
           baseAmount,
           date: new Date(date),

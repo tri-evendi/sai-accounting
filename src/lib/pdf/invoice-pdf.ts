@@ -12,6 +12,10 @@ interface InvoiceData {
   currency?: string;
   /** PPN Keluaran, in `currency`. */
   taxAmount?: number;
+  /** Whether PPN applies — drives the label (issue #16). */
+  taxable?: boolean;
+  /** PPN rate in percent (e.g. 11). Shown in the PPN row when taxable. */
+  taxRate?: number | null;
   customerName?: string | null;
   items: {
     itemName: string;
@@ -102,6 +106,11 @@ export function generateInvoicePDF(invoice: InvoiceData) {
     0
   );
   const totalValue = subtotal + taxAmount;
+  // PPN row label: show the rate when taxed, or "0% (Ekspor)" when not (issue #16).
+  const isTaxed = invoice.taxable ?? taxAmount > 0;
+  const ppnLabel = isTaxed
+    ? `PPN (${invoice.taxRate != null ? invoice.taxRate : 11}%)`
+    : "PPN 0% (Ekspor)";
 
   autoTable(doc, {
     startY: y,
@@ -118,8 +127,8 @@ export function generateInvoicePDF(invoice: InvoiceData) {
       ];
     }),
     foot: [
-      ["", "", "", "", "Subtotal", formatCurrency(subtotal, currency)],
-      ["", "", "", "", "PPN Keluaran", formatCurrency(taxAmount, currency)],
+      ["", "", "", "", "DPP", formatCurrency(subtotal, currency)],
+      ["", "", "", "", ppnLabel, formatCurrency(taxAmount, currency)],
       ["", "", "", "", `TOTAL (${currency})`, formatCurrency(totalValue, currency)],
     ],
     theme: "grid",

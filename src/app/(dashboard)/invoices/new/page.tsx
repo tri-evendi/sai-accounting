@@ -30,11 +30,14 @@ export default function NewInvoicePage() {
     { itemName: "", quantity: 0, price: 0, unit: "kg" },
   ]);
   // Currency drives which extra fields the accounting engine needs from the user.
+  // A new domestic IDR invoice defaults to PPN 11%; choosing a foreign currency
+  // or a tax-exempt customer flips it to 0% (see InvoiceFxFields).
   const [fx, setFx] = useState<InvoiceFxValues>({
     customerId: "",
     currency: "IDR",
     rate: "",
-    taxAmount: "0",
+    taxable: true,
+    taxRate: "11",
   });
 
   const subtotal = invoiceSubtotal(items);

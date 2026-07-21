@@ -115,6 +115,21 @@ model Invoice {
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   /// PPN Keluaran, in `currency`. 0 = untaxed document.
   taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  // ── PPN as a first-class field (issue #16) ──────────────────────────────────
+  /// Whether PPN Keluaran applies. FALSE = untaxed / export (0%): the posting
+  /// engine then emits no VAT line at all. DEFAULTs FALSE so every pre-#16 row
+  /// keeps posting exactly as it did (it carried tax_amount 0 already).
+  taxable    Boolean  @default(false)
+  /// Effective PPN rate applied, in percent (e.g. 11.00; 0.00 for export).
+  /// NULLable, no backfill — same posture as `rate`/`base_amount` (migrations
+  /// 0005/0008): a legacy row's rate is unknown, not zero, so it is left NULL and
+  /// `tax_amount` (which IS stored) remains authoritative for what was posted.
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// DPP — Dasar Pengenaan Pajak (tax base), in `currency`. Equals the net line
+  /// subtotal; stored so the Faktur Pajak base is captured explicitly rather than
+  /// only re-derivable from items. NULLable/no-backfill for legacy rows, where the
+  /// subtotal is still recomputed from `items` (see the invoice detail page).
+  dpp        Decimal? @db.Decimal(15, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -302,6 +317,11 @@ model Customer {
   phone   String? @db.VarChar(30)
   email   String? @db.VarChar(100)
   pic     String? @db.VarChar(100)
+  /// Bebas PPN (issue #16) — a customer never charged PPN Keluaran (an export
+  /// buyer, or a non-PKP counterparty). Drives the invoice form's default to
+  /// non-taxable; the form control can still override it per document. DEFAULT
+  /// FALSE, so existing customers keep the standard domestic 11% default.
+  taxExempt Boolean @default(false) @map("tax_exempt")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

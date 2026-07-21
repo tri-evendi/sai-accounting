@@ -38,7 +38,8 @@ export default function EditInvoicePage() {
     customerId: "",
     currency: "IDR",
     rate: "",
-    taxAmount: "0",
+    taxable: false,
+    taxRate: "11",
   });
 
   const subtotal = invoiceSubtotal(items);
@@ -55,13 +56,29 @@ export default function EditInvoicePage() {
         // Blank stays blank: a null due date is "unknown", not "today".
         setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
         setStatus(data.status);
+        // A legacy taxed row (taxable false but tax_amount > 0) is shown as taxed,
+        // with the rate inferred from amount ÷ DPP so the user sees a sensible
+        // percentage rather than a blank. A stored tax_rate always wins.
+        const legacyTaxed = !data.taxable && Number(data.taxAmount) > 0;
+        const subtotal = (data.items ?? []).reduce(
+          (s: number, i: { quantity: number; price: number }) =>
+            s + Number(i.quantity) * Number(i.price),
+          0
+        );
+        const inferredRate =
+          data.taxRate != null
+            ? Number(data.taxRate)
+            : legacyTaxed && subtotal > 0
+              ? Math.round((Number(data.taxAmount) / subtotal) * 10000) / 100
+              : 11;
         setFx({
           customerId: data.customerId ? String(data.customerId) : "",
           // Legacy rows may predate the column; treat a missing value as IDR,
           // which is how they have been posted all along.
           currency: data.currency || "IDR",
           rate: data.rate != null ? String(Number(data.rate)) : "",
-          taxAmount: data.taxAmount != null ? String(Number(data.taxAmount)) : "0",
+          taxable: Boolean(data.taxable) || legacyTaxed,
+          taxRate: String(inferredRate),
         });
         setItems(
           data.items.map((item: InvoiceItem & { id?: number }) => ({

@@ -92,6 +92,8 @@ interface InvoicePDFData {
   status: string;
   currency?: string;
   taxAmount?: number;
+  taxable?: boolean;
+  taxRate?: number | null;
   customerName?: string | null;
   items: { itemName: string; quantity: number; price: number; unit: string | null }[];
   payments: { date: string; amount: number; currency: string; note: string | null }[];

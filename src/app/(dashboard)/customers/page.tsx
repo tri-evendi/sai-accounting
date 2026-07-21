@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +56,14 @@ export default async function CustomersPage({
             <tbody>
               {customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada pelanggan
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={<Users className="h-12 w-12" />}
+                      title="Belum ada pelanggan"
+                      description="Pelanggan adalah pihak yang Anda tagih. Catat pelanggan pertama agar tagihan dan piutangnya bisa dirinci per pelanggan."
+                      actionLabel="+ Tambah Pelanggan"
+                      actionHref="/customers/new"
+                    />
                   </td>
                 </tr>
               ) : (

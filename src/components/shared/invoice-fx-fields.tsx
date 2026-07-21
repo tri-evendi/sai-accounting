@@ -4,8 +4,8 @@
  * Customer + currency + rate + PPN block shared by the invoice create and edit
  * forms (issues #35, #16).
  *
- * Kept in one component on purpose: the rule "a non-IDR invoice must carry its
- * own rate" and the PPN DPP/PPN/Total breakdown have to read identically on both
+ * Kept in one file on purpose: the rule "a non-IDR invoice must carry its own
+ * rate" and the PPN DPP/PPN/Total breakdown have to read identically on both
  * screens, and the IDR base preview is the only place a user sees what will
  * actually hit the ledger. Mirrors the pattern already used by finance/new and
  * shared/payment-form.
@@ -14,11 +14,19 @@
  * (%) field, defaulting to 11% for domestic IDR invoices and to 0% (non-VAT) for
  * foreign/export invoices or a tax-exempt customer — all overridable. The form
  * sends `taxable` + `taxRate`; the server recomputes the PPN amount from them.
+ *
+ * BAGIAN-BAGIAN (issue #4). Progressive disclosure memisahkan blok ini: pelanggan
+ * dan ringkasan nilai tetap terlihat, sedangkan mata uang/kurs/PPN/PEB masuk ke
+ * "Detail lengkap" yang terlipat. Karena itu isinya dipecah jadi tiga komponen
+ * kecil yang bisa ditempatkan terpisah, sementara `InvoiceFxFields` tetap ada
+ * sebagai gabungan ketiganya — halaman Ubah Faktur memakainya tanpa perubahan,
+ * jadi tidak ada dua salinan aturan PPN yang bisa saling menyimpang.
  */
 
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import {
   BASE_CURRENCY,
   CurrencyRateFields,
@@ -28,7 +36,7 @@ import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 import { formatCurrency } from "@/lib/utils";
 import { Info, Users, ReceiptText, Ship } from "lucide-react";
 
-interface CustomerOption {
+export interface CustomerOption {
   id: number;
   name: string;
   taxExempt?: boolean;
@@ -51,28 +59,14 @@ export interface InvoiceFxValues {
   exportNote: string;
 }
 
-interface InvoiceFxFieldsProps {
-  value: InvoiceFxValues;
-  onChange: (patch: Partial<InvoiceFxValues>) => void;
-  /** Net line total (DPP), in the invoice's own currency. */
-  subtotal: number;
-}
+type Patch = (patch: Partial<InvoiceFxValues>) => void;
 
-export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsProps) {
+/**
+ * Daftar pelanggan aktif. Diekspor supaya halaman yang menempatkan bagian-bagian
+ * blok ini terpisah tetap mengambilnya SEKALI, lalu meneruskannya ke tiap bagian.
+ */
+export function useInvoiceCustomers(): CustomerOption[] {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
-
-  const isForeign = currency !== BASE_CURRENCY;
-  const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
-  // An export / 0% document is where a PEB (not a Faktur Pajak) applies: foreign
-  // currency, or PPN not charged. A domestic taxable invoice hides the PEB block.
-  const isExportDoc = isForeign || !taxable || effectiveRate === 0;
-  // Reuse the exact server-side computation for the preview so the figure shown
-  // and the figure posted can never disagree.
-  const { dpp, taxAmount, total } = computeTax(subtotal, effectiveRate);
-  const rateValue = Number(rate) || 0;
-  const baseTotal = isForeign ? total * rateValue : total;
-  const baseUnknown = isForeign && rateValue <= 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -90,52 +84,99 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
     };
   }, []);
 
-  /** The PPN default (taxable + rate string) implied by a currency/customer. */
-  function applyTaxDefault(next: { currency?: string; customerTaxExempt?: boolean }) {
-    const d = defaultInvoiceTax({
-      currency: next.currency ?? currency,
-      customerTaxExempt: next.customerTaxExempt,
-    });
-    return { taxable: d.taxable, taxRate: String(d.taxRate) };
-  }
+  return customers;
+}
 
+/** The PPN default (taxable + rate string) implied by a currency/customer. */
+function applyTaxDefault(
+  current: InvoiceFxValues,
+  next: { currency?: string; customerTaxExempt?: boolean }
+) {
+  const d = defaultInvoiceTax({
+    currency: next.currency ?? current.currency,
+    customerTaxExempt: next.customerTaxExempt,
+  });
+  return { taxable: d.taxable, taxRate: String(d.taxRate) };
+}
+
+/** True when this invoice is an export / 0% document, where a PEB applies. */
+export function isExportDocument(value: InvoiceFxValues): boolean {
+  const effectiveRate = value.taxable ? Number(value.taxRate) || 0 : 0;
+  return value.currency !== BASE_CURRENCY || !value.taxable || effectiveRate === 0;
+}
+
+// ────────────────────────────── Bagian: pelanggan ──────────────────────────────
+
+/** Pemilih pelanggan — isian INTI faktur, tidak pernah disembunyikan. */
+export function InvoiceCustomerField({
+  customers,
+  value,
+  onChange,
+}: {
+  customers: CustomerOption[];
+  value: InvoiceFxValues;
+  onChange: Patch;
+}) {
   function handleCustomerChange(id: string) {
     const picked = customers.find((c) => String(c.id) === id);
-    onChange({ customerId: id, ...applyTaxDefault({ customerTaxExempt: picked?.taxExempt }) });
+    onChange({ customerId: id, ...applyTaxDefault(value, { customerTaxExempt: picked?.taxExempt }) });
   }
+
+  return (
+    <div className="sm:col-span-2">
+      <Select
+        id="customerId"
+        name="customerId"
+        label={<TermTooltip term="pelanggan">Pelanggan (Customer)</TermTooltip>}
+        placeholder="-- Pilih pelanggan --"
+        value={value.customerId}
+        onChange={(e) => handleCustomerChange(e.target.value)}
+        options={customers.map((c) => ({
+          value: String(c.id),
+          label: c.taxExempt ? `${c.name} · bebas PPN` : c.name,
+        }))}
+      />
+      <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+        <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+        <span>
+          Menautkan faktur ke pelanggan agar Piutang Usaha bisa dirinci per pelanggan
+          (umur piutang). Boleh dikosongkan untuk faktur lama.
+        </span>
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────── Bagian: valas + PPN + dokumen ekspor ───────────────────────
+
+/**
+ * Mata uang, kurs, PPN, dan PEB — isian LANJUTAN. Faktur rupiah biasa memakai
+ * seluruh nilai standarnya (IDR, PPN 11%), jadi bagian ini boleh tidak dibuka
+ * sama sekali; kalau kursnya ternyata wajib, penolakan server membuka kembali
+ * bagian ini dan memfokuskan isian `rate`.
+ */
+export function InvoiceFxAdvancedFields({
+  customers,
+  value,
+  onChange,
+}: {
+  customers: CustomerOption[];
+  value: InvoiceFxValues;
+  onChange: Patch;
+}) {
+  const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
+  const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
 
   function handleCurrencyChange(c: string) {
     const picked = customers.find((cust) => String(cust.id) === customerId);
     onChange({
       currency: c,
-      ...applyTaxDefault({ currency: c, customerTaxExempt: picked?.taxExempt }),
+      ...applyTaxDefault(value, { currency: c, customerTaxExempt: picked?.taxExempt }),
     });
   }
 
   return (
     <>
-      <div className="sm:col-span-2">
-        <Select
-          id="customerId"
-          name="customerId"
-          label="Pelanggan (Customer)"
-          placeholder="-- Pilih pelanggan --"
-          value={customerId}
-          onChange={(e) => handleCustomerChange(e.target.value)}
-          options={customers.map((c) => ({
-            value: String(c.id),
-            label: c.taxExempt ? `${c.name} · bebas PPN` : c.name,
-          }))}
-        />
-        <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
-          <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
-            Menautkan faktur ke pelanggan agar Piutang Usaha bisa dirinci per pelanggan
-            (umur piutang). Boleh dikosongkan untuk faktur lama.
-          </span>
-        </p>
-      </div>
-
       <CurrencyRateFields
         currency={currency}
         rate={rate}
@@ -163,7 +204,7 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
           />
           <span className="flex items-center gap-1 text-sm font-medium text-gray-700">
             <ReceiptText className="h-4 w-4 text-gray-400" aria-hidden="true" />
-            Kena PPN (PPN Keluaran)
+            <TermTooltip term="ppn">Kena PPN (PPN Keluaran)</TermTooltip>
           </span>
         </label>
 
@@ -198,7 +239,7 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
       </div>
 
       {/* Dokumen ekspor / PEB (issue #17) — shown only for an export/0% invoice. */}
-      {isExportDoc && (
+      {(currency !== BASE_CURRENCY || !taxable || effectiveRate === 0) && (
         <div className="sm:col-span-2 rounded-md border border-gray-200 p-3">
           <p className="flex items-center gap-1 text-sm font-medium text-gray-700">
             <Ship className="h-4 w-4 text-gray-400" aria-hidden="true" />
@@ -239,48 +280,99 @@ export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsPr
           </div>
         </div>
       )}
+    </>
+  );
+}
 
-      <div className="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-        <dl className="space-y-1">
-          <div className="flex items-center justify-between">
-            <dt className="text-gray-500">DPP · Dasar Pengenaan Pajak ({currency})</dt>
-            <dd className="tabular-nums text-gray-900">{formatCurrency(dpp, currency)}</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-gray-500">
-              PPN {taxable ? `(${effectiveRate}%)` : "(tidak kena)"} ({currency})
-            </dt>
-            <dd className="tabular-nums text-gray-900">{formatCurrency(taxAmount, currency)}</dd>
-          </div>
-          <div className="flex items-center justify-between border-t border-gray-200 pt-1 font-medium">
-            <dt className="text-gray-700">Total tagihan ({currency})</dt>
-            <dd className="tabular-nums text-gray-900">{formatCurrency(total, currency)}</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-gray-500">Nilai dasar buku besar (IDR)</dt>
-            <dd className="tabular-nums font-medium text-gray-900">
-              {baseUnknown ? "— isi kurs dulu" : formatCurrency(baseTotal, "IDR")}
-            </dd>
-          </div>
-        </dl>
-      </div>
+// ─────────────────────────── Bagian: ringkasan nilai ───────────────────────────
+
+/**
+ * DPP / PPN / Total / nilai dasar IDR. Ini UANG-nya, jadi tidak pernah ikut
+ * terlipat: apa pun yang disembunyikan di "Detail lengkap", akibatnya tetap
+ * terbaca di sini.
+ */
+export function InvoiceTotalsSummary({
+  value,
+  subtotal,
+}: {
+  value: InvoiceFxValues;
+  subtotal: number;
+}) {
+  const { currency, rate, taxable, taxRate } = value;
+  const isForeign = currency !== BASE_CURRENCY;
+  const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
+  // Reuse the exact server-side computation for the preview so the figure shown
+  // and the figure posted can never disagree.
+  const { dpp, taxAmount, total } = computeTax(subtotal, effectiveRate);
+  const rateValue = Number(rate) || 0;
+  const baseTotal = isForeign ? total * rateValue : total;
+  const baseUnknown = isForeign && rateValue <= 0;
+
+  return (
+    <div className="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+      <dl className="space-y-1">
+        <div className="flex items-center justify-between">
+          <dt className="text-gray-500">DPP · Dasar Pengenaan Pajak ({currency})</dt>
+          <dd className="tabular-nums text-gray-900">{formatCurrency(dpp, currency)}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-gray-500">
+            PPN {taxable ? `(${effectiveRate}%)` : "(tidak kena)"} ({currency})
+          </dt>
+          <dd className="tabular-nums text-gray-900">{formatCurrency(taxAmount, currency)}</dd>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-200 pt-1 font-medium">
+          <dt className="text-gray-700">Total tagihan ({currency})</dt>
+          <dd className="tabular-nums text-gray-900">{formatCurrency(total, currency)}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-gray-500">Nilai dasar buku besar (IDR)</dt>
+          <dd className="tabular-nums font-medium text-gray-900">
+            {baseUnknown ? "— isi kurs dulu" : formatCurrency(baseTotal, "IDR")}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+// ──────────────────────────────── Gabungan ────────────────────────────────
+
+interface InvoiceFxFieldsProps {
+  value: InvoiceFxValues;
+  onChange: Patch;
+  /** Net line total (DPP), in the invoice's own currency. */
+  subtotal: number;
+}
+
+/**
+ * Ketiga bagian berurutan, seperti sebelum issue #4. Dipakai halaman Ubah
+ * Faktur, yang formulirnya memang tidak dilipat.
+ */
+export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsProps) {
+  const customers = useInvoiceCustomers();
+
+  return (
+    <>
+      <InvoiceCustomerField customers={customers} value={value} onChange={onChange} />
+      <InvoiceFxAdvancedFields customers={customers} value={value} onChange={onChange} />
+      <InvoiceTotalsSummary value={value} subtotal={subtotal} />
     </>
   );
 }
 
 /** Request body fields for the invoice API, from the form's string state. */
 export function invoiceFxPayload(value: InvoiceFxValues) {
-  const effectiveRate = value.taxable ? Number(value.taxRate) || 0 : 0;
   // PEB only belongs on an export/0% document; a domestic taxable invoice clears
   // it so a value typed before switching modes is not persisted by accident.
-  const isExportDoc = value.currency !== BASE_CURRENCY || !value.taxable || effectiveRate === 0;
+  const exportDoc = isExportDocument(value);
   return {
     customerId: value.customerId ? Number(value.customerId) : null,
     ...currencyRatePayload(value.currency, value.rate),
     taxable: value.taxable,
     taxRate: value.taxable ? Number(value.taxRate) || 0 : 0,
-    pebNumber: isExportDoc ? value.pebNumber || null : null,
-    pebDate: isExportDoc ? value.pebDate || null : null,
-    exportNote: isExportDoc ? value.exportNote || null : null,
+    pebNumber: exportDoc ? value.pebNumber || null : null,
+    pebDate: exportDoc ? value.pebDate || null : null,
+    exportNote: exportDoc ? value.exportNote || null : null,
   };
 }

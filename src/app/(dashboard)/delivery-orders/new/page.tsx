@@ -2,6 +2,9 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { calculateStockTotals } from "@/lib/inventory";
+import { listClosedPeriods } from "@/lib/period";
+import { LearnMore } from "@/components/ui/learn-more";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import { DeliveryOrderForm } from "./delivery-order-form";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function NewDeliveryOrderPage() {
   await requirePageSession(["bos", "core"]);
 
-  const [contracts, invoices, consignees, items] = await Promise.all([
+  const [contracts, invoices, consignees, items, closedPeriods] = await Promise.all([
     prisma.contract.findMany({
       where: { status: { not: "canceled" } },
       orderBy: { date: "desc" },
@@ -36,6 +39,7 @@ export default async function NewDeliveryOrderPage() {
         stock: { select: { quantity: true, type: true, date: true } },
       },
     }),
+    listClosedPeriods(),
   ]);
 
   return (
@@ -43,11 +47,18 @@ export default async function NewDeliveryOrderPage() {
       <Breadcrumb
         items={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}
       />
-      <h1 className="text-2xl font-bold text-gray-900">Buat Surat Jalan</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-gray-900">
+        <TermTooltip term="surat_jalan">Buat Surat Jalan</TermTooltip>
+      </h1>
+      <p className="mt-1 text-sm text-gray-500">
         Pilih consignee dan (opsional) dokumen sumber, lalu tentukan barang dan jumlah
         (bags × kg/bag). Menerbitkan surat jalan mengurangi stok dalam kilogram.
       </p>
+      <LearnMore
+        term="surat_jalan"
+        className="mt-1 mb-6"
+        label="Pelajari ini: apa itu surat jalan"
+      />
       <DeliveryOrderForm
         contracts={contracts.map((c) => ({
           id: c.id,
@@ -72,6 +83,7 @@ export default async function NewDeliveryOrderPage() {
           unit: it.unit,
           currentStock: calculateStockTotals(it.stock).currentStock,
         }))}
+        closedPeriods={closedPeriods}
       />
     </div>
   );

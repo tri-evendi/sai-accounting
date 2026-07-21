@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
-import { AlertTriangle, Download, Info, FileText } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AlertTriangle, Download, Info, FileText, ReceiptText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -210,8 +211,14 @@ export default async function EfakturPage({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-                    Tidak ada baris siap ekspor pada masa ini.
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={<ReceiptText className="h-12 w-12" />}
+                      title="Tidak ada baris siap ekspor pada masa ini"
+                      description="Hanya faktur ber-PPN keluaran (atau ekspor) di masa yang dipilih yang muncul di sini. Pilih masa lain, atau buat tagihan penjualannya dulu."
+                      actionLabel="+ Buat Tagihan"
+                      actionHref="/invoices/new"
+                    />
                   </td>
                 </tr>
               ) : (

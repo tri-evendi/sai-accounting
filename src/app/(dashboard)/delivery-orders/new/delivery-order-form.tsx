@@ -7,8 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import { formatNumber } from "@/lib/utils";
-import { Trash2, Plus } from "lucide-react";
+import { findStockShortfalls } from "@/lib/delivery-orders";
+import {
+  closedPeriodIssue,
+  humanizeFieldMessage,
+  isLargeStockOut,
+  largeStockOutMessage,
+  negativeValueIssue,
+  stockShortfallMessage,
+  type ClosedPeriodRef,
+} from "@/lib/form-guards";
+import { AlertCircle, Lock, Package, Trash2, Plus } from "lucide-react";
 
 interface ContractOption {
   id: number;
@@ -45,11 +58,30 @@ interface Props {
   invoices: InvoiceOption[];
   consignees: ConsigneeOption[];
   items: ItemOption[];
+  closedPeriods: ClosedPeriodRef[];
+}
+
+/** Muatan POST /api/delivery-orders — dibangun sekali, dikirim setelah lolos. */
+interface DeliveryPayload {
+  date: string;
+  contractId: number | null;
+  invoiceId: number | null;
+  consigneeId: number | null;
+  vehicleNo: string;
+  containerNo: string;
+  notes: string;
+  items: { itemId: number | null; itemName: string; bags: number; kgPerBag: number }[];
 }
 
 const lineKg = (l: LineState) => (l.bags || 0) * (l.kgPerBag || 0);
 
-export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Props) {
+export function DeliveryOrderForm({
+  contracts,
+  invoices,
+  consignees,
+  items,
+  closedPeriods,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -58,6 +90,10 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
   const [contractId, setContractId] = useState<number | null>(null);
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [lines, setLines] = useState<LineState[]>([{ itemId: null, bags: 0, kgPerBag: 0 }]);
+  const [date, setDate] = useState("");
+  // Pengeluaran stok besar ditahan sebentar untuk dikonfirmasi (issue #6).
+  const [pending, setPending] = useState<DeliveryPayload | null>(null);
+  const [confirmMessage, setConfirmMessage] = useState("");
 
   const itemById = new Map(items.map((i) => [i.id, i]));
 
@@ -92,6 +128,7 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
 
   const totalBags = lines.reduce((s, l) => s + (l.bags || 0), 0);
   const totalKg = lines.reduce((s, l) => s + lineKg(l), 0);
+  const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal surat jalan");
 
   function updateLine(index: number, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
@@ -112,7 +149,36 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function send(body: DeliveryPayload) {
+    setLoading(true);
+    const res = await fetch("/api/delivery-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      const fieldMsg = data?.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors as Record<string, string[]>)
+            .flat()
+            .filter(Boolean)[0]
+        : null;
+      setError(
+        humanizeFieldMessage(
+          null,
+          String(fieldMsg || data?.error || "Surat jalan belum bisa diterbitkan.")
+        )
+      );
+      setLoading(false);
+    } else {
+      const created = await res.json();
+      router.push(`/delivery-orders/${created.id}`);
+      router.refresh();
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
 
@@ -126,56 +192,110 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
       }));
 
     if (payloadItems.length === 0) {
-      setError("Tambahkan minimal satu barang.");
+      setError("Tambahkan minimal satu barang sebelum menerbitkan surat jalan.");
+      return;
+    }
+
+    // ── Penjaga sebelum kirim (cermin dari penjaga server) ──
+    const periodIssueNow = closedPeriodIssue(date, closedPeriods, "Tanggal surat jalan");
+    if (periodIssueNow) {
+      setError(periodIssueNow);
+      return;
+    }
+    const negative = negativeValueIssue(
+      lines.flatMap((l, i) => [
+        { field: `bags-${i}`, value: l.bags, label: `Jumlah bags baris ${i + 1}` },
+        { field: `kgPerBag-${i}`, value: l.kgPerBag, label: `Kg per bag baris ${i + 1}` },
+      ])
+    );
+    if (negative) {
+      setError(negative.message);
+      return;
+    }
+    // `assertStockAvailable` di server memakai fungsi yang sama persis; ini hanya
+    // memindahkan penolakannya ke layar sebelum apa pun dikirim.
+    const shortfallMsg = stockShortfallMessage(
+      findStockShortfalls(
+        [...requestedByItem.entries()].map(([itemId, kg]) => ({
+          itemId,
+          itemName: itemById.get(itemId)?.name ?? "Barang",
+          kg,
+        })),
+        new Map(items.map((i) => [i.id, i.currentStock]))
+      )
+    );
+    if (shortfallMsg) {
+      setError(shortfallMsg);
       return;
     }
 
     const formData = new FormData(e.currentTarget);
-    const body = {
-      date: formData.get("date"),
+    const body: DeliveryPayload = {
+      date: String(formData.get("date") ?? ""),
       contractId,
       invoiceId,
       consigneeId,
-      vehicleNo: formData.get("vehicleNo"),
-      containerNo: formData.get("containerNo"),
-      notes: formData.get("notes"),
+      vehicleNo: String(formData.get("vehicleNo") ?? ""),
+      containerNo: String(formData.get("containerNo") ?? ""),
+      notes: String(formData.get("notes") ?? ""),
       items: payloadItems,
     };
 
-    setLoading(true);
-    const res = await fetch("/api/delivery-orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      const fieldMsg = data.details?.fieldErrors
-        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
-        : null;
-      setError(String(fieldMsg || data.error || "Gagal membuat surat jalan"));
-      setLoading(false);
-    } else {
-      const created = await res.json();
-      router.push(`/delivery-orders/${created.id}`);
-      router.refresh();
+    // Pengeluaran besar: satu ketukan konfirmasi sebelum stok berkurang dan
+    // jurnal HPP terbentuk. Bukan larangan — hanya jeda.
+    const large = [...requestedByItem.entries()].find(([itemId, kg]) =>
+      isLargeStockOut(kg, itemById.get(itemId)?.currentStock ?? 0)
+    );
+    if (large) {
+      const [itemId, kg] = large;
+      const item = itemById.get(itemId);
+      setConfirmMessage(
+        largeStockOutMessage(item?.name ?? "Barang", kg, item?.currentStock ?? 0, item?.unit || "kg")
+      );
+      setPending(body);
+      return;
     }
+
+    void send(body);
   }
 
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div
+          role="alert"
+          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
       )}
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Detail Surat Jalan</CardTitle>
+          <CardTitle>
+            <TermTooltip term="surat_jalan">Detail Surat Jalan</TermTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="date" name="date" type="date" label="Tanggal" required />
+            <div>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                label="Tanggal"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+              {periodIssue && (
+                <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                  <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>{periodIssue}</span>
+                </p>
+              )}
+            </div>
             <div className="space-y-1.5">
               <SearchableSelect
                 id="consigneeId"
@@ -234,6 +354,15 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
           </div>
         </CardHeader>
         <CardContent>
+          {items.length === 0 ? (
+            <EmptyState
+              icon={<Package className="h-12 w-12" />}
+              title="Belum ada barang di daftar stok"
+              description="Surat jalan mengurangi stok, jadi barangnya harus sudah tercatat lebih dulu. Catat barang masuk pertama Anda."
+              actionLabel="Tambah / Kurangi Stok"
+              actionHref="/inventory/update"
+            />
+          ) : (
           <div className="space-y-4">
             {lines.map((line, i) => {
               const item = line.itemId != null ? itemById.get(line.itemId) : null;
@@ -277,10 +406,11 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
                     <button
                       type="button"
                       onClick={() => removeLine(i)}
-                      className="pb-2 text-red-400 hover:text-red-600"
-                      aria-label="Hapus barang"
+                      className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={lines.length === 1}
+                      aria-label={`Hapus baris barang ${i + 1}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                   <div className="mt-2 flex justify-between text-xs">
@@ -288,7 +418,7 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
                       {item
                         ? `Tersedia ${formatNumber(item.currentStock)} ${item.unit || "kg"}`
                         : "Pilih barang untuk melihat stok"}
-                      {over && " — melebihi stok!"}
+                      {over && " — melebihi stok, surat jalan akan ditolak!"}
                     </span>
                     <span className="tabular-nums text-gray-700">
                       = {formatNumber(lineKg(line))} kg
@@ -298,6 +428,7 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
               );
             })}
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -319,13 +450,34 @@ export function DeliveryOrderForm({ contracts, invoices, consignees, items }: Pr
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" className="cursor-pointer" disabled={loading}>
           {loading ? "Menerbitkan…" : "Terbitkan Surat Jalan"}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="secondary"
+          className="cursor-pointer"
+          onClick={() => router.back()}
+        >
           Batal
         </Button>
       </div>
+
+      {/* Konfirmasi pengeluaran stok besar (issue #6) — terkendali, karena
+          pemicunya adalah tombol Simpan yang sudah ada, bukan tombol tersendiri. */}
+      <ConfirmDialog
+        title="Pengeluaran stok dalam jumlah besar"
+        message={confirmMessage}
+        confirmLabel="Ya, terbitkan"
+        confirmVariant="danger"
+        open={pending != null}
+        onOpenChange={(o) => {
+          if (!o) setPending(null);
+        }}
+        onConfirm={async () => {
+          if (pending) await send(pending);
+        }}
+      />
     </form>
   );
 }

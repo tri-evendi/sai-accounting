@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Ship } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +54,14 @@ export default async function ConsigneesPage({
             <tbody>
               {consignees.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    No consignees yet
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={<Ship className="h-12 w-12" />}
+                      title="Belum ada penerima barang"
+                      description="Penerima barang (consignee) adalah pihak yang menerima kiriman di tujuan ekspor. Catat yang pertama agar bisa dipilih di kontrak dan surat jalan."
+                      actionLabel="+ Tambah Penerima Barang"
+                      actionHref="/consignees/new"
+                    />
                   </td>
                 </tr>
               ) : (

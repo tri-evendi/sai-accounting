@@ -6,6 +6,8 @@ import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -64,8 +66,14 @@ export default async function SuppliersPage({
             <tbody>
               {suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada pemasok
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={<Truck className="h-12 w-12" />}
+                      title="Belum ada pemasok"
+                      description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
+                      actionLabel="+ Tambah Pemasok"
+                      actionHref="/suppliers/new"
+                    />
                   </td>
                 </tr>
               ) : (

@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { accountTypeLabel } from "@/lib/accounting";
 import { LedgerFilter } from "./ledger-filter";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BookOpen } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -103,8 +105,14 @@ export default async function LedgerPage({
                   ))}
                   {ledger.rows.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                        Tidak ada mutasi pada rentang ini.
+                      <td colSpan={6}>
+                        <EmptyState
+                          icon={<BookOpen className="h-12 w-12" />}
+                          title="Tidak ada mutasi pada rentang ini"
+                          description="Coba lebarkan rentang tanggalnya atau pilih akun lain. Kalau memang belum ada apa-apa, mulailah dari mencatat transaksi kas."
+                          actionLabel="+ Catat Transaksi"
+                          actionHref="/finance/new"
+                        />
                       </td>
                     </tr>
                   )}

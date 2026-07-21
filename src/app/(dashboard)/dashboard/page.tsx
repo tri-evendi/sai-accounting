@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateShort } from "@/lib/utils";
 import {
   countStockHealth,
   summarizeInventory,
@@ -22,11 +22,15 @@ import { ChartCard } from "@/components/dashboard/chart-card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { SummaryCard } from "@/components/dashboard/summary-card";
 import {
   InventoryExportAction,
   FinanceExportAction,
 } from "@/components/dashboard/dashboard-export-actions";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import { getIncomeStatement } from "@/lib/reports";
+import { getReceivables, getPayables } from "@/lib/receivables";
+import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +103,35 @@ export default async function DashboardPage() {
       ? prisma.contract.findMany({ orderBy: { createdAt: "desc" }, take: 5 })
       : Promise.resolve([]),
   ]);
+
+  /*
+   * Plain-language summary layer (issue #3).
+   *
+   * Nothing is aggregated here: the three month figures come straight from
+   * `getIncomeStatement`, and the two outstanding figures from `getReceivables` /
+   * `getPayables`, so each card shows the very number its "Lihat detail" link
+   * opens. `period` supplies both the query bounds and the link's `?from=&to=`,
+   * which is what makes the income-statement cards reproducible by clicking.
+   *
+   * The AR/AP as-of instant mirrors `/receivables`'s own default (end of today),
+   * for the same reason.
+   *
+   * Role split: `/reports/*` is bos-only while `/receivables` and `/payables`
+   * admit core too, so staff get the two cards whose source they can actually
+   * open. Showing staff a profit figure they cannot verify would break the
+   * "every number is traceable" criterion rather than serve it.
+   */
+  const period = monthRange(new Date());
+  const arAsOf = new Date(`${toISODate(new Date())}T23:59:59.999`);
+  const canViewReports = role === "bos";
+
+  const [incomeStatement, receivables, payables] = await Promise.all([
+    canViewReports ? getIncomeStatement(period.from, period.to) : Promise.resolve(null),
+    canViewFinance ? getReceivables({ asOf: arAsOf }) : Promise.resolve(null),
+    canViewFinance ? getPayables({ asOf: arAsOf }) : Promise.resolve(null),
+  ]);
+
+  const incomeStatementHref = `/reports/income-statement?from=${period.fromISO}&to=${period.toISO}`;
 
   const inventorySummary = summarizeInventory(itemsWithStock);
   const stockHealth = countStockHealth(inventorySummary);
@@ -230,6 +263,89 @@ export default async function DashboardPage() {
       </header>
 
       <StockAlertBanner items={lowStockItems} />
+
+      {/* ─── Ringkasan bahasa awam (issue #3) ───
+          Sits above the standard reports on purpose: an owner should get the
+          five answers first and only descend into the ledger if they want to.
+          Every card links to the report that owns its number. */}
+      {(incomeStatement || receivables || payables) && (
+        <DashboardSection
+          title="Ringkasan Bahasa Sehari-hari"
+          description="Angka utama tanpa istilah akuntansi. Semua nilai dalam IDR (nilai dasar buku besar) dan bisa dicek di laporan sumbernya."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {incomeStatement && (
+              <>
+                <SummaryCard
+                  title="Uang Masuk"
+                  amount={incomeStatement.totalRevenue}
+                  direction="in"
+                  period={period.label}
+                  explanation="Seluruh pemasukan yang sudah dibukukan bulan ini, misalnya penjualan ke pelanggan."
+                  href={incomeStatementHref}
+                  hrefLabel="Lihat detail di Laba/Rugi"
+                />
+                <SummaryCard
+                  title="Uang Keluar"
+                  amount={incomeStatement.totalExpense}
+                  direction="out"
+                  period={period.label}
+                  explanation="Seluruh biaya dan pengeluaran yang sudah dibukukan bulan ini."
+                  href={incomeStatementHref}
+                  hrefLabel="Lihat detail di Laba/Rugi"
+                />
+                <SummaryCard
+                  title="Selisih (Untung / Rugi)"
+                  amount={Math.abs(incomeStatement.netIncome)}
+                  direction={incomeStatement.netIncome >= 0 ? "profit" : "loss"}
+                  period={period.label}
+                  explanation="Uang masuk dikurangi uang keluar bulan ini — angka bertanda plus berarti untung, minus berarti rugi."
+                  href={incomeStatementHref}
+                  hrefLabel="Lihat detail di Laba/Rugi"
+                />
+              </>
+            )}
+
+            {receivables && (
+              <SummaryCard
+                title="Pelanggan Belum Bayar"
+                amount={receivables.aging.total}
+                direction="receivable"
+                period={`per ${formatDateShort(arAsOf)}`}
+                explanation="Sisa tagihan dari faktur dan kontrak yang belum dilunasi pelanggan."
+                href="/receivables"
+                hrefLabel="Lihat daftar piutang"
+                note={
+                  receivables.overdueCount > 0
+                    ? `${receivables.overdueCount} dokumen sudah lewat jatuh tempo.`
+                    : undefined
+                }
+                unresolved={receivables.aging.unresolved}
+                breakdown={summarizeByCurrency(receivables.rows)}
+              />
+            )}
+
+            {payables && (
+              <SummaryCard
+                title="Tagihan yang Harus Dibayar"
+                amount={payables.aging.total}
+                direction="payable"
+                period={`per ${formatDateShort(arAsOf)}`}
+                explanation="Sisa pembelian dari pemasok yang belum Anda lunasi."
+                href="/payables"
+                hrefLabel="Lihat daftar utang"
+                note={
+                  payables.overdueCount > 0
+                    ? `${payables.overdueCount} tagihan sudah lewat jatuh tempo.`
+                    : undefined
+                }
+                unresolved={payables.aging.unresolved}
+                breakdown={summarizeByCurrency(payables.rows)}
+              />
+            )}
+          </div>
+        </DashboardSection>
+      )}
 
       {/* ─── Inventory & Stock ─── */}
       <DashboardSection

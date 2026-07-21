@@ -21,6 +21,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  closedPeriods Period[]
+
   @@map("users")
 }
 
@@ -30,6 +32,10 @@ model Contract {
   id          Int      @id @default(autoincrement())
   contractNo  String   @unique @map("contract_no") @db.VarChar(50)
   date        DateTime
+  /// Structured payment due date for AR aging (issue #12). NULL = unknown:
+  /// `top1`/`top2` are free-text commercial terms, never parsed into a date.
+  /// A contract with no due date is aged from `date` and never flagged overdue.
+  dueDate     DateTime? @map("due_date")
   buyer       String   @db.VarChar(100)
   consignee   String?  @db.VarChar(100)
   packaging   String?  @db.VarChar(100)
@@ -37,6 +43,12 @@ model Contract {
   top1        String?  @db.VarChar(200)
   top2        String?  @db.VarChar(200)
   currency    String   @default("USD") @db.VarChar(5)
+  /// Nullable on purpose — a DEFAULT 1 would value historical foreign-currency
+  /// contracts at 1:1 IDR, the exact bug #36 fixes. Legacy rows keep a NULL rate
+  /// and are reported as "kurs belum diisi" rather than guessed at. See Invoice.rate.
+  rate        Decimal? @db.Decimal(18, 6)
+  /// Contract value (sum of items) in IDR base, at `rate`.
+  baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   status      String   @default("pending") @db.VarChar(20)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -45,7 +57,10 @@ model Contract {
   items     ContractItem[]
   payments  ContractPayment[]
   documents Document[]
+  advances  AdvancePayment[]
 
+  @@index([dueDate])
+  @@index([date])
   @@map("contracts")
 }
 
@@ -68,6 +83,10 @@ model ContractPayment {
   date       DateTime
   amount     Decimal  @db.Decimal(15, 2)
   currency   String   @default("USD") @db.VarChar(5)
+  // Nullable on purpose: legacy rows have no rate. Posting refuses to guess a
+  // rate for foreign currency — it demands an explicit one instead (issue #9).
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   note       String?  @db.Text
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
@@ -78,17 +97,38 @@ model ContractPayment {
 // ─── Invoices (Faktur) ───────────────────────────────────
 
 model Invoice {
-  id        Int      @id @default(autoincrement())
-  invoiceNo String   @unique @map("invoice_no") @db.VarChar(50)
-  date      DateTime
-  status    String   @default("pending") @db.VarChar(20)
+  id         Int      @id @default(autoincrement())
+  invoiceNo  String   @unique @map("invoice_no") @db.VarChar(50)
+  date       DateTime
+  /// Structured payment due date for AR aging (issue #12). NULL = unknown, and
+  /// deliberately never backfilled — an invented due date would drive a false
+  /// "Jatuh Tempo" alarm. NULL rows age from `date` instead.
+  dueDate    DateTime? @map("due_date")
+  status     String   @default("pending") @db.VarChar(20)
+  /// Nullable: legacy invoices predate the customer link (issue #35).
+  customerId Int?     @map("customer_id")
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// Nullable on purpose — a DEFAULT 1 would value historical foreign-currency
+  /// invoices at 1:1 IDR, the exact bug #35 fixes. See InvoicePayment.rate.
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Gross invoice value (subtotal + tax) in IDR base.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// PPN Keluaran, in `currency`. 0 = untaxed document.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
+  /// Sales advances compensated into this invoice (issue #26). Each row both
+  /// reduces what the customer still owes and carries its own journal.
+  advanceApplications AdvanceApplication[]
 
+  @@index([customerId])
+  @@index([dueDate])
+  @@index([date])
   @@map("invoices")
 }
 
@@ -106,12 +146,14 @@ model InvoiceItem {
 }
 
 model InvoicePayment {
-  id        Int      @id @default(autoincrement())
-  invoiceId Int      @map("invoice_id")
-  date      DateTime
-  amount    Decimal  @db.Decimal(15, 2)
-  currency  String   @default("USD") @db.VarChar(5)
-  note      String?  @db.Text
+  id         Int      @id @default(autoincrement())
+  invoiceId  Int      @map("invoice_id")
+  date       DateTime
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("USD") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  note       String?  @db.Text
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -134,8 +176,11 @@ model Stock {
   id       Int      @id @default(autoincrement())
   itemId   Int      @map("item_id")
   quantity Decimal  @db.Decimal(10, 2)
-  type     String   @db.VarChar(10)
+  type     String   @db.VarChar(10) // enum-like: in, out
   date     DateTime
+  /// IDR cost per unit for `in` movements — the input to weighted-average COGS.
+  /// Nullable: legacy rows carry no cost and are skipped by the average.
+  unitCost Decimal? @map("unit_cost") @db.Decimal(15, 2)
   note     String?  @db.Text
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -155,6 +200,7 @@ model Supplier {
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
+  advances     AdvancePayment[]
 
   @@map("suppliers")
 }
@@ -163,14 +209,90 @@ model SupplierTransaction {
   id         Int      @id @default(autoincrement())
   supplierId Int      @map("supplier_id")
   date       DateTime
-  type       String   @db.VarChar(20)
+  /// Structured payment due date for AP aging (issue #12). Meaningful only on
+  /// `purchase` rows; NULL = unknown, aged from `date` and never flagged overdue.
+  dueDate    DateTime? @map("due_date")
+  type       String   @db.VarChar(20) // enum-like: purchase, payment
   amount     Decimal  @db.Decimal(15, 2)
   currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2) // PPN Masukan portion
   note       String?  @db.Text
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  /// Allocations where THIS row is the payment (issue #37). Empty on a purchase,
+  /// and empty on a legacy payment that predates allocation — see `paidBase`
+  /// fallback in `getPayables`.
+  allocationsMade     SupplierPaymentAllocation[] @relation("allocation_payment")
+  /// Allocations where THIS row is the purchase being settled.
+  allocationsReceived SupplierPaymentAllocation[] @relation("allocation_purchase")
+  /// Purchase advances compensated into THIS purchase row (issue #26). Empty on
+  /// a `payment` row — only a purchase carries an obligation to compensate.
+  advanceApplications AdvanceApplication[]
+
+  @@index([supplierId, type])
+  @@index([dueDate])
   @@map("supplier_transactions")
+}
+
+/// Links a supplier `payment` row to the `purchase` row(s) it settles (issue #37).
+///
+/// WHY A TABLE AND NOT A NULLABLE `applied_to_id` ON `supplier_transactions`:
+/// a single bank transfer routinely clears several invoices, and a single invoice
+/// is routinely cleared by several instalments. A self-FK models only one payment
+/// → one purchase, so the many-to-many case would have to be faked by splitting
+/// the payment row — which would invent journal entries that never happened. This
+/// table records the split without adding a journal of its own: `postJournal`
+/// still sees exactly one purchase and one payment.
+///
+/// LEDGER-AFFECTING FOR FOREIGN PAYMENTS (issue #42). For a PURE-IDR payment the
+/// allocation is reporting data — no rate, no selisih kurs, nothing to post. But
+/// since #23 a FOREIGN payment relieves each slice of hutang at the DOCUMENT rate
+/// of the purchase it settles, so the allocation determines which rate — and thus
+/// the realised FX difference — of each slice. Editing a foreign payment's
+/// allocation therefore changes the correct journal, and the write site reposts
+/// the payment (`repostForSource`) so the journal can never go stale.
+///
+/// `amount` is denominated in the PAYMENT's currency (it is a slice of that
+/// payment), and `base_amount` carries the IDR value at the payment's own `rate`
+/// — the same rate the ledger posted at. `getPayables` sums `base_amount` only,
+/// never `amount`, so allocations across currencies are never added together.
+/// `base_amount` is NULLable for the same reason it is everywhere else: a legacy
+/// foreign payment with no rate has no honest IDR value, and such rows are
+/// excluded from the sums and counted rather than valued 1:1.
+model SupplierPaymentAllocation {
+  id         Int      @id @default(autoincrement())
+  paymentId  Int      @map("payment_id")
+  purchaseId Int      @map("purchase_id")
+  /// Portion of the payment applied to this purchase, in the payment's currency.
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Payment side stays CASCADE: deleting a payment reverses ITS journal first
+  // (the transactions DELETE route unposts before delete), so the allocations
+  // may fall away with a journal that is already reversed — nothing is orphaned.
+  payment  SupplierTransaction @relation("allocation_payment", fields: [paymentId], references: [id], onDelete: Cascade)
+  // Purchase side is RESTRICT (issue #42), NOT cascade. Deleting a purchase does
+  // NOT touch the paying payment's journal, so cascading its allocation away
+  // would leave that journal relieving a hutang slice — at this purchase's
+  // document rate — for a purchase that no longer exists: a stale journal. The
+  // route refuses the delete until the allocation is cleared (which reposts the
+  // payment). Same spirit as `advance_applications`' RESTRICT, one step removed:
+  // there the row owns a journal; here it feeds another row's journal.
+  purchase SupplierTransaction @relation("allocation_purchase", fields: [purchaseId], references: [id], onDelete: Restrict)
+
+  /// One row per (payment, purchase) pair: a second application of the same
+  /// payment to the same purchase is an edit of the first, not a new fact.
+  @@unique([paymentId, purchaseId])
+  @@index([purchaseId])
+  @@map("supplier_payment_allocations")
 }
 
 model Customer {
@@ -184,7 +306,133 @@ model Customer {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  invoices Invoice[]
+  advances AdvancePayment[]
+
   @@map("customers")
+}
+
+// ─── Uang Muka / Advance payments (issue #26) ────────────
+
+/// Money moved BEFORE the document that will justify it exists.
+///
+/// WHY A NEW TABLE AND NOT A TYPE/FLAG ON THE EXISTING PAYMENT MODELS:
+/// `InvoicePayment.invoiceId` and `ContractPayment.contractId` are NOT NULL, and
+/// that is the whole point of an advance — there is no invoice yet. Relaxing
+/// either FK to hold a "payment" that settles nothing would make the column a
+/// lie for every other row and force every existing reader (`settleDocument`,
+/// the posting engine, which dereferences `payment.invoice.invoiceNo`) to grow a
+/// null branch for a case that is not a payment at all.
+///
+/// `SupplierTransaction.type` is the precedent for discriminating *direction*
+/// inside one table, and that is exactly how it is used here: `sales` and
+/// `purchase` advances are the same fact pointing opposite ways, so they share
+/// this table and differ by `type`. What that precedent does NOT cover is the
+/// sales side — there is no customer-side equivalent of `supplier_transactions`
+/// to add a type to. One table serving both directions is the smaller change.
+///
+/// Remaining balance is DERIVED (`amount` − Σ applications), never stored, for
+/// the reason `receivables.ts` gives about `payment_status`: a denormalised copy
+/// drifts the instant an application is added, edited or reversed.
+model AdvancePayment {
+  id         Int      @id @default(autoincrement())
+  advanceNo  String   @unique @map("advance_no") @db.VarChar(50)
+  /// enum-like: sales (Uang Muka Penjualan, a LIABILITY — we owe goods)
+  ///          | purchase (Uang Muka Pembelian, an ASSET — supplier owes goods)
+  type       String   @db.VarChar(20)
+  date       DateTime
+  /// Exactly one of these two is set, per `type`. Both nullable because a sales
+  /// advance has no supplier and a purchase advance has no customer.
+  customerId Int?     @map("customer_id")
+  supplierId Int?     @map("supplier_id")
+  /// Optional link to the contract the advance was received against (issue #26
+  /// asks for it). Advisory only — compensation targets an invoice/purchase.
+  contractId Int?     @map("contract_id")
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// Nullable, no DEFAULT 1, no backfill — same posture as Invoice.rate and
+  /// Contract.rate: a foreign advance with no rate has NO honest IDR value and
+  /// is excluded from IDR sums and surfaced, never valued 1:1.
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// enum-like: open | canceled. "Fully compensated" is derived, not stored.
+  status     String   @default("open") @db.VarChar(20)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer     Customer?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier     Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  contract     Contract?            @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  applications AdvanceApplication[]
+
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([contractId])
+  @@index([date])
+  @@index([type, status])
+  @@map("advance_payments")
+}
+
+/// One compensation: part (or all) of an advance moved against an invoice or a
+/// supplier purchase, reducing what is still owed.
+///
+/// WHY A TABLE AND NOT A `compensated_invoice_id` ON `advance_payments`:
+/// the same argument migration 0009 makes for `supplier_payment_allocations`.
+/// One advance routinely covers several invoices (a 30% down-payment spread
+/// over three shipments) and one invoice is routinely covered by several
+/// advances. A single nullable FK models neither, and faking the many-to-many by
+/// splitting the advance row would invent cash receipts that never happened.
+///
+/// THIS TABLE HAS ITS OWN JOURNAL; `supplier_payment_allocations` DOES NOT.
+/// A supplier allocation carries no journal of its own — it only shapes the
+/// paying payment's journal, and does so only for a foreign payment (issue #42).
+/// A compensation is itself an accounting event: it moves value out of Uang Muka
+/// and against Piutang/Hutang, and neither the advance's journal nor the
+/// invoice's journal contains that movement. So every row here is a posting
+/// source (`sourceType: "advance_application"`) with its own journal, and
+/// deleting one must reverse that journal rather than silently cascade — which
+/// is why its FKs are RESTRICT. (A supplier allocation reaches the same "never
+/// orphan a journal" guarantee differently: RESTRICT on its purchase side, plus
+/// an auto-repost of the payment whenever its allocation set is edited.)
+///
+/// `amount` is denominated in the ADVANCE's currency — it is a slice of the
+/// advance — and `base_amount` is its IDR value at the advance's own `rate`, the
+/// rate the ledger relieved Uang Muka at. Sums are taken over `base_amount`
+/// only, so no two currencies are ever added.
+model AdvanceApplication {
+  id         Int      @id @default(autoincrement())
+  advanceId  Int      @map("advance_id")
+  /// Target of the compensation: an invoice (sales advance) or a
+  /// `supplier_transactions` row of type `purchase` (purchase advance).
+  /// Exactly one is set — enforced in Zod, not by the DB, because MySQL has no
+  /// partial CHECK the way a filtered unique index would need.
+  invoiceId  Int?     @map("invoice_id")
+  purchaseId Int?     @map("purchase_id")
+  date       DateTime
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  advance  AdvancePayment       @relation(fields: [advanceId], references: [id], onDelete: Restrict)
+  invoice  Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  purchase SupplierTransaction? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+
+  /// One row per (advance, target) pair: compensating the same advance into the
+  /// same invoice twice is an edit of the first, not a second event. MySQL
+  /// treats NULLs as distinct, so the unused half of each pair never collides.
+  @@unique([advanceId, invoiceId])
+  @@unique([advanceId, purchaseId])
+  @@index([invoiceId])
+  @@index([purchaseId])
+  @@index([date])
+  @@map("advance_applications")
 }
 
 // ─── Financial ───────────────────────────────────────────
@@ -197,6 +445,8 @@ model CashAccount {
   currency    String   @default("IDR") @db.VarChar(5)
   debit       Decimal  @default(0) @db.Decimal(15, 2)
   credit      Decimal  @default(0) @db.Decimal(15, 2)
+  rate        Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
+  baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   note        String?  @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -214,6 +464,177 @@ model CurrencyConversion {
   result   Decimal  @db.Decimal(15, 2)
 
   @@map("currency_conversions")
+}
+
+// ─── Accounting: settlement-date exchange rates (issue #43) ──
+
+/// The rate of one foreign currency against IDR on one calendar day.
+///
+/// ── WHY THIS EXISTS, GIVEN #23 REJECTED IT ──────────────────────────────────
+/// Issue #23 refused an `exchange_rates` table because a second rate source can
+/// contradict the rate a document already asserts. That objection stands and is
+/// enforced by *scope*, not by good intentions: nothing values a document from
+/// this table. An invoice, contract, purchase, advance or payment is valued at
+/// the rate stored on itself, resolved by `resolveRate`, exactly as before.
+///
+/// This table answers the one question no document can answer — the question
+/// #43 is about: "a customer wired IDR against a USD invoice; how many USD did
+/// that transfer settle?" The IDR payment knows its own rate (1). The USD
+/// invoice knows the rate it was *booked* at, months ago. Neither knows what a
+/// dollar was worth on the day the money landed. So this COMPLEMENTS document
+/// rates rather than overriding them: it is read only on the cross-currency
+/// settlement path, and only for the currency of the document being relieved.
+///
+/// ── EXACT DATE ONLY ─────────────────────────────────────────────────────────
+/// Lookups match one calendar day. There is deliberately no nearest / previous /
+/// interpolate fallback: every one of those is a silent guess of the kind
+/// `resolveRate` exists to refuse, and here the guess would decide how much
+/// receivable is discharged. A missing row fails loudly instead
+/// (`MissingSettlementRateError`), and the user records the rate from the bank
+/// advice — the same number they would have typed onto the payment anyway.
+///
+/// `@@unique([currency, rateDate])` is the anti-contradiction guard: one rate
+/// per currency per day, so the table can never hold two answers at once.
+model ExchangeRate {
+  id       Int      @id @default(autoincrement())
+  currency String   @db.VarChar(5) // ISO code of the FOREIGN currency; the quote is always against IDR
+  rateDate DateTime @map("rate_date") @db.Date
+  /// Units of IDR per 1 unit of `currency` — same direction as every `rate`
+  /// column on the documents, so the two are never accidentally inverted.
+  rate     Decimal  @db.Decimal(18, 6)
+  /// Where the number came from (bank advice no., Kurs Pajak, BI middle rate).
+  source   String?  @db.VarChar(100)
+  isActive Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([currency, rateDate])
+  @@index([rateDate])
+  @@index([currency])
+  @@map("exchange_rates")
+}
+
+// ─── Accounting: Chart of Accounts ───────────────────────
+
+model Account {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique @db.VarChar(20)
+  name          String   @db.VarChar(150)
+  type          String   @db.VarChar(30) // enum-like: cash_bank, account_receivable, inventory, ... (see src/lib/accounting.ts)
+  normalBalance String   @map("normal_balance") @db.VarChar(6) // debit | credit
+  parentId      Int?     @map("parent_id")
+  currency      String   @default("IDR") @db.VarChar(5)
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent      Account?      @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Account[]     @relation("AccountHierarchy")
+  journalLines JournalLine[]
+  mappings     AccountMapping[]
+
+  @@index([parentId])
+  @@index([type])
+  @@map("accounts")
+}
+
+// ─── Accounting: Auto-posting account mappings ───────────
+
+/// Maps a posting rule slot (`key`) to a real COA account, so posting rules never
+/// hardcode account codes. `currency` = "any" is the fallback/default mapping;
+/// a row with a concrete ISO code (e.g. "CNY") overrides it for that currency.
+/// Keys are enum-like lowercase snake_case — see src/lib/posting/mapping.ts.
+model AccountMapping {
+  id        Int      @id @default(autoincrement())
+  key       String   @db.VarChar(50) // ar_default, sales_default, vat_out, vat_in, ap_default, inventory, cogs, cash_default, ...
+  accountId Int      @map("account_id")
+  currency  String   @default("any") @db.VarChar(5) // ISO code, or "any" for the default mapping
+  isActive  Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([key, currency])
+  @@index([accountId])
+  @@index([key])
+  @@map("account_mappings")
+}
+
+// ─── Accounting: Journals (double-entry) ─────────────────
+
+model Journal {
+  id           Int      @id @default(autoincrement())
+  number       String   @unique @db.VarChar(30)
+  date         DateTime
+  type         String   @default("general") @db.VarChar(20) // general, sales, purchase, cash, adjustment, reversal
+  sourceType   String?  @map("source_type") @db.VarChar(30) // auto-posting origin (e.g. invoice)
+  sourceId     Int?     @map("source_id")
+  note         String?  @db.Text
+  isReversed   Boolean  @default(false) @map("is_reversed")
+  reversalOfId Int?     @map("reversal_of_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lines      JournalLine[]
+  reversalOf Journal?      @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversals  Journal[]     @relation("JournalReversal")
+
+  @@index([date])
+  @@index([type])
+  @@index([sourceType, sourceId])
+  @@map("journals")
+}
+
+model JournalLine {
+  id         Int     @id @default(autoincrement())
+  journalId  Int     @map("journal_id")
+  accountId  Int     @map("account_id")
+  debit      Decimal @default(0) @db.Decimal(15, 2) // original currency
+  credit     Decimal @default(0) @db.Decimal(15, 2)
+  currency   String  @default("IDR") @db.VarChar(5)
+  rate       Decimal @default(1) @db.Decimal(18, 6) // to IDR base
+  baseDebit  Decimal @default(0) @map("base_debit") @db.Decimal(15, 2) // IDR base
+  baseCredit Decimal @default(0) @map("base_credit") @db.Decimal(15, 2)
+  memo       String? @db.VarChar(255)
+
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+// ─── Accounting: Period lock (tutup buku) ────────────────
+
+/// One row per calendar month that has ever been closed or explicitly opened.
+/// A month with no row is treated as open — closing is opt-in, so the lock can
+/// be introduced on an existing database without freezing history.
+model Period {
+  id       Int       @id @default(autoincrement())
+  year     Int
+  month    Int // 1-12
+  status   String    @default("open") @db.VarChar(20) // open, closed
+  closedAt DateTime? @map("closed_at")
+  /// Who performed the last close. Kept as a FK so the name stays correct if the
+  /// user is renamed; the full close/reopen history lives in the audit log.
+  closedById Int?    @map("closed_by_id")
+  note       String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  closedBy User? @relation(fields: [closedById], references: [id], onDelete: Restrict)
+
+  @@unique([year, month])
+  @@index([status])
+  @@index([closedById])
+  @@map("periods")
 }
 
 // ─── Documents ───────────────────────────────────────────

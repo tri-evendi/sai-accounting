@@ -4,6 +4,8 @@ import { calculateStockTotals } from "@/lib/inventory";
 import { stockUpdateSchema, itemSchema } from "@/lib/validations/inventory";
 import { requireAuth } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
   const result = await requireAuth(); // all roles can view inventory
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, ...stockData } = parsed.data;
+  const { date, unitCost, ...stockData } = parsed.data;
 
   if (stockData.type === "out") {
     const item = await prisma.item.findUnique({
@@ -89,13 +91,27 @@ export async function POST(request: Request) {
     }
   }
 
-  const stock = await prisma.stock.create({
-    data: {
-      ...stockData,
-      date: new Date(date),
-    },
-    include: { item: { select: { name: true } } },
-  });
+  let stock;
+  try {
+    stock = await prisma.$transaction(async (tx) => {
+      const created = await tx.stock.create({
+        data: {
+          ...stockData,
+          date: new Date(date),
+          // Cost is captured on the way in and derived on the way out.
+          unitCost: stockData.type === "in" ? unitCost : null,
+        },
+        include: { item: { select: { name: true } } },
+      });
+
+      // Only `out` movements post (D: HPP / K: Persediaan); incoming stock is
+      // capitalised by the purchase entry. The engine returns null for the rest.
+      await postForSource({ sourceType: "stock_movement", sourceId: created.id, tx });
+      return created;
+    });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 
   await writeAuditLog({
     userId: result.session.user.id,

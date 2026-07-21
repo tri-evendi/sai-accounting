@@ -6,9 +6,29 @@ export type AuditAction =
   | "stock.in"
   | "stock.out"
   | "item.create"
-  | "auth.password_change";
+  | "supplier_transaction.purchase"
+  | "supplier_transaction.payment"
+  /** Re-allocating an existing payment across purchases (issue #38). No journal. */
+  | "supplier_transaction.allocate"
+  | "auth.password_change"
+  | "period.close"
+  | "period.reopen"
+  /** Recording uang muka received/paid before any invoice exists (issue #26). */
+  | "advance.create"
+  | "advance.cancel"
+  /** Compensating an advance into an invoice/purchase. Posts its own journal. */
+  | "advance.apply"
+  | "advance.unapply";
 
-export type AuditEntity = "cash_account" | "stock" | "item" | "user";
+export type AuditEntity =
+  | "cash_account"
+  | "stock"
+  | "item"
+  | "supplier_transaction"
+  | "user"
+  | "period"
+  | "advance_payment"
+  | "advance_application";
 
 export type AuditLogEntry = {
   id: string;

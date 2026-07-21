@@ -48,3 +48,10 @@ next-env.d.ts
 
 # runtime logs
 /logs/
+
+# database dumps (never commit production data)
+*.sql
+!prisma/migrations/**/*.sql
+
+# transient agent worktrees
+/.claude/worktrees/

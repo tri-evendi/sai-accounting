@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema } from "@/lib/validations/contract";
+import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -29,16 +32,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const { items, date, ...contractData } = parsed.data;
+  const { items, date, dueDate, rate, ...contractData } = parsed.data;
+  const fx = contractFx(contractData.currency, items, rate);
 
-  const contract = await prisma.contract.create({
-    data: {
-      ...contractData,
-      date: new Date(date),
-      items: { create: items },
-    },
-    include: { items: true },
-  });
+  try {
+    const contract = await prisma.$transaction(async (tx) => {
+      const created = await tx.contract.create({
+        data: {
+          ...contractData,
+          ...fx,
+          date: new Date(date),
+          dueDate: toDateOrNull(dueDate),
+          items: { create: items },
+        },
+        include: { items: true },
+      });
 
-  return NextResponse.json(contract, { status: 201 });
+      // No `rate` in the context: the contract carries its own now (issue #36).
+      await postForSource({ sourceType: "contract", sourceId: created.id, tx });
+      return created;
+    });
+
+    return NextResponse.json(contract, { status: 201 });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

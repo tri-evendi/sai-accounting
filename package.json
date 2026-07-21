@@ -12,6 +12,8 @@
     "start:prod": "bash scripts/start-production.sh",
     "start:low-mem": "bash scripts/start-low-memory.sh",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate deploy",
     "db:seed": "npx tsx prisma/seed.ts",
@@ -57,6 +59,8 @@
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.2.7"
   }
 }

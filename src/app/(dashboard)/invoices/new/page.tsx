@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DueDateField } from "@/components/shared/due-date-field";
+import {
+  InvoiceFxFields,
+  invoiceFxPayload,
+  type InvoiceFxValues,
+} from "@/components/shared/invoice-fx-fields";
+import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { Trash2, Plus } from "lucide-react";
 
 interface InvoiceItem {
@@ -22,6 +29,15 @@ export default function NewInvoicePage() {
   const [items, setItems] = useState<InvoiceItem[]>([
     { itemName: "", quantity: 0, price: 0, unit: "kg" },
   ]);
+  // Currency drives which extra fields the accounting engine needs from the user.
+  const [fx, setFx] = useState<InvoiceFxValues>({
+    customerId: "",
+    currency: "IDR",
+    rate: "",
+    taxAmount: "0",
+  });
+
+  const subtotal = invoiceSubtotal(items);
 
   function addItem() {
     setItems([...items, { itemName: "", quantity: 0, price: 0, unit: "kg" }]);
@@ -46,7 +62,9 @@ export default function NewInvoicePage() {
     const body = {
       invoiceNo: formData.get("invoiceNo"),
       date: formData.get("date"),
+      dueDate: formData.get("dueDate"),
       status: formData.get("status"),
+      ...invoiceFxPayload(fx),
       items,
     };
 
@@ -58,7 +76,12 @@ export default function NewInvoicePage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create invoice");
+      // Zod field errors (e.g. a missing rate) are more actionable than the
+      // generic message, so surface the first one.
+      const fieldMsg = data.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
+        : null;
+      setError(String(fieldMsg || data.error || "Failed to create invoice"));
       setLoading(false);
     } else {
       router.push("/invoices");
@@ -81,6 +104,7 @@ export default function NewInvoicePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="invoiceNo" name="invoiceNo" label="Invoice Number" required />
               <Input id="date" name="date" type="date" label="Date" required />
+              <DueDateField />
               <Select
                 id="status"
                 name="status"
@@ -90,6 +114,11 @@ export default function NewInvoicePage() {
                   { value: "signed", label: "Signed" },
                   { value: "canceled", label: "Canceled" },
                 ]}
+              />
+              <InvoiceFxFields
+                value={fx}
+                onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+                subtotal={subtotal}
               />
             </div>
           </CardContent>

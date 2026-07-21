@@ -29,10 +29,27 @@ export default async function ContractDetailPage({
     return sum + Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
   }, 0);
 
-  const totalPaid = contract.payments.reduce(
-    (sum, p) => sum + Number(p.amount),
-    0
-  );
+  const rate = contract.rate != null ? Number(contract.rate) : null;
+  const isForeign = (contract.currency || "IDR") !== "IDR";
+  const baseAmount =
+    contract.baseAmount != null
+      ? Number(contract.baseAmount)
+      : rate != null
+        ? totalValue * rate
+        : isForeign
+          ? null
+          : totalValue;
+
+  // Payments can be in a different currency from the contract, so they only add
+  // up in IDR base. A payment with no rate has no IDR value to add — count it
+  // separately rather than folding a foreign amount in at face value.
+  const paymentsWithoutRate = contract.payments.filter(
+    (p) => p.baseAmount == null && (p.currency || "IDR") !== "IDR"
+  ).length;
+  const totalPaidBase = contract.payments.reduce((sum, p) => {
+    if (p.baseAmount != null) return sum + Number(p.baseAmount);
+    return (p.currency || "IDR") === "IDR" ? sum + Number(p.amount) : sum;
+  }, 0);
 
   return (
     <div className="max-w-4xl">
@@ -160,10 +177,22 @@ export default async function ContractDetailPage({
                 <td colSpan={4} className="px-6 py-3 text-right font-semibold text-gray-700">
                   Total Value
                 </td>
-                <td className="px-6 py-3 text-right font-bold text-gray-900">
+                <td className="px-6 py-3 text-right font-bold text-gray-900 tabular-nums">
                   {formatCurrency(totalValue, contract.currency)}
                 </td>
               </tr>
+              {isForeign && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                    Nilai dasar buku besar (IDR)
+                  </td>
+                  <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
+                    {baseAmount != null
+                      ? formatCurrency(baseAmount, "IDR")
+                      : "Kurs belum diisi"}
+                  </td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
@@ -174,8 +203,19 @@ export default async function ContractDetailPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            <div className="text-sm text-gray-500">
-              {totalValue > 0 ? Math.round((totalPaid / totalValue) * 100) : 0}% paid — {formatCurrency(totalPaid, contract.currency)} / {formatCurrency(totalValue, contract.currency)}
+            <div className="text-right text-sm text-gray-500">
+              <div className="tabular-nums">
+                {baseAmount != null && baseAmount > 0 && (
+                  <>{Math.round((totalPaidBase / baseAmount) * 100)}% — </>
+                )}
+                Terbayar (IDR): {formatCurrency(totalPaidBase, "IDR")}
+                {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
+              </div>
+              {paymentsWithoutRate > 0 && (
+                <div className="text-xs text-amber-700">
+                  {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>

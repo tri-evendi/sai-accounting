@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema } from "@/lib/validations/contract";
+import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
+import { repostForSource, unpostForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET(
   _request: Request,
@@ -41,22 +44,36 @@ export async function PUT(
     );
   }
 
-  const { items, date, ...contractData } = parsed.data;
+  const { items, date, dueDate, rate, ...contractData } = parsed.data;
   const contractId = parseInt(id);
+  const fx = contractFx(contractData.currency, items, rate);
 
-  await prisma.contractItem.deleteMany({ where: { contractId } });
+  try {
+    const contract = await prisma.$transaction(async (tx) => {
+      await tx.contractItem.deleteMany({ where: { contractId } });
 
-  const contract = await prisma.contract.update({
-    where: { id: contractId },
-    data: {
-      ...contractData,
-      date: new Date(date),
-      items: { create: items },
-    },
-    include: { items: true },
-  });
+      const updated = await tx.contract.update({
+        where: { id: contractId },
+        data: {
+          ...contractData,
+          ...fx,
+          date: new Date(date),
+          dueDate: toDateOrNull(dueDate),
+          items: { create: items },
+        },
+        include: { items: true },
+      });
 
-  return NextResponse.json(contract);
+      // The rate is written above, so the repost reads it off the contract itself
+      // instead of being handed one (issue #36).
+      await repostForSource({ sourceType: "contract", sourceId: contractId, tx });
+      return updated;
+    });
+
+    return NextResponse.json(contract);
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }
 
 export async function DELETE(
@@ -67,7 +84,25 @@ export async function DELETE(
   if (!result.authorized) return result.response;
 
   const { id } = await params;
-  await prisma.contract.delete({ where: { id: parseInt(id) } });
+  const contractId = parseInt(id);
 
-  return NextResponse.json({ success: true });
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Payments cascade-delete with the contract — reverse their journals too.
+      const payments = await tx.contractPayment.findMany({
+        where: { contractId },
+        select: { id: true },
+      });
+      for (const payment of payments) {
+        await unpostForSource({ sourceType: "contract_payment", sourceId: payment.id, tx });
+      }
+      await unpostForSource({ sourceType: "contract", sourceId: contractId, tx });
+
+      await tx.contract.delete({ where: { id: contractId } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

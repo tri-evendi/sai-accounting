@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CurrencyRateFields,
+  baseUnknown,
+  currencyRatePayload,
+} from "@/components/shared/currency-rate-fields";
+import { formatCurrency } from "@/lib/utils";
 import { Trash2, Plus } from "lucide-react";
 
 interface ContractItem {
@@ -22,6 +29,11 @@ export default function NewContractPage() {
   const [items, setItems] = useState<ContractItem[]>([
     { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 },
   ]);
+  // Stored on the contract since issue #36, so an edit no longer re-enters it.
+  const [currency, setCurrency] = useState("USD");
+  const [rate, setRate] = useState("");
+
+  const subtotal = items.reduce((sum, i) => sum + i.bags * i.kgPerBag * i.pricePerKg, 0);
 
   function addItem() {
     setItems([...items, { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
@@ -49,13 +61,14 @@ export default function NewContractPage() {
     const body = {
       contractNo: formData.get("contractNo"),
       date: formData.get("date"),
+      dueDate: formData.get("dueDate"),
       buyer: formData.get("buyer"),
       consignee: formData.get("consignee"),
       packaging: formData.get("packaging"),
       shipment: formData.get("shipment"),
       top1: formData.get("top1"),
       top2: formData.get("top2"),
-      currency: formData.get("currency"),
+      ...currencyRatePayload(currency, rate),
       status: formData.get("status"),
       items,
     };
@@ -68,7 +81,10 @@ export default function NewContractPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create contract");
+      const fieldMsg = data.details?.fieldErrors
+        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
+        : null;
+      setError(String(fieldMsg || data.error || "Failed to create contract"));
       setLoading(false);
     } else {
       router.push("/contracts");
@@ -94,21 +110,20 @@ export default function NewContractPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input id="contractNo" name="contractNo" label="Contract Number" required />
               <Input id="date" name="date" type="date" label="Date" required />
+              <DueDateField />
               <Input id="buyer" name="buyer" label="Buyer" required />
               <Input id="consignee" name="consignee" label="Consignee" />
               <Input id="packaging" name="packaging" label="Packaging" />
               <Input id="shipment" name="shipment" label="Shipment" />
               <Input id="top1" name="top1" label="Terms of Payment 1" />
               <Input id="top2" name="top2" label="Terms of Payment 2" />
-              <Select
-                id="currency"
-                name="currency"
-                label="Currency"
-                options={[
-                  { value: "USD", label: "USD" },
-                  { value: "CNY", label: "CNY" },
-                  { value: "IDR", label: "IDR (Rupiah)" },
-                ]}
+              <CurrencyRateFields
+                currency={currency}
+                rate={rate}
+                onCurrencyChange={setCurrency}
+                onRateChange={setRate}
+                currencyLabel="Currency"
+                rateHint="Wajib diisi — kurs disimpan pada kontrak dan dipakai untuk nilai IDR di buku besar."
               />
               <Select
                 id="status"
@@ -192,14 +207,22 @@ export default function NewContractPage() {
         {/* Running Total */}
         <Card className="mb-6">
           <CardContent className="py-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="font-medium text-gray-500">Estimated Total</span>
-              <span className="text-lg font-bold text-gray-900">
-                {new Intl.NumberFormat("id-ID").format(
-                  items.reduce((sum, item) => sum + item.bags * item.kgPerBag * item.pricePerKg, 0)
-                )}
-              </span>
-            </div>
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between items-center">
+                <dt className="font-medium text-gray-500">Estimated Total ({currency})</dt>
+                <dd className="text-lg font-bold tabular-nums text-gray-900">
+                  {formatCurrency(subtotal, currency)}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center">
+                <dt className="text-gray-500">Nilai dasar buku besar (IDR)</dt>
+                <dd className="tabular-nums font-medium text-gray-900">
+                  {baseUnknown(currency, rate)
+                    ? "— isi kurs dulu"
+                    : formatCurrency(subtotal * (Number(rate) || 1), "IDR")}
+                </dd>
+              </div>
+            </dl>
           </CardContent>
         </Card>
 

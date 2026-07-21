@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractPaymentSchema } from "@/lib/validations/contract";
+import { fxAmounts } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
+import { postForSource } from "@/lib/posting";
+import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET(
   _request: Request,
@@ -45,14 +48,27 @@ export async function POST(
     );
   }
 
-  const { date, contractId: cId, ...paymentData } = parsed.data;
-  const payment = await prisma.contractPayment.create({
-    data: {
-      ...paymentData,
-      contractId: cId,
-      date: new Date(date),
-    },
-  });
+  const { date, contractId: cId, rate: rateInput, ...paymentData } = parsed.data;
+  const { rate, baseAmount } = fxAmounts(paymentData.currency, paymentData.amount, rateInput);
 
-  return NextResponse.json(payment, { status: 201 });
+  try {
+    const payment = await prisma.$transaction(async (tx) => {
+      const created = await tx.contractPayment.create({
+        data: {
+          ...paymentData,
+          contractId: cId,
+          date: new Date(date),
+          rate,
+          baseAmount,
+        },
+      });
+
+      await postForSource({ sourceType: "contract_payment", sourceId: created.id, tx });
+      return created;
+    });
+
+    return NextResponse.json(payment, { status: 201 });
+  } catch (e) {
+    return handlePostingError(e);
+  }
 }

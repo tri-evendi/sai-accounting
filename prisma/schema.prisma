@@ -1356,3 +1356,114 @@ model DeliveryOrderItem {
   @@index([itemId])
   @@map("delivery_order_items")
 }
+
+// ─── issue #25 — Approval transaksi (ambang nilai & peran) ───────────────────
+//
+// Kontrol manajemen untuk transaksi bernilai besar: dokumen di atas AMBANG wajib
+// disetujui sebelum jurnalnya terbit. Dua tabel — aturan (`approval_rules`) dan
+// pengajuan per dokumen (`approval_requests`).
+//
+// ── KENAPA STATUS PERSETUJUAN TIDAK JADI KOLOM DI SETIAP DOKUMEN ────────────
+// Alternatifnya menambah `approval_status` ke contracts, invoices,
+// contract_payments, invoice_payments dan supplier_transactions — lima tabel,
+// lima default yang harus benar untuk data lama, dan lima tempat yang bisa lupa
+// diperiksa. Sebaliknya, satu baris `approval_requests` DIBUAT HANYA bila ada
+// aturan yang cocok. Konsekuensinya persis yang dibutuhkan untuk kompatibilitas
+// mundur: dokumen lama (dan dokumen baru di bawah ambang) TIDAK punya baris di
+// sini, sehingga `blocksPosting(null) === false` — mereka memposting seperti
+// sebelumnya dan tak pernah muncul di antrean. Tidak ada backfill, tidak ada
+// dokumen yang sudah diposting tiba-tiba terblokir.
+//
+// ── SATU TITIK CEGAT KE JURNAL ──────────────────────────────────────────────
+// Gerbangnya ada di `postForSource`/`repostForSource` (src/lib/posting/index.ts)
+// — jalur SATU-SATUNYA yang membuat jurnal dari sebuah dokumen. Tidak ada aturan
+// posting baru dan tidak ada duplikasi logika: bila dokumen punya pengajuan yang
+// belum `approved`, engine mengembalikan null (tak ada jurnal), persis seperti
+// dokumen batal/bernilai nol. Saat penyetuju menyetujui, route memanggil
+// `postForSource` di transaksi yang sama sehingga jurnalnya terbit saat itu juga.
+//
+// ── AMBANG DIBANDINGKAN TERHADAP IDR BASE ───────────────────────────────────
+// `approval_requests.base_amount` (IDR) yang diadu dengan `min_amount`, bukan
+// nilai mata uang asli — lihat catatan panjang di src/lib/approvals.ts.
+// Perbandingannya decimal-exact (digit integer yang diselaraskan), bukan float.
+
+/// Aturan approval: jenis dokumen + ambang nilai (IDR base) + peran penyetuju.
+/// Master data → punya `is_active` (dinonaktifkan, bukan dihapus, karena
+/// `approval_requests.rule_id` menunjuk ke sini).
+model ApprovalRule {
+  id           Int      @id @default(autoincrement())
+  /// enum-like: `contract` | `invoice` | `payment` (z.enum di validations/approval.ts).
+  /// `payment` mencakup pelunasan faktur, pelunasan kontrak, dan pembayaran supplier.
+  documentType String   @map("document_type") @db.VarChar(30)
+  /// Ambang nilai dalam IDR base, INKLUSIF (nilai = ambang → tetap perlu
+  /// persetujuan). Decimal(15,2) — uang, bukan Float.
+  minAmount    Decimal  @map("min_amount") @db.Decimal(15, 2)
+  /// enum-like peran penyetuju: `bos` | `core` | `ptg` (lihat ROLES di constants.ts).
+  approverRole String   @map("approver_role") @db.VarChar(20)
+  note         String?  @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([documentType])
+  @@index([isActive])
+  @@map("approval_rules")
+}
+
+/// Satu pengajuan persetujuan untuk SATU dokumen. Dibuat oleh route penulis
+/// dokumen saat ada aturan yang cocok, di dalam transaksi yang sama dengan
+/// dokumennya. Sekaligus jejak persetujuan (siapa, kapan, catatan) dan
+/// notifikasi in-app pemohon (`read_at`) — tanpa tabel/infrastruktur tambahan.
+model ApprovalRequest {
+  id              Int       @id @default(autoincrement())
+  /// `sourceType` posting engine: contract | invoice | contract_payment |
+  /// invoice_payment | supplier_transaction. Kunci yang dipakai gerbang jurnal.
+  sourceType      String    @map("source_type") @db.VarChar(40)
+  /// PK baris dokumen pada tabel sumbernya. Sengaja TANPA FK: satu kolom tak
+  /// bisa menunjuk lima tabel berbeda; keutuhannya dijaga route + gerbang posting.
+  documentId      Int       @map("document_id")
+  /// Kategori aturan yang cocok: contract | invoice | payment.
+  documentType    String    @map("document_type") @db.VarChar(30)
+  /// Nomor dokumen (snapshot) untuk antrean & audit — dokumen sumber bisa berubah.
+  documentNo      String?   @map("document_no") @db.VarChar(50)
+  /// Aturan yang memicu pengajuan ini. FK RESTRICT ke approval_rules (migration
+  /// 0024); NULL bila aturannya sudah tak ada padanannya.
+  ruleId          Int?      @map("rule_id")
+  /// Peran yang berhak memutuskan — disalin dari aturan agar keputusan lama
+  /// tetap terbaca meski aturannya nanti diubah.
+  approverRole    String    @map("approver_role") @db.VarChar(20)
+  /// enum-like: draft | pending_approval | approved | rejected.
+  status          String    @default("pending_approval") @db.VarChar(20)
+  /// Nilai dokumen dalam mata uangnya sendiri + kurs + IDR base (docs/DATABASE.md §4).
+  amount          Decimal   @db.Decimal(15, 2)
+  currency        String    @default("IDR") @db.VarChar(5)
+  rate            Decimal?  @db.Decimal(18, 6)
+  /// Nilai IDR base — INI yang diadu dengan ambang.
+  baseAmount      Decimal   @map("base_amount") @db.Decimal(15, 2)
+  /// Ambang yang berlaku saat pengajuan dibuat (snapshot, seperti approverRole).
+  thresholdAmount Decimal   @map("threshold_amount") @db.Decimal(15, 2)
+  /// FK RESTRICT ke users (migration 0024), tanpa relasi Prisma — pola yang sama
+  /// dengan Budget.accountId (#29) & FixedAsset (#28) agar tak menggantung
+  /// back-relation di User. Nama ditarik eksplisit di @/lib/approval-queue.ts.
+  requestedById   Int       @map("requested_by_id")
+  requestNote     String?   @map("request_note") @db.Text
+  decidedById     Int?      @map("decided_by_id")
+  decidedAt       DateTime? @map("decided_at")
+  decisionNote    String?   @map("decision_note") @db.Text
+  /// Kapan PEMOHON membaca hasil keputusan. NULL + status sudah diputus =
+  /// notifikasi yang belum dibaca (badge di navbar).
+  readAt          DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu pengajuan per dokumen — juga kunci lookup gerbang posting.
+  @@unique([sourceType, documentId])
+  @@index([status])
+  @@index([approverRole])
+  @@index([requestedById])
+  @@index([documentType])
+  @@index([createdAt])
+  @@map("approval_requests")
+}

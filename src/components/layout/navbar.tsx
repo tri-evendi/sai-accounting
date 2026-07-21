@@ -3,6 +3,7 @@
 import { Menu, LogOut, User } from "lucide-react";
 import { ROLE_LABELS, type Role } from "@/lib/constants";
 import { AccountantModeToggle } from "@/components/layout/accountant-mode-toggle";
+import { ApprovalBadge } from "@/components/layout/approval-badge";
 
 interface NavbarProps {
   userName: string;
@@ -24,6 +25,8 @@ export function Navbar({ userName, role, onMenuClick, onSignOut }: NavbarProps) 
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-4">
+        {/* issue #25 — antrean persetujuan / kabar keputusan (sembunyi bila nol) */}
+        <ApprovalBadge />
         {/* issue #11 — Mode Akuntan toggle (primary surface) */}
         <AccountantModeToggle />
         <div className="flex items-center gap-2 text-sm">

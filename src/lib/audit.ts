@@ -39,7 +39,21 @@ export type AuditAction =
   | "fixed_asset.dispose"
   | "fixed_asset.transfer"
   /** Surat Jalan / Delivery Order (issue #14). Reduces stock; HPP via stock-out. */
-  | "delivery_order.create";
+  | "delivery_order.create"
+  /**
+   * Approval transaksi (issue #25). `approval.request` is raised by the document
+   * route when a value crosses the ambang; `approval.approve` is the ONLY action
+   * here that reaches the ledger — it releases the withheld journal through
+   * `postForSource`. Rejecting posts nothing. Marking a decision as read is
+   * deliberately NOT audited: it is the requester dismissing their own
+   * notification, not a change to the record.
+   */
+  | "approval.request"
+  | "approval.approve"
+  | "approval.reject"
+  | "approval.rule.create"
+  | "approval.rule.update"
+  | "approval.rule.deactivate";
 
 export type AuditEntity =
   | "cash_account"
@@ -57,7 +71,10 @@ export type AuditEntity =
   | "company_settings"
   | "fixed_asset_category"
   | "fixed_asset"
-  | "delivery_order";
+  | "delivery_order"
+  /** Approval transaksi (issue #25). */
+  | "approval_request"
+  | "approval_rule";
 
 export type AuditLogEntry = {
   id: string;

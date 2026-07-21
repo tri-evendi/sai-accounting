@@ -29,6 +29,8 @@ import {
   Wand2,
   FileSpreadsheet,
   PackageCheck,
+  ClipboardCheck,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,11 @@ const allNavItems = [
   { href: "/accounts", label: "Akun Perkiraan", icon: BookOpen, roles: ["bos"], accountingOnly: true },
   { href: "/journal", label: "Jurnal Umum", icon: BookText, roles: ["bos"], accountingOnly: true },
   { href: "/ledger", label: "Buku Besar", icon: Library, roles: ["bos"], accountingOnly: true },
+  // ── issue #25 — Approval transaksi. Antreannya terbuka untuk semua peran:
+  // penyetuju melihat yang harus ia putuskan, pemohon melihat kabar pengajuannya.
+  // Aturannya (ambang & peran) bos-only, permukaan kebijakan seperti Tutup Periode.
+  { href: "/approvals", label: "Perlu Persetujuan", icon: ClipboardCheck, roles: ["bos", "core", "ptg"] },
+  { href: "/approvals/rules", label: "Aturan Persetujuan", icon: ShieldCheck, roles: ["bos"] },
   { href: "/reports", label: "Laporan", icon: BarChart3, roles: ["bos"] },
   // ── issue #17 — Ekspor e-Faktur (DJP/CTAS) ──
   { href: "/tax/efaktur", label: "Ekspor e-Faktur", icon: FileSpreadsheet, roles: ["bos"] },

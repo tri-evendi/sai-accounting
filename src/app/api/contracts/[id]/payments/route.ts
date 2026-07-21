@@ -5,6 +5,8 @@ import { fxAmounts } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { writeAuditLog } from "@/lib/audit";
+import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 
 export async function GET(
   _request: Request,
@@ -51,8 +53,10 @@ export async function POST(
   const { date, contractId: cId, rate: rateInput, ...paymentData } = parsed.data;
   const { rate, baseAmount } = fxAmounts(paymentData.currency, paymentData.amount, rateInput);
 
+  let payment;
+  let approval;
   try {
-    const payment = await prisma.$transaction(async (tx) => {
+    ({ payment, approval } = await prisma.$transaction(async (tx) => {
       const created = await tx.contractPayment.create({
         data: {
           ...paymentData,
@@ -63,12 +67,48 @@ export async function POST(
         },
       });
 
-      await postForSource({ sourceType: "contract_payment", sourceId: created.id, tx });
-      return created;
-    });
+      // Approval (issue #25) — see the invoice-payment route for why the parent
+      // document's number identifies a payment in the queue.
+      const request = await ensureApprovalRequest({
+        client: tx,
+        sourceType: "contract_payment",
+        documentId: created.id,
+        documentNo: contract.contractNo,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        rate,
+        baseAmount,
+        requestedById: parseInt(result.session.user.id, 10),
+      });
 
-    return NextResponse.json(payment, { status: 201 });
+      await postForSource({ sourceType: "contract_payment", sourceId: created.id, tx });
+      return { payment: created, approval: request };
+    }));
   } catch (e) {
     return handlePostingError(e);
   }
+
+  if (approval) {
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: "approval.request",
+      entity: "approval_request",
+      entityId: approval.id,
+      details: {
+        sourceType: "contract_payment",
+        documentId: payment.id,
+        documentNo: contract.contractNo,
+        baseAmount: Number(approval.baseAmount),
+        thresholdAmount: Number(approval.thresholdAmount),
+        approverRole: approval.approverRole,
+      },
+      request,
+    });
+  }
+
+  return NextResponse.json(
+    { ...payment, approval: approvalNotice(approval, "Pembayaran") },
+    { status: 201 }
+  );
 }

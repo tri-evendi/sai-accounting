@@ -21,27 +21,18 @@
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { MONTH_NAMES } from "@/lib/month-names";
+
+// Re-exported so server code can keep importing MONTH_NAMES from here; the array
+// itself lives in the Prisma-free `@/lib/month-names` so client components can
+// import it without pulling the database client into the browser bundle.
+export { MONTH_NAMES };
 
 /** Root client or an interactive-transaction client — same shape as LedgerClient. */
 export type PeriodClient = typeof prisma | Prisma.TransactionClient;
 
 export const PERIOD_STATUSES = ["open", "closed"] as const;
 export type PeriodStatus = (typeof PERIOD_STATUSES)[number];
-
-export const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-] as const;
 
 /** "Maret 2026" — used in UI labels and in the error message users see. */
 export function periodLabel(year: number, month: number): string {

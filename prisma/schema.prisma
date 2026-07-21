@@ -1194,3 +1194,80 @@ model FixedAssetLocationHistory {
   @@index([date])
   @@map("fixed_asset_location_histories")
 }
+
+// ─── issue #29 — Anggaran & Target (Budget & sales targets) ──────────────────
+//
+// Rencana keuangan yang DIBANDINGKAN dengan realisasi buku besar — BUKAN sumber
+// jurnal. Membuat/mengubah anggaran TIDAK memposting apa pun; laporan Realisasi
+// vs Anggaran hanya MEMBACA jurnal lewat pembaca laporan (@/lib/reports) dan
+// selisihnya dihitung di helper murni @/lib/budget.ts. Sisi baca-saja ini yang
+// membuat anggaran aman: ia tak pernah menyentuh @/lib/posting atau @/lib/ledger.
+//
+// ── IDR BASE, SEPERTI BUKU BESAR ────────────────────────────────────────────
+// `amount` adalah IDR base (unit buku besar). Anggaran TIDAK menyimpan
+// currency/rate/base_amount: sebuah rencana tidak "diselesaikan pada kurs" apa
+// pun — ia dibandingkan dengan realisasi yang sudah dalam IDR base. Sikap yang
+// sama dengan aset tetap (#28) & HPP: nilai domestik langsung dalam rupiah.
+//
+// ── AKUN/PELANGGAN/ITEM = kolom Int + FK di migration, BUKAN relasi Prisma ───
+// `account_id` (Budget) dan `customer_id`/`item_id` (SalesTarget) menunjuk baris
+// master dengan FK RESTRICT yang ditambahkan di migration 0021, tetapi TIDAK
+// dideklarasikan sebagai relasi Prisma — sikap yang sama persis dengan aset
+// tetap (#28) & CompanySetting.opening_journal_id, agar tak menggantung
+// back-relation di hub Account/Customer/Item bersama untuk query yang tak dibuat
+// app. Nama untuk tampilan diambil eksplisit di @/lib/budget-report.ts.
+
+/// Anggaran satu akun COA untuk satu bulan, IDR base. Periode diidentifikasi
+/// dengan (year, month) — sama seperti `periods` & idempotensi penyusutan (#28) —
+/// agar cocok persis dengan bulan yang dilaporkan Laba/Rugi.
+model Budget {
+  id        Int      @id @default(autoincrement())
+  /// COA account yang dianggarkan (biasanya akun pendapatan/beban). FK RESTRICT
+  /// ke accounts.id di migration 0021; lihat catatan blok di atas.
+  accountId Int      @map("account_id")
+  year      Int
+  month     Int // 1-12
+  /// Nilai anggaran periode ini, IDR base. Decimal(15,2) — bukan Float/Int.
+  amount    Decimal  @db.Decimal(15, 2)
+  note      String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu anggaran per akun per bulan — memasukkan angka kedua untuk (akun,
+  /// tahun, bulan) yang sama adalah pengeditan yang pertama, bukan fakta baru.
+  @@unique([accountId, year, month])
+  @@index([accountId])
+  @@index([year, month])
+  @@map("budgets")
+}
+
+/// Target penjualan untuk satu bulan, IDR base. Opsional per pelanggan dan/atau
+/// per komoditas (item) untuk granularitas perencanaan; keduanya NULL = target
+/// penjualan umum periode itu. Realisasi dibandingkan pada tingkat total periode
+/// terhadap penjualan aktual dari Laba/Rugi (buku besar tak memecah pendapatan
+/// per pelanggan, jadi tak ada agregator kedua yang dibuat untuk itu).
+model SalesTarget {
+  id         Int      @id @default(autoincrement())
+  year       Int
+  month      Int // 1-12
+  /// Opsional. FK RESTRICT ke customers.id di migration 0021. NULL = lintas-pelanggan.
+  customerId Int?     @map("customer_id")
+  /// Opsional. FK RESTRICT ke items.id di migration 0021. NULL = lintas-komoditas.
+  itemId     Int?     @map("item_id")
+  /// Nilai target periode ini, IDR base. Decimal(15,2) — bukan Float/Int.
+  amount     Decimal  @db.Decimal(15, 2)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu baris per (periode, pelanggan, komoditas). MySQL memperlakukan NULL
+  /// sebagai berbeda, jadi kunci ini menjaga duplikat pada baris yang bertag
+  /// penuh; guard duplikat untuk target umum (kedua NULL) ada di layer Zod/route.
+  @@unique([year, month, customerId, itemId])
+  @@index([year, month])
+  @@index([customerId])
+  @@index([itemId])
+  @@map("sales_targets")
+}

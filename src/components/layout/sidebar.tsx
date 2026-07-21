@@ -25,6 +25,7 @@ import {
   Ship,
   Undo2,
   Building2,
+  Target,
   Wand2,
   FileSpreadsheet,
   X,
@@ -61,6 +62,8 @@ const allNavItems = [
   { href: "/reports", label: "Laporan", icon: BarChart3, roles: ["bos"] },
   // ── issue #17 — Ekspor e-Faktur (DJP/CTAS) ──
   { href: "/tax/efaktur", label: "Ekspor e-Faktur", icon: FileSpreadsheet, roles: ["bos"] },
+  // ── issue #29 — Anggaran & Target ──
+  { href: "/budget", label: "Anggaran & Target", icon: Target, roles: ["bos"] },
   { href: "/periods", label: "Tutup Periode", icon: Lock, roles: ["bos"] },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["bos", "core"] },
   { href: "/customers", label: "Customers", icon: Users, roles: ["bos", "core"] },

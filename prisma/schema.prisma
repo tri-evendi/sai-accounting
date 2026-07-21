@@ -18,6 +18,18 @@ model User {
   status   Int      @default(1) // 1 = must change password
   passDate DateTime? @map("pass_date")
 
+  // ─── issue #11 — Mode Akuntan (accountant mode) ────────────
+  /// Per-user DISPLAY preference for "Mode Akuntan". Nullable on purpose:
+  ///   NULL  = follow the role default (bos → ON, core/ptg → OFF),
+  ///   true  = explicitly show accounting surfaces (Jurnal/Buku Besar/COA + debit/kredit terms),
+  ///   false = explicitly hide them.
+  /// An explicit value overrides the role default; a user who never toggles
+  /// stays NULL and tracks their role's default even if their role changes.
+  /// Display-only — it NEVER changes authorisation (role still gates every
+  /// accounting page) nor what is posted. See src/lib/accountant-mode.ts.
+  accountantMode Boolean? @map("accountant_mode")
+  // ───────────────────────────────────────────────────────────
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

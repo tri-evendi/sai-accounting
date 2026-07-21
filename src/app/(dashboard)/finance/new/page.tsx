@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowDownLeft, ArrowUpRight, Info } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Info, BookText } from "lucide-react";
+import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
+import { effectiveAccountantMode } from "@/lib/accountant-mode";
 
 interface AccountOption {
   id: number;
@@ -19,11 +22,21 @@ const BASE_CURRENCY = "IDR";
 
 export default function NewTransactionPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  // issue #11 — when Mode Akuntan is OFF we hide debit/kredit terminology; when
+  // ON we keep it and add a read-only "Lihat jurnal" preview. Display-only: the
+  // POST payload and posting engine are identical either way.
+  const accountantOn = effectiveAccountantMode({
+    role: session?.user?.role,
+    accountantMode: session?.user?.accountantMode,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   // Drives which extra fields the accounting engine needs from the user.
   const [currency, setCurrency] = useState(BASE_CURRENCY);
+  const [type, setType] = useState<CashType>("bank");
+  const [counterAccountId, setCounterAccountId] = useState("");
   const [debit, setDebit] = useState("0");
   const [credit, setCredit] = useState("0");
   const [rate, setRate] = useState("");
@@ -31,6 +44,25 @@ export default function NewTransactionPage() {
   const isForeign = currency !== BASE_CURRENCY;
   const value = Number(debit) > 0 ? Number(debit) : Number(credit);
   const baseValue = isForeign ? value * (Number(rate) || 0) : value;
+
+  // "Lihat jurnal" preview (issue #11) — mirrors buildCashTransactionLines
+  // exactly (money in: D Kas/Bank, K akun lawan; money out: the reverse). It
+  // RENDERS what the engine already computes; it introduces no posting rule.
+  const counterAccount = accounts.find((a) => String(a.id) === counterAccountId);
+  const isMoneyIn = Number(debit) > 0;
+  const cashSideLabel = `${CASH_TYPE_LABELS[type]} (Kas/Bank)`;
+  const journalPreview =
+    value > 0 && counterAccount
+      ? isMoneyIn
+        ? [
+            { account: cashSideLabel, debit: value, credit: 0 },
+            { account: `${counterAccount.code} — ${counterAccount.name}`, debit: 0, credit: value },
+          ]
+        : [
+            { account: `${counterAccount.code} — ${counterAccount.name}`, debit: value, credit: 0 },
+            { account: cashSideLabel, debit: 0, credit: value },
+          ]
+      : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -58,14 +90,22 @@ export default function NewTransactionPage() {
     const creditVal = Number(formData.get("credit")) || 0;
 
     if (debitVal === 0 && creditVal === 0) {
-      setError("Isi salah satu: Uang Masuk (debit) atau Uang Keluar (kredit).");
+      setError(
+        accountantOn
+          ? "Isi salah satu: Uang Masuk (debit) atau Uang Keluar (kredit)."
+          : "Isi salah satu: Uang Masuk atau Uang Keluar."
+      );
       setLoading(false);
       return;
     }
 
-    const counterAccountId = Number(formData.get("counterAccountId")) || 0;
-    if (!counterAccountId) {
-      setError("Pilih akun lawan — jurnal otomatis membutuhkan sisi kedua transaksi.");
+    const counterAccountIdVal = Number(formData.get("counterAccountId")) || 0;
+    if (!counterAccountIdVal) {
+      setError(
+        accountantOn
+          ? "Pilih akun lawan — jurnal otomatis membutuhkan sisi kedua transaksi."
+          : "Pilih kategori — dari mana uang ini datang atau untuk apa dipakai."
+      );
       setLoading(false);
       return;
     }
@@ -77,7 +117,7 @@ export default function NewTransactionPage() {
       currency: formData.get("currency"),
       debit: debitVal,
       credit: creditVal,
-      counterAccountId,
+      counterAccountId: counterAccountIdVal,
       rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
       note: formData.get("note") || undefined,
     };
@@ -119,6 +159,8 @@ export default function NewTransactionPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="type" name="type" label="Account Type"
+                value={type}
+                onChange={(e) => setType(e.target.value as CashType)}
                 options={[
                   { value: "bank", label: "Bank" },
                   { value: "kas_besar", label: "Kas Besar (Large Cash)" },
@@ -176,7 +218,7 @@ export default function NewTransactionPage() {
                   step="0.01"
                   min="0"
                   className="text-right tabular-nums"
-                  label="Debit — Uang Masuk (In)"
+                  label={accountantOn ? "Debit — Uang Masuk (In)" : "Uang Masuk (In)"}
                   value={debit}
                   onChange={(e) => setDebit(e.target.value)}
                 />
@@ -193,7 +235,7 @@ export default function NewTransactionPage() {
                   step="0.01"
                   min="0"
                   className="text-right tabular-nums"
-                  label="Credit — Uang Keluar (Out)"
+                  label={accountantOn ? "Credit — Uang Keluar (Out)" : "Uang Keluar (Out)"}
                   value={credit}
                   onChange={(e) => setCredit(e.target.value)}
                 />
@@ -207,9 +249,10 @@ export default function NewTransactionPage() {
                 <Select
                   id="counterAccountId"
                   name="counterAccountId"
-                  label="Akun Lawan (Counter Account)"
-                  placeholder="-- Pilih akun lawan --"
-                  defaultValue=""
+                  label={accountantOn ? "Akun Lawan (Counter Account)" : "Kategori"}
+                  placeholder={accountantOn ? "-- Pilih akun lawan --" : "-- Pilih kategori --"}
+                  value={counterAccountId}
+                  onChange={(e) => setCounterAccountId(e.target.value)}
                   options={accounts.map((a) => ({
                     value: String(a.id),
                     label: `${a.code} — ${a.name}`,
@@ -219,8 +262,17 @@ export default function NewTransactionPage() {
                 <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    Sisi kedua dari jurnal otomatis: dari mana uang ini datang, atau untuk apa
-                    uang ini dipakai (mis. <em>Beban Listrik</em>, <em>Piutang Usaha</em>).
+                    {accountantOn ? (
+                      <>
+                        Sisi kedua dari jurnal otomatis: dari mana uang ini datang, atau untuk apa
+                        uang ini dipakai (mis. <em>Beban Listrik</em>, <em>Piutang Usaha</em>).
+                      </>
+                    ) : (
+                      <>
+                        Dari mana uang ini datang, atau untuk apa uang ini dipakai (mis.{" "}
+                        <em>Beban Listrik</em>, <em>Piutang Usaha</em>).
+                      </>
+                    )}
                   </span>
                 </p>
               </div>
@@ -242,6 +294,48 @@ export default function NewTransactionPage() {
                         maximumFractionDigits: 0,
                       }).format(baseValue)}
                 </span>
+              </div>
+            )}
+
+            {/* issue #11 — "Lihat jurnal": read-only preview of the entry the
+                posting engine will create for this cash transaction. Shown only
+                in Mode Akuntan; it renders the engine's own rule, changing
+                nothing about what is posted. */}
+            {accountantOn && journalPreview && (
+              <div className="mt-4 rounded-md border border-gray-200 bg-white">
+                <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm font-medium text-gray-700">
+                  <BookText className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                  Lihat jurnal — pratinjau
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500">
+                      <th className="px-3 py-1.5 text-left font-medium">Akun</th>
+                      <th className="px-3 py-1.5 text-right font-medium">Debit</th>
+                      <th className="px-3 py-1.5 text-right font-medium">Kredit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {journalPreview.map((line, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="px-3 py-1.5 text-gray-800">{line.account}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-800">
+                          {line.debit > 0
+                            ? new Intl.NumberFormat("id-ID").format(line.debit)
+                            : "-"}
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-800">
+                          {line.credit > 0
+                            ? new Intl.NumberFormat("id-ID").format(line.credit)
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="px-3 py-2 text-xs text-gray-500">
+                  Jurnal dibuat otomatis saat transaksi disimpan. Nilai dalam {currency}.
+                </p>
               </div>
             )}
           </CardContent>

@@ -14,6 +14,8 @@ import {
 } from "@/components/shared/invoice-fx-fields";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { Trash2, Plus } from "lucide-react";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 
 interface InvoiceItem {
   itemName: string;
@@ -87,7 +89,7 @@ export default function NewInvoicePage() {
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Failed to create invoice"));
+      setError(String(fieldMsg || data.error || "Gagal menyimpan tagihan penjualan"));
       setLoading(false);
     } else {
       router.push("/invoices");
@@ -97,28 +99,39 @@ export default function NewInvoicePage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Invoice</h1>
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          <TermTooltip term="faktur">Catat Penjualan</TermTooltip>
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Buat tagihan penjualan untuk pelanggan. Setelah disimpan, sisanya masuk ke daftar
+          &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.
+        </p>
+        <LearnMore term="faktur" className="mt-1" label="Pelajari ini: apa itu tagihan penjualan" />
+      </header>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          {error}
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
-          <CardHeader><CardTitle>Invoice Details</CardTitle></CardHeader>
+        <Card className="mb-6" data-tour="faktur-identitas">
+          <CardHeader><CardTitle>Identitas Tagihan</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="invoiceNo" name="invoiceNo" label="Invoice Number" required />
-              <Input id="date" name="date" type="date" label="Date" required />
+              <Input id="invoiceNo" name="invoiceNo" label="Nomor Tagihan" required />
+              <Input id="date" name="date" type="date" label="Tanggal" required />
               <DueDateField />
               <Select
                 id="status"
                 name="status"
                 label="Status"
                 options={[
-                  { value: "pending", label: "Pending" },
-                  { value: "signed", label: "Signed" },
-                  { value: "canceled", label: "Canceled" },
+                  { value: "pending", label: "Menunggu" },
+                  { value: "signed", label: "Sah" },
+                  { value: "canceled", label: "Dibatalkan" },
                 ]}
               />
               <InvoiceFxFields
@@ -130,12 +143,12 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card className="mb-6" data-tour="faktur-barang">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Items</CardTitle>
-              <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> Add Item
+              <CardTitle>Barang yang Dijual</CardTitle>
+              <Button type="button" variant="secondary" size="sm" className="cursor-pointer" onClick={addItem}>
+                <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> Tambah Barang
               </Button>
             </div>
           </CardHeader>
@@ -144,8 +157,9 @@ export default function NewInvoicePage() {
               {items.map((item, i) => (
                 <div key={i} className="flex items-end gap-3 rounded-md border border-gray-200 p-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Item Name</label>
+                    <label htmlFor={`item-name-${i}`} className="block text-xs font-medium text-gray-500 mb-1">Nama Barang</label>
                     <input
+                      id={`item-name-${i}`}
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                       value={item.itemName}
                       onChange={(e) => updateItem(i, "itemName", e.target.value)}
@@ -153,35 +167,43 @@ export default function NewInvoicePage() {
                     />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
+                    <label htmlFor={`item-qty-${i}`} className="block text-xs font-medium text-gray-500 mb-1">Jumlah</label>
                     <input
+                      id={`item-qty-${i}`}
                       type="number"
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-right tabular-nums"
                       value={item.quantity}
                       onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
                     />
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Price</label>
+                    <label htmlFor={`item-price-${i}`} className="block text-xs font-medium text-gray-500 mb-1">Harga Satuan</label>
                     <input
+                      id={`item-price-${i}`}
                       type="number"
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-right tabular-nums"
                       value={item.price}
                       onChange={(e) => updateItem(i, "price", Number(e.target.value))}
                     />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
+                    <label htmlFor={`item-unit-${i}`} className="block text-xs font-medium text-gray-500 mb-1">Satuan</label>
                     <input
+                      id={`item-unit-${i}`}
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                       value={item.unit}
                       onChange={(e) => updateItem(i, "unit", e.target.value)}
                     />
                   </div>
-                  <button type="button" onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 pb-2">
-                    <Trash2 className="h-4 w-4" />
+                  <button
+                    type="button"
+                    onClick={() => removeItem(i)}
+                    aria-label={`Hapus baris barang ${i + 1}`}
+                    className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               ))}
@@ -189,12 +211,12 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Invoice"}
+        <div className="flex gap-3" data-tour="faktur-simpan">
+          <Button type="submit" className="cursor-pointer" disabled={loading}>
+            {loading ? "Menyimpan..." : "Simpan Tagihan"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Cancel
+          <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => router.back()}>
+            Batal
           </Button>
         </div>
       </form>

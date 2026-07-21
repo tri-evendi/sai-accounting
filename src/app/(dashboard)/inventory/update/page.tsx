@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Info } from "lucide-react";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 
 interface ItemOption {
   id: number;
@@ -74,11 +76,11 @@ export default function StockUpdatePage() {
           }))
         );
       }
-      setSuccess("Item created successfully");
+      setSuccess("Barang baru tersimpan");
       setTimeout(() => setSuccess(""), 3000);
     } else {
       const data = await res.json();
-      setError(data.error || "Failed to create item");
+      setError(data.error || "Gagal menambah barang");
     }
   }
 
@@ -117,10 +119,10 @@ export default function StockUpdatePage() {
       const fieldMsg = detail
         ? Object.values(detail).flat().filter(Boolean)[0]
         : null;
-      setError(fieldMsg || data.error || "Failed to update stock");
+      setError(fieldMsg || data.error || "Gagal menyimpan pergerakan stok");
       setLoading(false);
     } else {
-      setSuccess("Stock updated successfully");
+      setSuccess("Pergerakan stok tersimpan");
       setLoading(false);
       (e.target as HTMLFormElement).reset();
       setTimeout(() => setSuccess(""), 3000);
@@ -129,29 +131,50 @@ export default function StockUpdatePage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Update Stock</h1>
-        <Button variant="secondary" size="sm" onClick={() => setShowNewItem(!showNewItem)}>
-          {showNewItem ? "Cancel" : "+ New Item"}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Catat barang yang masuk ke gudang atau keluar dari gudang.
+          </p>
+          <LearnMore term="hpp" className="mt-1" label="Pelajari ini: modal barang yang terjual" />
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="shrink-0 cursor-pointer"
+          onClick={() => setShowNewItem(!showNewItem)}
+        >
+          {showNewItem ? "Batal" : "+ Barang Baru"}
         </Button>
       </div>
 
-      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {success && <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700">{success}</div>}
+      {error && (
+        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700" role="status">
+          {success}
+        </div>
+      )}
 
       {/* New Item Form */}
       {showNewItem && (
         <Card className="mb-6">
-          <CardHeader><CardTitle>Create New Item</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Tambah Barang Baru</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleCreateItem} className="flex gap-3 items-end">
               <div className="flex-1">
-                <Input id="newItemName" label="Item Name" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
+                <Input id="newItemName" label="Nama Barang" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
               </div>
               <div className="w-28">
-                <Input id="newItemUnit" label="Unit" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
+                <Input id="newItemUnit" label="Satuan" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
               </div>
-              <Button type="submit" size="sm">Create</Button>
+              <Button type="submit" size="sm" className="cursor-pointer">Simpan</Button>
             </form>
           </CardContent>
         </Card>
@@ -159,14 +182,14 @@ export default function StockUpdatePage() {
 
       {/* Stock Update Form */}
       <Card>
-        <CardHeader><CardTitle>Record Stock Movement</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Catat Pergerakan Stok</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Select
               id="itemId"
               name="itemId"
-              label="Item"
-              placeholder="-- Select Item --"
+              label="Barang"
+              placeholder="-- Pilih Barang --"
               options={items.map((item) => ({
                 value: String(item.id),
                 label: `${item.name}${item.unit ? ` (${item.unit})` : ""}`,
@@ -176,12 +199,12 @@ export default function StockUpdatePage() {
             <Select
               id="type"
               name="type"
-              label="Movement Type"
+              label="Jenis Pergerakan"
               value={movementType}
               onChange={(e) => setMovementType(e.target.value as "in" | "out")}
               options={[
-                { value: "in", label: "Stock In (Receive)" },
-                { value: "out", label: "Stock Out (Ship)" },
+                { value: "in", label: "Barang Masuk (diterima)" },
+                { value: "out", label: "Barang Keluar (dikirim)" },
               ]}
             />
             <Input
@@ -191,7 +214,7 @@ export default function StockUpdatePage() {
               step="0.01"
               min="0"
               className="text-right tabular-nums"
-              label="Quantity"
+              label="Jumlah"
               required
             />
             {movementType === "in" ? (
@@ -224,18 +247,23 @@ export default function StockUpdatePage() {
               id="date"
               name="date"
               type="date"
-              label="Date"
+              label="Tanggal"
               defaultValue={new Date().toISOString().split("T")[0]}
               required
             />
-            <Input id="note" name="note" label="Note (optional)" />
+            <Input id="note" name="note" label="Catatan (opsional)" />
 
             <div className="flex gap-3">
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Update Stock"}
+              <Button type="submit" className="cursor-pointer" disabled={loading}>
+                {loading ? "Menyimpan..." : "Simpan Pergerakan Stok"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => router.push("/inventory")}>
-                Back to Inventory
+              <Button
+                type="button"
+                variant="secondary"
+                className="cursor-pointer"
+                onClick={() => router.push("/inventory")}
+              >
+                Kembali ke Stok Barang
               </Button>
             </div>
           </form>

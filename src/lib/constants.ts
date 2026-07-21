@@ -10,10 +10,11 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
+/** Sebutan peran dalam bahasa Indonesia (issue #1) — tampilan saja. */
 export const ROLE_LABELS: Record<Role, string> = {
-  bos: "Manager",
-  core: "Staff",
-  ptg: "PTG Department",
+  bos: "Pimpinan",
+  core: "Staf Kantor",
+  ptg: "Bagian Gudang (PTG)",
 };
 
 export const CURRENCIES = ["USD", "CNY", "IDR"] as const;
@@ -21,6 +22,23 @@ export type Currency = (typeof CURRENCIES)[number];
 
 export const CONTRACT_STATUSES = ["signed", "pending", "canceled"] as const;
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
+
+/**
+ * Label status dokumen dalam bahasa tugas (issue #1). Nilai yang disimpan di
+ * database TIDAK berubah (`signed` / `pending` / `canceled`) — ini murni lapisan
+ * tampilan untuk badge dan tombol saringan.
+ */
+export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  signed: "Sah",
+  pending: "Menunggu",
+  canceled: "Dibatalkan",
+};
+
+/** Label untuk tombol saringan, termasuk pilihan "semua". */
+export const STATUS_FILTER_LABELS: Record<string, string> = {
+  all: "Semua",
+  ...CONTRACT_STATUS_LABELS,
+};
 
 export const STATUS_COLORS: Record<ContractStatus, string> = {
   signed: "bg-green-100 text-green-800",

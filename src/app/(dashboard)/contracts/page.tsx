@@ -8,6 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileText } from "lucide-react";
+import { STATUS_FILTER_LABELS } from "@/lib/constants";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +52,15 @@ export default async function ContractsPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Contracts ({totalCount})</h1>
-        <Link href="/contracts/new">
-          <Button>+ New Contract</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="kontrak">Kontrak ({totalCount})</TermTooltip>
+          </h1>
+          <LearnMore term="kontrak" className="mt-1" label="Pelajari ini: apa itu kontrak penjualan" />
+        </div>
+        <Link href="/contracts/new" className="shrink-0">
+          <Button>+ Buat Kontrak</Button>
         </Link>
       </div>
 
@@ -67,7 +75,7 @@ export default async function ContractsPage({
               variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
               size="sm"
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {STATUS_FILTER_LABELS[status] ?? status}
             </Button>
           </Link>
         ))}
@@ -78,11 +86,11 @@ export default async function ContractsPage({
         <input
           type="text"
           name="search"
-          placeholder="Search by contract no, buyer, or consignee..."
+          placeholder="Cari no. kontrak, pembeli, atau penerima barang..."
           defaultValue={params.search}
           className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <button type="submit" className="ml-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Search</button>
+        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Cari</button>
       </form>
 
       {/* Table */}
@@ -91,18 +99,20 @@ export default async function ContractsPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Contract No</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Buyer</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Consignee</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Items</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Currency</th>
+                <th className="px-6 py-3 font-medium text-gray-500">No. Kontrak</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Pembeli</th>
+                <th className="px-6 py-3 font-medium text-gray-500">
+                  <TermTooltip term="penerima_barang">Penerima Barang</TermTooltip>
+                </th>
+                <th className="px-6 py-3 font-medium text-gray-500">Jumlah Barang</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Status</th>
               </tr>
             </thead>
             <tbody>
               {contracts.length === 0 ? (
-                <tr><td colSpan={7}><EmptyState icon={<FileText className="h-12 w-12" />} title="No contracts found" description="Create your first contract to get started." actionLabel="+ New Contract" actionHref="/contracts/new" /></td></tr>
+                <tr><td colSpan={7}><EmptyState icon={<FileText className="h-12 w-12" />} title="Belum ada kontrak" description="Buat kontrak pertama sebelum barang dikirim." actionLabel="+ Buat Kontrak" actionHref="/contracts/new" /></td></tr>
               ) : (
                 contracts.map((contract) => (
                   <tr key={contract.id} className="border-b border-gray-100 hover:bg-gray-50">

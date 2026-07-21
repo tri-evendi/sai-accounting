@@ -10,6 +10,9 @@ import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
 import { CheckCircle2 } from "lucide-react";
+import { MONTH_NAMES } from "@/lib/month-names";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 
 export const dynamic = "force-dynamic";
@@ -89,18 +92,21 @@ export default async function FinancePage({
   // Generate filter options
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
+  // Nama bulan bahasa Indonesia dipakai bersama seluruh aplikasi (issue #1).
+  const months = MONTH_NAMES;
 
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>
+          </h1>
+          <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas &amp; bank" />
+        </div>
         <div className="flex flex-wrap gap-2">
           <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
-          <Link href="/finance/new"><Button>+ New Transaction</Button></Link>
+          <Link href="/finance/new"><Button>+ Catat Transaksi</Button></Link>
         </div>
       </div>
 
@@ -110,9 +116,9 @@ export default async function FinancePage({
           <form method="get" className="flex flex-wrap gap-3 items-end">
             {/* Account Type */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Account</label>
-              <select name="type" defaultValue={params.type || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="">All Accounts</option>
+              <label htmlFor="filter-type" className="block text-xs font-medium text-gray-500 mb-1">Jenis Kas</label>
+              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Semua Jenis</option>
                 <option value="bank">Bank</option>
                 <option value="kas_besar">Kas Besar</option>
                 <option value="kas_kecil">Kas Kecil</option>
@@ -121,9 +127,9 @@ export default async function FinancePage({
 
             {/* Currency */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Currency</label>
-              <select name="currency" defaultValue={params.currency || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="">All</option>
+              <label htmlFor="filter-currency" className="block text-xs font-medium text-gray-500 mb-1">Mata Uang</label>
+              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Semua</option>
                 <option value="IDR">IDR</option>
                 <option value="USD">USD</option>
                 <option value="CNY">CNY</option>
@@ -132,9 +138,9 @@ export default async function FinancePage({
 
             {/* Year */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Year</label>
-              <select name="year" defaultValue={params.year || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="">All Years</option>
+              <label htmlFor="filter-year" className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
+              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Semua Tahun</option>
                 {years.map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -143,18 +149,20 @@ export default async function FinancePage({
 
             {/* Month */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Month</label>
-              <select name="month" defaultValue={params.month || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="">All Months</option>
+              <label htmlFor="filter-month" className="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
+              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Semua Bulan</option>
                 {months.map((m, i) => (
                   <option key={i} value={i + 1}>{m}</option>
                 ))}
               </select>
             </div>
 
-            <Button type="submit" size="sm">Filter</Button>
+            <Button type="submit" size="sm" className="cursor-pointer">Saring</Button>
             <Link href="/finance">
-              <Button type="button" variant="ghost" size="sm">Clear</Button>
+              <Button type="button" variant="ghost" size="sm" className="cursor-pointer">
+                Bersihkan
+              </Button>
             </Link>
           </form>
         </CardContent>
@@ -165,7 +173,7 @@ export default async function FinancePage({
         {balances.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-gray-500">
-              No financial records {params.year ? "for this period" : "yet"}
+              Belum ada catatan kas {params.year ? "untuk periode ini" : ""}
             </CardContent>
           </Card>
         ) : (
@@ -179,12 +187,16 @@ export default async function FinancePage({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className={`text-2xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
                     {formatCurrency(balance, b.currency)}
                   </p>
                   <div className="mt-2 flex gap-4 text-xs text-gray-500">
-                    <span>In: {formatCurrency(b.debit, b.currency)}</span>
-                    <span>Out: {formatCurrency(b.credit, b.currency)}</span>
+                    <span className="tabular-nums">
+                      Masuk: {formatCurrency(b.debit, b.currency)}
+                    </span>
+                    <span className="tabular-nums">
+                      Keluar: {formatCurrency(b.credit, b.currency)}
+                    </span>
                   </div>
                   {b.type === "bank" && reconByCurrency.get(b.currency) && (
                     <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-500">
@@ -207,18 +219,22 @@ export default async function FinancePage({
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Transactions ({totalCount})</CardTitle>
+          <CardTitle>Daftar Transaksi ({totalCount})</CardTitle>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Type</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Description</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Currency</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Debit</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Credit</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Jenis Kas</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Keterangan</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-right">
+                  <TermTooltip term="debit">Uang Masuk</TermTooltip>
+                </th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-right">
+                  <TermTooltip term="kredit">Uang Keluar</TermTooltip>
+                </th>
                 <th className="px-6 py-3 font-medium text-gray-500">Rekonsiliasi</th>
               </tr>
             </thead>
@@ -226,7 +242,7 @@ export default async function FinancePage({
               {transactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    No transactions found
+                    Belum ada transaksi
                   </td>
                 </tr>
               ) : (
@@ -238,10 +254,10 @@ export default async function FinancePage({
                     </td>
                     <td className="px-6 py-3 text-gray-900">{t.description}</td>
                     <td className="px-6 py-3 text-gray-500">{t.currency}</td>
-                    <td className="px-6 py-3 text-right text-green-600">
+                    <td className="px-6 py-3 text-right text-green-600 tabular-nums">
                       {Number(t.debit) > 0 ? formatCurrency(Number(t.debit), t.currency) : "-"}
                     </td>
-                    <td className="px-6 py-3 text-right text-red-600">
+                    <td className="px-6 py-3 text-right text-red-600 tabular-nums">
                       {Number(t.credit) > 0 ? formatCurrency(Number(t.credit), t.currency) : "-"}
                     </td>
                     <td className="px-6 py-3">

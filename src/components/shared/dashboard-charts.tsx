@@ -16,16 +16,19 @@ import {
 
 const CHART_HEIGHT = 260;
 
+// Kunci peta warna = label yang dikirim halaman (bahasa Indonesia, issue #1).
+// Legenda & label persen memakai teks itu juga, jadi kategori tidak pernah
+// dibedakan oleh warna saja.
 const CONTRACT_COLORS: Record<string, string> = {
-  Signed: "#22c55e",
-  Pending: "#eab308",
-  Canceled: "#ef4444",
+  Sah: "#22c55e",
+  Menunggu: "#eab308",
+  Dibatalkan: "#ef4444",
 };
 
 const STOCK_COLORS: Record<string, string> = {
-  "In Stock": "#22c55e",
-  "Low Stock": "#f59e0b",
-  Empty: "#ef4444",
+  Aman: "#22c55e",
+  Menipis: "#f59e0b",
+  Habis: "#ef4444",
 };
 
 interface PieDatum {
@@ -115,7 +118,7 @@ export function ContractStatusChart({ data }: { data: PieDatum[] }) {
     <DonutChart
       data={data}
       colors={CONTRACT_COLORS}
-      emptyMessage="No contracts recorded yet"
+      emptyMessage="Belum ada kontrak tercatat"
     />
   );
 }
@@ -125,7 +128,7 @@ export function StockStatusChart({ data }: { data: PieDatum[] }) {
     <DonutChart
       data={data}
       colors={STOCK_COLORS}
-      emptyMessage="No inventory items yet"
+      emptyMessage="Belum ada barang di stok"
     />
   );
 }
@@ -138,7 +141,7 @@ interface MonthlyData {
 
 export function MonthlyActivityChart({ data }: { data: MonthlyData[] }) {
   if (data.length === 0) {
-    return <ChartEmpty message="No activity in the last 6 months" />;
+    return <ChartEmpty message="Belum ada aktivitas dalam 6 bulan terakhir" />;
   }
 
   return (
@@ -155,8 +158,8 @@ export function MonthlyActivityChart({ data }: { data: MonthlyData[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="contracts" fill="#3b82f6" name="Contracts" radius={[4, 4, 0, 0]} maxBarSize={40} />
-        <Bar dataKey="invoices" fill="#8b5cf6" name="Invoices" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="contracts" fill="#3b82f6" name="Kontrak" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="invoices" fill="#8b5cf6" name="Tagihan Penjualan" radius={[4, 4, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -175,7 +178,7 @@ export function StockLevelChart({ data }: { data: StockLevelData[] }) {
     .slice(0, 8);
 
   if (topItems.length === 0) {
-    return <ChartEmpty message="No stock on hand" />;
+    return <ChartEmpty message="Belum ada stok tersisa" />;
   }
 
   const chartHeight = Math.max(CHART_HEIGHT, topItems.length * 36 + 48);
@@ -201,11 +204,11 @@ export function StockLevelChart({ data }: { data: StockLevelData[] }) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={(value: any, _name: any, item: any) => {
             const unit = (item?.payload as StockLevelData)?.unit;
-            return [`${formatFull(Number(value ?? 0))}${unit ? ` ${unit}` : ""}`, "On hand"];
+            return [`${formatFull(Number(value ?? 0))}${unit ? ` ${unit}` : ""}`, "Stok saat ini"];
           }}
           contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
         />
-        <Bar dataKey="stock" fill="#16a34a" name="Quantity" radius={[0, 4, 4, 0]} maxBarSize={28} />
+        <Bar dataKey="stock" fill="#16a34a" name="Jumlah" radius={[0, 4, 4, 0]} maxBarSize={28} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -231,10 +234,10 @@ function CashFlowTooltip({ active, payload, label, currency }: any) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-md text-xs">
       <p className="font-medium text-gray-900 mb-1.5">{label}</p>
-      <p className="text-green-600">Income: {formatMoney(income, currency)}</p>
-      <p className="text-red-600">Expense: {formatMoney(expense, currency)}</p>
+      <p className="text-green-600">Uang masuk: {formatMoney(income, currency)}</p>
+      <p className="text-red-600">Uang keluar: {formatMoney(expense, currency)}</p>
       <p className="mt-1.5 font-medium text-gray-800 border-t border-gray-100 pt-1.5">
-        Net: {formatMoney(income - expense, currency)}
+        Selisih: {formatMoney(income - expense, currency)}
       </p>
     </div>
   );
@@ -242,7 +245,7 @@ function CashFlowTooltip({ active, payload, label, currency }: any) {
 
 export function CashFlowChart({ data, currency }: CashFlowChartProps) {
   if (data.length === 0 || data.every((d) => d.debit === 0 && d.credit === 0)) {
-    return <ChartEmpty message={`No ${currency} cash flow in the last 6 months`} />;
+    return <ChartEmpty message={`Belum ada pergerakan kas ${currency} dalam 6 bulan terakhir`} />;
   }
 
   return (
@@ -259,8 +262,8 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
         />
         <Tooltip content={<CashFlowTooltip currency={currency} />} />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="debit" fill="#22c55e" name="Income" radius={[4, 4, 0, 0]} maxBarSize={36} />
-        <Bar dataKey="credit" fill="#ef4444" name="Expense" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="debit" fill="#22c55e" name="Uang Masuk" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="credit" fill="#ef4444" name="Uang Keluar" radius={[4, 4, 0, 0]} maxBarSize={36} />
       </BarChart>
     </ResponsiveContainer>
   );

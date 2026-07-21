@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Lock, Scale } from "lucide-react";
+import { LearnMore } from "@/components/ui/learn-more";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +24,14 @@ export default async function ReconciliationListPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rekonsiliasi Bank</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="rekonsiliasi_bank">Cocokkan Rekening Koran</TermTooltip>
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
             Cocokkan buku kas/bank internal dengan rekening koran bank per periode.
           </p>
+          {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
+          <LearnMore term="rekonsiliasi_bank" className="mt-1" />
         </div>
         <Link href="/reconciliation/new">
           <Button>+ Rekonsiliasi Baru</Button>

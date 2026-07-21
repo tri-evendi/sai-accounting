@@ -23,6 +23,7 @@ import {
   Lock,
   Scale,
   Ship,
+  Undo2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ const allNavItems = [
   { href: "/receivables", label: "Piutang", icon: HandCoins, roles: ["bos", "core"] },
   { href: "/payables", label: "Utang", icon: Wallet, roles: ["bos", "core"] },
   { href: "/advances", label: "Uang Muka", icon: Coins, roles: ["bos", "core"] },
+  { href: "/returns", label: "Retur", icon: Undo2, roles: ["bos", "core"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["bos", "core", "ptg"] },
   { href: "/finance", label: "Finance", icon: DollarSign, roles: ["bos", "core"] },
   { href: "/reconciliation", label: "Rekonsiliasi Bank", icon: Scale, roles: ["bos", "core"] },

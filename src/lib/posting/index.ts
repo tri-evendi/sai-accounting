@@ -47,8 +47,10 @@ import {
   buildCashTransactionLines,
   buildCogsLines,
   buildPurchaseLines,
+  buildPurchaseReturnLines,
   buildSalesInvoiceLines,
   buildSalesReceiptLines,
+  buildSalesReturnLines,
   buildSupplierPaymentLines,
   resolveRate,
   round2,
@@ -73,7 +75,11 @@ export type PostingSourceType =
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
-  | "advance_application";
+  | "advance_application"
+  /** Retur penjualan — part of a sales invoice sent back (issue #27). */
+  | "sales_return"
+  /** Retur pembelian — part of a purchase returned to a supplier (issue #27). */
+  | "purchase_return";
 
 export interface PostingContext {
   sourceType: PostingSourceType;
@@ -863,6 +869,102 @@ async function buildAdvanceApplicationEntry(
   };
 }
 
+// ─── Retur penjualan / pembelian (issue #27) ─────────────
+
+/**
+ * Retur Penjualan → the sales invoice reversed proportionally:
+ * D: Penjualan (+ D: Hutang PPN Keluaran), K: Piutang Usaha.
+ *
+ * The return carries its own `subtotal`, `taxAmount`, `currency` and `rate`,
+ * copied from the origin invoice at creation and capped there against what was
+ * invoiced (see `@/lib/returns`). Here we only turn those stored figures into the
+ * reversed journal, valued at the INVOICE's rate — a return is a partial reversal
+ * of the invoice, so there is no settlement and no FX leg. A 0%/export return has
+ * `taxAmount` 0 and gets no VAT line, exactly like the untaxed invoice it mirrors.
+ */
+async function buildSalesReturnEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const ret = await client.salesReturn.findUnique({ where: { id: ctx.sourceId } });
+  if (!ret) throw new SourceNotFoundError("sales_return", ctx.sourceId);
+  if (ret.status === "canceled") return null;
+
+  const currency = ret.currency || "IDR";
+  const rate = resolveRate(currency, num(ret.rate) || null, ctx.rate);
+  const subtotal = round2(num(ret.subtotal));
+  const tax = round2(num(ret.taxAmount));
+  if (subtotal <= 0) return null;
+
+  const keys: MappingKey[] = [MAPPING_KEYS.AR_DEFAULT, MAPPING_KEYS.SALES_DEFAULT];
+  if (tax > 0) keys.push(MAPPING_KEYS.VAT_OUT);
+  const acc = await resolveAccountIds(keys, currency, client);
+
+  return {
+    date: ret.date,
+    type: "sales_return",
+    note: `Retur Penjualan ${ret.returnNo}`,
+    sourceType: "sales_return",
+    sourceId: ret.id,
+    lines: buildSalesReturnLines({
+      arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
+      salesAccountId: acc[MAPPING_KEYS.SALES_DEFAULT],
+      vatOutAccountId: tax > 0 ? acc[MAPPING_KEYS.VAT_OUT] : undefined,
+      subtotal,
+      taxAmount: tax,
+      currency,
+      rate,
+      memo: ret.returnNo,
+    }),
+  };
+}
+
+/**
+ * Retur Pembelian → the purchase reversed proportionally:
+ * D: Hutang Usaha, K: Persediaan (+ K: PPN Masukan).
+ *
+ * Mirror of the sales return, inheriting the origin PURCHASE's currency/rate.
+ * Persediaan is credited here at the returned net value; the accompanying stock
+ * `out` movement is recorded for quantity only and posts no journal, so inventory
+ * is never double-credited.
+ */
+async function buildPurchaseReturnEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const ret = await client.purchaseReturn.findUnique({ where: { id: ctx.sourceId } });
+  if (!ret) throw new SourceNotFoundError("purchase_return", ctx.sourceId);
+  if (ret.status === "canceled") return null;
+
+  const currency = ret.currency || "IDR";
+  const rate = resolveRate(currency, num(ret.rate) || null, ctx.rate);
+  const subtotal = round2(num(ret.subtotal));
+  const tax = round2(num(ret.taxAmount));
+  if (subtotal <= 0) return null;
+
+  const keys: MappingKey[] = [MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.INVENTORY];
+  if (tax > 0) keys.push(MAPPING_KEYS.VAT_IN);
+  const acc = await resolveAccountIds(keys, currency, client);
+
+  return {
+    date: ret.date,
+    type: "purchase_return",
+    note: `Retur Pembelian ${ret.returnNo}`,
+    sourceType: "purchase_return",
+    sourceId: ret.id,
+    lines: buildPurchaseReturnLines({
+      apAccountId: acc[MAPPING_KEYS.AP_DEFAULT],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      vatInAccountId: tax > 0 ? acc[MAPPING_KEYS.VAT_IN] : undefined,
+      subtotal,
+      taxAmount: tax,
+      currency,
+      rate,
+      memo: ret.returnNo,
+    }),
+  };
+}
+
 async function buildStockMovementEntry(
   client: Client,
   ctx: PostingContext
@@ -929,6 +1031,10 @@ async function buildEntry(
       return buildAdvancePaymentEntry(client, ctx);
     case "advance_application":
       return buildAdvanceApplicationEntry(client, ctx);
+    case "sales_return":
+      return buildSalesReturnEntry(client, ctx);
+    case "purchase_return":
+      return buildPurchaseReturnEntry(client, ctx);
     default: {
       const exhaustive: never = ctx.sourceType;
       throw new PostingRuleError(`Jenis sumber tidak dikenal: ${String(exhaustive)}`);

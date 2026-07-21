@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { invoiceSchema, invoiceTotal } from "@/lib/validations/invoice";
+import { invoiceSchema, invoiceSubtotal } from "@/lib/validations/invoice";
+import { resolveInvoiceTax } from "@/lib/tax";
 import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
@@ -45,15 +46,14 @@ export async function PUT(
     );
   }
 
-  const { items, date, dueDate, rate, currency, taxAmount, ...invoiceData } = parsed.data;
+  const { items, date, dueDate, rate, currency, taxable, taxRate, taxAmount, ...invoiceData } =
+    parsed.data;
   const invoiceId = parseInt(id);
-  // Recomputed on every edit: changing an item, the tax or the rate has to move
-  // base_amount with it, or the stored IDR value drifts from the reposted journal.
-  const { rate: fxRate, baseAmount } = fxAmounts(
-    currency,
-    invoiceTotal(items, taxAmount),
-    rate
-  );
+  // Recomputed on every edit: changing an item, the taxable flag, the rate or the
+  // PPN rate has to move DPP/PPN/base_amount with it, or the stored values drift
+  // from the reposted journal.
+  const tax = resolveInvoiceTax(invoiceSubtotal(items), { taxable, taxRate, taxAmount });
+  const { rate: fxRate, baseAmount } = fxAmounts(currency, tax.total, rate);
 
   try {
     const invoice = await prisma.$transaction(async (tx) => {
@@ -64,7 +64,10 @@ export async function PUT(
         data: {
           ...invoiceData,
           currency,
-          taxAmount,
+          taxable: tax.taxable,
+          taxRate: tax.taxRate,
+          dpp: tax.dpp,
+          taxAmount: tax.taxAmount,
           rate: fxRate,
           baseAmount,
           date: new Date(date),

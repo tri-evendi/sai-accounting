@@ -61,6 +61,12 @@ export default async function CustomerDetailPage({
               <dd className="text-sm text-gray-900">{customer.email || "-"}</dd>
             </div>
             <div>
+              <dt className="text-sm font-medium text-gray-500">PPN</dt>
+              <dd className="text-sm text-gray-900">
+                {customer.taxExempt ? "Bebas PPN (ekspor / non-PKP)" : "Kena PPN (standar)"}
+              </dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="text-sm text-gray-900">{formatDate(customer.createdAt)}</dd>
             </div>

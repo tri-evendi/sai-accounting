@@ -188,6 +188,12 @@ export const customerSchema = z.object({
   phone: z.string().max(30).trim().optional(),
   email: z.string().email("Invalid email").max(100).optional().or(z.literal("")),
   pic: z.string().max(100).trim().optional(),
+  /**
+   * Bebas PPN (issue #16) — a customer never charged PPN Keluaran (export buyer
+   * or non-PKP). Defaults FALSE so existing customers keep the domestic 11%
+   * default; when TRUE it flips the invoice form's default to non-taxable.
+   */
+  taxExempt: z.boolean().default(false),
 });
 
 export type CashTransactionInput = z.infer<typeof cashTransactionSchema>;

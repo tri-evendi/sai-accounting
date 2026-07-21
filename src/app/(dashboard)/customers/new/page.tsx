@@ -23,6 +23,7 @@ export default function NewCustomerPage() {
       phone: formData.get("phone"),
       email: formData.get("email"),
       pic: formData.get("pic"),
+      taxExempt: formData.get("taxExempt") === "on",
     };
 
     const res = await fetch("/api/customers", {
@@ -59,6 +60,20 @@ export default function NewCustomerPage() {
               <Input id="phone" name="phone" label="Phone" />
               <Input id="email" name="email" type="email" label="Email" />
               <Input id="pic" name="pic" label="Person In Charge (PIC)" />
+              <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
+                <input
+                  id="taxExempt"
+                  name="taxExempt"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  Bebas PPN (ekspor / non-PKP)
+                  <span className="block text-xs text-gray-500">
+                    Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
+                  </span>
+                </span>
+              </label>
             </div>
           </CardContent>
         </Card>

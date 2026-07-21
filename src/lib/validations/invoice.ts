@@ -23,7 +23,18 @@ export const invoiceSchema = z
     currency: currencyEnum.default("IDR"),
     // Persisted to invoices.rate; drives base_amount and the IDR value of the journal.
     rate: rateField,
-    // PPN Keluaran, in `currency`. Posted to Hutang PPN Keluaran (2103).
+    // ── PPN as a first-class field (issue #16) ──
+    // Whether PPN Keluaran applies. FALSE = untaxed / export (0%) → no VAT line.
+    taxable: z.boolean().default(false),
+    // Per-invoice PPN rate override, in percent. Blank → DEFAULT_TAX_RATE (11).
+    taxRate: z.coerce
+      .number()
+      .min(0, "Tarif PPN tidak boleh negatif")
+      .max(100, "Tarif PPN tidak masuk akal")
+      .optional(),
+    // PPN Keluaran amount, in `currency`. Retained for the amount-only API that
+    // predates `taxable`/`taxRate`; the route recomputes it authoritatively from
+    // the rate when `taxable`. Posted to Hutang PPN Keluaran (2103).
     taxAmount: z.coerce.number().min(0, "Pajak tidak boleh negatif").default(0),
     items: z.array(invoiceItemSchema).min(1, "At least one item is required").max(50),
   })

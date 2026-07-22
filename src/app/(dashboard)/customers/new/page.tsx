@@ -1,94 +1,217 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * Form pelanggan baru — percontohan pola form (issue #53): react-hook-form +
+ * zodResolver dengan `customerSchema` yang SAMA dipakai route handler
+ * `/api/customers` (diimpor, bukan disalin), jadi validasi client dan server
+ * tidak bisa menyimpang.
+ *
+ * Yang berubah dari versi lama: dulu `useState` + `FormData` manual, error
+ * server hanya muncul sebagai satu pita merah di atas form tanpa tahu field
+ * mana yang salah. Kini tiap field memvalidasi inline dengan `aria-invalid` +
+ * pesan `role="alert"` yang tertaut, dan teksnya berbahasa Indonesia.
+ */
+
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TextInput } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useToast } from "@/components/ui/toast";
+import { customerSchema, type CustomerInput } from "@/lib/validations/finance";
 
 export default function NewCustomerPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { toast } = useToast();
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  const form = useForm<CustomerInput>({
+    // `customerSchema` punya `taxExempt: z.boolean().default(false)`, jadi tipe
+    // INPUT-nya (`taxExempt?`) berbeda dari tipe OUTPUT (`taxExempt: boolean`).
+    // `useForm` menyatukan keduanya ke satu generik; kita memilih tipe OUTPUT
+    // agar `field.value` bertipe konkret (boolean, bukan boolean|undefined),
+    // lalu resolver di-cast. Validasi runtime tetap dijalankan `zodResolver`
+    // apa adanya — hanya static type yang diselaraskan.
+    resolver: zodResolver(customerSchema) as Resolver<CustomerInput>,
+    defaultValues: {
+      name: "",
+      address: "",
+      phone: "",
+      email: "",
+      pic: "",
+      npwp: "",
+      taxExempt: false,
+    },
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const body = {
-      name: formData.get("name"),
-      address: formData.get("address"),
-      phone: formData.get("phone"),
-      email: formData.get("email"),
-      pic: formData.get("pic"),
-      npwp: formData.get("npwp"),
-      taxExempt: formData.get("taxExempt") === "on",
-    };
-
+  async function onSubmit(values: CustomerInput) {
     const res = await fetch("/api/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(values),
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Failed to create customer");
-      setLoading(false);
-    } else {
-      router.push("/customers");
-      router.refresh();
+      const data = await res.json().catch(() => ({}));
+      // Server tetap penjaga terakhir; jika sesuatu lolos validasi client
+      // (mis. nama sudah dipakai), tampilkan pesannya di field atau sebagai
+      // error form.
+      form.setError("root", {
+        message: data.error || "Gagal menyimpan pelanggan. Coba lagi.",
+      });
+      return;
     }
+
+    toast("Pelanggan berhasil disimpan");
+    router.push("/customers");
+    router.refresh();
   }
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Customer</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Pelanggan Baru</h1>
 
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
-          <CardHeader><CardTitle>Customer Details</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <Input id="name" name="name" label="Customer Name" required />
-              <Input id="address" name="address" label="Address" />
-              <Input id="phone" name="phone" label="Phone" />
-              <Input id="email" name="email" type="email" label="Email" />
-              <Input id="pic" name="pic" label="Person In Charge (PIC)" />
-              <Input id="npwp" name="npwp" label="NPWP (untuk e-Faktur)" />
-              <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
-                <input
-                  id="taxExempt"
-                  name="taxExempt"
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Data Pelanggan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nama Pelanggan</FormLabel>
+                      <FormControl>
+                        <TextInput autoFocus {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <span className="text-sm text-gray-700">
-                  Bebas PPN (ekspor / non-PKP)
-                  <span className="block text-xs text-gray-500">
-                    Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
-                  </span>
-                </span>
-              </label>
-            </div>
-          </CardContent>
-        </Card>
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Alamat</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telepon</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <TextInput type="email" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="pic"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Narahubung (PIC)</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="npwp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>NPWP (untuk e-Faktur)</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="taxExempt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label
+                        htmlFor="taxExempt"
+                        className="flex cursor-pointer items-start gap-2"
+                      >
+                        <input
+                          id="taxExempt"
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          onBlur={field.onBlur}
+                          className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <span className="text-sm text-foreground">
+                          Bebas PPN (ekspor / non-PKP)
+                          <span className="block text-xs text-muted-foreground">
+                            Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
+                          </span>
+                        </span>
+                      </label>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-        <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Customer"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Cancel
-          </Button>
-        </div>
-      </form>
+          {form.formState.errors.root && (
+            <p role="alert" className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">
+              {form.formState.errors.root.message}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Menyimpan…" : "Simpan Pelanggan"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => router.back()}>
+              Batal
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }

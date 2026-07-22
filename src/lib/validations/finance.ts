@@ -177,17 +177,19 @@ export const supplierTransactionSchema = z
   });
 
 export const supplierSchema = z.object({
-  name: z.string().min(1, "Supplier name is required").max(100).trim(),
+  // Pesan bahasa Indonesia — kini ditampilkan langsung ke pengguna oleh form
+  // client (issue #53), bukan lagi hanya dipakai server.
+  name: z.string().min(1, "Nama pemasok wajib diisi").max(100).trim(),
   address: z.string().max(500).trim().optional(),
   phone: z.string().max(30).trim().optional(),
-  email: z.string().email("Invalid email").max(100).optional().or(z.literal("")),
+  email: z.string().email("Format email tidak valid").max(100).optional().or(z.literal("")),
 });
 
 export const customerSchema = z.object({
-  name: z.string().min(1, "Customer name is required").max(100).trim(),
+  name: z.string().min(1, "Nama pelanggan wajib diisi").max(100).trim(),
   address: z.string().max(500).trim().optional(),
   phone: z.string().max(30).trim().optional(),
-  email: z.string().email("Invalid email").max(100).optional().or(z.literal("")),
+  email: z.string().email("Format email tidak valid").max(100).optional().or(z.literal("")),
   pic: z.string().max(100).trim().optional(),
   /**
    * Bebas PPN (issue #16) — a customer never charged PPN Keluaran (export buyer

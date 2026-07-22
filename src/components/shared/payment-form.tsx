@@ -1,10 +1,42 @@
 "use client";
 
+/**
+ * Form pembayaran (percontohan transaksi kompleks, issue #53).
+ *
+ * Dipakai untuk mencatat pembayaran kontrak maupun faktur — keduanya berbagi
+ * `paymentFormSchema` yang SAMA dengan yang dipakai route handler
+ * `/api/{contracts,invoices}/[id]/payments` (via `paymentFormFields`), jadi
+ * validasi valas — "kurs wajib untuk mata uang asing" — dijalankan identik di
+ * client dan server. Untuk app pembukuan ini penting: salah nominal/kurs yang
+ * lolos berarti jurnal salah.
+ *
+ * Yang diperagakan:
+ *   • react-hook-form + zodResolver, bukan `useState` + `FormData` manual;
+ *   • `MoneyInput` — pengguna melihat `1.234.567`, payload menerima `1234567`;
+ *   • progressive disclosure — field kurs baru muncul saat mata uang bukan IDR
+ *     (aturan form MASTER.md), dan skema menuntutnya hanya di kondisi itu;
+ *   • error inline `role="alert"` yang tertaut ARIA ke tiap field.
+ */
+
 import { useState } from "react";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import { MoneyInput } from "@/components/ui/money-input";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
+import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
+import { BASE_CURRENCY, CURRENCY_VALUES } from "@/lib/validations/fx";
 import { DollarSign } from "lucide-react";
 
 interface PaymentFormProps {
@@ -13,120 +45,184 @@ interface PaymentFormProps {
   onSuccess?: () => void;
 }
 
-const BASE_CURRENCY = "IDR";
-
 export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  // A foreign-currency payment must carry its own rate — the ledger records IDR.
-  const [currency, setCurrency] = useState("USD");
   const { toast } = useToast();
 
+  const form = useForm<PaymentFormInput>({
+    // `currency` punya default dan `amount`/`rate` memakai coerce, jadi tipe
+    // INPUT skema berbeda dari OUTPUT; kita pakai tipe OUTPUT untuk field
+    // (amount: number, dsb.) lalu cast resolver — lihat catatan sama di form
+    // pelanggan. Runtime validation tetap utuh, ini murni penyelarasan tipe.
+    resolver: zodResolver(paymentFormSchema) as Resolver<PaymentFormInput>,
+    defaultValues: {
+      date: "",
+      amount: undefined,
+      currency: "USD",
+      rate: undefined,
+      note: "",
+    },
+  });
+
+  // Field kurs hanya relevan (dan hanya divalidasi) untuk mata uang asing.
+  // `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
+  // memoisasi komponen ini.
+  const currency = useWatch({ control: form.control, name: "currency" });
   const isForeign = currency !== BASE_CURRENCY;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const body = {
-      date: formData.get("date"),
-      amount: Number(formData.get("amount")),
-      currency: formData.get("currency"),
-      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
-      note: formData.get("note") || undefined,
-    };
-
+  async function onSubmit(values: PaymentFormInput) {
     const res = await fetch(`/api/${entityType}/${entityId}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        ...values,
+        // Untuk IDR kurs tidak dikirim — server memperlakukannya 1:1.
+        rate: isForeign ? values.rate : undefined,
+      }),
     });
 
     if (!res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Failed to record payment"));
-      setLoading(false);
-    } else {
-      toast("Payment recorded successfully");
-      setOpen(false);
-      setLoading(false);
-      onSuccess?.();
+      form.setError("root", {
+        message: String(fieldMsg || data.error || "Gagal mencatat pembayaran. Coba lagi."),
+      });
+      return;
     }
+
+    toast("Pembayaran berhasil dicatat");
+    form.reset();
+    setOpen(false);
+    onSuccess?.();
   }
 
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <DollarSign className="h-4 w-4 mr-1" /> Add Payment
+        <DollarSign className="mr-1 h-4 w-4" /> Tambah Pembayaran
       </Button>
     );
   }
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-4">
-      <h4 className="text-sm font-semibold text-gray-900 mb-3">Record Payment</h4>
+    <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
+      <h4 className="mb-3 text-sm font-semibold text-foreground">Catat Pembayaran</h4>
 
-      {error && (
-        <div className="mb-3 rounded-md bg-red-50 p-2 text-xs text-red-700">{error}</div>
-      )}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tanggal</FormLabel>
+                <FormControl>
+                  <TextInput type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
-        <Input id="pay-date" name="date" type="date" label="Date" required />
-        <Input
-          id="pay-amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          min="0"
-          className="text-right tabular-nums"
-          label="Amount"
-          required
-        />
-        <Select
-          id="pay-currency"
-          name="currency"
-          label="Currency"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          options={[
-            { value: "USD", label: "USD" },
-            { value: "CNY", label: "CNY" },
-            { value: "IDR", label: "IDR" },
-          ]}
-        />
-        {isForeign && (
-          <div>
-            <Input
-              id="pay-rate"
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Jumlah</FormLabel>
+                <FormControl>
+                  <MoneyInput
+                    // Rupiah tanpa desimal; valas 2 desimal.
+                    decimals={isForeign ? 2 : 0}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Mata Uang</FormLabel>
+                <FormControl>
+                  <NativeSelect
+                    options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Progressive disclosure: kurs hanya muncul untuk mata uang asing. */}
+          {isForeign && (
+            <FormField
+              control={form.control}
               name="rate"
-              type="number"
-              step="0.000001"
-              min="0"
-              className="text-right tabular-nums"
-              label={`Kurs 1 ${currency} ke IDR`}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kurs 1 {currency} ke IDR</FormLabel>
+                  <FormControl>
+                    <MoneyInput
+                      decimals={2}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <p className="mt-1 text-xs text-gray-600">
-              Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.
+          )}
+
+          <FormField
+            control={form.control}
+            name="note"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel>Catatan (opsional)</FormLabel>
+                <FormControl>
+                  <TextInput {...field} value={field.value ?? ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {form.formState.errors.root && (
+            <p
+              role="alert"
+              className="sm:col-span-2 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong"
+            >
+              {form.formState.errors.root.message}
             </p>
+          )}
+
+          <div className="flex gap-2 sm:col-span-2">
+            <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Menyimpan…" : "Simpan Pembayaran"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Batal
+            </Button>
           </div>
-        )}
-        <Input id="pay-note" name="note" label="Note (optional)" />
-        <div className="sm:col-span-2 flex gap-2">
-          <Button type="submit" size="sm" disabled={loading}>
-            {loading ? "Saving..." : "Save Payment"}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-        </div>
-      </form>
+        </form>
+      </Form>
     </div>
   );
 }

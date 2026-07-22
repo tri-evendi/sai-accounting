@@ -89,9 +89,23 @@ Radius: `8px` (kontrol), `12px` (card), `16px` (modal).
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.
-- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi.
+- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` shadcn (lihat "Konvensi Form" di bawah) — bukan `useState` manual.
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
+
+---
+
+## Konvensi Form (issue #53)
+
+Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** shadcn (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(dashboard)/customers/new/page.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
+
+1. **Satu skema zod, dua sisi.** Skema yang divalidasi form **wajib** skema yang sama dipakai route handler — **diimpor, bukan disalin**. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` client dan `invoicePaymentSchema`/`contractPaymentSchema` server). Client & server tidak boleh bisa menyimpang diam-diam.
+2. **Pesan error bahasa Indonesia**, ramah awam — kini ditampilkan langsung ke pengguna, bukan lagi hanya untuk server.
+3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–error (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan pasang `aria-*` manual.
+4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`NativeSelect`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
+5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
+6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).
+7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (field bila ada `fieldErrors`, atau `root`).
 
 ---
 

@@ -134,5 +134,11 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   // 7xxx OTHER INCOME / EXPENSE
   { code: "7101", name: "Laba/Rugi Selisih Kurs", type: "other_income" },
   { code: "7102", name: "Pendapatan Bunga", type: "other_income" },
+  // Laba/Rugi Pelepasan Aset Tetap (issue #28). A SINGLE account holding both the
+  // gain (credit) and the loss (debit) on disposal, exactly like 7101 for FX: the
+  // laba/rugi pelepasan is proceeds − net book value, already an IDR base amount.
+  // `other_income` (normal credit) mirrors 7101; a loss simply carries a debit
+  // balance, as a realised FX loss does on 7101.
+  { code: "7103", name: "Laba/Rugi Pelepasan Aset Tetap", type: "other_income" },
   { code: "7201", name: "Beban Bunga & Administrasi Bank", type: "other_expense" },
 ];

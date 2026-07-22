@@ -18,7 +18,65 @@ export type AuditAction =
   | "advance.cancel"
   /** Compensating an advance into an invoice/purchase. Posts its own journal. */
   | "advance.apply"
-  | "advance.unapply";
+  | "advance.unapply"
+  /** Bank reconciliation (issue #24) — none of these post a journal. */
+  | "reconciliation.create"
+  | "reconciliation.line.add"
+  | "reconciliation.import"
+  | "reconciliation.match"
+  | "reconciliation.unmatch"
+  | "reconciliation.lock"
+  | "reconciliation.reopen"
+  /** Retur penjualan & pembelian (issue #27). Each posts its own journal. */
+  | "sales_return.create"
+  | "purchase_return.create"
+  /** Setup perusahaan + saldo awal (issue #20). Posts the opening journal, once. */
+  | "setup.create"
+  /** Aset tetap (issue #28). Depreciation & disposal post journals; the rest don't. */
+  | "fixed_asset.category.create"
+  | "fixed_asset.create"
+  | "fixed_asset.depreciate"
+  | "fixed_asset.dispose"
+  | "fixed_asset.transfer"
+  /** Surat Jalan / Delivery Order (issue #14). Reduces stock; HPP via stock-out. */
+  | "delivery_order.create"
+  /**
+   * Faktur ditarik ("Ambil") dari sebuah kontrak (issue #15). Consumes part of an
+   * outstanding contract promise. Posts NO new journal — a pulled faktur posts
+   * exactly as a normal faktur does; only the document link is new.
+   */
+  | "invoice.pull_from_contract"
+  /**
+   * Approval transaksi (issue #25). `approval.request` is raised by the document
+   * route when a value crosses the ambang; `approval.approve` is the ONLY action
+   * here that reaches the ledger — it releases the withheld journal through
+   * `postForSource`. Rejecting posts nothing. Marking a decision as read is
+   * deliberately NOT audited: it is the requester dismissing their own
+   * notification, not a change to the record.
+   */
+  | "approval.request"
+  | "approval.approve"
+  | "approval.reject"
+  /**
+   * Persetujuan yang GUGUR karena dokumennya diedit melampaui nilai yang
+   * disetujui (issue #45). Bukan penolakan oleh manusia: tak ada penyetuju yang
+   * memutuskan apa pun di sini, dokumennya sendiri yang berubah sehingga restu
+   * lama tak lagi berlaku. Jurnalnya ditarik oleh `repostForSource`.
+   */
+  | "approval.revoke"
+  | "approval.rule.create"
+  | "approval.rule.update"
+  | "approval.rule.deactivate"
+  /**
+   * Wizard terpandu Penjualan/Pembelian Baru (issue #5). Penanda TAMBAHAN, bukan
+   * pengganti: dokumen yang dibuat wizard tetap menulis entri normalnya sendiri
+   * (`delivery_order.create`, `supplier_transaction.purchase`, `stock.in`, …),
+   * jadi jejaknya identik dengan formulir biasa. Entri ini hanya merekam bahwa
+   * seluruhnya lahir dari satu transaksi wizard, dan berapa dokumen di dalamnya.
+   * Wizard tidak memposting apa pun sendiri — jurnalnya dari `postForSource`.
+   */
+  | "wizard.sales"
+  | "wizard.purchase";
 
 export type AuditEntity =
   | "cash_account"
@@ -28,7 +86,19 @@ export type AuditEntity =
   | "user"
   | "period"
   | "advance_payment"
-  | "advance_application";
+  | "advance_application"
+  | "bank_statement"
+  | "bank_statement_line"
+  | "sales_return"
+  | "purchase_return"
+  | "company_settings"
+  | "fixed_asset_category"
+  | "fixed_asset"
+  | "delivery_order"
+  | "invoice"
+  /** Approval transaksi (issue #25). */
+  | "approval_request"
+  | "approval_rule";
 
 export type AuditLogEntry = {
   id: string;

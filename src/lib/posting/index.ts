@@ -27,6 +27,12 @@
  * See `settlementFor` below for where the three rates come from, and ./rates for
  * the settlement-date rate that makes a cross-currency settlement computable at
  * all rather than guessed.
+ *
+ * Approval (issue #25): this file is also where "dokumen yang belum disetujui
+ * tidak boleh masuk jurnal" is enforced, for the same reason the period lock
+ * (#13) lives in `postJournal` — every path that turns a document into a journal
+ * comes through `postForSource`/`repostForSource`, so guarding here cannot be
+ * bypassed by adding another API route. See `approvalGate` below.
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -44,11 +50,15 @@ import {
   PostingRuleError,
   buildAdvanceCompensationLines,
   buildAdvanceLines,
+  buildAssetDisposalLines,
   buildCashTransactionLines,
   buildCogsLines,
+  buildDepreciationLines,
   buildPurchaseLines,
+  buildPurchaseReturnLines,
   buildSalesInvoiceLines,
   buildSalesReceiptLines,
+  buildSalesReturnLines,
   buildSupplierPaymentLines,
   resolveRate,
   round2,
@@ -56,6 +66,7 @@ import {
   type SettlementLeg,
 } from "./rules";
 import { averageUnitCostForItem, costOfMovement } from "./cogs";
+import { isPostingBlocked } from "@/lib/approval-requests";
 
 export * from "./mapping";
 export * from "./rules";
@@ -73,7 +84,35 @@ export type PostingSourceType =
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
-  | "advance_application";
+  | "advance_application"
+  /** Retur penjualan — part of a sales invoice sent back (issue #27). */
+  | "sales_return"
+  /** Retur pembelian — part of a purchase returned to a supplier (issue #27). */
+  | "purchase_return"
+  /**
+   * Penyusutan periodik satu aset untuk satu bulan (issue #28). The source ROW is
+   * a `fixed_asset_depreciations` row, NOT the asset: a depreciation run posts a
+   * fresh journal every month, so keying each month as its own source restores
+   * `postForSource`'s one-journal-per-source idempotency. D: Beban Penyusutan,
+   * K: Akumulasi Penyusutan.
+   */
+  | "depreciation"
+  /**
+   * Pelepasan/penjualan satu aset tetap (issue #28). Source ROW is the
+   * `fixed_assets` row — an asset is disposed once. Removes cost + accumulated
+   * depreciation, books proceeds, and plugs the laba/rugi pelepasan.
+   */
+  | "fixed_asset_disposal"
+  /**
+   * Saldo Awal — the ONE opening journal that seeds the ledger's starting
+   * position (issue #20). Unlike every other source above it has no queryable
+   * source ROW: its inputs are the wizard's opening balances, not a persisted
+   * document. It is therefore posted directly by `@/lib/opening-balance`
+   * (`applyOpeningBalances`) rather than through `postForSource`, and this
+   * literal exists so its journals can be tagged `source_type = "opening_balance"`
+   * and found for the run-once guard. `buildEntry` refuses it deliberately.
+   */
+  | "opening_balance";
 
 export interface PostingContext {
   sourceType: PostingSourceType;
@@ -863,6 +902,102 @@ async function buildAdvanceApplicationEntry(
   };
 }
 
+// ─── Retur penjualan / pembelian (issue #27) ─────────────
+
+/**
+ * Retur Penjualan → the sales invoice reversed proportionally:
+ * D: Penjualan (+ D: Hutang PPN Keluaran), K: Piutang Usaha.
+ *
+ * The return carries its own `subtotal`, `taxAmount`, `currency` and `rate`,
+ * copied from the origin invoice at creation and capped there against what was
+ * invoiced (see `@/lib/returns`). Here we only turn those stored figures into the
+ * reversed journal, valued at the INVOICE's rate — a return is a partial reversal
+ * of the invoice, so there is no settlement and no FX leg. A 0%/export return has
+ * `taxAmount` 0 and gets no VAT line, exactly like the untaxed invoice it mirrors.
+ */
+async function buildSalesReturnEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const ret = await client.salesReturn.findUnique({ where: { id: ctx.sourceId } });
+  if (!ret) throw new SourceNotFoundError("sales_return", ctx.sourceId);
+  if (ret.status === "canceled") return null;
+
+  const currency = ret.currency || "IDR";
+  const rate = resolveRate(currency, num(ret.rate) || null, ctx.rate);
+  const subtotal = round2(num(ret.subtotal));
+  const tax = round2(num(ret.taxAmount));
+  if (subtotal <= 0) return null;
+
+  const keys: MappingKey[] = [MAPPING_KEYS.AR_DEFAULT, MAPPING_KEYS.SALES_DEFAULT];
+  if (tax > 0) keys.push(MAPPING_KEYS.VAT_OUT);
+  const acc = await resolveAccountIds(keys, currency, client);
+
+  return {
+    date: ret.date,
+    type: "sales_return",
+    note: `Retur Penjualan ${ret.returnNo}`,
+    sourceType: "sales_return",
+    sourceId: ret.id,
+    lines: buildSalesReturnLines({
+      arAccountId: acc[MAPPING_KEYS.AR_DEFAULT],
+      salesAccountId: acc[MAPPING_KEYS.SALES_DEFAULT],
+      vatOutAccountId: tax > 0 ? acc[MAPPING_KEYS.VAT_OUT] : undefined,
+      subtotal,
+      taxAmount: tax,
+      currency,
+      rate,
+      memo: ret.returnNo,
+    }),
+  };
+}
+
+/**
+ * Retur Pembelian → the purchase reversed proportionally:
+ * D: Hutang Usaha, K: Persediaan (+ K: PPN Masukan).
+ *
+ * Mirror of the sales return, inheriting the origin PURCHASE's currency/rate.
+ * Persediaan is credited here at the returned net value; the accompanying stock
+ * `out` movement is recorded for quantity only and posts no journal, so inventory
+ * is never double-credited.
+ */
+async function buildPurchaseReturnEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const ret = await client.purchaseReturn.findUnique({ where: { id: ctx.sourceId } });
+  if (!ret) throw new SourceNotFoundError("purchase_return", ctx.sourceId);
+  if (ret.status === "canceled") return null;
+
+  const currency = ret.currency || "IDR";
+  const rate = resolveRate(currency, num(ret.rate) || null, ctx.rate);
+  const subtotal = round2(num(ret.subtotal));
+  const tax = round2(num(ret.taxAmount));
+  if (subtotal <= 0) return null;
+
+  const keys: MappingKey[] = [MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.INVENTORY];
+  if (tax > 0) keys.push(MAPPING_KEYS.VAT_IN);
+  const acc = await resolveAccountIds(keys, currency, client);
+
+  return {
+    date: ret.date,
+    type: "purchase_return",
+    note: `Retur Pembelian ${ret.returnNo}`,
+    sourceType: "purchase_return",
+    sourceId: ret.id,
+    lines: buildPurchaseReturnLines({
+      apAccountId: acc[MAPPING_KEYS.AP_DEFAULT],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      vatInAccountId: tax > 0 ? acc[MAPPING_KEYS.VAT_IN] : undefined,
+      subtotal,
+      taxAmount: tax,
+      currency,
+      rate,
+      memo: ret.returnNo,
+    }),
+  };
+}
+
 async function buildStockMovementEntry(
   client: Client,
   ctx: PostingContext
@@ -906,6 +1041,86 @@ async function buildStockMovementEntry(
   };
 }
 
+// ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
+
+/**
+ * Penyusutan → D: Beban Penyusutan, K: Akumulasi Penyusutan.
+ *
+ * The source is one `fixed_asset_depreciations` row (asset + period + amount);
+ * the expense/accumulated accounts come from the ASSET, so a company can point
+ * different asset classes at different beban/akumulasi accounts. Always IDR — no
+ * rate, no FX. The final-period true-up already lives in the amount computed by
+ * @/lib/fixed-assets before the row was written, so this only books it.
+ */
+async function buildDepreciationEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const dep = await client.fixedAssetDepreciation.findUnique({
+    where: { id: ctx.sourceId },
+    include: { asset: true },
+  });
+  if (!dep) throw new SourceNotFoundError("depreciation", ctx.sourceId);
+
+  const amount = round2(num(dep.amount));
+  if (amount <= 0) return null;
+
+  return {
+    date: dep.date,
+    type: "adjustment",
+    note: `Penyusutan ${dep.asset.assetNo} — ${String(dep.month).padStart(2, "0")}/${dep.year}`,
+    sourceType: "depreciation",
+    sourceId: dep.id,
+    lines: buildDepreciationLines({
+      expenseAccountId: dep.asset.expenseAccountId,
+      accumulatedAccountId: dep.asset.accumulatedAccountId,
+      amount,
+      memo: dep.asset.assetNo,
+    }),
+  };
+}
+
+/**
+ * Pelepasan aset → remove cost + accumulated depreciation, book proceeds, and
+ * plug the laba/rugi pelepasan (proceeds − net book value).
+ *
+ * The asset carries its own asset/accumulated accounts; proceeds land in
+ * `cash_default` (IDR) and the gain/loss in `disposal_gain_loss`. Everything IDR.
+ */
+async function buildAssetDisposalEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const asset = await client.fixedAsset.findUnique({ where: { id: ctx.sourceId } });
+  if (!asset) throw new SourceNotFoundError("fixed_asset_disposal", ctx.sourceId);
+  if (asset.status !== "disposed" || !asset.disposalDate) {
+    throw new PostingRuleError(
+      "Aset ini belum ditandai dilepas. Catat pelepasan lebih dulu sebelum menjurnal."
+    );
+  }
+
+  const cashAccountId = await resolveAccountId(MAPPING_KEYS.CASH_DEFAULT, "IDR", client);
+  const gainLossAccountId = await resolveAccountId(MAPPING_KEYS.DISPOSAL_GAIN_LOSS, "IDR", client);
+
+  return {
+    date: asset.disposalDate,
+    type: "adjustment",
+    note: `Pelepasan Aset ${asset.assetNo}`,
+    sourceType: "fixed_asset_disposal",
+    sourceId: asset.id,
+    lines: buildAssetDisposalLines({
+      assetAccountId: asset.assetAccountId,
+      accumulatedAccountId: asset.accumulatedAccountId,
+      cashAccountId,
+      gainLossAccountId,
+      cost: num(asset.acquisitionCost),
+      accumulatedDepreciation: num(asset.accumulatedDepreciation),
+      proceeds: num(asset.disposalProceeds),
+      memo: asset.assetNo,
+    }),
+  };
+}
+
 async function buildEntry(
   client: Client,
   ctx: PostingContext
@@ -929,11 +1144,54 @@ async function buildEntry(
       return buildAdvancePaymentEntry(client, ctx);
     case "advance_application":
       return buildAdvanceApplicationEntry(client, ctx);
+    case "sales_return":
+      return buildSalesReturnEntry(client, ctx);
+    case "purchase_return":
+      return buildPurchaseReturnEntry(client, ctx);
+    case "depreciation":
+      return buildDepreciationEntry(client, ctx);
+    case "fixed_asset_disposal":
+      return buildAssetDisposalEntry(client, ctx);
+    case "opening_balance":
+      // Saldo Awal has no source ROW to fetch — its lines come from the wizard's
+      // opening balances, not a document. It is posted directly by
+      // `applyOpeningBalances` in @/lib/opening-balance. Routing it through
+      // postForSource would have nothing to build from, so refuse loudly.
+      throw new PostingRuleError(
+        "Jurnal pembuka (saldo awal) diposting lewat applyOpeningBalances, " +
+          "bukan postForSource — sumbernya bukan sebuah dokumen."
+      );
     default: {
       const exhaustive: never = ctx.sourceType;
       throw new PostingRuleError(`Jenis sumber tidak dikenal: ${String(exhaustive)}`);
     }
   }
+}
+
+// ─── Approval gate (issue #25) ───────────────────────────
+/**
+ * Withhold the journal of a document that is waiting for — or was refused —
+ * approval.
+ *
+ * WHY IT RETURNS A BOOLEAN AND NOT A THROW. `postForSource` already has a
+ * well-understood "nothing to post" answer: null, used for a cancelled document,
+ * a zero-value one, incoming stock, uncosted inventory. "Not approved yet" is
+ * the same kind of fact — the write is perfectly valid, the ledger simply must
+ * not move yet — so it joins that set instead of becoming a 422 that would roll
+ * the document back. That single choice is what keeps the integration to a few
+ * lines: the five document routes call `postForSource` exactly as they always
+ * did and get no journal, and none of them grew a branch.
+ *
+ * It matters just as much on the EDIT path. A pending contract is still being
+ * revised; `repostForSource` there must reverse whatever is live (nothing, for a
+ * never-posted document) and then decline to post — not explode and make the
+ * document uneditable until somebody signs it.
+ *
+ * `unpostForSource` is deliberately NOT gated: reversing is how a mistake is
+ * undone, and approval never stands in the way of taking something back out.
+ */
+async function approvalGate(client: Client, ctx: PostingContext): Promise<boolean> {
+  return isPostingBlocked(client, ctx.sourceType, ctx.sourceId);
 }
 
 /** Run against the caller's transaction if given, otherwise open our own. */
@@ -951,12 +1209,18 @@ function withClient<T>(
  * Post the journal for a source record.
  * Idempotent: returns the existing journal if the source was already posted.
  * Returns null when the source has nothing to post (zero value, cancelled,
- * incoming stock, uncosted inventory).
+ * incoming stock, uncosted inventory) — or, since issue #25, when the document
+ * is still waiting for approval or was rejected.
  */
 export async function postForSource(ctx: PostingContext): Promise<Journal | null> {
   return withClient(ctx, async (client) => {
     const live = await findLiveJournals(client, ctx.sourceType, ctx.sourceId);
     if (live.length > 0) return live[0];
+
+    // Checked AFTER the idempotency lookup on purpose: a document that is
+    // already in the ledger stays in the ledger — approval gates the creation
+    // of a journal, it never retroactively hides one.
+    if (await approvalGate(client, ctx)) return null;
 
     const entry = await buildEntry(client, ctx);
     if (!entry) return null;
@@ -975,6 +1239,11 @@ export async function repostForSource(ctx: PostingContext): Promise<Journal | nu
     for (const journal of live) {
       await reverseJournal(journal.id, client);
     }
+    // Reverse first, then decline to re-post (issue #25). An unapproved document
+    // must not be left with a stale journal either: whatever was live is taken
+    // back out, and nothing replaces it until the document is approved.
+    if (await approvalGate(client, ctx)) return null;
+
     const entry = await buildEntry(client, ctx);
     if (!entry) return null;
     return postJournal(entry, client);

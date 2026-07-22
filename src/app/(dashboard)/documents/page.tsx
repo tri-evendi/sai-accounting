@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -53,8 +55,14 @@ export default async function DocumentsPage({
             <tbody>
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    No documents uploaded yet
+                  <td colSpan={4}>
+                    <EmptyState
+                      icon={<FileText className="h-12 w-12" />}
+                      title="Belum ada dokumen"
+                      description="Simpan salinan dokumen ekspor (B/L, PEB, packing list) di sini agar mudah dicari saat dibutuhkan."
+                      actionLabel="+ Unggah Dokumen"
+                      actionHref="/documents/upload"
+                    />
                   </td>
                 </tr>
               ) : (

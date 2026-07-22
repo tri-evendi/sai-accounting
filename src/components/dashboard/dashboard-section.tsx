@@ -15,7 +15,7 @@ export function DashboardSection({
   title,
   description,
   href,
-  hrefLabel = "View all",
+  hrefLabel = "Lihat semua",
   actions,
   children,
   className,
@@ -34,7 +34,7 @@ export function DashboardSection({
           {href && (
             <Link
               href={href}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+              className="cursor-pointer text-sm font-medium text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline"
             >
               {hrefLabel} →
             </Link>

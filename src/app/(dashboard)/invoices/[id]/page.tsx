@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePageSession } from "@/lib/page-auth";
+import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Banknote } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -19,6 +23,7 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requirePageSession(["bos", "core"]);
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parseInt(id) },
@@ -26,6 +31,8 @@ export default async function InvoiceDetailPage({
       items: true,
       payments: true,
       customer: true,
+      /// issue #15 — kontrak sumber, untuk menautkan kembali ke rantai dokumen.
+      contract: { select: { id: true, contractNo: true } },
       // Uang muka already compensated into this invoice (issue #26).
       advanceApplications: { include: { advance: true }, orderBy: { date: "asc" } },
     },
@@ -50,6 +57,13 @@ export default async function InvoiceDetailPage({
   const isForeign = currency !== "IDR";
   const rate = invoice.rate != null ? Number(invoice.rate) : null;
   const taxAmount = Number(invoice.taxAmount ?? 0);
+  // PPN as a first-class field (issue #16). A legacy row (taxable false but a
+  // stored amount) still reads as taxed so its PPN row stays labelled.
+  const taxable = invoice.taxable ?? taxAmount > 0;
+  const taxRate = invoice.taxRate != null ? Number(invoice.taxRate) : null;
+  const ppnLabel = taxable
+    ? `PPN${taxRate != null ? ` (${taxRate}%)` : " Keluaran"}`
+    : "PPN 0% (Ekspor)";
 
   const subtotal = invoice.items.reduce((sum, item) => {
     return sum + Number(item.quantity) * Number(item.price);
@@ -93,6 +107,11 @@ export default async function InvoiceDetailPage({
               status: invoice.status,
               currency,
               taxAmount,
+              taxable,
+              taxRate,
+              pebNumber: invoice.pebNumber ?? null,
+              pebDate: invoice.pebDate ? invoice.pebDate.toISOString() : null,
+              exportNote: invoice.exportNote ?? null,
               customerName: invoice.customer?.name ?? null,
               items: invoice.items.map((i) => ({
                 itemName: i.itemName,
@@ -111,6 +130,23 @@ export default async function InvoiceDetailPage({
           <Link href={`/invoices/${id}/edit`}>
             <Button variant="secondary">Edit</Button>
           </Link>
+          {/* Hanya Manager yang boleh menghapus — cermin dari
+              `requireAuth(["bos"])` di route DELETE-nya (issue #6). */}
+          {session.user.role === "bos" && (
+            <DeleteDocumentButton
+              endpoint={`/api/invoices/${invoice.id}`}
+              label="Hapus Tagihan"
+              title={`Hapus tagihan ${invoice.invoiceNo}?`}
+              message={
+                `Tagihan ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
+                `dibalik di transaksi yang sama — termasuk piutang dan PPN keluarannya. ` +
+                `Tindakan ini tidak bisa dibatalkan. Kalau tagihannya batal tetapi riwayatnya ingin ` +
+                `disimpan, ubah statusnya menjadi "Dibatalkan" saja.`
+              }
+              confirmPhrase={invoice.invoiceNo}
+              redirectTo="/invoices"
+            />
+          )}
           <Link href="/invoices">
             <Button variant="ghost">Back</Button>
           </Link>
@@ -139,6 +175,22 @@ export default async function InvoiceDetailPage({
               </dd>
             </div>
             <div>
+              {/* Dokumen berantai (issue #15) — kontrak yang faktur ini tarik. */}
+              <dt className="text-sm font-medium text-gray-500">Kontrak Sumber</dt>
+              <dd className="text-sm text-gray-900">
+                {invoice.contract ? (
+                  <Link
+                    href={`/contracts/${invoice.contract.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {invoice.contract.contractNo}
+                  </Link>
+                ) : (
+                  <span className="text-gray-500">Faktur lepas (tanpa kontrak)</span>
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Mata Uang</dt>
               <dd className="text-sm text-gray-900 tabular-nums">
                 {currency}
@@ -151,6 +203,24 @@ export default async function InvoiceDetailPage({
                 )}
               </dd>
             </div>
+            {/* Dokumen ekspor / PEB (issue #17) — only when captured. */}
+            {invoice.pebNumber && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Nomor PEB</dt>
+                <dd className="text-sm text-gray-900 tabular-nums">
+                  {invoice.pebNumber}
+                  {invoice.pebDate && (
+                    <span className="text-gray-500"> · {formatDate(invoice.pebDate)}</span>
+                  )}
+                </dd>
+              </div>
+            )}
+            {invoice.exportNote && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Keterangan Ekspor</dt>
+                <dd className="text-sm text-gray-900">{invoice.exportNote}</dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </Card>
@@ -191,14 +261,16 @@ export default async function InvoiceDetailPage({
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-200">
-                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">Subtotal</td>
+                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                  DPP · Dasar Pengenaan Pajak
+                </td>
                 <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
                   {formatCurrency(subtotal, currency)}
                 </td>
               </tr>
               <tr>
                 <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
-                  PPN Keluaran
+                  {ppnLabel}
                 </td>
                 <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
                   {formatCurrency(taxAmount, currency)}
@@ -259,8 +331,12 @@ export default async function InvoiceDetailPage({
             <tbody>
               {invoice.payments.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
-                    No payments recorded
+                  <td colSpan={3}>
+                    <EmptyState
+                      icon={<Banknote className="h-12 w-12" />}
+                      title="Belum ada pembayaran"
+                      description="Seluruh nilai tagihan ini masih tercatat sebagai piutang. Catat pembayaran pertamanya lewat formulir di atas."
+                    />
                   </td>
                 </tr>
               ) : (

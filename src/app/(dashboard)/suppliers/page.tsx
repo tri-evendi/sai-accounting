@@ -4,6 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +36,18 @@ export default async function SuppliersPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Suppliers ({totalCount})</h1>
-        <Link href="/suppliers/new">
-          <Button>+ New Supplier</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya.
+          </p>
+          <LearnMore term="pembelian" className="mt-1" label="Pelajari ini: cara mencatat pembelian" />
+        </div>
+        <Link href="/suppliers/new" className="shrink-0">
+          <Button>+ Tambah Pemasok</Button>
         </Link>
       </div>
 
@@ -44,18 +56,24 @@ export default async function SuppliersPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Address</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Phone</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Email</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Transactions</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Nama</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Alamat</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Telepon</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Surel</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Transaksi</th>
               </tr>
             </thead>
             <tbody>
               {suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    No suppliers yet
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={<Truck className="h-12 w-12" />}
+                      title="Belum ada pemasok"
+                      description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
+                      actionLabel="+ Tambah Pemasok"
+                      actionHref="/suppliers/new"
+                    />
                   </td>
                 </tr>
               ) : (

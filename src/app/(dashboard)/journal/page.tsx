@@ -1,9 +1,11 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requireAccountantPage } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BookText } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +20,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function JournalPage() {
-  await requirePageSession(["bos"]);
+  await requireAccountantPage(["bos"]);
 
   const journals = await prisma.journal.findMany({
     orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -76,8 +78,14 @@ export default async function JournalPage() {
               })
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                  Belum ada jurnal. Buat jurnal manual pertama Anda.
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={<BookText className="h-12 w-12" />}
+                    title="Belum ada jurnal"
+                    description="Sebagian besar jurnal dibuat otomatis dari faktur, kontrak, kas, dan stok. Jurnal manual dipakai untuk koreksi dan penyesuaian."
+                    actionLabel="+ Buat Jurnal Manual"
+                    actionHref="/journal/new"
+                  />
                 </td>
               </tr>
             )}

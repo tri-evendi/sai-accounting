@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractFx, contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema, contractSubtotal } from "@/lib/validations/contract";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { writeAuditLog } from "@/lib/audit";
+import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -35,8 +37,10 @@ export async function POST(request: Request) {
   const { items, date, dueDate, rate, ...contractData } = parsed.data;
   const fx = contractFx(contractData.currency, items, rate);
 
+  let contract;
+  let approval;
   try {
-    const contract = await prisma.$transaction(async (tx) => {
+    ({ contract, approval } = await prisma.$transaction(async (tx) => {
       const created = await tx.contract.create({
         data: {
           ...contractData,
@@ -48,13 +52,50 @@ export async function POST(request: Request) {
         include: { items: true },
       });
 
+      // Approval (issue #25) — raised inside the SAME transaction as the write,
+      // before posting, so the gate in `postForSource` sees it and withholds the
+      // journal. Returns null when no ambang applies, which is the ordinary case.
+      const request = await ensureApprovalRequest({
+        client: tx,
+        sourceType: "contract",
+        documentId: created.id,
+        documentNo: created.contractNo,
+        amount: contractSubtotal(items),
+        currency: created.currency,
+        rate: fx.rate,
+        baseAmount: fx.baseAmount,
+        requestedById: parseInt(result.session.user.id, 10),
+      });
+
       // No `rate` in the context: the contract carries its own now (issue #36).
       await postForSource({ sourceType: "contract", sourceId: created.id, tx });
-      return created;
-    });
-
-    return NextResponse.json(contract, { status: 201 });
+      return { contract: created, approval: request };
+    }));
   } catch (e) {
     return handlePostingError(e);
   }
+
+  if (approval) {
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: "approval.request",
+      entity: "approval_request",
+      entityId: approval.id,
+      details: {
+        sourceType: "contract",
+        documentId: contract.id,
+        documentNo: contract.contractNo,
+        baseAmount: Number(approval.baseAmount),
+        thresholdAmount: Number(approval.thresholdAmount),
+        approverRole: approval.approverRole,
+      },
+      request,
+    });
+  }
+
+  return NextResponse.json(
+    { ...contract, approval: approvalNotice(approval, "Kontrak") },
+    { status: 201 }
+  );
 }

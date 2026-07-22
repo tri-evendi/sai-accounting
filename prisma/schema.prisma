@@ -18,6 +18,18 @@ model User {
   status   Int      @default(1) // 1 = must change password
   passDate DateTime? @map("pass_date")
 
+  // ─── issue #11 — Mode Akuntan (accountant mode) ────────────
+  /// Per-user DISPLAY preference for "Mode Akuntan". Nullable on purpose:
+  ///   NULL  = follow the role default (bos → ON, core/ptg → OFF),
+  ///   true  = explicitly show accounting surfaces (Jurnal/Buku Besar/COA + debit/kredit terms),
+  ///   false = explicitly hide them.
+  /// An explicit value overrides the role default; a user who never toggles
+  /// stays NULL and tracks their role's default even if their role changes.
+  /// Display-only — it NEVER changes authorisation (role still gates every
+  /// accounting page) nor what is posted. See src/lib/accountant-mode.ts.
+  accountantMode Boolean? @map("accountant_mode")
+  // ───────────────────────────────────────────────────────────
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -37,7 +49,16 @@ model Contract {
   /// A contract with no due date is aged from `date` and never flagged overdue.
   dueDate     DateTime? @map("due_date")
   buyer       String   @db.VarChar(100)
+  // ─── issue #22 — Master Consignee ──────────────────────
+  /// Legacy free-text consignee. Kept as a FALLBACK: when a contract resolves to
+  /// a `Consignee` master row it also carries `consigneeId`, but rows whose text
+  /// never matched a master keep this string and a NULL `consigneeId`, so no
+  /// legacy consignee information is ever lost. Shown only when the relation is
+  /// absent (the master name wins when present).
   consignee   String?  @db.VarChar(100)
+  /// Nullable FK to the Consignee master (issue #22). NULL on legacy rows whose
+  /// free text did not resolve — those fall back to the `consignee` string above.
+  consigneeId Int?     @map("consignee_id")
   packaging   String?  @db.VarChar(100)
   shipment    String?  @db.VarChar(200)
   top1        String?  @db.VarChar(200)
@@ -58,9 +79,18 @@ model Contract {
   payments  ContractPayment[]
   documents Document[]
   advances  AdvancePayment[]
+  // issue #14 — surat jalan yang menyebut kontrak ini sebagai dokumen sumber.
+  deliveryOrders DeliveryOrder[]
+  /// issue #15 — faktur yang ditarik ("Ambil") dari kontrak ini. Dasar pelacakan
+  /// sisa: berapa kg/nilai kontrak yang sudah difakturkan vs sisa.
+  invoices       Invoice[]
+  // issue #22 — master consignee relation (RESTRICT: a consignee in use is
+  // deactivated, never hard-deleted; see Consignee).
+  consigneeRef Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
 
   @@index([dueDate])
   @@index([date])
+  @@index([consigneeId])
   @@map("contracts")
 }
 
@@ -115,6 +145,47 @@ model Invoice {
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   /// PPN Keluaran, in `currency`. 0 = untaxed document.
   taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  // ── PPN as a first-class field (issue #16) ──────────────────────────────────
+  /// Whether PPN Keluaran applies. FALSE = untaxed / export (0%): the posting
+  /// engine then emits no VAT line at all. DEFAULTs FALSE so every pre-#16 row
+  /// keeps posting exactly as it did (it carried tax_amount 0 already).
+  taxable    Boolean  @default(false)
+  /// Effective PPN rate applied, in percent (e.g. 11.00; 0.00 for export).
+  /// NULLable, no backfill — same posture as `rate`/`base_amount` (migrations
+  /// 0005/0008): a legacy row's rate is unknown, not zero, so it is left NULL and
+  /// `tax_amount` (which IS stored) remains authoritative for what was posted.
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// DPP — Dasar Pengenaan Pajak (tax base), in `currency`. Equals the net line
+  /// subtotal; stored so the Faktur Pajak base is captured explicitly rather than
+  /// only re-derivable from items. NULLable/no-backfill for legacy rows, where the
+  /// subtotal is still recomputed from `items` (see the invoice detail page).
+  dpp        Decimal? @db.Decimal(15, 2)
+
+  // ── issue #17 — Persiapan & ekspor e-Faktur (dokumen ekspor / PEB) ──────────
+  /// PEB — nomor Pemberitahuan Ekspor Barang. On an EXPORT invoice (0% PPN,
+  /// foreign currency) the customs PEB number stands in for the Faktur Pajak
+  /// number — it is what the e-Faktur/CTAS export carries for an export sale.
+  /// NULLable, no backfill: a domestic invoice has none, and legacy exports were
+  /// never captured here (the number lived only in free-text notes). See #16 for
+  /// the taxable=false / foreign-currency shape of an export invoice.
+  pebNumber  String?   @map("peb_number") @db.VarChar(50)
+  /// Tanggal PEB (customs clearance date). NULLable for the same reason as above.
+  pebDate    DateTime? @map("peb_date")
+  /// Free-text export-document note (e.g. shipping/BL reference). Optional; shown
+  /// on the invoice and available to the e-Faktur export as `keterangan`.
+  exportNote String?   @map("export_note") @db.Text
+
+  // ── issue #15 — dokumen berantai (Kontrak → Surat Jalan → Faktur → Pembayaran) ──
+  /// Kontrak sumber. Sebuah faktur yang dibuat lewat pola "Ambil" menarik baris
+  /// dari kontrak ini, dan pelacakan sisa (outstanding) diukur terhadapnya.
+  /// Nullable & tanpa backfill — faktur lepas / legacy tak menyebut kontrak.
+  /// RESTRICT, sejalan dengan DeliveryOrder.contractId (#14): kontrak yang sudah
+  /// difakturkan tak boleh dihapus dari bawah fakturnya.
+  ///
+  /// TIDAK ADA ATURAN JURNAL BARU: faktur "tarikan" memposting persis seperti
+  /// faktur biasa (`postForSource sourceType: "invoice"`). Kolom ini murni
+  /// penelusuran dokumen, bukan masukan akuntansi.
+  contractId Int?      @map("contract_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -122,11 +193,19 @@ model Invoice {
   customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
+  /// issue #15 — kontrak sumber faktur ini (pola "Ambil"). RESTRICT.
+  contract Contract?        @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  // issue #14 — surat jalan yang menyebut faktur ini sebagai dokumen sumber.
+  deliveryOrders DeliveryOrder[]
   /// Sales advances compensated into this invoice (issue #26). Each row both
   /// reduces what the customer still owes and carries its own journal.
   advanceApplications AdvanceApplication[]
+  /// Retur penjualan against this invoice (issue #27). The origin document of
+  /// every sales return; the total returned is capped at what was invoiced.
+  salesReturns SalesReturn[]
 
   @@index([customerId])
+  @@index([contractId])
   @@index([dueDate])
   @@index([date])
   @@map("invoices")
@@ -141,6 +220,9 @@ model InvoiceItem {
   unit      String? @db.VarChar(20)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  /// Retur penjualan lines that reference THIS invoice line (issue #27). Used to
+  /// sum how much of this line has already been returned, per source line.
+  salesReturnItems SalesReturnItem[]
 
   @@map("invoice_items")
 }
@@ -168,6 +250,11 @@ model Item {
   unit  String? @db.VarChar(20)
 
   stock Stock[]
+  /// Return lines that move THIS item back in/out of stock (issue #27).
+  salesReturnItems    SalesReturnItem[]
+  purchaseReturnItems PurchaseReturnItem[]
+  /// Surat jalan lines that move THIS item OUT of stock on issue (issue #14).
+  deliveryOrderItems  DeliveryOrderItem[]
 
   @@map("items")
 }
@@ -201,6 +288,7 @@ model Supplier {
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
   advances     AdvancePayment[]
+  purchaseReturns PurchaseReturn[]
 
   @@map("suppliers")
 }
@@ -231,6 +319,9 @@ model SupplierTransaction {
   /// Purchase advances compensated into THIS purchase row (issue #26). Empty on
   /// a `payment` row — only a purchase carries an obligation to compensate.
   advanceApplications AdvanceApplication[]
+  /// Retur pembelian against THIS purchase row (issue #27). Empty on a `payment`
+  /// row — only a `purchase` is a document goods can be returned against.
+  purchaseReturns PurchaseReturn[]
 
   @@index([supplierId, type])
   @@index([dueDate])
@@ -302,14 +393,57 @@ model Customer {
   phone   String? @db.VarChar(30)
   email   String? @db.VarChar(100)
   pic     String? @db.VarChar(100)
+  /// Bebas PPN (issue #16) — a customer never charged PPN Keluaran (an export
+  /// buyer, or a non-PKP counterparty). Drives the invoice form's default to
+  /// non-taxable; the form control can still override it per document. DEFAULT
+  /// FALSE, so existing customers keep the standard domestic 11% default.
+  taxExempt Boolean @default(false) @map("tax_exempt")
+  /// NPWP pembeli (issue #17) — the buyer's tax id, carried into the e-Faktur
+  /// export as the lawan-transaksi NPWP for a DOMESTIC (faktur keluaran) sale.
+  /// NULLable, no backfill: an export buyer has no Indonesian NPWP (its identity
+  /// on a PEB is name/country), and legacy customers were never captured. Stored
+  /// as free text (digits/dots/dashes) — not validated as a check-digit here.
+  npwp String? @db.VarChar(30)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   invoices Invoice[]
   advances AdvancePayment[]
+  salesReturns SalesReturn[]
 
   @@map("customers")
+}
+
+// ─── issue #22 — Master Consignee (penerima barang ekspor) ─
+//
+// Modelled from legacy `tb_consignee` (company_name / address / phone / email /
+// pic). The export consignee used to live only as free text on `contracts`;
+// this promotes it to reusable master data so it can also feed Surat Jalan
+// (issue #14). Master data is DEACTIVATED (`is_active = false`), never
+// hard-deleted, once referenced by a contract — the FK from Contract is RESTRICT.
+model Consignee {
+  id      Int     @id @default(autoincrement())
+  name    String  @db.VarChar(100)
+  address String? @db.Text
+  /// Negara tujuan/penerima (ekspor). Free text — not an ISO code.
+  country String? @db.VarChar(60)
+  /// Kontak / PIC (nama, telepon, atau email) — free text, mirrors legacy `pic`.
+  contact String? @db.VarChar(100)
+  notes   String? @db.Text
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contracts Contract[]
+  // issue #14 — surat jalan yang dikirim ke consignee ini.
+  deliveryOrders DeliveryOrder[]
+
+  @@index([isActive])
+  @@index([name])
+  @@map("consignees")
 }
 
 // ─── Uang Muka / Advance payments (issue #26) ────────────
@@ -435,6 +569,158 @@ model AdvanceApplication {
   @@map("advance_applications")
 }
 
+// ─── Retur penjualan & pembelian (issue #27) ─────────────
+
+/// A sales return (retur penjualan) — goods a customer sent back, reversing part
+/// of an invoice.
+///
+/// WHY IT REFERENCES THE ORIGIN INVOICE, NOT A FREE-STANDING CREDIT NOTE:
+/// a return can never exceed what was sold, so the acceptance criterion "tidak
+/// bisa meretur melebihi kuantitas/nilai dokumen asal" is enforced against the
+/// origin. The header carries `invoiceId`; each item carries `invoiceItemId`, so
+/// the cap is checked per source line, netting off returns already made.
+///
+/// CURRENCY DISCIPLINE (issue #43 posture, applied to returns): a return inherits
+/// the origin invoice's `currency` and `rate` and is booked at THAT rate — it is a
+/// partial reversal of the invoice, valued exactly as the invoice was. No
+/// settlement rate is re-resolved: nothing here is "settled at today's rate", so
+/// there is no realised FX and no `fx_gain_loss` leg. `rate` is NULLable with the
+/// same posture as everywhere else — a foreign origin with no rate has no honest
+/// IDR value; Zod refuses to create such a return rather than book it 1:1.
+model SalesReturn {
+  id         Int      @id @default(autoincrement())
+  returnNo   String   @unique @map("return_no") @db.VarChar(50)
+  /// Origin invoice this return reverses part of (issue #27). RESTRICT: an
+  /// invoice with returns against it cannot be deleted out from under them.
+  invoiceId  Int      @map("invoice_id")
+  /// Copied from the invoice for convenience; a sales return has a customer only
+  /// insofar as the invoice does (legacy invoices may carry none).
+  customerId Int?     @map("customer_id")
+  date       DateTime
+  /// Inherited from the origin invoice, never re-chosen.
+  currency   String   @default("IDR") @db.VarChar(5)
+  /// The invoice's own rate. NULLable/no-DEFAULT-1: see the model comment.
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Net returned value (Σ line qty × price), in `currency`. Excludes PPN.
+  subtotal   Decimal  @default(0) @db.Decimal(15, 2)
+  /// Reversed PPN Keluaran, proportional to the returned value, in `currency`.
+  /// 0 when the origin invoice was untaxed / 0% export → no VAT leg is posted.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  /// Effective PPN rate reversed, in percent. NULL when the origin was untaxed.
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// Gross returned value (subtotal + tax) in IDR base — the amount credited to
+  /// Piutang Usaha. NULLable for an unrated foreign origin, as elsewhere.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// enum-like: posted | canceled. A canceled return is excluded from the caps.
+  status     String   @default("posted") @db.VarChar(20)
+  reason     String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice  Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer Customer?         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items    SalesReturnItem[]
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([date])
+  @@index([status])
+  @@map("sales_returns")
+}
+
+model SalesReturnItem {
+  id            Int     @id @default(autoincrement())
+  salesReturnId Int     @map("sales_return_id")
+  /// The invoice line being returned — the source line the over-return cap is
+  /// measured against. RESTRICT so the line cannot vanish under a return.
+  invoiceItemId Int     @map("invoice_item_id")
+  itemName      String  @map("item_name") @db.VarChar(100)
+  /// Returned quantity, capped at the source line's quantity net of prior
+  /// returns. Decimal(15,3) per docs/DATABASE.md.
+  quantity      Decimal @db.Decimal(15, 3)
+  /// Unit price, copied from the invoice line (the value being reversed).
+  price         Decimal @default(0) @db.Decimal(15, 2)
+  /// Optional link to the stock Item so the goods can move back IN (issue #27).
+  /// NULL = this line is not tracked in inventory (the app couples sales and
+  /// stock loosely; invoice lines are free-text, not FKs to Item).
+  itemId        Int?    @map("item_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  invoiceItem InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  item        Item?       @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([salesReturnId])
+  @@index([invoiceItemId])
+  @@index([itemId])
+  @@map("sales_return_items")
+}
+
+/// A purchase return (retur pembelian) — goods we sent back to a supplier,
+/// reversing part of a purchase.
+///
+/// ASYMMETRY WITH SALES: a purchase (`supplier_transactions` of type `purchase`)
+/// has NO line items in this schema — it is a single net `amount` plus
+/// `tax_amount`. So a purchase return references the origin purchase DOCUMENT and
+/// the over-return cap is enforced by VALUE (net subtotal) against the purchase's
+/// amount, netting off prior returns — there is no source line to reference. Its
+/// items are free-text (like invoice items), for the nota retur and stock only.
+model PurchaseReturn {
+  id         Int      @id @default(autoincrement())
+  returnNo   String   @unique @map("return_no") @db.VarChar(50)
+  /// Origin purchase (a `supplier_transactions` row of type `purchase`).
+  purchaseId Int      @map("purchase_id")
+  supplierId Int?     @map("supplier_id")
+  date       DateTime
+  currency   String   @default("IDR") @db.VarChar(5)
+  rate       Decimal? @db.Decimal(18, 6)
+  /// Net returned value, in `currency`, capped at the purchase's remaining net.
+  subtotal   Decimal  @default(0) @db.Decimal(15, 2)
+  /// Reversed PPN Masukan, proportional to the returned value. 0 → no VAT leg.
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  taxRate    Decimal? @map("tax_rate") @db.Decimal(15, 2)
+  /// Gross returned value in IDR base — the amount debited to Hutang Usaha.
+  baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  status     String   @default("posted") @db.VarChar(20)
+  reason     String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchase SupplierTransaction  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  supplier Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items    PurchaseReturnItem[]
+
+  @@index([purchaseId])
+  @@index([supplierId])
+  @@index([date])
+  @@index([status])
+  @@map("purchase_returns")
+}
+
+model PurchaseReturnItem {
+  id               Int     @id @default(autoincrement())
+  purchaseReturnId Int     @map("purchase_return_id")
+  itemName         String  @map("item_name") @db.VarChar(100)
+  quantity         Decimal @db.Decimal(15, 3)
+  price            Decimal @default(0) @db.Decimal(15, 2)
+  /// Optional link to the stock Item so the goods can move OUT (issue #27).
+  itemId           Int?    @map("item_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  item           Item?          @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseReturnId])
+  @@index([itemId])
+  @@map("purchase_return_items")
+}
+
 // ─── Financial ───────────────────────────────────────────
 
 model CashAccount {
@@ -449,8 +735,21 @@ model CashAccount {
   baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   note        String?  @db.Text
 
+  // ── Bank reconciliation markers (issue #24) ──────────────
+  // Set when this book movement is matched to a bank-statement line. Purely a
+  // reconciliation flag — matching posts NO journal and moves no money.
+  reconciled   Boolean   @default(false)
+  reconciledAt DateTime? @map("reconciled_at")
+  /// The reconciliation (bank_statements row) this movement was matched under.
+  statementId  Int?      @map("statement_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
+  statement     BankStatement?     @relation("StatementMovements", fields: [statementId], references: [id], onDelete: SetNull)
+  statementLine BankStatementLine? @relation("LineMatch")
+
+  @@index([statementId])
+  @@index([reconciled])
   @@map("cash_accounts")
 }
 
@@ -650,4 +949,545 @@ model Document {
   contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
   @@map("documents")
+}
+
+// ─── Bank Reconciliation (issue #24) ─────────────────────
+// Rekonsiliasi Bank: cocokkan buku kas/bank internal (`cash_accounts`,
+// type = "bank") dengan rekening koran bank. Matching **tidak** memposting
+// jurnal — hanya menandai bahwa satu baris buku bersesuaian dengan satu baris
+// koran. Impor baris koran = manual atau CSV (SmartLink e-Banking di luar scope).
+
+/// One imported/entered bank statement for one bank account over one period.
+/// The "bank account" is the (`cashType`, `currency`) pair, mirroring how
+/// `cash_accounts` identifies a book — this schema has no bank-account master.
+model BankStatement {
+  id             Int       @id @default(autoincrement())
+  /// Which internal cash book this reconciles. Always `bank` in practice — kas
+  /// fisik has no rekening koran — but stored so (cashType, currency) names it.
+  cashType       String    @default("bank") @map("cash_type") @db.VarChar(20)
+  /// A bank account holds exactly one currency; the balances below are in it.
+  /// Never summed across currencies — foreign statements stay in their own unit.
+  currency       String    @default("IDR") @db.VarChar(5)
+  periodStart    DateTime  @map("period_start")
+  periodEnd      DateTime  @map("period_end")
+  openingBalance Decimal   @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  closingBalance Decimal   @default(0) @map("closing_balance") @db.Decimal(15, 2)
+  /// enum-like: draft = sedang direkonsiliasi; locked = selesai & dikunci.
+  /// A locked statement refuses further match/unmatch until reopened.
+  status         String    @default("draft") @db.VarChar(20)
+  lockedAt       DateTime? @map("locked_at")
+  note           String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lines     BankStatementLine[]
+  movements CashAccount[]       @relation("StatementMovements")
+
+  // One statement per account (cashType+currency) per exact period.
+  @@unique([cashType, currency, periodStart, periodEnd])
+  @@index([status])
+  @@index([periodStart])
+  @@map("bank_statements")
+}
+
+/// One line of a bank statement (one mutasi koran). Manual or CSV imported.
+model BankStatementLine {
+  id            Int      @id @default(autoincrement())
+  statementId   Int      @map("statement_id")
+  date          DateTime
+  description   String   @db.VarChar(255)
+  /// Signed money: positive = masuk ke rekening (menambah saldo bank),
+  /// negative = keluar. Sepadan dengan (debit − credit) di `cash_accounts`.
+  amount        Decimal  @db.Decimal(15, 2)
+  matched       Boolean  @default(false)
+  /// The single book movement (1:1) this line is matched to. SetNull so deleting
+  /// a cash row does not erase koran history — it only unmatches the line.
+  cashAccountId Int?     @unique @map("cash_account_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  cashAccount CashAccount?  @relation("LineMatch", fields: [cashAccountId], references: [id], onDelete: SetNull)
+
+  @@index([statementId])
+  @@index([date])
+  @@index([matched])
+  @@map("bank_statement_lines")
+}
+
+// ─── issue #20 — Company setup wizard + Saldo Awal ───────────────────────────
+//
+// Single-company identity + settings, plus the run-once flag for the setup
+// wizard. There is only ever ONE row (the app treats id = 1 as the singleton;
+// `@/lib/opening-balance` upserts it). Not master data — a settings record — so
+// it has no `is_active`. Company name/address used to be hardcoded in
+// `src/lib/constants.ts`; the wizard captures them here.
+//
+// The opening balances themselves are NOT stored as columns — they become ONE
+// balanced opening journal (`journals.source_type = "opening_balance"`), the
+// accounting truth. `openingJournalId` is a soft convenience pointer to it (kept
+// as a plain Int, not an FK, to avoid a back-relation on the shared Journal
+// model); the authoritative link is the journal's source_type/source_id.
+model CompanySetting {
+  id      Int     @id @default(autoincrement())
+  /// Nama perusahaan (identitas). Was constants.COMPANY_NAME.
+  name    String  @db.VarChar(150)
+  /// Alamat perusahaan. Was constants.COMPANY_ADDRESS.
+  address String? @db.Text
+  /// Mata uang pelaporan/base. Always "IDR" in practice — the ledger's base — but
+  /// stored so it is explicit and confirmable in the wizard. ISO code.
+  baseCurrency String @default("IDR") @map("base_currency") @db.VarChar(5)
+  /// Awal tahun buku (fiscal-year start). The opening journal is dated here, so
+  /// it precedes every operational transaction and sits in the first open period.
+  fiscalYearStart DateTime @map("fiscal_year_start")
+  // ── issue #17 — Identitas pajak penjual (untuk output e-Faktur / CTAS) ──────
+  /// NPWP perusahaan (penjual). The seller tax id every e-Faktur row needs.
+  /// NULLable: legacy setups predate it; the e-Faktur export refuses to build
+  /// until it is filled rather than emitting a blank that would fail DJP import.
+  /// Stored as free text (digits/dots/dashes), not check-digit validated.
+  npwp String? @db.VarChar(30)
+  /// Nama sesuai NPWP, when it differs from the trading `name` above. NULL → the
+  /// e-Faktur export falls back to `name`.
+  taxName String? @map("tax_name") @db.VarChar(150)
+  /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
+  /// `address`. Reported on the seller identity line of any e-Faktur output.
+  taxAddress String? @map("tax_address") @db.Text
+  /// Run-once flag: true once the wizard has completed and the opening journal is
+  /// posted. Re-entry then shows a read-only summary and refuses a second run.
+  isSetup Boolean @default(false) @map("is_setup")
+  /// Soft pointer to the posted opening journal (see note above). Nullable until
+  /// the wizard runs.
+  openingJournalId Int? @map("opening_journal_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isSetup])
+  @@map("company_settings")
+}
+
+// ─── Aset Tetap / Fixed Assets (issue #28) ───────────────
+//
+// Kelola aset operasional (kendaraan, alat, bangunan gudang) + penyusutan garis
+// lurus otomatis, agar Neraca & Beban Penyusutan akurat.
+//
+// ── SCOPED TO IDR, DELIBERATELY ─────────────────────────────────────────────
+// Unlike invoices/purchases/advances, fixed assets carry NO currency/rate/
+// base_amount triplet. SAI's core is trading; its fixed assets are domestic
+// operational assets bought in rupiah. Depreciating a foreign-acquired asset
+// correctly means a non-monetary IAS-21 treatment (cost frozen at the
+// acquisition-date rate, never revalued) that is well beyond "garis lurus dulu",
+// and valuing one 1:1 would be the exact bug #35/#36 fixed. So `acquisition_cost`
+// and every derived amount are IDR base, the ledger's own unit — the same stance
+// COGS takes (`buildCogsLines` is always IDR). A genuinely foreign-acquired asset
+// is entered at its IDR cost on the acquisition date, which is the honest value.
+//
+// ── ACCOUNT REFERENCES ARE PLAIN Int + A MIGRATION FK, NOT A PRISMA RELATION ──
+// `asset_account_id` / `accumulated_account_id` / `expense_account_id` reference
+// `accounts.id` with an ON DELETE RESTRICT constraint added in migration 0019,
+// but are NOT declared as Prisma relations. That is the same posture as
+// CompanySetting.openingJournalId: declaring them would hang six back-relation
+// arrays off the shared Account hub for no query the app makes. Names for display
+// are fetched explicitly in @/lib/fixed-assets.
+
+/// A depreciation class: its default method + useful life and the accounts an
+/// asset in it capitalises / depreciates through. Master data → `is_active`,
+/// never hard-deleted once an asset references it (the FK is RESTRICT).
+model FixedAssetCategory {
+  id                      Int     @id @default(autoincrement())
+  name                    String  @unique @db.VarChar(100)
+  /// enum-like: straight_line (garis lurus). z.enum in validations/fixed-asset.ts.
+  defaultMethod           String  @default("straight_line") @map("default_method") @db.VarChar(20)
+  /// Default useful life in MONTHS (see @/lib/depreciation on the unit choice).
+  defaultUsefulLifeMonths Int     @map("default_useful_life_months")
+  /// Account-mapping DEFAULTS a new asset copies at creation (and may override).
+  /// Reference accounts.id; RESTRICT FK in migration 0019. See the block above.
+  assetAccountId          Int     @map("asset_account_id")
+  accumulatedAccountId    Int     @map("accumulated_account_id")
+  expenseAccountId        Int     @map("expense_account_id")
+  isActive                Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assets FixedAsset[]
+
+  @@index([isActive])
+  @@map("fixed_asset_categories")
+}
+
+/// One fixed asset and its depreciation state.
+model FixedAsset {
+  id                 Int      @id @default(autoincrement())
+  assetNo            String   @unique @map("asset_no") @db.VarChar(50)
+  name               String   @db.VarChar(150)
+  categoryId         Int      @map("category_id")
+  acquisitionDate    DateTime @map("acquisition_date")
+  /// Acquisition cost, IDR (see the IDR-only note above).
+  acquisitionCost    Decimal  @map("acquisition_cost") @db.Decimal(15, 2)
+  /// Residual / salvage value, IDR. 0 = depreciate to nil.
+  residualValue      Decimal  @default(0) @map("residual_value") @db.Decimal(15, 2)
+  /// Useful life in MONTHS.
+  usefulLifeMonths   Int      @map("useful_life_months")
+  /// enum-like: straight_line.
+  depreciationMethod String   @default("straight_line") @map("depreciation_method") @db.VarChar(20)
+  /// Account references, defaulted from the category at creation and overridable.
+  /// Reference accounts.id; RESTRICT FK in migration 0019. See the block above.
+  assetAccountId       Int    @map("asset_account_id")
+  accumulatedAccountId Int    @map("accumulated_account_id")
+  expenseAccountId     Int    @map("expense_account_id")
+  location           String?  @db.VarChar(150)
+  /// enum-like: active | disposed.
+  status             String   @default("active") @db.VarChar(20)
+  /// Running accumulated depreciation, IDR. Denormalised from the depreciation
+  /// rows for O(1) reads and as the periodic run's idempotency anchor; the
+  /// authoritative history is `fixed_asset_depreciations`.
+  accumulatedDepreciation Decimal @default(0) @map("accumulated_depreciation") @db.Decimal(15, 2)
+  /// Last period a depreciation journal was posted (idempotency). NULL = never.
+  /// year + month, not a string, so periods compare as integers.
+  lastDepreciationYear  Int? @map("last_depreciation_year")
+  lastDepreciationMonth Int? @map("last_depreciation_month")
+  /// Disposal record. Set once `status` flips to `disposed`; NULL while active.
+  disposalDate       DateTime? @map("disposal_date")
+  disposalProceeds   Decimal?  @map("disposal_proceeds") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category        FixedAssetCategory          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  depreciations   FixedAssetDepreciation[]
+  locationHistory FixedAssetLocationHistory[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([acquisitionDate])
+  @@map("fixed_assets")
+}
+
+/// One posted monthly depreciation for one asset — a posting source in its own
+/// right (`journals.source_type = "depreciation"`).
+///
+/// WHY A ROW PER PERIOD, NOT A RE-POST OF THE ASSET: `postForSource` is
+/// idempotent per (source_type, source_id), which is exactly right for a document
+/// posted once — but a depreciation run posts a NEW journal every month against
+/// the same asset. Keying each month as its own source row restores that
+/// idempotency (one journal per row) and adds a second, DB-level guard:
+/// `@@unique([assetId, year, month])` makes a duplicate period impossible even
+/// under a race. The asset's `lastDepreciation*` fields are the fast-path guard;
+/// this table is the ledger-backed truth.
+model FixedAssetDepreciation {
+  id      Int      @id @default(autoincrement())
+  assetId Int      @map("asset_id")
+  year    Int
+  month   Int // 1-12
+  /// Posting date — the last day of `(year, month)`.
+  date    DateTime
+  /// Depreciation booked this period, IDR.
+  amount  Decimal  @db.Decimal(15, 2)
+  /// Accumulated depreciation after this period, IDR — carried for audit/preview.
+  accumulatedAfter Decimal @map("accumulated_after") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset FixedAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([assetId, year, month])
+  @@index([assetId])
+  @@index([year, month])
+  @@map("fixed_asset_depreciations")
+}
+
+/// A location move (pindah lokasi). A simple audit trail — no journal, since a
+/// move changes where an asset sits, not its value (issue #28). The asset's
+/// `location` is updated to `toLocation` on each move.
+model FixedAssetLocationHistory {
+  id           Int      @id @default(autoincrement())
+  assetId      Int      @map("asset_id")
+  date         DateTime
+  fromLocation String?  @map("from_location") @db.VarChar(150)
+  toLocation   String?  @map("to_location") @db.VarChar(150)
+  note         String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset FixedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([date])
+  @@map("fixed_asset_location_histories")
+}
+
+// ─── issue #29 — Anggaran & Target (Budget & sales targets) ──────────────────
+//
+// Rencana keuangan yang DIBANDINGKAN dengan realisasi buku besar — BUKAN sumber
+// jurnal. Membuat/mengubah anggaran TIDAK memposting apa pun; laporan Realisasi
+// vs Anggaran hanya MEMBACA jurnal lewat pembaca laporan (@/lib/reports) dan
+// selisihnya dihitung di helper murni @/lib/budget.ts. Sisi baca-saja ini yang
+// membuat anggaran aman: ia tak pernah menyentuh @/lib/posting atau @/lib/ledger.
+//
+// ── IDR BASE, SEPERTI BUKU BESAR ────────────────────────────────────────────
+// `amount` adalah IDR base (unit buku besar). Anggaran TIDAK menyimpan
+// currency/rate/base_amount: sebuah rencana tidak "diselesaikan pada kurs" apa
+// pun — ia dibandingkan dengan realisasi yang sudah dalam IDR base. Sikap yang
+// sama dengan aset tetap (#28) & HPP: nilai domestik langsung dalam rupiah.
+//
+// ── AKUN/PELANGGAN/ITEM = kolom Int + FK di migration, BUKAN relasi Prisma ───
+// `account_id` (Budget) dan `customer_id`/`item_id` (SalesTarget) menunjuk baris
+// master dengan FK RESTRICT yang ditambahkan di migration 0021, tetapi TIDAK
+// dideklarasikan sebagai relasi Prisma — sikap yang sama persis dengan aset
+// tetap (#28) & CompanySetting.opening_journal_id, agar tak menggantung
+// back-relation di hub Account/Customer/Item bersama untuk query yang tak dibuat
+// app. Nama untuk tampilan diambil eksplisit di @/lib/budget-report.ts.
+
+/// Anggaran satu akun COA untuk satu bulan, IDR base. Periode diidentifikasi
+/// dengan (year, month) — sama seperti `periods` & idempotensi penyusutan (#28) —
+/// agar cocok persis dengan bulan yang dilaporkan Laba/Rugi.
+model Budget {
+  id        Int      @id @default(autoincrement())
+  /// COA account yang dianggarkan (biasanya akun pendapatan/beban). FK RESTRICT
+  /// ke accounts.id di migration 0021; lihat catatan blok di atas.
+  accountId Int      @map("account_id")
+  year      Int
+  month     Int // 1-12
+  /// Nilai anggaran periode ini, IDR base. Decimal(15,2) — bukan Float/Int.
+  amount    Decimal  @db.Decimal(15, 2)
+  note      String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu anggaran per akun per bulan — memasukkan angka kedua untuk (akun,
+  /// tahun, bulan) yang sama adalah pengeditan yang pertama, bukan fakta baru.
+  @@unique([accountId, year, month])
+  @@index([accountId])
+  @@index([year, month])
+  @@map("budgets")
+}
+
+/// Target penjualan untuk satu bulan, IDR base. Opsional per pelanggan dan/atau
+/// per komoditas (item) untuk granularitas perencanaan; keduanya NULL = target
+/// penjualan umum periode itu. Realisasi dibandingkan pada tingkat total periode
+/// terhadap penjualan aktual dari Laba/Rugi (buku besar tak memecah pendapatan
+/// per pelanggan, jadi tak ada agregator kedua yang dibuat untuk itu).
+model SalesTarget {
+  id         Int      @id @default(autoincrement())
+  year       Int
+  month      Int // 1-12
+  /// Opsional. FK RESTRICT ke customers.id di migration 0021. NULL = lintas-pelanggan.
+  customerId Int?     @map("customer_id")
+  /// Opsional. FK RESTRICT ke items.id di migration 0021. NULL = lintas-komoditas.
+  itemId     Int?     @map("item_id")
+  /// Nilai target periode ini, IDR base. Decimal(15,2) — bukan Float/Int.
+  amount     Decimal  @db.Decimal(15, 2)
+  note       String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu baris per (periode, pelanggan, komoditas). MySQL memperlakukan NULL
+  /// sebagai berbeda, jadi kunci ini menjaga duplikat pada baris yang bertag
+  /// penuh; guard duplikat untuk target umum (kedua NULL) ada di layer Zod/route.
+  @@unique([year, month, customerId, itemId])
+  @@index([year, month])
+  @@index([customerId])
+  @@index([itemId])
+  @@map("sales_targets")
+}
+
+// ─── Surat Jalan / Delivery Order (issue #14) ────────────────────────────────
+//
+// Menjadikan Surat Jalan dokumen kelas satu (bukan sekadar PDF pada detail
+// kontrak): tersimpan, dapat dicetak, dan MENGURANGI STOK saat diterbitkan.
+//
+// ── Akuntansi (keputusan kunci) ─────────────────────────────────────────────
+// HPP di aplikasi ini HANYA diakui pada pergerakan stok `out` (lihat
+// `buildStockMovementEntry` di src/lib/posting/index.ts → D: HPP, K: Persediaan
+// pada biaya rata-rata tertimbang). Faktur & kontrak HANYA memposting pendapatan
+// (D: Piutang, K: Penjualan) — tak pernah HPP, tak pernah mengurangi stok. Maka
+// menerbitkan Surat Jalan = titik barang keluar = titik pengakuan HPP. DO TIDAK
+// membuat aturan jurnal baru: ia membuat baris `stock` bertipe `out`, lalu setiap
+// baris diposting lewat jalur yang SUDAH ADA `postForSource({ sourceType:
+// "stock_movement" })`. Tidak ada `sourceType` baru, tidak ada builder HPP kedua.
+model DeliveryOrder {
+  id          Int      @id @default(autoincrement())
+  /// Nomor surat jalan — UNIK. Format `SJ.YYYY.MM.NNNNN` (lihat delivery-orders.ts).
+  no          String   @unique @db.VarChar(50)
+  date        DateTime
+  /// Dokumen sumber (dokumen berantai #16). Sebuah DO boleh menyebut kontrak
+  /// dan/atau faktur. Nullable; RESTRICT — dokumen sumber yang dipakai tak
+  /// boleh dihapus dari bawah surat jalannya.
+  contractId  Int?     @map("contract_id")
+  invoiceId   Int?     @map("invoice_id")
+  /// Consignee master (#22). Nullable — sebuah DO bisa hanya mengandalkan teks
+  /// tujuan pada `notes`. RESTRICT sejalan dengan Contract.consigneeId.
+  consigneeId Int?     @map("consignee_id")
+  /// Kendaraan/kontainer pengangkut (mirror legacy `truk_no`/`container`).
+  vehicleNo   String?  @map("vehicle_no") @db.VarChar(50)
+  containerNo String?  @map("container_no") @db.VarChar(50)
+  notes       String?  @db.Text
+  /// enum-like: `issued` | `canceled`. Dibuat `issued`; penerbitan mengurangi
+  /// stok. (Nilai `canceled` disediakan untuk pembalikan di masa depan.)
+  status      String   @default("issued") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items     DeliveryOrderItem[]
+  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  invoice   Invoice?   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  consignee Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([contractId])
+  @@index([invoiceId])
+  @@index([consigneeId])
+  @@index([status])
+  @@map("delivery_orders")
+}
+
+model DeliveryOrderItem {
+  id              Int      @id @default(autoincrement())
+  deliveryOrderId Int      @map("delivery_order_id")
+  /// Barang stok yang dikeluarkan — FK ke master Item, RESTRICT (seperti
+  /// SalesReturnItem.itemId). `itemName` disimpan sebagai snapshot untuk PDF.
+  itemId          Int      @map("item_id")
+  itemName        String   @map("item_name") @db.VarChar(100)
+  /// Bentuk bags/kg mengikuti ContractItem persis: `bags` Int + `kgPerBag`.
+  bags            Int      @default(0)
+  kgPerBag        Decimal  @default(0) @map("kg_per_bag") @db.Decimal(10, 2)
+  /// Kuantitas yang dikeluarkan dari stok, dalam KG (= bags × kgPerBag).
+  /// Decimal(15,3) per docs/DATABASE.md. KG adalah unit fungible stok/HPP di
+  /// app ini (unit_cost = IDR per kg; kontrak berharga per kg).
+  quantity        Decimal  @db.Decimal(15, 3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryOrderId])
+  @@index([itemId])
+  @@map("delivery_order_items")
+}
+
+// ─── issue #25 — Approval transaksi (ambang nilai & peran) ───────────────────
+//
+// Kontrol manajemen untuk transaksi bernilai besar: dokumen di atas AMBANG wajib
+// disetujui sebelum jurnalnya terbit. Dua tabel — aturan (`approval_rules`) dan
+// pengajuan per dokumen (`approval_requests`).
+//
+// ── KENAPA STATUS PERSETUJUAN TIDAK JADI KOLOM DI SETIAP DOKUMEN ────────────
+// Alternatifnya menambah `approval_status` ke contracts, invoices,
+// contract_payments, invoice_payments dan supplier_transactions — lima tabel,
+// lima default yang harus benar untuk data lama, dan lima tempat yang bisa lupa
+// diperiksa. Sebaliknya, satu baris `approval_requests` DIBUAT HANYA bila ada
+// aturan yang cocok. Konsekuensinya persis yang dibutuhkan untuk kompatibilitas
+// mundur: dokumen lama (dan dokumen baru di bawah ambang) TIDAK punya baris di
+// sini, sehingga `blocksPosting(null) === false` — mereka memposting seperti
+// sebelumnya dan tak pernah muncul di antrean. Tidak ada backfill, tidak ada
+// dokumen yang sudah diposting tiba-tiba terblokir.
+//
+// ── SATU TITIK CEGAT KE JURNAL ──────────────────────────────────────────────
+// Gerbangnya ada di `postForSource`/`repostForSource` (src/lib/posting/index.ts)
+// — jalur SATU-SATUNYA yang membuat jurnal dari sebuah dokumen. Tidak ada aturan
+// posting baru dan tidak ada duplikasi logika: bila dokumen punya pengajuan yang
+// belum `approved`, engine mengembalikan null (tak ada jurnal), persis seperti
+// dokumen batal/bernilai nol. Saat penyetuju menyetujui, route memanggil
+// `postForSource` di transaksi yang sama sehingga jurnalnya terbit saat itu juga.
+//
+// ── AMBANG DIBANDINGKAN TERHADAP IDR BASE ───────────────────────────────────
+// `approval_requests.base_amount` (IDR) yang diadu dengan `min_amount`, bukan
+// nilai mata uang asli — lihat catatan panjang di src/lib/approvals.ts.
+// Perbandingannya decimal-exact (digit integer yang diselaraskan), bukan float.
+
+/// Aturan approval: jenis dokumen + ambang nilai (IDR base) + peran penyetuju.
+/// Master data → punya `is_active` (dinonaktifkan, bukan dihapus, karena
+/// `approval_requests.rule_id` menunjuk ke sini).
+model ApprovalRule {
+  id           Int      @id @default(autoincrement())
+  /// enum-like: `contract` | `invoice` | `payment` (z.enum di validations/approval.ts).
+  /// `payment` mencakup pelunasan faktur, pelunasan kontrak, dan pembayaran supplier.
+  documentType String   @map("document_type") @db.VarChar(30)
+  /// Ambang nilai dalam IDR base, INKLUSIF (nilai = ambang → tetap perlu
+  /// persetujuan). Decimal(15,2) — uang, bukan Float.
+  minAmount    Decimal  @map("min_amount") @db.Decimal(15, 2)
+  /// enum-like peran penyetuju: `bos` | `core` | `ptg` (lihat ROLES di constants.ts).
+  approverRole String   @map("approver_role") @db.VarChar(20)
+  note         String?  @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([documentType])
+  @@index([isActive])
+  @@map("approval_rules")
+}
+
+/// Satu pengajuan persetujuan untuk SATU dokumen. Dibuat oleh route penulis
+/// dokumen saat ada aturan yang cocok, di dalam transaksi yang sama dengan
+/// dokumennya. Sekaligus jejak persetujuan (siapa, kapan, catatan) dan
+/// notifikasi in-app pemohon (`read_at`) — tanpa tabel/infrastruktur tambahan.
+model ApprovalRequest {
+  id              Int       @id @default(autoincrement())
+  /// `sourceType` posting engine: contract | invoice | contract_payment |
+  /// invoice_payment | supplier_transaction. Kunci yang dipakai gerbang jurnal.
+  sourceType      String    @map("source_type") @db.VarChar(40)
+  /// PK baris dokumen pada tabel sumbernya. Sengaja TANPA FK: satu kolom tak
+  /// bisa menunjuk lima tabel berbeda; keutuhannya dijaga route + gerbang posting.
+  documentId      Int       @map("document_id")
+  /// Kategori aturan yang cocok: contract | invoice | payment.
+  documentType    String    @map("document_type") @db.VarChar(30)
+  /// Nomor dokumen (snapshot) untuk antrean & audit — dokumen sumber bisa berubah.
+  documentNo      String?   @map("document_no") @db.VarChar(50)
+  /// Aturan yang memicu pengajuan ini. FK RESTRICT ke approval_rules (migration
+  /// 0024); NULL bila aturannya sudah tak ada padanannya.
+  ruleId          Int?      @map("rule_id")
+  /// Peran yang berhak memutuskan — disalin dari aturan agar keputusan lama
+  /// tetap terbaca meski aturannya nanti diubah.
+  approverRole    String    @map("approver_role") @db.VarChar(20)
+  /// enum-like: draft | pending_approval | approved | rejected.
+  status          String    @default("pending_approval") @db.VarChar(20)
+  /// Nilai dokumen dalam mata uangnya sendiri + kurs + IDR base (docs/DATABASE.md §4).
+  amount          Decimal   @db.Decimal(15, 2)
+  currency        String    @default("IDR") @db.VarChar(5)
+  rate            Decimal?  @db.Decimal(18, 6)
+  /// Nilai IDR base — INI yang diadu dengan ambang.
+  baseAmount      Decimal   @map("base_amount") @db.Decimal(15, 2)
+  /// Ambang yang berlaku saat pengajuan dibuat (snapshot, seperti approverRole).
+  thresholdAmount Decimal   @map("threshold_amount") @db.Decimal(15, 2)
+  /// FK RESTRICT ke users (migration 0024), tanpa relasi Prisma — pola yang sama
+  /// dengan Budget.accountId (#29) & FixedAsset (#28) agar tak menggantung
+  /// back-relation di User. Nama ditarik eksplisit di @/lib/approval-queue.ts.
+  requestedById   Int       @map("requested_by_id")
+  requestNote     String?   @map("request_note") @db.Text
+  decidedById     Int?      @map("decided_by_id")
+  decidedAt       DateTime? @map("decided_at")
+  decisionNote    String?   @map("decision_note") @db.Text
+  /// Nilai IDR yang BENAR-BENAR disetujui, dicatat saat penyetuju menekan setuju
+  /// (issue #45). `baseAmount` mengikuti dokumen yang bisa terus diedit; kolom ini
+  /// tidak — tanpa keduanya, "sudah diedit melebihi yang disetujui" tak bisa
+  /// dibedakan dari "memang sebesar itu sejak awal". NULL pada pengajuan pra-#45
+  /// dan pada yang belum diputus.
+  approvedBaseAmount Decimal? @map("approved_base_amount") @db.Decimal(15, 2)
+  /// Kapan PEMOHON membaca hasil keputusan. NULL + status sudah diputus =
+  /// notifikasi yang belum dibaca (badge di navbar).
+  readAt          DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu pengajuan per dokumen — juga kunci lookup gerbang posting.
+  @@unique([sourceType, documentId])
+  @@index([status])
+  @@index([approverRole])
+  @@index([requestedById])
+  @@index([documentType])
+  @@index([createdAt])
+  @@map("approval_requests")
 }

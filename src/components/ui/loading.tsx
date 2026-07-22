@@ -14,7 +14,7 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-export function PageLoader({ message = "Loading..." }: { message?: string }) {
+export function PageLoader({ message = "Memuat..." }: { message?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
       <Spinner className="h-8 w-8" />

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Receipt } from "lucide-react";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
 import { SupplierAdvancePanel } from "./advance-panel";
@@ -199,8 +201,12 @@ export default async function SupplierDetailPage({
             <tbody>
               {supplier.transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    No transactions recorded
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={<Receipt className="h-12 w-12" />}
+                      title="Belum ada transaksi dengan pemasok ini"
+                      description="Catat pembelian atau pembayaran pertamanya lewat formulir di atas; utang dan jurnalnya terbentuk otomatis."
+                    />
                   </td>
                 </tr>
               ) : (

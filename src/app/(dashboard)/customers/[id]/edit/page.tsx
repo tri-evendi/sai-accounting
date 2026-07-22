@@ -13,7 +13,15 @@ export default function EditCustomerPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "", pic: "" });
+  const [form, setForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    email: "",
+    pic: "",
+    npwp: "",
+    taxExempt: false,
+  });
 
   useEffect(() => {
     fetch(`/api/customers/${params.id}`)
@@ -28,6 +36,8 @@ export default function EditCustomerPage() {
           phone: data.phone || "",
           email: data.email || "",
           pic: data.pic || "",
+          npwp: data.npwp || "",
+          taxExempt: Boolean(data.taxExempt),
         });
         setFetching(false);
       })
@@ -76,6 +86,22 @@ export default function EditCustomerPage() {
               <Input id="phone" label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <Input id="email" type="email" label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               <Input id="pic" label="Person In Charge (PIC)" value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} />
+              <Input id="npwp" label="NPWP (untuk e-Faktur)" value={form.npwp} onChange={(e) => setForm({ ...form, npwp: e.target.value })} />
+              <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
+                <input
+                  id="taxExempt"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={form.taxExempt}
+                  onChange={(e) => setForm({ ...form, taxExempt: e.target.checked })}
+                />
+                <span className="text-sm text-gray-700">
+                  Bebas PPN (ekspor / non-PKP)
+                  <span className="block text-xs text-gray-500">
+                    Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
+                  </span>
+                </span>
+              </label>
             </div>
           </CardContent>
         </Card>

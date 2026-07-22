@@ -57,6 +57,39 @@ export const MAPPING_KEYS = {
    * Never an expense: nothing has been consumed yet.
    */
   ADVANCE_PURCHASE: "advance_purchase",
+  /**
+   * Modal/Ekuitas untuk Saldo Awal (issue #20) — the equity account the opening
+   * journal's balancing figure lands in. Currency-agnostic: the plug is derived
+   * in IDR base. Defaults to 3101 Modal in the template COA; a company on another
+   * chart (or one using a dedicated "Opening Balance Equity" account) just
+   * repoints this one mapping row.
+   */
+  OPENING_EQUITY: "opening_equity",
+  /**
+   * Aset Tetap (issue #28) — the DEFAULT account a new fixed-asset category
+   * capitalises its assets into. Only a default: the category (and each asset)
+   * store their own asset/accum/expense account ids and may override it, so this
+   * is read when pre-filling the category form, never on the posting hot path.
+   * Defaults to 120101 Peralatan & Mesin. Currency-agnostic — assets are IDR.
+   */
+  FIXED_ASSET: "fixed_asset",
+  /**
+   * Akumulasi Penyusutan (issue #28) — the contra-asset a category's assets
+   * accumulate depreciation into, and the account the depreciation run CREDITS.
+   * Default for the category form; defaults to 120102 Akumulasi Penyusutan.
+   */
+  ACCUM_DEPRECIATION: "accumulated_depreciation",
+  /**
+   * Beban Penyusutan (issue #28) — the expense the depreciation run DEBITS.
+   * Default for the category form; defaults to 610103 Beban Penyusutan.
+   */
+  DEPRECIATION_EXPENSE: "depreciation_expense",
+  /**
+   * Laba/Rugi Pelepasan Aset Tetap (issue #28) — the gain/loss-on-disposal
+   * account, resolved at disposal time (not per category). Currency-agnostic like
+   * fx_gain_loss: the gain/loss is already an IDR base amount. Defaults to 7103.
+   */
+  DISPOSAL_GAIN_LOSS: "disposal_gain_loss",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -80,6 +113,11 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   fx_gain_loss: "Laba/Rugi Selisih Kurs",
   advance_sales: "Uang Muka Penjualan",
   advance_purchase: "Uang Muka Pembelian",
+  opening_equity: "Modal/Ekuitas (Saldo Awal)",
+  fixed_asset: "Aktiva Tetap",
+  accumulated_depreciation: "Akumulasi Penyusutan",
+  depreciation_expense: "Beban Penyusutan",
+  disposal_gain_loss: "Laba/Rugi Pelepasan Aset Tetap",
 };
 
 /**
@@ -174,6 +212,25 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.CASH_BANK, code: "110103", currency: "IDR" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110104", currency: "USD" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110105", currency: "CNY" },
+
+  // Saldo Awal / opening equity (issue #20). The opening journal's balancing
+  // figure — assets − liabilities — lands here as Modal. Reuses the existing
+  // 3101 Modal account (no new COA code needed); currency-agnostic like
+  // fx_gain_loss because the plug is already an IDR base amount.
+  { key: MAPPING_KEYS.OPENING_EQUITY, code: "3101" },
+
+  // Aset Tetap + penyusutan (issue #28). Currency-agnostic "any" rows: fixed
+  // assets are scoped to IDR, so there is no per-currency variant. The asset,
+  // accumulated-depreciation and expense slots are DEFAULTS a new category copies
+  // into its own account fields (and can override); disposal_gain_loss is
+  // resolved live at disposal time. Reuses the existing template accounts —
+  // 120101 Peralatan & Mesin, 120102 Akumulasi Penyusutan, 610103 Beban
+  // Penyusutan — and adds only 7103, the gain/loss-on-disposal account the chart
+  // lacked (see src/lib/accounting.ts and migration 0019).
+  { key: MAPPING_KEYS.FIXED_ASSET, code: "120101" },
+  { key: MAPPING_KEYS.ACCUM_DEPRECIATION, code: "120102" },
+  { key: MAPPING_KEYS.DEPRECIATION_EXPENSE, code: "610103" },
+  { key: MAPPING_KEYS.DISPOSAL_GAIN_LOSS, code: "7103" },
 ];
 
 /** Cash slot for a CashAccount.type value. Unknown types fall back to cash_default. */

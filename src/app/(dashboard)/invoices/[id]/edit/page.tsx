@@ -33,12 +33,20 @@ export default function EditInvoicePage() {
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
+  // Kontrak sumber (issue #15). Not editable here, but it MUST be carried back to
+  // the API: the PUT body is authoritative, so omitting it would silently detach a
+  // pulled faktur from its contract and corrupt that contract's outstanding.
+  const [contractId, setContractId] = useState<number | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [fx, setFx] = useState<InvoiceFxValues>({
     customerId: "",
     currency: "IDR",
     rate: "",
-    taxAmount: "0",
+    taxable: false,
+    taxRate: "11",
+    pebNumber: "",
+    pebDate: "",
+    exportNote: "",
   });
 
   const subtotal = invoiceSubtotal(items);
@@ -55,13 +63,33 @@ export default function EditInvoicePage() {
         // Blank stays blank: a null due date is "unknown", not "today".
         setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
         setStatus(data.status);
+        setContractId(data.contractId ?? null);
+        // A legacy taxed row (taxable false but tax_amount > 0) is shown as taxed,
+        // with the rate inferred from amount ÷ DPP so the user sees a sensible
+        // percentage rather than a blank. A stored tax_rate always wins.
+        const legacyTaxed = !data.taxable && Number(data.taxAmount) > 0;
+        const subtotal = (data.items ?? []).reduce(
+          (s: number, i: { quantity: number; price: number }) =>
+            s + Number(i.quantity) * Number(i.price),
+          0
+        );
+        const inferredRate =
+          data.taxRate != null
+            ? Number(data.taxRate)
+            : legacyTaxed && subtotal > 0
+              ? Math.round((Number(data.taxAmount) / subtotal) * 10000) / 100
+              : 11;
         setFx({
           customerId: data.customerId ? String(data.customerId) : "",
           // Legacy rows may predate the column; treat a missing value as IDR,
           // which is how they have been posted all along.
           currency: data.currency || "IDR",
           rate: data.rate != null ? String(Number(data.rate)) : "",
-          taxAmount: data.taxAmount != null ? String(Number(data.taxAmount)) : "0",
+          taxable: Boolean(data.taxable) || legacyTaxed,
+          taxRate: String(inferredRate),
+          pebNumber: data.pebNumber || "",
+          pebDate: data.pebDate ? new Date(data.pebDate).toISOString().split("T")[0] : "",
+          exportNote: data.exportNote || "",
         });
         setItems(
           data.items.map((item: InvoiceItem & { id?: number }) => ({
@@ -98,7 +126,15 @@ export default function EditInvoicePage() {
     setError("");
     setLoading(true);
 
-    const body = { invoiceNo, date, dueDate, status, ...invoiceFxPayload(fx), items };
+    const body = {
+      invoiceNo,
+      date,
+      dueDate,
+      status,
+      contractId,
+      ...invoiceFxPayload(fx),
+      items,
+    };
 
     const res = await fetch(`/api/invoices/${params.id}`, {
       method: "PUT",

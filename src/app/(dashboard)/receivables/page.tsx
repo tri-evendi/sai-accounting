@@ -10,6 +10,8 @@ import { requirePageSession } from "@/lib/page-auth";
 import { getReceivables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { LearnMore } from "@/components/ui/learn-more";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -37,13 +39,21 @@ export default async function ReceivablesPage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Piutang" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Piutang (Belum Dibayar)</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        <TermTooltip term="piutang">Pelanggan Belum Bayar</TermTooltip>
+      </h1>
+      <p className="text-sm text-gray-500 mb-2">
         Faktur &amp; kontrak yang masih punya sisa tagihan per {formatDateShort(asOf)}.
         {overdueCount > 0 && !overdueOnly && (
           <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
         )}
       </p>
+      {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
+      <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2">
+        <LearnMore term="piutang" />
+        <LearnMore term="umur_piutang" />
+        <LearnMore term="jatuh_tempo" />
+      </div>
 
       <LedgerFilter basePath="/receivables" asOf={asOfStr} overdueOnly={overdueOnly} />
 

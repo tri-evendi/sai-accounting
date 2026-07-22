@@ -11,14 +11,15 @@ import {
   supplierTransactionSchema,
   supplierPaymentAllocationsSchema,
 } from "@/lib/validations/finance";
-import { fxAmounts, BASE_CURRENCY } from "@/lib/validations/fx";
-import { toDateOrNull } from "@/lib/validations/common";
+import { BASE_CURRENCY } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
-import { postForSource, repostForSource, unpostForSource } from "@/lib/posting";
+import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { getSupplierPurchaseAllocations } from "@/lib/receivables";
 import { resolveAllocationLines } from "@/lib/supplier-allocations";
+import { createSupplierTransactionInTx } from "@/lib/document-writes";
+import { approvalNotice } from "@/lib/approval-requests";
 
 export async function GET(
   request: Request,
@@ -148,13 +149,7 @@ export async function POST(
     );
   }
 
-  const { date, dueDate, rate: rateInput, allocations, ...transactionData } = parsed.data;
-  // base_amount covers the full obligation: net value plus input VAT.
-  const { rate, baseAmount } = fxAmounts(
-    transactionData.currency,
-    transactionData.amount + transactionData.taxAmount,
-    rateInput
-  );
+  const { allocations, ...transactionInput } = parsed.data;
 
   // ── Over-allocation guard (issue #37) ──────────────────────────────────────
   // The Zod schema already capped the allocations at the payment's own amount.
@@ -165,8 +160,8 @@ export async function POST(
   // laxer than a create.
   const resolved = await resolveAllocationLines({
     supplierId,
-    currency: transactionData.currency,
-    rate: rateInput,
+    currency: transactionInput.currency,
+    rate: transactionInput.rate,
     allocations: allocations ?? [],
   });
   if (!resolved.ok) {
@@ -175,42 +170,19 @@ export async function POST(
   const allocationLines = resolved.lines;
 
   let transaction;
+  let approval;
   try {
-    transaction = await prisma.$transaction(async (tx) => {
-      const created = await tx.supplierTransaction.create({
-        data: {
-          ...transactionData,
-          date: new Date(date),
-          // A payment has nothing to fall due; only a purchase carries a due date.
-          dueDate: transactionData.type === "purchase" ? toDateOrNull(dueDate) : null,
-          rate,
-          baseAmount,
-        },
-      });
-
-      // Persist the allocation set; the journal is produced ONCE by the
-      // `postForSource` below, which reads these rows — the createMany never
-      // posts on its own, so the money is never doubled. For a pure-IDR payment
-      // the allocation is reporting-only (rate 1, no selisih kurs). For a
-      // foreign payment it is ledger-affecting (issue #42): it names which
-      // purchase — and therefore at which document rate — each slice of hutang
-      // is relieved, which is what makes the realised FX difference correct.
-      if (allocationLines.length > 0) {
-        await tx.supplierPaymentAllocation.createMany({
-          data: allocationLines.map((line) => ({
-            paymentId: created.id,
-            purchaseId: line.purchaseId,
-            amount: line.amount,
-            currency: transactionData.currency,
-            rate,
-            baseAmount: line.base,
-          })),
-        });
-      }
-
-      await postForSource({ sourceType: "supplier_transaction", sourceId: created.id, tx });
-      return created;
-    });
+    // The body of the transaction is `createSupplierTransactionInTx` — the SAME
+    // function the "Pembelian Baru" wizard calls (issue #5). It persists the
+    // allocation set (whose journal is produced ONCE by `postForSource`, never by
+    // the createMany), raises the approval request for a PAYMENT only, and posts.
+    ({ transaction, approval } = await prisma.$transaction((tx) =>
+      createSupplierTransactionInTx(tx, transactionInput, {
+        requestedById: parseInt(result.session.user.id, 10),
+        supplierName: supplier.name,
+        allocationLines,
+      })
+    ));
   } catch (e) {
     return handlePostingError(e);
   }
@@ -242,7 +214,29 @@ export async function POST(
     request,
   });
 
-  return NextResponse.json(transaction, { status: 201 });
+  if (approval) {
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: "approval.request",
+      entity: "approval_request",
+      entityId: approval.id,
+      details: {
+        sourceType: "supplier_transaction",
+        documentId: transaction.id,
+        documentNo: approval.documentNo,
+        baseAmount: Number(approval.baseAmount),
+        thresholdAmount: Number(approval.thresholdAmount),
+        approverRole: approval.approverRole,
+      },
+      request,
+    });
+  }
+
+  return NextResponse.json(
+    { ...transaction, approval: approvalNotice(approval, "Pembayaran supplier") },
+    { status: 201 }
+  );
 }
 
 /**

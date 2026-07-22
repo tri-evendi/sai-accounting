@@ -20,30 +20,29 @@ export function StockAlertBanner({ items }: { items: LowStockAlertItem[] }) {
       className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
     >
       <div className="flex gap-3">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold">
-            Low stock alert — {items.length} item{items.length > 1 ? "s" : ""} at or below{" "}
-            {LOW_STOCK_THRESHOLD} units
+            Stok menipis — {items.length} barang tersisa {LOW_STOCK_THRESHOLD} satuan atau kurang
           </p>
           <ul className="mt-2 space-y-1 text-amber-900/90">
             {preview.map((item) => (
               <li key={item.name} className="flex justify-between gap-4">
                 <span className="truncate">{item.name}</span>
                 <span className="font-medium tabular-nums shrink-0">
-                  {item.currentStock} {item.unit || "units"}
+                  {item.currentStock} {item.unit || "satuan"}
                 </span>
               </li>
             ))}
           </ul>
           {remaining > 0 && (
-            <p className="mt-1 text-xs text-amber-800">+{remaining} more in inventory</p>
+            <p className="mt-1 text-xs text-amber-800">+{remaining} barang lain di daftar stok</p>
           )}
           <Link
             href="/inventory/opname"
             className="inline-block mt-2 text-xs font-medium text-amber-800 underline hover:text-amber-950"
           >
-            Review in Stock Opname
+            Periksa lewat Hitung Ulang Stok
           </Link>
         </div>
       </div>

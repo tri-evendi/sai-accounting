@@ -3,15 +3,15 @@ import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { PeriodFilter } from "../report-filters";
-import { StatementPDFButton } from "@/components/shared/pdf-export-buttons";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import { PlainSummary } from "@/components/reports/plain-summary";
+import { resolvePeriod } from "@/lib/report-catalog";
+import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export const dynamic = "force-dynamic";
-
-function iso(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
   return (
@@ -48,13 +48,23 @@ export default async function IncomeStatementPage({
 }) {
   await requirePageSession(["bos"]);
   const sp = await searchParams;
-  const now = new Date();
-  const fromStr = sp.from ?? iso(new Date(now.getFullYear(), 0, 1));
-  const toStr = sp.to ?? iso(now);
-  const from = new Date(`${fromStr}T00:00:00`);
-  const to = new Date(`${toStr}T23:59:59.999`);
+  const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const is = await getIncomeStatement(from, to);
   const profit = is.netIncome >= 0;
+  const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+
+  // One payload feeds both exports and the plain-language summary, so the PDF,
+  // the Excel file, the sentence and the table below can never disagree.
+  const payload: StatementPayload = {
+    kind: "income-statement",
+    period: periodLabel,
+    revenue: is.revenue,
+    expense: is.expense,
+    totalRevenue: is.totalRevenue,
+    totalExpense: is.totalExpense,
+    netIncome: is.netIncome,
+  };
+  const summary = incomeStatementSummary(is, periodLabel);
 
   return (
     <div>
@@ -62,24 +72,17 @@ export default async function IncomeStatementPage({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Laba / Rugi</h1>
-          <p className="text-sm text-gray-500">
-            Periode {formatDate(from)} – {formatDate(to)} · nilai dalam IDR
-          </p>
+          <p className="text-sm text-gray-500">{periodLabel} · nilai dalam IDR</p>
         </div>
-        <StatementPDFButton
-          payload={{
-            kind: "income-statement",
-            period: `Periode ${formatDate(from)} – ${formatDate(to)}`,
-            revenue: is.revenue,
-            expense: is.expense,
-            totalRevenue: is.totalRevenue,
-            totalExpense: is.totalExpense,
-            netIncome: is.netIncome,
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <StatementPDFButton payload={payload} />
+          <StatementExcelButton payload={payload} />
+        </div>
       </div>
 
-      <PeriodFilter basePath="/reports/income-statement" from={fromStr} to={toStr} />
+      <PeriodFilter basePath="/reports/income-statement" from={fromISO} to={toISO} />
+
+      <PlainSummary summary={summary} />
 
       <Card>
         <div className="overflow-x-auto">

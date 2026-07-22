@@ -55,3 +55,7 @@ next-env.d.ts
 
 # transient agent worktrees
 /.claude/worktrees/
+
+# python caches from local tooling/skills
+__pycache__/
+*.pyc

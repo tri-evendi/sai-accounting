@@ -4,6 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +32,12 @@ export default async function CustomersPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Customers ({totalCount})</h1>
-        <Link href="/customers/new">
-          <Button>+ New Customer</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          <TermTooltip term="pelanggan">Pelanggan ({totalCount})</TermTooltip>
+        </h1>
+        <Link href="/customers/new" className="shrink-0">
+          <Button>+ Tambah Pelanggan</Button>
         </Link>
       </div>
 
@@ -41,18 +46,24 @@ export default async function CustomersPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Address</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Phone</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Email</th>
-                <th className="px-6 py-3 font-medium text-gray-500">PIC</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Nama</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Alamat</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Telepon</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Surel</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Penanggung Jawab</th>
               </tr>
             </thead>
             <tbody>
               {customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    No customers yet
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={<Users className="h-12 w-12" />}
+                      title="Belum ada pelanggan"
+                      description="Pelanggan adalah pihak yang Anda tagih. Catat pelanggan pertama agar tagihan dan piutangnya bisa dirinci per pelanggan."
+                      actionLabel="+ Tambah Pelanggan"
+                      actionHref="/customers/new"
+                    />
                   </td>
                 </tr>
               ) : (

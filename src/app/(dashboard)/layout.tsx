@@ -7,13 +7,14 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
 import { ToastProvider } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
+import { GuidedTour } from "@/components/help/guided-tour";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (status === "loading") {
-    return <PageLoader message="Loading session..." />;
+    return <PageLoader message="Memuat sesi..." />;
   }
 
   if (!session) return null;
@@ -22,6 +23,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         role={session.user.role}
+        accountantMode={session.user.accountantMode}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -36,6 +38,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      {/* issue #21 — tur panduan: jalan sekali pada kunjungan pertama halaman
+          yang punya tur, dan bisa diputar ulang dari menu Bantuan. */}
+      <GuidedTour />
     </div>
   );
 }

@@ -47,10 +47,11 @@ export type ClientInventoryItem = {
 
 export type StockLevel = "empty" | "low" | "healthy";
 
+/** Label bahasa tugas untuk kondisi stok (issue #1) — dipakai badge & PDF. */
 export const STOCK_LEVEL_LABELS: Record<StockLevel, string> = {
-  empty: "Out of Stock",
-  low: "Low Stock",
-  healthy: "In Stock",
+  empty: "Habis",
+  low: "Menipis",
+  healthy: "Aman",
 };
 
 function toNumber(value: StockMovement["quantity"]): number {

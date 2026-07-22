@@ -1,16 +1,18 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requireAccountantPage } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { accountTypeLabel } from "@/lib/accounting";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListTree } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
-  await requirePageSession(["bos"]);
+  await requireAccountantPage(["bos"]);
 
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
 
@@ -83,9 +85,14 @@ export default async function AccountsPage() {
               rows
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                  Belum ada akun. Buat akun pertama, atau muat template standar dengan
-                  <code className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs">npx tsx scripts/seed-coa.ts</code>.
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={<ListTree className="h-12 w-12" />}
+                    title="Belum ada akun perkiraan"
+                    description="Daftar akun adalah rak tempat setiap transaksi disimpan. Buat akun pertama Anda, atau muat template standar lewat perintah npx tsx scripts/seed-coa.ts."
+                    actionLabel="+ Buat Akun"
+                    actionHref="/accounts/new"
+                  />
                 </td>
               </tr>
             )}

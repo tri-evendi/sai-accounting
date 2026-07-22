@@ -21,27 +21,18 @@
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { MONTH_NAMES } from "@/lib/month-names";
+
+// Re-exported so server code can keep importing MONTH_NAMES from here; the array
+// itself lives in the Prisma-free `@/lib/month-names` so client components can
+// import it without pulling the database client into the browser bundle.
+export { MONTH_NAMES };
 
 /** Root client or an interactive-transaction client — same shape as LedgerClient. */
 export type PeriodClient = typeof prisma | Prisma.TransactionClient;
 
 export const PERIOD_STATUSES = ["open", "closed"] as const;
 export type PeriodStatus = (typeof PERIOD_STATUSES)[number];
-
-export const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-] as const;
 
 /** "Maret 2026" — used in UI labels and in the error message users see. */
 export function periodLabel(year: number, month: number): string {
@@ -98,6 +89,25 @@ export async function isPeriodClosed(
     select: { id: true },
   });
   return row != null;
+}
+
+/**
+ * Every month that is currently closed, as plain `{year, month}` pairs.
+ *
+ * Read-only convenience for the *forms* (issue #6): a create page hands this to
+ * its client form so a date inside a locked month is refused on screen before
+ * Simpan is pressed, instead of after a round-trip. It changes nothing about the
+ * guard itself — `assertPeriodOpen` still runs inside the same transaction as
+ * the document write and remains the only authority.
+ */
+export async function listClosedPeriods(
+  client: PeriodClient = prisma
+): Promise<{ year: number; month: number }[]> {
+  return client.period.findMany({
+    where: { status: "closed" },
+    select: { year: true, month: true },
+    orderBy: [{ year: "desc" }, { month: "desc" }],
+  });
 }
 
 /** Throw ClosedPeriodError unless the month containing `date` is open. */

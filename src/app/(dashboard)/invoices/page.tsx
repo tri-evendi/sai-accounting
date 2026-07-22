@@ -8,6 +8,9 @@ import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Receipt } from "lucide-react";
+import { STATUS_FILTER_LABELS } from "@/lib/constants";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@/components/ui/learn-more";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +47,15 @@ export default async function InvoicesPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Invoices ({totalCount})</h1>
-        <Link href="/invoices/new">
-          <Button>+ New Invoice</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>
+          </h1>
+          <LearnMore term="faktur" className="mt-1" label="Pelajari ini: apa itu tagihan penjualan" />
+        </div>
+        <Link href="/invoices/new" className="shrink-0">
+          <Button>+ Buat Tagihan</Button>
         </Link>
       </div>
 
@@ -59,7 +67,7 @@ export default async function InvoicesPage({
               variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
               size="sm"
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {STATUS_FILTER_LABELS[status] ?? status}
             </Button>
           </Link>
         ))}
@@ -70,16 +78,16 @@ export default async function InvoicesPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Invoice No</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Items</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Payments</th>
+                <th className="px-6 py-3 font-medium text-gray-500">No. Tagihan</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Jumlah Barang</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Pembayaran</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Status</th>
               </tr>
             </thead>
             <tbody>
               {invoices.length === 0 ? (
-                <tr><td colSpan={5}><EmptyState icon={<Receipt className="h-12 w-12" />} title="No invoices found" description="Create your first invoice to get started." actionLabel="+ New Invoice" actionHref="/invoices/new" /></td></tr>
+                <tr><td colSpan={5}><EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Buat tagihan pertama untuk pelanggan Anda." actionLabel="+ Buat Tagihan" actionHref="/invoices/new" /></td></tr>
               ) : (
                 invoices.map((inv) => (
                   <tr key={inv.id} className="border-b border-gray-100 hover:bg-gray-50">

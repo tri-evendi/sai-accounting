@@ -22,6 +22,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Link2, Loader2 } from "lucide-react";
@@ -356,24 +357,26 @@ export function AllocationEditor({
           {saving ? "Menyimpan..." : "Simpan Alokasi"}
         </Button>
         {allocatedCount > 0 && (
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            className="cursor-pointer"
-            disabled={saving || loading}
-            onClick={() => {
-              if (
-                confirm(
-                  "Hapus semua alokasi pembayaran ini? Sisa utang per dokumen akan kembali diperkirakan. Jurnal tidak berubah."
-                )
-              ) {
-                save([]);
-              }
-            }}
-          >
-            Hapus Alokasi
-          </Button>
+          /* `window.confirm` diganti ConfirmDialog (issue #6): pesan bawaan
+             peramban tidak bisa menjelaskan akibatnya dengan tenang, tidak
+             mengikuti bahasa app, dan tidak bisa ditata. */
+          <ConfirmDialog
+            title="Hapus semua alokasi pembayaran ini?"
+            message="Sisa utang per dokumen akan kembali diperkirakan dengan metode FIFO seperti sebelum alokasi dibuat. Jurnal dan nilai pembayarannya sendiri tidak berubah."
+            confirmLabel="Hapus Alokasi"
+            onConfirm={() => save([])}
+            trigger={
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                className="cursor-pointer"
+                disabled={saving || loading}
+              >
+                Hapus Alokasi
+              </Button>
+            }
+          />
         )}
         <Button
           type="button"

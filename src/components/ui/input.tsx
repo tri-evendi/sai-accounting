@@ -2,7 +2,12 @@ import { cn } from "@/lib/utils";
 import { forwardRef, type InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  /**
+   * ReactNode, bukan string, supaya label boleh membawa bantuan kontekstual —
+   * mis. `<TermTooltip term="kurs">Kurs</TermTooltip>` (issue #6). Tetap dibungkus
+   * `<label htmlFor>` yang sama, jadi klik pada teksnya tetap memfokuskan isian.
+   */
+  label?: React.ReactNode;
   error?: string;
 }
 

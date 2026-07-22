@@ -20,14 +20,55 @@ import { fieldVariants } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+type SelectOwnProps = VariantProps<typeof fieldVariants> & {
+  placeholder?: string;
+  options: { value: string; label: string }[];
+};
+
 type SelectProps = Omit<React.ComponentProps<"select">, "size"> &
-  VariantProps<typeof fieldVariants> & {
+  SelectOwnProps & {
     /** ReactNode agar label boleh membawa `TermTooltip` (issue #6) — lihat `Input`. */
     label?: React.ReactNode;
     error?: string;
-    placeholder?: string;
-    options: { value: string; label: string }[];
   };
+
+/**
+ * Select telanjang — hanya `<select>` bergaya, tanpa pembungkus label/error.
+ * Dipakai di dalam pola `Form` shadcn (issue #53), sama seperti `TextInput`:
+ * `FormControl` (Radix `Slot`) meneruskan `id`/`aria-*` ke anak tunggal, jadi
+ * anaknya harus satu `<select>`, bukan `<div>` pembungkus `Select` komposit.
+ */
+function NativeSelect({
+  className,
+  options,
+  placeholder,
+  fieldSize,
+  invalid,
+  ...props
+}: Omit<React.ComponentProps<"select">, "size"> & SelectOwnProps) {
+  return (
+    <select
+      data-slot="select"
+      className={cn(
+        fieldVariants({ invalid: Boolean(invalid), fieldSize }),
+        "cursor-pointer",
+        className
+      )}
+      {...props}
+    >
+      {placeholder && (
+        <option value="" disabled>
+          {placeholder}
+        </option>
+      )}
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function Select({
   className,
@@ -49,29 +90,17 @@ function Select({
   return (
     <div className="space-y-1">
       {label && <Label htmlFor={selectId}>{label}</Label>}
-      <select
-        data-slot="select"
+      <NativeSelect
         id={selectId}
+        options={options}
+        placeholder={placeholder}
+        fieldSize={fieldSize}
+        invalid={isInvalid}
         aria-invalid={isInvalid || undefined}
         aria-describedby={cn(describedBy, error && errorId) || undefined}
-        className={cn(
-          fieldVariants({ invalid: isInvalid, fieldSize }),
-          "cursor-pointer",
-          className
-        )}
+        className={className}
         {...props}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      />
       {error && (
         <p id={errorId} role="alert" className="text-sm text-destructive">
           {error}
@@ -81,5 +110,5 @@ function Select({
   );
 }
 
-export { Select };
+export { Select, NativeSelect };
 export type { SelectProps };

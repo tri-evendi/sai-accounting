@@ -58,6 +58,30 @@ type InputProps = Omit<React.ComponentProps<"input">, "size"> &
     error?: string;
   };
 
+/**
+ * Isian telanjang — hanya `<input>` bergaya, tanpa pembungkus label/error.
+ *
+ * Ini yang dipakai di dalam pola `Form` shadcn (issue #53): `FormControl`
+ * (Radix `Slot`) meneruskan `id`/`aria-*` ke ANAK TUNGGAL-nya, jadi anaknya
+ * harus berupa satu `<input>`, bukan `<div>` pembungkus milik `Input`
+ * komposit. `Input` sendiri dibangun di atas ini agar gayanya tidak
+ * bercabang.
+ */
+function TextInput({
+  className,
+  fieldSize,
+  invalid,
+  ...props
+}: Omit<React.ComponentProps<"input">, "size"> & VariantProps<typeof fieldVariants>) {
+  return (
+    <input
+      data-slot="input"
+      className={cn(fieldVariants({ invalid: Boolean(invalid), fieldSize }), className)}
+      {...props}
+    />
+  );
+}
+
 function Input({
   className,
   label,
@@ -76,12 +100,13 @@ function Input({
   return (
     <div className="space-y-1">
       {label && <Label htmlFor={inputId}>{label}</Label>}
-      <input
-        data-slot="input"
+      <TextInput
         id={inputId}
+        fieldSize={fieldSize}
+        invalid={isInvalid}
         aria-invalid={isInvalid || undefined}
         aria-describedby={cn(describedBy, error && errorId) || undefined}
-        className={cn(fieldVariants({ invalid: isInvalid, fieldSize }), className)}
+        className={className}
         {...props}
       />
       {error && (
@@ -93,5 +118,5 @@ function Input({
   );
 }
 
-export { Input, fieldVariants };
+export { Input, TextInput, fieldVariants };
 export type { InputProps };

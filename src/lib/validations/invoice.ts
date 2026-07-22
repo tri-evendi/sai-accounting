@@ -2,6 +2,7 @@ import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
+import { paymentFormFields } from "./payment";
 
 export const invoiceItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required").max(100).trim(),
@@ -80,12 +81,10 @@ export function invoiceTotal(
 export const invoicePaymentSchema = z
   .object({
     invoiceId: z.coerce.number().int(),
-    date: z.string().min(1, "Date is required"),
-    amount: z.coerce.number().positive("Amount must be positive"),
-    currency: currencyEnum.default("USD"),
-    // Persisted to invoice_payments.rate; drives base_amount and the journal.
-    rate: rateField,
-    note: z.string().max(500).trim().optional(),
+    // Field pembayaran (date/amount/currency/rate/note) dibagikan dengan form
+    // client lewat `paymentFormFields` — satu sumber, issue #53. `rate`
+    // dipersistkan ke invoice_payments.rate dan menggerakkan base_amount.
+    ...paymentFormFields,
   })
   .superRefine(requireRateForForeign);
 

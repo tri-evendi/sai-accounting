@@ -63,6 +63,43 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  /*
+   * Animasi buka overlay (#51). Durasi 200ms sesuai rentang 150–250ms
+   * MASTER.md; menutup tanpa animasi agar dialog tidak terasa lamban.
+   * `prefers-reduced-motion` dihormati di blok @layer base bawah.
+   */
+  --animate-overlay-in: overlay-in 200ms ease-out;
+  --animate-panel-in: panel-in 200ms ease-out;
+  --animate-dialog-in: dialog-in 200ms ease-out;
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 }
 
 :root {
@@ -178,4 +215,40 @@
   th {
     font-variant-numeric: tabular-nums;
   }
+  /*
+   * Anti-Pattern MASTER.md: animasi tidak boleh dipaksakan. Overlay Radix (#51)
+   * memakai animasi CSS, jadi penghormatan `prefers-reduced-motion` ditegakkan
+   * di sini sekali untuk semua — bukan per komponen.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/*
+ * Sonner `richColors` (#51) memakai paletnya sendiri; diarahkan ulang ke token
+ * MASTER.md agar hijau "berhasil" dan merah "gagal" di toast persis sama dengan
+ * hijau/merah di tabel dan badge. Warnanya tetap BUKAN satu-satunya penanda —
+ * sonner selalu menyertakan ikon + teks.
+ */
+/* `:root` menaikkan spesifisitas di atas [data-sonner-toaster][data-sonner-theme]
+   milik sonner; urutan penyisipan stylesheet-nya (runtime, via JS) tidak bisa
+   diandalkan, jadi spesifisitas yang dipakai — bukan urutan. */
+:root [data-sonner-toaster][data-sonner-theme] {
+  --success-bg: color-mix(in srgb, var(--success) 10%, #ffffff);
+  --success-border: color-mix(in srgb, var(--success) 30%, #ffffff);
+  --success-text: color-mix(in srgb, var(--success) 80%, #000000);
+  --error-bg: color-mix(in srgb, var(--destructive) 10%, #ffffff);
+  --error-border: color-mix(in srgb, var(--destructive) 30%, #ffffff);
+  --error-text: color-mix(in srgb, var(--destructive) 80%, #000000);
+  --info-bg: color-mix(in srgb, var(--primary) 10%, #ffffff);
+  --info-border: color-mix(in srgb, var(--primary) 30%, #ffffff);
+  --info-text: color-mix(in srgb, var(--primary) 85%, #000000);
 }

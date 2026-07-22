@@ -501,11 +501,18 @@ describe("INVARIANT: an allocation edit reposts a foreign payment, and only a fo
     // `@/lib/document-writes`, not inline here; what this test still guarantees is
     // that POST reaches the engine through that one shared writer.
     expect(handler("POST")).toContain("createSupplierTransactionInTx(");
+    // Narrowed to THAT writer's own body: `document-writes.ts` holds four writers,
+    // so asserting the file merely mentions `postForSource(` somewhere would pass
+    // even if this particular path stopped posting.
     const writer = readFileSync(
       path.join(process.cwd(), "src/lib/document-writes.ts"),
       "utf8"
     );
-    expect(writer).toContain("postForSource(");
+    const start = writer.indexOf("export async function createSupplierTransactionInTx");
+    expect(start).toBeGreaterThan(-1);
+    const after = writer.indexOf("\nexport ", start + 1);
+    const body = writer.slice(start, after === -1 ? undefined : after);
+    expect(body).toContain("postForSource(");
     expect(handler("DELETE")).toContain("unpostForSource(");
   });
 

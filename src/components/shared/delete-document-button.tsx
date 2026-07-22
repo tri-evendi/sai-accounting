@@ -33,6 +33,13 @@ interface DeleteDocumentButtonProps {
   message: string;
   /** Ke mana pengguna dibawa setelah berhasil. */
   redirectTo: string;
+  /**
+   * Nomor dokumen yang harus diketik ulang sebelum tombol hapus hidup. Bukan
+   * hiasan: penghapusan ini membalik jurnal dan tidak bisa dibatalkan, jadi
+   * mengetik nomornya memaksa pengguna memastikan dokumen MANA yang dihapus —
+   * salah klik dari daftar tidak lagi cukup untuk menghapus.
+   */
+  confirmPhrase: string;
 }
 
 export function DeleteDocumentButton({
@@ -41,6 +48,7 @@ export function DeleteDocumentButton({
   title,
   message,
   redirectTo,
+  confirmPhrase,
 }: DeleteDocumentButtonProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -74,6 +82,8 @@ export function DeleteDocumentButton({
       message={message}
       confirmLabel={label}
       confirmVariant="danger"
+      confirmPhrase={confirmPhrase}
+      confirmPhraseLabel="Ketik ulang nomor dokumennya untuk memastikan:"
       onConfirm={onConfirm}
       trigger={
         <Button variant="danger" className="cursor-pointer" disabled={busy}>

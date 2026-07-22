@@ -143,6 +143,7 @@ export default async function InvoiceDetailPage({
                 `Tindakan ini tidak bisa dibatalkan. Kalau tagihannya batal tetapi riwayatnya ingin ` +
                 `disimpan, ubah statusnya menjadi "Dibatalkan" saja.`
               }
+              confirmPhrase={invoice.invoiceNo}
               redirectTo="/invoices"
             />
           )}

@@ -139,6 +139,7 @@ export default async function ContractDetailPage({
                 `Kalau kontraknya batal tetapi riwayatnya ingin disimpan, ubah statusnya menjadi ` +
                 `"Dibatalkan" saja.`
               }
+              confirmPhrase={contract.contractNo}
               redirectTo="/contracts"
             />
           )}

@@ -16,6 +16,7 @@ import {
   monthLabel,
   negativeValueIssue,
   stockShortfallMessage,
+  matchesConfirmPhrase,
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
 
@@ -199,5 +200,30 @@ describe("pengeluaran stok besar", () => {
     expect(pesan).toContain("1.000");
     expect(pesan).toContain("200");
     expect(pesan).toContain("HPP");
+  });
+});
+
+describe("matchesConfirmPhrase — gesekan pada tindakan tak bisa dibatalkan (#6)", () => {
+  it("tanpa frasa, tidak ada gesekan tambahan", () => {
+    expect(matchesConfirmPhrase("", undefined)).toBe(true);
+    expect(matchesConfirmPhrase("", null)).toBe(true);
+    expect(matchesConfirmPhrase("apa pun", "")).toBe(true);
+  });
+
+  it("cocok persis", () => {
+    expect(matchesConfirmPhrase("KTR-2026-001", "KTR-2026-001")).toBe(true);
+  });
+
+  it("mengabaikan spasi di ujung dan huruf besar/kecil — tujuannya kesadaran, bukan ketelitian mengetik", () => {
+    expect(matchesConfirmPhrase("  ktr-2026-001 ", "KTR-2026-001")).toBe(true);
+    expect(matchesConfirmPhrase("INV.2026.07.00003", "inv.2026.07.00003")).toBe(true);
+  });
+
+  it("menolak nomor dokumen yang MIRIP — justru itu inti gesekannya", () => {
+    expect(matchesConfirmPhrase("KTR-2026-002", "KTR-2026-001")).toBe(false);
+    expect(matchesConfirmPhrase("KTR-2026-01", "KTR-2026-001")).toBe(false);
+    expect(matchesConfirmPhrase("", "KTR-2026-001")).toBe(false);
+    // Spasi di TENGAH tetap dianggap beda: itu nomor yang lain.
+    expect(matchesConfirmPhrase("KTR 2026 001", "KTR-2026-001")).toBe(false);
   });
 });

@@ -22,14 +22,22 @@
  *     (mis. "USD · kurs belum diisi") di kepala bagian, sehingga tidak ada
  *     informasi yang lenyap hanya karena bagian ini terlipat.
  *
- *  3. **Aksesibilitas.** Pemicunya `<button type="button">` sungguhan — bukan
- *     div — dengan `aria-expanded` + `aria-controls`, jadi bisa dioperasikan
- *     lewat Tab + Enter/Spasi dan diumumkan pembaca layar. Panelnya `role="group"`
- *     yang dilabeli tombolnya sendiri.
+ *  3. **Aksesibilitas.** Sejak issue #51 dibangun di atas Radix `Collapsible`
+ *     (lihat `collapsible.tsx`): pemicunya tetap `<button type="button">`
+ *     sungguhan, dan `aria-expanded` + `aria-controls` + toggle keyboard
+ *     kini datang dari Radix, bukan dirakit tangan. Panelnya `role="group"`
+ *     yang dilabeli tombolnya sendiri. Catatan: `forceMount` + `hidden`
+ *     manual dipakai justru untuk mempertahankan keputusan (1) — Radix tanpa
+ *     forceMount akan melepas isi panel dari DOM saat tertutup.
  */
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, AlertCircle } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { ADVANCED_SECTION_TITLE } from "@/lib/form-sections";
 
@@ -65,7 +73,6 @@ export function DisclosureSection({
   const [uncontrolled, setUncontrolled] = useState(defaultOpen);
   const isControlled = open !== undefined;
   const expanded = isControlled ? open : uncontrolled;
-  const panelId = useId();
   const buttonId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -102,26 +109,23 @@ export function DisclosureSection({
     }
   });
 
-  function toggle() {
-    const next = !expanded;
+  function handleOpenChange(next: boolean) {
     if (!isControlled) setUncontrolled(next);
     onOpenChange?.(next);
   }
 
   return (
-    <div
+    <Collapsible
+      open={expanded}
+      onOpenChange={handleOpenChange}
       className={cn(
         "rounded-lg border bg-white transition-colors duration-150",
         invalid ? "border-red-300" : "border-gray-200",
         className
       )}
     >
-      <button
+      <CollapsibleTrigger
         id={buttonId}
-        type="button"
-        onClick={toggle}
-        aria-expanded={expanded}
-        aria-controls={panelId}
         className={cn(
           "flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-left",
           "transition-colors duration-150 hover:bg-gray-50",
@@ -152,23 +156,26 @@ export function DisclosureSection({
             <span className="mt-1 block text-xs text-gray-600">{summary}</span>
           )}
         </span>
-        <span className="shrink-0 text-xs font-medium text-blue-700">
+        <span className="shrink-0 text-xs font-medium text-primary">
           {expanded ? "Tutup" : "Buka"}
         </span>
-      </button>
+      </CollapsibleTrigger>
 
-      {/* `hidden`, bukan unmount — lihat catatan (1) di atas. */}
-      <div
+      {/* `forceMount` + `hidden`, bukan unmount — lihat catatan (1) di atas.
+          `hidden` di sini menimpa milik Radix, yang dengan forceMount tidak
+          pernah menyembunyikan panelnya sendiri. Id panel TIDAK ditimpa:
+          `aria-controls` pada trigger dipasang Radix ke id buatannya. */}
+      <CollapsibleContent
+        forceMount
         ref={panelRef}
-        id={panelId}
         role="group"
         aria-labelledby={buttonId}
         hidden={!expanded}
         className="border-t border-gray-200 px-4 py-4"
       >
         {children}
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

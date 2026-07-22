@@ -12,7 +12,7 @@
  * keduanya, sebuah faktur USD terlihat seolah jauh di bawah ambang rupiah.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,11 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, moneyColumn } from "@/components/ui/data-table";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
 import { ROLE_LABELS, type Role } from "@/lib/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
+import type { ColumnDef } from "@tanstack/react-table";
 
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
 function StatusBadge({ status, label }: { status: string; label: string }) {
@@ -114,6 +116,60 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   const { toast } = useToast();
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  /**
+   * Kolom riwayat keputusan. `moneyColumn` menyumbang seluruh aturan uang
+   * (rata kanan, tabular-nums, id-ID, negatif merah) — `hideCurrency` dipakai
+   * karena mata uangnya sudah dinyatakan sekali di judul kolom, jadi tidak
+   * diulang di tiap baris.
+   */
+  const decidedColumns = useMemo<ColumnDef<ApprovalRequestView>[]>(
+    () => [
+      {
+        accessorKey: "documentNo",
+        header: "Dokumen",
+        cell: ({ row }) => (
+          <>
+            <DocumentTitle row={row.original} />
+            <p className="text-xs text-muted-foreground">
+              Penyetuju:{" "}
+              {ROLE_LABELS[row.original.approverRole as Role] ?? row.original.approverRole}
+            </p>
+          </>
+        ),
+      },
+      { accessorKey: "requestedByName", header: "Pemohon" },
+      moneyColumn<ApprovalRequestView>({
+        accessorKey: "baseAmount",
+        header: "Nilai (IDR)",
+        hideCurrency: true,
+      }),
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusBadge status={row.original.status} label={row.original.statusLabel} />
+        ),
+      },
+      {
+        accessorKey: "decidedAt",
+        header: "Diputus",
+        cell: ({ row }) => (
+          <div className="text-muted-foreground">
+            <span className="block whitespace-nowrap tabular-nums">
+              {row.original.decidedAt ? formatDate(row.original.decidedAt) : "—"}
+            </span>
+            {row.original.decisionNote && (
+              <span className="block text-xs text-muted-foreground">
+                “{row.original.decisionNote}”
+              </span>
+            )}
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   async function decide(row: ApprovalRequestView, decision: "approve" | "reject") {
     setBusyId(row.id);
@@ -456,53 +512,14 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 py-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">Dokumen</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Pemohon</th>
-                    <th className="px-6 py-3 text-right font-medium text-gray-500">
-                      Nilai (IDR)
-                    </th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Diputus</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {decided.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-gray-100 transition-colors duration-150 hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-3">
-                        <DocumentTitle row={row} />
-                        <p className="text-xs text-gray-500">
-                          Penyetuju: {ROLE_LABELS[row.approverRole as Role] ?? row.approverRole}
-                        </p>
-                      </td>
-                      <td className="px-6 py-3 text-gray-600">{row.requestedByName}</td>
-                      <td className="px-6 py-3 text-right text-gray-900">
-                        <Money value={row.baseAmount} currency="IDR" />
-                      </td>
-                      <td className="px-6 py-3">
-                        <StatusBadge status={row.status} label={row.statusLabel} />
-                      </td>
-                      <td className="px-6 py-3 text-gray-600">
-                        <span className="block whitespace-nowrap tabular-nums">
-                          {row.decidedAt ? formatDate(row.decidedAt) : "—"}
-                        </span>
-                        {row.decisionNote && (
-                          <span className="block text-xs text-gray-500">
-                            “{row.decisionNote}”
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/*
+             * Satu-satunya tabel di halaman ini yang memakai DataTable, dan
+             * itu disengaja: riwayat keputusan sudah termuat penuh di client,
+             * dan pertanyaan yang wajar atasnya ("keputusan terbesar bulan
+             * ini?") memang butuh pengurutan seketika. Tabel lain di app ini
+             * dipaginasi server, jadi cukup primitif `Table`.
+             */}
+            <DataTable columns={decidedColumns} data={decided} pageSize={20} />
           </CardContent>
         </Card>
       )}

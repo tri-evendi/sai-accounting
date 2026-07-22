@@ -3,6 +3,14 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
@@ -95,44 +103,46 @@ export default async function ContractsPage({
 
       {/* Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">No. Kontrak</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Pembeli</th>
-                <th className="px-6 py-3 font-medium text-gray-500">
+        <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>No. Kontrak</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Pembeli</TableHead>
+                <TableHead>
                   <TermTooltip term="penerima_barang">Penerima Barang</TermTooltip>
-                </th>
-                <th className="px-6 py-3 font-medium text-gray-500">Jumlah Barang</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="text-right">Jumlah Barang</TableHead>
+                <TableHead>Mata Uang</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {contracts.length === 0 ? (
-                <tr><td colSpan={7}><EmptyState icon={<FileText className="h-12 w-12" />} title="Belum ada kontrak" description="Buat kontrak pertama sebelum barang dikirim." actionLabel="+ Buat Kontrak" actionHref="/contracts/new" /></td></tr>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    <EmptyState icon={<FileText className="h-12 w-12" />} title="Belum ada kontrak" description="Buat kontrak pertama sebelum barang dikirim." actionLabel="+ Buat Kontrak" actionHref="/contracts/new" />
+                  </TableCell>
+                </TableRow>
               ) : (
                 contracts.map((contract) => (
-                  <tr key={contract.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3">
-                      <Link href={`/contracts/${contract.id}`} className="text-blue-600 hover:underline font-medium">
+                  <TableRow key={contract.id}>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="cursor-pointer font-medium text-primary hover:underline">
                         {contract.contractNo}
                       </Link>
-                    </td>
-                    <td className="px-6 py-3 text-gray-500">{formatDateShort(contract.date)}</td>
-                    <td className="px-6 py-3 text-gray-700">{contract.buyer}</td>
-                    <td className="px-6 py-3 text-gray-500">{contract.consigneeRef?.name || contract.consignee || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{contract.items.length}</td>
-                    <td className="px-6 py-3 text-gray-500">{contract.currency}</td>
-                    <td className="px-6 py-3"><StatusBadge status={contract.status} /></td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(contract.date)}</TableCell>
+                    <TableCell className="text-foreground">{contract.buyer}</TableCell>
+                    <TableCell className="text-muted-foreground">{contract.consigneeRef?.name || contract.consignee || "-"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">{contract.items.length}</TableCell>
+                    <TableCell className="text-muted-foreground">{contract.currency}</TableCell>
+                    <TableCell><StatusBadge status={contract.status} /></TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/contracts" searchParams={params} />
       </Card>
     </div>

@@ -36,21 +36,21 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
   }
 
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3">
-      <p className="text-sm text-gray-500">
-        Page {currentPage} of {totalPages}
+    <div className="flex items-center justify-between border-t border-border px-6 py-3">
+      <p className="text-sm text-muted-foreground">
+        Halaman {currentPage} dari {totalPages}
       </p>
-      <nav className="flex items-center gap-1">
+      <nav className="flex items-center gap-1" aria-label="Navigasi halaman">
         {/* Previous */}
         {currentPage > 1 ? (
           <Link
             href={buildUrl(basePath, currentPage - 1, searchParams)}
-            className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            className="inline-flex cursor-pointer items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
         ) : (
-          <span className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-gray-300">
+          <span className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground/40">
             <ChevronLeft className="h-4 w-4" />
           </span>
         )}
@@ -58,10 +58,10 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
         {/* Page numbers */}
         {startPage > 1 && (
           <>
-            <Link href={buildUrl(basePath, 1, searchParams)} className="inline-flex items-center rounded-md px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100">
+            <Link href={buildUrl(basePath, 1, searchParams)} className="inline-flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted">
               1
             </Link>
-            {startPage > 2 && <span className="px-1 text-gray-400">...</span>}
+            {startPage > 2 && <span className="px-1 text-muted-foreground">...</span>}
           </>
         )}
 
@@ -72,8 +72,8 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
             className={cn(
               "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium",
               page === currentPage
-                ? "bg-blue-600 text-white"
-                : "text-gray-500 hover:bg-gray-100"
+                ? "bg-primary text-primary-foreground"
+                : "cursor-pointer text-muted-foreground hover:bg-muted"
             )}
           >
             {page}
@@ -82,8 +82,8 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
 
         {endPage < totalPages && (
           <>
-            {endPage < totalPages - 1 && <span className="px-1 text-gray-400">...</span>}
-            <Link href={buildUrl(basePath, totalPages, searchParams)} className="inline-flex items-center rounded-md px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100">
+            {endPage < totalPages - 1 && <span className="px-1 text-muted-foreground">...</span>}
+            <Link href={buildUrl(basePath, totalPages, searchParams)} className="inline-flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted">
               {totalPages}
             </Link>
           </>
@@ -93,12 +93,12 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
         {currentPage < totalPages ? (
           <Link
             href={buildUrl(basePath, currentPage + 1, searchParams)}
-            className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            className="inline-flex cursor-pointer items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted"
           >
             <ChevronRight className="h-4 w-4" />
           </Link>
         ) : (
-          <span className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-gray-300">
+          <span className="inline-flex items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground/40">
             <ChevronRight className="h-4 w-4" />
           </span>
         )}

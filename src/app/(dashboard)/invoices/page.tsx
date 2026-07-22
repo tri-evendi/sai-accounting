@@ -3,6 +3,14 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -74,38 +82,40 @@ export default async function InvoicesPage({
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">No. Tagihan</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Jumlah Barang</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Pembayaran</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.length === 0 ? (
-                <tr><td colSpan={5}><EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Buat tagihan pertama untuk pelanggan Anda." actionLabel="+ Buat Tagihan" actionHref="/invoices/new" /></td></tr>
-              ) : (
-                invoices.map((inv) => (
-                  <tr key={inv.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3">
-                      <Link href={`/invoices/${inv.id}`} className="text-blue-600 hover:underline font-medium">
-                        {inv.invoiceNo}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-3 text-gray-500">{formatDateShort(inv.date)}</td>
-                    <td className="px-6 py-3 text-gray-500">{inv.items.length}</td>
-                    <td className="px-6 py-3 text-gray-500">{inv.payments.length}</td>
-                    <td className="px-6 py-3"><StatusBadge status={inv.status} /></td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>No. Tagihan</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead className="text-right">Jumlah Barang</TableHead>
+              <TableHead className="text-right">Pembayaran</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invoices.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Buat tagihan pertama untuk pelanggan Anda." actionLabel="+ Buat Tagihan" actionHref="/invoices/new" />
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((inv) => (
+                <TableRow key={inv.id}>
+                  <TableCell>
+                    <Link href={`/invoices/${inv.id}`} className="cursor-pointer font-medium text-primary hover:underline">
+                      {inv.invoiceNo}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(inv.date)}</TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">{inv.items.length}</TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">{inv.payments.length}</TableCell>
+                  <TableCell><StatusBadge status={inv.status} /></TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/invoices" searchParams={params} />
       </Card>
     </div>

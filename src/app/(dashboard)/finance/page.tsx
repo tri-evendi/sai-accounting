@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
+import { Money } from "@/components/ui/money";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
@@ -222,70 +231,79 @@ export default async function FinancePage({
         <CardHeader>
           <CardTitle>Daftar Transaksi ({totalCount})</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Jenis Kas</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Keterangan</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">
-                  <TermTooltip term="debit">Uang Masuk</TermTooltip>
-                </th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">
-                  <TermTooltip term="kredit">Uang Keluar</TermTooltip>
-                </th>
-                <th className="px-6 py-3 font-medium text-gray-500">Rekonsiliasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      icon={<Wallet className="h-12 w-12" />}
-                      title="Belum ada transaksi kas & bank"
-                      description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
-                      actionLabel="+ Catat Transaksi"
-                      actionHref="/finance/new"
-                    />
-                  </td>
-                </tr>
-              ) : (
-                transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-500">{formatDateShort(t.date)}</td>
-                    <td className="px-6 py-3 text-gray-700">
-                      {CASH_TYPE_LABELS[t.type as CashType] || t.type}
-                    </td>
-                    <td className="px-6 py-3 text-gray-900">{t.description}</td>
-                    <td className="px-6 py-3 text-gray-500">{t.currency}</td>
-                    <td className="px-6 py-3 text-right text-green-600 tabular-nums">
-                      {Number(t.debit) > 0 ? formatCurrency(Number(t.debit), t.currency) : "-"}
-                    </td>
-                    <td className="px-6 py-3 text-right text-red-600 tabular-nums">
-                      {Number(t.credit) > 0 ? formatCurrency(Number(t.credit), t.currency) : "-"}
-                    </td>
-                    <td className="px-6 py-3">
-                      {t.type === "bank" ? (
-                        t.reconciled ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-700">
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Cocok
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">Belum</span>
-                        )
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jenis Kas</TableHead>
+              <TableHead>Keterangan</TableHead>
+              <TableHead>Mata Uang</TableHead>
+              <TableHead className="text-right">
+                <TermTooltip term="debit">Uang Masuk</TermTooltip>
+              </TableHead>
+              <TableHead className="text-right">
+                <TermTooltip term="kredit">Uang Keluar</TermTooltip>
+              </TableHead>
+              <TableHead>Rekonsiliasi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={<Wallet className="h-12 w-12" />}
+                    title="Belum ada transaksi kas & bank"
+                    description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
+                    actionLabel="+ Catat Transaksi"
+                    actionHref="/finance/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              transactions.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(t.date)}</TableCell>
+                  <TableCell className="text-foreground">
+                    {CASH_TYPE_LABELS[t.type as CashType] || t.type}
+                  </TableCell>
+                  <TableCell className="text-foreground">{t.description}</TableCell>
+                  <TableCell className="text-muted-foreground">{t.currency}</TableCell>
+                  {/* Uang masuk hijau / uang keluar merah (semantik warna uang
+                      MASTER.md); label kolomnya sendiri sudah membedakan
+                      keduanya, jadi warna bukan satu-satunya penanda. */}
+                  <TableCell className="text-right">
+                    {Number(t.debit) > 0 ? (
+                      <Money value={Number(t.debit)} currency={t.currency} className="text-success" />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {Number(t.credit) > 0 ? (
+                      <Money value={Number(t.credit)} currency={t.currency} className="text-destructive" />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {t.type === "bank" ? (
+                      t.reconciled ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-success-strong">
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Cocok
+                        </span>
                       ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <span className="text-xs text-muted-foreground">Belum</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/finance" searchParams={params} />
       </Card>
     </div>

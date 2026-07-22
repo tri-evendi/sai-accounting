@@ -1,40 +1,97 @@
+"use client";
+
+/**
+ * Input (issue #50) — CVA + token, API pemanggil (`label`, `error`) tetap.
+ *
+ * Yang berubah selain warna:
+ *   • tinggi kontrol jadi 40px (`h-10`) — "target sentuh ≥ 40px" MASTER.md;
+ *     sebelumnya hanya padding, sehingga tingginya ±38px;
+ *   • `focus-visible` menggantikan `focus`, jadi ring hanya muncul saat
+ *     navigasi keyboard;
+ *   • pesan error kini benar-benar TERHUBUNG ke isiannya: `aria-invalid` +
+ *     `aria-describedby` -> id pesan, dan pesannya `role="alert"` sehingga
+ *     diumumkan. Sebelumnya error hanya teks merah di bawah field — pengguna
+ *     pembaca layar tidak tahu field mana yang salah.
+ *
+ * `fieldVariants` diekspor dan dipakai ulang oleh `Select` supaya kedua
+ * kontrol tidak pelan-pelan berbeda rupa.
+ */
+
+import { useId } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { forwardRef, type InputHTMLAttributes } from "react";
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  /**
-   * ReactNode, bukan string, supaya label boleh membawa bantuan kontekstual —
-   * mis. `<TermTooltip term="kurs">Kurs</TermTooltip>` (issue #6). Tetap dibungkus
-   * `<label htmlFor>` yang sama, jadi klik pada teksnya tetap memfokuskan isian.
-   */
-  label?: React.ReactNode;
-  error?: string;
-}
-
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, ...props }, ref) => {
-    return (
-      <div className="space-y-1">
-        {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-            {label}
-          </label>
-        )}
-        <input
-          ref={ref}
-          id={id}
-          className={cn(
-            "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
-            error && "border-red-500 focus:border-red-500 focus:ring-red-500",
-            className
-          )}
-          {...props}
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
-    );
+const fieldVariants = cva(
+  [
+    "block w-full rounded-md border bg-background px-3 text-sm text-foreground shadow-sm",
+    "transition-colors duration-150 motion-reduce:transition-none",
+    "outline-none placeholder:text-muted-foreground",
+    "focus-visible:ring-2 focus-visible:ring-offset-0",
+    "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
+  ],
+  {
+    variants: {
+      invalid: {
+        false: "border-border focus-visible:border-ring focus-visible:ring-ring",
+        true: "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
+      },
+      fieldSize: {
+        /** Default — 40px, target sentuh minimum MASTER.md. */
+        md: "h-10 py-2",
+        sm: "h-8 py-1",
+      },
+    },
+    defaultVariants: { invalid: false, fieldSize: "md" },
   }
 );
-Input.displayName = "Input";
 
-export { Input };
+type InputProps = Omit<React.ComponentProps<"input">, "size"> &
+  VariantProps<typeof fieldVariants> & {
+    /**
+     * ReactNode, bukan string, supaya label boleh membawa bantuan kontekstual —
+     * mis. `<TermTooltip term="kurs">Kurs</TermTooltip>` (issue #6). Tetap
+     * dibungkus `<label htmlFor>` yang sama, jadi klik pada teksnya tetap
+     * memfokuskan isian.
+     */
+    label?: React.ReactNode;
+    error?: string;
+  };
+
+function Input({
+  className,
+  label,
+  error,
+  id,
+  fieldSize,
+  invalid,
+  "aria-describedby": describedBy,
+  ...props
+}: InputProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const errorId = `${inputId}-error`;
+  const isInvalid = invalid ?? Boolean(error);
+
+  return (
+    <div className="space-y-1">
+      {label && <Label htmlFor={inputId}>{label}</Label>}
+      <input
+        data-slot="input"
+        id={inputId}
+        aria-invalid={isInvalid || undefined}
+        aria-describedby={cn(describedBy, error && errorId) || undefined}
+        className={cn(fieldVariants({ invalid: isInvalid, fieldSize }), className)}
+        {...props}
+      />
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export { Input, fieldVariants };
+export type { InputProps };

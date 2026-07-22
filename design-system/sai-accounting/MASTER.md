@@ -41,7 +41,20 @@ Nama variabel mengikuti konvensi shadcn (didefinisikan di `src/app/globals.css`;
 | Sidebar (gelap, aksen) | `#0F172A` | `--sidebar` | Sesuai app |
 | Ring (fokus) | `#1E40AF` | `--ring` | Fokus a11y wajib terlihat |
 
-*Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama.
+### Pasangan status "soft / strong" (badge & penanda di atas permukaan terang)
+
+Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk teks kecil di atas latar sangat terang. Menaruh `--success` di atas `success/10` hanya menghasilkan kontras **2,96:1** (warning 2,86:1, destructive 4,13:1), jauh di bawah ambang 4.5:1 di bawah. Karena itu badge status memakai pasangan khusus:
+
+| Peran | Latar | Teks | Kontras |
+|-------|-------|------|---------|
+| Lunas / positif | `--success-soft` `#DCFCE7` | `--success-strong` `#166534` | 6,49:1 |
+| Menunggu / sebagian | `--warning-soft` `#FEF3C7` | `--warning-strong` `#92400E` | 6,37:1 |
+| Jatuh tempo / negatif | `--destructive-soft` `#FEE2E2` | `--destructive-strong` `#991B1B` | 6,80:1 |
+| Netral | `--muted` `#F1F5F9` | `--foreground` `#0F172A` | 16,30:1 |
+
+Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
+
+*Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap sudah disiapkan di blok `.dark` (kontras 8,5–10,6:1).
 
 ---
 

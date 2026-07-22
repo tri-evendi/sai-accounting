@@ -10,23 +10,21 @@
  *
  * NO NEW ACCOUNTING: a pulled faktur posts through the existing invoice rule,
  * unchanged (D: Piutang Usaha, K: Pendapatan + PPN Keluaran).
+ *
+ * Since issue #5 the body of the transaction lives in `@/lib/document-writes`
+ * (`createInvoiceInTx`) because the "Penjualan Baru" wizard creates a faktur too,
+ * in the same transaction as its surat jalan. Shared verbatim rather than copied,
+ * so the tax recompute, the outstanding guard and the approval gate cannot drift.
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { invoiceSchema, invoiceSubtotal } from "@/lib/validations/invoice";
-import { resolveInvoiceTax } from "@/lib/tax";
-import { fxAmounts } from "@/lib/validations/fx";
-import { toDateOrNull } from "@/lib/validations/common";
+import { invoiceSchema } from "@/lib/validations/invoice";
 import { requireAuth } from "@/lib/auth-guard";
-import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
-import {
-  assertWithinContract,
-  contractOutstandingForInvoice,
-  OverInvoiceError,
-} from "@/lib/document-chain";
-import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
+import { createInvoiceInTx } from "@/lib/document-writes";
+import { OverInvoiceError } from "@/lib/document-chain";
+import { approvalNotice } from "@/lib/approval-requests";
 
 export async function GET() {
   const result = await requireAuth(["bos", "core"]);
@@ -54,26 +52,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const {
-    items,
-    date,
-    dueDate,
-    pebDate,
-    rate,
-    currency,
-    taxable,
-    taxRate,
-    taxAmount,
-    contractId,
-    ...invoiceData
-  } = parsed.data;
-  // Server is authoritative on tax: PPN is recomputed from the rate when taxable,
-  // so a stale client amount never reaches the ledger. A 0% / non-taxable invoice
-  // yields PPN 0 → the posting engine emits no VAT line (issue #16).
-  const tax = resolveInvoiceTax(invoiceSubtotal(items), { taxable, taxRate, taxAmount });
-  // Gross document value in its own currency, then its IDR equivalent. Zod has
-  // already rejected a non-IDR invoice with no rate, so fxAmounts can't guess.
-  const { rate: fxRate, baseAmount } = fxAmounts(currency, tax.total, rate);
+  const { contractId } = parsed.data;
 
   // Friendly check for the source document (an FK violation would otherwise be an
   // opaque 500). Nullable — a faktur need not come from a contract.
@@ -86,53 +65,15 @@ export async function POST(request: Request) {
   try {
     // Invoice and journal commit together: if posting can't produce a correct
     // journal, the invoice is rolled back rather than left unaccounted for.
-    ({ invoice, approval } = await prisma.$transaction(async (tx) => {
-      // Outstanding guard (issue #15), inside the transaction so it reads what is
-      // actually committed and rolls the faktur back with everything else if it fires.
-      if (contractId != null) {
-        const { lines } = await contractOutstandingForInvoice(tx, contractId);
-        assertWithinContract(lines, items);
-      }
-
-      const created = await tx.invoice.create({
-        data: {
-          ...invoiceData,
-          contractId: contractId ?? null,
-          currency,
-          taxable: tax.taxable,
-          taxRate: tax.taxRate,
-          dpp: tax.dpp,
-          taxAmount: tax.taxAmount,
-          rate: fxRate,
-          baseAmount,
-          date: new Date(date),
-          dueDate: toDateOrNull(dueDate),
-          // pebNumber / exportNote flow through invoiceData; pebDate needs coercion.
-          pebDate: toDateOrNull(pebDate),
-          items: { create: items },
-        },
-        include: { items: true },
-      });
-
-      // Approval (issue #25) — created before posting and in the same
-      // transaction, so the gate withholds the journal until it is decided.
-      // The gross value (subtotal + PPN) is what is put in front of the
-      // approver: that is the money the document actually commits.
-      const request = await ensureApprovalRequest({
-        client: tx,
-        sourceType: "invoice",
-        documentId: created.id,
-        documentNo: created.invoiceNo,
-        amount: tax.total,
-        currency,
-        rate: fxRate,
-        baseAmount,
+    // The body of the transaction is `createInvoiceInTx` — the SAME function the
+    // wizard endpoint calls (issue #5), so the tax recompute, the outstanding
+    // guard (#15), the approval gate (#25) and the posting engine can never drift
+    // into two versions.
+    ({ invoice, approval } = await prisma.$transaction((tx) =>
+      createInvoiceInTx(tx, parsed.data, {
         requestedById: parseInt(result.session.user.id, 10),
-      });
-
-      await postForSource({ sourceType: "invoice", sourceId: created.id, tx });
-      return { invoice: created, approval: request };
-    }));
+      })
+    ));
   } catch (e) {
     if (e instanceof OverInvoiceError) {
       return NextResponse.json({ error: e.message, saved: false }, { status: 400 });

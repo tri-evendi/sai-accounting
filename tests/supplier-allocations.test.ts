@@ -495,7 +495,17 @@ describe("INVARIANT: an allocation edit reposts a foreign payment, and only a fo
   });
 
   it("the check is meaningful: the create path posts, the delete path unposts", () => {
-    expect(handler("POST")).toContain("postForSource(");
+    // Since issue #5 the create path's transaction body IS
+    // `createSupplierTransactionInTx` — shared verbatim with the "Pembelian Baru"
+    // wizard so the two can never drift. The posting call therefore lives in
+    // `@/lib/document-writes`, not inline here; what this test still guarantees is
+    // that POST reaches the engine through that one shared writer.
+    expect(handler("POST")).toContain("createSupplierTransactionInTx(");
+    const writer = readFileSync(
+      path.join(process.cwd(), "src/lib/document-writes.ts"),
+      "utf8"
+    );
+    expect(writer).toContain("postForSource(");
     expect(handler("DELETE")).toContain("unpostForSource(");
   });
 

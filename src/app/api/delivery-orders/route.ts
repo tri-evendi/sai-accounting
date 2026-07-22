@@ -12,21 +12,20 @@
  *
  * The over-issue guard (`assertStockAvailable`) mirrors `/api/inventory`: the app
  * refuses to drive stock negative, and so does a surat jalan — surfaced, not silent.
+ *
+ * Since issue #5 the body of the transaction lives in `@/lib/document-writes`
+ * (`createDeliveryOrderInTx`) because the "Penjualan Baru" wizard issues a surat
+ * jalan too, in the same transaction as its faktur. Shared verbatim rather than
+ * copied, so the guard, the numbering and the HPP stock-outs cannot drift apart.
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deliveryOrderSchema } from "@/lib/validations/delivery-order";
 import { requireAuth } from "@/lib/auth-guard";
-import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
-import {
-  assertStockAvailable,
-  lineStockKg,
-  nextDeliveryOrderNo,
-  sumRequestedKgByItem,
-  OverIssueError,
-} from "@/lib/delivery-orders";
+import { createDeliveryOrderInTx, loadItemNames } from "@/lib/document-writes";
+import { OverIssueError } from "@/lib/delivery-orders";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
@@ -58,22 +57,19 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { date, contractId, invoiceId, consigneeId, vehicleNo, containerNo, notes, items } =
-    parsed.data;
+  const { contractId, invoiceId, consigneeId, items } = parsed.data;
 
   // Referenced items must exist (also gives us canonical names for messages).
-  const itemIds = [...new Set(items.map((i) => i.itemId))];
-  const masters = await prisma.item.findMany({
-    where: { id: { in: itemIds } },
-    select: { id: true, name: true },
-  });
-  if (masters.length !== itemIds.length) {
+  const nameById = await loadItemNames(
+    prisma,
+    items.map((i) => i.itemId)
+  );
+  if (!nameById) {
     return NextResponse.json(
       { error: "Salah satu barang tidak ditemukan di master stok." },
       { status: 400 }
     );
   }
-  const nameById = new Map(masters.map((m) => [m.id, m.name]));
 
   // Friendly checks for the source documents (an FK violation would otherwise be
   // an opaque 500). Nullable — a surat jalan may reference none.
@@ -90,75 +86,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Consignee tidak ditemukan." }, { status: 400 });
   }
 
-  const doDate = new Date(date);
-
   let created;
   try {
-    created = await prisma.$transaction(async (tx) => {
-      // Over-issue guard, inside the transaction so it reads a consistent stock
-      // level and rolls back with everything if it fires.
-      const stockRows = await tx.stock.findMany({
-        where: { itemId: { in: itemIds } },
-        select: { itemId: true, quantity: true, type: true },
-      });
-      const availableByItem = new Map<number, number>();
-      for (const s of stockRows) {
-        const signed = (s.type === "in" ? 1 : -1) * num(s.quantity);
-        availableByItem.set(s.itemId, num(availableByItem.get(s.itemId)) + signed);
-      }
-      const requestedByItem = sumRequestedKgByItem(items);
-      assertStockAvailable(
-        itemIds.map((id) => ({
-          itemId: id,
-          itemName: nameById.get(id) ?? String(id),
-          kg: num(requestedByItem.get(id)),
-        })),
-        availableByItem
-      );
-
-      const no = await nextDeliveryOrderNo(tx, doDate);
-      const order = await tx.deliveryOrder.create({
-        data: {
-          no,
-          date: doDate,
-          contractId: contractId ?? null,
-          invoiceId: invoiceId ?? null,
-          consigneeId: consigneeId ?? null,
-          vehicleNo: vehicleNo || null,
-          containerNo: containerNo || null,
-          notes: notes || null,
-          status: "issued",
-          items: {
-            create: items.map((i) => ({
-              itemId: i.itemId,
-              itemName: i.itemName,
-              bags: i.bags,
-              kgPerBag: i.kgPerBag,
-              quantity: lineStockKg(i),
-            })),
-          },
-        },
-        include: { items: true },
-      });
-
-      // Reduce stock: one `out` movement per line, each posting HPP through the
-      // existing engine (returns null when the item has no costed history yet —
-      // exactly as a manual stock-out does; the quantity still leaves).
-      for (const line of order.items) {
-        const movement = await tx.stock.create({
-          data: {
-            itemId: line.itemId,
-            quantity: line.quantity,
-            type: "out",
-            date: doDate,
-            unitCost: null,
-            note: `Surat jalan ${no} — ${line.itemName}`,
-          },
-        });
-        await postForSource({ sourceType: "stock_movement", sourceId: movement.id, tx });
-      }
-      return order;
-    });
+    // The body of the transaction is `createDeliveryOrderInTx` — the SAME
+    // function the wizard endpoint calls (issue #5), so the over-issue guard,
+    // the document numbering and the HPP stock-outs exist in exactly one place.
+    created = await prisma.$transaction((tx) =>
+      createDeliveryOrderInTx(tx, parsed.data, { nameById })
+    );
   } catch (e) {
     if (e instanceof OverIssueError) {
       return NextResponse.json({ error: e.message }, { status: 400 });

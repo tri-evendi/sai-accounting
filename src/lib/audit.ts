@@ -59,7 +59,17 @@ export type AuditAction =
   | "approval.reject"
   | "approval.rule.create"
   | "approval.rule.update"
-  | "approval.rule.deactivate";
+  | "approval.rule.deactivate"
+  /**
+   * Wizard terpandu Penjualan/Pembelian Baru (issue #5). Penanda TAMBAHAN, bukan
+   * pengganti: dokumen yang dibuat wizard tetap menulis entri normalnya sendiri
+   * (`delivery_order.create`, `supplier_transaction.purchase`, `stock.in`, …),
+   * jadi jejaknya identik dengan formulir biasa. Entri ini hanya merekam bahwa
+   * seluruhnya lahir dari satu transaksi wizard, dan berapa dokumen di dalamnya.
+   * Wizard tidak memposting apa pun sendiri — jurnalnya dari `postForSource`.
+   */
+  | "wizard.sales"
+  | "wizard.purchase";
 
 export type AuditEntity =
   | "cash_account"

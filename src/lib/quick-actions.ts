@@ -38,11 +38,16 @@ export interface QuickAction {
 }
 
 export const QUICK_ACTIONS: QuickAction[] = [
+  // Sejak issue #5 kedua aksi ini menuju WIZARD terpandu, bukan formulir polos.
+  // Wizard-nya memandu pelanggan/pemasok → barang → pengiriman → tagihan dalam
+  // satu alur, dan tidak menyimpan apa pun sampai langkah terakhir — jadi
+  // pengguna baru tidak bisa tersesat di tengah dan meninggalkan dokumen
+  // setengah jadi. Formulir per dokumen tetap ada bagi yang sudah hafal alurnya.
   {
     key: "catat_penjualan",
     label: "Catat Penjualan",
-    description: "Buat tagihan untuk pelanggan atas barang yang dijual.",
-    href: "/invoices/new",
+    description: "Dipandu: pilih pelanggan, isi barang, lalu buat tagihannya.",
+    href: "/sales/new",
     icon: "Receipt",
     roles: ["bos", "core"],
     tone: "in",
@@ -51,8 +56,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     key: "catat_pembelian",
     label: "Catat Pembelian",
-    description: "Pilih pemasok, lalu catat barang yang dibeli beserta nilainya.",
-    href: "/suppliers",
+    description: "Dipandu: pilih pemasok, isi barang yang dibeli, lalu catat utangnya.",
+    href: "/purchases/new",
     icon: "ShoppingCart",
     roles: ["bos", "core"],
     tone: "out",

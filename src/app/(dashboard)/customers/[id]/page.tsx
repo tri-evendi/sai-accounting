@@ -25,7 +25,7 @@ export default async function CustomerDetailPage({
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Customers", href: "/customers" }, { label: customer.name }]} />
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{customer.name}</h1>
         <div className="flex gap-2">
           <Link href={`/customers/${customer.id}/edit`}>
             <Button variant="secondary">Edit</Button>
@@ -41,34 +41,34 @@ export default async function CustomerDetailPage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Name</dt>
-              <dd className="text-sm text-gray-900">{customer.name}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+              <dd className="text-sm text-foreground">{customer.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Person In Charge</dt>
-              <dd className="text-sm text-gray-900">{customer.pic || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Person In Charge</dt>
+              <dd className="text-sm text-foreground">{customer.pic || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="text-sm text-gray-900">{customer.address || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Address</dt>
+              <dd className="text-sm text-foreground">{customer.address || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Phone</dt>
-              <dd className="text-sm text-gray-900">{customer.phone || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
+              <dd className="text-sm text-foreground">{customer.phone || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Email</dt>
-              <dd className="text-sm text-gray-900">{customer.email || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Email</dt>
+              <dd className="text-sm text-foreground">{customer.email || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">PPN</dt>
-              <dd className="text-sm text-gray-900">
+              <dt className="text-sm font-medium text-muted-foreground">PPN</dt>
+              <dd className="text-sm text-foreground">
                 {customer.taxExempt ? "Bebas PPN (ekspor / non-PKP)" : "Kena PPN (standar)"}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="text-sm text-gray-900">{formatDate(customer.createdAt)}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Created</dt>
+              <dd className="text-sm text-foreground">{formatDate(customer.createdAt)}</dd>
             </div>
           </dl>
         </CardContent>

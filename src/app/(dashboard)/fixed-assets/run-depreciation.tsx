@@ -64,8 +64,8 @@ export function RunDepreciation() {
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-          <CalendarClock className="h-5 w-5 text-blue-700" aria-hidden="true" />
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <CalendarClock className="h-5 w-5 text-primary" aria-hidden="true" />
           Jalankan penyusutan bulanan
         </div>
         <div className="w-36">
@@ -92,7 +92,7 @@ export function RunDepreciation() {
         </Button>
       </div>
       {error && (
-        <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <p className="mt-3 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
           {error}
         </p>
       )}

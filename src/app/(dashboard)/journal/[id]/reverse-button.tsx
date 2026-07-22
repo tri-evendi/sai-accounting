@@ -30,7 +30,7 @@ export function ReverseButton({ journalId }: { journalId: number }) {
         onConfirm={onConfirm}
         trigger={<Button variant="danger" size="sm">Balik Jurnal</Button>}
       />
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

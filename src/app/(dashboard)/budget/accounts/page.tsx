@@ -42,8 +42,8 @@ export default async function BudgetAccountsPage({
   return (
     <div className="max-w-5xl">
       <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Anggaran Akun" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Anggaran Akun</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Anggaran Akun</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Nilai anggaran per akun pendapatan/beban untuk tiap bulan, dalam IDR. Satu anggaran per akun
         per bulan — menyimpan ulang akan menimpa nilai sebelumnya.
       </p>

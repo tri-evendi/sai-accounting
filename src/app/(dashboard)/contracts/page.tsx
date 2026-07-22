@@ -62,7 +62,7 @@ export default async function ContractsPage({
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="kontrak">Kontrak ({totalCount})</TermTooltip>
           </h1>
           <LearnMore term="kontrak" className="mt-1" label="Pelajari ini: apa itu kontrak penjualan" />
@@ -96,9 +96,9 @@ export default async function ContractsPage({
           name="search"
           placeholder="Cari no. kontrak, pembeli, atau penerima barang..."
           defaultValue={params.search}
-          className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full max-w-md rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Cari</button>
+        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-ring">Cari</button>
       </form>
 
       {/* Table */}

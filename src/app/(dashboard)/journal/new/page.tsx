@@ -105,9 +105,9 @@ export default function NewJournalPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Jurnal Baru</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Jurnal Baru</h1>
 
-      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
@@ -130,7 +130,7 @@ export default function NewJournalPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <tr className="border-b border-border text-left text-muted-foreground">
                     <th className="py-2 pr-2 font-medium">Akun</th>
                     <th className="py-2 px-2 font-medium text-right">Debit</th>
                     <th className="py-2 px-2 font-medium text-right">Kredit</th>
@@ -141,7 +141,7 @@ export default function NewJournalPage() {
                 </thead>
                 <tbody>
                   {lines.map((l, i) => (
-                    <tr key={i} className="border-b border-gray-100">
+                    <tr key={i} className="border-b border-border">
                       <td className="py-2 pr-2 min-w-[220px]">
                         <Select
                           id={`acc-${i}`}
@@ -197,7 +197,7 @@ export default function NewJournalPage() {
                         <button
                           type="button"
                           aria-label="Hapus baris"
-                          className="text-gray-400 hover:text-red-600 disabled:opacity-30"
+                          className="text-muted-foreground hover:text-destructive disabled:opacity-30"
                           disabled={lines.length <= 2}
                           onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
                         >
@@ -209,14 +209,14 @@ export default function NewJournalPage() {
                 </tbody>
                 <tfoot>
                   <tr className="font-semibold">
-                    <td className="py-3 pr-2 text-gray-600">Total (IDR base)</td>
+                    <td className="py-3 pr-2 text-muted-foreground">Total (IDR base)</td>
                     <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(totalDebit, "IDR")}</td>
                     <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(totalCredit, "IDR")}</td>
                     <td colSpan={3} className="py-3 px-2">
                       {balanced ? (
-                        <span className="text-green-700">✓ Seimbang</span>
+                        <span className="text-success-strong">✓ Seimbang</span>
                       ) : (
-                        <span className="text-red-600">Selisih {formatCurrency(Math.abs(totalDebit - totalCredit), "IDR")}</span>
+                        <span className="text-destructive">Selisih {formatCurrency(Math.abs(totalDebit - totalCredit), "IDR")}</span>
                       )}
                     </td>
                   </tr>

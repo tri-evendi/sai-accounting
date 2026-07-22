@@ -55,8 +55,8 @@ export default async function NewSaleWizardPage() {
       <Breadcrumb
         items={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Penjualan Baru" }]}
       />
-      <h1 className="text-2xl font-bold text-gray-900">Penjualan Baru</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Penjualan Baru</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa
         mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong> sampai tombol
         &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.

@@ -66,13 +66,13 @@ export function ApprovalBadge() {
       href="/approvals"
       aria-label={label}
       title={label}
-      className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-2 text-sm text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
+      className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
     >
       <BellRing className="h-5 w-5" aria-hidden="true" />
       {/* Angka + teks, bukan sekadar titik berwarna (MASTER.md §2). */}
       <span
         className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-          urgent ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+          urgent ? "bg-warning-soft text-warning-strong" : "bg-primary/10 text-primary"
         }`}
       >
         {total}

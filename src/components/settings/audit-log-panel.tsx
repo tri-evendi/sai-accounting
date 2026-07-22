@@ -67,44 +67,44 @@ export function AuditLogPanel() {
     <Card>
       <CardHeader>
         <CardTitle>Security audit log</CardTitle>
-        <p className="text-xs text-gray-500 font-normal mt-1">
+        <p className="text-xs text-muted-foreground font-normal mt-1">
           Finance, stock, and account changes (manager only)
         </p>
       </CardHeader>
       <CardContent>
         {error && (
-          <p className="text-sm text-red-600 mb-4">{error}</p>
+          <p className="text-sm text-destructive mb-4">{error}</p>
         )}
         {loading ? (
-          <p className="text-sm text-gray-500 py-6 text-center">Loading…</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
         ) : logs.length === 0 ? (
-          <p className="text-sm text-gray-500 py-6 text-center">No audit entries yet</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No audit entries yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="py-2 pr-4 font-medium text-gray-500">Time</th>
-                  <th className="py-2 pr-4 font-medium text-gray-500">User</th>
-                  <th className="py-2 pr-4 font-medium text-gray-500">Action</th>
-                  <th className="py-2 pr-4 font-medium text-gray-500">Details</th>
-                  <th className="py-2 font-medium text-gray-500">IP</th>
+                <tr className="border-b border-border text-left">
+                  <th className="py-2 pr-4 font-medium text-muted-foreground">Time</th>
+                  <th className="py-2 pr-4 font-medium text-muted-foreground">User</th>
+                  <th className="py-2 pr-4 font-medium text-muted-foreground">Action</th>
+                  <th className="py-2 pr-4 font-medium text-muted-foreground">Details</th>
+                  <th className="py-2 font-medium text-muted-foreground">IP</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} className="border-b border-gray-100">
-                    <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">
+                  <tr key={log.id} className="border-b border-border">
+                    <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                       {new Date(log.createdAt).toLocaleString("id-ID")}
                     </td>
                     <td className="py-2 pr-4 font-medium">{log.username}</td>
                     <td className="py-2 pr-4">
                       {ACTION_LABELS[log.action] || log.action}
                     </td>
-                    <td className="py-2 pr-4 text-gray-600 max-w-xs truncate">
+                    <td className="py-2 pr-4 text-muted-foreground max-w-xs truncate">
                       {formatDetails(log)}
                     </td>
-                    <td className="py-2 text-gray-400 text-xs">{log.ipAddress || "—"}</td>
+                    <td className="py-2 text-muted-foreground text-xs">{log.ipAddress || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -122,7 +122,7 @@ export function AuditLogPanel() {
             >
               Previous
             </Button>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               Page {page} of {totalPages}
             </span>
             <Button

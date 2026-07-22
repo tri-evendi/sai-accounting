@@ -48,10 +48,10 @@ export default async function StockOpnamePage({
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="stok_opname">Hitung Ulang Stok</TermTooltip>
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Hitungan fisik dibanding catatan sistem · stok menipis ≤ {LOW_STOCK_THRESHOLD} satuan
           </p>
           <LearnMore term="stok_opname" className="mt-1" />
@@ -68,20 +68,20 @@ export default async function StockOpnamePage({
       {/* Summary */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
-          <CardHeader><CardTitle className="text-sm text-gray-500">Jumlah Barang</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Jumlah Barang</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold">{stockHealth.totalItems}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-gray-500">Stok Aman</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-green-600">{stockHealth.healthy}</p></CardContent>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Aman</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-success">{stockHealth.healthy}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-gray-500">Stok Menipis</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-amber-600">{stockHealth.lowStock}</p></CardContent>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Menipis</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-warning">{stockHealth.lowStock}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-gray-500">Stok Habis</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-red-600">{stockHealth.empty}</p></CardContent>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Habis</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-destructive">{stockHealth.empty}</p></CardContent>
         </Card>
       </div>
 
@@ -91,14 +91,14 @@ export default async function StockOpnamePage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Barang</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Satuan</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Total Masuk</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Total Keluar</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Sisa Stok</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Pergerakan Terakhir</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Kondisi</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Satuan</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Masuk</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Keluar</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Sisa Stok</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Pergerakan Terakhir</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Kondisi</th>
               </tr>
             </thead>
             <tbody>
@@ -118,13 +118,13 @@ export default async function StockOpnamePage({
                 inventory.map((item) => {
                   const level = getStockLevel(item.currentStock);
                   return (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-6 py-3 text-gray-500">{item.unit || "-"}</td>
-                    <td className="px-6 py-3 text-right text-green-600 tabular-nums">{item.totalIn}</td>
-                    <td className="px-6 py-3 text-right text-red-600 tabular-nums">{item.totalOut}</td>
+                  <tr key={item.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-6 py-3 font-medium text-foreground">{item.name}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{item.unit || "-"}</td>
+                    <td className="px-6 py-3 text-right text-success tabular-nums">{item.totalIn}</td>
+                    <td className="px-6 py-3 text-right text-destructive tabular-nums">{item.totalOut}</td>
                     <td className="px-6 py-3 text-right font-semibold tabular-nums">{item.currentStock}</td>
-                    <td className="px-6 py-3 text-gray-500">
+                    <td className="px-6 py-3 text-muted-foreground">
                       {item.lastMovement
                         ? `${item.lastMovement.type === "in" ? "Masuk" : "Keluar"} — ${formatDateShort(item.lastMovement.date)}`
                         : "Belum ada pergerakan"}

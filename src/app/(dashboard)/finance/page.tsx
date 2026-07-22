@@ -109,7 +109,7 @@ export default async function FinancePage({
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>
           </h1>
           <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas &amp; bank" />
@@ -126,8 +126,8 @@ export default async function FinancePage({
           <form method="get" className="flex flex-wrap gap-3 items-end">
             {/* Account Type */}
             <div>
-              <label htmlFor="filter-type" className="block text-xs font-medium text-gray-500 mb-1">Jenis Kas</label>
-              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kas</label>
+              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Jenis</option>
                 <option value="bank">Bank</option>
                 <option value="kas_besar">Kas Besar</option>
@@ -137,8 +137,8 @@ export default async function FinancePage({
 
             {/* Currency */}
             <div>
-              <label htmlFor="filter-currency" className="block text-xs font-medium text-gray-500 mb-1">Mata Uang</label>
-              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
+              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua</option>
                 <option value="IDR">IDR</option>
                 <option value="USD">USD</option>
@@ -148,8 +148,8 @@ export default async function FinancePage({
 
             {/* Year */}
             <div>
-              <label htmlFor="filter-year" className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
-              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">Tahun</label>
+              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Tahun</option>
                 {years.map((y) => (
                   <option key={y} value={y}>{y}</option>
@@ -159,8 +159,8 @@ export default async function FinancePage({
 
             {/* Month */}
             <div>
-              <label htmlFor="filter-month" className="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
-              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">Bulan</label>
+              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Bulan</option>
                 {months.map((m, i) => (
                   <option key={i} value={i + 1}>{m}</option>
@@ -182,7 +182,7 @@ export default async function FinancePage({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         {balances.length === 0 ? (
           <Card>
-            <CardContent className="py-8 text-center text-gray-500">
+            <CardContent className="py-8 text-center text-muted-foreground">
               Belum ada catatan kas {params.year ? "untuk periode ini" : ""}
             </CardContent>
           </Card>
@@ -192,15 +192,15 @@ export default async function FinancePage({
             return (
               <Card key={`${b.type}_${b.currency}`}>
                 <CardHeader>
-                  <CardTitle className="text-sm text-gray-500">
+                  <CardTitle className="text-sm text-muted-foreground">
                     {CASH_TYPE_LABELS[b.type as CashType] || b.type} ({b.currency})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-success" : "text-destructive"}`}>
                     {formatCurrency(balance, b.currency)}
                   </p>
-                  <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                  <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
                     <span className="tabular-nums">
                       Masuk: {formatCurrency(b.debit, b.currency)}
                     </span>
@@ -209,7 +209,7 @@ export default async function FinancePage({
                     </span>
                   </div>
                   {b.type === "bank" && reconByCurrency.get(b.currency) && (
-                    <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-500">
+                    <div className="mt-2 flex items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                       <span>
                         Rekonsiliasi: {reconByCurrency.get(b.currency)!.reconciledCount}/
                         {reconByCurrency.get(b.currency)!.totalCount} cocok

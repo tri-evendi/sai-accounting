@@ -57,7 +57,7 @@ export default async function InvoicesPage({
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>
           </h1>
           <LearnMore term="faktur" className="mt-1" label="Pelajari ini: apa itu tagihan penjualan" />

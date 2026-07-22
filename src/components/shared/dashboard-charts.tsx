@@ -20,15 +20,15 @@ const CHART_HEIGHT = 260;
 // Legenda & label persen memakai teks itu juga, jadi kategori tidak pernah
 // dibedakan oleh warna saja.
 const CONTRACT_COLORS: Record<string, string> = {
-  Sah: "#22c55e",
-  Menunggu: "#eab308",
-  Dibatalkan: "#ef4444",
+  Sah: "var(--success)",
+  Menunggu: "var(--warning)",
+  Dibatalkan: "var(--destructive)",
 };
 
 const STOCK_COLORS: Record<string, string> = {
-  Aman: "#22c55e",
-  Menipis: "#f59e0b",
-  Habis: "#ef4444",
+  Aman: "var(--success)",
+  Menipis: "var(--warning)",
+  Habis: "var(--destructive)",
 };
 
 interface PieDatum {
@@ -39,7 +39,7 @@ interface PieDatum {
 function ChartEmpty({ message }: { message: string }) {
   return (
     <div className="flex h-full min-h-[200px] items-center justify-center">
-      <p className="text-sm text-gray-400">{message}</p>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -99,14 +99,14 @@ function DonutChart({
           labelLine={false}
         >
           {filtered.map((entry) => (
-            <Cell key={entry.name} fill={colors[entry.name] || "#94a3b8"} />
+            <Cell key={entry.name} fill={colors[entry.name] || "var(--muted-foreground)"} />
           ))}
         </Pie>
         <Tooltip />
         <Legend
           verticalAlign="bottom"
           height={36}
-          formatter={(value) => <span className="text-xs text-gray-600">{value}</span>}
+          formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
         />
       </PieChart>
     </ResponsiveContainer>
@@ -147,19 +147,19 @@ export function MonthlyActivityChart({ data }: { data: MonthlyData[] }) {
   return (
     <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
       <BarChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} allowDecimals={false} axisLine={false} tickLine={false} width={32} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} allowDecimals={false} axisLine={false} tickLine={false} width={32} />
         <Tooltip
           contentStyle={{
             borderRadius: 8,
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--border)",
             fontSize: 12,
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="contracts" fill="#3b82f6" name="Kontrak" radius={[4, 4, 0, 0]} maxBarSize={40} />
-        <Bar dataKey="invoices" fill="#8b5cf6" name="Tagihan Penjualan" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="contracts" fill="var(--chart-1)" name="Kontrak" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="invoices" fill="var(--chart-3)" name="Tagihan Penjualan" radius={[4, 4, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -190,13 +190,13 @@ export function StockLevelChart({ data }: { data: StockLevelData[] }) {
         layout="vertical"
         margin={{ top: 4, right: 20, left: 4, bottom: 4 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} allowDecimals={false} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} allowDecimals={false} axisLine={false} tickLine={false} />
         <YAxis
           type="category"
           dataKey="name"
           width={120}
-          tick={{ fontSize: 11, fill: "#374151" }}
+          tick={{ fontSize: 11, fill: "var(--foreground)" }}
           axisLine={false}
           tickLine={false}
         />
@@ -206,9 +206,9 @@ export function StockLevelChart({ data }: { data: StockLevelData[] }) {
             const unit = (item?.payload as StockLevelData)?.unit;
             return [`${formatFull(Number(value ?? 0))}${unit ? ` ${unit}` : ""}`, "Stok saat ini"];
           }}
-          contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+          contentStyle={{ borderRadius: 8, border: "1px solid var(--border)", fontSize: 12 }}
         />
-        <Bar dataKey="stock" fill="#16a34a" name="Jumlah" radius={[0, 4, 4, 0]} maxBarSize={28} />
+        <Bar dataKey="stock" fill="var(--success)" name="Jumlah" radius={[0, 4, 4, 0]} maxBarSize={28} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -232,11 +232,11 @@ function CashFlowTooltip({ active, payload, label, currency }: any) {
   const expense = payload.find((p: { dataKey: string }) => p.dataKey === "credit")?.value ?? 0;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-gray-900 mb-1.5">{label}</p>
-      <p className="text-green-600">Uang masuk: {formatMoney(income, currency)}</p>
-      <p className="text-red-600">Uang keluar: {formatMoney(expense, currency)}</p>
-      <p className="mt-1.5 font-medium text-gray-800 border-t border-gray-100 pt-1.5">
+    <div className="rounded-lg border border-border bg-white px-3 py-2 shadow-md text-xs">
+      <p className="font-medium text-foreground mb-1.5">{label}</p>
+      <p className="text-success">Uang masuk: {formatMoney(income, currency)}</p>
+      <p className="text-destructive">Uang keluar: {formatMoney(expense, currency)}</p>
+      <p className="mt-1.5 font-medium text-foreground border-t border-border pt-1.5">
         Selisih: {formatMoney(income - expense, currency)}
       </p>
     </div>
@@ -251,10 +251,10 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
   return (
     <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
       <BarChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
         <YAxis
-          tick={{ fontSize: 10, fill: "#6b7280" }}
+          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
           tickFormatter={formatCompact}
           width={52}
           axisLine={false}
@@ -262,8 +262,8 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
         />
         <Tooltip content={<CashFlowTooltip currency={currency} />} />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="debit" fill="#22c55e" name="Uang Masuk" radius={[4, 4, 0, 0]} maxBarSize={36} />
-        <Bar dataKey="credit" fill="#ef4444" name="Uang Keluar" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="debit" fill="var(--success)" name="Uang Masuk" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="credit" fill="var(--destructive)" name="Uang Keluar" radius={[4, 4, 0, 0]} maxBarSize={36} />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -120,7 +120,7 @@ export function DisclosureSection({
       onOpenChange={handleOpenChange}
       className={cn(
         "rounded-lg border bg-white transition-colors duration-150",
-        invalid ? "border-red-300" : "border-gray-200",
+        invalid ? "border-destructive" : "border-border",
         className
       )}
     >
@@ -128,32 +128,32 @@ export function DisclosureSection({
         id={buttonId}
         className={cn(
           "flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-left",
-          "transition-colors duration-150 hover:bg-gray-50",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+          "transition-colors duration-150 hover:bg-muted",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
         )}
       >
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 motion-reduce:transition-none",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
             expanded && "rotate-180"
           )}
           aria-hidden="true"
         />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">{title}</span>
+            <span className="text-sm font-semibold text-foreground">{title}</span>
             {invalid && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive-soft px-2 py-0.5 text-xs font-medium text-destructive-strong">
                 <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
                 Perlu diperiksa
               </span>
             )}
           </span>
           {description && (
-            <span className="mt-0.5 block text-xs text-gray-500">{description}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
           )}
           {!expanded && summary && (
-            <span className="mt-1 block text-xs text-gray-600">{summary}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">{summary}</span>
           )}
         </span>
         <span className="shrink-0 text-xs font-medium text-primary">
@@ -171,7 +171,7 @@ export function DisclosureSection({
         role="group"
         aria-labelledby={buttonId}
         hidden={!expanded}
-        className="border-t border-gray-200 px-4 py-4"
+        className="border-t border-border px-4 py-4"
       >
         {children}
       </CollapsibleContent>

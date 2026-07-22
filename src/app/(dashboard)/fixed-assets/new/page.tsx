@@ -43,10 +43,10 @@ export default async function NewFixedAssetPage() {
   return (
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Aset Baru" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Daftarkan Aset Tetap</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Daftarkan Aset Tetap</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Kendaraan, alat, atau bangunan yang akan disusutkan otomatis.{" "}
-        <Link href="/fixed-assets/categories" className="text-blue-700 hover:underline">
+        <Link href="/fixed-assets/categories" className="text-primary hover:underline">
           Kelola kategori
         </Link>
         .

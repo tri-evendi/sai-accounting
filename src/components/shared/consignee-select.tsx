@@ -88,9 +88,9 @@ export function ConsigneeSelect({
         value={consigneeId != null ? String(consigneeId) : null}
         onChange={(v) => onConsigneeIdChange(v == null ? null : Number(v))}
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         Belum ada di master?{" "}
-        <Link href="/consignees/new" target="_blank" className="text-blue-600 hover:underline">
+        <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
           Tambah consignee
         </Link>
         , lalu pilih di sini.

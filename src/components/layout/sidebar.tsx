@@ -111,10 +111,10 @@ function NavLink({
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
         active
-          ? "bg-blue-600 text-white border-l-4 border-white"
-          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+          ? "bg-sidebar-primary text-sidebar-primary-foreground border-l-4 border-sidebar-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
       )}
     >
       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -146,19 +146,19 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-gray-900 text-white transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-between px-6 border-b border-gray-800">
+        <div className="flex h-16 shrink-0 items-center justify-between px-6 border-b border-sidebar-border">
           <Link href="/dashboard" className="text-lg font-bold">
             {APP_NAME}
           </Link>
           <button
             onClick={onClose}
             aria-label="Tutup menu"
-            className="lg:hidden cursor-pointer text-gray-400 transition-colors duration-150 hover:text-white"
+            className="lg:hidden cursor-pointer text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -176,7 +176,7 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
 
           {groups.map((group) => (
             <div key={group.id} className="mt-5 first:mt-4">
-              <h2 className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              <h2 className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
                 {group.label}
               </h2>
               <div className="space-y-1">
@@ -194,9 +194,9 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
         </nav>
 
         {/* Version */}
-        <div className="shrink-0 border-t border-gray-800 px-6 py-3">
-          <p className="text-xs text-gray-500">SAI Management</p>
-          <p className="text-xs text-gray-600">v0.1.0</p>
+        <div className="shrink-0 border-t border-sidebar-border px-6 py-3">
+          <p className="text-xs text-sidebar-foreground/60">SAI Management</p>
+          <p className="text-xs text-sidebar-foreground/50">v0.1.0</p>
         </div>
       </aside>
     </>

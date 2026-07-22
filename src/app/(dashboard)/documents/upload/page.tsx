@@ -64,10 +64,10 @@ export default function UploadDocumentPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Upload Document</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Upload Document</h1>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -77,17 +77,17 @@ export default function UploadDocumentPage() {
             <div className="space-y-4">
               {/* File Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                <label className="block text-sm font-medium text-foreground mb-1">File</label>
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                      <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                       {file ? (
-                        <p className="text-sm text-gray-700 font-medium">{file.name}</p>
+                        <p className="text-sm text-foreground font-medium">{file.name}</p>
                       ) : (
                         <>
-                          <p className="text-sm text-gray-500">Click to upload</p>
-                          <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, PDF (max 10MB)</p>
+                          <p className="text-sm text-muted-foreground">Click to upload</p>
+                          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, PDF (max 10MB)</p>
                         </>
                       )}
                     </div>

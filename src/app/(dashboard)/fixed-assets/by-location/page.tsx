@@ -31,8 +31,8 @@ export default async function AssetsByLocationPage() {
   return (
     <div>
       <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Aset per Lokasi" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Aset per Lokasi</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Aset per Lokasi</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Aset aktif dikelompokkan berdasarkan lokasi. Nilai dalam IDR.
       </p>
 
@@ -49,44 +49,44 @@ export default async function AssetsByLocationPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Lokasi</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Jumlah Aset</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nilai Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Akum. Penyusutan</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nilai Buku</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Lokasi</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Jumlah Aset</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Perolehan</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Akum. Penyusutan</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Buku</th>
                 </tr>
               </thead>
               <tbody>
                 {groups.map((g) => (
-                  <tr key={g.location ?? "__none__"} className="border-b border-gray-100">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {g.location ?? <span className="text-gray-500">Tanpa lokasi</span>}
+                  <tr key={g.location ?? "__none__"} className="border-b border-border">
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {g.location ?? <span className="text-muted-foreground">Tanpa lokasi</span>}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">{g.count}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">{g.count}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(g.cost, "IDR")}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(g.accumulated, "IDR")}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(g.book, "IDR")}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-200 font-semibold">
-                  <td className="px-4 py-3 text-gray-900">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">{totals.count}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                <tr className="border-t-2 border-border font-semibold">
+                  <td className="px-4 py-3 text-foreground">Total</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">{totals.count}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {formatCurrency(totals.cost, "IDR")}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {formatCurrency(totals.accumulated, "IDR")}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {formatCurrency(totals.book, "IDR")}
                   </td>
                 </tr>
@@ -96,8 +96,8 @@ export default async function AssetsByLocationPage() {
         </Card>
       )}
 
-      <p className="mt-6 text-sm text-gray-500">
-        <Link href="/fixed-assets" className="text-blue-700 hover:underline">
+      <p className="mt-6 text-sm text-muted-foreground">
+        <Link href="/fixed-assets" className="text-primary hover:underline">
           ← Kembali ke daftar aset
         </Link>
       </p>

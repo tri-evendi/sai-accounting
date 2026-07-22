@@ -35,9 +35,9 @@ const statusMark = {
 
 /** Ring colour of the stage bullet. Paired with the mark icon, never alone. */
 const statusRing: Record<ChainStatus, string> = {
-  selesai: "border-green-600 bg-green-50 text-green-700",
-  sebagian: "border-amber-600 bg-amber-50 text-amber-700",
-  belum: "border-gray-300 bg-gray-50 text-gray-400",
+  selesai: "border-success bg-success-soft text-success-strong",
+  sebagian: "border-warning bg-warning-soft text-warning-strong",
+  belum: "border-border bg-muted text-muted-foreground",
 };
 
 function stageAmount(stage: ContractChainStage, currency: string): string {
@@ -67,10 +67,10 @@ export function DocumentChainTimeline({
             {i < stages.length - 1 && (
               <span
                 aria-hidden
-                className="absolute left-1/2 top-5 hidden h-px w-full bg-gray-200 lg:block"
+                className="absolute left-1/2 top-5 hidden h-px w-full bg-muted lg:block"
               />
             )}
-            <div className="relative flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-white p-4">
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
@@ -81,11 +81,11 @@ export function DocumentChainTimeline({
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">
-                    <span className="text-gray-400">{i + 1}. </span>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    <span className="text-muted-foreground">{i + 1}. </span>
                     {stage.label}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {stage.count} dokumen
                   </p>
                 </div>
@@ -95,7 +95,7 @@ export function DocumentChainTimeline({
                   <Mark className="mr-1 h-3 w-3" aria-hidden />
                   {badge.label}
                 </Badge>
-                <span className="truncate text-right text-xs tabular-nums text-gray-700">
+                <span className="truncate text-right text-xs tabular-nums text-foreground">
                   {stageAmount(stage, currency)}
                 </span>
               </div>

@@ -52,13 +52,13 @@ export default function NewReconciliationPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Rekonsiliasi Baru</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <h1 className="text-2xl font-bold text-foreground mb-1">Rekonsiliasi Baru</h1>
+      <p className="text-sm text-muted-foreground mb-6">
         Ambil saldo awal & akhir dari rekening koran bank untuk periode yang direkonsiliasi.
       </p>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
           {error}
         </div>
       )}
@@ -82,7 +82,7 @@ export default function NewReconciliationPage() {
                 ]}
               />
               <div className="flex items-end">
-                <p className="flex items-start gap-1 text-xs text-gray-500">
+                <p className="flex items-start gap-1 text-xs text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>Satu rekening = satu mata uang. Rekonsiliasi hanya membandingkan dalam mata uang ini.</span>
                 </p>

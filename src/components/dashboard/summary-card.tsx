@@ -58,43 +58,43 @@ const DIRECTION: Record<MoneyDirection, DirectionStyle> = {
   in: {
     Icon: ArrowDownToLine,
     word: "Masuk",
-    value: "text-green-700",
-    chip: "bg-green-50 text-green-800 border-green-200",
+    value: "text-success-strong",
+    chip: "bg-success-soft text-success-strong border-success/30",
     sign: "",
   },
   out: {
     Icon: ArrowUpFromLine,
     word: "Keluar",
-    value: "text-red-700",
-    chip: "bg-red-50 text-red-800 border-red-200",
+    value: "text-destructive-strong",
+    chip: "bg-destructive-soft text-destructive-strong border-destructive/30",
     sign: "",
   },
   profit: {
     Icon: TrendingUp,
     word: "Untung",
-    value: "text-green-700",
-    chip: "bg-green-50 text-green-800 border-green-200",
+    value: "text-success-strong",
+    chip: "bg-success-soft text-success-strong border-success/30",
     sign: "+",
   },
   loss: {
     Icon: TrendingDown,
     word: "Rugi",
-    value: "text-red-700",
-    chip: "bg-red-50 text-red-800 border-red-200",
+    value: "text-destructive-strong",
+    chip: "bg-destructive-soft text-destructive-strong border-destructive/30",
     sign: "−",
   },
   receivable: {
     Icon: HandCoins,
     word: "Belum masuk",
-    value: "text-gray-900",
-    chip: "bg-amber-50 text-amber-800 border-amber-200",
+    value: "text-foreground",
+    chip: "bg-warning-soft text-warning-strong border-warning/30",
     sign: "",
   },
   payable: {
     Icon: Receipt,
     word: "Belum keluar",
-    value: "text-gray-900",
-    chip: "bg-amber-50 text-amber-800 border-amber-200",
+    value: "text-foreground",
+    chip: "bg-warning-soft text-warning-strong border-warning/30",
     sign: "",
   },
 };
@@ -139,7 +139,7 @@ export function SummaryCard({
   return (
     <Card className="flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-medium text-gray-600" title={explanation}>
+        <h3 className="text-sm font-medium text-muted-foreground" title={explanation}>
           {title}
         </h3>
         <span
@@ -157,20 +157,20 @@ export function SummaryCard({
         {style.sign}
         {formatCurrency(amount, "IDR")}
       </p>
-      <p className="mt-0.5 text-xs text-gray-500 text-right">{period}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground text-right">{period}</p>
 
-      <p className="mt-3 text-sm leading-snug text-gray-600">{explanation}</p>
+      <p className="mt-3 text-sm leading-snug text-muted-foreground">{explanation}</p>
 
-      {note && <p className="mt-2 text-xs font-medium text-gray-700">{note}</p>}
+      {note && <p className="mt-2 text-xs font-medium text-foreground">{note}</p>}
 
       {showBreakdown && (
-        <ul className="mt-3 space-y-1 border-t border-gray-100 pt-2">
+        <ul className="mt-3 space-y-1 border-t border-border pt-2">
           {breakdown.map((b) => (
             <li key={b.currency} className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="text-gray-500">
+              <span className="text-muted-foreground">
                 {b.currency} · {b.count} dokumen
               </span>
-              <span className="tabular-nums text-gray-700">
+              <span className="tabular-nums text-foreground">
                 {formatCurrency(b.outstandingBase, "IDR")}
               </span>
             </li>
@@ -179,7 +179,7 @@ export function SummaryCard({
       )}
 
       {unresolved > 0 && (
-        <p className="mt-2 flex items-start gap-1 text-xs text-amber-700">
+        <p className="mt-2 flex items-start gap-1 text-xs text-warning-strong">
           <HelpCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             {unresolved} dokumen valas belum berkurs, jadi <strong>tidak ikut dijumlahkan</strong>{" "}
@@ -190,7 +190,7 @@ export function SummaryCard({
 
       <Link
         href={href}
-        className="mt-auto pt-4 inline-flex cursor-pointer items-center gap-1 self-start text-sm font-medium text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+        className="mt-auto pt-4 inline-flex cursor-pointer items-center gap-1 self-start text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         {hrefLabel} <span aria-hidden="true">→</span>
       </Link>

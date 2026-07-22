@@ -60,7 +60,7 @@ export function AgeCell({ days, fromIssue }: { days: number; fromIssue: boolean 
   return (
     <span className="inline-flex flex-col leading-tight">
       <span className="tabular-nums">{shown} hari</span>
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </span>
   );
 }
@@ -80,24 +80,24 @@ export function AgingSummary({ buckets, total, unresolved, caption }: AgingSumma
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {AGING_BUCKETS.map((b) => (
           <Card key={b} className="p-4">
-            <p className="text-sm text-gray-500">{AGING_BUCKET_LABELS[b]}</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
+            <p className="text-sm text-muted-foreground">{AGING_BUCKET_LABELS[b]}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground tabular-nums">
               {formatCurrency(buckets[b], "IDR")}
             </p>
           </Card>
         ))}
-        <Card className="p-4 border-blue-200 bg-blue-50">
-          <p className="text-sm text-blue-900">Total Outstanding</p>
-          <p className="mt-1 text-lg font-bold text-blue-900 tabular-nums">
+        <Card className="p-4 border-primary/30 bg-primary/10">
+          <p className="text-sm text-primary">Total Outstanding</p>
+          <p className="mt-1 text-lg font-bold text-primary tabular-nums">
             {formatCurrency(total, "IDR")}
           </p>
         </Card>
       </div>
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-muted-foreground">
         Nilai dalam IDR (nilai dasar buku besar). {caption}
       </p>
       {unresolved > 0 && (
-        <p className="mt-1 flex items-start gap-1 text-xs text-amber-700">
+        <p className="mt-1 flex items-start gap-1 text-xs text-warning-strong">
           <HelpCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             {unresolved} dokumen valas belum berkurs, jadi nilai IDR-nya tidak diketahui dan
@@ -120,19 +120,19 @@ export function PartyTotals({
   if (rows.length === 0) return null;
   return (
     <Card className="mb-6">
-      <div className="px-6 py-3 border-b border-gray-200">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+      <div className="px-6 py-3 border-b border-border">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <tbody>
             {rows.slice(0, 10).map((r) => (
-              <tr key={r.name} className="border-b border-gray-100 last:border-0">
-                <td className="px-6 py-2.5 text-gray-900">{r.name}</td>
-                <td className="px-6 py-2.5 text-gray-500 text-right tabular-nums">
+              <tr key={r.name} className="border-b border-border last:border-0">
+                <td className="px-6 py-2.5 text-foreground">{r.name}</td>
+                <td className="px-6 py-2.5 text-muted-foreground text-right tabular-nums">
                   {r.count} dokumen
                 </td>
-                <td className="px-6 py-2.5 text-right font-medium text-gray-900 tabular-nums">
+                <td className="px-6 py-2.5 text-right font-medium text-foreground tabular-nums">
                   {formatCurrency(r.outstandingBase, "IDR")}
                 </td>
               </tr>

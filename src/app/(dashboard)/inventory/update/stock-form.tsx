@@ -223,10 +223,10 @@ export function StockUpdateForm({
     <div className="max-w-2xl">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Catat barang yang masuk ke gudang atau keluar dari gudang.
           </p>
           <LearnMore term="hpp" className="mt-1" label="Pelajari ini: modal barang yang terjual" />
@@ -243,7 +243,7 @@ export function StockUpdateForm({
 
       {error && (
         <div
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
           role="alert"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -251,7 +251,7 @@ export function StockUpdateForm({
         </div>
       )}
       {success && (
-        <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700" role="status">
+        <div className="mb-4 rounded-md bg-success-soft p-3 text-sm text-success-strong" role="status">
           {success}
         </div>
       )}
@@ -301,7 +301,7 @@ export function StockUpdateForm({
                   required
                 />
                 {selected && (
-                  <p className="mt-1 text-xs tabular-nums text-gray-600">
+                  <p className="mt-1 text-xs tabular-nums text-muted-foreground">
                     Stok saat ini: {formatNumber(selected.currentStock)} {selected.unit || "kg"}
                   </p>
                 )}
@@ -331,7 +331,7 @@ export function StockUpdateForm({
                   required
                 />
                 {overStock && selected && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                     <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>
                       Melebihi stok yang tersedia ({formatNumber(selected.currentStock)}{" "}
@@ -353,13 +353,13 @@ export function StockUpdateForm({
                     label={<TermTooltip term="hpp">Harga Pokok per Unit (IDR)</TermTooltip>}
                     required
                   />
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Wajib diisi. Dipakai menghitung HPP (rata-rata tertimbang) saat barang keluar —
                     tanpa ini, laba akan tercatat terlalu tinggi.
                   </p>
                 </div>
               ) : (
-                <p className="flex items-start gap-1.5 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <p className="flex items-start gap-1.5 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     HPP dihitung otomatis dari rata-rata harga pokok barang masuk, lalu diposting
@@ -378,7 +378,7 @@ export function StockUpdateForm({
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>{periodIssue}</span>
                   </p>

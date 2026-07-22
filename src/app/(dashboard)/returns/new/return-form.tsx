@@ -286,12 +286,12 @@ export function ReturnForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Barang</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Harga</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Sisa dpt diretur</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Jumlah retur</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Stok item</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Barang</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Harga</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa dpt diretur</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Jumlah retur</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Stok item</th>
                 </tr>
               </thead>
               <tbody>
@@ -300,17 +300,17 @@ export function ReturnForm({
                   const qty = Number(v?.qty) || 0;
                   const over = qty > ln.returnable + 1e-6;
                   return (
-                    <tr key={ln.invoiceItemId} className="border-b border-gray-100">
-                      <td className="px-4 py-3 text-gray-900">
+                    <tr key={ln.invoiceItemId} className="border-b border-border">
+                      <td className="px-4 py-3 text-foreground">
                         {ln.itemName}
-                        {ln.unit && <span className="text-gray-500"> ({ln.unit})</span>}
+                        {ln.unit && <span className="text-muted-foreground"> ({ln.unit})</span>}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatCurrency(ln.price, invoiceDetail.currency)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {round3(ln.returnable)}
-                        <span className="block text-xs text-gray-500">
+                        <span className="block text-xs text-muted-foreground">
                           dari {round3(ln.quantity)}
                         </span>
                       </td>
@@ -321,13 +321,13 @@ export function ReturnForm({
                           step="0.001"
                           min="0"
                           max={ln.returnable}
-                          className={`w-28 text-right tabular-nums ${over ? "border-red-500" : ""}`}
+                          className={`w-28 text-right tabular-nums ${over ? "border-destructive" : ""}`}
                           value={v?.qty ?? ""}
                           onChange={(e) => setSalesQty(ln.invoiceItemId, e.target.value)}
                           disabled={ln.returnable <= 0}
                         />
                         {over && (
-                          <span className="mt-0.5 block text-xs text-red-600">Melebihi sisa</span>
+                          <span className="mt-0.5 block text-xs text-destructive">Melebihi sisa</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -350,9 +350,9 @@ export function ReturnForm({
       {/* Purchase: free-text lines + remaining value */}
       {type === "purchase" && purchaseDetail && (
         <Card className="p-6">
-          <p className="mb-4 text-sm text-gray-600 tabular-nums">
+          <p className="mb-4 text-sm text-muted-foreground tabular-nums">
             Sisa nilai yang dapat diretur:{" "}
-            <strong className="text-gray-900">
+            <strong className="text-foreground">
               {formatCurrency(purchaseDetail.returnable, purchaseDetail.currency)}
             </strong>{" "}
             dari {formatCurrency(purchaseDetail.amount, purchaseDetail.currency)}
@@ -410,7 +410,7 @@ export function ReturnForm({
                         prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev
                       )
                     }
-                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50"
+                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"
                     aria-label="Hapus baris"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -444,15 +444,15 @@ export function ReturnForm({
         />
 
         {(salesSubtotal > 0 || purchaseSubtotal > 0) && (
-          <p className="mt-4 text-sm text-gray-600 tabular-nums">
+          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
             Nilai retur (DPP):{" "}
-            <strong className="text-gray-900">
+            <strong className="text-foreground">
               {formatCurrency(type === "sales" ? salesSubtotal : purchaseSubtotal, currency)}
             </strong>
           </p>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {type === "sales" ? (
@@ -473,7 +473,7 @@ export function ReturnForm({
         </p>
 
         {error && (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
             {error}
           </p>
         )}

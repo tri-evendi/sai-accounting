@@ -37,8 +37,8 @@ export default async function TrialBalancePage({
       <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Neraca Saldo" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Neraca Saldo</h1>
-          <p className="text-sm text-gray-500">Per {formatDate(asOf)} · nilai dalam IDR</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Neraca Saldo</h1>
+          <p className="text-sm text-muted-foreground">Per {formatDate(asOf)} · nilai dalam IDR</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatementPDFButton payload={payload} />
@@ -52,17 +52,17 @@ export default async function TrialBalancePage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Kode</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Nama Akun</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Debit</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Kredit</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Nama Akun</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit</th>
               </tr>
             </thead>
             <tbody>
               {tb.rows.map((r) => (
-                <tr key={r.code} className="border-b border-gray-100">
-                  <td className="px-6 py-2.5 font-mono text-gray-700 tabular-nums">{r.code}</td>
+                <tr key={r.code} className="border-b border-border">
+                  <td className="px-6 py-2.5 font-mono text-foreground tabular-nums">{r.code}</td>
                   <td className="px-6 py-2.5">{r.name}</td>
                   <td className="px-6 py-2.5 text-right tabular-nums">{r.debit > 0 ? formatCurrency(r.debit, "IDR") : "—"}</td>
                   <td className="px-6 py-2.5 text-right tabular-nums">{r.credit > 0 ? formatCurrency(r.credit, "IDR") : "—"}</td>
@@ -83,7 +83,7 @@ export default async function TrialBalancePage({
               )}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-300 font-semibold">
+              <tr className="border-t-2 border-border font-semibold">
                 <td className="px-6 py-3" colSpan={2}>
                   Total {tb.balanced ? <Badge variant="success">Seimbang</Badge> : <Badge variant="danger">Tidak seimbang</Badge>}
                 </td>

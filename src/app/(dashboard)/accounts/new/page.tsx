@@ -64,10 +64,10 @@ export default function NewAccountPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Akun Baru</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Akun Baru</h1>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
       )}
 
       <form onSubmit={handleSubmit}>

@@ -102,7 +102,7 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
             aria-label={`Penjelasan istilah: ${entry.label}`}
             className={cn(
               "relative inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full",
-              "text-gray-400 transition-colors duration-150 hover:text-primary hover:bg-primary/10",
+              "text-muted-foreground transition-colors duration-150 hover:text-primary hover:bg-primary/10",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
               // Area sentuh ~40px tanpa mengubah tinggi baris teks.
               "after:absolute after:-inset-2.5 after:content-['']",
@@ -126,14 +126,14 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
           onMouseEnter={cancelScheduledClose}
           onMouseLeave={scheduleClose}
         >
-          <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Istilah akuntansi
           </span>
-          <span className="mt-0.5 block text-sm font-semibold text-gray-900">{entry.term}</span>
-          <span className="mt-1.5 block text-sm leading-relaxed text-gray-600">{entry.definisi}</span>
+          <span className="mt-0.5 block text-sm font-semibold text-foreground">{entry.term}</span>
+          <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">{entry.definisi}</span>
           {entry.contoh && (
-            <span className="mt-2 block rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600">
-              <span className="font-medium text-gray-700">Contoh: </span>
+            <span className="mt-2 block rounded-md bg-muted p-2 text-xs leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Contoh: </span>
               {entry.contoh}
             </span>
           )}

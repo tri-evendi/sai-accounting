@@ -32,7 +32,7 @@ export function DueDateField({ defaultValue, value, onChange }: DueDateFieldProp
         value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
         <CalendarClock className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
         <span>
           Tanggal pembayaran disepakati. Dipakai laporan Piutang/Utang untuk menandai

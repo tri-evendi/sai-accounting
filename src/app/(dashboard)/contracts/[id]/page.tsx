@@ -84,10 +84,10 @@ export default async function ContractDetailPage({
       <Breadcrumb items={[{ label: "Contracts", href: "/contracts" }, { label: contract.contractNo }]} />
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Contract {contract.contractNo}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">{formatDate(contract.date)}</p>
+          <p className="text-sm text-muted-foreground mt-1">{formatDate(contract.date)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <ContractPDFButtons
@@ -153,7 +153,7 @@ export default async function ContractDetailPage({
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Rantai Dokumen</CardTitle>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Perjalanan kontrak ini: dikirim lewat surat jalan, ditagih lewat faktur,
             lalu dibayar. Angka pembayaran dijumlahkan dalam IDR (nilai dasar buku besar).
           </p>
@@ -167,7 +167,7 @@ export default async function ContractDetailPage({
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Sisa per Barang</CardTitle>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Berapa kilogram tiap barang sudah dikirim dan sudah difakturkan, dan berapa
             sisanya. Sisa inilah yang ditarik otomatis saat membuat faktur.
           </p>
@@ -175,14 +175,14 @@ export default async function ContractDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Barang</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Kontrak (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Dikirim (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Difakturkan (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Sisa (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Sisa Nilai</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status Faktur</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kontrak (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Dikirim (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Difakturkan (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Sisa (kg)</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Sisa Nilai</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Status Faktur</th>
               </tr>
             </thead>
             <tbody>
@@ -200,21 +200,21 @@ export default async function ContractDetailPage({
                 </tr>
               ) : (
                 outstandingLines.map((line) => (
-                  <tr key={line.key} className="border-b border-gray-100">
-                    <td className="px-6 py-3 text-gray-900">{line.itemName}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                  <tr key={line.key} className="border-b border-border">
+                    <td className="px-6 py-3 text-foreground">{line.itemName}</td>
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatNumber(line.contractedKg)}
                     </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatNumber(line.deliveredKg)}
                     </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatNumber(line.invoicedKg)}
                     </td>
-                    <td className="px-6 py-3 text-right font-medium tabular-nums text-gray-900">
+                    <td className="px-6 py-3 text-right font-medium tabular-nums text-foreground">
                       {formatNumber(line.remainingKg)}
                     </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(line.remainingValue, contract.currency)}
                     </td>
                     <td className="px-6 py-3">
@@ -240,7 +240,7 @@ export default async function ContractDetailPage({
             </tbody>
             {outstandingLines.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-gray-200 font-semibold text-gray-900">
+                <tr className="border-t-2 border-border font-semibold text-foreground">
                   <td className="px-6 py-3">Total</td>
                   <td className="px-6 py-3 text-right tabular-nums">
                     {formatNumber(totals.contractedKg)}
@@ -265,7 +265,7 @@ export default async function ContractDetailPage({
         </div>
         {(totals.unmatchedDeliveredKg > 0 || totals.unmatchedInvoicedKg > 0) && (
           <CardContent className="pt-0">
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-warning-strong">
               Ada baris dokumen dengan nama barang di luar kontrak ini
               {totals.unmatchedDeliveredKg > 0 &&
                 ` — surat jalan ${formatNumber(totals.unmatchedDeliveredKg)} kg`}
@@ -282,31 +282,31 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-gray-400" aria-hidden /> Surat Jalan
+              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden /> Surat Jalan
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.deliveryOrders.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Belum ada surat jalan.{" "}
-                <Link href="/delivery-orders/new" className="text-blue-600 hover:underline">
+                <Link href="/delivery-orders/new" className="text-primary hover:underline">
                   Buat surat jalan →
                 </Link>
               </p>
             ) : (
-              <ul className="divide-y divide-gray-100 text-sm">
+              <ul className="divide-y divide-border text-sm">
                 {chain.deliveryOrders.map((d) => (
                   <li key={d.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <Link
                         href={`/delivery-orders/${d.id}`}
-                        className="truncate font-medium text-blue-600 hover:underline"
+                        className="truncate font-medium text-primary hover:underline"
                       >
                         {d.no}
                       </Link>
-                      <p className="text-xs text-gray-500">{formatDate(d.date)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(d.date)}</p>
                     </div>
-                    <span className="shrink-0 tabular-nums text-gray-900">
+                    <span className="shrink-0 tabular-nums text-foreground">
                       {formatNumber(d.totalKg)} kg
                     </span>
                   </li>
@@ -319,39 +319,39 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-gray-400" aria-hidden /> Faktur
+              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden /> Faktur
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.invoices.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Belum ada faktur dari kontrak ini.{" "}
                 <Link
                   href={`/invoices/new?contractId=${contract.id}`}
-                  className="text-blue-600 hover:underline"
+                  className="text-primary hover:underline"
                 >
                   Buat faktur →
                 </Link>
               </p>
             ) : (
-              <ul className="divide-y divide-gray-100 text-sm">
+              <ul className="divide-y divide-border text-sm">
                 {chain.invoices.map((inv) => (
                   <li key={inv.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <Link
                         href={`/invoices/${inv.id}`}
-                        className="truncate font-medium text-blue-600 hover:underline"
+                        className="truncate font-medium text-primary hover:underline"
                       >
                         {inv.invoiceNo}
                       </Link>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(inv.date)} · Terbayar (IDR){" "}
                         <span className="tabular-nums">
                           {formatCurrency(inv.paidBase, "IDR")}
                         </span>
                       </p>
                     </div>
-                    <span className="shrink-0 tabular-nums text-gray-900">
+                    <span className="shrink-0 tabular-nums text-foreground">
                       {formatCurrency(inv.total, inv.currency)}
                     </span>
                   </li>
@@ -370,16 +370,16 @@ export default async function ContractDetailPage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Buyer</dt>
-              <dd className="text-sm text-gray-900">{contract.buyer}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Buyer</dt>
+              <dd className="text-sm text-foreground">{contract.buyer}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Consignee</dt>
-              <dd className="text-sm text-gray-900">
+              <dt className="text-sm font-medium text-muted-foreground">Consignee</dt>
+              <dd className="text-sm text-foreground">
                 {contract.consigneeRef ? (
                   <Link
                     href={`/consignees/${contract.consigneeRef.id}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {contract.consigneeRef.name}
                   </Link>
@@ -389,28 +389,28 @@ export default async function ContractDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
               <dd><StatusBadge status={contract.status} /></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Currency</dt>
-              <dd className="text-sm text-gray-900">{contract.currency}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Currency</dt>
+              <dd className="text-sm text-foreground">{contract.currency}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Packaging</dt>
-              <dd className="text-sm text-gray-900">{contract.packaging || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Packaging</dt>
+              <dd className="text-sm text-foreground">{contract.packaging || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Shipment</dt>
-              <dd className="text-sm text-gray-900">{contract.shipment || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Shipment</dt>
+              <dd className="text-sm text-foreground">{contract.shipment || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Terms of Payment 1</dt>
-              <dd className="text-sm text-gray-900">{contract.top1 || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 1</dt>
+              <dd className="text-sm text-foreground">{contract.top1 || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Terms of Payment 2</dt>
-              <dd className="text-sm text-gray-900">{contract.top2 || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 2</dt>
+              <dd className="text-sm text-foreground">{contract.top2 || "-"}</dd>
             </div>
           </dl>
         </CardContent>
@@ -424,24 +424,24 @@ export default async function ContractDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Item</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Bags</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Kg/Bag</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Price/Kg</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Total</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Item</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Bags</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kg/Bag</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Price/Kg</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {contract.items.map((item) => {
                 const itemTotal = Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
                 return (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="px-6 py-3 text-gray-900">{item.itemName}</td>
-                    <td className="px-6 py-3 text-gray-700 text-right">{Number(item.bags)}</td>
-                    <td className="px-6 py-3 text-gray-700 text-right">{Number(item.kgPerBag)}</td>
-                    <td className="px-6 py-3 text-gray-700 text-right">{Number(item.pricePerKg)}</td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium">
+                  <tr key={item.id} className="border-b border-border">
+                    <td className="px-6 py-3 text-foreground">{item.itemName}</td>
+                    <td className="px-6 py-3 text-foreground text-right">{Number(item.bags)}</td>
+                    <td className="px-6 py-3 text-foreground text-right">{Number(item.kgPerBag)}</td>
+                    <td className="px-6 py-3 text-foreground text-right">{Number(item.pricePerKg)}</td>
+                    <td className="px-6 py-3 text-foreground text-right font-medium">
                       {formatCurrency(itemTotal, contract.currency)}
                     </td>
                   </tr>
@@ -449,20 +449,20 @@ export default async function ContractDetailPage({
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-200">
-                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-gray-700">
+              <tr className="border-t-2 border-border">
+                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-foreground">
                   Total Value
                 </td>
-                <td className="px-6 py-3 text-right font-bold text-gray-900 tabular-nums">
+                <td className="px-6 py-3 text-right font-bold text-foreground tabular-nums">
                   {formatCurrency(totalValue, contract.currency)}
                 </td>
               </tr>
               {isForeign && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                  <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
                     Nilai dasar buku besar (IDR)
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
+                  <td className="px-6 py-3 text-right text-foreground tabular-nums">
                     {baseAmount != null
                       ? formatCurrency(baseAmount, "IDR")
                       : "Kurs belum diisi"}
@@ -479,7 +479,7 @@ export default async function ContractDetailPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            <div className="text-right text-sm text-gray-500">
+            <div className="text-right text-sm text-muted-foreground">
               <div className="tabular-nums">
                 {baseAmount != null && baseAmount > 0 && (
                   <>{Math.round((totalPaidBase / baseAmount) * 100)}% — </>
@@ -488,7 +488,7 @@ export default async function ContractDetailPage({
                 {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
               </div>
               {paymentsWithoutRate > 0 && (
-                <div className="text-xs text-amber-700">
+                <div className="text-xs text-warning-strong">
                   {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
                 </div>
               )}
@@ -498,10 +498,10 @@ export default async function ContractDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Note</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
               </tr>
             </thead>
             <tbody>
@@ -517,12 +517,12 @@ export default async function ContractDetailPage({
                 </tr>
               ) : (
                 contract.payments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-gray-100">
-                    <td className="px-6 py-3 text-gray-700">{formatDate(payment.date)}</td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium">
+                  <tr key={payment.id} className="border-b border-border">
+                    <td className="px-6 py-3 text-foreground">{formatDate(payment.date)}</td>
+                    <td className="px-6 py-3 text-foreground text-right font-medium">
                       {formatCurrency(Number(payment.amount), payment.currency)}
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{payment.note || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{payment.note || "-"}</td>
                   </tr>
                 ))
               )}

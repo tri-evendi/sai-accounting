@@ -36,8 +36,8 @@ export default async function BudgetHubPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Anggaran &amp; Target</h1>
-      <p className="mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground mb-1">Anggaran &amp; Target</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Rencana keuangan dibandingkan dengan realisasi buku besar. Menyusun anggaran tidak
         memposting jurnal apa pun.
       </p>
@@ -47,9 +47,9 @@ export default async function BudgetHubPage() {
           <Link key={s.href} href={s.href}>
             <Card className="h-full transition-shadow hover:shadow-md">
               <div className="p-5">
-                <s.icon className="h-6 w-6 text-blue-600" aria-hidden="true" />
-                <h2 className="mt-3 font-semibold text-gray-900">{s.title}</h2>
-                <p className="mt-1 text-sm text-gray-500">{s.desc}</p>
+                <s.icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                <h2 className="mt-3 font-semibold text-foreground">{s.title}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
               </div>
             </Card>
           </Link>

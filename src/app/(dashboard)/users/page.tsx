@@ -116,19 +116,19 @@ export default function UsersPage() {
 
   if (loading) return <PageLoader message="Loading users..." />;
   if (error && users.length === 0) {
-    return <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>;
+    return <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">{error}</div>;
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+        <h1 className="text-2xl font-bold text-foreground">User Management</h1>
         <Button onClick={() => setShowCreate(!showCreate)}>
           <UserPlus className="h-4 w-4 mr-1" /> {showCreate ? "Cancel" : "New User"}
         </Button>
       </div>
 
-      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       {/* Create User Form */}
       {showCreate && (
@@ -162,19 +162,19 @@ export default function UsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Username</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Role</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Actions</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Username</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-3 font-medium text-gray-900">{user.username}</td>
-                  <td className="px-6 py-3 text-gray-700">{user.name || "-"}</td>
+                <tr key={user.id} className="border-b border-border hover:bg-muted">
+                  <td className="px-6 py-3 font-medium text-foreground">{user.username}</td>
+                  <td className="px-6 py-3 text-foreground">{user.name || "-"}</td>
                   <td className="px-6 py-3">
                     <Badge variant={user.role === "bos" ? "success" : "default"}>
                       {ROLE_LABELS[user.role as Role] || user.role}
@@ -194,7 +194,7 @@ export default function UsersPage() {
                         confirmVariant="primary"
                         onConfirm={() => handleResetPassword(user.id)}
                         trigger={
-                          <button className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Reset password">
+                          <button className="p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10" title="Reset password">
                             <RotateCcw className="h-4 w-4" />
                           </button>
                         }
@@ -205,7 +205,7 @@ export default function UsersPage() {
                         confirmLabel="Delete"
                         onConfirm={() => handleDelete(user.id)}
                         trigger={
-                          <button className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50" title="Delete user">
+                          <button className="p-1.5 text-muted-foreground hover:text-destructive rounded hover:bg-destructive-soft" title="Delete user">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         }

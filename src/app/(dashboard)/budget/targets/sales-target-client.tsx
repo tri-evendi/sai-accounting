@@ -102,7 +102,7 @@ export function SalesTargetClient({
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Tetapkan target</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Tetapkan target</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
@@ -165,7 +165,7 @@ export function SalesTargetClient({
             />
           </div>
           {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+            <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
               {error}
             </p>
           )}
@@ -189,23 +189,23 @@ export function SalesTargetClient({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Pelanggan</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Komoditas</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Target</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Aksi</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Pelanggan</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Komoditas</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Target</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {targets.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100">
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={t.id} className="border-b border-border">
+                    <td className="px-4 py-3 text-foreground">
                       {MONTH_NAMES[t.month - 1]} {t.year}
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{t.customerName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-gray-900">{t.itemName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-foreground">{t.customerName ?? "Semua"}</td>
+                    <td className="px-4 py-3 text-foreground">{t.itemName ?? "Semua"}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(t.amount, "IDR")}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -218,7 +218,7 @@ export function SalesTargetClient({
                           <button
                             type="button"
                             disabled={deleting === t.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 disabled:opacity-50"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
                             aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
                           >
                             {deleting === t.id ? (

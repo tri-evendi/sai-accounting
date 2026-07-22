@@ -41,10 +41,10 @@ export default async function NewInvoicePage({
       <Breadcrumb
         items={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
       />
-      <h1 className="text-2xl font-bold text-gray-900">
+      <h1 className="text-2xl font-bold text-foreground">
         <TermTooltip term="faktur">Catat Penjualan</TermTooltip>
       </h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
         jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
         &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.

@@ -58,14 +58,14 @@ export default async function EfakturPage({
   return (
     <div className="max-w-5xl">
       <Breadcrumb items={[{ label: "Pajak" }, { label: "Ekspor e-Faktur" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Ekspor e-Faktur (DJP/CTAS)</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Ekspor e-Faktur (DJP/CTAS)</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Ekspor faktur keluaran &amp; ekspor (PEB) untuk suatu masa pajak dalam format CSV
         berorientasi DJP/CTAS.
       </p>
 
       {/* Honesty / disclaimer */}
-      <div className="mb-6 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning-strong">
         <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
         <span>
           Format ini <strong>berorientasi</strong> DJP/CTAS dengan kolom standar faktur keluaran,
@@ -81,7 +81,7 @@ export default async function EfakturPage({
         </CardHeader>
         <CardContent>
           {sellerNpwpMissing && (
-            <div className="mb-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive-strong">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
                 NPWP penjual belum diisi. File e-Faktur tidak dapat dibuat sampai NPWP terisi.
@@ -102,7 +102,7 @@ export default async function EfakturPage({
         <CardContent>
           <form method="get" className="flex flex-wrap items-end gap-3">
             <div>
-              <label htmlFor="from" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="from" className="block text-sm font-medium text-foreground">
                 Dari tanggal
               </label>
               <input
@@ -110,11 +110,11 @@ export default async function EfakturPage({
                 name="from"
                 type="date"
                 defaultValue={fromStr}
-                className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div>
-              <label htmlFor="to" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="to" className="block text-sm font-medium text-foreground">
                 Sampai tanggal
               </label>
               <input
@@ -122,7 +122,7 @@ export default async function EfakturPage({
                 name="to"
                 type="date"
                 defaultValue={toStr}
-                className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <Button type="submit" variant="secondary">
@@ -135,19 +135,19 @@ export default async function EfakturPage({
       {/* Summary + download */}
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
-          <div className="text-sm text-gray-600">
-            <span className="tabular-nums font-medium text-gray-900">{matched}</span> faktur cocok ·{" "}
-            <span className="tabular-nums font-medium text-green-700">{rows.length}</span> siap ekspor
+          <div className="text-sm text-muted-foreground">
+            <span className="tabular-nums font-medium text-foreground">{matched}</span> faktur cocok ·{" "}
+            <span className="tabular-nums font-medium text-success-strong">{rows.length}</span> siap ekspor
             {problems.length > 0 && (
               <>
                 {" "}·{" "}
-                <span className="tabular-nums font-medium text-amber-700">{problems.length}</span>{" "}
+                <span className="tabular-nums font-medium text-warning-strong">{problems.length}</span>{" "}
                 perlu dilengkapi
               </>
             )}
           </div>
           {sellerNpwpMissing ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-500">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               <Download className="h-4 w-4" aria-hidden="true" />
               Isi NPWP penjual untuk mengunduh
             </span>
@@ -164,24 +164,24 @@ export default async function EfakturPage({
 
       {/* Problems — invoices held back for a missing required field */}
       {problems.length > 0 && (
-        <Card className="mb-6 border-amber-200">
+        <Card className="mb-6 border-warning/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-800">
+            <CardTitle className="flex items-center gap-2 text-warning-strong">
               <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               Perlu dilengkapi ({problems.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-3 text-sm text-gray-600">
+            <p className="mb-3 text-sm text-muted-foreground">
               Faktur berikut tidak diikutkan karena kekurangan field yang wajib untuk e-Faktur —
               dilengkapi dulu, bukan dikosongkan (agar tidak gagal impor DJP).
             </p>
             <ul className="space-y-1 text-sm">
               {problems.map((p) => (
                 <li key={p.invoiceNo} className="flex items-start gap-2">
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-                  <span className="text-gray-900">{p.invoiceNo}</span>
-                  <span className="text-amber-700">— kurang: {p.missing.join(", ")}</span>
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-foreground">{p.invoiceNo}</span>
+                  <span className="text-warning-strong">— kurang: {p.missing.join(", ")}</span>
                 </li>
               ))}
             </ul>
@@ -197,15 +197,15 @@ export default async function EfakturPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Jenis</th>
-                <th className="px-4 py-3 font-medium text-gray-500">No. Dokumen</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Pembeli</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Mata Uang</th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-right">DPP</th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-right">PPN</th>
-                <th className="px-4 py-3 font-medium text-gray-500">No. PEB</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Jenis</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">No. Dokumen</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Pembeli</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Mata Uang</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">DPP</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">PPN</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">No. PEB</th>
               </tr>
             </thead>
             <tbody>
@@ -223,30 +223,30 @@ export default async function EfakturPage({
                 </tr>
               ) : (
                 rows.map((row, i) => (
-                  <tr key={`${row.nomor_dokumen}-${i}`} className="border-b border-gray-100">
-                    <td className="px-4 py-3 text-gray-500">{formatDateShort(row.tanggal_dokumen)}</td>
+                  <tr key={`${row.nomor_dokumen}-${i}`} className="border-b border-border">
+                    <td className="px-4 py-3 text-muted-foreground">{formatDateShort(row.tanggal_dokumen)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={
                           "inline-flex rounded px-2 py-0.5 text-xs font-medium " +
                           (row.jenis === "ekspor"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-gray-100 text-gray-700")
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-foreground")
                         }
                       >
                         {row.jenis}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{row.nomor_dokumen}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.nama_pembeli || "-"}</td>
-                    <td className="px-4 py-3 text-gray-500 tabular-nums">{row.mata_uang}</td>
-                    <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
+                    <td className="px-4 py-3 text-foreground">{row.nomor_dokumen}</td>
+                    <td className="px-4 py-3 text-foreground">{row.nama_pembeli || "-"}</td>
+                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.mata_uang}</td>
+                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
                       {formatCurrency(Number(row.dpp), row.mata_uang)}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
+                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
                       {formatCurrency(Number(row.ppn), row.mata_uang)}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 tabular-nums">{row.nomor_peb || "-"}</td>
+                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.nomor_peb || "-"}</td>
                   </tr>
                 ))
               )}

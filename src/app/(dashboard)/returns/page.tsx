@@ -51,8 +51,8 @@ export default async function ReturnsPage({
       <Breadcrumb items={[{ label: "Retur" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Retur</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Retur</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok,
             piutang/utang, dan PPN-nya.
           </p>
@@ -75,8 +75,8 @@ export default async function ReturnsPage({
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
-                ? "border-blue-700 bg-blue-700 text-white"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-foreground hover:bg-muted"
             }`}
           >
             {f.label}
@@ -84,7 +84,7 @@ export default async function ReturnsPage({
         ))}
       </div>
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+      <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
           Retur dinilai dengan <strong>kurs dokumen asal</strong> dan tidak boleh melebihi
@@ -106,17 +106,17 @@ export default async function ReturnsPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">No. Retur</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">No. Retur</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">
                     {tab === "sales" ? "Faktur / Pelanggan" : "Pembelian / Supplier"}
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">DPP</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">PPN</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Total</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Total (IDR)</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nota</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">DPP</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">PPN</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (IDR)</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nota</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,33 +132,33 @@ export default async function ReturnsPage({
                     ? (r as typeof salesReturns[number]).customer?.name
                     : (r as typeof purchaseReturns[number]).supplier?.name;
                   return (
-                    <tr key={`${tab}-${r.id}`} className="border-b border-gray-100">
-                      <td className="px-4 py-3 font-medium text-gray-900">{r.returnNo}</td>
-                      <td className="px-4 py-3 text-gray-700">{formatDateShort(r.date)}</td>
-                      <td className="px-4 py-3 text-gray-900">
+                    <tr key={`${tab}-${r.id}`} className="border-b border-border">
+                      <td className="px-4 py-3 font-medium text-foreground">{r.returnNo}</td>
+                      <td className="px-4 py-3 text-foreground">{formatDateShort(r.date)}</td>
+                      <td className="px-4 py-3 text-foreground">
                         {originLabel}
                         {partyName && (
-                          <span className="mt-0.5 block text-xs text-gray-500">{partyName}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{partyName}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatCurrency(subtotal, currency)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {tax > 0 ? (
                           formatCurrency(tax, currency)
                         ) : (
                           <Badge variant="default">0%</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
                         {formatCurrency(subtotal + tax, currency)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {r.baseAmount != null ? (
                           formatCurrency(Number(r.baseAmount), "IDR")
                         ) : (
-                          <span className="text-xs text-amber-700">Kurs belum diisi</span>
+                          <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">

@@ -309,7 +309,7 @@ export function NewInvoiceForm({
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -321,7 +321,7 @@ export function NewInvoiceForm({
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Ambil dari Kontrak</CardTitle>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Pilih kontrak sumber, lalu tarik barangnya. Yang ditarik adalah{" "}
               <strong>sisa</strong> yang belum difakturkan — jadi satu barang tidak bisa
               tertagih dua kali.
@@ -362,30 +362,30 @@ export function NewInvoiceForm({
             </div>
 
             {loadingOutstanding && (
-              <p className="mt-4 flex items-center gap-2 text-sm text-gray-500">
+              <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Memuat sisa kontrak…
               </p>
             )}
 
             {outstanding && !loadingOutstanding && (
-              <div className="mt-4 overflow-x-auto rounded-md border border-gray-200">
+              <div className="mt-4 overflow-x-auto rounded-md border border-border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-left">
-                      <th className="px-3 py-2 font-medium text-gray-500">Barang</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500">
+                    <tr className="border-b border-border bg-muted text-left">
+                      <th className="px-3 py-2 font-medium text-muted-foreground">Barang</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                         Kontrak (kg)
                       </th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                         Dikirim (kg)
                       </th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                         Difakturkan (kg)
                       </th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                         Sisa (kg)
                       </th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                         Siap difakturkan (kg)
                       </th>
                     </tr>
@@ -393,14 +393,14 @@ export function NewInvoiceForm({
                   <tbody>
                     {outstanding.lines.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-3 py-3 text-center text-gray-500">
+                        <td colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
                           Kontrak ini belum punya baris barang.
                         </td>
                       </tr>
                     ) : (
                       outstanding.lines.map((l) => (
-                        <tr key={l.key} className="border-b border-gray-100 last:border-0">
-                          <td className="px-3 py-2 text-gray-900">
+                        <tr key={l.key} className="border-b border-border last:border-0">
+                          <td className="px-3 py-2 text-foreground">
                             {l.itemName}
                             {l.remainingKg === 0 && (
                               <Badge variant="success" className="ml-2">
@@ -408,19 +408,19 @@ export function NewInvoiceForm({
                               </Badge>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-gray-700">
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.contractedKg)}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-gray-700">
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.deliveredKg)}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-gray-700">
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.invoicedKg)}
                           </td>
-                          <td className="px-3 py-2 text-right font-medium tabular-nums text-gray-900">
+                          <td className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
                             {formatNumber(l.remainingKg)}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-gray-900">
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.readyToInvoiceKg)}
                           </td>
                         </tr>
@@ -432,7 +432,7 @@ export function NewInvoiceForm({
             )}
 
             {pullNote && (
-              <p className="mt-3 flex items-start gap-1 text-xs text-gray-600">
+              <p className="mt-3 flex items-start gap-1 text-xs text-muted-foreground">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span>{pullNote}</span>
               </p>
@@ -458,7 +458,7 @@ export function NewInvoiceForm({
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>{periodIssue}</span>
                   </p>
@@ -495,18 +495,18 @@ export function NewInvoiceForm({
                 );
                 const over = line != null && item.quantity > line.remainingKg;
                 return (
-                  <div key={i} className="rounded-md border border-gray-200 p-3">
+                  <div key={i} className="rounded-md border border-border p-3">
                     <div className="flex items-end gap-3">
                       <div className="flex-1">
                         <label
                           htmlFor={`itemName-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Nama Barang
                         </label>
                         <input
                           id={`itemName-${i}`}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-sm"
                           value={item.itemName}
                           onChange={(e) => updateItem(i, "itemName", e.target.value)}
                           required
@@ -515,7 +515,7 @@ export function NewInvoiceForm({
                       <div className="w-24">
                         <label
                           htmlFor={`quantity-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Jumlah
                         </label>
@@ -524,7 +524,7 @@ export function NewInvoiceForm({
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                           value={item.quantity}
                           onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
                         />
@@ -532,7 +532,7 @@ export function NewInvoiceForm({
                       <div className="w-28">
                         <label
                           htmlFor={`price-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Harga
                         </label>
@@ -541,7 +541,7 @@ export function NewInvoiceForm({
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                           value={item.price}
                           onChange={(e) => updateItem(i, "price", Number(e.target.value))}
                         />
@@ -549,13 +549,13 @@ export function NewInvoiceForm({
                       <div className="w-20">
                         <label
                           htmlFor={`unit-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Satuan
                         </label>
                         <input
                           id={`unit-${i}`}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-sm"
                           value={item.unit}
                           onChange={(e) => updateItem(i, "unit", e.target.value)}
                         />
@@ -563,7 +563,7 @@ export function NewInvoiceForm({
                       <button
                         type="button"
                         onClick={() => removeItem(i)}
-                        className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={items.length === 1}
                         aria-label={`Hapus baris barang ${i + 1}`}
                       >
@@ -571,7 +571,7 @@ export function NewInvoiceForm({
                       </button>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                      <span className={over ? "font-medium text-red-600" : "text-gray-500"}>
+                      <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                         {line
                           ? `Sisa kontrak ${formatNumber(line.remainingKg)} kg${
                               over ? " — melebihi sisa, faktur akan ditolak!" : ""
@@ -580,7 +580,7 @@ export function NewInvoiceForm({
                             ? "Di luar baris kontrak — tidak dibatasi sisa."
                             : ""}
                       </span>
-                      <span className="tabular-nums text-gray-700">
+                      <span className="tabular-nums text-foreground">
                         = {formatCurrency(item.quantity * item.price, fx.currency)}
                       </span>
                     </div>

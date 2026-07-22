@@ -36,8 +36,8 @@ export default async function DeliveryOrdersPage() {
       <Breadcrumb items={[{ label: "Surat Jalan" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Surat Jalan</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Surat Jalan</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Dokumen pengiriman barang. Menerbitkan surat jalan mengurangi stok dan
             mengakui HPP atas barang yang keluar.
           </p>
@@ -50,7 +50,7 @@ export default async function DeliveryOrdersPage() {
         </Link>
       </div>
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+      <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
           Stok berkurang dalam <strong>kilogram</strong> (bags × kg/bag) saat surat jalan
@@ -71,14 +71,14 @@ export default async function DeliveryOrdersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">No. Surat Jalan</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Consignee</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Dokumen Sumber</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Bags</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Total (kg)</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Status</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">No. Surat Jalan</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Consignee</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen Sumber</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Bags</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (kg)</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,22 +88,22 @@ export default async function DeliveryOrdersPage() {
                   const source =
                     o.contract?.contractNo || o.invoice?.invoiceNo || "—";
                   return (
-                    <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
+                    <tr key={o.id} className="border-b border-border hover:bg-muted">
+                      <td className="px-4 py-3 font-medium text-foreground">
                         <Link
                           href={`/delivery-orders/${o.id}`}
-                          className="text-blue-700 hover:underline"
+                          className="text-primary hover:underline"
                         >
                           {o.no}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-700">{formatDateShort(o.date)}</td>
-                      <td className="px-4 py-3 text-gray-900">{o.consignee?.name || "—"}</td>
-                      <td className="px-4 py-3 text-gray-700">{source}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-foreground">{formatDateShort(o.date)}</td>
+                      <td className="px-4 py-3 text-foreground">{o.consignee?.name || "—"}</td>
+                      <td className="px-4 py-3 text-foreground">{source}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatNumber(totalBags)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatNumber(totalKg)}
                       </td>
                       <td className="px-4 py-3">

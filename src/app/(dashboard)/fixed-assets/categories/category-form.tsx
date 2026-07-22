@@ -82,7 +82,7 @@ export function CategoryForm({
 
   return (
     <Card className="p-6">
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">Kategori baru</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">Kategori baru</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -143,7 +143,7 @@ export function CategoryForm({
           />
         </div>
         {error && (
-          <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
             {error}
           </p>
         )}

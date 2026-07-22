@@ -16,25 +16,25 @@ export const dynamic = "force-dynamic";
 function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
   return (
     <>
-      <tr className="bg-gray-50">
-        <td className="px-6 py-2 font-semibold text-gray-700" colSpan={2}>{title}</td>
+      <tr className="bg-muted">
+        <td className="px-6 py-2 font-semibold text-foreground" colSpan={2}>{title}</td>
       </tr>
       {lines.map((l) => (
-        <tr key={l.code} className="border-b border-gray-100">
-          <td className="px-6 py-2 pl-10 text-gray-600">
-            <span className="font-mono text-gray-400 mr-2">{l.code}</span>
+        <tr key={l.code} className="border-b border-border">
+          <td className="px-6 py-2 pl-10 text-muted-foreground">
+            <span className="font-mono text-muted-foreground mr-2">{l.code}</span>
             {l.name}
           </td>
           <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(l.amount, "IDR")}</td>
         </tr>
       ))}
       {lines.length === 0 && (
-        <tr className="border-b border-gray-100">
-          <td className="px-6 py-2 pl-10 text-gray-400" colSpan={2}>—</td>
+        <tr className="border-b border-border">
+          <td className="px-6 py-2 pl-10 text-muted-foreground" colSpan={2}>—</td>
         </tr>
       )}
-      <tr className="border-b border-gray-200 font-medium">
-        <td className="px-6 py-2 text-gray-700">Total {title}</td>
+      <tr className="border-b border-border font-medium">
+        <td className="px-6 py-2 text-foreground">Total {title}</td>
         <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
       </tr>
     </>
@@ -71,8 +71,8 @@ export default async function IncomeStatementPage({
       <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Laba / Rugi" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Laba / Rugi</h1>
-          <p className="text-sm text-gray-500">{periodLabel} · nilai dalam IDR</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Laba / Rugi</h1>
+          <p className="text-sm text-muted-foreground">{periodLabel} · nilai dalam IDR</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatementPDFButton payload={payload} />
@@ -92,14 +92,14 @@ export default async function IncomeStatementPage({
               <Section title="Beban" lines={is.expense} total={is.totalExpense} />
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-300 text-base font-bold">
-                <td className="px-6 py-4 text-gray-900">
+              <tr className="border-t-2 border-border text-base font-bold">
+                <td className="px-6 py-4 text-foreground">
                   Laba / Rugi Bersih
-                  <span className={`ml-2 text-sm font-medium ${profit ? "text-green-700" : "text-red-600"}`}>
+                  <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
                     ({profit ? "Laba" : "Rugi"})
                   </span>
                 </td>
-                <td className={`px-6 py-4 text-right tabular-nums ${profit ? "text-green-700" : "text-red-600"}`}>
+                <td className={`px-6 py-4 text-right tabular-nums ${profit ? "text-success-strong" : "text-destructive"}`}>
                   {formatCurrency(is.netIncome, "IDR")}
                 </td>
               </tr>

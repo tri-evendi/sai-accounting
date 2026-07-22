@@ -453,6 +453,37 @@ export function reapprovalAction(
   return coveredByApproval(existing, newBaseAmount, matchedRule.minAmount) ? "keep" : "revoke";
 }
 
+// ─── Pengajuan ulang setelah ditolak (issue #44) ────────────────────────────
+
+/**
+ * Bolehkah pengajuan ini diajukan ulang?
+ *
+ * Hanya dari `rejected` — satu-satunya sisi balik pada mesin status. Yang masih
+ * `pending_approval` sudah di antrean (tak ada yang perlu diulang), dan yang
+ * `approved` tidak diajukan ulang melainkan digugurkan oleh perubahan nilainya
+ * sendiri (#45).
+ */
+export function canResubmit(status: string): boolean {
+  return canTransition(status, "pending_approval") && status === "rejected";
+}
+
+/**
+ * Apakah baris ini sedang menunggu keputusan SETELAH pernah ditolak?
+ *
+ * Diturunkan, bukan disimpan: pengajuan ulang mempertahankan jejak keputusan
+ * sebelumnya (`decidedAt` + `decisionNote`) justru agar penyetuju melihat alasan
+ * penolakan yang lalu saat menimbang yang baru. Pengajuan pertama punya
+ * `decidedAt` kosong, dan persetujuan yang gugur karena dokumennya diedit (#45)
+ * membersihkannya — jadi kombinasi "menunggu + pernah diputus" hanya mungkin
+ * berarti diajukan ulang. Itu sebabnya #44 tidak butuh kolom baru.
+ */
+export function wasResubmitted(request: {
+  status: string;
+  decidedAt?: Date | string | null;
+}): boolean {
+  return request.status === "pending_approval" && !!request.decidedAt;
+}
+
 // ─── In-app notification (issue #25, "notifikasi sederhana") ────────────────
 
 /**

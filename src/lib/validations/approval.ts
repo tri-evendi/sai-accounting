@@ -49,6 +49,18 @@ export const approvalDecisionSchema = z
   });
 export type ApprovalDecisionInput = z.infer<typeof approvalDecisionSchema>;
 
+/**
+ * Pengajuan ulang setelah ditolak (issue #44). Catatannya OPSIONAL — berbeda
+ * dari penolakan, yang wajib beralasan: penyetuju harus menjelaskan mengapa
+ * menolak, sedangkan pemohon sudah menjelaskan dirinya lewat dokumen yang ia
+ * perbaiki. Bila diisi, catatan itu MENGGANTI `requestNote` sehingga penyetuju
+ * membaca alasan terbaru, bukan alasan pengajuan pertama.
+ */
+export const approvalResubmitSchema = z.object({
+  note: z.string().max(1000).trim().optional().nullable(),
+});
+export type ApprovalResubmitInput = z.infer<typeof approvalResubmitSchema>;
+
 /** Filter antrean: which slice of the queue a page/API call wants. */
 export const approvalListQuerySchema = z.object({
   scope: z.enum(["inbox", "mine"]).optional().default("inbox"),

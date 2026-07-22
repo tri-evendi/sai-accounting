@@ -32,6 +32,9 @@ import {
   type ApprovalRuleLike,
   coveredByApproval,
   reapprovalAction,
+  canResubmit,
+  wasResubmitted,
+  isUnreadDecision,
 } from "@/lib/approvals";
 import {
   approvalDecisionSchema,
@@ -558,5 +561,53 @@ describe("reapprovalAction — lubang ambang yang ditutup #45", () => {
 
   it("dokumen tanpa nilai IDR (valas tanpa kurs) tidak tercakup persetujuan lama", () => {
     expect(coveredByApproval(approved("200000000"), null, RULE_CORE.minAmount)).toBe(false);
+  });
+});
+
+// ─── Pengajuan ulang setelah ditolak (issue #44) ────────────────────────────
+
+describe("canResubmit — hanya dari penolakan", () => {
+  it("yang DITOLAK boleh diajukan ulang", () => {
+    expect(canResubmit("rejected")).toBe(true);
+  });
+
+  it("yang menunggu tidak perlu diajukan ulang", () => {
+    expect(canResubmit("pending_approval")).toBe(false);
+  });
+
+  it("yang sudah disetujui tidak diajukan ulang — ia digugurkan oleh perubahan nilai (#45)", () => {
+    expect(canResubmit("approved")).toBe(false);
+  });
+
+  it("status asing ditolak, bukan diloloskan", () => {
+    expect(canResubmit("draft")).toBe(false);
+    expect(canResubmit("")).toBe(false);
+    expect(canResubmit("selesai")).toBe(false);
+  });
+});
+
+describe("wasResubmitted — diturunkan, tanpa kolom baru", () => {
+  it("menunggu + pernah diputus = diajukan ulang", () => {
+    expect(wasResubmitted({ status: "pending_approval", decidedAt: "2026-07-20T00:00:00Z" })).toBe(
+      true
+    );
+  });
+
+  it("pengajuan pertama belum pernah diputus", () => {
+    expect(wasResubmitted({ status: "pending_approval", decidedAt: null })).toBe(false);
+    expect(wasResubmitted({ status: "pending_approval" })).toBe(false);
+  });
+
+  it("yang sudah diputus bukan pengajuan ulang", () => {
+    expect(wasResubmitted({ status: "rejected", decidedAt: "2026-07-20T00:00:00Z" })).toBe(false);
+    expect(wasResubmitted({ status: "approved", decidedAt: "2026-07-20T00:00:00Z" })).toBe(false);
+  });
+
+  it("INVARIAN: jejak keputusan yang dipertahankan tidak menyalakan lagi badge notifikasi", () => {
+    // Pengajuan ulang sengaja menyimpan decidedAt/decisionNote agar penyetuju
+    // membaca alasan penolakan lama. Itu hanya aman karena notifikasi dihitung
+    // dari STATUS, bukan dari adanya keputusan — kalau tidak, setiap pengajuan
+    // ulang akan muncul sebagai "kabar baru" yang tak pernah bisa dibaca.
+    expect(isUnreadDecision({ status: "pending_approval", readAt: null })).toBe(false);
   });
 });

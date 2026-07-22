@@ -30,6 +30,8 @@ import {
   requiresApproval,
   statusForDecision,
   type ApprovalRuleLike,
+  coveredByApproval,
+  reapprovalAction,
 } from "@/lib/approvals";
 import {
   approvalDecisionSchema,
@@ -479,5 +481,82 @@ describe("decisionMessage names the document and the ledger consequence", () => 
     expect(
       decisionMessage({ status: "approved", documentType: "surat_jalan", documentNo: null })
     ).toContain("surat_jalan");
+  });
+});
+
+// ─── Penilaian ulang saat dokumen diedit (issue #45) ────────────────────────
+
+const RULE_CORE = { id: 1, documentType: "invoice", minAmount: "100000000", approverRole: "core" };
+const RULE_BOS = { id: 2, documentType: "invoice", minAmount: "500000000", approverRole: "bos" };
+
+const approved = (approvedBase: string | null, threshold = "100000000") => ({
+  status: "approved",
+  thresholdAmount: threshold,
+  approvedBaseAmount: approvedBase,
+});
+
+describe("reapprovalAction — lubang ambang yang ditutup #45", () => {
+  it("dokumen KECIL yang diedit menjadi BESAR wajib masuk antrean", () => {
+    // Separuh pertama lubangnya: tanpa pengajuan sebelumnya, nilai baru yang
+    // menyentuh ambang harus melahirkan pengajuan — bukan diam-diam terposting.
+    expect(reapprovalAction(null, RULE_CORE, "250000000")).toBe("create");
+  });
+
+  it("dokumen kecil yang tetap kecil tidak menyentuh apa pun", () => {
+    expect(reapprovalAction(null, null, "5000000")).toBe("none");
+  });
+
+  it("disetujui pada X lalu dinaikkan MELAMPAUI X → persetujuannya gugur", () => {
+    // Separuh kedua lubangnya, dan alasan kolom approved_base_amount ada.
+    expect(reapprovalAction(approved("200000000"), RULE_CORE, "900000000")).toBe("revoke");
+  });
+
+  it("disetujui pada X lalu DITURUNKAN masih tercakup", () => {
+    expect(reapprovalAction(approved("900000000"), RULE_CORE, "200000000")).toBe("keep");
+  });
+
+  it("nilai persis sama dengan yang disetujui tetap tercakup", () => {
+    expect(reapprovalAction(approved("250000000"), RULE_CORE, "250000000")).toBe("keep");
+  });
+
+  it("selisih satu sen di ATAS yang disetujui sudah menggugurkan — perbandingan desimal, bukan float", () => {
+    expect(reapprovalAction(approved("250000000.00"), RULE_CORE, "250000000.01")).toBe("revoke");
+    expect(reapprovalAction(approved("250000000.01"), RULE_CORE, "250000000.00")).toBe("keep");
+  });
+
+  it("naik ke BAND yang lebih ketat menggugurkan meski tak melebihi nilai yang disetujui", () => {
+    // Disetujui core pada 600jt dengan ambang 100jt; nilainya turun ke 550jt
+    // tetapi kini cocok dengan aturan bos (ambang 500jt) — restu core tak cukup.
+    expect(reapprovalAction(approved("600000000", "100000000"), RULE_BOS, "550000000")).toBe(
+      "revoke"
+    );
+  });
+
+  it("nilainya jatuh di bawah semua ambang → tak ada yang perlu diminta lagi", () => {
+    expect(reapprovalAction(approved("250000000"), null, "1000000")).toBe("keep");
+  });
+
+  it("pengajuan pra-#45 (tanpa catatan nilai disetujui) diperlakukan konservatif", () => {
+    // Dianggap disetujui pada AMBANGNYA: naik di atas itu minta persetujuan lagi…
+    expect(reapprovalAction(approved(null, "100000000"), RULE_CORE, "300000000")).toBe("revoke");
+    // …sedangkan yang di bawah ambang lamanya tetap tercakup.
+    expect(reapprovalAction(approved(null, "100000000"), RULE_CORE, "100000000")).toBe("keep");
+  });
+
+  it("yang masih menunggu / pernah ditolak hanya disegarkan, statusnya tak dipaksa maju", () => {
+    const pending = { status: "pending_approval", thresholdAmount: "100000000" };
+    const rejected = { status: "rejected", thresholdAmount: "100000000" };
+    expect(reapprovalAction(pending, RULE_BOS, "900000000")).toBe("refresh");
+    expect(reapprovalAction(rejected, RULE_CORE, "900000000")).toBe("refresh");
+    // Mengajukan ulang setelah ditolak adalah alur #44, bukan efek samping edit.
+    expect(reapprovalAction(rejected, RULE_CORE, "900000000")).not.toBe("pending_approval");
+  });
+
+  it("tanda minus tidak bisa mengelak — yang diadu adalah besarannya", () => {
+    expect(reapprovalAction(approved("200000000"), RULE_CORE, "-900000000")).toBe("revoke");
+  });
+
+  it("dokumen tanpa nilai IDR (valas tanpa kurs) tidak tercakup persetujuan lama", () => {
+    expect(coveredByApproval(approved("200000000"), null, RULE_CORE.minAmount)).toBe(false);
   });
 });

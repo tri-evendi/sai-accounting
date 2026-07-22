@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractFx, contractSchema } from "@/lib/validations/contract";
+import { contractFx, contractSchema, contractSubtotal } from "@/lib/validations/contract";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { writeAuditLog } from "@/lib/audit";
+import {
+  approvalNotice,
+  reevaluateApprovalRequest,
+  revocationNotice,
+  type ReevaluateResult,
+} from "@/lib/approval-requests";
 
 export async function GET(
   _request: Request,
@@ -49,7 +56,10 @@ export async function PUT(
   const fx = contractFx(contractData.currency, items, rate);
 
   try {
-    const contract = await prisma.$transaction(async (tx) => {
+    // Transaksinya mengembalikan hasil penilaian ulang bersama kontraknya, bukan
+    // menitipkannya ke variabel luar: penugasan dari dalam closure tidak terbaca
+    // oleh penyempitan tipe TypeScript.
+    const { contract, reapproval } = await prisma.$transaction(async (tx) => {
       await tx.contractItem.deleteMany({ where: { contractId } });
 
       const updated = await tx.contract.update({
@@ -64,13 +74,57 @@ export async function PUT(
         include: { items: true },
       });
 
+      // Penilaian ulang persetujuan (issue #45) — SEBELUM repost, karena gerbang
+      // jurnal membaca status pengajuan lewat transaksi yang sama. Kontrak kecil
+      // yang diedit menjadi besar kini masuk antrean, dan kontrak yang sudah
+      // disetujui lalu dinaikkan melampaui restunya kehilangan persetujuan itu —
+      // repost di bawah membalik jurnal lamanya dan menolak memposting yang baru.
+      const reapproval: ReevaluateResult = await reevaluateApprovalRequest({
+        client: tx,
+        sourceType: "contract",
+        documentId: contractId,
+        documentNo: updated.contractNo,
+        amount: contractSubtotal(items),
+        currency: updated.currency,
+        rate: fx.rate,
+        baseAmount: fx.baseAmount,
+        requestedById: parseInt(result.session.user.id, 10),
+      });
+
       // The rate is written above, so the repost reads it off the contract itself
       // instead of being handed one (issue #36).
       await repostForSource({ sourceType: "contract", sourceId: contractId, tx });
-      return updated;
+      return { contract: updated, reapproval };
     });
 
-    return NextResponse.json(contract);
+    if (reapproval && (reapproval.action === "revoke" || reapproval.action === "create")) {
+      await writeAuditLog({
+        userId: result.session.user.id,
+        username: result.session.user.email,
+        action: reapproval.action === "revoke" ? "approval.revoke" : "approval.request",
+        entity: "approval_request",
+        entityId: reapproval.request?.id ?? contractId,
+        details: {
+          sourceType: "contract",
+          documentId: contractId,
+          documentNo: contract.contractNo,
+          baseAmount: Number(fx.baseAmount ?? 0),
+          previouslyApprovedBase: reapproval.previouslyApprovedBase,
+          reason: "dokumen diedit",
+        },
+        request,
+      });
+    }
+
+    return NextResponse.json({
+      ...contract,
+      approval:
+        reapproval?.action === "revoke"
+          ? { revoked: true, message: revocationNotice("Kontrak") }
+          : reapproval?.action === "create"
+            ? approvalNotice(reapproval.request, "Kontrak")
+            : null,
+    });
   } catch (e) {
     return handlePostingError(e);
   }

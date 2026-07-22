@@ -89,6 +89,13 @@ export async function POST(
   let journalId: number | null = null;
   try {
     updated = await prisma.$transaction(async (tx) => {
+      // Dibaca ULANG di dalam transaksi: nilai yang dicatat sebagai "disetujui"
+      // harus nilai yang benar-benar berlaku saat keputusan diambil. Dokumen
+      // bisa saja diedit antara pembacaan di atas dan transaksi ini (#45).
+      const current = await tx.approvalRequest.findUnique({ where: { id: requestId } });
+      if (!current) throw new ApprovalTransitionError("hilang", nextStatus);
+      assertTransition(current.status, nextStatus);
+
       const row = await tx.approvalRequest.update({
         where: { id: requestId },
         data: {
@@ -96,6 +103,11 @@ export async function POST(
           decidedById,
           decidedAt: new Date(),
           decisionNote: note ?? null,
+          // Catat nilai yang BENAR-BENAR disetujui (issue #45). `baseAmount` ikut
+          // berubah setiap dokumennya diedit; kolom ini tidak, sehingga edit yang
+          // melampaui restu penyetuju bisa dikenali dan menggugurkan persetujuan
+          // alih-alih menumpang padanya.
+          approvedBaseAmount: nextStatus === "approved" ? current.baseAmount : null,
           // A fresh decision is an unread notification for the requester.
           readAt: null,
         },
@@ -113,6 +125,12 @@ export async function POST(
       return row;
     });
   } catch (e) {
+    // Status bisa berubah di sela pemeriksaan di atas dan transaksi ini — mis.
+    // dokumennya diedit melampaui nilai yang disetujui sehingga persetujuannya
+    // digugurkan (#45), atau penyetuju lain memutus lebih dulu.
+    if (e instanceof ApprovalTransitionError) {
+      return NextResponse.json({ error: e.message }, { status: 409 });
+    }
     return handlePostingError(e);
   }
 

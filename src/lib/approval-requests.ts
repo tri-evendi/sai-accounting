@@ -23,7 +23,9 @@ import {
   blocksPosting,
   documentTypeForSource,
   matchApprovalRule,
+  reapprovalAction,
   type ApprovalSourceType,
+  type ReapprovalAction,
 } from "@/lib/approvals";
 
 /** Type-only client (root or transaction) — no singleton import. */
@@ -183,4 +185,155 @@ export function approvalNotice(
       `${documentLabel} tersimpan tetapi BELUM masuk jurnal: nilainya mencapai ambang ` +
       `persetujuan, jadi menunggu keputusan penyetuju di menu "Perlu Persetujuan".`,
   };
+}
+
+// ─── Penilaian ulang saat dokumen diedit (issue #45) ────────────────────────
+
+export interface ReevaluateApprovalInput extends EnsureApprovalRequestInput {
+  /** Siapa yang mengedit — dicatat sebagai pemohon bila pengajuan baru lahir. */
+  requestedById: number;
+}
+
+export interface ReevaluateResult {
+  action: ReapprovalAction;
+  request: ApprovalRequestRow | null;
+  /** Terisi hanya saat `revoke`: nilai IDR yang dulu disetujui. */
+  previouslyApprovedBase?: string | null;
+}
+
+/**
+ * Nilai ulang kebutuhan persetujuan sebuah dokumen SETELAH dokumennya diedit.
+ *
+ * Dipanggil dari route PUT, di dalam `$transaction` yang sama dan SEBELUM
+ * `repostForSource`. Urutan itu bukan selera: gerbang jurnal membaca status
+ * pengajuan lewat klien transaksi yang sama, jadi persetujuan yang gugur di
+ * sini membuat repost membalik jurnal lama lalu menolak memposting yang baru —
+ * persis perilaku yang diinginkan untuk nilai yang belum direstui.
+ *
+ * Tidak ada jurnal yang ditulis atau dibalik di sini. Fungsi ini hanya
+ * memindahkan status; `postForSource`/`repostForSource` tetap satu-satunya
+ * mesin jurnal.
+ */
+export async function reevaluateApprovalRequest(
+  input: ReevaluateApprovalInput
+): Promise<ReevaluateResult> {
+  const { client, sourceType, documentId } = input;
+
+  const documentType = documentTypeForSource(sourceType);
+  if (documentType === null) return { action: "none", request: null };
+
+  const existing = await client.approvalRequest.findUnique({
+    where: { sourceType_documentId: { sourceType, documentId } },
+  });
+
+  const rules = await client.approvalRule.findMany({
+    where: { documentType, isActive: true },
+    select: { id: true, documentType: true, minAmount: true, approverRole: true },
+  });
+  const rule = matchApprovalRule(rules, {
+    documentType,
+    baseAmount: input.baseAmount ?? null,
+  });
+
+  const action = reapprovalAction(
+    existing
+      ? {
+          status: existing.status,
+          thresholdAmount: existing.thresholdAmount,
+          approvedBaseAmount: existing.approvedBaseAmount,
+        }
+      : null,
+    rule,
+    input.baseAmount ?? null
+  );
+
+  if (action === "none") return { action, request: null };
+
+  if (action === "create") {
+    // Dokumen yang tadinya di bawah ambang kini menyentuhnya. `ensureApprovalRequest`
+    // sudah tepat: ia membuat pengajuan `pending_approval`, dan karena dipanggil
+    // sebelum repost, jurnal lamanya ikut dibalik lalu ditahan.
+    const created = await ensureApprovalRequest(input);
+    return { action, request: created };
+  }
+
+  if (!existing) return { action: "none", request: null };
+
+  /** Nilai dokumen selalu disegarkan — antrean harus menampilkan angka terkini. */
+  const amounts = {
+    amount: input.amount,
+    currency: input.currency,
+    rate: input.rate ?? null,
+    baseAmount: input.baseAmount ?? 0,
+    documentNo: input.documentNo ?? existing.documentNo,
+  };
+
+  if (action === "keep") {
+    const updated = await client.approvalRequest.update({
+      where: { id: existing.id },
+      data: amounts,
+    });
+    return { action, request: updated as unknown as ApprovalRequestRow };
+  }
+
+  if (action === "refresh") {
+    // Masih menunggu / pernah ditolak: aturan yang cocok bisa saja berpindah band
+    // karena nilainya berubah, jadi penyetuju & ambangnya ikut disegarkan.
+    const updated = await client.approvalRequest.update({
+      where: { id: existing.id },
+      data: {
+        ...amounts,
+        ...(rule
+          ? {
+              ruleId: rule.id,
+              approverRole: rule.approverRole,
+              thresholdAmount: rule.minAmount as Prisma.Decimal,
+            }
+          : {}),
+      },
+    });
+    return { action, request: updated as unknown as ApprovalRequestRow };
+  }
+
+  // action === "revoke": persetujuan gugur, dokumen kembali menunggu keputusan.
+  const previouslyApprovedBase =
+    existing.approvedBaseAmount == null ? null : String(existing.approvedBaseAmount);
+  const updated = await client.approvalRequest.update({
+    where: { id: existing.id },
+    data: {
+      ...amounts,
+      status: "pending_approval",
+      ...(rule
+        ? {
+            ruleId: rule.id,
+            approverRole: rule.approverRole,
+            thresholdAmount: rule.minAmount as Prisma.Decimal,
+          }
+        : {}),
+      // Keputusan lama dilepas — bukan dihapus dari sejarah: jejaknya ada di log
+      // audit (`approval.revoke`). Yang tersisa di baris ini adalah keadaan
+      // sekarang, yaitu "menunggu keputusan".
+      decidedById: null,
+      decidedAt: null,
+      decisionNote: null,
+      approvedBaseAmount: null,
+      // Perubahan status ini kabar untuk pemohon, jadi dihitung belum terbaca.
+      readAt: null,
+    },
+  });
+
+  return {
+    action,
+    request: updated as unknown as ApprovalRequestRow,
+    previouslyApprovedBase,
+  };
+}
+
+/** Pesan untuk pengguna saat persetujuan gugur karena dokumennya diubah. */
+export function revocationNotice(documentLabel: string): string {
+  return (
+    `${documentLabel} sudah diubah melampaui nilai yang disetujui, jadi persetujuannya ` +
+    `gugur dan jurnalnya ditarik kembali. Dokumen ini menunggu keputusan ulang di menu ` +
+    `"Perlu Persetujuan".`
+  );
 }

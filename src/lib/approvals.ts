@@ -349,6 +349,110 @@ export function blocksPosting(status: string | null | undefined): boolean {
   return status !== "approved";
 }
 
+// ─── Penilaian ulang saat dokumen diedit (issue #45) ────────────────────────
+
+/**
+ * Pengajuan yang sudah melekat pada sebuah dokumen, sejauh yang dibutuhkan
+ * penilaian ulang. Sengaja struktural (bukan tipe Prisma) agar modul ini tetap
+ * murni dan bisa diuji tanpa basis data.
+ */
+export interface ExistingApprovalLike {
+  status: string;
+  /** Ambang yang berlaku saat pengajuan dibuat/terakhir dinilai. */
+  thresholdAmount: DecimalLike;
+  /**
+   * Nilai IDR yang BENAR-BENAR disetujui. Diisi saat penyetuju menekan setuju.
+   * `null` pada pengajuan lama (pra-#45) — lihat `coveredByApproval` di bawah
+   * untuk sikap konservatif yang diambil dalam kasus itu.
+   */
+  approvedBaseAmount?: DecimalLike;
+}
+
+/**
+ * Apa yang harus dilakukan pada pengajuan sebuah dokumen setelah dokumennya
+ * diedit.
+ *
+ *  • `none`    — tak ada aturan yang cocok dan memang belum ada pengajuan;
+ *  • `create`  — nilainya kini mencapai ambang padahal sebelumnya tidak;
+ *  • `refresh` — pengajuan yang masih menunggu/ditolak: nilainya diperbarui;
+ *  • `keep`    — sudah disetujui dan perubahannya masih tercakup;
+ *  • `revoke`  — sudah disetujui tetapi nilainya melampaui yang disetujui (atau
+ *                kini menyentuh band yang lebih ketat), jadi persetujuannya
+ *                gugur dan dokumennya kembali menunggu keputusan.
+ */
+export type ReapprovalAction = "none" | "create" | "refresh" | "keep" | "revoke";
+
+/**
+ * Apakah nilai baru masih tercakup oleh persetujuan yang sudah diberikan?
+ *
+ * Dua syarat, dan keduanya harus benar:
+ *  1. nilainya TIDAK NAIK melebihi yang disetujui — menyetujui Rp 500 juta tidak
+ *     berarti menyetujui Rp 900 juta, sedangkan turun ke Rp 100 juta jelas masih
+ *     tercakup (yang lebih besar sudah direstui);
+ *  2. band-nya tidak menjadi lebih ketat — bila kini cocok dengan aturan
+ *     ber-ambang lebih tinggi (mis. yang mengharuskan bos, bukan core), keputusan
+ *     lama diberikan oleh peran yang mungkin tak berwenang untuk band itu.
+ *
+ * Pengajuan lama tanpa `approvedBaseAmount` (dibuat sebelum #45) dianggap
+ * disetujui pada ambangnya sendiri — pilihan konservatif: kalau ragu, mintalah
+ * persetujuan lagi, jangan diam-diam meloloskan nilai yang belum pernah dilihat
+ * siapa pun.
+ */
+export function coveredByApproval(
+  existing: ExistingApprovalLike,
+  newBaseAmount: DecimalLike,
+  matchedRuleMinAmount: DecimalLike
+): boolean {
+  const approvedAt =
+    existing.approvedBaseAmount === null || existing.approvedBaseAmount === undefined
+      ? existing.thresholdAmount
+      : existing.approvedBaseAmount;
+
+  const newMagnitude = absoluteDecimal(newBaseAmount);
+  const approvedMagnitude = absoluteDecimal(approvedAt);
+  if (newMagnitude === null || approvedMagnitude === null) return false;
+
+  // (1) naik melebihi yang disetujui?
+  if (compareDecimal(newMagnitude, approvedMagnitude) === 1) return false;
+
+  // (2) band menjadi lebih ketat?
+  if (compareDecimal(matchedRuleMinAmount, existing.thresholdAmount) === 1) return false;
+
+  return true;
+}
+
+/**
+ * Keputusan penilaian ulang untuk satu dokumen yang baru saja diedit.
+ *
+ * INI ADALAH LUBANG KONTROL YANG DITUTUP ISSUE #45: sebelum ini, pengajuan hanya
+ * dibuat saat dokumen PERTAMA kali ditulis, sehingga dokumen kecil bisa diedit
+ * menjadi besar — atau dokumen yang sudah disetujui pada nilai X diedit menjadi
+ * jauh di atas X — dan tetap masuk jurnal tanpa pernah disetujui siapa pun.
+ *
+ * `rejected` sengaja dibiarkan `rejected` (nilainya tetap disegarkan): mengajukan
+ * ulang setelah ditolak adalah alur tersendiri (#44), bukan efek samping edit.
+ */
+export function reapprovalAction(
+  existing: ExistingApprovalLike | null,
+  matchedRule: ApprovalRuleLike | null,
+  newBaseAmount: DecimalLike
+): ReapprovalAction {
+  // Belum pernah ada pengajuan: dokumen kecil yang diedit menjadi besar HARUS
+  // masuk antrean sekarang — inilah separuh pertama lubang #45.
+  if (!existing) return matchedRule ? "create" : "none";
+
+  // Masih menunggu / pernah ditolak: nilainya disegarkan, statusnya tidak
+  // dipaksa maju. Mengajukan ulang setelah ditolak adalah alur #44.
+  if (existing.status !== "approved") return "refresh";
+
+  // Sudah disetujui, lalu nilainya turun di bawah semua ambang: tak ada yang
+  // perlu diminta lagi.
+  if (!matchedRule) return "keep";
+
+  // Separuh kedua lubang #45: disetujui pada nilai X, diedit jauh di atas X.
+  return coveredByApproval(existing, newBaseAmount, matchedRule.minAmount) ? "keep" : "revoke";
+}
+
 // ─── In-app notification (issue #25, "notifikasi sederhana") ────────────────
 
 /**

@@ -57,6 +57,13 @@ export type AuditAction =
   | "approval.request"
   | "approval.approve"
   | "approval.reject"
+  /**
+   * Persetujuan yang GUGUR karena dokumennya diedit melampaui nilai yang
+   * disetujui (issue #45). Bukan penolakan oleh manusia: tak ada penyetuju yang
+   * memutuskan apa pun di sini, dokumennya sendiri yang berubah sehingga restu
+   * lama tak lagi berlaku. Jurnalnya ditarik oleh `repostForSource`.
+   */
+  | "approval.revoke"
   | "approval.rule.create"
   | "approval.rule.update"
   | "approval.rule.deactivate"

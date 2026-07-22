@@ -7,6 +7,13 @@ import { toDateOrNull } from "@/lib/validations/common";
 import { requireAuth } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { writeAuditLog } from "@/lib/audit";
+import {
+  approvalNotice,
+  reevaluateApprovalRequest,
+  revocationNotice,
+  type ReevaluateResult,
+} from "@/lib/approval-requests";
 import {
   assertWithinContract,
   contractOutstandingForInvoice,
@@ -78,7 +85,7 @@ export async function PUT(
   }
 
   try {
-    const invoice = await prisma.$transaction(async (tx) => {
+    const { invoice, reapproval } = await prisma.$transaction(async (tx) => {
       // Outstanding guard (issue #15), inside the transaction — an edit can
       // overdraw a contract just as a new faktur can. THIS invoice's own lines are
       // excluded from "already invoiced", or every save would collide with itself.
@@ -110,13 +117,56 @@ export async function PUT(
         include: { items: true },
       });
 
+      // Penilaian ulang persetujuan (issue #45) — SEBELUM repost, karena gerbang
+      // jurnal membaca status pengajuan lewat transaksi yang sama. Faktur kecil
+      // yang diedit menjadi besar kini masuk antrean, dan faktur yang sudah
+      // disetujui lalu dinaikkan melampaui restunya kehilangan persetujuan itu.
+      const reapproval: ReevaluateResult = await reevaluateApprovalRequest({
+        client: tx,
+        sourceType: "invoice",
+        documentId: invoiceId,
+        documentNo: updated.invoiceNo,
+        amount: tax.total,
+        currency,
+        rate: fxRate,
+        baseAmount,
+        requestedById: parseInt(result.session.user.id, 10),
+      });
+
       // Reverse the old journal and post a fresh one, so the ledger matches the
       // edited document without ever mutating a posted line.
       await repostForSource({ sourceType: "invoice", sourceId: invoiceId, tx });
-      return updated;
+      return { invoice: updated, reapproval };
     });
 
-    return NextResponse.json(invoice);
+    if (reapproval.action === "revoke" || reapproval.action === "create") {
+      await writeAuditLog({
+        userId: result.session.user.id,
+        username: result.session.user.email,
+        action: reapproval.action === "revoke" ? "approval.revoke" : "approval.request",
+        entity: "approval_request",
+        entityId: reapproval.request?.id ?? invoiceId,
+        details: {
+          sourceType: "invoice",
+          documentId: invoiceId,
+          documentNo: invoice.invoiceNo,
+          baseAmount: Number(baseAmount ?? 0),
+          previouslyApprovedBase: reapproval.previouslyApprovedBase,
+          reason: "dokumen diedit",
+        },
+        request,
+      });
+    }
+
+    return NextResponse.json({
+      ...invoice,
+      approval:
+        reapproval.action === "revoke"
+          ? { revoked: true, message: revocationNotice("Faktur") }
+          : reapproval.action === "create"
+            ? approvalNotice(reapproval.request, "Faktur")
+            : null,
+    });
   } catch (e) {
     if (e instanceof OverInvoiceError) {
       return NextResponse.json({ error: e.message, saved: false }, { status: 400 });

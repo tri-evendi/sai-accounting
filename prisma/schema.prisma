@@ -1469,6 +1469,12 @@ model ApprovalRequest {
   decidedById     Int?      @map("decided_by_id")
   decidedAt       DateTime? @map("decided_at")
   decisionNote    String?   @map("decision_note") @db.Text
+  /// Nilai IDR yang BENAR-BENAR disetujui, dicatat saat penyetuju menekan setuju
+  /// (issue #45). `baseAmount` mengikuti dokumen yang bisa terus diedit; kolom ini
+  /// tidak — tanpa keduanya, "sudah diedit melebihi yang disetujui" tak bisa
+  /// dibedakan dari "memang sebesar itu sejak awal". NULL pada pengajuan pra-#45
+  /// dan pada yang belum diputus.
+  approvedBaseAmount Decimal? @map("approved_base_amount") @db.Decimal(15, 2)
   /// Kapan PEMOHON membaca hasil keputusan. NULL + status sudah diputus =
   /// notifikasi yang belum dibaca (badge di navbar).
   readAt          DateTime? @map("read_at")

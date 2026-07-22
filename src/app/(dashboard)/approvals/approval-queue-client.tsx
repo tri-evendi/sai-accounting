@@ -21,15 +21,18 @@ import {
   ExternalLink,
   Inbox,
   MailOpen,
+  RotateCcw,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { wasResubmitted } from "@/lib/approvals";
 import { ROLE_LABELS, type Role } from "@/lib/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
 
@@ -142,6 +145,30 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
     }
   }
 
+  /** Mengajukan ulang dokumen yang ditolak setelah diperbaiki (issue #44). */
+  async function resubmit(row: ApprovalRequestView) {
+    setBusyId(row.id);
+    try {
+      const res = await fetch(`/api/approvals/${row.id}/resubmit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: notes[row.id]?.trim() || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || "Gagal mengajukan ulang.", "error");
+        return;
+      }
+      toast(data.message || "Pengajuan dikirim ulang.", "success");
+      setNotes((prev) => ({ ...prev, [row.id]: "" }));
+      router.refresh();
+    } catch {
+      toast("Gagal mengajukan ulang.", "error");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function markRead(row: ApprovalRequestView) {
     setBusyId(row.id);
     try {
@@ -203,6 +230,24 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       {row.requestNote && (
                         <p className="mt-1 text-sm text-gray-500">
                           Catatan pemohon: {row.requestNote}
+                        </p>
+                      )}
+                      {/* issue #44 — pengajuan ULANG: penyetuju harus tahu bahwa
+                          dokumen ini pernah ditolak dan atas alasan apa, kalau
+                          tidak ia menimbangnya seolah-olah baru pertama datang.
+                          Ditandai teks + ikon, tidak pernah warna-saja. */}
+                      {wasResubmitted(row) && (
+                        <p className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-sm text-amber-900">
+                          <RotateCcw
+                            className="mt-0.5 h-4 w-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <span className="font-medium">Diajukan ulang.</span> Sebelumnya
+                            ditolak {row.decidedByName ? `oleh ${row.decidedByName}` : ""}
+                            {row.decidedAt ? ` pada ${formatDate(row.decidedAt)}` : ""}
+                            {row.decisionNote ? `: “${row.decisionNote}”` : "."}
+                          </span>
                         </p>
                       )}
                     </div>
@@ -349,18 +394,45 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                           )}
                         </td>
                         <td className="px-6 py-3 text-right">
-                          {isUnread && row.requestedById === currentUserId && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyId === row.id}
-                              onClick={() => markRead(row)}
-                              className="cursor-pointer"
-                            >
-                              <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                              Tandai dibaca
-                            </Button>
-                          )}
+                          <div className="flex flex-col items-end gap-2">
+                            {isUnread && row.requestedById === currentUserId && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={busyId === row.id}
+                                onClick={() => markRead(row)}
+                                className="cursor-pointer"
+                              >
+                                <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                Tandai dibaca
+                              </Button>
+                            )}
+                            {/* issue #44 — dokumen yang ditolak tidak lagi buntu:
+                                perbaiki dokumennya, lalu ajukan ulang di sini. */}
+                            {row.status === "rejected" && (
+                              <>
+                                <Input
+                                  id={`resubmit-note-${row.id}`}
+                                  label="Catatan (opsional)"
+                                  placeholder="Apa yang sudah diperbaiki?"
+                                  value={notes[row.id] ?? ""}
+                                  onChange={(e) =>
+                                    setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                                  }
+                                  className="w-56"
+                                />
+                                <Button
+                                  size="sm"
+                                  disabled={busyId === row.id}
+                                  onClick={() => resubmit(row)}
+                                  className="cursor-pointer"
+                                >
+                                  <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                  Ajukan Ulang
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

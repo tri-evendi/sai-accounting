@@ -64,6 +64,11 @@ export type AuditAction =
    * lama tak lagi berlaku. Jurnalnya ditarik oleh `repostForSource`.
    */
   | "approval.revoke"
+  /**
+   * Dokumen yang ditolak diajukan ulang setelah diperbaiki (issue #44). Tidak
+   * menerbitkan jurnal apa pun — hanya mengembalikan dokumen ke antrean.
+   */
+  | "approval.resubmit"
   | "approval.rule.create"
   | "approval.rule.update"
   | "approval.rule.deactivate"

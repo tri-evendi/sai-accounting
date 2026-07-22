@@ -24,20 +24,22 @@
 
 ## Color Palette (light-first, token → `globals.css`)
 
+Nama variabel mengikuti konvensi shadcn (didefinisikan di `src/app/globals.css`; utility Tailwind: `bg-primary`, `text-success`, `border-border`, dst.).
+
 | Role | Hex | CSS Variable | Catatan |
 |------|-----|--------------|---------|
-| Primary (brand/aksi) | `#1E40AF` | `--color-primary` | Trust blue |
-| On Primary | `#FFFFFF` | `--color-on-primary` | |
-| Background | `#F8FAFC` | `--color-background` | Abu sangat terang |
-| Surface / Card | `#FFFFFF` | `--color-surface` | |
-| Foreground (teks) | `#0F172A` | `--color-foreground` | Kontras ≥ 4.5:1 |
-| Muted (teks sekunder) | `#64748B` | `--color-muted-foreground` | |
-| Border | `#E2E8F0` | `--color-border` | |
-| **Positif / Uang Masuk / Lunas** | `#16A34A` | `--color-success` | Hijau |
-| **Negatif / Uang Keluar / Jatuh Tempo** | `#DC2626` | `--color-danger` | Merah |
-| **Menunggu / Peringatan** | `#D97706` | `--color-warning` | Amber |
-| Sidebar (gelap, aksen) | `#0F172A` | `--color-sidebar` | Sesuai app |
-| Ring (fokus) | `#1E40AF` | `--color-ring` | Fokus a11y wajib terlihat |
+| Primary (brand/aksi) | `#1E40AF` | `--primary` | Trust blue |
+| On Primary | `#FFFFFF` | `--primary-foreground` | |
+| Background | `#F8FAFC` | `--background` | Abu sangat terang |
+| Surface / Card | `#FFFFFF` | `--card` | |
+| Foreground (teks) | `#0F172A` | `--foreground` | Kontras ≥ 4.5:1 |
+| Muted (teks sekunder) | `#64748B` | `--muted-foreground` | |
+| Border | `#E2E8F0` | `--border` | |
+| **Positif / Uang Masuk / Lunas** | `#16A34A` | `--success` | Hijau |
+| **Negatif / Uang Keluar / Jatuh Tempo** | `#DC2626` | `--destructive` | Merah (utility `bg-destructive`/`text-destructive`) |
+| **Menunggu / Peringatan** | `#D97706` | `--warning` | Amber |
+| Sidebar (gelap, aksen) | `#0F172A` | `--sidebar` | Sesuai app |
+| Ring (fokus) | `#1E40AF` | `--ring` | Fokus a11y wajib terlihat |
 
 *Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama.
 

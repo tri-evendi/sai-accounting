@@ -11,15 +11,15 @@ import {
   supplierTransactionSchema,
   supplierPaymentAllocationsSchema,
 } from "@/lib/validations/finance";
-import { fxAmounts, BASE_CURRENCY } from "@/lib/validations/fx";
-import { toDateOrNull } from "@/lib/validations/common";
+import { BASE_CURRENCY } from "@/lib/validations/fx";
 import { requireAuth } from "@/lib/auth-guard";
-import { postForSource, repostForSource, unpostForSource } from "@/lib/posting";
+import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { getSupplierPurchaseAllocations } from "@/lib/receivables";
 import { resolveAllocationLines } from "@/lib/supplier-allocations";
-import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
+import { createSupplierTransactionInTx } from "@/lib/document-writes";
+import { approvalNotice } from "@/lib/approval-requests";
 
 export async function GET(
   request: Request,
@@ -149,13 +149,7 @@ export async function POST(
     );
   }
 
-  const { date, dueDate, rate: rateInput, allocations, ...transactionData } = parsed.data;
-  // base_amount covers the full obligation: net value plus input VAT.
-  const { rate, baseAmount } = fxAmounts(
-    transactionData.currency,
-    transactionData.amount + transactionData.taxAmount,
-    rateInput
-  );
+  const { allocations, ...transactionInput } = parsed.data;
 
   // ── Over-allocation guard (issue #37) ──────────────────────────────────────
   // The Zod schema already capped the allocations at the payment's own amount.
@@ -166,8 +160,8 @@ export async function POST(
   // laxer than a create.
   const resolved = await resolveAllocationLines({
     supplierId,
-    currency: transactionData.currency,
-    rate: rateInput,
+    currency: transactionInput.currency,
+    rate: transactionInput.rate,
     allocations: allocations ?? [],
   });
   if (!resolved.ok) {
@@ -178,65 +172,17 @@ export async function POST(
   let transaction;
   let approval;
   try {
-    ({ transaction, approval } = await prisma.$transaction(async (tx) => {
-      const created = await tx.supplierTransaction.create({
-        data: {
-          ...transactionData,
-          date: new Date(date),
-          // A payment has nothing to fall due; only a purchase carries a due date.
-          dueDate: transactionData.type === "purchase" ? toDateOrNull(dueDate) : null,
-          rate,
-          baseAmount,
-        },
-      });
-
-      // Persist the allocation set; the journal is produced ONCE by the
-      // `postForSource` below, which reads these rows — the createMany never
-      // posts on its own, so the money is never doubled. For a pure-IDR payment
-      // the allocation is reporting-only (rate 1, no selisih kurs). For a
-      // foreign payment it is ledger-affecting (issue #42): it names which
-      // purchase — and therefore at which document rate — each slice of hutang
-      // is relieved, which is what makes the realised FX difference correct.
-      if (allocationLines.length > 0) {
-        await tx.supplierPaymentAllocation.createMany({
-          data: allocationLines.map((line) => ({
-            paymentId: created.id,
-            purchaseId: line.purchaseId,
-            amount: line.amount,
-            currency: transactionData.currency,
-            rate,
-            baseAmount: line.base,
-          })),
-        });
-      }
-
-      // ── Approval (issue #25) ────────────────────────────────────────────
-      // Only a PAYMENT is gated here. Issue #25 names kontrak/faktur/pembayaran
-      // as the documents under management control; a purchase is the supplier's
-      // invoice arriving, i.e. a liability being recorded rather than money
-      // leaving, and withholding its journal would leave hutang understated on
-      // every report until somebody signed. A payment is money going out, which
-      // is exactly what an ambang is for.
-      const request =
-        created.type === "payment"
-          ? await ensureApprovalRequest({
-              client: tx,
-              sourceType: "supplier_transaction",
-              documentId: created.id,
-              // A supplier payment carries no number; the supplier's name is
-              // what identifies it to an approver (capped at VARCHAR(50)).
-              documentNo: supplier.name.slice(0, 50),
-              amount: Number(created.amount),
-              currency: created.currency,
-              rate,
-              baseAmount,
-              requestedById: parseInt(result.session.user.id, 10),
-            })
-          : null;
-
-      await postForSource({ sourceType: "supplier_transaction", sourceId: created.id, tx });
-      return { transaction: created, approval: request };
-    }));
+    // The body of the transaction is `createSupplierTransactionInTx` — the SAME
+    // function the "Pembelian Baru" wizard calls (issue #5). It persists the
+    // allocation set (whose journal is produced ONCE by `postForSource`, never by
+    // the createMany), raises the approval request for a PAYMENT only, and posts.
+    ({ transaction, approval } = await prisma.$transaction((tx) =>
+      createSupplierTransactionInTx(tx, transactionInput, {
+        requestedById: parseInt(result.session.user.id, 10),
+        supplierName: supplier.name,
+        allocationLines,
+      })
+    ));
   } catch (e) {
     return handlePostingError(e);
   }

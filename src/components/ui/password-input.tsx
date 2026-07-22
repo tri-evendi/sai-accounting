@@ -1,58 +1,79 @@
 "use client";
 
+/**
+ * PasswordInput — isian sandi dengan tombol perlihatkan/sembunyikan.
+ *
+ * Ikut dirapikan di issue #50: gayanya tidak lagi menyalin kelas isian, tetapi
+ * memakai `fieldVariants` yang sama dengan `Input`/`Select`, jadi ketiganya
+ * tidak bisa lagi berbeda tinggi atau warna diam-diam. Pesan error terhubung
+ * ke isiannya (`aria-invalid` + `aria-describedby` -> `role="alert"`), seperti
+ * `Input`.
+ *
+ * Label tombol matanya berbahasa Indonesia — app ini Indonesia-first.
+ */
+
 import { Eye, EyeOff } from "lucide-react";
-import { forwardRef, useState, type InputHTMLAttributes } from "react";
+import { useId, useState } from "react";
+import { fieldVariants } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-interface PasswordInputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+type PasswordInputProps = Omit<React.ComponentProps<"input">, "size" | "type"> & {
+  label?: React.ReactNode;
   error?: string;
+};
+
+function PasswordInput({
+  className,
+  label,
+  error,
+  id,
+  disabled,
+  "aria-describedby": describedBy,
+  ...props
+}: PasswordInputProps) {
+  const [visible, setVisible] = useState(false);
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const errorId = `${inputId}-error`;
+
+  return (
+    <div className="space-y-1">
+      {label && <Label htmlFor={inputId}>{label}</Label>}
+      <div className="relative">
+        <input
+          data-slot="input"
+          id={inputId}
+          type={visible ? "text" : "password"}
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={cn(describedBy, error && errorId) || undefined}
+          className={cn(fieldVariants({ invalid: Boolean(error) }), "pr-10", className)}
+          {...props}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          disabled={disabled}
+          onClick={() => setVisible((v) => !v)}
+          className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3 text-muted-foreground hover:text-foreground disabled:pointer-events-none"
+          aria-label={visible ? "Sembunyikan sandi" : "Perlihatkan sandi"}
+        >
+          {visible ? (
+            <EyeOff className="h-4 w-4" aria-hidden />
+          ) : (
+            <Eye className="h-4 w-4" aria-hidden />
+          )}
+        </button>
+      </div>
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
-const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, label, error, id, disabled, ...props }, ref) => {
-    const [visible, setVisible] = useState(false);
-
-    return (
-      <div className="space-y-1">
-        {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-            {label}
-          </label>
-        )}
-        <div className="relative">
-          <input
-            ref={ref}
-            id={id}
-            type={visible ? "text" : "password"}
-            disabled={disabled}
-            className={cn(
-              "block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
-              error && "border-red-500 focus:border-red-500 focus:ring-red-500",
-              className
-            )}
-            {...props}
-          />
-          <button
-            type="button"
-            tabIndex={-1}
-            disabled={disabled}
-            onClick={() => setVisible((v) => !v)}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 disabled:pointer-events-none"
-            aria-label={visible ? "Hide password" : "Show password"}
-          >
-            {visible ? (
-              <EyeOff className="h-4 w-4" aria-hidden />
-            ) : (
-              <Eye className="h-4 w-4" aria-hidden />
-            )}
-          </button>
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
-    );
-  }
-);
-PasswordInput.displayName = "PasswordInput";
-
 export { PasswordInput };
+export type { PasswordInputProps };

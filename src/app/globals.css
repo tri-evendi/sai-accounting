@@ -39,6 +39,19 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  /*
+   * Pasangan "soft/strong" untuk penanda status di atas permukaan terang
+   * (badge Lunas/Sebagian/Jatuh Tempo). Warna penuh --success/--warning/
+   * --destructive dipakai untuk isian pekat & ikon; di atas latar sangat
+   * terang warna itu TIDAK lolos kontras 4.5:1 (mis. #16A34A di atas
+   * success/10 hanya 2,96:1), jadi teks badge memakai varian -strong.
+   */
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-strong: var(--destructive-strong);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -124,6 +137,13 @@
   --success-foreground: #ffffff;
   --warning: #d97706;
   --warning-foreground: #ffffff;
+  /* Soft/strong badge — kontras terverifikasi 6,4–6,8:1 (MASTER: ≥ 4.5:1) */
+  --success-soft: #dcfce7;
+  --success-strong: #166534;
+  --warning-soft: #fef3c7;
+  --warning-strong: #92400e;
+  --destructive-soft: #fee2e2;
+  --destructive-strong: #991b1b;
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #1e40af;
@@ -178,6 +198,13 @@
   --success-foreground: #052e16;
   --warning: #f59e0b;
   --warning-foreground: #451a03;
+  /* Soft/strong badge versi gelap — kontras terverifikasi 8,5–10,6:1 */
+  --success-soft: #052e16;
+  --success-strong: #86efac;
+  --warning-soft: #451a03;
+  --warning-strong: #fcd34d;
+  --destructive-soft: #450a0a;
+  --destructive-strong: #fca5a5;
   --border: #334155;
   --input: #334155;
   --ring: #93c5fd;

@@ -22,8 +22,8 @@ export default async function GlossaryPage() {
       <Breadcrumb items={[{ label: "Kamus Istilah" }]} />
 
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Kamus Istilah</h1>
-        <p className="mt-1 max-w-3xl text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Kamus Istilah</h1>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           {TERM_LIST.length} istilah akuntansi yang dipakai aplikasi ini, dijelaskan dengan bahasa
           sehari-hari beserta contohnya. Istilah yang sama juga muncul sebagai ikon{" "}
           <span aria-hidden="true">“?”</span> di sebelah label pada layar lain.

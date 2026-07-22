@@ -144,11 +144,11 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mt-4">
-      <h4 className="text-sm font-semibold text-gray-900 mb-3">Record Supplier Transaction</h4>
+    <div className="rounded-lg border border-border bg-muted p-4 mt-4">
+      <h4 className="text-sm font-semibold text-foreground mb-3">Record Supplier Transaction</h4>
 
       {error && (
-        <div className="mb-3 rounded-md bg-red-50 p-2 text-xs text-red-700" role="alert">
+        <div className="mb-3 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
           {error}
         </div>
       )}
@@ -167,12 +167,12 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
             ]}
           />
           {isPurchase ? (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-700">
+            <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Menambah Hutang Usaha</span>
             </p>
           ) : (
-            <p className="mt-1 flex items-center gap-1 text-xs text-green-700">
+            <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
               <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Mengurangi Hutang Usaha & saldo kas</span>
             </p>
@@ -226,7 +226,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               label={`Kurs 1 ${currency} ke IDR`}
               required
             />
-            <p className="mt-1 text-xs text-gray-600">
+            <p className="mt-1 text-xs text-muted-foreground">
               Wajib diisi — buku besar mencatat nilai IDR.
             </p>
           </div>
@@ -244,29 +244,29 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               label="PPN Masukan (opsional)"
               defaultValue="0"
             />
-            <p className="mt-1 text-xs text-gray-600">
+            <p className="mt-1 text-xs text-muted-foreground">
               Diposting terpisah ke akun PPN Masukan.
             </p>
           </div>
         )}
 
         {!isPurchase && (
-          <fieldset className="sm:col-span-2 rounded-lg border border-gray-200 bg-white p-3">
-            <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-gray-900">
-              <Link2 className="h-4 w-4 text-gray-500" aria-hidden="true" />
+          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-white p-3">
+            <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-foreground">
+              <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Lunasi Pembelian (opsional)
             </legend>
 
-            <p className="mb-3 text-xs text-gray-600">
+            <p className="mb-3 text-xs text-muted-foreground">
               Pilih pembelian yang dibayar oleh transaksi ini. Bila dikosongkan, sisa
               utang per dokumen hanya <strong>diperkirakan</strong> (pembelian terlama
               dilunasi lebih dulu).
             </p>
 
             {loadingPurchases ? (
-              <p className="text-xs text-gray-500">Memuat daftar pembelian...</p>
+              <p className="text-xs text-muted-foreground">Memuat daftar pembelian...</p>
             ) : purchases.length === 0 ? (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Tidak ada pembelian dengan sisa utang untuk supplier ini.
               </p>
             ) : (
@@ -277,13 +277,13 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                   return (
                     <li
                       key={p.id}
-                      className="rounded-md border border-gray-200 p-2.5 transition-colors duration-150 hover:border-gray-300"
+                      className="rounded-md border border-border p-2.5 transition-colors duration-150 hover:border-border"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <label className="flex cursor-pointer items-start gap-2 text-sm">
                           <input
                             type="checkbox"
-                            className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300"
+                            className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
                             checked={checked}
                             disabled={noRate}
                             onChange={(e) =>
@@ -303,13 +303,13 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                             }
                           />
                           <span>
-                            <span className="font-medium text-gray-900">TRX-{p.id}</span>
-                            <span className="block text-xs text-gray-500 tabular-nums">
+                            <span className="font-medium text-foreground">TRX-{p.id}</span>
+                            <span className="block text-xs text-muted-foreground tabular-nums">
                               {formatDateShort(p.date)}
                               {p.dueDate && <> · j.tempo {formatDateShort(p.dueDate)}</>}
                             </span>
                             {p.note && (
-                              <span className="block max-w-64 truncate text-xs text-gray-400">
+                              <span className="block max-w-64 truncate text-xs text-muted-foreground">
                                 {p.note}
                               </span>
                             )}
@@ -317,18 +317,18 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                         </label>
 
                         <div className="text-right">
-                          <span className="block text-xs text-gray-500">Sisa utang</span>
-                          <span className="block text-sm font-medium text-gray-900 tabular-nums">
+                          <span className="block text-xs text-muted-foreground">Sisa utang</span>
+                          <span className="block text-sm font-medium text-foreground tabular-nums">
                             {noRate ? "Kurs belum diisi" : formatCurrency(p.remainingBase!, "IDR")}
                           </span>
-                          <span className="block text-xs text-gray-400 tabular-nums">
+                          <span className="block text-xs text-muted-foreground tabular-nums">
                             Nilai {formatCurrency(p.amount, p.currency)}
                           </span>
                         </div>
                       </div>
 
                       {noRate && (
-                        <p className="mt-1.5 text-xs text-amber-700">
+                        <p className="mt-1.5 text-xs text-warning-strong">
                           Pembelian valas tanpa kurs — sisa utang dalam IDR tidak
                           diketahui, jadi belum bisa dialokasikan.
                         </p>
@@ -338,7 +338,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                         <div className="mt-2 flex items-center gap-2">
                           <label
                             htmlFor={`alloc-${p.id}`}
-                            className="text-xs text-gray-600 whitespace-nowrap"
+                            className="text-xs text-muted-foreground whitespace-nowrap"
                           >
                             Dibayar ({currency})
                           </label>
@@ -351,7 +351,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                             onChange={(e) =>
                               setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
                             }
-                            className="w-40 rounded-md border border-gray-300 px-2 py-1 text-right text-sm tabular-nums focus:border-blue-700 focus:ring-1 focus:ring-blue-700 focus:outline-none"
+                            className="w-40 rounded-md border border-border px-2 py-1 text-right text-sm tabular-nums focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
                           />
                         </div>
                       )}
@@ -362,9 +362,9 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
             )}
 
             {allocEntries.length > 0 && (
-              <p className="mt-3 flex justify-between border-t border-gray-200 pt-2 text-xs">
-                <span className="text-gray-600">Total dialokasikan</span>
-                <span className="font-medium text-gray-900 tabular-nums">
+              <p className="mt-3 flex justify-between border-t border-border pt-2 text-xs">
+                <span className="text-muted-foreground">Total dialokasikan</span>
+                <span className="font-medium text-foreground tabular-nums">
                   {formatCurrency(allocTotal, currency)}
                 </span>
               </p>

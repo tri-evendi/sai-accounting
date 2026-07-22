@@ -29,23 +29,23 @@ interface DirStyle {
 }
 
 const DIR: Record<SummaryDirection, DirStyle> = {
-  in: { Icon: ArrowDownToLine, word: "Masuk", value: "text-green-700", sign: "" },
-  out: { Icon: ArrowUpFromLine, word: "Keluar", value: "text-red-700", sign: "" },
-  profit: { Icon: TrendingUp, word: "Untung", value: "text-green-700", sign: "+" },
-  loss: { Icon: TrendingDown, word: "Rugi", value: "text-red-700", sign: "−" },
-  receivable: { Icon: ArrowDownToLine, word: "Belum masuk", value: "text-gray-900", sign: "" },
-  payable: { Icon: ArrowUpFromLine, word: "Belum keluar", value: "text-gray-900", sign: "" },
+  in: { Icon: ArrowDownToLine, word: "Masuk", value: "text-success-strong", sign: "" },
+  out: { Icon: ArrowUpFromLine, word: "Keluar", value: "text-destructive-strong", sign: "" },
+  profit: { Icon: TrendingUp, word: "Untung", value: "text-success-strong", sign: "+" },
+  loss: { Icon: TrendingDown, word: "Rugi", value: "text-destructive-strong", sign: "−" },
+  receivable: { Icon: ArrowDownToLine, word: "Belum masuk", value: "text-foreground", sign: "" },
+  payable: { Icon: ArrowUpFromLine, word: "Belum keluar", value: "text-foreground", sign: "" },
 };
 
 export function PlainSummary({ summary }: { summary: ReportSummary }) {
   return (
-    <Card className="mb-6 border-blue-100 bg-blue-50/60">
+    <Card className="mb-6 border-primary/30 bg-primary/10">
       <div className="flex flex-col gap-4 p-5">
         <div className="flex items-start gap-3">
-          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden="true" />
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div>
-            <h2 className="text-sm font-semibold text-blue-900">Ringkasan Bahasa Sehari-hari</h2>
-            <p className="mt-1 text-sm leading-snug text-gray-700">{summary.narrative}</p>
+            <h2 className="text-sm font-semibold text-primary">Ringkasan Bahasa Sehari-hari</h2>
+            <p className="mt-1 text-sm leading-snug text-foreground">{summary.narrative}</p>
           </div>
         </div>
 
@@ -56,10 +56,10 @@ export function PlainSummary({ summary }: { summary: ReportSummary }) {
             return (
               <div
                 key={c.title}
-                className="rounded-lg border border-blue-100 bg-white p-3"
+                className="rounded-lg border border-primary/30 bg-white p-3"
                 title={c.explanation}
               >
-                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>{c.title}</span>
                 </div>

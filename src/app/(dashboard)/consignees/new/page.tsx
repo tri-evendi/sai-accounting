@@ -43,10 +43,10 @@ export default function NewConsigneePage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Consignee</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">New Consignee</h1>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -58,25 +58,25 @@ export default function NewConsigneePage() {
               <Input id="country" name="country" label="Country" />
               <Input id="contact" name="contact" label="Contact / PIC" />
               <div className="space-y-1">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="address" className="block text-sm font-medium text-foreground">
                   Address
                 </label>
                 <textarea
                   id="address"
                   name="address"
                   rows={3}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="notes" className="block text-sm font-medium text-foreground">
                   Notes
                 </label>
                 <textarea
                   id="notes"
                   name="notes"
                   rows={2}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>

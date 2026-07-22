@@ -36,7 +36,7 @@ export default async function LedgerPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Buku Besar</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Buku Besar</h1>
 
       <LedgerFilter
         accountOptions={accountOptions}
@@ -47,17 +47,17 @@ export default async function LedgerPage({
 
       {!ledger ? (
         <Card>
-          <div className="px-6 py-10 text-center text-gray-500">
+          <div className="px-6 py-10 text-center text-muted-foreground">
             Pilih akun untuk menampilkan mutasi & saldo berjalan.
           </div>
         </Card>
       ) : (
         <>
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-foreground">
               <span className="font-mono">{ledger.account.code}</span> — {ledger.account.name}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {accountTypeLabel(ledger.account.type)} · Saldo normal{" "}
               {ledger.account.normalBalance === "debit" ? "Debit" : "Kredit"}
             </p>
@@ -67,18 +67,18 @@ export default async function LedgerPage({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">No. Jurnal</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Keterangan</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 text-right">Debit</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 text-right">Kredit</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 text-right">Saldo</th>
+                  <tr className="border-b border-border text-left">
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">No. Jurnal</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Keterangan</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-6 py-3 text-gray-500 italic" colSpan={5}>
+                  <tr className="border-b border-border bg-muted">
+                    <td className="px-6 py-3 text-muted-foreground italic" colSpan={5}>
                       Saldo Awal
                     </td>
                     <td className="px-6 py-3 text-right tabular-nums font-medium">
@@ -86,14 +86,14 @@ export default async function LedgerPage({
                     </td>
                   </tr>
                   {ledger.rows.map((r) => (
-                    <tr key={r.lineId} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-6 py-3 text-gray-600 tabular-nums">{formatDateShort(r.date)}</td>
+                    <tr key={r.lineId} className="border-b border-border hover:bg-muted">
+                      <td className="px-6 py-3 text-muted-foreground tabular-nums">{formatDateShort(r.date)}</td>
                       <td className="px-6 py-3">
-                        <Link href={`/journal/${r.journalId}`} className="font-mono text-blue-600 hover:underline">
+                        <Link href={`/journal/${r.journalId}`} className="font-mono text-primary hover:underline">
                           {r.number}
                         </Link>
                       </td>
-                      <td className="px-6 py-3 text-gray-600">{r.memo ?? r.note ?? "—"}</td>
+                      <td className="px-6 py-3 text-muted-foreground">{r.memo ?? r.note ?? "—"}</td>
                       <td className="px-6 py-3 text-right tabular-nums">
                         {r.debit > 0 ? formatCurrency(r.debit, "IDR") : "—"}
                       </td>
@@ -118,7 +118,7 @@ export default async function LedgerPage({
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-gray-300 font-semibold">
+                  <tr className="border-t-2 border-border font-semibold">
                     <td className="px-6 py-3" colSpan={3}>
                       Total &amp; Saldo Akhir
                     </td>

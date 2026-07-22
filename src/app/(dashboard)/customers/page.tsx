@@ -33,7 +33,7 @@ export default async function CustomersPage({
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           <TermTooltip term="pelanggan">Pelanggan ({totalCount})</TermTooltip>
         </h1>
         <Link href="/customers/new" className="shrink-0">
@@ -45,12 +45,12 @@ export default async function CustomersPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Nama</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Alamat</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Telepon</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Surel</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Penanggung Jawab</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Nama</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Alamat</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Telepon</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Surel</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Penanggung Jawab</th>
               </tr>
             </thead>
             <tbody>
@@ -68,12 +68,12 @@ export default async function CustomersPage({
                 </tr>
               ) : (
                 customers.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3"><Link href={`/customers/${c.id}`} className="text-blue-600 hover:underline font-medium">{c.name}</Link></td>
-                    <td className="px-6 py-3 text-gray-500">{c.address || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{c.phone || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{c.email || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{c.pic || "-"}</td>
+                  <tr key={c.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-6 py-3"><Link href={`/customers/${c.id}`} className="text-primary hover:underline font-medium">{c.name}</Link></td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.address || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.phone || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.email || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.pic || "-"}</td>
                   </tr>
                 ))
               )}

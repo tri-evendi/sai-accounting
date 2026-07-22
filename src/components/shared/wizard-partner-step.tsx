@@ -46,7 +46,7 @@ export function WizardPartnerStep({
     <Card>
       <CardContent className="space-y-4 py-4">
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-gray-700">
+          <legend className="mb-2 text-sm font-medium text-foreground">
             {noun.charAt(0).toUpperCase() + noun.slice(1)} ini
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -60,10 +60,10 @@ export function WizardPartnerStep({
                 key={mode}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm",
-                  "transition-colors duration-150 hover:bg-gray-50",
+                  "transition-colors duration-150 hover:bg-muted",
                   value.mode === mode
-                    ? "border-blue-700 bg-blue-50 text-gray-900"
-                    : "border-gray-200 text-gray-700"
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-foreground"
                 )}
               >
                 <input
@@ -73,7 +73,7 @@ export function WizardPartnerStep({
                   checked={value.mode === mode}
                   onChange={() => onChange({ mode })}
                 />
-                <Icon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span>{label}</span>
               </label>
             ))}
@@ -121,7 +121,7 @@ export function WizardPartnerStep({
                 maxLength={30}
               />
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {noun.charAt(0).toUpperCase() + noun.slice(1)} baru ini <strong>belum</strong>{" "}
               tersimpan. Datanya ikut tercatat sekali saja bersama seluruh isian wizard, di
               langkah terakhir.
@@ -163,16 +163,16 @@ export function WizardPartnerStep({
                       onChange={(e) => onChange({ npwp: e.target.value })}
                       maxLength={30}
                     />
-                    <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-700 sm:col-span-2">
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground sm:col-span-2">
                       <input
                         type="checkbox"
-                        className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300"
+                        className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
                         checked={value.taxExempt}
                         onChange={(e) => onChange({ taxExempt: e.target.checked })}
                       />
                       <span>
                         Bebas PPN
-                        <span className="block text-xs text-gray-500">
+                        <span className="block text-xs text-muted-foreground">
                           Centang untuk pembeli ekspor atau non-PKP; tagihannya otomatis
                           tidak dikenai PPN.
                         </span>

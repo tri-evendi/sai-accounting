@@ -99,11 +99,11 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="p-6">
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <ArrowRightLeft className="h-5 w-5 text-blue-700" aria-hidden="true" />
+        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <ArrowRightLeft className="h-5 w-5 text-primary" aria-hidden="true" />
           Pindah lokasi
         </h2>
-        <p className="mb-4 text-xs text-gray-500">Mencatat perpindahan — tidak membuat jurnal.</p>
+        <p className="mb-4 text-xs text-muted-foreground">Mencatat perpindahan — tidak membuat jurnal.</p>
         <form onSubmit={transfer} className="space-y-3">
           <Input id="t-date" type="date" label="Tanggal" value={tDate} onChange={(e) => setTDate(e.target.value)} required />
           <Input
@@ -115,7 +115,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
             required
           />
           <Input id="t-note" label="Catatan (opsional)" value={tNote} onChange={(e) => setTNote(e.target.value)} maxLength={500} />
-          {tError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{tError}</p>}
+          {tError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{tError}</p>}
           <Button type="submit" variant="secondary" disabled={moving} className="cursor-pointer">
             {moving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             Pindahkan
@@ -124,11 +124,11 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Banknote className="h-5 w-5 text-blue-700" aria-hidden="true" />
+        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Banknote className="h-5 w-5 text-primary" aria-hidden="true" />
           Pelepasan / penjualan
         </h2>
-        <p className="mb-4 text-xs text-gray-500">
+        <p className="mb-4 text-xs text-muted-foreground">
           Menghapus nilai aset &amp; akumulasi penyusutannya, mencatat hasil, dan menjurnal
           laba/rugi pelepasan.
         </p>
@@ -146,23 +146,23 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
             placeholder="0 jika dibuang / scrap"
           />
           <Input id="d-note" label="Catatan (opsional)" value={dNote} onChange={(e) => setDNote(e.target.value)} maxLength={500} />
-          <p className="text-sm text-gray-600 tabular-nums">
-            Nilai buku saat ini: <strong className="text-gray-900">{formatCurrency(bookValue, "IDR")}</strong>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            Nilai buku saat ini: <strong className="text-foreground">{formatCurrency(bookValue, "IDR")}</strong>
           </p>
           {gainLoss != null && (
             <p className="text-sm tabular-nums">
               {gainLoss >= 0 ? (
-                <span className="text-green-700">
+                <span className="text-success-strong">
                   Laba pelepasan: <strong>{formatCurrency(gainLoss, "IDR")}</strong>
                 </span>
               ) : (
-                <span className="text-red-700">
+                <span className="text-destructive-strong">
                   Rugi pelepasan: <strong>({formatCurrency(Math.abs(gainLoss), "IDR")})</strong>
                 </span>
               )}
             </p>
           )}
-          {dError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{dError}</p>}
+          {dError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{dError}</p>}
           <Button type="submit" variant="danger" disabled={disposing} className="cursor-pointer">
             {disposing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             Catat Pelepasan

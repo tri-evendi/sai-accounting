@@ -24,10 +24,10 @@ export default async function NewContractPage() {
   return (
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Kontrak", href: "/contracts" }, { label: "Buat Kontrak" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">
+      <h1 className="text-2xl font-bold text-foreground">
         <TermTooltip term="kontrak">Buat Kontrak</TermTooltip>
       </h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         Isi dulu yang pokok: nomor, tanggal, pembeli, dan barangnya. Termin, kemasan, dan
         pengapalan ada di &ldquo;Detail lengkap&rdquo; dan boleh dilewati.
       </p>

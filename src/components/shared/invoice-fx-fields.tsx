@@ -136,7 +136,7 @@ export function InvoiceCustomerField({
           label: c.taxExempt ? `${c.name} · bebas PPN` : c.name,
         }))}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
         <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
         <span>
           Menautkan faktur ke pelanggan agar Piutang Usaha bisa dirinci per pelanggan
@@ -185,13 +185,13 @@ export function InvoiceFxAdvancedFields({
       />
 
       {/* PPN control (issue #16) */}
-      <div className="sm:col-span-2 rounded-md border border-gray-200 p-3">
+      <div className="sm:col-span-2 rounded-md border border-border p-3">
         <label htmlFor="taxable" className="flex cursor-pointer items-center gap-2">
           <input
             id="taxable"
             name="taxable"
             type="checkbox"
-            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
             checked={taxable}
             onChange={(e) =>
               onChange({
@@ -202,8 +202,8 @@ export function InvoiceFxAdvancedFields({
               })
             }
           />
-          <span className="flex items-center gap-1 text-sm font-medium text-gray-700">
-            <ReceiptText className="h-4 w-4 text-gray-400" aria-hidden="true" />
+          <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+            <ReceiptText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <TermTooltip term="ppn">Kena PPN (PPN Keluaran)</TermTooltip>
           </span>
         </label>
@@ -222,13 +222,13 @@ export function InvoiceFxAdvancedFields({
               value={taxRate}
               onChange={(e) => onChange({ taxRate: e.target.value })}
             />
-            <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+            <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
               <span>Standar PPN Indonesia 11%. Isi 0 untuk ekspor / tidak kena PPN.</span>
             </p>
           </div>
         ) : (
-          <p className="mt-2 flex items-start gap-1 text-xs text-gray-500">
+          <p className="mt-2 flex items-start gap-1 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
             <span>
               Tidak kena PPN (0%) — biasa untuk ekspor / pelanggan bebas PPN. Tidak ada baris
@@ -240,12 +240,12 @@ export function InvoiceFxAdvancedFields({
 
       {/* Dokumen ekspor / PEB (issue #17) — shown only for an export/0% invoice. */}
       {(currency !== BASE_CURRENCY || !taxable || effectiveRate === 0) && (
-        <div className="sm:col-span-2 rounded-md border border-gray-200 p-3">
-          <p className="flex items-center gap-1 text-sm font-medium text-gray-700">
-            <Ship className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        <div className="sm:col-span-2 rounded-md border border-border p-3">
+          <p className="flex items-center gap-1 text-sm font-medium text-foreground">
+            <Ship className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Dokumen Ekspor (PEB)
           </p>
-          <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+          <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
             <span>
               Untuk penjualan ekspor (PPN 0%), nomor PEB menggantikan nomor Faktur Pajak
@@ -309,25 +309,25 @@ export function InvoiceTotalsSummary({
   const baseUnknown = isForeign && rateValue <= 0;
 
   return (
-    <div className="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+    <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm">
       <dl className="space-y-1">
         <div className="flex items-center justify-between">
-          <dt className="text-gray-500">DPP · Dasar Pengenaan Pajak ({currency})</dt>
-          <dd className="tabular-nums text-gray-900">{formatCurrency(dpp, currency)}</dd>
+          <dt className="text-muted-foreground">DPP · Dasar Pengenaan Pajak ({currency})</dt>
+          <dd className="tabular-nums text-foreground">{formatCurrency(dpp, currency)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-gray-500">
+          <dt className="text-muted-foreground">
             PPN {taxable ? `(${effectiveRate}%)` : "(tidak kena)"} ({currency})
           </dt>
-          <dd className="tabular-nums text-gray-900">{formatCurrency(taxAmount, currency)}</dd>
+          <dd className="tabular-nums text-foreground">{formatCurrency(taxAmount, currency)}</dd>
         </div>
-        <div className="flex items-center justify-between border-t border-gray-200 pt-1 font-medium">
-          <dt className="text-gray-700">Total tagihan ({currency})</dt>
-          <dd className="tabular-nums text-gray-900">{formatCurrency(total, currency)}</dd>
+        <div className="flex items-center justify-between border-t border-border pt-1 font-medium">
+          <dt className="text-foreground">Total tagihan ({currency})</dt>
+          <dd className="tabular-nums text-foreground">{formatCurrency(total, currency)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-gray-500">Nilai dasar buku besar (IDR)</dt>
-          <dd className="tabular-nums font-medium text-gray-900">
+          <dt className="text-muted-foreground">Nilai dasar buku besar (IDR)</dt>
+          <dd className="tabular-nums font-medium text-foreground">
             {baseUnknown ? "— isi kurs dulu" : formatCurrency(baseTotal, "IDR")}
           </dd>
         </div>

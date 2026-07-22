@@ -38,10 +38,10 @@ export default async function SuppliersPage({
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya.
           </p>
           <LearnMore term="pembelian" className="mt-1" label="Pelajari ini: cara mencatat pembelian" />
@@ -55,12 +55,12 @@ export default async function SuppliersPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Nama</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Alamat</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Telepon</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Surel</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Transaksi</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Nama</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Alamat</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Telepon</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Surel</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Transaksi</th>
               </tr>
             </thead>
             <tbody>
@@ -78,16 +78,16 @@ export default async function SuppliersPage({
                 </tr>
               ) : (
                 suppliers.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={s.id} className="border-b border-border hover:bg-muted">
                     <td className="px-6 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="text-blue-600 hover:underline font-medium">
+                      <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
                         {s.name}
                       </Link>
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{s.address || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{s.phone || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{s.email || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{s.transactions.length}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{s.address || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{s.phone || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{s.email || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{s.transactions.length}</td>
                   </tr>
                 ))
               )}

@@ -39,14 +39,14 @@ export default async function JournalDetailPage({
 
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-mono">{journal.number}</h1>
-          <p className="mt-1 text-sm text-gray-500">{formatDate(journal.date)}</p>
+          <h1 className="text-2xl font-bold text-foreground font-mono">{journal.number}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{formatDate(journal.date)}</p>
         </div>
         {canReverse && <ReverseButton journalId={journal.id} />}
       </div>
 
       {journal.isReversed && (
-        <div className="mb-4 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+        <div className="mb-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
           Jurnal ini sudah dibalik
           {journal.reversals[0] && (
             <>
@@ -60,7 +60,7 @@ export default async function JournalDetailPage({
         </div>
       )}
       {journal.reversalOf && (
-        <div className="mb-4 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+        <div className="mb-4 rounded-md bg-muted p-3 text-sm text-foreground">
           Pembalikan dari{" "}
           <Link href={`/journal/${journal.reversalOf.id}`} className="font-mono underline">
             {journal.reversalOf.number}
@@ -70,33 +70,33 @@ export default async function JournalDetailPage({
       )}
 
       {journal.note && (
-        <p className="mb-4 text-sm text-gray-600">
-          <span className="font-medium text-gray-500">Keterangan:</span> {journal.note}
+        <p className="mb-4 text-sm text-muted-foreground">
+          <span className="font-medium text-muted-foreground">Keterangan:</span> {journal.note}
         </p>
       )}
 
       <Card>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left">
-              <th className="px-6 py-3 font-medium text-gray-500">Kode</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Akun</th>
-              <th className="px-6 py-3 font-medium text-gray-500 text-right">Debit (IDR)</th>
-              <th className="px-6 py-3 font-medium text-gray-500 text-right">Kredit (IDR)</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit (IDR)</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit (IDR)</th>
             </tr>
           </thead>
           <tbody>
             {journal.lines.map((l) => (
-              <tr key={l.id} className="border-b border-gray-100">
-                <td className="px-6 py-3 font-mono text-gray-700 tabular-nums">{l.account.code}</td>
+              <tr key={l.id} className="border-b border-border">
+                <td className="px-6 py-3 font-mono text-foreground tabular-nums">{l.account.code}</td>
                 <td className="px-6 py-3">
                   {l.account.name}
                   {l.currency !== "IDR" && (
-                    <span className="ml-2 text-xs text-gray-400">
+                    <span className="ml-2 text-xs text-muted-foreground">
                       ({formatCurrency(Number(l.debit) || Number(l.credit), l.currency)} @ {Number(l.rate)})
                     </span>
                   )}
-                  {l.memo && <span className="ml-2 text-xs text-gray-400">— {l.memo}</span>}
+                  {l.memo && <span className="ml-2 text-xs text-muted-foreground">— {l.memo}</span>}
                 </td>
                 <td className="px-6 py-3 text-right tabular-nums">
                   {Number(l.baseDebit) > 0 ? formatCurrency(Number(l.baseDebit), "IDR") : "—"}
@@ -108,7 +108,7 @@ export default async function JournalDetailPage({
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 font-semibold">
+            <tr className="border-t-2 border-border font-semibold">
               <td className="px-6 py-3" colSpan={2}>
                 Total{" "}
                 {totalDebit === totalCredit ? (

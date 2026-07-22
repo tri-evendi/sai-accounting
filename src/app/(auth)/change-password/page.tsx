@@ -85,7 +85,7 @@ export default function ChangePasswordPage() {
           required
           disabled={loading}
         />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Use at least 8 characters. Avoid reusing passwords from other systems.
         </p>
         <Button type="submit" className="w-full" size="lg" disabled={loading}>

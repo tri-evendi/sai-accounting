@@ -15,8 +15,8 @@ export default async function ApprovalRulesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Aturan Persetujuan</h1>
-        <p className="mt-1 max-w-3xl text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-foreground">Aturan Persetujuan</h1>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Tentukan mulai nilai berapa sebuah kontrak, faktur, atau pembayaran wajib disetujui,
           dan siapa yang menyetujuinya. Ambang dibandingkan dengan nilai <strong>rupiah</strong>{" "}
           dokumen (dokumen valas dikonversi lebih dulu dengan kursnya sendiri) dan bersifat{" "}

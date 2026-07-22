@@ -34,8 +34,8 @@ export default async function SalesTargetsPage({
   return (
     <div className="max-w-5xl">
       <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Target Penjualan" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Target Penjualan</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Target Penjualan</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Target penjualan per bulan, dalam IDR. Pelanggan dan komoditas bersifat opsional — kosongkan
         untuk target umum periode itu.
       </p>

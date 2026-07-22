@@ -145,7 +145,7 @@ export default function EditContractPage() {
   }
 
   if (!contract) {
-    return <div className="text-red-600">Contract not found</div>;
+    return <div className="text-destructive">Contract not found</div>;
   }
 
   const dateStr = new Date(contract.date).toISOString().split("T")[0];
@@ -154,12 +154,12 @@ export default function EditContractPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">
         Edit Contract {contract.contractNo}
       </h1>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -214,24 +214,24 @@ export default function EditContractPage() {
           <CardContent>
             <div className="space-y-4">
               {items.map((item, i) => (
-                <div key={i} className="flex items-end gap-3 rounded-md border border-gray-200 p-3">
+                <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Item Name</label>
-                    <input className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Item Name</label>
+                    <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Bags</label>
-                    <input type="number" className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Bags</label>
+                    <input type="number" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Kg/Bag</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Kg/Bag</label>
+                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Price/Kg</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Price/Kg</label>
+                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
                   </div>
-                  <button type="button" onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 pb-2">
+                  <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

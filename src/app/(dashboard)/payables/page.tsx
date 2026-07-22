@@ -60,10 +60,10 @@ export default async function PayablesPage({
   return (
     <div>
       <Breadcrumb items={[{ label: "Utang" }]} />
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">
+      <h1 className="text-2xl font-bold text-foreground mb-1">
         <TermTooltip term="utang">Tagihan yang Harus Dibayar</TermTooltip>
       </h1>
-      <p className="text-sm text-gray-500 mb-2">
+      <p className="text-sm text-muted-foreground mb-2">
         Pembelian dari pemasok yang masih punya sisa per {formatDateShort(asOf)}.
         {overdueCount > 0 && !overdueOnly && (
           <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
@@ -90,15 +90,15 @@ export default async function PayablesPage({
         <Card className="mb-6 p-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="flex items-center gap-1.5 text-sm text-gray-500">
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 {/* Direction is stated in words and by the icon — not by colour. */}
-                <ArrowUpFromLine className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Uang muka ke supplier (uang keluar, belum dikompensasi)
               </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+              <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
                 {formatCurrency(advanceSummary.outstandingBase, "IDR")}
               </p>
-              <p className="mt-1 max-w-2xl text-xs text-gray-600">
+              <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
                 Dari {advanceSummary.count} uang muka yang masih bersisa.{" "}
                 <strong>Tidak</strong> dikurangkan dari total utang di atas — uangnya
                 sudah keluar dan tercatat sebagai <em>aset</em>. Sisa utang sebuah
@@ -108,11 +108,11 @@ export default async function PayablesPage({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">Belum berkurs</p>
-              <p className="text-xl font-bold tabular-nums text-gray-900">
+              <p className="text-xs text-muted-foreground">Belum berkurs</p>
+              <p className="text-xl font-bold tabular-nums text-foreground">
                 {advanceSummary.unresolvedCount}
               </p>
-              <p className="mt-0.5 max-w-48 text-xs text-gray-500">
+              <p className="mt-0.5 max-w-48 text-xs text-muted-foreground">
                 Uang muka valas tanpa kurs — tidak ikut dijumlahkan.
               </p>
             </div>
@@ -120,7 +120,7 @@ export default async function PayablesPage({
           <p className="mt-3">
             <Link
               href="/advances?type=purchase"
-              className="cursor-pointer text-xs text-blue-700 transition-colors hover:underline"
+              className="cursor-pointer text-xs text-primary transition-colors hover:underline"
             >
               Lihat semua uang muka pembelian
             </Link>
@@ -129,7 +129,7 @@ export default async function PayablesPage({
       )}
 
       {estimatedCount > 0 ? (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning-strong">
           <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             <strong>{estimatedCount} baris</strong> ditandai{" "}
@@ -144,7 +144,7 @@ export default async function PayablesPage({
           </span>
         </p>
       ) : (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             Setiap sisa utang di bawah dihitung dari alokasi pembayaran yang tercatat —
@@ -159,58 +159,58 @@ export default async function PayablesPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-3 font-medium text-gray-500">Supplier</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Dokumen</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Jatuh Tempo</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Umur</th>
-                <th className="px-4 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-right">Nilai Pembelian</th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-right">Sisa (IDR)</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-3 font-medium text-muted-foreground">Supplier</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Jatuh Tempo</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Umur</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Nilai Pembelian</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Sisa (IDR)</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100">
-                  <td className="px-4 py-3 text-gray-900">{r.partyName}</td>
+                <tr key={r.id} className="border-b border-border">
+                  <td className="px-4 py-3 text-foreground">{r.partyName}</td>
                   <td className="px-4 py-3">
                     <Link
                       href={r.href}
-                      className="text-blue-700 hover:underline cursor-pointer transition-colors"
+                      className="text-primary hover:underline cursor-pointer transition-colors"
                     >
                       {r.documentNo}
                     </Link>
-                    <span className="block text-xs text-gray-500">Pembelian</span>
+                    <span className="block text-xs text-muted-foreground">Pembelian</span>
                     {r.terms && (
-                      <span className="block text-xs text-gray-400 max-w-56 truncate" title={r.terms}>
+                      <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
                         {r.terms}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 tabular-nums">{formatDateShort(r.date)}</td>
-                  <td className="px-4 py-3 text-gray-700 tabular-nums">
+                  <td className="px-4 py-3 text-foreground tabular-nums">{formatDateShort(r.date)}</td>
+                  <td className="px-4 py-3 text-foreground tabular-nums">
                     {r.dueDate ? (
                       formatDateShort(r.dueDate)
                     ) : (
-                      <span className="text-gray-400">Belum diisi</span>
+                      <span className="text-muted-foreground">Belum diisi</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
+                  <td className="px-4 py-3 text-foreground">
                     <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={r.status} />
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
+                  <td className="px-4 py-3 text-right text-foreground tabular-nums">
                     {formatCurrency(r.total, r.currency)}
                     {r.currency !== "IDR" && (
-                      <span className="block text-xs text-gray-500">{r.currency}</span>
+                      <span className="block text-xs text-muted-foreground">{r.currency}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right font-medium text-gray-900 tabular-nums">
+                  <td className="px-4 py-3 text-right font-medium text-foreground tabular-nums">
                     {r.outstandingBase == null ? (
-                      <span className="text-amber-700">Kurs belum diisi</span>
+                      <span className="text-warning-strong">Kurs belum diisi</span>
                     ) : (
                       formatCurrency(r.outstandingBase, "IDR")
                     )}
@@ -227,7 +227,7 @@ export default async function PayablesPage({
                             without deleting and re-posting the payment. */}
                         <Link
                           href={`${r.href}?alokasi=1`}
-                          className="mt-1 block cursor-pointer text-xs text-blue-700 transition-colors hover:underline"
+                          className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
                         >
                           Perbaiki alokasi
                         </Link>
@@ -238,7 +238,7 @@ export default async function PayablesPage({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                     {overdueOnly
                       ? "Tidak ada utang yang lewat jatuh tempo. Perlu diingat: pembelian tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
                       : "Semua utang supplier sudah lunas. Belum ada sisa."}

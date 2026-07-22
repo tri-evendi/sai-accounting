@@ -148,9 +148,9 @@ export function ConfirmDialog({
 
           {confirmPhrase && (
             <div className="mt-4">
-              <label htmlFor={phraseId} className="block text-sm text-gray-600">
+              <label htmlFor={phraseId} className="block text-sm text-muted-foreground">
                 {confirmPhraseLabel}{" "}
-                <span className="font-semibold text-gray-900">{confirmPhrase}</span>
+                <span className="font-semibold text-foreground">{confirmPhrase}</span>
               </label>
               <input
                 id={phraseId}
@@ -166,7 +166,7 @@ export function ConfirmDialog({
                 }}
                 autoComplete="off"
                 aria-describedby={messageId}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                className="mt-1 block w-full rounded-md border border-border px-3 py-2 text-sm focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
               />
             </div>
           )}

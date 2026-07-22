@@ -45,12 +45,12 @@ export function LedgerFilter({
           value={d}
           onChange={(e) => setD(e.target.value)}
         />
-        <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-gray-700">
+        <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={overdue}
             onChange={(e) => setOverdue(e.target.checked)}
-            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-700 focus:ring-2 focus:ring-blue-700"
+            className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-2 focus:ring-ring"
           />
           Hanya yang sudah jatuh tempo
         </label>
@@ -58,7 +58,7 @@ export function LedgerFilter({
           Tampilkan
         </Button>
       </div>
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-muted-foreground">
         Filter jatuh tempo hanya mencakup dokumen yang punya tanggal jatuh tempo. Dokumen
         tanpa tanggal jatuh tempo tidak bisa dinilai terlambat, jadi tidak pernah muncul di
         sini — isi kolom Jatuh Tempo pada dokumen agar ikut terpantau.

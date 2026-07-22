@@ -70,9 +70,9 @@ export default function EditConsigneePage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Consignee</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Edit Consignee</h1>
 
-      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
@@ -83,36 +83,36 @@ export default function EditConsigneePage() {
               <Input id="country" label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
               <Input id="contact" label="Contact / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
               <div className="space-y-1">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+                <label htmlFor="address" className="block text-sm font-medium text-foreground">Address</label>
                 <textarea
                   id="address"
                   rows={3}
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-foreground">Notes</label>
                 <textarea
                   id="notes"
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
                 <input
                   id="isActive"
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                   checked={form.isActive}
                   onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                 />
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-foreground">
                   Aktif
-                  <span className="block text-xs text-gray-500">
+                  <span className="block text-xs text-muted-foreground">
                     Consignee nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut.
                   </span>
                 </span>

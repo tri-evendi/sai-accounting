@@ -170,30 +170,30 @@ export function AdvanceCompensationSection({
     <div className="space-y-4">
       {/* Already compensated */}
       {applied.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-gray-200">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-2 font-medium text-gray-500">Uang Muka</th>
-                <th className="px-4 py-2 font-medium text-gray-500">Tanggal</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">Jumlah</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">IDR</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
+                <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Jumlah</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">IDR</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
               {applied.map((a) => (
-                <tr key={a.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2 font-medium text-gray-900">{a.advanceNo}</td>
-                  <td className="px-4 py-2 text-gray-600">{formatDateShort(new Date(a.date))}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-900">
+                <tr key={a.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
                     {formatCurrency(a.amount, a.currency)}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
                     {a.baseAmount != null ? (
                       formatCurrency(a.baseAmount, "IDR")
                     ) : (
-                      <span className="text-xs text-amber-700">Kurs belum diisi</span>
+                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                     )}
                   </td>
                   <td className="px-4 py-2 text-right">
@@ -202,7 +202,7 @@ export function AdvanceCompensationSection({
                       onClick={() => handleRemove(a.id)}
                       disabled={busyId === a.id}
                       aria-label={`Batalkan kompensasi ${a.advanceNo}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-red-700 transition-colors duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive-strong transition-colors duration-200 hover:bg-destructive-soft disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {busyId === a.id ? (
                         <Loader2
@@ -223,7 +223,7 @@ export function AdvanceCompensationSection({
       )}
 
       {advances.length === 0 ? (
-        <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {applied.length > 0
@@ -233,13 +233,13 @@ export function AdvanceCompensationSection({
         </p>
       ) : (
         <form onSubmit={handleApply} className="space-y-3">
-          <div className="overflow-x-auto rounded-md border border-gray-200">
+          <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-2 font-medium text-gray-500">Uang Muka</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-500">Sisa</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-500">
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
+                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa</th>
+                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">
                     Kompensasi ke {noun.target} ini
                   </th>
                 </tr>
@@ -250,22 +250,22 @@ export function AdvanceCompensationSection({
                   const overLine = value > a.remaining + 0.005;
                   const crossCurrency = a.currency !== targetCurrency;
                   return (
-                    <tr key={a.id} className="border-b border-gray-100 last:border-0">
+                    <tr key={a.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-2">
-                        <span className="font-medium text-gray-900">{a.advanceNo}</span>
-                        <span className="block text-xs text-gray-500">
+                        <span className="font-medium text-foreground">{a.advanceNo}</span>
+                        <span className="block text-xs text-muted-foreground">
                           {a.partyName} · {formatDateShort(new Date(a.date))}
                         </span>
                         {crossCurrency && (
-                          <span className="mt-0.5 block text-xs text-amber-700">
+                          <span className="mt-0.5 block text-xs text-warning-strong">
                             Mata uang berbeda dari {noun.target} ({targetCurrency}) — isi
                             jumlahnya sendiri.
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
                         {formatCurrency(a.remaining, a.currency)}
-                        <span className="block text-xs text-gray-500">
+                        <span className="block text-xs text-muted-foreground">
                           {a.remainingBase != null
                             ? formatCurrency(a.remainingBase, "IDR")
                             : "Kurs belum diisi"}
@@ -287,7 +287,7 @@ export function AdvanceCompensationSection({
                           }
                         />
                         {overLine && (
-                          <p className="mt-1 text-xs text-red-700" role="alert">
+                          <p className="mt-1 text-xs text-destructive-strong" role="alert">
                             Melebihi sisa uang muka.
                           </p>
                         )}
@@ -312,18 +312,18 @@ export function AdvanceCompensationSection({
             </div>
             <div className="text-right text-xs">
               <p className="flex justify-between gap-6">
-                <span className="text-gray-600">Sisa tagihan {noun.target}</span>
-                <span className="font-medium tabular-nums text-gray-900">
+                <span className="text-muted-foreground">Sisa tagihan {noun.target}</span>
+                <span className="font-medium tabular-nums text-foreground">
                   {outstandingBase != null
                     ? formatCurrency(outstandingBase, "IDR")
                     : "Kurs belum diisi"}
                 </span>
               </p>
               <p className="flex justify-between gap-6">
-                <span className="text-gray-600">Total dikompensasi</span>
+                <span className="text-muted-foreground">Total dikompensasi</span>
                 <span
                   className={`font-medium tabular-nums ${
-                    overTarget ? "text-red-700" : "text-gray-900"
+                    overTarget ? "text-destructive-strong" : "text-foreground"
                   }`}
                 >
                   {formatCurrency(totalBase, "IDR")}
@@ -333,13 +333,13 @@ export function AdvanceCompensationSection({
           </div>
 
           {overTarget && (
-            <p className="rounded-md bg-red-50 p-2 text-xs text-red-700" role="alert">
+            <p className="rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
               Total kompensasi melebihi sisa tagihan {noun.target} ini.
             </p>
           )}
 
           {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+            <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
               {error}
             </p>
           )}

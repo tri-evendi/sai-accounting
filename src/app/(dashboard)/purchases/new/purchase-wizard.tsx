@@ -153,13 +153,13 @@ export function PurchaseWizard({
       <Card>
         <CardContent className="py-6">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-green-700" aria-hidden="true" />
+            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-success-strong" aria-hidden="true" />
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900">Pembelian tersimpan</h2>
-              <p className="mt-1 text-sm text-gray-600">
+              <h2 className="text-lg font-semibold text-foreground">Pembelian tersimpan</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Semuanya dicatat sekaligus dalam satu penyimpanan.
               </p>
-              <dl className="mt-4 divide-y divide-gray-100">
+              <dl className="mt-4 divide-y divide-border">
                 <WizardSummaryRow label="Pemasok" value={result.supplierName} />
                 <WizardSummaryRow
                   label="Nilai pembelian"
@@ -198,7 +198,7 @@ export function PurchaseWizard({
   }
 
   if (!ready) {
-    return <p className="text-sm text-gray-500">Menyiapkan formulir…</p>;
+    return <p className="text-sm text-muted-foreground">Menyiapkan formulir…</p>;
   }
 
   return (
@@ -246,14 +246,14 @@ export function PurchaseWizard({
                 <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Tambah barang
               </Button>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Jumlah × harga beli di sini menjadi nilai pembelian yang dicatat sebagai{" "}
               <TermTooltip term="utang">utang</TermTooltip> ke pemasok.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {draft.lines.map((line, i) => (
-              <div key={i} className="rounded-md border border-gray-200 p-3">
+              <div key={i} className="rounded-md border border-border p-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <SearchableSelect
                     label="Barang dari daftar stok"
@@ -284,7 +284,7 @@ export function PurchaseWizard({
                   <div className="w-32">
                     <label
                       htmlFor={`purchaseQty-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Jumlah ({line.unit || "kg"})
                     </label>
@@ -293,7 +293,7 @@ export function PurchaseWizard({
                       type="number"
                       min={0}
                       step="0.001"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={line.quantity}
                       onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
                     />
@@ -301,7 +301,7 @@ export function PurchaseWizard({
                   <div className="w-40">
                     <label
                       htmlFor={`purchasePrice-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Harga beli per {line.unit || "kg"} ({currency})
                     </label>
@@ -310,14 +310,14 @@ export function PurchaseWizard({
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={line.price}
                       onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
                     />
                   </div>
                   <div className="ml-auto text-right">
-                    <span className="block text-xs text-gray-500">Nilai baris</span>
-                    <span className="block text-sm font-medium tabular-nums text-gray-900">
+                    <span className="block text-xs text-muted-foreground">Nilai baris</span>
+                    <span className="block text-sm font-medium tabular-nums text-foreground">
                       {formatCurrency(line.quantity * line.price, currency)}
                     </span>
                   </div>
@@ -331,13 +331,13 @@ export function PurchaseWizard({
                     }
                     disabled={draft.lines.length === 1}
                     aria-label={`Hapus baris barang ${i + 1}`}
-                    className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
                 {line.itemId == null && (
-                  <p className="mt-2 text-xs text-amber-700">
+                  <p className="mt-2 text-xs text-warning-strong">
                     Barang ini belum ada di daftar stok, jadi tidak bisa dicatat masuk gudang.
                     Nilai pembeliannya tetap tercatat.
                   </p>
@@ -345,7 +345,7 @@ export function PurchaseWizard({
               </div>
             ))}
 
-            <dl className="border-t border-gray-200 pt-3">
+            <dl className="border-t border-border pt-3">
               <WizardSummaryRow
                 label="Nilai pembelian (sebelum PPN)"
                 value={formatCurrency(purchaseValue(draft), currency)}
@@ -360,10 +360,10 @@ export function PurchaseWizard({
       {stepId === "penerimaan" && (
         <Card>
           <CardContent className="space-y-4 py-4">
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors duration-150 hover:bg-gray-50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300"
+                className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
                 checked={draft.receipt.include}
                 onChange={(e) =>
                   patch((d) => {
@@ -373,12 +373,12 @@ export function PurchaseWizard({
                 }
               />
               <span className="text-sm">
-                <span className="flex items-center gap-2 font-medium text-gray-900">
-                  <PackagePlus className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <PackagePlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Barangnya sudah sampai gudang — tambahkan ke{" "}
                   <TermTooltip term="persediaan">stok</TermTooltip>
                 </span>
-                <span className="mt-0.5 block text-gray-600">
+                <span className="mt-0.5 block text-muted-foreground">
                   Stok bertambah beserta harga pokoknya, yang nanti dipakai menghitung{" "}
                   <TermTooltip term="hpp">HPP</TermTooltip> saat barang dijual. Tidak ada
                   jurnal tambahan — persediaan sudah masuk lewat jurnal pembeliannya.
@@ -404,11 +404,11 @@ export function PurchaseWizard({
                     const master = line.itemId != null ? itemById.get(line.itemId) : null;
                     const over = line.receiveQuantity > line.quantity;
                     return (
-                      <div key={i} className="rounded-md border border-gray-200 p-3">
+                      <div key={i} className="rounded-md border border-border p-3">
                         <label className="flex cursor-pointer items-center gap-2 text-sm">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                            className="h-4 w-4 cursor-pointer rounded border-border"
                             checked={line.receive}
                             disabled={line.itemId == null}
                             onChange={(e) =>
@@ -419,10 +419,10 @@ export function PurchaseWizard({
                               })
                             }
                           />
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-foreground">
                             {line.itemName || `Baris ${i + 1}`}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             dibeli {formatNumber(line.quantity)} {line.unit || "kg"}
                           </span>
                           {line.itemId == null && (
@@ -435,7 +435,7 @@ export function PurchaseWizard({
                             <div className="w-36">
                               <label
                                 htmlFor={`receiveQty-${i}`}
-                                className="mb-1 block text-xs font-medium text-gray-500"
+                                className="mb-1 block text-xs font-medium text-muted-foreground"
                               >
                                 Masuk ({line.unit || "kg"})
                               </label>
@@ -444,7 +444,7 @@ export function PurchaseWizard({
                                 type="number"
                                 min={0}
                                 step="0.001"
-                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                                className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                                 value={line.receiveQuantity}
                                 onChange={(e) =>
                                   updateLine(i, { receiveQuantity: Number(e.target.value) })
@@ -452,17 +452,17 @@ export function PurchaseWizard({
                               />
                             </div>
                             <div className="ml-auto text-right">
-                              <span className="block text-xs text-gray-500">
+                              <span className="block text-xs text-muted-foreground">
                                 Stok sekarang
                               </span>
-                              <span className="block text-sm tabular-nums text-gray-900">
+                              <span className="block text-sm tabular-nums text-foreground">
                                 {formatNumber(master?.currentStock ?? 0)} {line.unit || "kg"}
                               </span>
                             </div>
                           </div>
                         )}
                         {over && (
-                          <p className="mt-2 text-xs font-medium text-red-700">
+                          <p className="mt-2 text-xs font-medium text-destructive-strong">
                             Jumlah yang masuk melebihi jumlah yang dibeli.
                           </p>
                         )}
@@ -472,7 +472,7 @@ export function PurchaseWizard({
                 </div>
 
                 {currency !== "IDR" && (
-                  <p className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
+                  <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
                     Harga pokok stok selalu dicatat dalam rupiah, jadi harga beli{" "}
                     {currency} dikalikan kurs yang Anda isi di langkah berikutnya. Isi kursnya
                     lebih dulu bila belum.
@@ -492,7 +492,7 @@ export function PurchaseWizard({
               <CardTitle>
                 <TermTooltip term="pembelian">Detail pembelian</TermTooltip>
               </CardTitle>
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+              <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>
                   Menambah <TermTooltip term="utang">Hutang Usaha</TermTooltip> ke pemasok —
@@ -520,7 +520,7 @@ export function PurchaseWizard({
                 />
               </div>
 
-              <dl className="mt-4 border-t border-gray-200 pt-3">
+              <dl className="mt-4 border-t border-border pt-3">
                 <WizardSummaryRow
                   label="Nilai sebelum PPN"
                   value={formatCurrency(purchaseValue(draft), currency)}
@@ -551,13 +551,13 @@ export function PurchaseWizard({
               <div>
                 <label
                   htmlFor="purchaseCurrency"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Mata uang
                 </label>
                 <select
                   id="purchaseCurrency"
-                  className="block w-full cursor-pointer rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="block w-full cursor-pointer rounded-md border border-border px-3 py-2 text-sm"
                   value={currency}
                   onChange={(e) =>
                     patch((d) => ({
@@ -575,7 +575,7 @@ export function PurchaseWizard({
                 <div>
                   <label
                     htmlFor="purchaseRate"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-foreground"
                   >
                     <TermTooltip term="kurs">Kurs</TermTooltip> 1 {currency} ke IDR
                   </label>
@@ -584,7 +584,7 @@ export function PurchaseWizard({
                     type="number"
                     min={0}
                     step="0.000001"
-                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                     value={draft.purchase.rate || ""}
                     onChange={(e) =>
                       patch((d) => ({
@@ -593,7 +593,7 @@ export function PurchaseWizard({
                       }))
                     }
                   />
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Wajib diisi — buku besar mencatat nilai IDR.
                   </p>
                 </div>
@@ -601,7 +601,7 @@ export function PurchaseWizard({
               <div>
                 <label
                   htmlFor="taxAmount"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   PPN Masukan ({currency})
                 </label>
@@ -610,7 +610,7 @@ export function PurchaseWizard({
                   type="number"
                   min={0}
                   step="0.01"
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                  className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                   value={draft.purchase.taxAmount}
                   onChange={(e) =>
                     patch((d) => ({
@@ -619,7 +619,7 @@ export function PurchaseWizard({
                     }))
                   }
                 />
-                <p className="mt-1 text-xs text-gray-600">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Diposting terpisah ke akun PPN Masukan. Isi 0 bila tidak ada.
                 </p>
               </div>
@@ -633,7 +633,7 @@ export function PurchaseWizard({
                   }
                   maxLength={300}
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Rincian barang di langkah 2 otomatis ikut ke catatan ini, karena satu
                   pembelian tersimpan sebagai satu nilai.
                 </p>
@@ -648,13 +648,13 @@ export function PurchaseWizard({
         <Card>
           <CardHeader>
             <CardTitle>Periksa sebelum disimpan</CardTitle>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Semua di bawah ini akan dicatat sekaligus. Bila salah satunya gagal, tidak ada
               satu pun yang tersimpan.
             </p>
           </CardHeader>
           <CardContent>
-            <dl className="divide-y divide-gray-100">
+            <dl className="divide-y divide-border">
               <WizardSummaryRow
                 label="Pemasok"
                 value={

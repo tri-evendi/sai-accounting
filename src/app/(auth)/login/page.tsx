@@ -34,7 +34,7 @@ function LoginLoading() {
       description="Use your company account to access dashboards, contracts, and inventory."
       icon={<LogIn className="h-5 w-5" aria-hidden />}
     >
-      <p className="text-center text-sm text-gray-500">Loading…</p>
+      <p className="text-center text-sm text-muted-foreground">Loading…</p>
     </AuthShell>
   );
 }
@@ -87,7 +87,7 @@ function LoginForm() {
         description="Use your company account to access dashboards, contracts, and inventory."
         icon={<LogIn className="h-5 w-5" aria-hidden />}
       >
-        <p className="text-center text-sm text-gray-500">Checking your session…</p>
+        <p className="text-center text-sm text-muted-foreground">Checking your session…</p>
       </AuthShell>
     );
   }
@@ -99,7 +99,7 @@ function LoginForm() {
       error={error}
       icon={<LogIn className="h-5 w-5" aria-hidden />}
       footer={
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-muted-foreground">
           Forgot your password? Contact your system administrator to reset access.
         </p>
       }

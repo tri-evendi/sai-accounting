@@ -45,7 +45,7 @@ export function HelpMenu() {
   }, [open]);
 
   const itemClass =
-    "flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600";
+    "flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors duration-150 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="relative" ref={containerRef} data-tour="bantuan">
@@ -57,10 +57,10 @@ export function HelpMenu() {
         aria-label="Bantuan"
         className={cn(
           "flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors duration-150",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
           open
-            ? "border-blue-200 bg-blue-50 text-blue-700"
-            : "border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            ? "border-primary/30 bg-primary/10 text-primary"
+            : "border-border bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <HelpCircle className="h-4 w-4" aria-hidden="true" />
@@ -71,7 +71,7 @@ export function HelpMenu() {
         <div
           role="menu"
           aria-label="Menu bantuan"
-          className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-border bg-white p-1 shadow-lg"
         >
           <Link
             role="menuitem"
@@ -79,10 +79,10 @@ export function HelpMenu() {
             onClick={() => setOpen(false)}
             className={itemClass}
           >
-            <BookMarked className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+            <BookMarked className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
-              <span className="block font-medium text-gray-900">Kamus Istilah</span>
-              <span className="block text-xs text-gray-500">
+              <span className="block font-medium text-foreground">Kamus Istilah</span>
+              <span className="block text-xs text-muted-foreground">
                 Arti istilah akuntansi dengan bahasa sehari-hari.
               </span>
             </span>
@@ -98,14 +98,14 @@ export function HelpMenu() {
               }}
               className={itemClass}
             >
-              <Compass className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+              <Compass className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span>
-                <span className="block font-medium text-gray-900">Ulangi tur halaman ini</span>
-                <span className="block text-xs text-gray-500">{tour.title}</span>
+                <span className="block font-medium text-foreground">Ulangi tur halaman ini</span>
+                <span className="block text-xs text-muted-foreground">{tour.title}</span>
               </span>
             </button>
           ) : (
-            <p className="px-3 py-2 text-xs text-gray-500">
+            <p className="px-3 py-2 text-xs text-muted-foreground">
               Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan
               Pusat Laporan.
             </p>

@@ -42,7 +42,7 @@ export interface ContractOption {
 }
 
 const PlainShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="rounded-md border border-gray-200 p-4">{children}</div>
+  <div className="rounded-md border border-border p-4">{children}</div>
 );
 
 const CardShell = ({ children }: { children: React.ReactNode }) => (
@@ -174,8 +174,8 @@ export function AdvanceForm({
           {locked ? (
             /* Stated, not asked — but stated in full, so the user can see what
                they are about to record without leaving the page. */
-            <div className="sm:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-              <span className="font-medium text-gray-900">
+            <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+              <span className="font-medium text-foreground">
                 {isSales ? "Diterima dari pelanggan" : "Dibayar ke supplier"}
               </span>{" "}
               · {locked.party.name}
@@ -232,7 +232,7 @@ export function AdvanceForm({
                 })),
               ]}
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Menautkan uang muka ke kontrak hanya untuk penelusuran. Kompensasi tetap
               dilakukan ke {isSales ? "faktur saat faktur terbit" : "pembelian saat barang diterima"}.
             </p>
@@ -272,13 +272,13 @@ export function AdvanceForm({
         </div>
 
         {baseValue != null && currency !== "IDR" && (
-          <p className="mt-4 text-sm text-gray-600 tabular-nums">
+          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
             Nilai di buku besar:{" "}
-            <strong className="text-gray-900">{formatCurrency(baseValue, "IDR")}</strong>
+            <strong className="text-foreground">{formatCurrency(baseValue, "IDR")}</strong>
           </p>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {isSales ? (
@@ -299,7 +299,7 @@ export function AdvanceForm({
         </p>
 
         {error && (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
             {error}
           </p>
         )}

@@ -36,9 +36,9 @@ export default async function SetupPage() {
     return (
       <div className="max-w-3xl">
         <Breadcrumb items={[{ label: "Setup" }]} />
-        <h1 className="text-2xl font-bold text-gray-900">Setup Perusahaan</h1>
+        <h1 className="text-2xl font-bold text-foreground">Setup Perusahaan</h1>
 
-        <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <span>
             Perusahaan sudah selesai disiapkan. Wizard hanya dijalankan sekali — di bawah
@@ -53,20 +53,20 @@ export default async function SetupPage() {
           <CardContent>
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="font-medium text-gray-500">Nama</dt>
-                <dd className="text-gray-900">{settings.name}</dd>
+                <dt className="font-medium text-muted-foreground">Nama</dt>
+                <dd className="text-foreground">{settings.name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-gray-500">Alamat</dt>
-                <dd className="text-gray-900">{settings.address || "—"}</dd>
+                <dt className="font-medium text-muted-foreground">Alamat</dt>
+                <dd className="text-foreground">{settings.address || "—"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-gray-500">Mata Uang Dasar</dt>
-                <dd className="text-gray-900">{settings.baseCurrency}</dd>
+                <dt className="font-medium text-muted-foreground">Mata Uang Dasar</dt>
+                <dd className="text-foreground">{settings.baseCurrency}</dd>
               </div>
               <div>
-                <dt className="font-medium text-gray-500">Awal Tahun Buku</dt>
-                <dd className="text-gray-900">{formatDate(settings.fiscalYearStart)}</dd>
+                <dt className="font-medium text-muted-foreground">Awal Tahun Buku</dt>
+                <dd className="text-foreground">{formatDate(settings.fiscalYearStart)}</dd>
               </div>
             </dl>
           </CardContent>
@@ -81,7 +81,7 @@ export default async function SetupPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
+                    <tr className="border-b border-border text-left text-muted-foreground">
                       <th className="py-2 pr-4 font-medium">Akun</th>
                       <th className="py-2 pr-4 text-right font-medium">Debit (IDR)</th>
                       <th className="py-2 text-right font-medium">Kredit (IDR)</th>
@@ -89,17 +89,17 @@ export default async function SetupPage() {
                   </thead>
                   <tbody>
                     {journal.lines.map((l) => (
-                      <tr key={l.id} className="border-b border-gray-100">
-                        <td className="py-2 pr-4 text-gray-900">
-                          <span className="text-gray-500">{l.account.code}</span> {l.account.name}
+                      <tr key={l.id} className="border-b border-border">
+                        <td className="py-2 pr-4 text-foreground">
+                          <span className="text-muted-foreground">{l.account.code}</span> {l.account.name}
                           {l.memo ? (
-                            <span className="block text-xs text-gray-400">{l.memo}</span>
+                            <span className="block text-xs text-muted-foreground">{l.memo}</span>
                           ) : null}
                         </td>
-                        <td className="py-2 pr-4 text-right tabular-nums text-gray-900">
+                        <td className="py-2 pr-4 text-right tabular-nums text-foreground">
                           {Number(l.baseDebit) > 0 ? formatCurrency(Number(l.baseDebit), "IDR") : "—"}
                         </td>
-                        <td className="py-2 text-right tabular-nums text-gray-900">
+                        <td className="py-2 text-right tabular-nums text-foreground">
                           {Number(l.baseCredit) > 0 ? formatCurrency(Number(l.baseCredit), "IDR") : "—"}
                         </td>
                       </tr>
@@ -107,9 +107,9 @@ export default async function SetupPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-muted-foreground">
                 Saldo awal ini sudah tercermin di{" "}
-                <Link href="/reports" className="text-blue-700 underline">
+                <Link href="/reports" className="text-primary underline">
                   Neraca
                 </Link>{" "}
                 per {formatDate(settings.fiscalYearStart)}.
@@ -136,8 +136,8 @@ export default async function SetupPage() {
   return (
     <div className="max-w-3xl">
       <Breadcrumb items={[{ label: "Setup" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Setup Perusahaan &amp; Saldo Awal</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Setup Perusahaan &amp; Saldo Awal</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali.
       </p>
       <SetupWizard

@@ -29,9 +29,9 @@ export function LearnMore({ term, label, className }: LearnMoreProps) {
     <Link
       href={glossaryHref(entry.key)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-blue-700",
-        "cursor-pointer transition-colors duration-150 hover:text-blue-900 hover:underline",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1",
+        "inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-primary",
+        "cursor-pointer transition-colors duration-150 hover:text-primary hover:underline",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
         className
       )}
     >

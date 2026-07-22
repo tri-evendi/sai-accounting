@@ -31,7 +31,7 @@ export default async function JournalPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Jurnal Umum ({journals.length})</h1>
+        <h1 className="text-2xl font-bold text-foreground">Jurnal Umum ({journals.length})</h1>
         <Link href="/journal/new">
           <Button>+ Jurnal Baru</Button>
         </Link>
@@ -40,13 +40,13 @@ export default async function JournalPage() {
       <Card>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left">
-              <th className="px-6 py-3 font-medium text-gray-500">Nomor</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Tipe</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Keterangan</th>
-              <th className="px-6 py-3 font-medium text-gray-500 text-right">Total (IDR)</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-6 py-3 font-medium text-muted-foreground">Nomor</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Keterangan</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total (IDR)</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -54,15 +54,15 @@ export default async function JournalPage() {
               journals.map((j) => {
                 const total = j.lines.reduce((s, l) => s + Number(l.baseDebit), 0);
                 return (
-                  <tr key={j.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={j.id} className="border-b border-border hover:bg-muted">
                     <td className="px-6 py-3">
-                      <Link href={`/journal/${j.id}`} className="font-mono text-blue-600 hover:underline">
+                      <Link href={`/journal/${j.id}`} className="font-mono text-primary hover:underline">
                         {j.number}
                       </Link>
                     </td>
-                    <td className="px-6 py-3 text-gray-600 tabular-nums">{formatDateShort(j.date)}</td>
-                    <td className="px-6 py-3 text-gray-600">{TYPE_LABELS[j.type] ?? j.type}</td>
-                    <td className="px-6 py-3 text-gray-600 max-w-xs truncate">{j.note ?? "—"}</td>
+                    <td className="px-6 py-3 text-muted-foreground tabular-nums">{formatDateShort(j.date)}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{TYPE_LABELS[j.type] ?? j.type}</td>
+                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</td>
                     <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
                     <td className="px-6 py-3">
                       {j.isReversed ? (

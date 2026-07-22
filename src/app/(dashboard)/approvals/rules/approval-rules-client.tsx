@@ -104,11 +104,11 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
         <CardContent className="px-0 py-0">
           {rules.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <ShieldCheck className="h-8 w-8 text-gray-300" aria-hidden="true" />
-              <p className="text-sm text-gray-600">
+              <ShieldCheck className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground">
                 Belum ada aturan — semua transaksi langsung masuk jurnal seperti biasa.
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Tambahkan aturan pertama di formulir sebelah untuk mulai menyaring transaksi
                 bernilai besar.
               </p>
@@ -117,13 +117,13 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">Jenis Dokumen</th>
-                    <th className="px-6 py-3 text-right font-medium text-gray-500">
+                  <tr className="border-b border-border text-left">
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Jenis Dokumen</th>
+                    <th className="px-6 py-3 text-right font-medium text-muted-foreground">
                       Mulai Nilai (IDR)
                     </th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Penyetuju</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Penyetuju</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="px-6 py-3" />
                   </tr>
                 </thead>
@@ -131,20 +131,20 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
                   {rules.map((rule) => (
                     <tr
                       key={rule.id}
-                      className="border-b border-gray-100 transition-colors duration-150 hover:bg-gray-50"
+                      className="border-b border-border transition-colors duration-150 hover:bg-muted"
                     >
-                      <td className="px-6 py-3 font-medium text-gray-900">
+                      <td className="px-6 py-3 font-medium text-foreground">
                         {rule.documentTypeLabel}
                         {rule.note && (
-                          <span className="block text-xs font-normal text-gray-500">
+                          <span className="block text-xs font-normal text-muted-foreground">
                             {rule.note}
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-3 text-right tabular-nums text-gray-900">
+                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
                         {formatCurrency(rule.minAmount, "IDR")}
                       </td>
-                      <td className="px-6 py-3 text-gray-600">
+                      <td className="px-6 py-3 text-muted-foreground">
                         {ROLE_LABELS[rule.approverRole as Role] ?? rule.approverRole}
                       </td>
                       <td className="px-6 py-3">
@@ -208,7 +208,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value)}
             />
-            <p className="-mt-2 text-xs text-gray-500">
+            <p className="-mt-2 text-xs text-muted-foreground">
               “Pembayaran” mencakup pelunasan faktur, pelunasan kontrak, dan pembayaran ke
               supplier.
             </p>
@@ -225,7 +225,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
               onChange={(e) => setMinAmount(e.target.value)}
               className="text-right tabular-nums"
             />
-            <p className="-mt-2 text-xs text-gray-500">
+            <p className="-mt-2 text-xs text-muted-foreground">
               Inklusif: dokumen senilai persis angka ini tetap perlu persetujuan. Bila beberapa
               aturan cocok, yang berlaku adalah ambang tertinggi yang tercapai.
             </p>
@@ -239,7 +239,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
             />
 
             <div className="space-y-1">
-              <label htmlFor="rule-note" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="rule-note" className="block text-sm font-medium text-foreground">
                 Catatan (opsional)
               </label>
               <textarea
@@ -248,7 +248,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Contoh: kebijakan direksi per Januari 2026"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm transition-colors duration-150 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="block w-full rounded-md border border-border px-3 py-2 text-sm transition-colors duration-150 focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
               />
             </div>
 

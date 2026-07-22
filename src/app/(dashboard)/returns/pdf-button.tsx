@@ -12,7 +12,7 @@ export function ReturnPdfButton({ data }: { data: ReturnPdfData }) {
     <button
       type="button"
       onClick={() => generateReturnPDF(data).save(`${data.returnNo}.pdf`)}
-      className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
       aria-label={`Unduh nota retur ${data.returnNo}`}
     >
       <Download className="h-3.5 w-3.5" aria-hidden="true" />

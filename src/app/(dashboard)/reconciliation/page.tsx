@@ -24,10 +24,10 @@ export default async function ReconciliationListPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="rekonsiliasi_bank">Cocokkan Rekening Koran</TermTooltip>
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Cocokkan buku kas/bank internal dengan rekening koran bank per periode.
           </p>
           {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
@@ -54,30 +54,30 @@ export default async function ReconciliationListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Periode</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Rekening</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 text-right">Saldo Awal</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 text-right">Saldo Akhir</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 text-right">Baris Koran</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                  <th className="px-6 py-3 font-medium text-gray-500"></th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Periode</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Rekening</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo Awal</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo Akhir</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Baris Koran</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground"></th>
                 </tr>
               </thead>
               <tbody>
                 {statements.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-900">
+                  <tr key={s.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-6 py-3 text-foreground">
                       {formatDateShort(s.periodStart)} — {formatDateShort(s.periodEnd)}
                     </td>
-                    <td className="px-6 py-3 text-gray-700">Bank ({s.currency})</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-6 py-3 text-foreground">Bank ({s.currency})</td>
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(Number(s.openingBalance), s.currency)}
                     </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(Number(s.closingBalance), s.currency)}
                     </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-500">
+                    <td className="px-6 py-3 text-right tabular-nums text-muted-foreground">
                       {s._count.lines}
                     </td>
                     <td className="px-6 py-3">
@@ -90,7 +90,7 @@ export default async function ReconciliationListPage() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <Link href={`/reconciliation/${s.id}`} className="text-blue-700 hover:underline">
+                      <Link href={`/reconciliation/${s.id}`} className="text-primary hover:underline">
                         Buka
                       </Link>
                     </td>

@@ -33,8 +33,8 @@ function signedCurrency(amount: number): string {
 }
 
 function varianceClass(favorable: boolean | null): string {
-  if (favorable === null) return "text-gray-700";
-  return favorable ? "text-green-700" : "text-red-600";
+  if (favorable === null) return "text-foreground";
+  return favorable ? "text-success-strong" : "text-destructive";
 }
 
 export default async function BudgetReportPage({
@@ -58,8 +58,8 @@ export default async function BudgetReportPage({
   return (
     <div className="max-w-6xl">
       <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Realisasi vs Anggaran" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Realisasi vs Anggaran</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Realisasi vs Anggaran</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         {periodText} · nilai dalam IDR · realisasi dibaca dari Laba/Rugi (buku besar). Peringatan
         di atas/di bawah memakai ambang ±{DEFAULT_VARIANCE_THRESHOLD_PCT}%.
       </p>
@@ -71,31 +71,31 @@ export default async function BudgetReportPage({
       {/* Summary — a compact strip, not a dashboard rebuild. */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Anggaran</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Anggaran</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {formatCurrency(report.totals.budget, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Realisasi</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Realisasi</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {formatCurrency(report.totals.actual, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Selisih</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selisih</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {signedCurrency(report.totals.variance)}
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
               {pctLabel(report.totals.variancePct)}
             </span>
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Peringatan</p>
-          <p className="mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums text-gray-900">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Peringatan</p>
+          <p className="mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums text-foreground">
             {report.totals.alertCount > 0 && (
-              <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
+              <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
             )}
             {report.totals.alertCount} akun
           </p>
@@ -107,8 +107,8 @@ export default async function BudgetReportPage({
         <Card className="mb-6 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-gray-900">Realisasi Target Penjualan</h2>
-              <p className="mt-0.5 text-sm text-gray-500">
+              <h2 className="font-semibold text-foreground">Realisasi Target Penjualan</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Target {formatCurrency(sales.totalTarget, "IDR")} · Realisasi{" "}
                 <span className="tabular-nums">{formatCurrency(sales.actualSales, "IDR")}</span>
               </p>
@@ -137,26 +137,26 @@ export default async function BudgetReportPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Realisasi</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Selisih</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">%</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Status</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Realisasi</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Selisih</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">%</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {report.rows.map((r) => (
-                  <tr key={r.code} className="border-b border-gray-100">
-                    <td className="px-4 py-3 text-gray-900">
-                      <span className="font-mono text-gray-400 mr-2">{r.code}</span>
+                  <tr key={r.code} className="border-b border-border">
+                    <td className="px-4 py-3 text-foreground">
+                      <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
                       {r.name}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.budget, "IDR")}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.actual, "IDR")}
                     </td>
                     <td className={`px-4 py-3 text-right tabular-nums ${varianceClass(r.favorable)}`}>
@@ -172,18 +172,18 @@ export default async function BudgetReportPage({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300 font-bold">
-                  <td className="px-4 py-3 text-gray-900">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                <tr className="border-t-2 border-border font-bold">
+                  <td className="px-4 py-3 text-foreground">Total</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {formatCurrency(report.totals.budget, "IDR")}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {formatCurrency(report.totals.actual, "IDR")}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
                     {signedCurrency(report.totals.variance)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gray-500">
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                     {pctLabel(report.totals.variancePct)}
                   </td>
                   <td className="px-4 py-3" />

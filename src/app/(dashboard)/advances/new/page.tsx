@@ -22,8 +22,8 @@ export default async function NewAdvancePage() {
   return (
     <div className="max-w-3xl">
       <Breadcrumb items={[{ label: "Uang Muka", href: "/advances" }, { label: "Catat" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Catat Uang Muka</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Catat Uang Muka</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Untuk uang yang diterima atau dibayar sebelum fakturnya terbit.
       </p>
       <AdvanceForm customers={customers} suppliers={suppliers} contracts={contracts} />

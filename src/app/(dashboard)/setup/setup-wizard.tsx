@@ -247,10 +247,10 @@ export function SetupWizard({
             className={
               "flex items-center gap-2 rounded-md px-3 py-1.5 " +
               (i === step
-                ? "bg-blue-600 text-white"
+                ? "bg-primary text-white"
                 : i < step
-                ? "bg-green-50 text-green-700"
-                : "bg-gray-100 text-gray-500")
+                ? "bg-success-soft text-success-strong"
+                : "bg-muted text-muted-foreground")
             }
           >
             {i < step ? (
@@ -267,7 +267,7 @@ export function SetupWizard({
         {/* Step 0 — identity */}
         {step === 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Identitas Perusahaan</h2>
+            <h2 className="text-lg font-semibold text-foreground">Identitas Perusahaan</h2>
             <Input
               id="name"
               label="Nama perusahaan"
@@ -277,12 +277,12 @@ export function SetupWizard({
               required
             />
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="address" className="block text-sm font-medium text-foreground">
                 Alamat
               </label>
               <textarea
                 id="address"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -303,7 +303,7 @@ export function SetupWizard({
         {/* Step 1 — base currency + fiscal year */}
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Mata Uang &amp; Tahun Buku</h2>
+            <h2 className="text-lg font-semibold text-foreground">Mata Uang &amp; Tahun Buku</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="baseCurrency"
@@ -321,7 +321,7 @@ export function SetupWizard({
                 required
               />
             </div>
-            <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
                 Buku besar dicatat dalam <strong>IDR</strong> sebagai mata uang dasar. Jurnal
@@ -334,8 +334,8 @@ export function SetupWizard({
         {/* Step 2 — confirm COA */}
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Bagan Akun (COA)</h2>
-            <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <h2 className="text-lg font-semibold text-foreground">Bagan Akun (COA)</h2>
+            <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <span>
                 Bagan akun standar (trading/ekspor) sudah tersedia:{" "}
@@ -343,7 +343,7 @@ export function SetupWizard({
                 di langkah berikutnya akan menggunakan akun-akun ini.
               </span>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Anda dapat meninjau atau menyesuaikan akun di menu Akun Perkiraan kapan saja.
             </p>
           </div>
@@ -352,7 +352,7 @@ export function SetupWizard({
         {/* Step 3 — opening balances */}
         {step === 3 && (
           <div className="space-y-8">
-            <h2 className="text-lg font-semibold text-gray-900">Saldo Awal</h2>
+            <h2 className="text-lg font-semibold text-foreground">Saldo Awal</h2>
 
             {/* Kas / Bank */}
             <Section
@@ -433,8 +433,8 @@ export function SetupWizard({
 
             {/* Persediaan */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Persediaan</h3>
-              <p className="mb-2 text-xs text-gray-500">
+              <h3 className="text-sm font-semibold text-foreground">Persediaan</h3>
+              <p className="mb-2 text-xs text-muted-foreground">
                 Nilai persediaan barang dagang (IDR) per awal tahun buku.
               </p>
               <div className="sm:w-1/2">
@@ -470,19 +470,19 @@ export function SetupWizard({
         {/* Step 4 — review */}
         {step === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Tinjau &amp; Simpan</h2>
+            <h2 className="text-lg font-semibold text-foreground">Tinjau &amp; Simpan</h2>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="font-medium text-gray-500">Perusahaan</dt>
-                <dd className="text-gray-900">{name}</dd>
+                <dt className="font-medium text-muted-foreground">Perusahaan</dt>
+                <dd className="text-foreground">{name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-gray-500">Awal tahun buku</dt>
-                <dd className="text-gray-900 tabular-nums">{fiscalYearStart}</dd>
+                <dt className="font-medium text-muted-foreground">Awal tahun buku</dt>
+                <dd className="text-foreground tabular-nums">{fiscalYearStart}</dd>
               </div>
             </dl>
             <BalancePanel totals={totals} />
-            <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
                 Menyimpan akan membuat <strong>satu jurnal pembuka</strong> yang seimbang dan
@@ -493,7 +493,7 @@ export function SetupWizard({
         )}
 
         {error && (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
             {error}
           </p>
         )}
@@ -560,11 +560,11 @@ function Section({
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      <p className="mb-2 text-xs text-gray-500">{hint}</p>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <p className="mb-2 text-xs text-muted-foreground">{hint}</p>
       <div className="space-y-3">{children}</div>
       {empty ? (
-        <p className="mt-2 text-xs text-gray-400">{empty}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
       ) : (
         <Button
           type="button"
@@ -678,7 +678,7 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 cursor-pointer"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive-soft hover:text-destructive cursor-pointer"
       aria-label="Hapus baris"
     >
       <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -693,29 +693,29 @@ function BalancePanel({
 }) {
   const equityLabel = totals.equity >= 0 ? "Modal/Ekuitas (kredit)" : "Modal/Ekuitas (debit)";
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-lg border border-border bg-muted p-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Figure label="Total Aset (debit)" value={totals.assets} />
         <Figure label="Total Kewajiban (kredit)" value={totals.liabilities} />
         <Figure label={equityLabel} value={Math.abs(totals.equity)} />
       </div>
-      <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
+      <div className="mt-3 border-t border-border pt-3 text-sm">
         {totals.unrated > 0 ? (
-          <p className="flex items-center gap-2 text-amber-700">
+          <p className="flex items-center gap-2 text-warning-strong">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {totals.unrated} saldo mata uang asing belum berkurs — isi kursnya sebelum menyimpan.
             </span>
           </p>
         ) : totals.hasAny ? (
-          <p className="flex items-center gap-2 text-green-700">
+          <p className="flex items-center gap-2 text-success-strong">
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="tabular-nums">
               Seimbang: Aset = Kewajiban + Modal/Ekuitas ({formatCurrency(totals.assets, "IDR")})
             </span>
           </p>
         ) : (
-          <p className="text-gray-500">Belum ada saldo awal yang diisi.</p>
+          <p className="text-muted-foreground">Belum ada saldo awal yang diisi.</p>
         )}
       </div>
     </div>
@@ -725,8 +725,8 @@ function BalancePanel({
 function Figure({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-0.5 text-base font-semibold text-gray-900 tabular-nums">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">
         {formatCurrency(value, "IDR")}
       </p>
     </div>

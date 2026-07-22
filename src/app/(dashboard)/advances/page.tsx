@@ -40,8 +40,8 @@ export default async function AdvancesPage({
       <Breadcrumb items={[{ label: "Uang Muka" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Uang Muka</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Uang Muka</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Uang yang diterima atau dibayar <strong>sebelum</strong> fakturnya terbit.
             Belum dihitung sebagai penjualan atau beban sampai dikompensasi ke faktur.
           </p>
@@ -66,8 +66,8 @@ export default async function AdvancesPage({
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
-                ? "border-blue-700 bg-blue-700 text-white"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-foreground hover:bg-muted"
             }`}
           >
             {f.label}
@@ -77,26 +77,26 @@ export default async function AdvancesPage({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Uang muka belum dikompensasi</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Uang muka belum dikompensasi</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.outstandingBase, "IDR")}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Nilai dasar IDR dari {summary.count} uang muka yang masih bersisa.
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Belum berkurs</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Belum berkurs</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {summary.unresolvedCount}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Uang muka valas tanpa kurs — tidak dihitung dalam total IDR di atas.
           </p>
         </Card>
       </div>
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+      <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
           Uang muka masuk ke akun <strong>Uang Muka Penjualan</strong> (kewajiban) atau{" "}
@@ -119,40 +119,40 @@ export default async function AdvancesPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Nomor</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Jenis</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Pihak</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Kontrak</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nilai</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Nomor</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Jenis</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Pihak</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Kontrak</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                     Sudah dikompensasi
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Sisa</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Sisa (IDR)</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa (IDR)</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-100">
-                    <td className="px-4 py-3 font-medium text-gray-900">{r.advanceNo}</td>
+                  <tr key={r.id} className="border-b border-border">
+                    <td className="px-4 py-3 font-medium text-foreground">{r.advanceNo}</td>
                     <td className="px-4 py-3">
                       {/* Badge always carries text — colour is never the only signal. */}
                       <Badge variant={r.type === "sales" ? "success" : "warning"}>
                         {r.type === "sales" ? "Diterima" : "Dibayar"}
                       </Badge>
-                      <span className="mt-0.5 block text-xs text-gray-500">
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
                         {ADVANCE_TYPE_LABELS[r.type]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{r.partyName}</td>
-                    <td className="px-4 py-3 text-gray-700">{formatDateShort(r.date)}</td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-foreground">{r.partyName}</td>
+                    <td className="px-4 py-3 text-foreground">{formatDateShort(r.date)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
                       {r.contractNo ? (
                         <Link
                           href={`/contracts/${r.contractId}`}
-                          className="cursor-pointer text-blue-700 transition-colors hover:underline"
+                          className="cursor-pointer text-primary transition-colors hover:underline"
                         >
                           {r.contractNo}
                         </Link>
@@ -160,28 +160,28 @@ export default async function AdvancesPage({
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.amount, r.currency)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.applied, r.currency)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
                       {formatCurrency(r.remaining, r.currency)}
                       {r.isFullyApplied && (
-                        <span className="mt-0.5 block text-xs font-normal text-gray-500">
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                           Sudah habis
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {r.remainingBase != null ? (
                         formatCurrency(r.remainingBase, "IDR")
                       ) : (
-                        <span className="text-xs text-amber-700">Kurs belum diisi</span>
+                        <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                       )}
                       {r.unratedApplications > 0 && (
-                        <span className="mt-0.5 block text-xs text-amber-700">
+                        <span className="mt-0.5 block text-xs text-warning-strong">
                           {r.unratedApplications} kompensasi belum berkurs
                         </span>
                       )}

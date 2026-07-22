@@ -78,7 +78,7 @@ export function SearchableSelect({
   return (
     <div className="space-y-1">
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+        <label htmlFor={id} className="block text-sm font-medium text-foreground">
           {label}
         </label>
       )}
@@ -93,13 +93,13 @@ export function SearchableSelect({
             aria-controls={listboxId}
             aria-haspopup="listbox"
             className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+              "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-white px-3 py-2 text-left text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             )}
           >
-            <span className={cn("truncate", !selected && "text-gray-400")}>
+            <span className={cn("truncate", !selected && "text-muted-foreground")}>
               {selected ? selected.label : placeholder}
             </span>
-            <span className="flex items-center gap-1 text-gray-400">
+            <span className="flex items-center gap-1 text-muted-foreground">
               {clearable && selected && !disabled && (
                 <span
                   role="button"
@@ -109,7 +109,7 @@ export function SearchableSelect({
                     e.stopPropagation();
                     onChange(null);
                   }}
-                  className="rounded p-0.5 hover:bg-gray-100 hover:text-gray-600"
+                  className="rounded p-0.5 hover:bg-muted hover:text-muted-foreground"
                 >
                   <X className="h-4 w-4" />
                 </span>
@@ -147,9 +147,9 @@ export function SearchableSelect({
                     }}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-gray-900">{opt.label}</span>
+                      <span className="block truncate text-foreground">{opt.label}</span>
                       {opt.description && (
-                        <span className="block truncate text-xs text-gray-500">
+                        <span className="block truncate text-xs text-muted-foreground">
                           {opt.description}
                         </span>
                       )}

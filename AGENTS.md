@@ -15,7 +15,7 @@ Setiap kali membuat/mengubah/mereview UI (halaman, komponen, warna, tipografi, l
    ```
    Skill terkait juga tersedia: `design-system` (token), `ui-styling` (shadcn/Tailwind).
 3. **Patuhi prinsip app ini:** *simple surface, standard engine* — ramah pengguna awam, tapi proses akuntansi tetap baku. Light-first; semantik warna uang (hijau masuk / merah keluar) tak boleh warna-saja; angka `tabular-nums` rata-kanan format `id-ID`.
-4. **Reuse** komponen `src/components/ui` (CVA) & ikon `lucide-react`. Warna/spacing dari token, bukan hex mentah.
+4. **Reuse** komponen `src/components/ui` (**shadcn/ui + CVA**, Radix untuk overlay) & ikon `lucide-react`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, `bg-success-soft`, …), bukan kelas palet mentah (`bg-blue-600`) atau hex — penjaga ESLint menolaknya (issue #54). Form: `react-hook-form` + `zod` via pola `Form` (lihat "Konvensi Form" MASTER.md). Tabel: primitif `Table`/`DataTable`; nominal lewat `Money`/`MoneyInput`.
 5. Sebelum menyerahkan UI, lewati **Pre-Delivery Checklist** di MASTER.md.
 
 # Database & Skema (WAJIB untuk perubahan data)

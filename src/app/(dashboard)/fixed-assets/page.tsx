@@ -38,8 +38,8 @@ export default async function FixedAssetsPage({
       <Breadcrumb items={[{ label: "Aset Tetap" }]} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Aset Tetap</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Aset Tetap</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Kendaraan, alat, dan bangunan beserta penyusutannya. Nilai buku &amp; beban
             penyusutan tercermin otomatis di Neraca dan Laba Rugi.
           </p>
@@ -68,24 +68,24 @@ export default async function FixedAssetsPage({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Aset aktif</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{summary.activeCount}</p>
+          <p className="text-sm text-muted-foreground">Aset aktif</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{summary.activeCount}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Nilai perolehan</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Nilai perolehan</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.cost, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Akumulasi penyusutan</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Akumulasi penyusutan</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.accumulated, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Nilai buku</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Nilai buku</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.book, "IDR")}
           </p>
         </Card>
@@ -104,8 +104,8 @@ export default async function FixedAssetsPage({
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
-                ? "border-blue-700 bg-blue-700 text-white"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-foreground hover:bg-muted"
             }`}
           >
             {f.label}
@@ -134,40 +134,40 @@ export default async function FixedAssetsPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Nomor</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Nama</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Kategori</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Lokasi</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nilai Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Akum. Penyusutan</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Nilai Buku</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Status</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Nomor</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Nama</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Kategori</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Lokasi</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Perolehan</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Perolehan</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Akum. Penyusutan</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Buku</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                  <tr key={r.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-4 py-3 font-medium text-foreground">
                       <Link
                         href={`/fixed-assets/${r.id}`}
-                        className="cursor-pointer text-blue-700 transition-colors hover:underline"
+                        className="cursor-pointer text-primary transition-colors hover:underline"
                       >
                         {r.assetNo}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{r.name}</td>
-                    <td className="px-4 py-3 text-gray-700">{r.categoryName}</td>
-                    <td className="px-4 py-3 text-gray-500">{r.location ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-700">{formatDateShort(r.acquisitionDate)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-foreground">{r.name}</td>
+                    <td className="px-4 py-3 text-foreground">{r.categoryName}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.location ?? "—"}</td>
+                    <td className="px-4 py-3 text-foreground">{formatDateShort(r.acquisitionDate)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.acquisitionCost, "IDR")}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(r.accumulatedDepreciation, "IDR")}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
                       {formatCurrency(r.bookValue, "IDR")}
                     </td>
                     <td className="px-4 py-3">
@@ -187,7 +187,7 @@ export default async function FixedAssetsPage({
         </Card>
       )}
 
-      <p className="mt-6 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+      <p className="mt-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
           Penyusutan garis lurus dijalankan per bulan dan diposting sebagai{" "}

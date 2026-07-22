@@ -8,7 +8,7 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · komponen CVA di `src/components/ui` · ikon `lucide-react` · chart `recharts`.
+**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · **shadcn/ui + CVA** di `src/components/ui` (Radix di baliknya untuk overlay) · form `react-hook-form` + `zod` · tabel `@tanstack/react-table` · ikon `lucide-react` · chart `recharts`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, …) — kelas palet mentah (`bg-blue-600`) ditolak lint (issue #54).
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
@@ -135,5 +135,6 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 - [ ] Status pakai badge berteks (bukan warna saja).
 - [ ] Form: label terlihat, validasi inline, helper text, progressive disclosure.
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
-- [ ] Reuse komponen `src/components/ui`; token warna/spacing dari variabel (bukan hex mentah).
+- [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
+- [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

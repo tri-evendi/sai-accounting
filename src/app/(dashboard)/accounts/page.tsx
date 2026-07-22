@@ -28,19 +28,19 @@ export default async function AccountsPage() {
   const walk = (parentId: number | null, depth: number) => {
     for (const a of childrenOf.get(parentId) ?? []) {
       rows.push(
-        <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
-          <td className="px-6 py-3 font-mono text-gray-700 tabular-nums">{a.code}</td>
+        <tr key={a.id} className="border-b border-border hover:bg-muted">
+          <td className="px-6 py-3 font-mono text-foreground tabular-nums">{a.code}</td>
           <td className="px-6 py-3">
             <span style={{ paddingLeft: depth * 20 }} className="inline-block">
-              {depth > 0 && <span className="text-gray-300">└ </span>}
-              <Link href={`/accounts/${a.id}/edit`} className="text-blue-600 hover:underline font-medium">
+              {depth > 0 && <span className="text-muted-foreground">└ </span>}
+              <Link href={`/accounts/${a.id}/edit`} className="text-primary hover:underline font-medium">
                 {a.name}
               </Link>
             </span>
           </td>
-          <td className="px-6 py-3 text-gray-600">{accountTypeLabel(a.type)}</td>
-          <td className="px-6 py-3 text-gray-600">{a.currency}</td>
-          <td className="px-6 py-3 text-gray-600 capitalize">
+          <td className="px-6 py-3 text-muted-foreground">{accountTypeLabel(a.type)}</td>
+          <td className="px-6 py-3 text-muted-foreground">{a.currency}</td>
+          <td className="px-6 py-3 text-muted-foreground capitalize">
             {a.normalBalance === "debit" ? "Debit" : "Kredit"}
           </td>
           <td className="px-6 py-3">
@@ -60,7 +60,7 @@ export default async function AccountsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           Akun Perkiraan ({accounts.length})
         </h1>
         <Link href="/accounts/new">
@@ -71,13 +71,13 @@ export default async function AccountsPage() {
       <Card>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left">
-              <th className="px-6 py-3 font-medium text-gray-500">Kode</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Nama Akun</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Tipe</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Saldo Normal</th>
-              <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Nama Akun</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Saldo Normal</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>

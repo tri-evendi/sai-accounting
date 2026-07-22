@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 function Flow({ amount }: { amount: number }) {
   if (Math.round(amount * 100) === 0) {
     return (
-      <span className="inline-flex items-center justify-end gap-1 text-gray-400 tabular-nums">
+      <span className="inline-flex items-center justify-end gap-1 text-muted-foreground tabular-nums">
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="sr-only">Nihil</span>
       </span>
@@ -34,7 +34,7 @@ function Flow({ amount }: { amount: number }) {
   return (
     <span
       className={`inline-flex items-center justify-end gap-1 tabular-nums ${
-        inflow ? "text-green-700" : "text-red-700"
+        inflow ? "text-success-strong" : "text-destructive-strong"
       }`}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -51,8 +51,8 @@ function Section({ group }: { group: CashFlowGroup }) {
   const unknown = group.category === "uncategorised";
   return (
     <>
-      <tr className={unknown ? "bg-amber-50" : "bg-gray-50"}>
-        <td className="px-6 py-2 font-semibold text-gray-700" colSpan={3}>
+      <tr className={unknown ? "bg-warning-soft" : "bg-muted"}>
+        <td className="px-6 py-2 font-semibold text-foreground" colSpan={3}>
           <span className="inline-flex items-center gap-2">
             {group.label}
             {unknown && (
@@ -63,7 +63,7 @@ function Section({ group }: { group: CashFlowGroup }) {
             )}
           </span>
           {unknown && (
-            <p className="mt-1 text-xs font-normal text-amber-800">
+            <p className="mt-1 text-xs font-normal text-warning-strong">
               Kas ini bergerak lewat akun yang jenisnya belum dipetakan ke operasi, investasi
               atau pendanaan. Angkanya tetap dihitung dalam total, tapi perlu dirapikan di
               Daftar Akun.
@@ -73,30 +73,30 @@ function Section({ group }: { group: CashFlowGroup }) {
       </tr>
 
       {group.lines.map((l) => (
-        <tr key={l.code} className="border-b border-gray-100">
-          <td className="px-6 py-2 pl-10 text-gray-600">
-            <span className="mr-2 font-mono text-gray-400">{l.code}</span>
+        <tr key={l.code} className="border-b border-border">
+          <td className="px-6 py-2 pl-10 text-muted-foreground">
+            <span className="mr-2 font-mono text-muted-foreground">{l.code}</span>
             {l.name}
           </td>
-          <td className="px-6 py-2 text-right tabular-nums text-gray-500">
+          <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">
             {l.inflow > 0 ? formatCurrency(l.inflow, "IDR") : "—"}
           </td>
-          <td className="px-6 py-2 text-right tabular-nums text-gray-500">
+          <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">
             {l.outflow > 0 ? formatCurrency(l.outflow, "IDR") : "—"}
           </td>
         </tr>
       ))}
 
       {group.lines.length === 0 && (
-        <tr className="border-b border-gray-100">
-          <td className="px-6 py-2 pl-10 text-gray-400" colSpan={3}>
+        <tr className="border-b border-border">
+          <td className="px-6 py-2 pl-10 text-muted-foreground" colSpan={3}>
             Tidak ada pergerakan kas pada periode ini.
           </td>
         </tr>
       )}
 
-      <tr className="border-b border-gray-200 font-medium">
-        <td className="px-6 py-2 text-gray-700">Jumlah {group.label}</td>
+      <tr className="border-b border-border font-medium">
+        <td className="px-6 py-2 text-foreground">Jumlah {group.label}</td>
         <td className="px-6 py-2 text-right" colSpan={2}>
           <Flow amount={group.net} />
         </td>
@@ -148,8 +148,8 @@ export default async function CashFlowPage({
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-bold text-gray-900">Arus Kas</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="mb-1 text-2xl font-bold text-foreground">Arus Kas</h1>
+          <p className="text-sm text-muted-foreground">
             {periodLabel} · nilai dalam IDR
           </p>
         </div>
@@ -164,10 +164,10 @@ export default async function CashFlowPage({
       <PlainSummary summary={summary} />
 
       {cf.suspectUnrated > 0 && (
-        <Card className="mb-4 border-amber-200 bg-amber-50">
+        <Card className="mb-4 border-warning/30 bg-warning-soft">
           <div className="flex gap-3 px-6 py-4">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
-            <p className="text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+            <p className="text-sm text-warning-strong">
               <span className="font-medium">{cf.suspectUnrated} baris jurnal</span> bermata uang
               asing tercatat dengan kurs 1, sehingga nilai rupiahnya kemungkinan belum
               dikonversi. Angka di bawah tetap mengikuti buku besar — perbaiki kursnya di jurnal
@@ -180,15 +180,15 @@ export default async function CashFlowPage({
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-gray-500">Kas awal periode</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+            <p className="text-sm text-muted-foreground">Kas awal periode</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.openingCash, "IDR")}
             </p>
           </div>
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-gray-500">Perubahan kas</p>
+            <p className="text-sm text-muted-foreground">Perubahan kas</p>
             <p className="mt-1 text-xl font-semibold">
               <Flow amount={cf.netChange} />
             </p>
@@ -196,8 +196,8 @@ export default async function CashFlowPage({
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-gray-500">Kas akhir periode</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+            <p className="text-sm text-muted-foreground">Kas akhir periode</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.closingCash, "IDR")}
             </p>
           </div>
@@ -208,10 +208,10 @@ export default async function CashFlowPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Sumber / Penggunaan Kas</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Kas Masuk</th>
-                <th className="px-6 py-3 text-right font-medium text-gray-500">Kas Keluar</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Sumber / Penggunaan Kas</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kas Masuk</th>
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kas Keluar</th>
               </tr>
             </thead>
             <tbody>
@@ -224,8 +224,8 @@ export default async function CashFlowPage({
                 ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-300 text-base font-bold">
-                <td className="px-6 py-4 text-gray-900">
+              <tr className="border-t-2 border-border text-base font-bold">
+                <td className="px-6 py-4 text-foreground">
                   Kenaikan / Penurunan Kas
                   <span className="ml-2 align-middle">
                     {cf.reconciled ? (
@@ -235,15 +235,15 @@ export default async function CashFlowPage({
                     )}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right tabular-nums text-gray-700">
+                <td className="px-6 py-4 text-right tabular-nums text-foreground">
                   {formatCurrency(cf.totalInflow, "IDR")}
                 </td>
-                <td className="px-6 py-4 text-right tabular-nums text-gray-700">
+                <td className="px-6 py-4 text-right tabular-nums text-foreground">
                   {formatCurrency(cf.totalOutflow, "IDR")}
                 </td>
               </tr>
-              <tr className="border-t border-gray-200 text-base font-bold">
-                <td className="px-6 py-3 text-gray-900" colSpan={2}>
+              <tr className="border-t border-border text-base font-bold">
+                <td className="px-6 py-3 text-foreground" colSpan={2}>
                   Perubahan Kas Bersih
                 </td>
                 <td className="px-6 py-3 text-right">
@@ -257,9 +257,9 @@ export default async function CashFlowPage({
 
       {cf.cashAccounts.length > 0 && (
         <Card className="mt-6">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="font-semibold text-gray-900">Rincian per Akun Kas &amp; Bank</h2>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="font-semibold text-foreground">Rincian per Akun Kas &amp; Bank</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Saldo awal dan akhir tiap akun kas. Selisihnya harus sama dengan perubahan kas di
               atas — itulah yang dicek oleh lencana &ldquo;Cocok dengan Buku Besar&rdquo;.
             </p>
@@ -267,18 +267,18 @@ export default async function CashFlowPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Akun</th>
-                  <th className="px-6 py-3 text-right font-medium text-gray-500">Saldo Awal</th>
-                  <th className="px-6 py-3 text-right font-medium text-gray-500">Perubahan</th>
-                  <th className="px-6 py-3 text-right font-medium text-gray-500">Saldo Akhir</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
+                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Saldo Awal</th>
+                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Perubahan</th>
+                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Saldo Akhir</th>
                 </tr>
               </thead>
               <tbody>
                 {cf.cashAccounts.map((a) => (
-                  <tr key={a.code} className="border-b border-gray-100">
+                  <tr key={a.code} className="border-b border-border">
                     <td className="px-6 py-2.5">
-                      <span className="mr-2 font-mono text-gray-400">{a.code}</span>
+                      <span className="mr-2 font-mono text-muted-foreground">{a.code}</span>
                       {a.name}
                     </td>
                     <td className="px-6 py-2.5 text-right tabular-nums">

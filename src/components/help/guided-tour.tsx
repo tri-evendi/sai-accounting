@@ -207,17 +207,17 @@ export function GuidedTour() {
       {/* Lapisan gelap: satu penuh, atau empat sisi mengelilingi sasaran. */}
       {spotlight ? (
         <>
-          <div className="fixed inset-x-0 top-0 bg-gray-900/60" style={{ height: spotlight.top }} />
+          <div className="fixed inset-x-0 top-0 bg-foreground/60" style={{ height: spotlight.top }} />
           <div
-            className="fixed inset-x-0 bg-gray-900/60"
+            className="fixed inset-x-0 bg-foreground/60"
             style={{ top: spotlight.top + spotlight.height, bottom: 0 }}
           />
           <div
-            className="fixed left-0 bg-gray-900/60"
+            className="fixed left-0 bg-foreground/60"
             style={{ top: spotlight.top, height: spotlight.height, width: spotlight.left }}
           />
           <div
-            className="fixed right-0 bg-gray-900/60"
+            className="fixed right-0 bg-foreground/60"
             style={{
               top: spotlight.top,
               height: spotlight.height,
@@ -225,13 +225,13 @@ export function GuidedTour() {
             }}
           />
           <div
-            className="pointer-events-none fixed rounded-lg ring-2 ring-blue-500"
+            className="pointer-events-none fixed rounded-lg ring-2 ring-ring"
             style={spotlight}
             aria-hidden="true"
           />
         </>
       ) : (
-        <div className="fixed inset-0 bg-gray-900/60" />
+        <div className="fixed inset-0 bg-foreground/60" />
       )}
 
       <div
@@ -241,12 +241,12 @@ export function GuidedTour() {
         aria-labelledby="tour-step-title"
         tabIndex={-1}
         className={cn(
-          "fixed rounded-xl border border-gray-200 bg-white p-4 shadow-lg focus:outline-none"
+          "fixed rounded-xl border border-border bg-white p-4 shadow-lg focus:outline-none"
         )}
         style={cardStyle}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-blue-700">
+          <div className="flex items-center gap-2 text-xs font-medium text-primary">
             <Compass className="h-4 w-4" aria-hidden="true" />
             {tour.title}
           </div>
@@ -254,19 +254,19 @@ export function GuidedTour() {
             type="button"
             onClick={close}
             aria-label="Tutup tur"
-            className="-m-1 cursor-pointer rounded p-1 text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            className="-m-1 cursor-pointer rounded p-1 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
-        <h2 id="tour-step-title" className="mt-2 text-base font-semibold text-gray-900">
+        <h2 id="tour-step-title" className="mt-2 text-base font-semibold text-foreground">
           {step.title}
         </h2>
-        <p className="mt-1 text-sm leading-relaxed text-gray-600">{step.body}</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-xs tabular-nums text-gray-500">
+          <p className="text-xs tabular-nums text-muted-foreground">
             Langkah {index + 1} dari {tour.steps.length}
           </p>
           <div className="flex items-center gap-2">

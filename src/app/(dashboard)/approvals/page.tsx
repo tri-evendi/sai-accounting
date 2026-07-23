@@ -8,7 +8,7 @@
  * Keduanya diturunkan dari sesi, bukan dari parameter URL, jadi tak ada yang
  * bisa mengintip antrean orang lain.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import {
   listDecidedApprovals,
   listMyApprovalRequests,
@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
-  const session = await requirePageSession();
+  const session = await requirePagePermission("approval.view");
   const userId = parseInt(session.user.id, 10);
   const role = session.user.role;
 

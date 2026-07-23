@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { readAuditLogs } from "@/lib/audit";
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("audit.read");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);

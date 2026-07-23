@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/lib/constants";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default async function DocumentsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("document.read");
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;

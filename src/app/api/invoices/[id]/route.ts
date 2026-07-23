@@ -4,7 +4,7 @@ import { invoiceSchema, invoiceSubtotal } from "@/lib/validations/invoice";
 import { resolveInvoiceTax } from "@/lib/tax";
 import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -24,7 +24,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("invoice.read");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -44,7 +44,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("invoice.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -179,7 +179,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("invoice.delete");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

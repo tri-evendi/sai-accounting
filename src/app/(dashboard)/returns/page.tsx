@@ -7,7 +7,7 @@
  * own currency (inherited from the origin), right-aligned and tabular, per MASTER.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ export default async function ReturnsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("return.read");
   const sp = await searchParams;
   const tab = sp.tab === "purchase" ? "purchase" : "sales";
 

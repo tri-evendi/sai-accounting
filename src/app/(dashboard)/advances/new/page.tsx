@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { AdvanceForm } from "./advance-form";
@@ -6,7 +6,7 @@ import { AdvanceForm } from "./advance-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewAdvancePage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("advance.write");
 
   const [customers, suppliers, contracts] = await Promise.all([
     prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),

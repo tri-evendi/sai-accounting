@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { listClosedPeriods } from "@/lib/period";
 import { NewTransactionClient } from "./transaction-form";
 
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * yang mengikat tetap `assertPeriodOpen` di dalam transaksi penulisan.
  */
 export default async function NewTransactionPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("cash.write");
 
   const closedPeriods = await listClosedPeriods();
 

@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { ROLE_VALUES } from "@/lib/constants";
+
+/**
+ * Enum peran bersama (audit RBAC fase 1) — dipakai validasi user (buat/ubah),
+ * `approverRole` aturan persetujuan, dan skrip create-admin. Diturunkan dari
+ * `ROLES`, jadi menambah peran cukup di satu tempat.
+ */
+export const roleEnum = z.enum(ROLE_VALUES);
 
 /**
  * Optional payment due date on a document (issue #12), as a `YYYY-MM-DD` string

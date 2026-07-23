@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Banknote } from "lucide-react";
@@ -23,7 +23,7 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await requirePageSession(["bos", "core"]);
+  const session = await requirePagePermission("invoice.read");
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parseInt(id) },

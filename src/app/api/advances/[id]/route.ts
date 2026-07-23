@@ -3,14 +3,14 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getAdvances } from "@/lib/advances";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.read");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);
@@ -35,7 +35,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
  * the books. Undo those first, which reverses their journals in the right order.
  */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.delete");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getCashFlow } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,7 +110,7 @@ export default async function CashFlowPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("report.read");
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const cf = await getCashFlow(from, to);

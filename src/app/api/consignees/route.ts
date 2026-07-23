@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { consigneeSchema } from "@/lib/validations/finance";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 
 /**
  * List consignees. `?active=1` returns only active rows — used by the Contract
@@ -9,7 +9,7 @@ import { requireAuth } from "@/lib/auth-guard";
  * master list page queries Prisma directly and shows inactive rows too.
  */
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("consignee.read");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("consignee.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

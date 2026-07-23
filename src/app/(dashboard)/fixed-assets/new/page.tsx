@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,7 +10,7 @@ import { AssetForm } from "./asset-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewFixedAssetPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("fixed_asset.write");
 
   const [categories, accounts] = await Promise.all([
     getCategories(true),

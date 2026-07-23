@@ -4,10 +4,10 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("budget.manage");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

@@ -6,7 +6,7 @@
  * balances — producing one balanced opening journal. After that (`is_setup`), it
  * shows a read-only summary instead, and the API refuses a second run.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import { SetupWizard } from "./setup-wizard";
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("setup.manage");
 
   const settings = await getCompanySettings();
 

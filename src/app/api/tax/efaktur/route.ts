@@ -13,7 +13,7 @@
  *     rows are written. The /tax/efaktur page surfaces the held-back list.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { efakturToCsv } from "@/lib/efaktur";
 
@@ -24,7 +24,7 @@ function parseDate(value: string | null): Date | null {
 }
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("tax.read");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);

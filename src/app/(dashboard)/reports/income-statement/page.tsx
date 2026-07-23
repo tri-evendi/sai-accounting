@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -46,7 +46,7 @@ export default async function IncomeStatementPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("report.read");
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const is = await getIncomeStatement(from, to);

@@ -1,4 +1,4 @@
-import { requireAccountantPage } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function JournalPage() {
-  await requireAccountantPage(["bos"]);
+  await requirePagePermission("journal.read");
 
   const journals = await prisma.journal.findMany({
     orderBy: [{ date: "desc" }, { id: "desc" }],

@@ -9,12 +9,12 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { getReconciliation } from "@/lib/bank-statements";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("reconciliation.write");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);
@@ -56,7 +56,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("reconciliation.write");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

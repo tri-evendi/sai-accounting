@@ -7,7 +7,7 @@
  * moves live on each asset's detail page.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getFixedAssets, summarizeFixedAssets, getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ export default async function FixedAssetsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("fixed_asset.read");
   const sp = await searchParams;
   const status = sp.status === "active" || sp.status === "disposed" ? sp.status : undefined;
 

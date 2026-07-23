@@ -4,6 +4,7 @@
  *   npm run create-admin -- --username admin --password 'YourSecurePass123' --name "Administrator"
  */
 import "dotenv/config";
+import { ROLE_VALUES } from "../src/lib/constants";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
@@ -37,8 +38,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!["bos", "core", "ptg"].includes(role)) {
-    console.error("ERROR: role must be bos, core, or ptg");
+  if (!(ROLE_VALUES as readonly string[]).includes(role)) {
+    console.error(`ERROR: role must be one of: ${ROLE_VALUES.join(", ")}`);
     process.exit(1);
   }
 

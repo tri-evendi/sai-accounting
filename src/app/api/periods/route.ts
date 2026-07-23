@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { closePeriod, getPeriodSummary, listPeriods } from "@/lib/period-close";
 import { periodCloseSchema } from "@/lib/validations/period";
 
 /** Months the Manager can act on, newest first. */
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("period.manage");
   if (!result.authorized) return result.response;
 
   return NextResponse.json(await listPeriods());
@@ -14,7 +14,7 @@ export async function GET() {
 
 /** Close a month. Refuses if a fresh summary still reports a blocker. */
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("period.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

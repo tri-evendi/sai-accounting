@@ -7,12 +7,12 @@
  * peran bos DAN Mode Akuntan efektif ON — penjaga terakhirnya tetap
  * `POST /api/journals` (bos-only) seperti sebelumnya.
  */
-import { requireAccountantPage } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { NewJournalForm } from "./journal-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewJournalPage() {
-  await requireAccountantPage(["bos"]);
+  await requirePagePermission("journal.write");
   return <NewJournalForm />;
 }

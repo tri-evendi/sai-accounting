@@ -9,12 +9,12 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { companyTaxIdentitySchema } from "@/lib/validations/setup";
 import { getCompanySettings } from "@/lib/opening-balance";
 
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("company_setting.manage");
   if (!result.authorized) return result.response;
 
   const settings = await getCompanySettings();
@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("company_setting.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

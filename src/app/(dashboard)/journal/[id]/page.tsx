@@ -1,4 +1,4 @@
-import { requireAccountantPage } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,7 @@ export default async function JournalDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAccountantPage(["bos"]);
+  await requirePagePermission("journal.read");
   const { id } = await params;
 
   const journal = await prisma.journal.findUnique({

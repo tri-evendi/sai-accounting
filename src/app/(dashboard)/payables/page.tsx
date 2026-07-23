@@ -10,7 +10,7 @@
  * `allocatePayments`.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getPayables } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
@@ -35,7 +35,7 @@ export default async function PayablesPage({
 }: {
   searchParams: Promise<{ asOf?: string; overdue?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("payable.read");
   const sp = await searchParams;
   const asOfStr = sp.asOf ?? todayISO();
   const asOf = new Date(`${asOfStr}T23:59:59.999`);

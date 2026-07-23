@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -10,7 +10,7 @@ import { DeliveryOrderForm } from "./delivery-order-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryOrderPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("delivery_order.write");
 
   const [contracts, invoices, consignees, items, closedPeriods] = await Promise.all([
     prisma.contract.findMany({

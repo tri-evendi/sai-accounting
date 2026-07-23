@@ -2,11 +2,11 @@
  * One fixed asset — its derived book value, schedule state, and history (issue #28).
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { getFixedAsset } from "@/lib/fixed-assets";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.read");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

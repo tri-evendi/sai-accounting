@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { invoicePaymentSchema } from "@/lib/validations/invoice";
 import { fxAmounts } from "@/lib/validations/fx";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -12,7 +12,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("invoice.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

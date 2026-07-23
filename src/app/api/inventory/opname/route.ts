@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { opnameSchema } from "@/lib/validations/inventory";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -22,7 +22,7 @@ import { handlePostingError } from "@/lib/api-errors";
  * setengah tertulis.
  */
 export async function POST(request: Request) {
-  const result = await requireAuth(); // semua peran boleh menyesuaikan stok
+  const result = await requireApiPermission("inventory.write"); // semua peran boleh menyesuaikan stok
   if (!result.authorized) return result.response;
 
   const body = await request.json();

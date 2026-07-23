@@ -13,7 +13,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { setupSchema } from "@/lib/validations/setup";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -26,7 +26,7 @@ import {
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
 
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("setup.manage");
   if (!result.authorized) return result.response;
 
   const settings = await getCompanySettings();
@@ -69,7 +69,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("setup.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

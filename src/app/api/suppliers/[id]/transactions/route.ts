@@ -12,7 +12,7 @@ import {
   supplierPaymentAllocationsSchema,
 } from "@/lib/validations/finance";
 import { BASE_CURRENCY } from "@/lib/validations/fx";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -25,7 +25,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("supplier.read");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -128,7 +128,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("purchase.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -272,7 +272,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("purchase.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -413,7 +413,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("purchase.delete");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

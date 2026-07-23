@@ -1,4 +1,4 @@
-import { requireAccountantPage } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
-  await requireAccountantPage(["bos"]);
+  await requirePagePermission("account.manage");
 
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
 

@@ -243,7 +243,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     <div className="max-w-2xl">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Kas & Bank", href: "/finance" }, { label: heading.title }]}
+        breadcrumbs={[{ label: "Buku Kas & Bank", href: "/finance" }, { label: heading.title }]}
         title={<TermTooltip term="kas_bank">{heading.title}</TermTooltip>}
         description={heading.description}
       />

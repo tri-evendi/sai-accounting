@@ -51,7 +51,7 @@ export const TOURS: TourDef[] = [
       {
         title: "Menu per jenis pekerjaan",
         body:
-          "Menu kiri dikelompokkan menurut pekerjaan: Penjualan, Pembelian, Kas & Bank, Stok & Aset, Laporan, Pengaturan.",
+          "Menu kiri dikelompokkan menurut pekerjaan: Penjualan, Pembelian, Kas & Bank, Stok & Aset, Laporan, Bantuan & Pengaturan.",
         target: "menu-tugas",
       },
       {

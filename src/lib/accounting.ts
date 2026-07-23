@@ -130,6 +130,10 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   { code: "610102", name: "Beban Sewa", type: "expense", parent: "6101" },
   { code: "610103", name: "Beban Penyusutan", type: "expense", parent: "6101" },
   { code: "610104", name: "Beban Administrasi & Umum", type: "expense", parent: "6101" },
+  // Selisih Persediaan (issue #57) — akun tunggal untuk penyesuaian stok opname:
+  // susut (fisik < sistem) mendebit sebagai kerugian; lebih (fisik > sistem)
+  // mengkredit (kontra). Bertipe expense agar tampil di Laba/Rugi.
+  { code: "610105", name: "Selisih Persediaan", type: "expense", parent: "6101" },
 
   // 7xxx OTHER INCOME / EXPENSE
   { code: "7101", name: "Laba/Rugi Selisih Kurs", type: "other_income" },

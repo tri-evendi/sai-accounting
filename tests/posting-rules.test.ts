@@ -12,6 +12,7 @@ import {
   PostingRuleError,
   buildCashTransactionLines,
   buildCogsLines,
+  buildInventoryAdjustmentLines,
   buildPurchaseLines,
   buildSalesInvoiceLines,
   buildSalesReceiptLines,
@@ -333,6 +334,46 @@ describe("stock movement out → D: HPP, K: Persediaan", () => {
   it("rejects a zero cost rather than posting an empty journal", () => {
     expect(() =>
       buildCogsLines({ cogsAccountId: COGS, inventoryAccountId: INVENTORY, cost: 0 })
+    ).toThrow(PostingRuleError);
+  });
+});
+
+describe("stock opname adjustment → Persediaan vs Selisih Persediaan (issue #57)", () => {
+  const ADJ = 99; // Selisih Persediaan
+
+  it("susut (fisik < sistem): D Selisih, K Persediaan", () => {
+    const lines = buildInventoryAdjustmentLines({
+      adjustmentAccountId: ADJ,
+      inventoryAccountId: INVENTORY,
+      value: 500_000,
+      direction: "shrink",
+    });
+    expect(debitOn(lines, ADJ)).toBe(500_000);
+    expect(creditOn(lines, INVENTORY)).toBe(500_000);
+    expect(lines.every((l) => l.currency === "IDR" && l.rate === 1)).toBe(true);
+    expectBalanced(lines);
+  });
+
+  it("lebih (fisik > sistem): D Persediaan, K Selisih", () => {
+    const lines = buildInventoryAdjustmentLines({
+      adjustmentAccountId: ADJ,
+      inventoryAccountId: INVENTORY,
+      value: 250_000,
+      direction: "overage",
+    });
+    expect(debitOn(lines, INVENTORY)).toBe(250_000);
+    expect(creditOn(lines, ADJ)).toBe(250_000);
+    expectBalanced(lines);
+  });
+
+  it("menolak nilai nol — tak memposting jurnal kosong", () => {
+    expect(() =>
+      buildInventoryAdjustmentLines({
+        adjustmentAccountId: ADJ,
+        inventoryAccountId: INVENTORY,
+        value: 0,
+        direction: "shrink",
+      })
     ).toThrow(PostingRuleError);
   });
 });

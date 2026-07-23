@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
@@ -40,13 +41,18 @@ export default async function NewInvoicePage({
     <div className="max-w-4xl">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
-        title={<TermTooltip term="faktur">Catat Penjualan</TermTooltip>}
+        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Buat Tagihan" }]}
+        title={<TermTooltip term="faktur">Buat Tagihan</TermTooltip>}
         description={
           <>
             Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
             jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
-            &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.
+            &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi. Baru pertama kali? Lebih enak
+            lewat alur terpandu{" "}
+            <Link href="/sales/new" className="font-medium text-primary hover:underline">
+              Catat Penjualan
+            </Link>
+            .
           </>
         }
       />

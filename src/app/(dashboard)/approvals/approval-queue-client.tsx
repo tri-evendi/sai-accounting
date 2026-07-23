@@ -248,7 +248,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   return (
     <div className="space-y-6">
       {/* ── Antrean penyetuju ── */}
-      <Card>
+      <Card data-tour="persetujuan-antrean">
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Menunggu Keputusan Anda</CardTitle>
           <Badge variant={inbox.length > 0 ? "warning" : "default"}>
@@ -380,7 +380,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       </Card>
 
       {/* ── Pengajuan saya (notifikasi in-app) ── */}
-      <Card>
+      <Card data-tour="persetujuan-pengajuan">
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Pengajuan Saya</CardTitle>
           {unread.length > 0 && (
@@ -502,7 +502,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
 
       {/* ── Riwayat keputusan peran ini ── */}
       {decided.length > 0 && (
-        <Card>
+        <Card data-tour="persetujuan-riwayat">
           <CardHeader>
             <CardTitle>
               <span className="inline-flex items-center gap-2">

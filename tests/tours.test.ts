@@ -9,8 +9,24 @@ import { describe, expect, it } from "vitest";
 import { TOURS, tourForPath, tourStorageKey } from "@/lib/tours";
 
 describe("definisi tur", () => {
-  it("tersedia untuk beranda, catat penjualan, dan pusat laporan", () => {
-    expect(TOURS.map((t) => t.path)).toEqual(["/dashboard", "/invoices/new", "/reports"]);
+  it("tersedia untuk beranda, persetujuan, buat tagihan, dan pusat laporan", () => {
+    expect(TOURS.map((t) => t.path)).toEqual([
+      "/dashboard",
+      "/approvals",
+      "/invoices/new",
+      "/reports",
+    ]);
+  });
+
+  it("tur persetujuan menjelaskan antrean, pengajuan, dan riwayat", () => {
+    const tour = tourForPath("/approvals");
+    expect(tour?.id).toBe("persetujuan");
+    expect(tour?.steps.map((s) => s.target)).toEqual([
+      undefined,
+      "persetujuan-antrean",
+      "persetujuan-pengajuan",
+      "persetujuan-riwayat",
+    ]);
   });
 
   it("id tur unik dan setiap tur punya langkah berisi", () => {

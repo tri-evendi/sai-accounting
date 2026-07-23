@@ -132,6 +132,7 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 - ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
 - ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA "Start trial") di app internal.
 - ❌ Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
+- ❌ Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `src/lib/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
 
 ---
 

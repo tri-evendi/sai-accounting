@@ -44,6 +44,32 @@ model User {
   @@map("users")
 }
 
+// ─── issue #73 — RBAC dapat dikonfigurasi ────────────────
+/// Override per-sel di atas matriks izin BAWAAN (`PERMISSION_ROLES` di
+/// src/lib/authz.ts). Tabel KOSONG = perilaku persis bawaan; satu baris =
+/// satu sel (peran × izin) yang menyimpang dari bawaan: `allowed` true
+/// menghadiahkan izin, false mencabutnya. "Reset ke bawaan" = hapus semua
+/// baris. Matriks efektif dirakit `src/lib/authz-effective.ts` (cache ±60 dtk,
+/// diinvalidasi setiap tulis); invarian anti-lockout & delete ⊆ write ⊆ read
+/// divalidasi SEBELUM baris disimpan (src/lib/authz-overrides.ts).
+model RolePermissionOverride {
+  id         Int     @id @default(autoincrement())
+  /// enum-like: bos | core | ptg (ROLE_VALUES di src/lib/constants.ts).
+  role       String  @db.VarChar(20)
+  /// Kunci izin "resource.action" — harus ada di PERMISSION_ROLES; baris
+  /// yatim (izin yang sudah dihapus dari kode) diabaikan saat merakit.
+  permission String  @db.VarChar(50)
+  allowed    Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu keputusan per sel matriks.
+  @@unique([role, permission])
+  @@index([role])
+  @@map("role_permission_overrides")
+}
+
 // ─── Contracts ───────────────────────────────────────────
 
 model Contract {

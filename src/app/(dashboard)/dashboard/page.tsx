@@ -11,7 +11,9 @@ import {
   toLowStockAlerts,
 } from "@/lib/inventory";
 import { CASH_TYPE_LABELS, LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
-import { can } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/authz";
+import { getEffectiveMatrix } from "@/lib/authz-effective";
+import { canWithMatrix } from "@/lib/authz-overrides";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { PageHeader } from "@/components/ui/page-header";
@@ -59,12 +61,18 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   const role = session.user.role;
+  // issue #73 — semua keputusan tampilan beranda membaca matriks EFEKTIF
+  // (bawaan + override /permissions), sekali muat per render.
+  const matrix = await getEffectiveMatrix();
+  const allowed = new Set(
+    PERMISSIONS.filter((p) => (matrix[p] as readonly string[]).includes(role))
+  );
   // issue #2 — Aksi Cepat disaring PER PERAN di server: tombol yang tidak boleh
   // dipakai peran ini tidak ikut dirender sama sekali (bukan disembunyikan CSS).
-  const quickActions = quickActionsForRole(role);
+  const quickActions = quickActionsForRole(role, allowed);
   // audit RBAC fase 4 — keputusan tampilan per-seksi membaca matriks izin,
   // bukan membandingkan string peran.
-  const canViewFinance = can({ role }, "cash.read");
+  const canViewFinance = canWithMatrix(matrix, { role }, "cash.read");
   const canViewContracts = canViewFinance;
 
   const sixMonthsAgo = new Date();
@@ -136,7 +144,7 @@ export default async function DashboardPage() {
    */
   const period = monthRange(new Date());
   const arAsOf = new Date(`${toISODate(new Date())}T23:59:59.999`);
-  const canViewReports = can({ role }, "report.read");
+  const canViewReports = canWithMatrix(matrix, { role }, "report.read");
 
   const [incomeStatement, receivables, payables] = await Promise.all([
     canViewReports ? getIncomeStatement(period.from, period.to) : Promise.resolve(null),

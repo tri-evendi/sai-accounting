@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
-import { can } from "@/lib/authz";
+import { canEffective } from "@/lib/authz-effective";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Banknote } from "lucide-react";
@@ -129,7 +129,7 @@ export default async function InvoiceDetailPage({
             <Button variant="secondary">Edit</Button>
           </Link>
           {/* Cermin izin `invoice.delete` yang dicek route DELETE-nya (issue #6). */}
-          {can(session.user, "invoice.delete") && (
+          {(await canEffective(session.user, "invoice.delete")) && (
             <DeleteDocumentButton
               endpoint={`/api/invoices/${invoice.id}`}
               label="Hapus Tagihan"

@@ -5,19 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROLE_LABELS, APP_NAME, COMPANY_NAME, type Role } from "@/lib/constants";
-import { can } from "@/lib/authz";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { BookMarked } from "lucide-react";
 
-export function SettingsClient() {
+interface SettingsClientProps {
+  /** issue #73 — dihitung server terhadap matriks EFEKTIF (page.tsx), bukan
+   * dibaca client dari matriks bawaan di bundle. Tampilan saja: API audit
+   * tetap ber-gate `audit.read`. */
+  canReadAudit: boolean;
+}
+
+export function SettingsClient({ canReadAudit }: SettingsClientProps) {
   const { data: session } = useSession();
 
   if (!session) return null;
 
   // audit RBAC fase 4 — panel Audit Log tampil bila punya izin membacanya.
-  const isManager = can(session.user, "audit.read");
+  const isManager = canReadAudit;
 
   return (
     <div className={isManager ? "max-w-5xl" : "max-w-2xl"}>

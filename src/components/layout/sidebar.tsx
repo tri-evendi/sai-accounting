@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -32,6 +33,7 @@ import {
   Wand2,
   FileSpreadsheet,
   PackageCheck,
+  KeyRound,
   ShieldCheck,
   ShoppingCart,
   SquarePen,
@@ -93,10 +95,41 @@ const ICONS: Record<string, LucideIcon> = {
   Wand2,
   FileSpreadsheet,
   PackageCheck,
+  KeyRound,
   ShieldCheck,
   ShoppingCart,
   SquarePen,
 };
+
+/**
+ * Set izin EFEKTIF milik pengguna (issue #73): matriks bawaan + override DB,
+ * dibaca sekali per pemuatan sidebar dari `/api/user/permissions`. Sebelum
+ * jawabannya tiba (atau bila permintaannya gagal) nilainya `undefined` dan
+ * penyaringan nav jatuh ke `can()` matriks bawaan — perilaku lama. TAMPILAN
+ * SAJA: halaman tujuan tetap dijaga `requirePagePermission` server-side.
+ */
+function useEffectivePermissions(role: string): ReadonlySet<string> | undefined {
+  const [allowed, setAllowed] = useState<ReadonlySet<string> | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/user/permissions")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { permissions?: string[] } | null) => {
+        if (!cancelled && Array.isArray(data?.permissions)) {
+          setAllowed(new Set(data.permissions));
+        }
+      })
+      .catch(() => {
+        // Biarkan undefined — fallback matriks bawaan.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
+  return allowed;
+}
 
 function NavLink({
   item,
@@ -133,10 +166,13 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
   // Akun) hanya muncul bila peran mengizinkan DAN Mode Akuntan efektif ON. Aturan
   // itu hidup di `isNavItemVisible`, satu keputusan dengan penjaga halaman.
   const user = { role, accountantMode };
-  const groups = visibleNavGroups(user);
-  const homeVisible = isNavItemVisible(NAV_HOME, user);
+  // issue #73 — menu mengikuti matriks EFEKTIF (override dari /permissions)
+  // begitu termuat; sebelumnya memakai matriks bawaan di bundle.
+  const allowed = useEffectivePermissions(role);
+  const groups = visibleNavGroups(user, allowed);
+  const homeVisible = isNavItemVisible(NAV_HOME, user, allowed);
   // Kecocokan terpanjang: /inventory/opname menyorot "Hitung Ulang Stok" saja.
-  const activeHref = activeNavHref(pathname, visibleNavHrefs(user));
+  const activeHref = activeNavHref(pathname, visibleNavHrefs(user, allowed));
 
   return (
     <>

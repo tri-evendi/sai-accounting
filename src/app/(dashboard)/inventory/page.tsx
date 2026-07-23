@@ -13,6 +13,7 @@ import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { InventoryPageActions } from "./inventory-actions";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Money } from "@/components/ui/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -41,6 +42,14 @@ export default async function InventoryPage({
   const allInventory = summarizeInventory(allItems);
   const stockHealth = countStockHealth(allInventory);
   const lowStockAlerts = toLowStockAlerts(allInventory);
+
+  // Nilai persediaan total (issue #58) — jumlah nilai item yang punya dasar
+  // biaya. Item tanpa biaya (legacy tanpa unit_cost) tidak dijumlahkan dan
+  // dihitung terpisah agar totalnya tidak diam-diam menganggapnya bernilai nol.
+  const totalStockValue = allInventory.reduce((s, i) => s + (i.stockValue ?? 0), 0);
+  const uncostedCount = allInventory.filter(
+    (i) => i.stockValue === null && i.currentStock > 0
+  ).length;
 
   // Paginate the inventory for table display
   const totalCount = stockHealth.totalItems;
@@ -71,7 +80,7 @@ export default async function InventoryPage({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-4">
         <Card>
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Jumlah Barang</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold">{stockHealth.totalItems}</p></CardContent>
@@ -90,6 +99,21 @@ export default async function InventoryPage({
         </Card>
       </div>
 
+      {/* Nilai persediaan (issue #58) — rata-rata tertimbang, sumber biaya sama dengan HPP */}
+      <Card className="mb-6">
+        <CardContent className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Nilai Persediaan (biaya rata-rata)</p>
+            {uncostedCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {uncostedCount} barang belum punya biaya masuk — tidak dihitung dalam total.
+              </p>
+            )}
+          </div>
+          <Money value={totalStockValue} currency="IDR" className="text-2xl font-bold" />
+        </CardContent>
+      </Card>
+
       {/* Stock Table */}
       <Card>
         <CardHeader>
@@ -104,12 +128,14 @@ export default async function InventoryPage({
                 <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Masuk</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Keluar</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground text-right">Sisa Stok</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Biaya/Unit</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Nilai</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Kondisi</th>
               </tr>
             </thead>
             <tbody>
               {inventory.length === 0 ? (
-                <tr><td colSpan={6}><EmptyState icon={<PackageIcon className="h-12 w-12" />} title="Belum ada barang di stok" description="Catat barang masuk pertama Anda." actionLabel="Tambah / Kurangi Stok" actionHref="/inventory/update" /></td></tr>
+                <tr><td colSpan={8}><EmptyState icon={<PackageIcon className="h-12 w-12" />} title="Belum ada barang di stok" description="Catat barang masuk pertama Anda." actionLabel="Tambah / Kurangi Stok" actionHref="/inventory/update" /></td></tr>
               ) : (
                 inventory.map((item) => {
                   const level = getStockLevel(item.currentStock);
@@ -120,6 +146,20 @@ export default async function InventoryPage({
                     <td className="px-6 py-3 text-right text-success tabular-nums">{item.totalIn}</td>
                     <td className="px-6 py-3 text-right text-destructive tabular-nums">{item.totalOut}</td>
                     <td className="px-6 py-3 text-right font-semibold tabular-nums">{item.currentStock}</td>
+                    <td className="px-6 py-3 text-right">
+                      {item.unitCost !== null ? (
+                        <Money value={item.unitCost} currency="IDR" />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      {item.stockValue !== null ? (
+                        <Money value={item.stockValue} currency="IDR" className="font-semibold" />
+                      ) : (
+                        <span className="text-muted-foreground" title="Belum ada biaya masuk">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-3">
                       <Badge variant={getStockBadgeVariant(level)}>
                         {STOCK_LEVEL_LABELS[level]}

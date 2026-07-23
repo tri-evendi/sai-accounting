@@ -119,7 +119,6 @@ export type AuditLogEntry = {
 
 const AUDIT_DIR = path.join(process.cwd(), "data", "audit");
 const AUDIT_FILE = path.join(AUDIT_DIR, "audit.jsonl");
-const MAX_READ_LINES = 5000;
 
 export function getClientIp(request?: Request): string | null {
   if (!request) return null;
@@ -159,32 +158,33 @@ export async function writeAuditLog(params: {
   }
 }
 
-export async function readAuditLogs(options: {
-  page?: number;
-  perPage?: number;
-  action?: string | null;
-}): Promise<{
+export interface AuditPage {
   logs: AuditLogEntry[];
   page: number;
   perPage: number;
   totalCount: number;
   totalPages: number;
-}> {
+}
+
+/**
+ * Pure pagination over raw JSONL lines (issue #60). Extracted so the paging
+ * rules are unit-testable without touching the filesystem.
+ *
+ * Paginates over ALL lines, newest first — no arbitrary window. The previous
+ * `slice(-5000)` cap silently hid older entries and undercounted `totalCount`,
+ * so the UI showed fewer pages than existed. The whole file is read anyway, so
+ * removing the cap costs nothing beyond parsing (cheap for small JSON lines).
+ */
+export function paginateAuditLines(
+  lines: string[],
+  options: { page?: number; perPage?: number; action?: string | null }
+): AuditPage {
   const page = Math.max(1, options.page ?? 1);
   const perPage = Math.min(50, Math.max(1, options.perPage ?? 20));
 
-  let lines: string[] = [];
-  try {
-    const raw = await readFile(AUDIT_FILE, "utf8");
-    lines = raw.trim().split("\n").filter(Boolean);
-  } catch {
-    return { logs: [], page, perPage, totalCount: 0, totalPages: 0 };
-  }
-
-  const recent = lines.slice(-MAX_READ_LINES).reverse();
+  const ordered = [...lines].reverse();
   const entries: AuditLogEntry[] = [];
-
-  for (const line of recent) {
+  for (const line of ordered) {
     try {
       const parsed = JSON.parse(line) as AuditLogEntry;
       if (options.action && parsed.action !== options.action) continue;
@@ -197,6 +197,22 @@ export async function readAuditLogs(options: {
   const totalCount = entries.length;
   const totalPages = Math.ceil(totalCount / perPage) || 0;
   const logs = entries.slice((page - 1) * perPage, page * perPage);
-
   return { logs, page, perPage, totalCount, totalPages };
+}
+
+export async function readAuditLogs(options: {
+  page?: number;
+  perPage?: number;
+  action?: string | null;
+}): Promise<AuditPage> {
+  let lines: string[] = [];
+  try {
+    const raw = await readFile(AUDIT_FILE, "utf8");
+    lines = raw.trim().split("\n").filter(Boolean);
+  } catch {
+    const page = Math.max(1, options.page ?? 1);
+    const perPage = Math.min(50, Math.max(1, options.perPage ?? 20));
+    return { logs: [], page, perPage, totalCount: 0, totalPages: 0 };
+  }
+  return paginateAuditLines(lines, options);
 }

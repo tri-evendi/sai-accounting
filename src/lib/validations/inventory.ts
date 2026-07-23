@@ -32,5 +32,23 @@ export const itemSchema = z.object({
   unit: z.string().max(20).trim().optional(),
 });
 
+/**
+ * Stok opname (issue #57) — hitungan fisik per barang pada satu tanggal. Server
+ * menghitung selisih (fisik − sistem) dan hanya menulis penyesuaian untuk yang
+ * berselisih. `physicalQty` boleh 0 (barang habis saat dihitung).
+ */
+export const opnameSchema = z.object({
+  date: z.string().min(1, "Tanggal wajib diisi"),
+  counts: z
+    .array(
+      z.object({
+        itemId: z.coerce.number().int(),
+        physicalQty: z.coerce.number().min(0, "Jumlah fisik tidak boleh negatif"),
+      })
+    )
+    .min(1, "Isi minimal satu barang untuk dihitung"),
+});
+
 export type StockUpdateInput = z.infer<typeof stockUpdateSchema>;
 export type ItemInput = z.infer<typeof itemSchema>;
+export type OpnameInput = z.infer<typeof opnameSchema>;

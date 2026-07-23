@@ -53,6 +53,7 @@ import {
   buildAssetDisposalLines,
   buildCashTransactionLines,
   buildCogsLines,
+  buildInventoryAdjustmentLines,
   buildDepreciationLines,
   buildPurchaseLines,
   buildPurchaseReturnLines,
@@ -81,6 +82,14 @@ export type PostingSourceType =
   | "cash_account"
   | "supplier_transaction"
   | "stock_movement"
+  /**
+   * Penyesuaian stok opname (issue #57). Source ROW adalah `stock` row hasil
+   * hitung-fisik — gerakan in (lebih) / out (susut). Beda dari `stock_movement`
+   * (yang membukukan HPP untuk penjualan): ini membukukan selisih ke akun
+   * Selisih Persediaan, BUKAN HPP. D/K Persediaan vs Selisih Persediaan,
+   * dinilai pada biaya rata-rata tertimbang.
+   */
+  | "stock_adjustment"
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
@@ -1041,6 +1050,63 @@ async function buildStockMovementEntry(
   };
 }
 
+/**
+ * Penyesuaian stok opname (issue #57) — membukukan selisih hitung-fisik ke akun
+ * Selisih Persediaan, BUKAN HPP (susut opname bukan barang terjual).
+ *   • Susut (row `out`): dinilai pada biaya rata-rata tertimbang; baris `out`
+ *     tidak menggeser rata-rata, jadi nilainya jujur.
+ *   • Lebih (row `in`): dinilai pada `unit_cost` baris itu — yang diisi route
+ *     dengan rata-rata pra-penyesuaian, sehingga rata-rata tetap.
+ * Tanpa dasar biaya (item belum pernah punya biaya masuk) → tak ada yang
+ * diposting; kuantitasnya tetap terkoreksi, konsisten dengan perilaku HPP.
+ */
+async function buildStockAdjustmentEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const movement = await client.stock.findUnique({
+    where: { id: ctx.sourceId },
+    include: { item: true },
+  });
+  if (!movement) throw new SourceNotFoundError("stock_adjustment", ctx.sourceId);
+
+  const direction = movement.type === "in" ? "overage" : "shrink";
+  const qty = Math.abs(num(movement.quantity));
+  if (qty <= 0) return null;
+
+  const unitCost =
+    direction === "overage"
+      ? movement.unitCost == null
+        ? 0
+        : num(movement.unitCost)
+      : await averageUnitCostForItem(movement.itemId, movement.date, client);
+  if (unitCost <= 0) return null;
+
+  const value = costOfMovement(qty, unitCost);
+  if (value <= 0) return null;
+
+  const acc = await resolveAccountIds(
+    [MAPPING_KEYS.INVENTORY_ADJUSTMENT, MAPPING_KEYS.INVENTORY],
+    "IDR",
+    client
+  );
+
+  return {
+    date: movement.date,
+    type: "adjustment",
+    note: `Selisih persediaan ${movement.item.name}`,
+    sourceType: "stock_adjustment",
+    sourceId: movement.id,
+    lines: buildInventoryAdjustmentLines({
+      adjustmentAccountId: acc[MAPPING_KEYS.INVENTORY_ADJUSTMENT],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      value,
+      direction,
+      memo: movement.item.name,
+    }),
+  };
+}
+
 // ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
 
 /**
@@ -1140,6 +1206,8 @@ async function buildEntry(
       return buildCashAccountEntry(client, ctx);
     case "stock_movement":
       return buildStockMovementEntry(client, ctx);
+    case "stock_adjustment":
+      return buildStockAdjustmentEntry(client, ctx);
     case "advance_payment":
       return buildAdvancePaymentEntry(client, ctx);
     case "advance_application":

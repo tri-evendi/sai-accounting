@@ -90,6 +90,14 @@ export const MAPPING_KEYS = {
    * fx_gain_loss: the gain/loss is already an IDR base amount. Defaults to 7103.
    */
   DISPOSAL_GAIN_LOSS: "disposal_gain_loss",
+  /**
+   * Selisih Persediaan (issue #57) — akun lawan untuk penyesuaian stok opname.
+   * Susut (fisik < sistem): DEBIT (kerugian); lebih (fisik > sistem): KREDIT
+   * (kontra). Persediaan-nya sendiri memakai mapping `inventory`. IDR — biaya
+   * persediaan dicatat dalam IDR base. Default 610105. Fail-loud bila belum
+   * dipetakan, seperti mapping lain — tidak menebak.
+   */
+  INVENTORY_ADJUSTMENT: "inventory_adjustment",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -118,6 +126,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   accumulated_depreciation: "Akumulasi Penyusutan",
   depreciation_expense: "Beban Penyusutan",
   disposal_gain_loss: "Laba/Rugi Pelepasan Aset Tetap",
+  inventory_adjustment: "Selisih Persediaan",
 };
 
 /**
@@ -136,6 +145,7 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.AP_DEFAULT, code: "2101" },
   { key: MAPPING_KEYS.INVENTORY, code: "1104" },
   { key: MAPPING_KEYS.COGS, code: "5101" },
+  { key: MAPPING_KEYS.INVENTORY_ADJUSTMENT, code: "610105" },
   { key: MAPPING_KEYS.PURCHASE_EXPENSE, code: "610104" },
   // 7101 Laba/Rugi Selisih Kurs. The live Accurate books use 720103 "Laba/Rugi
   // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a

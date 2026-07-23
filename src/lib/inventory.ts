@@ -1,10 +1,14 @@
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { weightedAverageUnitCost } from "@/lib/posting/cogs";
+import { round2 } from "@/lib/posting/rules";
 
 /** Stock movement row shape (Prisma Stock or API payload). */
 export type StockMovement = {
   quantity: number | string | { toString(): string };
   type: string;
   date: Date | string;
+  /** IDR cost per unit on `in` rows — dasar nilai persediaan (issue #58). */
+  unitCost?: number | string | { toString(): string } | null;
   note?: string | null;
 };
 
@@ -31,6 +35,14 @@ export type InventorySummary = {
   totalOut: number;
   currentStock: number;
   movementCount: number;
+  /**
+   * Biaya per unit (IDR, rata-rata tertimbang dari gerakan `in` bercosting) dan
+   * nilai persediaan = currentStock × unitCost (issue #58). `null` bila TIDAK
+   * ada dasar biaya (semua `in` tanpa unit_cost / item legacy) — dibedakan dari
+   * nilai nol agar tidak menyesatkan.
+   */
+  unitCost: number | null;
+  stockValue: number | null;
   lastMovement: SerializedStockMovement | null;
 };
 
@@ -43,6 +55,8 @@ export type ClientInventoryItem = {
   totalOut: number;
   currentStock: number;
   movementCount: number;
+  unitCost: number | null;
+  stockValue: number | null;
 };
 
 export type StockLevel = "empty" | "low" | "healthy";
@@ -73,7 +87,7 @@ function serializeMovement(movement: StockMovement): SerializedStockMovement {
 /** Strip non-serializable fields before passing inventory to Client Components. */
 export function toClientInventory(items: InventorySummary[]): ClientInventoryItem[] {
   return items.map(
-    ({ id, name, unit, totalIn, totalOut, currentStock, movementCount }) => ({
+    ({ id, name, unit, totalIn, totalOut, currentStock, movementCount, unitCost, stockValue }) => ({
       id,
       name,
       unit,
@@ -81,6 +95,8 @@ export function toClientInventory(items: InventorySummary[]): ClientInventoryIte
       totalOut,
       currentStock,
       movementCount,
+      unitCost,
+      stockValue,
     })
   );
 }
@@ -125,12 +141,22 @@ export function summarizeInventoryItem(item: ItemWithStock): InventorySummary {
   });
   const totals = calculateStockTotals(item.stock);
 
+  // Nilai persediaan (issue #58): rata-rata tertimbang dari gerakan `in`
+  // bercosting — pola & fungsi yang SAMA dengan mesin COGS, jadi nilai neraca
+  // dan HPP tidak bisa memakai biaya berbeda. `unitCost` 0 berarti tak ada
+  // dasar biaya (item legacy tanpa unit_cost) → nilai dilaporkan `null`, bukan
+  // Rp 0 yang menyesatkan.
+  const unitCost = weightedAverageUnitCost(item.stock);
+  const hasCostBasis = unitCost > 0;
+
   return {
     id: item.id,
     name: item.name,
     unit: item.unit,
     ...totals,
     movementCount: item.stock.length,
+    unitCost: hasCostBasis ? unitCost : null,
+    stockValue: hasCostBasis ? round2(totals.currentStock * unitCost) : null,
     lastMovement: sorted[0] ? serializeMovement(sorted[0]) : null,
   };
 }

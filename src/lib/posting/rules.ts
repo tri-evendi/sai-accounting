@@ -858,6 +858,47 @@ export function buildCogsLines(input: CogsInput): JournalLineInput[] {
   ];
 }
 
+export interface InventoryAdjustmentInput {
+  adjustmentAccountId: number;
+  inventoryAccountId: number;
+  /** Nilai selisih dalam IDR (|kuantitas selisih| × biaya rata-rata). */
+  value: number;
+  /** "shrink" = fisik < sistem (susut) · "overage" = fisik > sistem (lebih). */
+  direction: "shrink" | "overage";
+  memo?: string;
+}
+
+/**
+ * Penyesuaian stok opname (issue #57) — selalu IDR (persediaan dicatat pada
+ * biaya IDR base).
+ *   • Susut (fisik < sistem): D: Selisih Persediaan (kerugian), K: Persediaan.
+ *   • Lebih (fisik > sistem): D: Persediaan, K: Selisih Persediaan (kontra).
+ * Persediaan bergerak searah dengan kuantitas fisik; akun Selisih menyerap
+ * lawannya.
+ */
+export function buildInventoryAdjustmentLines(
+  input: InventoryAdjustmentInput
+): JournalLineInput[] {
+  const value = round2(input.value);
+  if (value <= 0) {
+    throw new PostingRuleError("Nilai selisih persediaan harus lebih besar dari nol.");
+  }
+  const inv = input.inventoryAccountId;
+  const adj = input.adjustmentAccountId;
+  const base = { currency: "IDR", rate: 1, memo: input.memo } as const;
+
+  if (input.direction === "overage") {
+    return [
+      { accountId: inv, debit: value, ...base },
+      { accountId: adj, credit: value, ...base },
+    ];
+  }
+  return [
+    { accountId: adj, debit: value, ...base },
+    { accountId: inv, credit: value, ...base },
+  ];
+}
+
 // ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
 
 export interface DepreciationInput {

@@ -26,7 +26,7 @@ export default function EditCustomerPage() {
   useEffect(() => {
     fetch(`/api/customers/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load customer");
+        if (!res.ok) throw new Error("Gagal memuat data pelanggan");
         return res.json();
       })
       .then((data) => {
@@ -60,7 +60,7 @@ export default function EditCustomerPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to update customer");
+      setError(data.error || "Gagal menyimpan perubahan pelanggan");
       setLoading(false);
     } else {
       router.push(`/customers/${params.id}`);
@@ -68,24 +68,24 @@ export default function EditCustomerPage() {
     }
   }
 
-  if (fetching) return <PageLoader message="Loading customer..." />;
+  if (fetching) return <PageLoader message="Memuat data pelanggan..." />;
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Edit Customer</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Pelanggan</h1>
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Customer Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Pelanggan</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              <Input id="name" label="Customer Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input id="address" label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              <Input id="phone" label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input id="name" label="Nama Pelanggan" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input id="address" label="Alamat" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Input id="phone" label="Telepon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <Input id="email" type="email" label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <Input id="pic" label="Person In Charge (PIC)" value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} />
+              <Input id="pic" label="Narahubung (PIC)" value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} />
               <Input id="npwp" label="NPWP (untuk e-Faktur)" value={form.npwp} onChange={(e) => setForm({ ...form, npwp: e.target.value })} />
               <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
                 <input
@@ -107,8 +107,8 @@ export default function EditCustomerPage() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
         </div>
       </form>
     </div>

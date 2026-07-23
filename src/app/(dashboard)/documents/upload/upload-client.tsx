@@ -38,7 +38,7 @@ export function UploadClient() {
     setError("");
 
     if (!file) {
-      setError("Please select a file");
+      setError("Pilih file terlebih dahulu");
       return;
     }
 
@@ -54,7 +54,7 @@ export function UploadClient() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to upload file");
+      setError(data.error || "Gagal mengunggah file");
       setLoading(false);
     } else {
       router.push("/documents");
@@ -64,7 +64,7 @@ export function UploadClient() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Upload Document</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Unggah Dokumen</h1>
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
@@ -72,7 +72,7 @@ export function UploadClient() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Document Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Dokumen</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
               {/* File Input */}
@@ -86,8 +86,8 @@ export function UploadClient() {
                         <p className="text-sm text-foreground font-medium">{file.name}</p>
                       ) : (
                         <>
-                          <p className="text-sm text-muted-foreground">Click to upload</p>
-                          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, PDF (max 10MB)</p>
+                          <p className="text-sm text-muted-foreground">Klik untuk memilih file</p>
+                          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, PDF (maks 10MB)</p>
                         </>
                       )}
                     </div>
@@ -104,23 +104,23 @@ export function UploadClient() {
               <Select
                 id="type"
                 name="type"
-                label="Document Type"
-                placeholder="-- Select Type --"
+                label="Jenis Dokumen"
+                placeholder="-- Pilih Jenis --"
                 options={[
-                  { value: "bl", label: "Bill of Lading" },
-                  { value: "invoice", label: "Invoice" },
-                  { value: "coo", label: "Certificate of Origin" },
-                  { value: "fumigation", label: "Fumigation Certificate" },
-                  { value: "contract", label: "Contract" },
-                  { value: "other", label: "Other" },
+                  { value: "bl", label: "Bill of Lading (B/L)" },
+                  { value: "invoice", label: "Tagihan (Invoice)" },
+                  { value: "coo", label: "Surat Keterangan Asal (COO)" },
+                  { value: "fumigation", label: "Sertifikat Fumigasi" },
+                  { value: "contract", label: "Kontrak" },
+                  { value: "other", label: "Lainnya" },
                 ]}
               />
 
               <Select
                 id="contractId"
                 name="contractId"
-                label="Related Contract (optional)"
-                placeholder="-- No Contract --"
+                label="Kontrak Terkait (opsional)"
+                placeholder="-- Tanpa Kontrak --"
                 options={contracts.map((c) => ({
                   value: String(c.id),
                   label: c.contractNo,
@@ -132,10 +132,10 @@ export function UploadClient() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading || !file}>
-            {loading ? "Uploading..." : "Upload Document"}
+            {loading ? "Mengunggah..." : "Unggah Dokumen"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/documents")}>
-            Cancel
+            Batal
           </Button>
         </div>
       </form>

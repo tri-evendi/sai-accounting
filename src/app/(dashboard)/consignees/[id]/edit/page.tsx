@@ -25,7 +25,7 @@ export default function EditConsigneePage() {
   useEffect(() => {
     fetch(`/api/consignees/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load consignee");
+        if (!res.ok) throw new Error("Gagal memuat data penerima barang");
         return res.json();
       })
       .then((data) => {
@@ -58,7 +58,7 @@ export default function EditConsigneePage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to update consignee");
+      setError(data.error || "Gagal menyimpan perubahan penerima barang");
       setLoading(false);
     } else {
       router.push(`/consignees/${params.id}`);
@@ -66,24 +66,24 @@ export default function EditConsigneePage() {
     }
   }
 
-  if (fetching) return <PageLoader message="Loading consignee..." />;
+  if (fetching) return <PageLoader message="Memuat data penerima barang..." />;
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Edit Consignee</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Penerima Barang</h1>
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Consignee Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              <Input id="name" label="Consignee Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input id="country" label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-              <Input id="contact" label="Contact / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+              <Input id="name" label="Nama Penerima Barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input id="country" label="Negara" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              <Input id="contact" label="Kontak / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
               <div className="space-y-1">
-                <label htmlFor="address" className="block text-sm font-medium text-foreground">Address</label>
+                <label htmlFor="address" className="block text-sm font-medium text-foreground">Alamat</label>
                 <textarea
                   id="address"
                   rows={3}
@@ -93,7 +93,7 @@ export default function EditConsigneePage() {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-foreground">Notes</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-foreground">Catatan</label>
                 <textarea
                   id="notes"
                   rows={2}
@@ -113,7 +113,7 @@ export default function EditConsigneePage() {
                 <span className="text-sm text-foreground">
                   Aktif
                   <span className="block text-xs text-muted-foreground">
-                    Consignee nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut.
+                    Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut.
                   </span>
                 </span>
               </label>
@@ -122,8 +122,8 @@ export default function EditConsigneePage() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
         </div>
       </form>
     </div>

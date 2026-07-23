@@ -33,7 +33,7 @@ export default function NewConsigneePage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create consignee");
+      setError(data.error || "Gagal menyimpan penerima barang");
       setLoading(false);
     } else {
       router.push("/consignees");
@@ -43,7 +43,7 @@ export default function NewConsigneePage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">New Consignee</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Penerima Barang Baru</h1>
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
@@ -51,15 +51,15 @@ export default function NewConsigneePage() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Consignee Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              <Input id="name" name="name" label="Consignee Name" required />
-              <Input id="country" name="country" label="Country" />
-              <Input id="contact" name="contact" label="Contact / PIC" />
+              <Input id="name" name="name" label="Nama Penerima Barang" required />
+              <Input id="country" name="country" label="Negara" />
+              <Input id="contact" name="contact" label="Kontak / PIC" />
               <div className="space-y-1">
                 <label htmlFor="address" className="block text-sm font-medium text-foreground">
-                  Address
+                  Alamat
                 </label>
                 <textarea
                   id="address"
@@ -70,7 +70,7 @@ export default function NewConsigneePage() {
               </div>
               <div className="space-y-1">
                 <label htmlFor="notes" className="block text-sm font-medium text-foreground">
-                  Notes
+                  Catatan
                 </label>
                 <textarea
                   id="notes"
@@ -85,10 +85,10 @@ export default function NewConsigneePage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Consignee"}
+            {loading ? "Menyimpan..." : "Simpan"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Cancel
+            Batal
           </Button>
         </div>
       </form>

@@ -49,11 +49,5 @@ export const CASH_TYPE_LABELS: Record<CashType, string> = {
   kas_kecil: "Kas Kecil",
 };
 
-export const ROLE_DASHBOARDS: Record<Role, string> = {
-  bos: "/finance",
-  core: "/finance",
-  ptg: "/inventory",
-};
-
 /** Items at or below this quantity (same unit as stock) are flagged as low stock. */
 export const LOW_STOCK_THRESHOLD = 100;

@@ -97,6 +97,19 @@ describe("kelompok menu berbasis tugas", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
+  it("wizard terpandu (#5) berdiri di puncak Penjualan & Pembelian", () => {
+    // Pintu utama pengguna awam: wizard harus terjangkau dari menu di halaman
+    // mana pun, bukan hanya dari Aksi Cepat beranda.
+    const penjualan = NAV_GROUPS.find((g) => g.id === "penjualan");
+    const pembelian = NAV_GROUPS.find((g) => g.id === "pembelian");
+    expect(penjualan?.items[0]?.href).toBe("/sales/new");
+    expect(pembelian?.items[0]?.href).toBe("/purchases/new");
+    // ptg tidak mendapat pintu wizard — konsisten dengan Aksi Cepat.
+    expect(visibleNavHrefs({ role: "ptg" })).not.toContain("/sales/new");
+    expect(visibleNavHrefs({ role: "core" })).toContain("/sales/new");
+    expect(visibleNavHrefs({ role: "core" })).toContain("/purchases/new");
+  });
+
   it("Surat Jalan masuk kelompok Penjualan, Pusat Laporan masuk Laporan", () => {
     const penjualan = NAV_GROUPS.find((g) => g.id === "penjualan");
     const laporan = NAV_GROUPS.find((g) => g.id === "laporan");

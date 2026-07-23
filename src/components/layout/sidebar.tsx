@@ -33,6 +33,8 @@ import {
   FileSpreadsheet,
   PackageCheck,
   ShieldCheck,
+  ShoppingCart,
+  SquarePen,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -92,6 +94,8 @@ const ICONS: Record<string, LucideIcon> = {
   FileSpreadsheet,
   PackageCheck,
   ShieldCheck,
+  ShoppingCart,
+  SquarePen,
 };
 
 function NavLink({

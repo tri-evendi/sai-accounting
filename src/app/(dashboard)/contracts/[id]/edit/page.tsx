@@ -13,6 +13,7 @@ import {
 import { ConsigneeSelect } from "@/components/shared/consignee-select";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
 
 interface ContractItem {
@@ -154,9 +155,13 @@ export default function EditContractPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">
-        Edit Contract {contract.contractNo}
-      </h1>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Kontrak", href: "/contracts" },
+          { label: `Ubah Kontrak ${contract.contractNo}` },
+        ]}
+        title={<>Ubah Kontrak {contract.contractNo}</>}
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

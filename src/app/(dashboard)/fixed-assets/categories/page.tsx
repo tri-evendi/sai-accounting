@@ -5,7 +5,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
 import { Tags } from "lucide-react";
@@ -42,12 +42,14 @@ export default async function CategoriesPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Kategori" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Kategori Aset</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Kategori menentukan metode, umur manfaat, dan akun aset/akumulasi/beban yang dipakai
-        aset di dalamnya. Aset baru menyalin nilai-nilai ini dan boleh menimpanya.
-      </p>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+          { label: "Kategori" },
+        ]}
+        title="Kategori Aset"
+        description="Kategori menentukan metode, umur manfaat, dan akun aset/akumulasi/beban yang dipakai aset di dalamnya. Aset baru menyalin nilai-nilai ini dan boleh menimpanya."
+      />
 
       <div className="mb-6">
         <CategoryForm

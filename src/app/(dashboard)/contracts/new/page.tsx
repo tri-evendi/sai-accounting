@@ -1,6 +1,6 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { listClosedPeriods } from "@/lib/period";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { NewContractForm } from "./contract-form";
@@ -23,14 +23,17 @@ export default async function NewContractPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Kontrak", href: "/contracts" }, { label: "Buat Kontrak" }]} />
-      <h1 className="text-2xl font-bold text-foreground">
-        <TermTooltip term="kontrak">Buat Kontrak</TermTooltip>
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Isi dulu yang pokok: nomor, tanggal, pembeli, dan barangnya. Termin, kemasan, dan
-        pengapalan ada di &ldquo;Detail lengkap&rdquo; dan boleh dilewati.
-      </p>
+      <PageHeader
+        className="mb-1"
+        breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: "Buat Kontrak" }]}
+        title={<TermTooltip term="kontrak">Buat Kontrak</TermTooltip>}
+        description={
+          <>
+            Isi dulu yang pokok: nomor, tanggal, pembeli, dan barangnya. Termin, kemasan, dan
+            pengapalan ada di &ldquo;Detail lengkap&rdquo; dan boleh dilewati.
+          </>
+        }
+      />
       <LearnMore term="kontrak" className="mt-1 mb-6" label="Pelajari ini: apa itu kontrak" />
       <NewContractForm closedPeriods={closedPeriods} />
     </div>

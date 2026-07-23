@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort } from "@/lib/utils";
 import { Truck, Plus, Info } from "lucide-react";
@@ -33,22 +33,23 @@ export default async function DeliveryOrdersPage() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Surat Jalan" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Surat Jalan</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        title="Surat Jalan"
+        description={
+          <>
             Dokumen pengiriman barang. Menerbitkan surat jalan mengurangi stok dan
             mengakui HPP atas barang yang keluar.
-          </p>
-        </div>
-        <Link href="/delivery-orders/new">
-          <Button className="cursor-pointer">
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Buat Surat Jalan
-          </Button>
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Link href="/delivery-orders/new">
+            <Button className="cursor-pointer">
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Buat Surat Jalan
+            </Button>
+          </Link>
+        }
+      />
 
       <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

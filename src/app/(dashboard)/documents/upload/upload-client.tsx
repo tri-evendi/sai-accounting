@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Upload } from "lucide-react";
 
 interface ContractOption {
@@ -64,7 +65,10 @@ export function UploadClient() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Unggah Dokumen</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Dokumen", href: "/documents" }, { label: "Unggah Dokumen" }]}
+        title="Unggah Dokumen"
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

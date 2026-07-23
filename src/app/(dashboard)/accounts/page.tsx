@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { accountTypeLabel } from "@/lib/accounting";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListTree } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -59,14 +60,14 @@ export default async function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">
-          Akun Perkiraan ({accounts.length})
-        </h1>
-        <Link href="/accounts/new">
-          <Button>+ Akun Baru</Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={<>Akun Perkiraan ({accounts.length})</>}
+        actions={
+          <Link href="/accounts/new">
+            <Button>+ Akun Baru</Button>
+          </Link>
+        }
+      />
 
       <Card>
         <table className="w-full text-sm">

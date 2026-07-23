@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -30,12 +31,14 @@ export default async function JournalPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Jurnal Umum ({journals.length})</h1>
-        <Link href="/journal/new">
-          <Button>+ Jurnal Baru</Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={<>Jurnal Umum ({journals.length})</>}
+        actions={
+          <Link href="/journal/new">
+            <Button>+ Jurnal Baru</Button>
+          </Link>
+        }
+      />
 
       <Card>
         <table className="w-full text-sm">

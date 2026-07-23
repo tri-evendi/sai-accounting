@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function NewSupplierPage() {
   const router = useRouter();
@@ -42,7 +43,10 @@ export default function NewSupplierPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Pemasok Baru</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Pemasok Baru" }]}
+        title="Pemasok Baru"
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

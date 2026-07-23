@@ -9,7 +9,7 @@ import { getFixedAsset } from "@/lib/fixed-assets";
 import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { MONTH_NAMES } from "@/lib/period";
 import { AssetActions } from "./asset-actions";
@@ -57,23 +57,23 @@ export default async function FixedAssetDetailPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: asset.assetNo }]} />
-
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{asset.name}</h1>
-            {asset.status === "disposed" ? (
-              <Badge variant="default">Dilepas</Badge>
-            ) : asset.isFullyDepreciated ? (
-              <Badge variant="warning">Habis susut</Badge>
-            ) : (
-              <Badge variant="success">Aktif</Badge>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{asset.assetNo}</p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+          { label: asset.assetNo },
+        ]}
+        title={asset.name}
+        badge={
+          asset.status === "disposed" ? (
+            <Badge variant="default">Dilepas</Badge>
+          ) : asset.isFullyDepreciated ? (
+            <Badge variant="warning">Habis susut</Badge>
+          ) : (
+            <Badge variant="success">Aktif</Badge>
+          )
+        }
+        description={asset.assetNo}
+      />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">

@@ -12,7 +12,7 @@ import { getFixedAssets, summarizeFixedAssets, getCategories } from "@/lib/fixed
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Boxes, Info, MapPin, Plus, Tags } from "lucide-react";
@@ -35,36 +35,37 @@ export default async function FixedAssetsPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Aset Tetap" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Aset Tetap</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        title="Aset Tetap"
+        description={
+          <>
             Kendaraan, alat, dan bangunan beserta penyusutannya. Nilai buku &amp; beban
             penyusutan tercermin otomatis di Neraca dan Laba Rugi.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/fixed-assets/by-location">
-            <Button variant="secondary" className="cursor-pointer">
-              <MapPin className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Aset per Lokasi
-            </Button>
-          </Link>
-          <Link href="/fixed-assets/categories">
-            <Button variant="secondary" className="cursor-pointer">
-              <Tags className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Kategori
-            </Button>
-          </Link>
-          <Link href="/fixed-assets/new">
-            <Button className="cursor-pointer">
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Aset Baru
-            </Button>
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Link href="/fixed-assets/by-location">
+              <Button variant="secondary" className="cursor-pointer">
+                <MapPin className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                Aset per Lokasi
+              </Button>
+            </Link>
+            <Link href="/fixed-assets/categories">
+              <Button variant="secondary" className="cursor-pointer">
+                <Tags className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                Kategori
+              </Button>
+            </Link>
+            <Link href="/fixed-assets/new">
+              <Button className="cursor-pointer">
+                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                Aset Baru
+              </Button>
+            </Link>
+          </>
+        }
+      />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">

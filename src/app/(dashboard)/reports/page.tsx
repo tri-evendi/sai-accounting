@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { reportsByCategory, type ReportDefinition } from "@/lib/report-catalog";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -88,12 +89,12 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-8" data-tour="pusat-laporan">
-        <h1 className="text-2xl font-bold text-foreground">Pusat Laporan</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur
-          periode, lalu ekspor ke PDF atau Excel. Nilai dalam IDR (nilai dasar buku besar).
-        </p>
+      <div data-tour="pusat-laporan">
+        <PageHeader
+          className="mb-8"
+          title="Pusat Laporan"
+          description="Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur periode, lalu ekspor ke PDF atau Excel. Nilai dalam IDR (nilai dasar buku besar)."
+        />
       </div>
 
       <div className="space-y-10">

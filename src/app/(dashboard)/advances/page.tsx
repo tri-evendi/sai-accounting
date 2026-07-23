@@ -15,7 +15,7 @@ import { getAdvances, summarizeAdvances, ADVANCE_TYPE_LABELS } from "@/lib/advan
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { HandCoins, Info, Plus } from "lucide-react";
@@ -37,22 +37,23 @@ export default async function AdvancesPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Uang Muka" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Uang Muka</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        title="Uang Muka"
+        description={
+          <>
             Uang yang diterima atau dibayar <strong>sebelum</strong> fakturnya terbit.
             Belum dihitung sebagai penjualan atau beban sampai dikompensasi ke faktur.
-          </p>
-        </div>
-        <Link href="/advances/new">
-          <Button className="cursor-pointer">
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Catat Uang Muka
-          </Button>
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Link href="/advances/new">
+            <Button className="cursor-pointer">
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Catat Uang Muka
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Filter — plain links, no client JS needed for three states. */}
       <div className="mb-6 flex flex-wrap gap-2">

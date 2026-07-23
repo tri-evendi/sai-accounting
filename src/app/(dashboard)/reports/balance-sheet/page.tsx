@@ -2,7 +2,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { getBalanceSheet } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
@@ -70,17 +70,17 @@ export default async function BalanceSheetPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Neraca" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">Neraca</h1>
-          <p className="text-sm text-muted-foreground">{asOfLabel} · nilai dalam IDR</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <StatementPDFButton payload={payload} />
-          <StatementExcelButton payload={payload} />
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Neraca" }]}
+        title="Neraca"
+        description={<>{asOfLabel} · nilai dalam IDR</>}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
+      />
 
       <AsOfFilter basePath="/reports/balance-sheet" asOf={asOfISO} />
 

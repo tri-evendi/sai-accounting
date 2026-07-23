@@ -1,7 +1,7 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { NewInvoiceForm } from "./invoice-form";
@@ -38,17 +38,18 @@ export default async function NewInvoicePage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb
-        items={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
+      <PageHeader
+        className="mb-1"
+        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
+        title={<TermTooltip term="faktur">Catat Penjualan</TermTooltip>}
+        description={
+          <>
+            Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
+            jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
+            &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.
+          </>
+        }
       />
-      <h1 className="text-2xl font-bold text-foreground">
-        <TermTooltip term="faktur">Catat Penjualan</TermTooltip>
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
-        jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
-        &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi.
-      </p>
       <LearnMore
         term="faktur"
         className="mt-1 mb-6"

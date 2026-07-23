@@ -4,7 +4,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 
@@ -73,13 +73,12 @@ export default async function DeliveryOrderDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: order.no }]} />
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Surat Jalan {order.no}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{formatDate(order.date)}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: order.no }]}
+        title={<>Surat Jalan {order.no}</>}
+        description={formatDate(order.date)}
+        actions={
+          <>
           <Badge variant={order.status === "canceled" ? "danger" : "success"}>
             {order.status === "canceled" ? "Dibatalkan" : "Diterbitkan"}
           </Badge>
@@ -98,8 +97,9 @@ export default async function DeliveryOrderDetailPage({
               })),
             }}
           />
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <Card className="mb-6">
         <CardHeader>

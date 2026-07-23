@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Ship } from "lucide-react";
 import Link from "next/link";
 
@@ -32,12 +33,14 @@ export default async function ConsigneesPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Penerima Barang ({totalCount})</h1>
-        <Link href="/consignees/new">
-          <Button>+ Tambah Penerima Barang</Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={<>Penerima Barang ({totalCount})</>}
+        actions={
+          <Link href="/consignees/new">
+            <Button>+ Tambah Penerima Barang</Button>
+          </Link>
+        }
+      />
 
       <Card>
         <div className="overflow-x-auto">

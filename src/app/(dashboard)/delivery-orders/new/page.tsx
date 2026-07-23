@@ -1,6 +1,6 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { calculateStockTotals } from "@/lib/inventory";
 import { listClosedPeriods } from "@/lib/period";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -44,16 +44,17 @@ export default async function NewDeliveryOrderPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb
-        items={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}
+      <PageHeader
+        className="mb-1"
+        breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}
+        title={<TermTooltip term="surat_jalan">Buat Surat Jalan</TermTooltip>}
+        description={
+          <>
+            Pilih consignee dan (opsional) dokumen sumber, lalu tentukan barang dan jumlah
+            (bags × kg/bag). Menerbitkan surat jalan mengurangi stok dalam kilogram.
+          </>
+        }
       />
-      <h1 className="text-2xl font-bold text-foreground">
-        <TermTooltip term="surat_jalan">Buat Surat Jalan</TermTooltip>
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Pilih consignee dan (opsional) dokumen sumber, lalu tentukan barang dan jumlah
-        (bags × kg/bag). Menerbitkan surat jalan mengurangi stok dalam kilogram.
-      </p>
       <LearnMore
         term="surat_jalan"
         className="mt-1 mb-6"

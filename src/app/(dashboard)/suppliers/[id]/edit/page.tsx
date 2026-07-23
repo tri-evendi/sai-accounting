@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function EditSupplierPage() {
   const router = useRouter();
@@ -61,7 +62,10 @@ export default function EditSupplierPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Pemasok</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Ubah Pemasok" }]}
+        title="Ubah Pemasok"
+      />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 

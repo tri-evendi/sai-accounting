@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ReverseButton } from "./reverse-button";
@@ -35,15 +35,12 @@ export default async function JournalDetailPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Jurnal Umum", href: "/journal" }, { label: journal.number }]} />
-
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-mono">{journal.number}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{formatDate(journal.date)}</p>
-        </div>
-        {canReverse && <ReverseButton journalId={journal.id} />}
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Catatan Transaksi", href: "/journal" }, { label: journal.number }]}
+        title={<span className="font-mono">{journal.number}</span>}
+        description={formatDate(journal.date)}
+        actions={canReverse && <ReverseButton journalId={journal.id} />}
+      />
 
       {journal.isReversed && (
         <div className="mb-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">

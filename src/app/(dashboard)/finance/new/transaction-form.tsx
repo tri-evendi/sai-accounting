@@ -21,6 +21,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ArrowDownLeft, ArrowUpRight, BookText, Info, Lock } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
@@ -240,13 +241,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
 
   return (
     <div className="max-w-2xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          <TermTooltip term="kas_bank">{heading.title}</TermTooltip>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{heading.description}</p>
-        <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas & bank" />
-      </header>
+      <PageHeader
+        className="mb-1"
+        breadcrumbs={[{ label: "Kas & Bank", href: "/finance" }, { label: heading.title }]}
+        title={<TermTooltip term="kas_bank">{heading.title}</TermTooltip>}
+        description={heading.description}
+      />
+      <LearnMore term="kas_bank" className="mt-1 mb-6" label="Pelajari ini: kas & bank" />
 
       {error && (
         <div

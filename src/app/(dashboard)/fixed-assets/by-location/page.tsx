@@ -6,7 +6,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { getFixedAssets, groupByLocation } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
 import { MapPin } from "lucide-react";
@@ -30,11 +30,14 @@ export default async function AssetsByLocationPage() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Aset per Lokasi" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Aset per Lokasi</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Aset aktif dikelompokkan berdasarkan lokasi. Nilai dalam IDR.
-      </p>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+          { label: "Aset per Lokasi" },
+        ]}
+        title="Aset per Lokasi"
+        description="Aset aktif dikelompokkan berdasarkan lokasi. Nilai dalam IDR."
+      />
 
       {groups.length === 0 ? (
         <EmptyState

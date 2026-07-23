@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 import { Trash2, UserPlus, RotateCcw } from "lucide-react";
 import { ROLE_LABELS, type Role } from "@/lib/constants";
 
@@ -121,12 +122,14 @@ export function UsersClient() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-        <Button onClick={() => setShowCreate(!showCreate)}>
-          <UserPlus className="h-4 w-4 mr-1" /> {showCreate ? "Cancel" : "New User"}
-        </Button>
-      </div>
+      <PageHeader
+        title="User Management"
+        actions={
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            <UserPlus className="h-4 w-4 mr-1" /> {showCreate ? "Cancel" : "New User"}
+          </Button>
+        }
+      />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Calculator, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
+import { ROLES } from "@/lib/constants";
 
 /**
  * Mode Akuntan toggle (issue #11) — the primary surface for the preference.
@@ -31,7 +32,7 @@ export function AccountantModeToggle() {
   // The toggle is meaningful only where there are accounting surfaces or
   // transaction forms with debit/kredit terms: bos (menus + forms) and core
   // (forms). ptg has neither, so it never sees a control that would do nothing.
-  if (role !== "bos" && role !== "core") return null;
+  if (role !== ROLES.BOS && role !== ROLES.CORE) return null;
 
   const isOn = effectiveAccountantMode({
     role,

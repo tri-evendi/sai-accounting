@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { evaluateSession, shouldRecheckSession } from "@/lib/session-guard";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // Required behind nginx/reverse proxy when env vars are not loaded at runtime
@@ -46,6 +47,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // issue #11 — carry the stored Mode Akuntan preference (may be null =
           // follow role default). Effective mode is derived, not stored.
           accountantMode: user.accountantMode,
+          // audit RBAC fase 3 — versi sesi untuk pencabutan (lihat session-guard.ts).
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -59,6 +62,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // issue #11 — persist the Mode Akuntan preference into the JWT so both
         // client (sidebar/navbar) and server (page guards) read it from auth().
         token.accountantMode = (user as { accountantMode?: boolean | null }).accountantMode ?? null;
+        // audit RBAC fase 3 — simpan versi sesi + stempel revalidasi.
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 1;
+        token.checkedAt = Date.now();
+        return token;
       }
       // issue #11 — when the navbar toggle calls useSession().update({ accountantMode }),
       // reflect the new preference into the token without a re-login. This only
@@ -66,6 +73,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (trigger === "update" && session && typeof session === "object" && "accountantMode" in session) {
         const next = (session as { accountantMode?: boolean | null }).accountantMode;
         token.accountantMode = next === true || next === false ? next : null;
+      }
+      // ── audit RBAC fase 3 — revalidasi berkala ke DB ─────────────────────
+      // Ganti peran / reset kata sandi menaikkan `sessionVersion` di DB;
+      // pengguna yang dihapus kehilangan barisnya. Keduanya mematikan token
+      // ini paling lama SESSION_RECHECK_MS setelahnya (return null = sesi
+      // dicabut). Jalur "refresh" juga menyalin ulang peran/status dari DB,
+      // jadi perubahan peran terasa tanpa menunggu login ulang.
+      if (!token.userId) return null;
+      if (shouldRecheckSession(token, Date.now())) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: parseInt(String(token.userId), 10) },
+          select: { role: true, status: true, sessionVersion: true, accountantMode: true },
+        });
+        if (evaluateSession(token, dbUser) === "revoke") return null;
+        token.role = dbUser!.role;
+        token.status = dbUser!.status;
+        token.accountantMode = dbUser!.accountantMode ?? null;
+        token.sessionVersion = dbUser!.sessionVersion;
+        token.checkedAt = Date.now();
       }
       return token;
     },

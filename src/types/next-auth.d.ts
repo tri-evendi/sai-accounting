@@ -6,6 +6,8 @@ declare module "next-auth" {
     status?: number;
     // issue #11 — Mode Akuntan preference (null = follow role default).
     accountantMode?: boolean | null;
+    // audit RBAC fase 3 — versi sesi untuk pencabutan.
+    sessionVersion?: number;
   }
 
   interface Session {
@@ -28,5 +30,8 @@ declare module "next-auth/jwt" {
     userId?: string;
     // issue #11 — Mode Akuntan preference carried across requests.
     accountantMode?: boolean | null;
+    // audit RBAC fase 3 — versi sesi + stempel revalidasi terakhir (ms epoch).
+    sessionVersion?: number;
+    checkedAt?: number;
   }
 }

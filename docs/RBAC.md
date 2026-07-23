@@ -3,6 +3,9 @@
 > Hasil refactor audit RBAC 2026-07 (PR #70, #71, dst). Satu sumber kebenaran:
 > **`src/lib/authz.ts`**. Kode tidak pernah bertanya "perannya bos atau core?" —
 > kode bertanya **"punya izin `resource.action`?"**
+> Sejak issue #73 matriks di kode adalah **BAWAAN (baseline)**; matriks
+> **EFEKTIF** = bawaan + override DB yang dikelola dari halaman `/permissions`
+> (lihat § Konfigurasi runtime).
 
 ## Peran
 
@@ -25,6 +28,36 @@ Invarian dijaga `tests/authz.test.ts`: bos memegang semua; hapus master = bos-on
 (kecuali `advance.delete`, terdokumentasi); **`delete ⊆ write ⊆ read`** — aksi lebih
 berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal ditolak).
 
+## Konfigurasi runtime (issue #73) — bawaan + override
+
+- **Bawaan tetap di kode.** `PERMISSION_ROLES` adalah baseline dan nilai
+  "Reset ke bawaan". Tabel `role_permission_overrides` (migrasi 0029) menyimpan
+  PENYIMPANGAN per sel (peran × izin): `allowed` true menghadiahkan izin, false
+  mencabut. **Tabel kosong = perilaku persis bawaan.**
+- **Matriks efektif** dirakit `src/lib/authz-effective.ts` (satu-satunya pembaca
+  tabelnya), logika murninya di `src/lib/authz-overrides.ts`
+  (`tests/authz-overrides.test.ts`). Baris yatim (izin/peran yang tak dikenal
+  kode) diabaikan — deny-by-default tak bisa dibobol lewat data.
+- **Cache ±60 dtk** (seirama revalidasi sesi fase 3) + invalidasi eksplisit
+  saat menulis: di proses yang sama perubahan seketika, lintas proses paling
+  lama satu TTL. Total jeda terasa ≤ ±1 menit.
+- **Penegakan memakai efektif**: `requirePagePermission`/`requireApiPermission`
+  memanggil `canEffective()`. `can()`/`rolesFor()` bawaan tinggal untuk tes dan
+  fallback tampilan.
+- **Anti-lockout & invarian saat MENULIS** (`validateOverrides`, pesan
+  Indonesia): bos tidak pernah bisa kehilangan `authz.manage` & `user.manage`
+  (`PROTECTED_CELLS`); `delete ⊆ write ⊆ read` wajib tetap berlaku pada matriks
+  EFEKTIF hasil usulan; sel kembar/peran asing ditolak.
+- **UI**: halaman `/permissions` ("Hak Akses", grup Bantuan & Pengaturan),
+  penjaga `authz.manage` (bawaan: bos). API `GET/PUT /api/authz/overrides`
+  (PUT = GANTI seluruh set; daftar kosong = reset). Setiap simpan **diaudit**
+  (`authz.override.update`/`.reset`) beserta aktor + perannya.
+- **Tampilan ikut efektif**: sidebar memuat set izin efektif dari
+  `GET /api/user/permissions` (self-scoped, tampilan saja); `nav.ts` &
+  `quick-actions.ts` kini mendeklarasikan **izin** per item (bukan daftar
+  peran) dan menerima set efektif; keputusan server component (beranda,
+  tombol hapus detail, panel audit Pengaturan) membaca loader efektif.
+
 ## Empat lapisan penegakan
 
 1. **Halaman** — `requirePagePermission("izin")` (`src/lib/page-auth.ts`). Tanpa sesi →
@@ -35,9 +68,15 @@ berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal d
    peran (Mode Akuntan = preferensi tampilan, bukan otorisasi). Cek yang lebih halus
    (mis. persetujuan: peran harus = `approverRole` aturan; aksi self-scoped) ditulis
    inline SETELAH penjaga izin — pelengkap, bukan pengganti.
-3. **Proxy** (`src/proxy.ts` — Next 16: pengganti `middleware.ts`) — jaring pengaman:
-   verifikasi JWT, alur wajib-ganti-kata-sandi, dan gerbang per-prefix yang perannya
-   DITURUNKAN dari matriks (`rolesFor`), memakai izin terlonggar di bawah prefix itu.
+3. **Proxy** (`src/proxy.ts` — Next 16: pengganti `middleware.ts`) — jaring pengaman
+   AUTENTIKASI: verifikasi JWT + alur wajib-ganti-kata-sandi. Gerbang per-prefix
+   dari matriks statis DIHAPUS di issue #73: matriksnya kini bisa di-override DB,
+   dan salinan bawaan di proxy akan memblokir izin yang justru DIHADIAHKAN
+   override (cache efektif + invalidasinya tak terlihat dari proxy — dokumen Next
+   melarang proxy mengandalkan modul/global bersama). Route dashboard =
+   authenticated-only di lapisan ini; penegakan izin sepenuhnya lapisan 1–2, dan
+   `tests/authz-coverage.test.ts` membuktikan setiap halaman/route memanggil
+   penjaganya.
 4. **Tampilan** — menu (`nav.ts`), Aksi Cepat, tombol (pakai `can()`) — TAMPILAN SAJA,
    tidak pernah dianggap pengamanan.
 

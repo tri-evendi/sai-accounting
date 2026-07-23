@@ -70,6 +70,9 @@ describe("matriks izin", () => {
       "period.manage",
       "setup.manage",
       "audit.read",
+      // issue #73 — mengubah matriks izin adalah administrasi paling
+      // ber-privilege; bawaannya bos-only.
+      "authz.manage",
     ] as Permission[]) {
       expect(can({ role: "core" }, permission), permission).toBe(false);
     }

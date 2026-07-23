@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
-import { can } from "@/lib/authz";
+import { canEffective } from "@/lib/authz-effective";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,7 @@ export default async function ContractDetailPage({
             <Button variant="secondary">Edit</Button>
           </Link>
           {/* Cermin izin `contract.delete` yang dicek route DELETE-nya (issue #6). */}
-          {can(session.user, "contract.delete") && (
+          {(await canEffective(session.user, "contract.delete")) && (
             <DeleteDocumentButton
               endpoint={`/api/contracts/${contract.id}`}
               label="Hapus Kontrak"

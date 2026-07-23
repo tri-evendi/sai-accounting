@@ -62,14 +62,24 @@ describe("quickActionsForRole", () => {
     expect(QUICK_ACTIONS.map((a) => a.key)).toEqual(before);
   });
 
-  it("setiap aksi punya tujuan, ikon, label, dan penjelasan", () => {
+  it("setiap aksi punya tujuan, ikon, label, penjelasan, dan izin halaman tujuannya", () => {
     for (const action of QUICK_ACTIONS) {
       expect(action.href.startsWith("/")).toBe(true);
       expect(action.icon.length).toBeGreaterThan(0);
       expect(action.label.trim().length).toBeGreaterThan(0);
       expect(action.description.trim().length).toBeGreaterThan(10);
-      expect(action.roles.length).toBeGreaterThan(0);
+      // issue #73 — deklarasi izin "resource.action", bukan daftar peran.
+      expect(action.permission).toMatch(/^[a-z_]+\.[a-z_]+$/);
     }
+  });
+
+  it("set izin efektif (issue #73) menang atas matriks bawaan", () => {
+    // ptg yang lewat override diberi cash.write mendapat aksi kas juga.
+    const allowed = new Set(["inventory.write", "cash.write"]);
+    const keys = quickActionsForRole("ptg", allowed).map((a) => a.key);
+    expect(keys).toEqual(["terima_uang", "bayar", "tambah_stok"]);
+    // Sebaliknya, set yang mencabut inventory.write menghilangkan aksi stoknya.
+    expect(quickActionsForRole("ptg", new Set())).toHaveLength(0);
   });
 
   it("kunci aksi unik", () => {
@@ -162,6 +172,18 @@ describe("kelompok menu berbasis tugas", () => {
   it("kelompok yang seluruh isinya tersembunyi ikut hilang", () => {
     const groups = visibleNavGroups({ role: "ptg" });
     expect(groups.some((g) => g.id === "laporan")).toBe(false);
+  });
+
+  it("penyaringan nav mengikuti set izin efektif bila diberikan (issue #73)", () => {
+    // Override yang MENGHADIAHKAN report.read pada core memunculkan menunya...
+    const granted = new Set(["report.read", "invoice.read"]);
+    const hrefs = visibleNavHrefs({ role: "core" }, granted);
+    expect(hrefs).toContain("/reports");
+    expect(hrefs).toContain("/invoices");
+    // ...dan izin yang tidak ada di set-nya ikut hilang, walau bawaan memberi.
+    expect(hrefs).not.toContain("/contracts");
+    // Beranda tidak berizin — selalu tampil selama ada peran.
+    expect(hrefs).toContain("/dashboard");
   });
 
   it("isNavItemVisible menolak peran yang tidak terdaftar", () => {

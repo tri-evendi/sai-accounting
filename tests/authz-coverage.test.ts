@@ -27,6 +27,9 @@ const API_EXCEPTIONS = new Set([
   "auth/[...nextauth]/route.ts", // handler NextAuth
   "auth/change-password/route.ts", // self-scoped: auth() + target selalu diri sendiri
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
+  // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
+  // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
+  "user/permissions/route.ts",
   "health/route.ts", // health probe publik (container/load-balancer)
 ]);
 
@@ -88,11 +91,24 @@ describe("cakupan penjaga API route", () => {
 });
 
 describe("jaring pengaman proxy", () => {
-  it("src/proxy.ts ada, memverifikasi token, dan menurunkan peran dari matriks izin", () => {
+  it("src/proxy.ts ada, memverifikasi token, dan menegakkan alur ganti-kata-sandi", () => {
     const src = readFileSync(join(__dirname, "..", "src", "proxy.ts"), "utf8");
     expect(src).toMatch(/export (async )?function proxy/);
     expect(src).toContain("getToken");
-    expect(src).toContain("rolesFor");
+    expect(src).toContain("/change-password");
     expect(src).not.toMatch(/roles:\s*\[/); // tak ada daftar peran diketik manual
+  });
+
+  it("proxy TIDAK membaca matriks izin — sejak issue #73 matriksnya bisa di-override DB", () => {
+    // Gerbang per-prefix dari matriks statis dihapus: override yang MENGHADIAHKAN
+    // izin tidak boleh diblokir oleh salinan bawaan yang tertanam di proxy, dan
+    // dokumen Next melarang proxy mengandalkan modul/global bersama (cache
+    // matriks + invalidasinya tak pernah terlihat dari sana). Penegakan izin
+    // sepenuhnya di requirePagePermission/requireApiPermission — dua tes cakupan
+    // di atas membuktikan setiap halaman & route memanggil penjaganya.
+    const src = readFileSync(join(__dirname, "..", "src", "proxy.ts"), "utf8");
+    expect(src).not.toContain("rolesFor");
+    expect(src).not.toContain("PERMISSION_ROLES");
+    expect(src).not.toContain("@/lib/prisma");
   });
 });

@@ -90,7 +90,15 @@ export type AuditAction =
    */
   | "user.create"
   | "user.update"
-  | "user.delete";
+  | "user.delete"
+  /**
+   * Matriks izin dikonfigurasi dari UI (issue #73). `authz.override.update`
+   * mencatat set override yang DISIMPAN (peran × izin × boleh/tidak — tidak
+   * pernah ada rahasia di sini); `authz.override.reset` = kembali persis ke
+   * matriks bawaan di kode (semua baris override dihapus).
+   */
+  | "authz.override.update"
+  | "authz.override.reset";
 
 export type AuditEntity =
   | "cash_account"
@@ -112,7 +120,9 @@ export type AuditEntity =
   | "invoice"
   /** Approval transaksi (issue #25). */
   | "approval_request"
-  | "approval_rule";
+  | "approval_rule"
+  /** Override matriks izin (issue #73). */
+  | "role_permission_override";
 
 export type AuditLogEntry = {
   id: string;

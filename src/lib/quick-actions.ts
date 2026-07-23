@@ -2,18 +2,22 @@
  * Panel "Aksi Cepat" (issue #2) — enam pekerjaan yang paling sering dilakukan,
  * masing-masing satu klik dari beranda ke formulirnya.
  *
- * Modul ini MURNI (tanpa React/ikon/Prisma) sehingga penyaringan peran bisa
+ * Modul ini MURNI (tanpa React/ikon/Prisma) sehingga penyaringannya bisa
  * diuji langsung (`tests/quick-actions.test.ts`) dan dipanggil dari SERVER
  * component beranda: daftar aksi disusun di server dari `session.user.role`,
  * jadi tombol yang tidak boleh dipakai peran tersebut memang tidak pernah
  * dikirim ke browser — bukan sekadar disembunyikan dengan CSS.
+ *
+ * Sejak issue #73 tiap aksi mendeklarasikan IZIN halaman tujuannya (bukan
+ * daftar peran — dilarang di luar matriks, AGENTS.md), dan beranda meneruskan
+ * set izin EFEKTIF (bawaan + override DB) supaya panel mengikuti konfigurasi.
  *
  * Penyaringan ini tetap TAMPILAN saja; setiap halaman tujuan punya penjaga
  * server-nya sendiri (`requirePagePermission`), jadi peran yang mengetik URL
  * langsung tetap ditolak di sana.
  */
 
-import type { Role } from "@/lib/constants";
+import { can, type Permission } from "@/lib/authz";
 import type { TermKey } from "@/lib/labels";
 
 /**
@@ -31,7 +35,8 @@ export interface QuickAction {
   href: string;
   /** Nama ikon lucide-react; dipetakan ke komponen di panelnya. */
   icon: string;
-  roles: Role[];
+  /** Izin halaman tujuannya — sama dengan `requirePagePermission` di sana. */
+  permission: Permission;
   tone: QuickActionTone;
   /** Entri kamus istilah yang menjelaskan pekerjaan ini (issue #21). */
   termKey?: TermKey;
@@ -49,7 +54,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Dipandu: pilih pelanggan, isi barang, lalu buat tagihannya.",
     href: "/sales/new",
     icon: "Receipt",
-    roles: ["bos", "core"],
+    permission: "invoice.write",
     tone: "in",
     termKey: "faktur",
   },
@@ -59,7 +64,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Dipandu: pilih pemasok, isi barang yang dibeli, lalu catat utangnya.",
     href: "/purchases/new",
     icon: "ShoppingCart",
-    roles: ["bos", "core"],
+    permission: "purchase.write",
     tone: "out",
     termKey: "pembelian",
   },
@@ -69,7 +74,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Catat uang yang masuk ke kas atau rekening bank.",
     href: "/finance/new?arah=masuk",
     icon: "ArrowDownLeft",
-    roles: ["bos", "core"],
+    permission: "cash.write",
     tone: "in",
     termKey: "kas_bank",
   },
@@ -79,7 +84,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Catat uang yang keluar dari kas atau rekening bank.",
     href: "/finance/new?arah=keluar",
     icon: "ArrowUpRight",
-    roles: ["bos", "core"],
+    permission: "cash.write",
     tone: "out",
     termKey: "kas_bank",
   },
@@ -89,7 +94,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Catat barang masuk atau keluar gudang.",
     href: "/inventory/update",
     icon: "PackagePlus",
-    roles: ["bos", "core", "ptg"],
+    permission: "inventory.write",
     tone: "stock",
     termKey: "persediaan",
   },
@@ -99,7 +104,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     description: "Catat kesepakatan penjualan sebelum barang dikirim.",
     href: "/contracts/new",
     icon: "FileText",
-    roles: ["bos", "core"],
+    permission: "contract.write",
     tone: "neutral",
     termKey: "kontrak",
   },
@@ -107,9 +112,16 @@ export const QUICK_ACTIONS: QuickAction[] = [
 
 /**
  * Aksi cepat yang boleh dipakai sebuah peran, urut seperti daftar di atas.
- * Peran tak dikenal (atau kosong) tidak mendapat aksi apa pun.
+ * Peran tak dikenal (atau kosong) tidak mendapat aksi apa pun. `allowed`
+ * (set izin EFEKTIF, issue #73) menang bila diberikan; tanpa itu jatuh ke
+ * `can()` matriks bawaan.
  */
-export function quickActionsForRole(role: string | null | undefined): QuickAction[] {
+export function quickActionsForRole(
+  role: string | null | undefined,
+  allowed?: ReadonlySet<string>
+): QuickAction[] {
   if (!role) return [];
-  return QUICK_ACTIONS.filter((action) => action.roles.includes(role as Role));
+  return QUICK_ACTIONS.filter((action) =>
+    allowed ? allowed.has(action.permission) : can({ role }, action.permission)
+  );
 }

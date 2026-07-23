@@ -1,6 +1,6 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { ReturnForm } from "./return-form";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +44,16 @@ export default async function NewReturnPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Retur", href: "/returns" }, { label: "Buat" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Buat Retur</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Pilih dokumen asal, lalu tentukan barang/jumlah yang dikembalikan. Nilai dan PPN
-        mengikuti dokumen asal dan tidak boleh melebihi sisa yang dapat diretur.
-      </p>
+      <PageHeader
+        breadcrumbs={[{ label: "Barang Dikembalikan", href: "/returns" }, { label: "Buat" }]}
+        title="Buat Retur"
+        description={
+          <>
+            Pilih dokumen asal, lalu tentukan barang/jumlah yang dikembalikan. Nilai dan PPN
+            mengikuti dokumen asal dan tidak boleh melebihi sisa yang dapat diretur.
+          </>
+        }
+      />
       <ReturnForm
         initialType={initialType}
         invoices={invoices.map((i) => ({

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROLE_LABELS, APP_NAME, COMPANY_NAME, type Role } from "@/lib/constants";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
+import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { BookMarked } from "lucide-react";
 
@@ -18,7 +19,7 @@ export function SettingsClient() {
 
   return (
     <div className={isManager ? "max-w-5xl" : "max-w-2xl"}>
-      <h1 className="text-2xl font-bold text-foreground mb-6">Pengaturan</h1>
+      <PageHeader title="Pengaturan" />
 
       <Card className="mb-6">
         <CardHeader>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import {
   ArrowDownLeft,
@@ -191,36 +192,41 @@ export function ReconciliationWorkspace({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Rekonsiliasi Bank ({currency})
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        className="mb-0"
+        breadcrumbs={[
+          { label: "Cocokkan Rekening Koran", href: "/reconciliation" },
+          { label: `Rekonsiliasi Bank (${currency})` },
+        ]}
+        title={`Rekonsiliasi Bank (${currency})`}
+        description={
+          <>
             Periode {formatDateShort(statement.periodStart)} — {formatDateShort(statement.periodEnd)}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {locked ? (
-            <Badge variant="success">
-              <Lock className="mr-1 h-3 w-3" aria-hidden="true" /> Terkunci
-            </Badge>
-          ) : (
-            <Badge variant="warning">Draft</Badge>
-          )}
-          <Button variant={locked ? "secondary" : "primary"} size="sm" disabled={busy} onClick={toggleLock}>
+          </>
+        }
+        actions={
+          <>
             {locked ? (
-              <>
-                <LockOpen className="mr-1 h-4 w-4" aria-hidden="true" /> Buka Kembali
-              </>
+              <Badge variant="success">
+                <Lock className="mr-1 h-3 w-3" aria-hidden="true" /> Terkunci
+              </Badge>
             ) : (
-              <>
-                <Lock className="mr-1 h-4 w-4" aria-hidden="true" /> Kunci Rekonsiliasi
-              </>
+              <Badge variant="warning">Draft</Badge>
             )}
-          </Button>
-        </div>
-      </div>
+            <Button variant={locked ? "secondary" : "primary"} size="sm" disabled={busy} onClick={toggleLock}>
+              {locked ? (
+                <>
+                  <LockOpen className="mr-1 h-4 w-4" aria-hidden="true" /> Buka Kembali
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-1 h-4 w-4" aria-hidden="true" /> Kunci Rekonsiliasi
+                </>
+              )}
+            </Button>
+          </>
+        }
+      />
 
       {error && (
         <div className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">

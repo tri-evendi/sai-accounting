@@ -6,6 +6,7 @@ import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,14 @@ export default async function CustomersPage({
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          <TermTooltip term="pelanggan">Pelanggan ({totalCount})</TermTooltip>
-        </h1>
-        <Link href="/customers/new" className="shrink-0">
-          <Button>+ Tambah Pelanggan</Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={<TermTooltip term="pelanggan">Pelanggan ({totalCount})</TermTooltip>}
+        actions={
+          <Link href="/customers/new" className="shrink-0">
+            <Button>+ Tambah Pelanggan</Button>
+          </Link>
+        }
+      />
 
       <Card>
         <div className="overflow-x-auto">

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tags } from "lucide-react";
 import { AssetForm } from "./asset-form";
@@ -24,7 +24,13 @@ export default async function NewFixedAssetPage() {
   if (categories.length === 0) {
     return (
       <div className="max-w-3xl">
-        <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Aset Baru" }]} />
+        <PageHeader
+          breadcrumbs={[
+            { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+            { label: "Aset Baru" },
+          ]}
+          title="Daftarkan Aset Tetap"
+        />
         <EmptyState
           icon={<Tags className="h-12 w-12" />}
           title="Buat kategori aset dulu"
@@ -42,15 +48,22 @@ export default async function NewFixedAssetPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Aset Baru" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Daftarkan Aset Tetap</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Kendaraan, alat, atau bangunan yang akan disusutkan otomatis.{" "}
-        <Link href="/fixed-assets/categories" className="text-primary hover:underline">
-          Kelola kategori
-        </Link>
-        .
-      </p>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+          { label: "Aset Baru" },
+        ]}
+        title="Daftarkan Aset Tetap"
+        description={
+          <>
+            Kendaraan, alat, atau bangunan yang akan disusutkan otomatis.{" "}
+            <Link href="/fixed-assets/categories" className="text-primary hover:underline">
+              Kelola kategori
+            </Link>
+            .
+          </>
+        }
+      />
       <AssetForm
         categories={categories.map((c) => ({
           id: c.id,

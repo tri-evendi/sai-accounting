@@ -86,6 +86,14 @@ Radius: `8px` (kontrol), `12px` (card), `16px` (modal).
 
 ---
 
+## Kepala Halaman & Breadcrumb (wajib)
+
+Semua halaman dashboard memakai **`PageHeader`** (`src/components/ui/page-header.tsx`) — jangan menulis `<h1>` atau memanggil `<Breadcrumb>` sendiri (dijaga `tests/page-header.test.ts`).
+
+- **Halaman tingkat-1** (item menu samping): tanpa `breadcrumbs`; `title` = label menunya persis (boleh membawa jumlah, mis. "Pelanggan (12)"); tombol utama lewat `actions`.
+- **Halaman di bawahnya** (baru / ubah / rincian): `breadcrumbs` dimulai dari **label menu induk** — kata yang sama dengan menu samping (mis. "Tagihan Penjualan", bukan "Invoices") — dan item terakhir (tanpa `href`) = halaman ini.
+- Badge status di samping judul lewat `badge`; kalimat penjelas lewat `description`.
+
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.
@@ -135,6 +143,7 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 - [ ] Status pakai badge berteks (bukan warna saja).
 - [ ] Form: label terlihat, validasi inline, helper text, progressive disclosure.
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
+- [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>`/`<Breadcrumb>` manual); label breadcrumb = label menu samping.
 - [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
 - [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

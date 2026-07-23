@@ -8,7 +8,7 @@
  */
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
@@ -35,8 +35,7 @@ export default async function SetupPage() {
 
     return (
       <div className="max-w-3xl">
-        <Breadcrumb items={[{ label: "Setup" }]} />
-        <h1 className="text-2xl font-bold text-foreground">Setup Perusahaan</h1>
+        <PageHeader className="mb-0" title="Setup Perusahaan" />
 
         <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
@@ -135,11 +134,10 @@ export default async function SetupPage() {
 
   return (
     <div className="max-w-3xl">
-      <Breadcrumb items={[{ label: "Setup" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Setup Perusahaan &amp; Saldo Awal</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali.
-      </p>
+      <PageHeader
+        title={<>Setup Perusahaan &amp; Saldo Awal</>}
+        description="Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali."
+      />
       <SetupWizard
         defaults={{ name: COMPANY_NAME, address: COMPANY_ADDRESS, baseCurrency: "IDR" }}
         currencies={[...CURRENCIES]}

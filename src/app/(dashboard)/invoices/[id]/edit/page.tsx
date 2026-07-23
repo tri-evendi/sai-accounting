@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
 import {
   InvoiceFxFields,
@@ -160,7 +161,13 @@ export default function EditInvoicePage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Tagihan {invoiceNo}</h1>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Tagihan Penjualan", href: "/invoices" },
+          { label: `Ubah Tagihan ${invoiceNo}` },
+        ]}
+        title={<>Ubah Tagihan {invoiceNo}</>}
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

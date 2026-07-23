@@ -1,6 +1,6 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { AdvanceForm } from "./advance-form";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +21,11 @@ export default async function NewAdvancePage() {
 
   return (
     <div className="max-w-3xl">
-      <Breadcrumb items={[{ label: "Uang Muka", href: "/advances" }, { label: "Catat" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Catat Uang Muka</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Untuk uang yang diterima atau dibayar sebelum fakturnya terbit.
-      </p>
+      <PageHeader
+        breadcrumbs={[{ label: "Uang Muka", href: "/advances" }, { label: "Catat" }]}
+        title="Catat Uang Muka"
+        description="Untuk uang yang diterima atau dibayar sebelum fakturnya terbit."
+      />
       <AdvanceForm customers={customers} suppliers={suppliers} contracts={contracts} />
     </div>
   );

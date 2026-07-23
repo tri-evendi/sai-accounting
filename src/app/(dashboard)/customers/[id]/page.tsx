@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -23,18 +23,20 @@ export default async function CustomerDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Pelanggan", href: "/customers" }, { label: customer.name }]} />
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{customer.name}</h1>
-        <div className="flex gap-2">
-          <Link href={`/customers/${customer.id}/edit`}>
-            <Button variant="secondary">Ubah</Button>
-          </Link>
-          <Link href="/customers">
-            <Button variant="ghost">Kembali</Button>
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: customer.name }]}
+        title={customer.name}
+        actions={
+          <>
+            <Link href={`/customers/${customer.id}/edit`}>
+              <Button variant="secondary">Ubah</Button>
+            </Link>
+            <Link href="/customers">
+              <Button variant="ghost">Kembali</Button>
+            </Link>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader><CardTitle>Informasi Pelanggan</CardTitle></CardHeader>

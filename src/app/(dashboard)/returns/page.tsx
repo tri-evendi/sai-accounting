@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Undo2, Plus, Info } from "lucide-react";
@@ -48,22 +48,23 @@ export default async function ReturnsPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Retur" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Retur</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        title="Retur"
+        description={
+          <>
             Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok,
             piutang/utang, dan PPN-nya.
-          </p>
-        </div>
-        <Link href={`/returns/new?type=${tab}`}>
-          <Button className="cursor-pointer">
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Buat Retur
-          </Button>
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Link href={`/returns/new?type=${tab}`}>
+            <Button className="cursor-pointer">
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Buat Retur
+            </Button>
+          </Link>
+        }
+      />
 
       <div className="mb-6 flex flex-wrap gap-2">
         {[

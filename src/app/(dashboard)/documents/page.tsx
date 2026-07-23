@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -33,10 +34,10 @@ export default async function DocumentsPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Dokumen</h1>
-        <Link href="/documents/upload"><Button>+ Unggah Dokumen</Button></Link>
-      </div>
+      <PageHeader
+        title="Dokumen"
+        actions={<Link href="/documents/upload"><Button>+ Unggah Dokumen</Button></Link>}
+      />
 
       <Card>
         <CardHeader>

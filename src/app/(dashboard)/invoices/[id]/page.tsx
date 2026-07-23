@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
 import { InvoiceAdvanceSection } from "./advance-section";
@@ -91,15 +91,12 @@ export default async function InvoiceDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Invoices", href: "/invoices" }, { label: invoice.invoiceNo }]} />
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Invoice {invoice.invoiceNo}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{formatDate(invoice.date)}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: invoice.invoiceNo }]}
+        title={<>Invoice {invoice.invoiceNo}</>}
+        description={formatDate(invoice.date)}
+        actions={
+          <>
           <InvoicePDFButtonWrapper
             invoice={{
               invoiceNo: invoice.invoiceNo,
@@ -150,8 +147,9 @@ export default async function InvoiceDetailPage({
           <Link href="/invoices">
             <Button variant="ghost">Back</Button>
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Invoice Info */}
       <Card className="mb-6">

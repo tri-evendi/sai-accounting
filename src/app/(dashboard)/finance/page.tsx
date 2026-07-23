@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
+import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
 import {
   Table,
@@ -107,18 +108,17 @@ export default async function FinancePage({
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>
-          </h1>
-          <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas &amp; bank" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
-          <Link href="/finance/new"><Button>+ Catat Transaksi</Button></Link>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>}
+        actions={
+          <>
+            <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
+            <Link href="/finance/new"><Button>+ Catat Transaksi</Button></Link>
+          </>
+        }
+      />
+      <LearnMore term="kas_bank" className="mt-1 mb-6" label="Pelajari ini: kas &amp; bank" />
 
       {/* Filters */}
       <Card className="mb-6">

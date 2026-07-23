@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { AlertCircle, Info, Lock, Package } from "lucide-react";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatNumber } from "@/lib/utils";
 import {
   closedPeriodIssue,
@@ -221,25 +222,22 @@ export function StockUpdateForm({
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Catat barang yang masuk ke gudang atau keluar dari gudang.
-          </p>
-          <LearnMore term="hpp" className="mt-1" label="Pelajari ini: modal barang yang terjual" />
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shrink-0 cursor-pointer"
-          onClick={() => setShowNewItem(!showNewItem)}
-        >
-          {showNewItem ? "Batal" : "+ Barang Baru"}
-        </Button>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>}
+        description="Catat barang yang masuk ke gudang atau keluar dari gudang."
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0 cursor-pointer"
+            onClick={() => setShowNewItem(!showNewItem)}
+          >
+            {showNewItem ? "Batal" : "+ Barang Baru"}
+          </Button>
+        }
+      />
+      <LearnMore term="hpp" className="mt-1 mb-6" label="Pelajari ini: modal barang yang terjual" />
 
       {error && (
         <div

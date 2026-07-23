@@ -6,6 +6,7 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { Card } from "@/components/ui/card";
 import { ClipboardList, Target, GaugeCircle } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -36,11 +37,10 @@ export default async function BudgetHubPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Anggaran &amp; Target</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Rencana keuangan dibandingkan dengan realisasi buku besar. Menyusun anggaran tidak
-        memposting jurnal apa pun.
-      </p>
+      <PageHeader
+        title={<>Anggaran &amp; Target</>}
+        description="Rencana keuangan dibandingkan dengan realisasi buku besar. Menyusun anggaran tidak memposting jurnal apa pun."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {SURFACES.map((s) => (

@@ -11,7 +11,7 @@
  * schema before production filing (see `@/lib/efaktur`).
  */
 import { requirePageSession } from "@/lib/page-auth";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -57,12 +57,15 @@ export default async function EfakturPage({
 
   return (
     <div className="max-w-5xl">
-      <Breadcrumb items={[{ label: "Pajak" }, { label: "Ekspor e-Faktur" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Ekspor e-Faktur (DJP/CTAS)</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Ekspor faktur keluaran &amp; ekspor (PEB) untuk suatu masa pajak dalam format CSV
-        berorientasi DJP/CTAS.
-      </p>
+      <PageHeader
+        title="Ekspor e-Faktur (DJP/CTAS)"
+        description={
+          <>
+            Ekspor faktur keluaran &amp; ekspor (PEB) untuk suatu masa pajak dalam format CSV
+            berorientasi DJP/CTAS.
+          </>
+        }
+      />
 
       {/* Honesty / disclaimer */}
       <div className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning-strong">

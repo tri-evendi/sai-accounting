@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -36,20 +37,17 @@ export default async function SuppliersPage({
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya.
-          </p>
-          <LearnMore term="pembelian" className="mt-1" label="Pelajari ini: cara mencatat pembelian" />
-        </div>
-        <Link href="/suppliers/new" className="shrink-0">
-          <Button>+ Tambah Pemasok</Button>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>}
+        description="Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya."
+        actions={
+          <Link href="/suppliers/new" className="shrink-0">
+            <Button>+ Tambah Pemasok</Button>
+          </Link>
+        }
+      />
+      <LearnMore term="pembelian" className="mt-1 mb-6" label="Pelajari ini: cara mencatat pembelian" />
 
       <Card>
         <div className="overflow-x-auto">

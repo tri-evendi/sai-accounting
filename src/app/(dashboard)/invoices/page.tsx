@@ -19,6 +19,7 @@ import { Receipt } from "lucide-react";
 import { STATUS_FILTER_LABELS } from "@/lib/constants";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -55,17 +56,16 @@ export default async function InvoicesPage({
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>
-          </h1>
-          <LearnMore term="faktur" className="mt-1" label="Pelajari ini: apa itu tagihan penjualan" />
-        </div>
-        <Link href="/invoices/new" className="shrink-0">
-          <Button>+ Buat Tagihan</Button>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>}
+        actions={
+          <Link href="/invoices/new" className="shrink-0">
+            <Button>+ Buat Tagihan</Button>
+          </Link>
+        }
+      />
+      <LearnMore term="faktur" className="mt-1 mb-6" label="Pelajari ini: apa itu tagihan penjualan" />
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">

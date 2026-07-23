@@ -1,7 +1,7 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
@@ -68,17 +68,17 @@ export default async function IncomeStatementPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Laporan", href: "/reports" }, { label: "Laba / Rugi" }]} />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">Laba / Rugi</h1>
-          <p className="text-sm text-muted-foreground">{periodLabel} · nilai dalam IDR</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <StatementPDFButton payload={payload} />
-          <StatementExcelButton payload={payload} />
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Laba / Rugi" }]}
+        title="Laba / Rugi"
+        description={<>{periodLabel} · nilai dalam IDR</>}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
+      />
 
       <PeriodFilter basePath="/reports/income-statement" from={fromISO} to={toISO} />
 

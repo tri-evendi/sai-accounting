@@ -110,7 +110,7 @@ export default async function FinancePage({
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>}
+        title={<TermTooltip term="kas_bank">Buku Kas &amp; Bank</TermTooltip>}
         actions={
           <>
             <FinancePageActions balances={financeBalances} transactions={financeTransactions} />

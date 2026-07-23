@@ -117,6 +117,21 @@ describe("kelompok menu berbasis tugas", () => {
     expect(laporan?.items.map((i) => i.href)).toContain("/reports");
   });
 
+  it("Dokumen ikut kelompok Penjualan — arsip ekspor, bukan pengaturan aplikasi", () => {
+    const penjualan = NAV_GROUPS.find((g) => g.id === "penjualan");
+    const pengaturan = NAV_GROUPS.find((g) => g.id === "pengaturan");
+    expect(penjualan?.items.map((i) => i.href)).toContain("/documents");
+    expect(pengaturan?.items.map((i) => i.href)).not.toContain("/documents");
+  });
+
+  it("tidak ada label kelompok yang kembar dengan label item di dalamnya", () => {
+    for (const group of NAV_GROUPS) {
+      for (const item of group.items) {
+        expect(item.label, `${group.id} / ${item.href}`).not.toBe(group.label);
+      }
+    }
+  });
+
   it("ptg hanya melihat persetujuan, stok, beranda, kamus, dan pengaturan", () => {
     const groups = visibleNavGroups({ role: "ptg" });
     // Antrean persetujuan terbuka untuk semua peran — ptg memakainya untuk

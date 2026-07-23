@@ -40,6 +40,23 @@ export const STATUS_FILTER_LABELS: Record<string, string> = {
   ...CONTRACT_STATUS_LABELS,
 };
 
+export const DOCUMENT_TYPES = ["bl", "invoice", "coo", "fumigation", "contract", "other"] as const;
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/**
+ * Label jenis dokumen ekspor dalam bahasa tugas (issue #68). Nilai DB tidak
+ * berubah — satu sumber untuk pilihan form unggah DAN kolom "Jenis" di daftar
+ * dokumen, supaya nilai mentah ("bl", "coo") tak pernah tampil di layar.
+ */
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  bl: "Bill of Lading (B/L)",
+  invoice: "Tagihan (Invoice)",
+  coo: "Surat Keterangan Asal (COO)",
+  fumigation: "Sertifikat Fumigasi",
+  contract: "Kontrak",
+  other: "Lainnya",
+};
+
 export const CASH_TYPES = ["bank", "kas_besar", "kas_kecil"] as const;
 export type CashType = (typeof CASH_TYPES)[number];
 

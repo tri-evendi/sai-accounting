@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { Trash2, UserPlus, RotateCcw } from "lucide-react";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, type Role } from "@/lib/constants";
 
 interface User {
   id: number;
@@ -179,7 +179,7 @@ export function UsersClient() {
                   <td className="px-6 py-3 font-medium text-foreground">{user.username}</td>
                   <td className="px-6 py-3 text-foreground">{user.name || "-"}</td>
                   <td className="px-6 py-3">
-                    <Badge variant={user.role === "bos" ? "success" : "default"}>
+                    <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
                       {ROLE_LABELS[user.role as Role] || user.role}
                     </Badge>
                   </td>

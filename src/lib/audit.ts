@@ -81,7 +81,16 @@ export type AuditAction =
    * Wizard tidak memposting apa pun sendiri — jurnalnya dari `postForSource`.
    */
   | "wizard.sales"
-  | "wizard.purchase";
+  | "wizard.purchase"
+  /**
+   * Manajemen pengguna (audit RBAC fase 3). Mutasi paling ber-privilege di
+   * app ini (termasuk pemberian peran bos) dulunya justru TIDAK diaudit.
+   * `user.update` mencatat field yang berubah (roleFrom→roleTo, resetPassword)
+   * — tidak pernah nilai kata sandinya.
+   */
+  | "user.create"
+  | "user.update"
+  | "user.delete";
 
 export type AuditEntity =
   | "cash_account"
@@ -109,6 +118,8 @@ export type AuditLogEntry = {
   id: string;
   userId: string;
   username: string;
+  /** Peran aktor SAAT beraksi (audit RBAC fase 3) — peran bisa berubah, jejak tidak. */
+  role?: string;
   action: AuditAction;
   entity: AuditEntity;
   entityId?: number;
@@ -132,6 +143,8 @@ export function getClientIp(request?: Request): string | null {
 export async function writeAuditLog(params: {
   userId: string;
   username: string;
+  /** Peran aktor saat beraksi — isi dari session.user.role (fase 3). */
+  role?: string;
   action: AuditAction;
   entity: AuditEntity;
   entityId?: number;
@@ -142,6 +155,7 @@ export async function writeAuditLog(params: {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     userId: params.userId,
     username: params.username.slice(0, 50),
+    role: params.role,
     action: params.action,
     entity: params.entity,
     entityId: params.entityId,

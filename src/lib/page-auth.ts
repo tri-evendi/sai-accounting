@@ -1,56 +1,18 @@
 import { auth } from "@/lib/auth";
-import type { Role } from "@/lib/constants";
 import { ACCOUNTING_PERMISSIONS, can, type Permission } from "@/lib/authz";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { redirect } from "next/navigation";
 
 /**
- * Server-side guard for dashboard pages.
- * Redirects unauthenticated users to login and unauthorized roles to dashboard.
- */
-export async function requirePageSession(allowedRoles?: Role[]) {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const role = session.user.role as Role;
-
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    redirect("/dashboard");
-  }
-
-  return session;
-}
-
-/**
- * Guard for accounting-only pages (Jurnal, Buku Besar, COA) — issue #11.
- *
- * Layered ON TOP of the role check, not instead of it: the page is first gated
- * to `allowedRoles` (default `["bos"]`, so core/ptg are already turned away by
- * role and can never reach this), then additionally refused unless the user's
- * EFFECTIVE Mode Akuntan is ON. This is why hiding the sidebar item is not the
- * whole feature — the same `effectiveAccountantMode` decision that hides the menu
- * also refuses to render the page, so a bos who turned Mode Akuntan OFF is
- * redirected rather than served the page by typing its URL.
- */
-export async function requireAccountantPage(allowedRoles: Role[] = ["bos"]) {
-  const session = await requirePageSession(allowedRoles);
-
-  if (!effectiveAccountantMode(session.user)) {
-    redirect("/dashboard");
-  }
-
-  return session;
-}
-
-/**
- * Penjaga halaman berbasis IZIN (audit RBAC fase 1) — pengganti bertahap
- * `requirePageSession([peran])`: halaman mendeklarasikan izinnya, matriks
- * peran hidup di `lib/authz.ts`. Izin permukaan akuntansi
- * (`ACCOUNTING_PERMISSIONS`) otomatis berlapis Mode Akuntan, menggantikan
- * `requireAccountantPage`.
+ * SATU-SATUNYA penjaga halaman dashboard (audit RBAC fase 1–4; lihat
+ * docs/RBAC.md). Halaman mendeklarasikan IZINNYA, matriks izin→peran hidup
+ * di `lib/authz.ts`. Tanpa sesi → /login; tanpa izin → /dashboard. Izin
+ * permukaan akuntansi (`ACCOUNTING_PERMISSIONS`) otomatis berlapis Mode
+ * Akuntan (issue #11): bos yang mematikan modenya ikut ditolak, sama seperti
+ * menunya yang ikut tersembunyi. Cakupan pemakaian dijaga
+ * `tests/authz-coverage.test.ts` — halaman tanpa deklarasi = tes merah.
+ * (Pendahulunya, `requirePageSession`/`requireAccountantPage` berbasis daftar
+ * peran, dihapus di fase 4.)
  */
 export async function requirePagePermission(permission: Permission) {
   const session = await auth();

@@ -13,7 +13,7 @@
  * bisa diuji langsung di `tests/quick-actions.test.ts`.
  *
  * Penyaringan di sini bersifat TAMPILAN. Otorisasi sebenarnya tetap dilakukan
- * server-side oleh `requirePageSession` / `requireAccountantPage` pada tiap
+ * server-side oleh `requirePagePermission` (lihat docs/RBAC.md) pada tiap
  * halaman — menyembunyikan menu saja tidak pernah dianggap pengamanan.
  */
 

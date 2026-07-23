@@ -11,6 +11,7 @@ import {
   toLowStockAlerts,
 } from "@/lib/inventory";
 import { CASH_TYPE_LABELS, LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
+import { can } from "@/lib/authz";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { PageHeader } from "@/components/ui/page-header";
@@ -61,7 +62,9 @@ export default async function DashboardPage() {
   // issue #2 — Aksi Cepat disaring PER PERAN di server: tombol yang tidak boleh
   // dipakai peran ini tidak ikut dirender sama sekali (bukan disembunyikan CSS).
   const quickActions = quickActionsForRole(role);
-  const canViewFinance = role === "bos" || role === "core";
+  // audit RBAC fase 4 — keputusan tampilan per-seksi membaca matriks izin,
+  // bukan membandingkan string peran.
+  const canViewFinance = can({ role }, "cash.read");
   const canViewContracts = canViewFinance;
 
   const sixMonthsAgo = new Date();
@@ -133,7 +136,7 @@ export default async function DashboardPage() {
    */
   const period = monthRange(new Date());
   const arAsOf = new Date(`${toISODate(new Date())}T23:59:59.999`);
-  const canViewReports = role === "bos";
+  const canViewReports = can({ role }, "report.read");
 
   const [incomeStatement, receivables, payables] = await Promise.all([
     canViewReports ? getIncomeStatement(period.from, period.to) : Promise.resolve(null),

@@ -18,6 +18,10 @@ Setiap kali membuat/mengubah/mereview UI (halaman, komponen, warna, tipografi, l
 4. **Reuse** komponen `src/components/ui` (**shadcn/ui + CVA**, Radix untuk overlay) & ikon `lucide-react`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, `bg-success-soft`, …), bukan kelas palet mentah (`bg-blue-600`) atau hex — penjaga ESLint menolaknya (issue #54). Form: `react-hook-form` + `zod` via pola `Form` (lihat "Konvensi Form" MASTER.md). Tabel: primitif `Table`/`DataTable`; nominal lewat `Money`/`MoneyInput`.
 5. Sebelum menyerahkan UI, lewati **Pre-Delivery Checklist** di MASTER.md.
 
+# Otorisasi / RBAC (WAJIB untuk halaman & API route baru)
+
+Otorisasi berbasis **izin terpusat** — lihat `docs/RBAC.md`. Inti: matriks izin di `src/lib/authz.ts`; halaman memanggil `requirePagePermission("resource.action")`, API `requireApiPermission(...)`, tampilan `can(...)`. **Jangan** membandingkan string peran atau menulis daftar `["bos","core"]` di luar matriks — tes `authz-coverage` menolak halaman/route tanpa deklarasi izin.
+
 # Database & Skema (WAJIB untuk perubahan data)
 
 Setiap perubahan model Prisma / migration / tabel **wajib** mengikuti `docs/DATABASE.md`. Inti:

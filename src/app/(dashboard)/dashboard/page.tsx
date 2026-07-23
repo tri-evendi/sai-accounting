@@ -13,6 +13,7 @@ import {
 import { CASH_TYPE_LABELS, LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -264,12 +265,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-10">
-      <header>
-        <h1 className="text-2xl font-bold text-foreground">Beranda</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Ringkasan stok, kas, dan penjualan untuk {session.user.name}
-        </p>
-      </header>
+      <PageHeader
+        className="mb-0"
+        title="Beranda"
+        description={<>Ringkasan stok, kas, dan penjualan untuk {session.user.name}</>}
+      />
 
       {/* ─── Aksi Cepat (issue #2) ───
           Paling atas karena beranda lebih sering dipakai untuk MENGERJAKAN

@@ -7,6 +7,7 @@ import { accountTypeLabel } from "@/lib/accounting";
 import { LedgerFilter } from "./ledger-filter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookOpen } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function LedgerPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-6">Buku Besar</h1>
+      <PageHeader title="Buku Besar" />
 
       <LedgerFilter
         accountOptions={accountOptions}

@@ -19,6 +19,7 @@ import { FileText } from "lucide-react";
 import { STATUS_FILTER_LABELS } from "@/lib/constants";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -60,17 +61,16 @@ export default async function ContractsPage({
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="kontrak">Kontrak ({totalCount})</TermTooltip>
-          </h1>
-          <LearnMore term="kontrak" className="mt-1" label="Pelajari ini: apa itu kontrak penjualan" />
-        </div>
-        <Link href="/contracts/new" className="shrink-0">
-          <Button>+ Buat Kontrak</Button>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="kontrak">Kontrak ({totalCount})</TermTooltip>}
+        actions={
+          <Link href="/contracts/new" className="shrink-0">
+            <Button>+ Buat Kontrak</Button>
+          </Link>
+        }
+      />
+      <LearnMore term="kontrak" className="mt-1 mb-6" label="Pelajari ini: apa itu kontrak penjualan" />
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">

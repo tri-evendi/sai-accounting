@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
 import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { buildContractChain, loadContractChain } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Banknote, Package, Receipt, Truck } from "lucide-react";
@@ -81,15 +81,12 @@ export default async function ContractDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Contracts", href: "/contracts" }, { label: contract.contractNo }]} />
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Contract {contract.contractNo}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{formatDate(contract.date)}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: contract.contractNo }]}
+        title={<>Contract {contract.contractNo}</>}
+        description={formatDate(contract.date)}
+        actions={
+          <>
           <ContractPDFButtons
             contract={{
               contractNo: contract.contractNo,
@@ -146,8 +143,9 @@ export default async function ContractDetailPage({
           <Link href="/contracts">
             <Button variant="ghost">Back</Button>
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
       <Card className="mb-6">

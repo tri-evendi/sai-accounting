@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function EditCustomerPage() {
   const router = useRouter();
@@ -72,7 +73,10 @@ export default function EditCustomerPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Pelanggan</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Ubah Pelanggan" }]}
+        title="Ubah Pelanggan"
+      />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 

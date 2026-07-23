@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Package } from "lucide-react";
 import { OpnameForm } from "./opname-form";
@@ -37,20 +38,19 @@ export default async function StockOpnamePage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="stok_opname">Hitung Ulang Stok</TermTooltip>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Hitungan fisik dibanding catatan sistem · stok menipis ≤ {LOW_STOCK_THRESHOLD} satuan
-          </p>
-          <LearnMore term="stok_opname" className="mt-1" />
-        </div>
-        <Link href="/inventory/update">
-          <Button>Tambah / Kurangi Stok</Button>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="stok_opname">Hitung Ulang Stok</TermTooltip>}
+        description={
+          <>Hitungan fisik dibanding catatan sistem · stok menipis ≤ {LOW_STOCK_THRESHOLD} satuan</>
+        }
+        actions={
+          <Link href="/inventory/update">
+            <Button>Tambah / Kurangi Stok</Button>
+          </Link>
+        }
+      />
+      <LearnMore term="stok_opname" className="mt-1 mb-6" />
 
       <div className="mb-6">
         <StockAlertBanner items={lowStockAlerts} />

@@ -2,7 +2,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { SalesWizard } from "./sales-wizard";
 
@@ -52,15 +52,18 @@ export default async function NewSaleWizardPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb
-        items={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
+      <PageHeader
+        className="mb-1"
+        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
+        title="Catat Penjualan"
+        description={
+          <>
+            Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa
+            mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong> sampai tombol
+            &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
+          </>
+        }
       />
-      <h1 className="text-2xl font-bold text-foreground">Catat Penjualan</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa
-        mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong> sampai tombol
-        &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
-      </p>
       <LearnMore
         term="faktur"
         className="mt-1 mb-6"

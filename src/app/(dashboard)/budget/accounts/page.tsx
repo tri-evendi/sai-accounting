@@ -9,7 +9,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { listBudgets } from "@/lib/budget-report";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { BudgetAccountsClient } from "./budget-accounts-client";
 
@@ -41,12 +41,11 @@ export default async function BudgetAccountsPage({
 
   return (
     <div className="max-w-5xl">
-      <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Anggaran Akun" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Anggaran Akun</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Nilai anggaran per akun pendapatan/beban untuk tiap bulan, dalam IDR. Satu anggaran per akun
-        per bulan — menyimpan ulang akan menimpa nilai sebelumnya.
-      </p>
+      <PageHeader
+        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Anggaran Akun" }]}
+        title="Anggaran Akun"
+        description="Nilai anggaran per akun pendapatan/beban untuk tiap bulan, dalam IDR. Satu anggaran per akun per bulan — menyimpan ulang akan menimpa nilai sebelumnya."
+      />
 
       <div className="mb-6">
         <PeriodPicker year={year} month={month} />

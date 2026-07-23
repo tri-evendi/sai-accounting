@@ -7,7 +7,7 @@
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listSalesTargets } from "@/lib/budget-report";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { SalesTargetClient } from "./sales-target-client";
 
@@ -33,12 +33,11 @@ export default async function SalesTargetsPage({
 
   return (
     <div className="max-w-5xl">
-      <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Target Penjualan" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Target Penjualan</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        Target penjualan per bulan, dalam IDR. Pelanggan dan komoditas bersifat opsional — kosongkan
-        untuk target umum periode itu.
-      </p>
+      <PageHeader
+        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Target Penjualan" }]}
+        title="Target Penjualan"
+        description="Target penjualan per bulan, dalam IDR. Pelanggan dan komoditas bersifat opsional — kosongkan untuk target umum periode itu."
+      />
 
       <div className="mb-6">
         <PeriodPicker year={year} month={month} />

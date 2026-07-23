@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function NewConsigneePage() {
   const router = useRouter();
@@ -43,7 +44,13 @@ export default function NewConsigneePage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Penerima Barang Baru</h1>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Penerima Barang", href: "/consignees" },
+          { label: "Penerima Barang Baru" },
+        ]}
+        title="Penerima Barang Baru"
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

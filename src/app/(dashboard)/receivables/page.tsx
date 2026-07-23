@@ -9,7 +9,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/page-auth";
 import { getReceivables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
@@ -38,16 +38,18 @@ export default async function ReceivablesPage({
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Piutang" }]} />
-      <h1 className="text-2xl font-bold text-foreground mb-1">
-        <TermTooltip term="piutang">Pelanggan Belum Bayar</TermTooltip>
-      </h1>
-      <p className="text-sm text-muted-foreground mb-2">
-        Faktur &amp; kontrak yang masih punya sisa tagihan per {formatDateShort(asOf)}.
-        {overdueCount > 0 && !overdueOnly && (
-          <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
-        )}
-      </p>
+      <PageHeader
+        className="mb-2"
+        title={<TermTooltip term="piutang">Pelanggan Belum Bayar</TermTooltip>}
+        description={
+          <>
+            Faktur &amp; kontrak yang masih punya sisa tagihan per {formatDateShort(asOf)}.
+            {overdueCount > 0 && !overdueOnly && (
+              <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
+            )}
+          </>
+        }
+      />
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
       <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2">
         <LearnMore term="piutang" />

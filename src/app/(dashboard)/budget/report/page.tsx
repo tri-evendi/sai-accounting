@@ -10,7 +10,7 @@ import { requirePageSession } from "@/lib/page-auth";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
 import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
@@ -57,12 +57,16 @@ export default async function BudgetReportPage({
 
   return (
     <div className="max-w-6xl">
-      <Breadcrumb items={[{ label: "Anggaran & Target", href: "/budget" }, { label: "Realisasi vs Anggaran" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Realisasi vs Anggaran</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        {periodText} · nilai dalam IDR · realisasi dibaca dari Laba/Rugi (buku besar). Peringatan
-        di atas/di bawah memakai ambang ±{DEFAULT_VARIANCE_THRESHOLD_PCT}%.
-      </p>
+      <PageHeader
+        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Realisasi vs Anggaran" }]}
+        title="Realisasi vs Anggaran"
+        description={
+          <>
+            {periodText} · nilai dalam IDR · realisasi dibaca dari Laba/Rugi (buku besar).
+            Peringatan di atas/di bawah memakai ambang ±{DEFAULT_VARIANCE_THRESHOLD_PCT}%.
+          </>
+        }
+      />
 
       <div className="mb-6">
         <PeriodPicker year={year} month={month} />

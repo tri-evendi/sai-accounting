@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { ACCOUNT_TYPES } from "@/lib/accounting";
 import { CURRENCIES } from "@/lib/constants";
 
@@ -64,7 +65,10 @@ export default function NewAccountPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Akun Baru</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Daftar Akun", href: "/accounts" }, { label: "Akun Baru" }]}
+        title="Akun Baru"
+      />
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>

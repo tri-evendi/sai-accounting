@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Receipt } from "lucide-react";
 import { SupplierTransactionForm } from "./transaction-form";
@@ -108,18 +108,20 @@ export default async function SupplierDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Pemasok", href: "/suppliers" }, { label: supplier.name }]} />
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{supplier.name}</h1>
-        <div className="flex gap-2">
-          <Link href={`/suppliers/${id}/edit`}>
-            <Button variant="secondary">Ubah</Button>
-          </Link>
-          <Link href="/suppliers">
-            <Button variant="ghost">Kembali</Button>
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: supplier.name }]}
+        title={supplier.name}
+        actions={
+          <>
+            <Link href={`/suppliers/${id}/edit`}>
+              <Button variant="secondary">Ubah</Button>
+            </Link>
+            <Link href="/suppliers">
+              <Button variant="ghost">Kembali</Button>
+            </Link>
+          </>
+        }
+      />
 
       {/* Supplier Info */}
       <Card className="mb-6">

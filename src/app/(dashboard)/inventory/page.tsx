@@ -21,6 +21,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Package as PackageIcon } from "lucide-react";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -58,22 +59,19 @@ export default async function InventoryPage({
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            <TermTooltip term="persediaan">Stok Barang</TermTooltip>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Batas stok menipis: ≤ {LOW_STOCK_THRESHOLD} satuan
-          </p>
-          <LearnMore term="stok_opname" className="mt-1" label="Pelajari ini: hitung ulang stok" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <InventoryPageActions items={toClientInventory(allInventory)} />
-          <Link href="/inventory/update"><Button>Tambah / Kurangi Stok</Button></Link>
-          <Link href="/inventory/opname"><Button variant="secondary">Hitung Ulang Stok</Button></Link>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title={<TermTooltip term="persediaan">Stok Barang</TermTooltip>}
+        description={<>Batas stok menipis: ≤ {LOW_STOCK_THRESHOLD} satuan</>}
+        actions={
+          <>
+            <InventoryPageActions items={toClientInventory(allInventory)} />
+            <Link href="/inventory/update"><Button>Tambah / Kurangi Stok</Button></Link>
+            <Link href="/inventory/opname"><Button variant="secondary">Hitung Ulang Stok</Button></Link>
+          </>
+        }
+      />
+      <LearnMore term="stok_opname" className="mt-1 mb-6" label="Pelajari ini: hitung ulang stok" />
 
       <div className="mb-6">
         <StockAlertBanner items={lowStockAlerts} />

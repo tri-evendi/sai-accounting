@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
+import { PageHeader } from "@/components/ui/page-header";
 import { customerSchema, type CustomerInput } from "@/lib/validations/finance";
 
 export default function NewCustomerPage() {
@@ -77,7 +78,10 @@ export default function NewCustomerPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold text-foreground">Pelanggan Baru</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Pelanggan Baru" }]}
+        title="Pelanggan Baru"
+      />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>

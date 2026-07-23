@@ -29,6 +29,10 @@ const ACTION_LABELS: Record<string, string> = {
   "approval.rule.create": "Approval rule created",
   "approval.rule.update": "Approval rule updated",
   "approval.rule.deactivate": "Approval rule deactivated",
+  // issue #73 — perubahan hak akses adalah mutasi paling ber-privilege setelah
+  // manajemen pengguna; layak bernama, bukan tampil mentah.
+  "authz.override.update": "Hak akses diubah",
+  "authz.override.reset": "Hak akses direset ke bawaan",
 };
 
 export function AuditLogPanel() {

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { rolesFor, type Permission } from "@/lib/authz";
 
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
@@ -14,33 +13,30 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
-/**
- * Lapisan CADANGAN per-prefix (audit RBAC fase 2): perannya tidak lagi
- * diketik di sini, melainkan diturunkan dari matriks `lib/authz.ts` lewat
- * izin TERLONGGAR di bawah prefix itu (mis. `/accounts` memakai
- * `account.read` karena core boleh membaca daftar akun via API, walau
- * halamannya bos-only — penjaga halaman/route yang mengetatkan).
- * Penegakan sesungguhnya tetap `requirePagePermission` /
- * `requireApiPermission` di tiap halaman/route.
+/*
+ * ── issue #73: gerbang per-prefix DIHAPUS, proxy = autentikasi saja ────────
+ *
+ * Sampai fase 2 file ini memuat gerbang peran per-prefix yang diturunkan
+ * dari matriks statis di kode. Sejak matriks bisa di-OVERRIDE dari DB
+ * (halaman /permissions), gerbang statis itu justru berbahaya: override yang
+ * MENGHADIAHKAN izin (mis. core diberi `report.read`) akan tetap diblokir di
+ * sini karena proxy hanya melihat matriks bawaan di kode.
+ *
+ * Membaca matriks efektif dari proxy bukan pilihan yang bersih: dokumen Next
+ * (node_modules/next/dist/docs/.../proxy.md) menegaskan proxy dieksekusi
+ * terpisah dari kode render dan "should not attempt relying on shared
+ * modules or globals" — cache matriks + invalidasinya di
+ * `lib/authz-effective.ts` tidak pernah terlihat dari sini, dan menyeret
+ * Prisma ke proxy menambah satu query DB untuk SETIAP request.
+ *
+ * Maka proxy kembali ke tugas jaring pengaman murninya: verifikasi JWT +
+ * alur wajib-ganti-kata-sandi. Route dashboard menjadi authenticated-only di
+ * lapisan ini; penegakan IZIN sepenuhnya di `requirePagePermission` /
+ * `requireApiPermission` yang membaca matriks efektif — dan
+ * `tests/authz-coverage.test.ts` membuktikan setiap halaman dashboard dan
+ * API route memanggil penjaganya, jadi tidak ada permukaan yang kehilangan
+ * pagar karena perubahan ini. (Lihat docs/RBAC.md § Proxy.)
  */
-const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
-  { prefix: "/finance", permission: "cash.read" },
-  { prefix: "/contracts", permission: "contract.read" },
-  { prefix: "/invoices", permission: "invoice.read" },
-  { prefix: "/suppliers", permission: "supplier.read" },
-  { prefix: "/customers", permission: "customer.read" },
-  { prefix: "/documents", permission: "document.read" },
-  { prefix: "/users", permission: "user.manage" },
-  { prefix: "/api/audit", permission: "audit.read" },
-  { prefix: "/reports", permission: "report.read" },
-  { prefix: "/budget", permission: "budget.manage" },
-  { prefix: "/journal", permission: "journal.read" },
-  { prefix: "/ledger", permission: "ledger.read" },
-  { prefix: "/accounts", permission: "account.read" },
-  { prefix: "/periods", permission: "period.manage" },
-  { prefix: "/setup", permission: "setup.manage" },
-  { prefix: "/tax", permission: "tax.read" },
-];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -90,19 +86,6 @@ export async function proxy(request: NextRequest) {
       );
     }
     return NextResponse.redirect(new URL("/change-password", request.url));
-  }
-
-  const role = token.role as string | undefined;
-  for (const rule of ROUTE_PERMISSIONS) {
-    if (pathname.startsWith(rule.prefix) || pathname.startsWith(`/api${rule.prefix}`)) {
-      const roles = rolesFor(rule.permission) as readonly string[];
-      if (!role || !roles.includes(role)) {
-        if (pathname.startsWith("/api/")) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
-    }
   }
 
   return NextResponse.next();

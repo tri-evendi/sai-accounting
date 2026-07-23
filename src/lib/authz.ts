@@ -35,9 +35,16 @@ const OFFICE = [ROLES.BOS, ROLES.CORE] as const;
 const BOS = [ROLES.BOS] as const;
 
 /**
- * Matriks izin → peran. Menambah fitur = menambah baris di sini, lalu
- * halaman/API-nya memanggil `requirePagePermission`/`requireApiPermission`
- * dengan izin itu. `Record` bertipe penuh: izin tanpa peran ditolak `tsc`.
+ * Matriks izin → peran BAWAAN (baseline). Menambah fitur = menambah baris di
+ * sini, lalu halaman/API-nya memanggil `requirePagePermission`/
+ * `requireApiPermission` dengan izin itu. `Record` bertipe penuh: izin tanpa
+ * peran ditolak `tsc`.
+ *
+ * Sejak issue #73 matriks ini bisa di-OVERRIDE per sel dari UI (/permissions):
+ * baris `role_permission_overrides` di DB menambah/mencabut peran di atas
+ * bawaan ini. Penegakan (page-auth/auth-guard) memakai matriks EFEKTIF dari
+ * `authz-effective.ts`; `can()`/`rolesFor()` di modul ini tetap MURNI membaca
+ * bawaan — dipakai tes, fallback tampilan, dan sebagai nilai "Reset ke bawaan".
  */
 export const PERMISSION_ROLES = {
   // ── Persetujuan ──────────────────────────────────────────────────────
@@ -113,6 +120,9 @@ export const PERMISSION_ROLES = {
   "user.manage": BOS,
   "audit.read": BOS,
   "company_setting.manage": BOS,
+  // issue #73 — mengubah matriks izin dari UI (/permissions). Anti-lockout:
+  // bos tidak pernah bisa kehilangan izin ini (lihat authz-overrides.ts).
+  "authz.manage": BOS,
 
   // ── Halaman bersama ──────────────────────────────────────────────────
   "glossary.read": ALL,

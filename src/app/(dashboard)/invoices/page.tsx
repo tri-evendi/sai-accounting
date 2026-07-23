@@ -60,9 +60,16 @@ export default async function InvoicesPage({
         className="mb-1"
         title={<TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>}
         actions={
-          <Link href="/invoices/new" className="shrink-0">
-            <Button>+ Buat Tagihan</Button>
-          </Link>
+          <>
+            {/* Alur terpandu = tombol utama (ramah amatir); formulir polos tetap
+                tersedia untuk yang sudah hafal alurnya (issue #5). */}
+            <Link href="/sales/new" className="shrink-0">
+              <Button>Catat Penjualan (dipandu)</Button>
+            </Link>
+            <Link href="/invoices/new" className="shrink-0">
+              <Button variant="secondary">+ Buat Tagihan</Button>
+            </Link>
+          </>
         }
       />
       <LearnMore term="faktur" className="mt-1 mb-6" label="Pelajari ini: apa itu tagihan penjualan" />
@@ -96,7 +103,7 @@ export default async function InvoicesPage({
             {invoices.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="p-0">
-                  <EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Buat tagihan pertama untuk pelanggan Anda." actionLabel="+ Buat Tagihan" actionHref="/invoices/new" />
+                  <EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Catat penjualan pertama Anda — alurnya dipandu langkah demi langkah." actionLabel="Catat Penjualan (dipandu)" actionHref="/sales/new" />
                 </TableCell>
               </TableRow>
             ) : (

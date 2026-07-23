@@ -13,10 +13,10 @@ export function StatCard({ title, value, href, valueClassName }: StatCardProps) 
   const content = (
     <Card className={cn(href && "hover:shadow-md transition-shadow cursor-pointer h-full")}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-gray-500">{title}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={cn("text-3xl font-bold text-gray-900 tabular-nums", valueClassName)}>
+        <p className={cn("text-3xl font-bold text-foreground tabular-nums", valueClassName)}>
           {value}
         </p>
       </CardContent>

@@ -45,8 +45,8 @@ export default async function NewReturnPage({
   return (
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Retur", href: "/returns" }, { label: "Buat" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Buat Retur</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Buat Retur</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Pilih dokumen asal, lalu tentukan barang/jumlah yang dikembalikan. Nilai dan PPN
         mengikuti dokumen asal dan tidak boleh melebihi sisa yang dapat diretur.
       </p>

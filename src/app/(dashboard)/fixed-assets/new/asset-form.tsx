@@ -247,13 +247,13 @@ export function AssetForm({
         </div>
 
         {monthly != null && (
-          <p className="mt-4 text-sm text-gray-600 tabular-nums">
+          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
             Penyusutan per bulan (garis lurus):{" "}
-            <strong className="text-gray-900">{formatCurrency(monthly, "IDR")}</strong>
+            <strong className="text-foreground">{formatCurrency(monthly, "IDR")}</strong>
           </p>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             Mendaftarkan aset <strong>tidak</strong> membuat jurnal — biaya perolehan biasanya
@@ -263,7 +263,7 @@ export function AssetForm({
         </p>
 
         {error && (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
             {error}
           </p>
         )}

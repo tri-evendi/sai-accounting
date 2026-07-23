@@ -46,7 +46,7 @@ export default async function ReconciliationDetailPage({
   return (
     <div>
       <div className="mb-4">
-        <Link href="/reconciliation" className="text-sm text-blue-700 hover:underline">
+        <Link href="/reconciliation" className="text-sm text-primary hover:underline">
           ← Kembali ke daftar rekonsiliasi
         </Link>
       </div>

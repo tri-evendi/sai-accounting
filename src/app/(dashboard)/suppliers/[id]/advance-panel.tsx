@@ -113,10 +113,10 @@ export function SupplierAdvancePanel({
     <div className="space-y-5">
       {/* What this money IS. Direction is carried by an icon and by the words
           "Uang keluar", never by colour alone. */}
-      <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+      <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          <span className="inline-flex items-center gap-1 font-medium text-gray-900">
+          <span className="inline-flex items-center gap-1 font-medium text-foreground">
             <ArrowUpFromLine className="h-3.5 w-3.5" aria-hidden="true" />
             Uang keluar
           </span>{" "}
@@ -129,21 +129,21 @@ export function SupplierAdvancePanel({
 
       {/* Balance tiles — the number the panel exists to answer. */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-md border border-gray-200 p-3">
-          <p className="text-xs text-gray-500">Sisa uang muka belum dikompensasi</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs text-muted-foreground">Sisa uang muka belum dikompensasi</p>
+          <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
             {formatCurrency(outstandingBase, "IDR")}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Nilai dasar IDR dari {open.length} uang muka yang masih bersisa.
           </p>
         </div>
-        <div className="rounded-md border border-gray-200 p-3">
-          <p className="text-xs text-gray-500">Belum berkurs</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs text-muted-foreground">Belum berkurs</p>
+          <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
             {unratedAdvanceCount}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Uang muka valas tanpa kurs — <strong>tidak</strong> ikut dijumlahkan di
             total IDR sebelah kiri.
           </p>
@@ -155,7 +155,7 @@ export function SupplierAdvancePanel({
       {recording ? (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-gray-900">
+            <h4 className="text-sm font-semibold text-foreground">
               Catat uang muka ke {supplier.name}
             </h4>
             <Button
@@ -193,31 +193,31 @@ export function SupplierAdvancePanel({
 
       {/* Advances paid to this supplier */}
       {advances.length === 0 ? (
-        <p className="rounded-md border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500">
+        <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
           Belum ada uang muka ke supplier ini. Catat pembayaran di muka lewat tombol
           di atas.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-gray-200">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-2 font-medium text-gray-500">Nomor</th>
-                <th className="px-4 py-2 font-medium text-gray-500">Tanggal</th>
-                <th className="px-4 py-2 font-medium text-gray-500">Kontrak</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">Nilai</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-2 font-medium text-muted-foreground">Nomor</th>
+                <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
+                <th className="px-4 py-2 font-medium text-muted-foreground">Kontrak</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Nilai</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">
                   Sudah dikompensasi
                 </th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">Sisa</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-500">Sisa (IDR)</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa (IDR)</th>
               </tr>
             </thead>
             <tbody>
               {advances.map((a) => (
-                <tr key={a.id} className="border-b border-gray-100 last:border-0">
+                <tr key={a.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2">
-                    <span className="font-medium text-gray-900">{a.advanceNo}</span>
+                    <span className="font-medium text-foreground">{a.advanceNo}</span>
                     {/* Badge always carries text — colour is never the only signal. */}
                     <span className="mt-0.5 block">
                       <Badge variant={a.isFullyApplied ? "default" : "warning"}>
@@ -225,27 +225,27 @@ export function SupplierAdvancePanel({
                       </Badge>
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-gray-700 tabular-nums">
+                  <td className="px-4 py-2 text-foreground tabular-nums">
                     {formatDateShort(new Date(a.date))}
                   </td>
-                  <td className="px-4 py-2 text-gray-500">{a.contractNo ?? "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-900">
+                  <td className="px-4 py-2 text-muted-foreground">{a.contractNo ?? "—"}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
                     {formatCurrency(a.amount, a.currency)}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
                     {formatCurrency(a.applied, a.currency)}
                   </td>
-                  <td className="px-4 py-2 text-right font-medium tabular-nums text-gray-900">
+                  <td className="px-4 py-2 text-right font-medium tabular-nums text-foreground">
                     {formatCurrency(a.remaining, a.currency)}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-900">
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
                     {a.remainingBase != null ? (
                       formatCurrency(a.remainingBase, "IDR")
                     ) : (
-                      <span className="text-xs text-amber-700">Kurs belum diisi</span>
+                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                     )}
                     {a.unratedApplications > 0 && (
-                      <span className="mt-0.5 block text-xs text-amber-700">
+                      <span className="mt-0.5 block text-xs text-warning-strong">
                         {a.unratedApplications} kompensasi belum berkurs
                       </span>
                     )}
@@ -258,19 +258,19 @@ export function SupplierAdvancePanel({
       )}
 
       {/* Compensate into a purchase */}
-      <div className="border-t border-gray-200 pt-4">
-        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-          <HandCoins className="h-4 w-4 text-gray-500" aria-hidden="true" />
+      <div className="border-t border-border pt-4">
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <HandCoins className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           Kompensasi ke pembelian
         </h4>
-        <p className="mt-1 mb-3 text-xs text-gray-600">
+        <p className="mt-1 mb-3 text-xs text-muted-foreground">
           Pilih pembelian yang mau dikurangi, lalu isi berapa dari tiap uang muka
           yang dipakai. Kompensasi <strong>memindahkan</strong> nilai dari Uang Muka
           Pembelian ke utang supplier — tidak ada uang yang berpindah lagi.
         </p>
 
         {purchases.length === 0 ? (
-          <p className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+          <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               Tidak ada pembelian dengan sisa utang untuk supplier ini, jadi belum ada
@@ -303,7 +303,7 @@ export function SupplierAdvancePanel({
                 }))}
               />
               {unratedPurchaseCount > 0 && (
-                <p className="mt-1 text-xs text-amber-700">
+                <p className="mt-1 text-xs text-warning-strong">
                   {unratedPurchaseCount} pembelian valas belum berkurs dan tidak
                   ditampilkan di sini. Isi kursnya lebih dulu agar bisa dikompensasi.
                 </p>
@@ -311,13 +311,13 @@ export function SupplierAdvancePanel({
             </div>
 
             {selected && (
-              <div className="rounded-md border border-gray-200 p-3">
+              <div className="rounded-md border border-border p-3">
                 <p className="mb-3 flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                  <span className="font-medium text-gray-900">{selected.label}</span>
-                  <span className="text-xs text-gray-600">
+                  <span className="font-medium text-foreground">{selected.label}</span>
+                  <span className="text-xs text-muted-foreground">
                     Nilai {formatCurrency(selected.amount, selected.currency)} · sisa
                     utang{" "}
-                    <strong className="tabular-nums text-gray-900">
+                    <strong className="tabular-nums text-foreground">
                       {formatCurrency(selected.remainingBase, "IDR")}
                     </strong>
                   </span>

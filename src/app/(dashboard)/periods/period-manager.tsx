@@ -33,9 +33,9 @@ const CHECK_STYLES: Record<
   PeriodCheck["status"],
   { icon: typeof CheckCircle2; tone: string; label: string }
 > = {
-  ok: { icon: CheckCircle2, tone: "text-green-600", label: "Aman" },
-  warning: { icon: AlertTriangle, tone: "text-amber-600", label: "Perlu dicek" },
-  blocker: { icon: XCircle, tone: "text-red-600", label: "Harus diperbaiki" },
+  ok: { icon: CheckCircle2, tone: "text-success", label: "Aman" },
+  warning: { icon: AlertTriangle, tone: "text-warning", label: "Perlu dicek" },
+  blocker: { icon: XCircle, tone: "text-destructive", label: "Harus diperbaiki" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -138,11 +138,11 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Periode</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Ditutup</th>
-                <th className="px-6 py-3 font-medium text-gray-500"></th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Periode</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Ditutup</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground"></th>
               </tr>
             </thead>
             <tbody>
@@ -152,20 +152,20 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                   return (
                     <tr
                       key={`${p.year}-${p.month}`}
-                      className={`border-b border-gray-100 transition-colors duration-150 ${
-                        active ? "bg-blue-50" : "hover:bg-gray-50"
+                      className={`border-b border-border transition-colors duration-150 ${
+                        active ? "bg-primary/10" : "hover:bg-muted"
                       }`}
                     >
-                      <td className="px-6 py-3 font-medium text-gray-900">{p.label}</td>
+                      <td className="px-6 py-3 font-medium text-foreground">{p.label}</td>
                       <td className="px-6 py-3">
                         <StatusBadge status={p.status} />
                       </td>
-                      <td className="px-6 py-3 text-gray-600">
+                      <td className="px-6 py-3 text-muted-foreground">
                         {p.closedAt ? (
                           <span className="tabular-nums">
                             {formatDate(p.closedAt)}
                             {p.closedByName && (
-                              <span className="block text-xs text-gray-500">
+                              <span className="block text-xs text-muted-foreground">
                                 oleh {p.closedByName}
                               </span>
                             )}
@@ -189,7 +189,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
                     Belum ada transaksi apa pun, jadi belum ada periode untuk ditutup.
                   </td>
                 </tr>
@@ -209,7 +209,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
             <button
               type="button"
               onClick={() => loadSummary(selected.year, selected.month)}
-              className="cursor-pointer text-gray-400 transition-colors duration-150 hover:text-gray-700"
+              className="cursor-pointer text-muted-foreground transition-colors duration-150 hover:text-foreground"
               aria-label="Muat ulang ringkasan"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -219,7 +219,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
 
         <CardContent>
           {error && (
-            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
           )}
 
           {loading && (
@@ -229,29 +229,29 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
           )}
 
           {!loading && !summary && !error && (
-            <p className="py-10 text-center text-sm text-gray-500">
+            <p className="py-10 text-center text-sm text-muted-foreground">
               Pilih sebuah periode di sebelah kiri untuk meninjaunya.
             </p>
           )}
 
           {!loading && summary && (
             <>
-              <div className="mb-5 grid grid-cols-3 gap-4 border-b border-gray-100 pb-5">
+              <div className="mb-5 grid grid-cols-3 gap-4 border-b border-border pb-5">
                 <div>
-                  <p className="text-xs text-gray-500">Jumlah Jurnal</p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+                  <p className="text-xs text-muted-foreground">Jumlah Jurnal</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {summary.journalCount}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Total Debit</p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-gray-900">
+                  <p className="text-xs text-muted-foreground">Total Debit</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                     {formatCurrency(summary.totalDebit, "IDR")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Total Kredit</p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-gray-900">
+                  <p className="text-xs text-muted-foreground">Total Kredit</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                     {formatCurrency(summary.totalCredit, "IDR")}
                   </p>
                 </div>
@@ -268,35 +268,35 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         aria-hidden="true"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-foreground">
                           {c.label}{" "}
                           <span className={`text-xs font-normal ${style.tone}`}>
                             · {style.label}
                           </span>
                         </p>
-                        <p className="text-sm text-gray-600">{c.detail}</p>
+                        <p className="text-sm text-muted-foreground">{c.detail}</p>
                       </div>
                     </li>
                   );
                 })}
               </ul>
 
-              <div className="mt-6 border-t border-gray-100 pt-5">
+              <div className="mt-6 border-t border-border pt-5">
                 {summary.status === "closed" ? (
                   <>
-                    <p className="mb-3 text-sm text-gray-600">
+                    <p className="mb-3 text-sm text-muted-foreground">
                       Periode ini terkunci
                       {summary.closedAt ? ` sejak ${formatDate(summary.closedAt)}` : ""}
                       {summary.closedByName ? ` oleh ${summary.closedByName}` : ""}.
                       {summary.note && (
-                        <span className="mt-1 block text-gray-500">
+                        <span className="mt-1 block text-muted-foreground">
                           Catatan: {summary.note}
                         </span>
                       )}
                     </p>
                     <label
                       htmlFor="reopen-reason"
-                      className="mb-1 block text-sm font-medium text-gray-700"
+                      className="mb-1 block text-sm font-medium text-foreground"
                     >
                       Alasan buka kembali
                     </label>
@@ -306,9 +306,9 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Contoh: koreksi faktur SI.2026.03.00007 yang salah nominal"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Wajib diisi (minimal 5 karakter) dan dicatat di log audit.
                     </p>
                     <div className="mt-3">
@@ -339,7 +339,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                   <>
                     <label
                       htmlFor="close-note"
-                      className="mb-1 block text-sm font-medium text-gray-700"
+                      className="mb-1 block text-sm font-medium text-foreground"
                     >
                       Catatan penutupan (opsional)
                     </label>
@@ -349,11 +349,11 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Contoh: sudah dicocokkan dengan rekening koran"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
                     />
 
                     {summary.blockerCount > 0 && (
-                      <p className="mt-3 flex items-start gap-2 text-sm text-red-700">
+                      <p className="mt-3 flex items-start gap-2 text-sm text-destructive-strong">
                         <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                         Perbaiki {summary.blockerCount} masalah di atas dulu — periode belum
                         bisa ditutup.

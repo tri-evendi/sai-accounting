@@ -8,7 +8,7 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · komponen CVA di `src/components/ui` · ikon `lucide-react` · chart `recharts`.
+**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · **shadcn/ui + CVA** di `src/components/ui` (Radix di baliknya untuk overlay) · form `react-hook-form` + `zod` · tabel `@tanstack/react-table` · ikon `lucide-react` · chart `recharts`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, …) — kelas palet mentah (`bg-blue-600`) ditolak lint (issue #54).
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
@@ -24,22 +24,37 @@
 
 ## Color Palette (light-first, token → `globals.css`)
 
+Nama variabel mengikuti konvensi shadcn (didefinisikan di `src/app/globals.css`; utility Tailwind: `bg-primary`, `text-success`, `border-border`, dst.).
+
 | Role | Hex | CSS Variable | Catatan |
 |------|-----|--------------|---------|
-| Primary (brand/aksi) | `#1E40AF` | `--color-primary` | Trust blue |
-| On Primary | `#FFFFFF` | `--color-on-primary` | |
-| Background | `#F8FAFC` | `--color-background` | Abu sangat terang |
-| Surface / Card | `#FFFFFF` | `--color-surface` | |
-| Foreground (teks) | `#0F172A` | `--color-foreground` | Kontras ≥ 4.5:1 |
-| Muted (teks sekunder) | `#64748B` | `--color-muted-foreground` | |
-| Border | `#E2E8F0` | `--color-border` | |
-| **Positif / Uang Masuk / Lunas** | `#16A34A` | `--color-success` | Hijau |
-| **Negatif / Uang Keluar / Jatuh Tempo** | `#DC2626` | `--color-danger` | Merah |
-| **Menunggu / Peringatan** | `#D97706` | `--color-warning` | Amber |
-| Sidebar (gelap, aksen) | `#0F172A` | `--color-sidebar` | Sesuai app |
-| Ring (fokus) | `#1E40AF` | `--color-ring` | Fokus a11y wajib terlihat |
+| Primary (brand/aksi) | `#1E40AF` | `--primary` | Trust blue |
+| On Primary | `#FFFFFF` | `--primary-foreground` | |
+| Background | `#F8FAFC` | `--background` | Abu sangat terang |
+| Surface / Card | `#FFFFFF` | `--card` | |
+| Foreground (teks) | `#0F172A` | `--foreground` | Kontras ≥ 4.5:1 |
+| Muted (teks sekunder) | `#64748B` | `--muted-foreground` | |
+| Border | `#E2E8F0` | `--border` | |
+| **Positif / Uang Masuk / Lunas** | `#16A34A` | `--success` | Hijau |
+| **Negatif / Uang Keluar / Jatuh Tempo** | `#DC2626` | `--destructive` | Merah (utility `bg-destructive`/`text-destructive`) |
+| **Menunggu / Peringatan** | `#D97706` | `--warning` | Amber |
+| Sidebar (gelap, aksen) | `#0F172A` | `--sidebar` | Sesuai app |
+| Ring (fokus) | `#1E40AF` | `--ring` | Fokus a11y wajib terlihat |
 
-*Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama.
+### Pasangan status "soft / strong" (badge & penanda di atas permukaan terang)
+
+Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk teks kecil di atas latar sangat terang. Menaruh `--success` di atas `success/10` hanya menghasilkan kontras **2,96:1** (warning 2,86:1, destructive 4,13:1), jauh di bawah ambang 4.5:1 di bawah. Karena itu badge status memakai pasangan khusus:
+
+| Peran | Latar | Teks | Kontras |
+|-------|-------|------|---------|
+| Lunas / positif | `--success-soft` `#DCFCE7` | `--success-strong` `#166534` | 6,49:1 |
+| Menunggu / sebagian | `--warning-soft` `#FEF3C7` | `--warning-strong` `#92400E` | 6,37:1 |
+| Jatuh tempo / negatif | `--destructive-soft` `#FEE2E2` | `--destructive-strong` `#991B1B` | 6,80:1 |
+| Netral | `--muted` `#F1F5F9` | `--foreground` `#0F172A` | 16,30:1 |
+
+Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
+
+*Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap sudah disiapkan di blok `.dark` (kontras 8,5–10,6:1).
 
 ---
 
@@ -74,9 +89,23 @@ Radius: `8px` (kontrol), `12px` (card), `16px` (modal).
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.
-- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi.
+- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` shadcn (lihat "Konvensi Form" di bawah) — bukan `useState` manual.
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
+
+---
+
+## Konvensi Form (issue #53)
+
+Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** shadcn (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(dashboard)/customers/new/page.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
+
+1. **Satu skema zod, dua sisi.** Skema yang divalidasi form **wajib** skema yang sama dipakai route handler — **diimpor, bukan disalin**. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` client dan `invoicePaymentSchema`/`contractPaymentSchema` server). Client & server tidak boleh bisa menyimpang diam-diam.
+2. **Pesan error bahasa Indonesia**, ramah awam — kini ditampilkan langsung ke pengguna, bukan lagi hanya untuk server.
+3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–error (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan pasang `aria-*` manual.
+4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`NativeSelect`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
+5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
+6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).
+7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (field bila ada `fieldErrors`, atau `root`).
 
 ---
 
@@ -106,5 +135,6 @@ Radius: `8px` (kontrol), `12px` (card), `16px` (modal).
 - [ ] Status pakai badge berteks (bukan warna saja).
 - [ ] Form: label terlihat, validasi inline, helper text, progressive disclosure.
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
-- [ ] Reuse komponen `src/components/ui`; token warna/spacing dari variabel (bukan hex mentah).
+- [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
+- [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

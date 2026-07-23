@@ -46,7 +46,7 @@ export function GlossaryBrowser() {
           {/* Ikon diikat ke sisi BAWAH agar tetap sejajar dengan kotak isian,
               karena <Input> menaruh labelnya di atas kotak. */}
           <Search
-            className="pointer-events-none absolute bottom-2.5 left-3 h-4 w-4 text-gray-400"
+            className="pointer-events-none absolute bottom-2.5 left-3 h-4 w-4 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -70,10 +70,10 @@ export function GlossaryBrowser() {
                 onClick={() => setKategori(f.value)}
                 className={cn(
                   "cursor-pointer rounded-full border px-3 py-1.5 text-sm font-medium transition-colors duration-150",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   active
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-white text-muted-foreground hover:bg-muted"
                 )}
               >
                 {f.label}
@@ -82,7 +82,7 @@ export function GlossaryBrowser() {
           })}
         </div>
 
-        <p className="text-sm text-gray-500 tabular-nums" aria-live="polite">
+        <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
           {total} istilah ditampilkan.
         </p>
       </div>
@@ -98,7 +98,7 @@ export function GlossaryBrowser() {
         <div className="space-y-8">
           {groups.map((group) => (
             <section key={group.kategori}>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">{group.label}</h2>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">{group.label}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {group.terms.map((entry) => (
                   // Anchor "Pelajari ini" mendarat di sini; `scroll-mt` menjaga
@@ -106,21 +106,21 @@ export function GlossaryBrowser() {
                   <div key={entry.key} id={termAnchorId(entry.key)} className="scroll-mt-24">
                     <Card className="h-full">
                       <div className="p-5">
-                        <h3 className="text-base font-semibold text-gray-900">{entry.label}</h3>
-                        <p className="mt-0.5 text-sm font-medium text-blue-700">{entry.term}</p>
-                        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                        <h3 className="text-base font-semibold text-foreground">{entry.label}</h3>
+                        <p className="mt-0.5 text-sm font-medium text-primary">{entry.term}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                           {entry.definisi}
                         </p>
                         {entry.contoh && (
-                          <p className="mt-3 rounded-md bg-gray-50 p-3 text-sm leading-relaxed text-gray-600">
-                            <span className="font-medium text-gray-700">Contoh: </span>
+                          <p className="mt-3 rounded-md bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
+                            <span className="font-medium text-foreground">Contoh: </span>
                             {entry.contoh}
                           </p>
                         )}
                         {entry.href && (
                           <Link
                             href={entry.href}
-                            className="mt-3 inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-blue-700 transition-colors duration-150 hover:text-blue-900 hover:underline"
+                            className="mt-3 inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline"
                           >
                             Buka di aplikasi
                             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />

@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
+import { Money } from "@/components/ui/money";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
@@ -100,7 +109,7 @@ export default async function FinancePage({
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             <TermTooltip term="kas_bank">Kas &amp; Bank</TermTooltip>
           </h1>
           <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas &amp; bank" />
@@ -117,8 +126,8 @@ export default async function FinancePage({
           <form method="get" className="flex flex-wrap gap-3 items-end">
             {/* Account Type */}
             <div>
-              <label htmlFor="filter-type" className="block text-xs font-medium text-gray-500 mb-1">Jenis Kas</label>
-              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kas</label>
+              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Jenis</option>
                 <option value="bank">Bank</option>
                 <option value="kas_besar">Kas Besar</option>
@@ -128,8 +137,8 @@ export default async function FinancePage({
 
             {/* Currency */}
             <div>
-              <label htmlFor="filter-currency" className="block text-xs font-medium text-gray-500 mb-1">Mata Uang</label>
-              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
+              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua</option>
                 <option value="IDR">IDR</option>
                 <option value="USD">USD</option>
@@ -139,8 +148,8 @@ export default async function FinancePage({
 
             {/* Year */}
             <div>
-              <label htmlFor="filter-year" className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
-              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">Tahun</label>
+              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Tahun</option>
                 {years.map((y) => (
                   <option key={y} value={y}>{y}</option>
@@ -150,8 +159,8 @@ export default async function FinancePage({
 
             {/* Month */}
             <div>
-              <label htmlFor="filter-month" className="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
-              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">Bulan</label>
+              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-border px-3 py-2 text-sm">
                 <option value="">Semua Bulan</option>
                 {months.map((m, i) => (
                   <option key={i} value={i + 1}>{m}</option>
@@ -173,7 +182,7 @@ export default async function FinancePage({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         {balances.length === 0 ? (
           <Card>
-            <CardContent className="py-8 text-center text-gray-500">
+            <CardContent className="py-8 text-center text-muted-foreground">
               Belum ada catatan kas {params.year ? "untuk periode ini" : ""}
             </CardContent>
           </Card>
@@ -183,15 +192,15 @@ export default async function FinancePage({
             return (
               <Card key={`${b.type}_${b.currency}`}>
                 <CardHeader>
-                  <CardTitle className="text-sm text-gray-500">
+                  <CardTitle className="text-sm text-muted-foreground">
                     {CASH_TYPE_LABELS[b.type as CashType] || b.type} ({b.currency})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-success" : "text-destructive"}`}>
                     {formatCurrency(balance, b.currency)}
                   </p>
-                  <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                  <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
                     <span className="tabular-nums">
                       Masuk: {formatCurrency(b.debit, b.currency)}
                     </span>
@@ -200,7 +209,7 @@ export default async function FinancePage({
                     </span>
                   </div>
                   {b.type === "bank" && reconByCurrency.get(b.currency) && (
-                    <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-500">
+                    <div className="mt-2 flex items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                       <span>
                         Rekonsiliasi: {reconByCurrency.get(b.currency)!.reconciledCount}/
                         {reconByCurrency.get(b.currency)!.totalCount} cocok
@@ -222,70 +231,79 @@ export default async function FinancePage({
         <CardHeader>
           <CardTitle>Daftar Transaksi ({totalCount})</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Jenis Kas</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Keterangan</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">
-                  <TermTooltip term="debit">Uang Masuk</TermTooltip>
-                </th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">
-                  <TermTooltip term="kredit">Uang Keluar</TermTooltip>
-                </th>
-                <th className="px-6 py-3 font-medium text-gray-500">Rekonsiliasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      icon={<Wallet className="h-12 w-12" />}
-                      title="Belum ada transaksi kas & bank"
-                      description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
-                      actionLabel="+ Catat Transaksi"
-                      actionHref="/finance/new"
-                    />
-                  </td>
-                </tr>
-              ) : (
-                transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-500">{formatDateShort(t.date)}</td>
-                    <td className="px-6 py-3 text-gray-700">
-                      {CASH_TYPE_LABELS[t.type as CashType] || t.type}
-                    </td>
-                    <td className="px-6 py-3 text-gray-900">{t.description}</td>
-                    <td className="px-6 py-3 text-gray-500">{t.currency}</td>
-                    <td className="px-6 py-3 text-right text-green-600 tabular-nums">
-                      {Number(t.debit) > 0 ? formatCurrency(Number(t.debit), t.currency) : "-"}
-                    </td>
-                    <td className="px-6 py-3 text-right text-red-600 tabular-nums">
-                      {Number(t.credit) > 0 ? formatCurrency(Number(t.credit), t.currency) : "-"}
-                    </td>
-                    <td className="px-6 py-3">
-                      {t.type === "bank" ? (
-                        t.reconciled ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-700">
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Cocok
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">Belum</span>
-                        )
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jenis Kas</TableHead>
+              <TableHead>Keterangan</TableHead>
+              <TableHead>Mata Uang</TableHead>
+              <TableHead className="text-right">
+                <TermTooltip term="debit">Uang Masuk</TermTooltip>
+              </TableHead>
+              <TableHead className="text-right">
+                <TermTooltip term="kredit">Uang Keluar</TermTooltip>
+              </TableHead>
+              <TableHead>Rekonsiliasi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={<Wallet className="h-12 w-12" />}
+                    title="Belum ada transaksi kas & bank"
+                    description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
+                    actionLabel="+ Catat Transaksi"
+                    actionHref="/finance/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              transactions.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(t.date)}</TableCell>
+                  <TableCell className="text-foreground">
+                    {CASH_TYPE_LABELS[t.type as CashType] || t.type}
+                  </TableCell>
+                  <TableCell className="text-foreground">{t.description}</TableCell>
+                  <TableCell className="text-muted-foreground">{t.currency}</TableCell>
+                  {/* Uang masuk hijau / uang keluar merah (semantik warna uang
+                      MASTER.md); label kolomnya sendiri sudah membedakan
+                      keduanya, jadi warna bukan satu-satunya penanda. */}
+                  <TableCell className="text-right">
+                    {Number(t.debit) > 0 ? (
+                      <Money value={Number(t.debit)} currency={t.currency} className="text-success" />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {Number(t.credit) > 0 ? (
+                      <Money value={Number(t.credit)} currency={t.currency} className="text-destructive" />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {t.type === "bank" ? (
+                      t.reconciled ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-success-strong">
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Cocok
+                        </span>
                       ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <span className="text-xs text-muted-foreground">Belum</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/finance" searchParams={params} />
       </Card>
     </div>

@@ -62,7 +62,7 @@ export default async function FixedAssetDetailPage({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{asset.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{asset.name}</h1>
             {asset.status === "disposed" ? (
               <Badge variant="default">Dilepas</Badge>
             ) : asset.isFullyDepreciated ? (
@@ -71,34 +71,34 @@ export default async function FixedAssetDetailPage({
               <Badge variant="success">Aktif</Badge>
             )}
           </div>
-          <p className="mt-1 text-sm text-gray-500">{asset.assetNo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{asset.assetNo}</p>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Nilai perolehan</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Nilai perolehan</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.acquisitionCost, "IDR")}
           </p>
           {asset.residualValue > 0 && (
-            <p className="mt-1 text-xs text-gray-500 tabular-nums">
+            <p className="mt-1 text-xs text-muted-foreground tabular-nums">
               Residu {formatCurrency(asset.residualValue, "IDR")}
             </p>
           )}
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Akumulasi penyusutan</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Akumulasi penyusutan</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.accumulatedDepreciation, "IDR")}
           </p>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-blue-600" style={{ width: `${pct}%` }} />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
           </div>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-500">Nilai buku</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+          <p className="text-sm text-muted-foreground">Nilai buku</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.bookValue, "IDR")}
           </p>
         </Card>
@@ -108,8 +108,8 @@ export default async function FixedAssetDetailPage({
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {info.map(([k, v]) => (
             <div key={k}>
-              <dt className="text-xs text-gray-500">{k}</dt>
-              <dd className="text-sm text-gray-900 tabular-nums">{v}</dd>
+              <dt className="text-xs text-muted-foreground">{k}</dt>
+              <dd className="text-sm text-foreground tabular-nums">{v}</dd>
             </div>
           ))}
         </dl>
@@ -117,29 +117,29 @@ export default async function FixedAssetDetailPage({
 
       {asset.status === "disposed" ? (
         <Card className="mb-6 p-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Pelepasan</h2>
+          <h2 className="mb-3 text-lg font-semibold text-foreground">Pelepasan</h2>
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-gray-500">Tanggal</dt>
-              <dd className="text-sm text-gray-900">
+              <dt className="text-xs text-muted-foreground">Tanggal</dt>
+              <dd className="text-sm text-foreground">
                 {asset.disposalDate ? formatDateShort(asset.disposalDate) : "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-gray-500">Hasil pelepasan</dt>
-              <dd className="text-sm text-gray-900 tabular-nums">
+              <dt className="text-xs text-muted-foreground">Hasil pelepasan</dt>
+              <dd className="text-sm text-foreground tabular-nums">
                 {formatCurrency(asset.disposalProceeds ?? 0, "IDR")}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-gray-500">Laba/Rugi pelepasan</dt>
+              <dt className="text-xs text-muted-foreground">Laba/Rugi pelepasan</dt>
               <dd className="text-sm tabular-nums">
                 {asset.disposalGainLoss == null ? (
                   "—"
                 ) : asset.disposalGainLoss >= 0 ? (
-                  <span className="text-green-700">{formatCurrency(asset.disposalGainLoss, "IDR")}</span>
+                  <span className="text-success-strong">{formatCurrency(asset.disposalGainLoss, "IDR")}</span>
                 ) : (
-                  <span className="text-red-700">
+                  <span className="text-destructive-strong">
                     ({formatCurrency(Math.abs(asset.disposalGainLoss), "IDR")})
                   </span>
                 )}
@@ -155,31 +155,31 @@ export default async function FixedAssetDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <div className="border-b border-gray-200 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-900">Riwayat penyusutan</h2>
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Riwayat penyusutan</h2>
           </div>
           {depreciations.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-500">Belum ada penyusutan yang diposting.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada penyusutan yang diposting.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="px-4 py-2 font-medium text-gray-500">Periode</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-500">Beban</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-500">Akum.</th>
+                  <tr className="border-b border-border text-left">
+                    <th className="px-4 py-2 font-medium text-muted-foreground">Periode</th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Beban</th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Akum.</th>
                   </tr>
                 </thead>
                 <tbody>
                   {depreciations.map((d) => (
-                    <tr key={d.id} className="border-b border-gray-100">
-                      <td className="px-4 py-2 text-gray-900">
+                    <tr key={d.id} className="border-b border-border">
+                      <td className="px-4 py-2 text-foreground">
                         {MONTH_NAMES[d.month - 1]} {d.year}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-900">
+                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
                         {formatCurrency(num(d.amount), "IDR")}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-700">
+                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
                         {formatCurrency(num(d.accumulatedAfter), "IDR")}
                       </td>
                     </tr>
@@ -191,27 +191,27 @@ export default async function FixedAssetDetailPage({
         </Card>
 
         <Card>
-          <div className="border-b border-gray-200 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-900">Riwayat lokasi</h2>
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Riwayat lokasi</h2>
           </div>
           {moves.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-500">Belum ada perpindahan lokasi.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada perpindahan lokasi.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="px-4 py-2 font-medium text-gray-500">Tanggal</th>
-                    <th className="px-4 py-2 font-medium text-gray-500">Dari</th>
-                    <th className="px-4 py-2 font-medium text-gray-500">Ke</th>
+                  <tr className="border-b border-border text-left">
+                    <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
+                    <th className="px-4 py-2 font-medium text-muted-foreground">Dari</th>
+                    <th className="px-4 py-2 font-medium text-muted-foreground">Ke</th>
                   </tr>
                 </thead>
                 <tbody>
                   {moves.map((m) => (
-                    <tr key={m.id} className="border-b border-gray-100">
-                      <td className="px-4 py-2 text-gray-700">{formatDateShort(m.date)}</td>
-                      <td className="px-4 py-2 text-gray-500">{m.fromLocation ?? "—"}</td>
-                      <td className="px-4 py-2 text-gray-900">{m.toLocation ?? "—"}</td>
+                    <tr key={m.id} className="border-b border-border">
+                      <td className="px-4 py-2 text-foreground">{formatDateShort(m.date)}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{m.fromLocation ?? "—"}</td>
+                      <td className="px-4 py-2 text-foreground">{m.toLocation ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

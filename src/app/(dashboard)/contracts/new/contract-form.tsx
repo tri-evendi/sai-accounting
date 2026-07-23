@@ -173,7 +173,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -183,7 +183,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Rincian Kontrak</CardTitle>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Isian yang wajib ada pada setiap kontrak. Sisanya ada di &ldquo;Detail
             lengkap&rdquo; di bawah.
           </p>
@@ -202,7 +202,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                 required
               />
               {periodIssue && (
-                <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                   <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>{periodIssue}</span>
                 </p>
@@ -234,18 +234,18 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
         <CardContent>
           <div className="space-y-4">
             {items.map((item, i) => (
-              <div key={i} className="rounded-md border border-gray-200 p-3">
+              <div key={i} className="rounded-md border border-border p-3">
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <label
                       htmlFor={`itemName-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Nama Barang
                     </label>
                     <input
                       id={`itemName-${i}`}
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-sm"
                       value={item.itemName}
                       onChange={(e) => updateItem(i, "itemName", e.target.value)}
                       required
@@ -254,7 +254,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                   <div className="w-20">
                     <label
                       htmlFor={`bags-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Bags
                     </label>
@@ -262,7 +262,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       id={`bags-${i}`}
                       type="number"
                       min={0}
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={item.bags}
                       onChange={(e) => updateItem(i, "bags", Number(e.target.value))}
                     />
@@ -270,7 +270,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                   <div className="w-24">
                     <label
                       htmlFor={`kgPerBag-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Kg/Bag
                     </label>
@@ -279,7 +279,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={item.kgPerBag}
                       onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))}
                     />
@@ -287,7 +287,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                   <div className="w-28">
                     <label
                       htmlFor={`pricePerKg-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Harga/Kg
                     </label>
@@ -296,7 +296,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={item.pricePerKg}
                       onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))}
                     />
@@ -304,14 +304,14 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                   <button
                     type="button"
                     onClick={() => removeItem(i)}
-                    className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={items.length === 1}
                     aria-label={`Hapus baris barang ${i + 1}`}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
-                <p className="mt-2 text-right text-xs tabular-nums text-gray-700">
+                <p className="mt-2 text-right text-xs tabular-nums text-foreground">
                   = {formatCurrency(item.bags * item.kgPerBag * item.pricePerKg, currency)}
                 </p>
               </div>
@@ -336,7 +336,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
           <Input id="shipment" name="shipment" label="Pengapalan" />
           <div>
             <Input id="top1" name="top1" label="Termin Pembayaran 1" />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Teks bebas kesepakatan, mis. &ldquo;30% uang muka&rdquo;. Bukan tanggal — untuk
               tanggal, pakai Jatuh Tempo di atas.
             </p>
@@ -361,16 +361,16 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
         <CardContent className="py-3">
           <dl className="space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="font-medium text-gray-500">Perkiraan Nilai Kontrak ({currency})</dt>
-              <dd className="text-lg font-bold tabular-nums text-gray-900">
+              <dt className="font-medium text-muted-foreground">Perkiraan Nilai Kontrak ({currency})</dt>
+              <dd className="text-lg font-bold tabular-nums text-foreground">
                 {formatCurrency(subtotal, currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-gray-500">
+              <dt className="text-muted-foreground">
                 <TermTooltip term="buku_besar">Nilai dasar buku besar (IDR)</TermTooltip>
               </dt>
-              <dd className="tabular-nums font-medium text-gray-900">
+              <dd className="tabular-nums font-medium text-foreground">
                 {baseUnknown(currency, rate)
                   ? "— isi kurs dulu"
                   : formatCurrency(subtotal * (Number(rate) || 1), "IDR")}

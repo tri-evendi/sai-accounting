@@ -280,13 +280,13 @@ export function SalesWizard({
       <Card>
         <CardContent className="py-6">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-green-700" aria-hidden="true" />
+            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-success-strong" aria-hidden="true" />
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900">Penjualan tersimpan</h2>
-              <p className="mt-1 text-sm text-gray-600">
+              <h2 className="text-lg font-semibold text-foreground">Penjualan tersimpan</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Semua dokumen di bawah dibuat sekaligus dalam satu penyimpanan.
               </p>
-              <dl className="mt-4 divide-y divide-gray-100">
+              <dl className="mt-4 divide-y divide-border">
                 {result.customerName && (
                   <WizardSummaryRow label="Pelanggan" value={result.customerName} />
                 )}
@@ -296,7 +296,7 @@ export function SalesWizard({
                     value={
                       <Link
                         href={`/delivery-orders/${result.deliveryOrder.id}`}
-                        className="text-blue-700 hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {result.deliveryOrder.no}
                       </Link>
@@ -308,7 +308,7 @@ export function SalesWizard({
                   value={
                     <Link
                       href={`/invoices/${result.invoice.id}`}
-                      className="text-blue-700 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {result.invoice.invoiceNo}
                     </Link>
@@ -319,7 +319,7 @@ export function SalesWizard({
               {result.approval && (
                 <p
                   role="status"
-                  className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800"
+                  className="mt-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong"
                 >
                   {result.approval.message}
                 </p>
@@ -351,7 +351,7 @@ export function SalesWizard({
   }
 
   if (!ready) {
-    return <p className="text-sm text-gray-500">Menyiapkan formulir…</p>;
+    return <p className="text-sm text-muted-foreground">Menyiapkan formulir…</p>;
   }
 
   return (
@@ -408,7 +408,7 @@ export function SalesWizard({
               <CardTitle>
                 <TermTooltip term="kontrak">Ambil dari kontrak (opsional)</TermTooltip>
               </CardTitle>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Bila penjualan ini menagih kontrak yang sudah ada, pilih kontraknya: barang,
                 sisa jumlah, dan harganya terisi sendiri, dan tagihannya nanti tidak bisa
                 melebihi sisa kontrak.
@@ -442,7 +442,7 @@ export function SalesWizard({
                   </Button>
                 </div>
               </div>
-              {pullNote && <p className="mt-3 text-xs text-gray-600">{pullNote}</p>}
+              {pullNote && <p className="mt-3 text-xs text-muted-foreground">{pullNote}</p>}
             </CardContent>
           </Card>
 
@@ -466,7 +466,7 @@ export function SalesWizard({
                 const sisa = contractRemainingKg?.get(normalizeItemName(line.itemName));
                 const over = sisa != null && line.quantity > sisa;
                 return (
-                  <div key={i} className="rounded-md border border-gray-200 p-3">
+                  <div key={i} className="rounded-md border border-border p-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <SearchableSelect
                         label="Barang dari daftar stok"
@@ -497,7 +497,7 @@ export function SalesWizard({
                       <div className="w-32">
                         <label
                           htmlFor={`quantity-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Jumlah (kg)
                         </label>
@@ -506,7 +506,7 @@ export function SalesWizard({
                           type="number"
                           min={0}
                           step="0.001"
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                           value={line.quantity}
                           onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
                         />
@@ -514,7 +514,7 @@ export function SalesWizard({
                       <div className="w-40">
                         <label
                           htmlFor={`price-${i}`}
-                          className="mb-1 block text-xs font-medium text-gray-500"
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
                           Harga per kg ({currency})
                         </label>
@@ -523,14 +523,14 @@ export function SalesWizard({
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                           value={line.price}
                           onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
                         />
                       </div>
                       <div className="ml-auto text-right">
-                        <span className="block text-xs text-gray-500">Nilai baris</span>
-                        <span className="block text-sm font-medium tabular-nums text-gray-900">
+                        <span className="block text-xs text-muted-foreground">Nilai baris</span>
+                        <span className="block text-sm font-medium tabular-nums text-foreground">
                           {formatCurrency(line.quantity * line.price, currency)}
                         </span>
                       </div>
@@ -545,19 +545,19 @@ export function SalesWizard({
                         }
                         disabled={draft.lines.length === 1}
                         aria-label={`Hapus baris barang ${i + 1}`}
-                        className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                     <p className="mt-2 text-xs">
                       {line.itemId == null ? (
-                        <span className="text-amber-700">
+                        <span className="text-warning-strong">
                           Barang ini tidak ada di daftar stok, jadi tidak bisa dibuatkan surat
                           jalan. Tagihannya tetap bisa dibuat.
                         </span>
                       ) : (
-                        <span className={over ? "font-medium text-red-700" : "text-gray-500"}>
+                        <span className={over ? "font-medium text-destructive-strong" : "text-muted-foreground"}>
                           Stok tersedia{" "}
                           {formatNumber(itemById.get(line.itemId)?.currentStock ?? 0)} kg
                           {sisa != null && ` · sisa kontrak ${formatNumber(sisa)} kg`}
@@ -569,7 +569,7 @@ export function SalesWizard({
                 );
               })}
 
-              <dl className="border-t border-gray-200 pt-3">
+              <dl className="border-t border-border pt-3">
                 <WizardSummaryRow
                   label="Nilai pesanan"
                   value={formatCurrency(salesOrderValue(draft), currency)}
@@ -585,10 +585,10 @@ export function SalesWizard({
       {stepId === "pengiriman" && (
         <Card>
           <CardContent className="space-y-4 py-4">
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors duration-150 hover:bg-gray-50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300"
+                className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
                 checked={draft.delivery.include}
                 onChange={(e) =>
                   patch((d) => {
@@ -601,12 +601,12 @@ export function SalesWizard({
                 }
               />
               <span className="text-sm">
-                <span className="flex items-center gap-2 font-medium text-gray-900">
-                  <Truck className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Barangnya sudah dikirim — buatkan{" "}
                   <TermTooltip term="surat_jalan">surat jalan</TermTooltip>
                 </span>
-                <span className="mt-0.5 block text-gray-600">
+                <span className="mt-0.5 block text-muted-foreground">
                   Surat jalan mengurangi stok dan membentuk jurnal HPP. Kalau barang belum
                   berangkat, biarkan kosong dan lanjut saja — surat jalan bisa dibuat
                   belakangan.
@@ -667,11 +667,11 @@ export function SalesWizard({
                       const overOrder = kg > line.quantity;
                       const overStock = master != null && kg > master.currentStock;
                       return (
-                        <div key={i} className="rounded-md border border-gray-200 p-3">
+                        <div key={i} className="rounded-md border border-border p-3">
                           <label className="flex cursor-pointer items-center gap-2 text-sm">
                             <input
                               type="checkbox"
-                              className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                              className="h-4 w-4 cursor-pointer rounded border-border"
                               checked={line.ship}
                               disabled={line.itemId == null}
                               onChange={(e) =>
@@ -683,10 +683,10 @@ export function SalesWizard({
                                 })
                               }
                             />
-                            <span className="font-medium text-gray-900">
+                            <span className="font-medium text-foreground">
                               {line.itemName || `Baris ${i + 1}`}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               dipesan {formatNumber(line.quantity)} kg
                             </span>
                             {line.itemId == null && (
@@ -700,7 +700,7 @@ export function SalesWizard({
                                 <div className="w-28">
                                   <label
                                     htmlFor={`shipBags-${i}`}
-                                    className="mb-1 block text-xs font-medium text-gray-500"
+                                    className="mb-1 block text-xs font-medium text-muted-foreground"
                                   >
                                     Jumlah bags
                                   </label>
@@ -708,7 +708,7 @@ export function SalesWizard({
                                     id={`shipBags-${i}`}
                                     type="number"
                                     min={0}
-                                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                                     value={line.shipBags}
                                     onChange={(e) =>
                                       updateLine(i, { shipBags: Number(e.target.value) })
@@ -718,7 +718,7 @@ export function SalesWizard({
                                 <div className="w-32">
                                   <label
                                     htmlFor={`shipKgPerBag-${i}`}
-                                    className="mb-1 block text-xs font-medium text-gray-500"
+                                    className="mb-1 block text-xs font-medium text-muted-foreground"
                                   >
                                     Kg per bag
                                   </label>
@@ -727,7 +727,7 @@ export function SalesWizard({
                                     type="number"
                                     min={0}
                                     step="0.001"
-                                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                                     value={line.shipKgPerBag}
                                     onChange={(e) =>
                                       updateLine(i, { shipKgPerBag: Number(e.target.value) })
@@ -735,10 +735,10 @@ export function SalesWizard({
                                   />
                                 </div>
                                 <div className="ml-auto text-right">
-                                  <span className="block text-xs text-gray-500">
+                                  <span className="block text-xs text-muted-foreground">
                                     Total dikirim
                                   </span>
-                                  <span className="block text-sm font-medium tabular-nums text-gray-900">
+                                  <span className="block text-sm font-medium tabular-nums text-foreground">
                                     {formatNumber(kg)} kg
                                   </span>
                                 </div>
@@ -747,8 +747,8 @@ export function SalesWizard({
                                 <span
                                   className={
                                     overOrder || overStock
-                                      ? "font-medium text-red-700"
-                                      : "text-gray-500"
+                                      ? "font-medium text-destructive-strong"
+                                      : "text-muted-foreground"
                                   }
                                 >
                                   Stok tersedia {formatNumber(master?.currentStock ?? 0)} kg
@@ -880,7 +880,7 @@ export function SalesWizard({
                   </Button>
                 </div>
               </div>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Jumlahnya ditarik dari langkah sebelumnya, bukan diketik ulang. Boleh
                 dikurangi bila hanya sebagian yang ditagihkan sekarang.
               </p>
@@ -889,13 +889,13 @@ export function SalesWizard({
               {draft.lines.map((line, i) => (
                 <div
                   key={i}
-                  className="flex flex-wrap items-end gap-3 rounded-md border border-gray-200 p-3"
+                  className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3"
                 >
                   <div className="min-w-40 flex-1">
-                    <span className="block text-sm font-medium text-gray-900">
+                    <span className="block text-sm font-medium text-foreground">
                       {line.itemName || `Baris ${i + 1}`}
                     </span>
-                    <span className="block text-xs text-gray-500">
+                    <span className="block text-xs text-muted-foreground">
                       dipesan {formatNumber(line.quantity)} kg · dikirim{" "}
                       {formatNumber(shipKg(line))} kg ·{" "}
                       {formatCurrency(line.price, currency)}/kg
@@ -904,7 +904,7 @@ export function SalesWizard({
                   <div className="w-36">
                     <label
                       htmlFor={`billQuantity-${i}`}
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Ditagihkan (kg)
                     </label>
@@ -913,21 +913,21 @@ export function SalesWizard({
                       type="number"
                       min={0}
                       step="0.001"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={line.billQuantity}
                       onChange={(e) => updateLine(i, { billQuantity: Number(e.target.value) })}
                     />
                   </div>
                   <div className="w-32 text-right">
-                    <span className="block text-xs text-gray-500">Nilai</span>
-                    <span className="block text-sm font-medium tabular-nums text-gray-900">
+                    <span className="block text-xs text-muted-foreground">Nilai</span>
+                    <span className="block text-sm font-medium tabular-nums text-foreground">
                       {formatCurrency(line.billQuantity * line.price, currency)}
                     </span>
                   </div>
                 </div>
               ))}
 
-              <dl className="border-t border-gray-200 pt-3">
+              <dl className="border-t border-border pt-3">
                 <WizardSummaryRow
                   label="Nilai sebelum PPN (DPP)"
                   value={formatCurrency(salesInvoiceSubtotal(draft), currency)}
@@ -963,13 +963,13 @@ export function SalesWizard({
               <div>
                 <label
                   htmlFor="currency"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Mata uang
                 </label>
                 <select
                   id="currency"
-                  className="block w-full cursor-pointer rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="block w-full cursor-pointer rounded-md border border-border px-3 py-2 text-sm"
                   value={currency}
                   onChange={(e) =>
                     patch((d) => {
@@ -994,7 +994,7 @@ export function SalesWizard({
               </div>
               {currency !== "IDR" && (
                 <div>
-                  <label htmlFor="rate" className="mb-1 block text-sm font-medium text-gray-700">
+                  <label htmlFor="rate" className="mb-1 block text-sm font-medium text-foreground">
                     <TermTooltip term="kurs">Kurs</TermTooltip> 1 {currency} ke IDR
                   </label>
                   <input
@@ -1002,7 +1002,7 @@ export function SalesWizard({
                     type="number"
                     min={0}
                     step="0.000001"
-                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                     value={draft.invoice.rate || ""}
                     onChange={(e) =>
                       patch((d) => ({
@@ -1011,16 +1011,16 @@ export function SalesWizard({
                       }))
                     }
                   />
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Wajib diisi — buku besar mencatat nilai IDR.
                   </p>
                 </div>
               )}
               <div>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                    className="h-4 w-4 cursor-pointer rounded border-border"
                     checked={draft.invoice.taxable}
                     onChange={(e) =>
                       patch((d) => ({
@@ -1035,7 +1035,7 @@ export function SalesWizard({
                   <div className="mt-2 w-32">
                     <label
                       htmlFor="taxRate"
-                      className="mb-1 block text-xs font-medium text-gray-500"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
                       Tarif PPN (%)
                     </label>
@@ -1045,7 +1045,7 @@ export function SalesWizard({
                       min={0}
                       max={100}
                       step="0.01"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                       value={draft.invoice.taxRate}
                       onChange={(e) =>
                         patch((d) => ({
@@ -1067,13 +1067,13 @@ export function SalesWizard({
         <Card>
           <CardHeader>
             <CardTitle>Periksa sebelum disimpan</CardTitle>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Semua di bawah ini akan dicatat sekaligus. Bila salah satunya gagal, tidak ada
               satu pun yang tersimpan.
             </p>
           </CardHeader>
           <CardContent>
-            <dl className="divide-y divide-gray-100">
+            <dl className="divide-y divide-border">
               <WizardSummaryRow
                 label="Pelanggan"
                 value={
@@ -1104,7 +1104,7 @@ export function SalesWizard({
                 value={
                   draft.delivery.include ? (
                     <span className="inline-flex items-center gap-1">
-                      <Truck className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                      <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       {formatNumber(draft.lines.reduce((s, l) => s + shipKg(l), 0))} kg
                     </span>
                   ) : (
@@ -1120,7 +1120,7 @@ export function SalesWizard({
               <WizardSummaryRow
                 label={
                   <span className="inline-flex items-center gap-1">
-                    <FileText className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                    <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     Tagihan {draft.invoice.invoiceNo}
                   </span>
                 }
@@ -1132,7 +1132,7 @@ export function SalesWizard({
                 strong
               />
             </dl>
-            <p className="mt-4 rounded-md bg-gray-50 p-3 text-xs text-gray-600">
+            <p className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
               Setelah disimpan, sisa tagihan yang belum dibayar muncul di daftar
               &ldquo;Pelanggan Belum Bayar&rdquo;. Bila nilainya mencapai ambang persetujuan,
               tagihan tersimpan tetapi jurnalnya ditahan sampai disetujui.

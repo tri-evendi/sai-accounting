@@ -30,7 +30,7 @@ export default async function ConsigneeDetailPage({
       <Breadcrumb items={[{ label: "Consignees", href: "/consignees" }, { label: consignee.name }]} />
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">{consignee.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{consignee.name}</h1>
           {consignee.isActive ? (
             <Badge variant="success">Active</Badge>
           ) : (
@@ -52,32 +52,32 @@ export default async function ConsigneeDetailPage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Name</dt>
-              <dd className="text-sm text-gray-900">{consignee.name}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+              <dd className="text-sm text-foreground">{consignee.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Country</dt>
-              <dd className="text-sm text-gray-900">{consignee.country || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Country</dt>
+              <dd className="text-sm text-foreground">{consignee.country || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Contact / PIC</dt>
-              <dd className="text-sm text-gray-900">{consignee.contact || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Contact / PIC</dt>
+              <dd className="text-sm text-foreground">{consignee.contact || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Linked Contracts</dt>
-              <dd className="text-sm text-gray-900">{consignee._count.contracts}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Linked Contracts</dt>
+              <dd className="text-sm text-foreground">{consignee._count.contracts}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="text-sm text-gray-900 whitespace-pre-line">{consignee.address || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Address</dt>
+              <dd className="text-sm text-foreground whitespace-pre-line">{consignee.address || "-"}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Notes</dt>
-              <dd className="text-sm text-gray-900 whitespace-pre-line">{consignee.notes || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Notes</dt>
+              <dd className="text-sm text-foreground whitespace-pre-line">{consignee.notes || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="text-sm text-gray-900">{formatDate(consignee.createdAt)}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Created</dt>
+              <dd className="text-sm text-foreground">{formatDate(consignee.createdAt)}</dd>
             </div>
           </dl>
         </CardContent>

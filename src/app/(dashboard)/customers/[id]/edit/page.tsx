@@ -72,9 +72,9 @@ export default function EditCustomerPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Customer</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Edit Customer</h1>
 
-      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
@@ -91,13 +91,13 @@ export default function EditCustomerPage() {
                 <input
                   id="taxExempt"
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                   checked={form.taxExempt}
                   onChange={(e) => setForm({ ...form, taxExempt: e.target.checked })}
                 />
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-foreground">
                   Bebas PPN (ekspor / non-PKP)
-                  <span className="block text-xs text-gray-500">
+                  <span className="block text-xs text-muted-foreground">
                     Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
                   </span>
                 </span>

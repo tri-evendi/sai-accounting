@@ -94,10 +94,10 @@ export default async function InvoiceDetailPage({
       <Breadcrumb items={[{ label: "Invoices", href: "/invoices" }, { label: invoice.invoiceNo }]} />
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Invoice {invoice.invoiceNo}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">{formatDate(invoice.date)}</p>
+          <p className="text-sm text-muted-foreground mt-1">{formatDate(invoice.date)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <InvoicePDFButtonWrapper
@@ -159,43 +159,43 @@ export default async function InvoiceDetailPage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Invoice Number</dt>
-              <dd className="text-sm text-gray-900">{invoice.invoiceNo}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Invoice Number</dt>
+              <dd className="text-sm text-foreground">{invoice.invoiceNo}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
               <dd><StatusBadge status={invoice.status} /></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Pelanggan</dt>
-              <dd className="text-sm text-gray-900">
+              <dt className="text-sm font-medium text-muted-foreground">Pelanggan</dt>
+              <dd className="text-sm text-foreground">
                 {invoice.customer?.name ?? (
-                  <span className="text-gray-500">Belum ditautkan</span>
+                  <span className="text-muted-foreground">Belum ditautkan</span>
                 )}
               </dd>
             </div>
             <div>
               {/* Dokumen berantai (issue #15) — kontrak yang faktur ini tarik. */}
-              <dt className="text-sm font-medium text-gray-500">Kontrak Sumber</dt>
-              <dd className="text-sm text-gray-900">
+              <dt className="text-sm font-medium text-muted-foreground">Kontrak Sumber</dt>
+              <dd className="text-sm text-foreground">
                 {invoice.contract ? (
                   <Link
                     href={`/contracts/${invoice.contract.id}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {invoice.contract.contractNo}
                   </Link>
                 ) : (
-                  <span className="text-gray-500">Faktur lepas (tanpa kontrak)</span>
+                  <span className="text-muted-foreground">Faktur lepas (tanpa kontrak)</span>
                 )}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Mata Uang</dt>
-              <dd className="text-sm text-gray-900 tabular-nums">
+              <dt className="text-sm font-medium text-muted-foreground">Mata Uang</dt>
+              <dd className="text-sm text-foreground tabular-nums">
                 {currency}
                 {isForeign && (
-                  <span className="text-gray-500">
+                  <span className="text-muted-foreground">
                     {rate != null
                       ? ` · kurs ${formatNumber(rate)} ke IDR`
                       : " · kurs belum diisi"}
@@ -206,19 +206,19 @@ export default async function InvoiceDetailPage({
             {/* Dokumen ekspor / PEB (issue #17) — only when captured. */}
             {invoice.pebNumber && (
               <div>
-                <dt className="text-sm font-medium text-gray-500">Nomor PEB</dt>
-                <dd className="text-sm text-gray-900 tabular-nums">
+                <dt className="text-sm font-medium text-muted-foreground">Nomor PEB</dt>
+                <dd className="text-sm text-foreground tabular-nums">
                   {invoice.pebNumber}
                   {invoice.pebDate && (
-                    <span className="text-gray-500"> · {formatDate(invoice.pebDate)}</span>
+                    <span className="text-muted-foreground"> · {formatDate(invoice.pebDate)}</span>
                   )}
                 </dd>
               </div>
             )}
             {invoice.exportNote && (
               <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Keterangan Ekspor</dt>
-                <dd className="text-sm text-gray-900">{invoice.exportNote}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Keterangan Ekspor</dt>
+                <dd className="text-sm text-foreground">{invoice.exportNote}</dd>
               </div>
             )}
           </dl>
@@ -231,28 +231,28 @@ export default async function InvoiceDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Item</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Unit</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Quantity</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Price</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Total</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Item</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Unit</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Quantity</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Price</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {invoice.items.map((item) => {
                 const itemTotal = Number(item.quantity) * Number(item.price);
                 return (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="px-6 py-3 text-gray-900">{item.itemName}</td>
-                    <td className="px-6 py-3 text-gray-500">{item.unit || "-"}</td>
-                    <td className="px-6 py-3 text-gray-700 text-right tabular-nums">
+                  <tr key={item.id} className="border-b border-border">
+                    <td className="px-6 py-3 text-foreground">{item.itemName}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{item.unit || "-"}</td>
+                    <td className="px-6 py-3 text-foreground text-right tabular-nums">
                       {formatNumber(Number(item.quantity))}
                     </td>
-                    <td className="px-6 py-3 text-gray-700 text-right tabular-nums">
+                    <td className="px-6 py-3 text-foreground text-right tabular-nums">
                       {formatCurrency(Number(item.price), currency)}
                     </td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium tabular-nums">
+                    <td className="px-6 py-3 text-foreground text-right font-medium tabular-nums">
                       {formatCurrency(itemTotal, currency)}
                     </td>
                   </tr>
@@ -260,36 +260,36 @@ export default async function InvoiceDetailPage({
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-200">
-                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+              <tr className="border-t border-border">
+                <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
                   DPP · Dasar Pengenaan Pajak
                 </td>
-                <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
+                <td className="px-6 py-3 text-right text-foreground tabular-nums">
                   {formatCurrency(subtotal, currency)}
                 </td>
               </tr>
               <tr>
-                <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
                   {ppnLabel}
                 </td>
-                <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
+                <td className="px-6 py-3 text-right text-foreground tabular-nums">
                   {formatCurrency(taxAmount, currency)}
                 </td>
               </tr>
-              <tr className="border-t-2 border-gray-200">
-                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-gray-700">
+              <tr className="border-t-2 border-border">
+                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-foreground">
                   Total ({currency})
                 </td>
-                <td className="px-6 py-3 text-right font-bold text-gray-900 tabular-nums">
+                <td className="px-6 py-3 text-right font-bold text-foreground tabular-nums">
                   {formatCurrency(totalValue, currency)}
                 </td>
               </tr>
               {isForeign && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-3 text-right text-gray-500">
+                  <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
                     Nilai dasar buku besar (IDR)
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-900 tabular-nums">
+                  <td className="px-6 py-3 text-right text-foreground tabular-nums">
                     {baseAmount != null
                       ? formatCurrency(baseAmount, "IDR")
                       : "Kurs belum diisi"}
@@ -306,13 +306,13 @@ export default async function InvoiceDetailPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            <div className="text-right text-sm text-gray-500">
+            <div className="text-right text-sm text-muted-foreground">
               <div className="tabular-nums">
                 Terbayar (IDR): {formatCurrency(totalPaidBase, "IDR")}
                 {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
               </div>
               {paymentsWithoutRate > 0 && (
-                <div className="text-xs text-amber-700">
+                <div className="text-xs text-warning-strong">
                   {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
                 </div>
               )}
@@ -322,10 +322,10 @@ export default async function InvoiceDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Note</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
               </tr>
             </thead>
             <tbody>
@@ -341,12 +341,12 @@ export default async function InvoiceDetailPage({
                 </tr>
               ) : (
                 invoice.payments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-gray-100">
-                    <td className="px-6 py-3 text-gray-700">{formatDate(payment.date)}</td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium">
+                  <tr key={payment.id} className="border-b border-border">
+                    <td className="px-6 py-3 text-foreground">{formatDate(payment.date)}</td>
+                    <td className="px-6 py-3 text-foreground text-right font-medium">
                       {formatCurrency(Number(payment.amount), payment.currency)}
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{payment.note || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{payment.note || "-"}</td>
                   </tr>
                 ))
               )}

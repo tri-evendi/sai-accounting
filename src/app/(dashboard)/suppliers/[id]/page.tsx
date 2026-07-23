@@ -104,7 +104,7 @@ export default async function SupplierDetailPage({
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Suppliers", href: "/suppliers" }, { label: supplier.name }]} />
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{supplier.name}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{supplier.name}</h1>
         <div className="flex gap-2">
           <Link href={`/suppliers/${id}/edit`}>
             <Button variant="secondary">Edit</Button>
@@ -121,20 +121,20 @@ export default async function SupplierDetailPage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Name</dt>
-              <dd className="text-sm text-gray-900">{supplier.name}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+              <dd className="text-sm text-foreground">{supplier.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="text-sm text-gray-900">{supplier.address || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Address</dt>
+              <dd className="text-sm text-foreground">{supplier.address || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Phone</dt>
-              <dd className="text-sm text-gray-900">{supplier.phone || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
+              <dd className="text-sm text-foreground">{supplier.phone || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Email</dt>
-              <dd className="text-sm text-gray-900">{supplier.email || "-"}</dd>
+              <dt className="text-sm font-medium text-muted-foreground">Email</dt>
+              <dd className="text-sm text-foreground">{supplier.email || "-"}</dd>
             </div>
           </dl>
         </CardContent>
@@ -189,13 +189,13 @@ export default async function SupplierDetailPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Type</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Currency</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Note</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Alokasi</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Type</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Currency</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Alokasi</th>
               </tr>
             </thead>
             <tbody>
@@ -211,17 +211,17 @@ export default async function SupplierDetailPage({
                 </tr>
               ) : (
                 supplier.transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100 align-top">
-                    <td className="px-6 py-3 text-gray-700">{formatDate(t.date)}</td>
-                    <td className="px-6 py-3 text-gray-700 capitalize">{t.type}</td>
-                    <td className="px-6 py-3 text-gray-900 text-right font-medium tabular-nums">
+                  <tr key={t.id} className="border-b border-border align-top">
+                    <td className="px-6 py-3 text-foreground">{formatDate(t.date)}</td>
+                    <td className="px-6 py-3 text-foreground capitalize">{t.type}</td>
+                    <td className="px-6 py-3 text-foreground text-right font-medium tabular-nums">
                       {formatCurrency(Number(t.amount), t.currency)}
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{t.currency}</td>
-                    <td className="px-6 py-3 text-gray-500">{t.note || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{t.currency}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{t.note || "-"}</td>
                     <td className="px-6 py-3">
                       {t.type !== "payment" ? (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-muted-foreground">-</span>
                       ) : (
                         <div>
                           {t.allocationsMade.length === 0 ? (
@@ -234,7 +234,7 @@ export default async function SupplierDetailPage({
                           ) : (
                             <ul className="space-y-0.5">
                               {t.allocationsMade.map((a) => (
-                                <li key={a.id} className="text-xs text-gray-700 tabular-nums">
+                                <li key={a.id} className="text-xs text-foreground tabular-nums">
                                   TRX-{a.purchaseId} ·{" "}
                                   {formatCurrency(Number(a.amount), a.currency)}
                                 </li>

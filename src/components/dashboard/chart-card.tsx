@@ -19,9 +19,9 @@ export function ChartCard({
   return (
     <Card className={cn("flex flex-col overflow-hidden", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold text-gray-900">{title}</CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground">{title}</CardTitle>
         {description && (
-          <p className="text-xs text-gray-500 mt-0.5 font-normal">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 font-normal">{description}</p>
         )}
       </CardHeader>
       <CardContent className="flex-1 pt-0 pb-4">

@@ -32,8 +32,8 @@ export default async function ApprovalsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Perlu Persetujuan</h1>
-        <p className="mt-1 max-w-3xl text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-foreground">Perlu Persetujuan</h1>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Transaksi yang nilainya mencapai ambang persetujuan disimpan lebih dulu, tetapi{" "}
           <strong>belum masuk jurnal</strong>. Setelah disetujui, jurnalnya langsung terbit;
           bila ditolak, dokumen tetap tersimpan tanpa jurnal dan bisa diperbaiki lalu

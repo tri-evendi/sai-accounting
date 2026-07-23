@@ -40,12 +40,6 @@ export const STATUS_FILTER_LABELS: Record<string, string> = {
   ...CONTRACT_STATUS_LABELS,
 };
 
-export const STATUS_COLORS: Record<ContractStatus, string> = {
-  signed: "bg-green-100 text-green-800",
-  pending: "bg-yellow-100 text-yellow-800",
-  canceled: "bg-red-100 text-red-800",
-};
-
 export const CASH_TYPES = ["bank", "kas_besar", "kas_kecil"] as const;
 export type CashType = (typeof CASH_TYPES)[number];
 

@@ -100,7 +100,7 @@ export function BudgetAccountsClient({
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Tetapkan anggaran</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Tetapkan anggaran</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
@@ -148,7 +148,7 @@ export function BudgetAccountsClient({
             />
           </div>
           {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+            <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
               {error}
             </p>
           )}
@@ -172,24 +172,24 @@ export function BudgetAccountsClient({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Aksi</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {budgets.map((b) => (
-                  <tr key={b.id} className="border-b border-gray-100">
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={b.id} className="border-b border-border">
+                    <td className="px-4 py-3 text-foreground">
                       {MONTH_NAMES[b.month - 1]} {b.year}
                     </td>
-                    <td className="px-4 py-3 text-gray-900">
-                      <span className="font-mono text-gray-400 mr-2">{b.accountCode}</span>
+                    <td className="px-4 py-3 text-foreground">
+                      <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
                       {b.accountName}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {formatCurrency(b.amount, "IDR")}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -205,7 +205,7 @@ export function BudgetAccountsClient({
                           <button
                             type="button"
                             disabled={deleting === b.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 disabled:opacity-50"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
                             aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
                           >
                             {deleting === b.id ? (

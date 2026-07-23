@@ -33,7 +33,7 @@ export default async function ConsigneesPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Consignees ({totalCount})</h1>
+        <h1 className="text-2xl font-bold text-foreground">Consignees ({totalCount})</h1>
         <Link href="/consignees/new">
           <Button>+ New Consignee</Button>
         </Link>
@@ -43,12 +43,12 @@ export default async function ConsigneesPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Country</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Contact</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Address</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Country</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Contact</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Address</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -66,15 +66,15 @@ export default async function ConsigneesPage({
                 </tr>
               ) : (
                 consignees.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={c.id} className="border-b border-border hover:bg-muted">
                     <td className="px-6 py-3">
-                      <Link href={`/consignees/${c.id}`} className="text-blue-600 hover:underline font-medium">
+                      <Link href={`/consignees/${c.id}`} className="text-primary hover:underline font-medium">
                         {c.name}
                       </Link>
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{c.country || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">{c.contact || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500 max-w-xs truncate">{c.address || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.country || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{c.contact || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">{c.address || "-"}</td>
                     <td className="px-6 py-3">
                       {c.isActive ? (
                         <Badge variant="success">Active</Badge>

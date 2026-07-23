@@ -1,41 +1,45 @@
 "use client";
 
 /**
- * TermTooltip (issue #1) — label bahasa tugas + ikon "?" yang membuka istilah
- * akuntansi bakunya beserta definisi sederhana.
+ * TermTooltip (issue #1, dirombak di issue #51) — label bahasa tugas + ikon
+ * "?" yang membuka istilah akuntansi bakunya beserta definisi sederhana.
  *
  *   <TermTooltip term="faktur">Tagihan Penjualan</TermTooltip>
  *
  * Definisinya TIDAK ditulis di sini: seluruh isinya dibaca dari kamus tunggal
  * `src/lib/labels.ts`, sumber yang sama dengan halaman Kamus Istilah (issue #21).
  *
- * Aksesibilitas — sengaja BUKAN hover-only:
+ * Kini dibangun di atas Radix `Popover`, BUKAN Radix `Tooltip` — pilihan yang
+ * disengaja: panelnya berisi tautan "Pelajari selengkapnya" yang harus bisa
+ * diklik/di-Tab, dan harus terbuka lewat ketukan di layar sentuh; dua hal yang
+ * pola tooltip murni tidak dukung (issue #51 sendiri menyebut fallback ini).
+ * Dari Radix kita dapat gratis: positioning sadar-tabrakan (flip/shift di tepi
+ * layar — dulu dihitung manual), Escape + klik-luar menutup, dan fokus kembali
+ * ke pemicunya.
+ *
+ * Aksesibilitas — tetap BUKAN hover-only:
  *   • pemicunya `<button>` sungguhan → bisa Tab + Enter/Spasi (keyboard) dan
- *     bisa diketuk di layar sentuh yang tidak punya hover sama sekali;
- *   • area sentuhnya diperbesar ke ~40px lewat pseudo-element, tanpa menggeser
- *     tata letak teks di sekitarnya;
- *   • hover hanya BONUS di desktop; Escape dan klik di luar menutup panel;
- *   • statusnya diumumkan lewat `aria-expanded` + `aria-controls`.
+ *     bisa diketuk di layar sentuh; saat dibuka via keyboard/klik, fokus
+ *     masuk ke panel sehingga tautannya terjangkau;
+ *   • area sentuhnya diperbesar ke ~40px lewat pseudo-element;
+ *   • hover hanya BONUS di desktop — panel terbuka saat label disorot dan ada
+ *     jeda singkat sebelum menutup supaya kursor sempat menyeberang ke panel;
+ *     pembukaan via hover TIDAK mencuri fokus keyboard.
  */
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { HelpCircle, ArrowRight } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
 
-/** Lebar panel penjelasan (px) — dipakai juga untuk menjaga posisinya di layar. */
-const PANEL_WIDTH = 288;
-const PANEL_GAP = 8;
-/** Ruang minimum di bawah label sebelum panel dibalik ke atas. */
-const PANEL_MIN_HEIGHT = 200;
-
-interface PanelCoords {
-  left: number;
-  top?: number;
-  bottom?: number;
-  maxHeight: number;
-}
+/** Jeda sebelum panel hover ditutup — cukup untuk menyeberangi celah 8px. */
+const HOVER_CLOSE_DELAY_MS = 150;
 
 interface TermTooltipProps {
   /** Kunci entri di `src/lib/labels.ts`, mis. "faktur". */
@@ -50,78 +54,27 @@ interface TermTooltipProps {
 export function TermTooltip({ term, children, className, hideGlossaryLink }: TermTooltipProps) {
   const entry = getTerm(term);
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<PanelCoords | null>(null);
-  const containerRef = useRef<HTMLSpanElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLSpanElement>(null);
-  const panelId = useId();
+  /** true selama pembukaan terakhir dipicu hover — menentukan soal fokus. */
+  const hoverOpenRef = useRef(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /**
-   * Panel dipasang `fixed` dan dihitung dari posisi tombol, BUKAN `absolute`
-   * di dalam alirannya: banyak label duduk di dalam kepala tabel yang dibungkus
-   * `overflow-x-auto`, dan panel absolut di sana akan terpotong. Karena posisinya
-   * dibekukan saat dibuka, panel ditutup begitu halaman digulir/diubah ukurannya
-   * supaya tidak pernah tertinggal jauh dari labelnya.
-   */
-  function place() {
-    const rect = buttonRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const maxLeft = Math.max(window.innerWidth - PANEL_WIDTH - PANEL_GAP, PANEL_GAP);
-    const left = Math.min(Math.max(rect.left, PANEL_GAP), maxLeft);
-    const roomBelow = window.innerHeight - rect.bottom;
-    // Muat di bawah label? kalau tidak, panel dibalik ke atasnya; apa pun
-    // pilihannya tingginya dibatasi agar tidak pernah keluar layar.
-    if (roomBelow >= PANEL_MIN_HEIGHT) {
-      setCoords({
-        left,
-        top: rect.bottom + PANEL_GAP,
-        maxHeight: roomBelow - PANEL_GAP * 2,
-      });
-    } else {
-      setCoords({
-        left,
-        bottom: window.innerHeight - rect.top + PANEL_GAP,
-        maxHeight: rect.top - PANEL_GAP * 2,
-      });
+  function cancelScheduledClose() {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
     }
   }
 
-  function show() {
-    place();
+  function openFromHover() {
+    cancelScheduledClose();
+    if (!open) hoverOpenRef.current = true;
     setOpen(true);
   }
 
-  useEffect(() => {
-    if (!open) return;
-
-    function onPointerDown(event: MouseEvent | TouchEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    // Menggulir HALAMAN menutup panel (posisinya dibekukan saat dibuka), tetapi
-    // menggulir ISI panel yang panjang tidak — kalau tidak, definisi panjang jadi
-    // mustahil dibaca sampai habis.
-    function dismiss(event: Event) {
-      const target = event.target;
-      if (target instanceof Node && panelRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("scroll", dismiss, true);
-    window.addEventListener("resize", dismiss);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("scroll", dismiss, true);
-      window.removeEventListener("resize", dismiss);
-    };
-  }, [open]);
+  function scheduleClose() {
+    cancelScheduledClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
+  }
 
   // Istilah tak dikenal: tampilkan labelnya apa adanya, jangan pernah gagal render.
   if (!entry) return <>{children ?? term}</>;
@@ -130,70 +83,71 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
 
   return (
     <span
-      ref={containerRef}
       className={cn("inline-flex items-center gap-1 align-middle", className)}
-      onMouseEnter={show}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={openFromHover}
+      onMouseLeave={scheduleClose}
     >
       <span>{label}</span>
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={panelId}
-        aria-label={`Penjelasan istilah: ${entry.label}`}
-        onClick={() => (open ? setOpen(false) : show())}
-        className={cn(
-          "relative inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full",
-          "text-gray-400 transition-colors duration-150 hover:text-blue-700 hover:bg-blue-50",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1",
-          // Area sentuh ~40px tanpa mengubah tinggi baris teks.
-          "after:absolute after:-inset-2.5 after:content-['']",
-          open && "text-blue-700 bg-blue-50"
-        )}
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (next) hoverOpenRef.current = false; // dibuka via klik/keyboard
+          cancelScheduledClose();
+          setOpen(next);
+        }}
       >
-        <HelpCircle className="h-4 w-4" aria-hidden="true" />
-      </button>
-
-      {open && coords && (
-        <span
-          ref={panelRef}
-          id={panelId}
-          role="note"
-          style={{
-            top: coords.top,
-            bottom: coords.bottom,
-            left: coords.left,
-            width: PANEL_WIDTH,
-            maxHeight: coords.maxHeight,
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Penjelasan istilah: ${entry.label}`}
+            className={cn(
+              "relative inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full",
+              "text-muted-foreground transition-colors duration-150 hover:text-primary hover:bg-primary/10",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+              // Area sentuh ~40px tanpa mengubah tinggi baris teks.
+              "after:absolute after:-inset-2.5 after:content-['']",
+              open && "text-primary bg-primary/10"
+            )}
+          >
+            <HelpCircle className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          side="bottom"
+          className="w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3 text-left font-normal normal-case"
+          style={{ maxHeight: "var(--radix-popover-content-available-height)" }}
+          // Pembukaan via hover tidak boleh mencuri fokus dari yang sedang
+          // diketik; pembukaan via keyboard/klik justru butuh fokus masuk
+          // supaya tautan di dalam panel terjangkau.
+          onOpenAutoFocus={(event) => {
+            if (hoverOpenRef.current) event.preventDefault();
           }}
-          className={cn(
-            "fixed z-50 block max-w-[calc(100vw-1rem)] overflow-y-auto",
-            "rounded-lg border border-gray-200 bg-white p-3 text-left font-normal normal-case text-gray-900 shadow-lg"
-          )}
+          onMouseEnter={cancelScheduledClose}
+          onMouseLeave={scheduleClose}
         >
-          <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Istilah akuntansi
           </span>
-          <span className="mt-0.5 block text-sm font-semibold text-gray-900">{entry.term}</span>
-          <span className="mt-1.5 block text-sm leading-relaxed text-gray-600">{entry.definisi}</span>
+          <span className="mt-0.5 block text-sm font-semibold text-foreground">{entry.term}</span>
+          <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">{entry.definisi}</span>
           {entry.contoh && (
-            <span className="mt-2 block rounded-md bg-gray-50 p-2 text-xs leading-relaxed text-gray-600">
-              <span className="font-medium text-gray-700">Contoh: </span>
+            <span className="mt-2 block rounded-md bg-muted p-2 text-xs leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Contoh: </span>
               {entry.contoh}
             </span>
           )}
           {!hideGlossaryLink && (
             <Link
               href={glossaryHref(entry.key)}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               Pelajari selengkapnya
               <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
           )}
-        </span>
-      )}
+        </PopoverContent>
+      </Popover>
     </span>
   );
 }

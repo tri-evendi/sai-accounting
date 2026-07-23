@@ -109,7 +109,7 @@ export function Wizard({
     <div>
       {/* ── Penanda langkah ─────────────────────────────────────────────── */}
       <nav aria-label="Langkah pengisian" className="mb-6">
-        <p className="mb-2 text-sm font-medium text-gray-600">
+        <p className="mb-2 text-sm font-medium text-muted-foreground">
           Langkah <span className="tabular-nums">{index + 1}</span> dari{" "}
           <span className="tabular-nums">{steps.length}</span>
         </p>
@@ -124,9 +124,9 @@ export function Wizard({
                 <span
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                    state === "done" && "bg-green-100 text-green-800",
-                    state === "current" && "bg-blue-700 text-white",
-                    state === "todo" && "bg-gray-100 text-gray-500"
+                    state === "done" && "bg-success-soft text-success-strong",
+                    state === "current" && "bg-primary text-white",
+                    state === "todo" && "bg-muted text-muted-foreground"
                   )}
                 >
                   {state === "done" ? (
@@ -141,15 +141,15 @@ export function Wizard({
                   <span
                     className={cn(
                       "block truncate text-sm font-medium",
-                      state === "current" ? "text-gray-900" : "text-gray-700"
+                      state === "current" ? "text-foreground" : "text-foreground"
                     )}
                   >
                     {s.title}
                     {s.optional && (
-                      <span className="ml-1 font-normal text-gray-500">(opsional)</span>
+                      <span className="ml-1 font-normal text-muted-foreground">(opsional)</span>
                     )}
                   </span>
-                  <span className="block text-xs text-gray-500">{label}</span>
+                  <span className="block text-xs text-muted-foreground">{label}</span>
                 </span>
               </>
             );
@@ -162,9 +162,9 @@ export function Wizard({
                     onClick={() => onNavigate(s.id)}
                     aria-current={undefined}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2",
-                      "transition-colors duration-150 hover:border-gray-300 hover:bg-gray-50",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-1"
+                      "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 py-2",
+                      "transition-colors duration-150 hover:border-border hover:bg-muted",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     )}
                   >
                     {content}
@@ -175,8 +175,8 @@ export function Wizard({
                     className={cn(
                       "flex w-full items-center gap-2 rounded-lg border px-3 py-2",
                       state === "current"
-                        ? "border-blue-700 bg-blue-50"
-                        : "border-gray-200 bg-white"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-white"
                     )}
                   >
                     {content}
@@ -190,14 +190,14 @@ export function Wizard({
 
       {/* ── Judul & penjelasan langkah ──────────────────────────────────── */}
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">{step.title}</h2>
-        <p className="mt-0.5 text-sm text-gray-600">{step.description}</p>
+        <h2 className="text-lg font-semibold text-foreground">{step.title}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{step.description}</p>
       </div>
 
       {notice && (
         <p
           role="status"
-          className="mb-4 flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800"
+          className="mb-4 flex items-start gap-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{notice}</span>
@@ -207,7 +207,7 @@ export function Wizard({
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -220,7 +220,7 @@ export function Wizard({
       {showBlockers && blockers.length > 0 && (
         <div
           role="alert"
-          className="mt-6 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="mt-6 rounded-md border border-destructive/30 bg-destructive-soft p-3 text-sm text-destructive-strong"
         >
           <p className="flex items-center gap-2 font-medium">
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -235,7 +235,7 @@ export function Wizard({
       )}
 
       {/* ── Navigasi ────────────────────────────────────────────────────── */}
-      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
+      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4">
         <Button
           type="button"
           variant="secondary"
@@ -275,7 +275,7 @@ export function Wizard({
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-gray-500">
+      <p className="mt-3 text-xs text-muted-foreground">
         Belum ada apa pun yang tersimpan. Semua isian baru dicatat setelah tombol{" "}
         <strong>{finishLabel}</strong> di langkah terakhir ditekan.
       </p>
@@ -312,14 +312,14 @@ export function WizardSummaryRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5">
-      <dt className="text-sm text-gray-600">
+      <dt className="text-sm text-muted-foreground">
         {label}
-        {hint && <span className="mt-0.5 block text-xs text-gray-500">{hint}</span>}
+        {hint && <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>}
       </dt>
       <dd
         className={cn(
           "shrink-0 text-right text-sm tabular-nums",
-          strong ? "font-semibold text-gray-900" : "text-gray-900"
+          strong ? "font-semibold text-foreground" : "text-foreground"
         )}
       >
         {value}

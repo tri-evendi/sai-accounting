@@ -265,8 +265,8 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-10">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900">Beranda</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Beranda</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Ringkasan stok, kas, dan penjualan untuk {session.user.name}
         </p>
       </header>
@@ -378,19 +378,19 @@ export default async function DashboardPage() {
             title="Stok Aman"
             value={stockHealth.healthy}
             href="/inventory"
-            valueClassName="text-green-600"
+            valueClassName="text-success"
           />
           <StatCard
             title="Stok Menipis"
             value={stockHealth.lowStock}
             href="/inventory/opname"
-            valueClassName="text-amber-600"
+            valueClassName="text-warning"
           />
           <StatCard
             title="Stok Habis"
             value={stockHealth.empty}
             href="/inventory/opname"
-            valueClassName="text-red-600"
+            valueClassName="text-destructive"
           />
         </div>
 
@@ -417,11 +417,11 @@ export default async function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left bg-gray-50/80">
-                  <th className="px-6 py-3 font-medium text-gray-500">Barang</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Jenis</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 text-right">Jumlah</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
+                <tr className="border-b border-border text-left bg-muted/80">
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Jumlah</th>
+                  <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
                 </tr>
               </thead>
               <tbody>
@@ -439,14 +439,14 @@ export default async function DashboardPage() {
                   </tr>
                 ) : (
                   recentMovements.map((m, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/80">
-                      <td className="px-6 py-3 font-medium text-gray-900">{m.itemName}</td>
+                    <tr key={i} className="border-b border-border hover:bg-muted/80">
+                      <td className="px-6 py-3 font-medium text-foreground">{m.itemName}</td>
                       <td className="px-6 py-3">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                             m.type === "in"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                              ? "bg-success-soft text-success-strong"
+                              : "bg-destructive-soft text-destructive-strong"
                           }`}
                         >
                           {m.type === "in" ? "Barang Masuk" : "Barang Keluar"}
@@ -455,7 +455,7 @@ export default async function DashboardPage() {
                       <td className="px-6 py-3 text-right font-semibold tabular-nums">
                         {m.quantity}
                       </td>
-                      <td className="px-6 py-3 text-gray-500">
+                      <td className="px-6 py-3 text-muted-foreground">
                         {new Date(m.date).toLocaleDateString("id-ID")}
                       </td>
                     </tr>
@@ -486,12 +486,12 @@ export default async function DashboardPage() {
               {Array.from(balanceByCurrency.entries()).map(([cur, balance]) => (
                 <Card key={cur} className="border-l-4 border-l-blue-500">
                   <CardHeader className="pb-1">
-                    <CardTitle className="text-sm text-gray-500">Saldo bersih · {cur}</CardTitle>
+                    <CardTitle className="text-sm text-muted-foreground">Saldo bersih · {cur}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p
                       className={`text-2xl font-bold tabular-nums ${
-                        balance >= 0 ? "text-green-600" : "text-red-600"
+                        balance >= 0 ? "text-success" : "text-destructive"
                       }`}
                     >
                       {formatCurrency(balance, cur)}
@@ -502,9 +502,9 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <Card>
-              <CardContent className="py-10 text-center text-gray-500">
+              <CardContent className="py-10 text-center text-muted-foreground">
                 Belum ada catatan kas —{" "}
-                <Link href="/finance/new" className="text-blue-600 hover:underline">
+                <Link href="/finance/new" className="text-primary hover:underline">
                   catat transaksi pertama
                 </Link>
               </CardContent>
@@ -519,30 +519,30 @@ export default async function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-left bg-gray-50/80">
-                      <th className="px-6 py-3 font-medium text-gray-500">Akun</th>
-                      <th className="px-6 py-3 font-medium text-gray-500">Mata Uang</th>
-                      <th className="px-6 py-3 font-medium text-gray-500 text-right">Uang Masuk</th>
-                      <th className="px-6 py-3 font-medium text-gray-500 text-right">Uang Keluar</th>
-                      <th className="px-6 py-3 font-medium text-gray-500 text-right">Saldo</th>
+                    <tr className="border-b border-border text-left bg-muted/80">
+                      <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
+                      <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
+                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Masuk</th>
+                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Keluar</th>
+                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo</th>
                     </tr>
                   </thead>
                   <tbody>
                     {financeBalances.map((b) => (
-                      <tr key={`${b.type}_${b.currency}`} className="border-b border-gray-100">
-                        <td className="px-6 py-3 text-gray-900">
+                      <tr key={`${b.type}_${b.currency}`} className="border-b border-border">
+                        <td className="px-6 py-3 text-foreground">
                           {CASH_TYPE_LABELS[b.type as CashType] || b.type}
                         </td>
-                        <td className="px-6 py-3 text-gray-500">{b.currency}</td>
-                        <td className="px-6 py-3 text-right text-green-600 tabular-nums">
+                        <td className="px-6 py-3 text-muted-foreground">{b.currency}</td>
+                        <td className="px-6 py-3 text-right text-success tabular-nums">
                           {formatCurrency(b.debit, b.currency)}
                         </td>
-                        <td className="px-6 py-3 text-right text-red-600 tabular-nums">
+                        <td className="px-6 py-3 text-right text-destructive tabular-nums">
                           {formatCurrency(b.credit, b.currency)}
                         </td>
                         <td
                           className={`px-6 py-3 text-right font-semibold tabular-nums ${
-                            b.balance >= 0 ? "text-green-600" : "text-red-600"
+                            b.balance >= 0 ? "text-success" : "text-destructive"
                           }`}
                         >
                           {formatCurrency(b.balance, b.currency)}
@@ -591,14 +591,14 @@ export default async function DashboardPage() {
               title="Kontrak Menunggu"
               value={pendingContracts}
               href="/contracts?status=pending"
-              valueClassName="text-amber-600"
+              valueClassName="text-warning"
             />
             <StatCard title="Tagihan Penjualan" value={invoiceCount} href="/invoices" />
             <StatCard
               title="Tagihan Menunggu"
               value={pendingInvoices}
               href="/invoices?status=pending"
-              valueClassName="text-amber-600"
+              valueClassName="text-warning"
             />
             <StatCard title="Pemasok" value={supplierCount} href="/suppliers" />
           </div>
@@ -622,13 +622,13 @@ export default async function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left bg-gray-50/80">
-                    <th className="px-6 py-3 font-medium text-gray-500">
+                  <tr className="border-b border-border text-left bg-muted/80">
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
                       <TermTooltip term="kontrak">No. Kontrak</TermTooltip>
                     </th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Pembeli</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Tanggal</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Pembeli</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -646,17 +646,17 @@ export default async function DashboardPage() {
                     </tr>
                   ) : (
                     latestContracts.map((c) => (
-                      <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50/80">
+                      <tr key={c.id} className="border-b border-border hover:bg-muted/80">
                         <td className="px-6 py-3">
                           <Link
                             href={`/contracts/${c.id}`}
-                            className="text-blue-600 hover:underline font-medium"
+                            className="text-primary hover:underline font-medium"
                           >
                             {c.contractNo}
                           </Link>
                         </td>
-                        <td className="px-6 py-3 text-gray-700">{c.buyer}</td>
-                        <td className="px-6 py-3 text-gray-500">
+                        <td className="px-6 py-3 text-foreground">{c.buyer}</td>
+                        <td className="px-6 py-3 text-muted-foreground">
                           {new Date(c.date).toLocaleDateString("id-ID")}
                         </td>
                         <td className="px-6 py-3">

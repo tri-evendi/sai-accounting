@@ -34,7 +34,7 @@ export default async function DocumentsPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
+        <h1 className="text-2xl font-bold text-foreground">Documents</h1>
         <Link href="/documents/upload"><Button>+ Upload Document</Button></Link>
       </div>
 
@@ -45,11 +45,11 @@ export default async function DocumentsPage({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-6 py-3 font-medium text-gray-500">Filename</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Type</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Contract</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Uploaded</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">Filename</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Type</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Contract</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Uploaded</th>
               </tr>
             </thead>
             <tbody>
@@ -67,13 +67,13 @@ export default async function DocumentsPage({
                 </tr>
               ) : (
                 documents.map((doc) => (
-                  <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3"><a href={doc.filepath} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">{doc.filename}</a></td>
-                    <td className="px-6 py-3 text-gray-500">{doc.type || "-"}</td>
-                    <td className="px-6 py-3 text-gray-500">
+                  <tr key={doc.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-6 py-3"><a href={doc.filepath} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">{doc.filename}</a></td>
+                    <td className="px-6 py-3 text-muted-foreground">{doc.type || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">
                       {doc.contract ? doc.contract.contractNo : "-"}
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{formatDate(doc.uploadedAt)}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{formatDate(doc.uploadedAt)}</td>
                   </tr>
                 ))
               )}

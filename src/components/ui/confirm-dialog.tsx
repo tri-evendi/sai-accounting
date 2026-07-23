@@ -9,16 +9,23 @@
  *   • **dengan `trigger`** — pola lama: komponen ini yang membuka dialognya;
  *   • **terkendali** (`open` + `onOpenChange`) — untuk konfirmasi yang muncul di
  *     TENGAH alur lain, mis. tombol Simpan sebuah formulir yang baru ketahuan
- *     "besar" setelah isiannya dihitung. Tanpa mode ini, konfirmasi semacam itu
- *     hanya bisa memakai `window.confirm`, yang tidak bisa ditata, tidak
- *     berbahasa Indonesia, dan tidak bisa menjelaskan akibatnya.
+ *     "besar" setelah isiannya dihitung.
  *
- * Aksesibilitas: `role="dialog"` + `aria-modal`, judul dilabeli lewat
- * `aria-labelledby`, Escape menutup, dan fokus dipindahkan ke tombol konfirmasi
- * saat dibuka lalu dikembalikan ke pemicunya saat ditutup.
+ * Sejak issue #51 dibangun di atas Radix `AlertDialog` (lihat
+ * `alert-dialog.tsx`): focus trap sungguhan, body scroll-lock, Escape
+ * menutup, fokus kembali ke pemicunya — semuanya dari Radix, bukan rakitan
+ * tangan. Klik di luar sengaja TIDAK menutup (semantik alertdialog):
+ * konfirmasi destruktif harus dijawab, bukan hilang karena salah klik.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { matchesConfirmPhrase } from "@/lib/form-guards";
 import { AlertTriangle } from "lucide-react";
@@ -71,40 +78,21 @@ export function ConfirmDialog({
   const [typed, setTyped] = useState("");
   const confirmRef = useRef<HTMLButtonElement>(null);
   const phraseRef = useRef<HTMLInputElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const titleId = useId();
-  const messageId = useId();
   const phraseId = useId();
+  const messageId = useId();
 
   /** Tanpa `confirmPhrase`, tidak ada gesekan tambahan — perilaku lama. */
   const phraseSatisfied = matchesConfirmPhrase(typed, confirmPhrase);
 
   const setOpen = useCallback(
     (next: boolean) => {
+      // Kotak ketik ulang selalu mulai kosong setiap kali dialog dibuka.
+      if (next) setTyped("");
       if (!isControlled) setUncontrolled(next);
       onOpenChange?.(next);
     },
     [isControlled, onOpenChange]
   );
-
-  useEffect(() => {
-    if (!isOpen) return;
-    openerRef.current = document.activeElement as HTMLElement | null;
-    // Dengan frasa, fokus jatuh ke kotak ketik — tombol konfirmasinya masih mati,
-    // jadi memfokuskannya hanya akan menyesatkan.
-    setTyped("");
-    if (confirmPhrase) phraseRef.current?.focus();
-    else confirmRef.current?.focus();
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      openerRef.current?.focus?.();
-    };
-  }, [isOpen, setOpen, confirmPhrase]);
 
   async function handleConfirm() {
     // Penjaga kedua: tombolnya memang sudah mati, tetapi Enter pada kotak ketik
@@ -127,88 +115,85 @@ export function ConfirmDialog({
         </span>
       )}
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center">
-          {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
-
-          {/* Dialog */}
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            aria-describedby={messageId}
-            className="relative z-10 mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <div className="flex items-start gap-3">
-              <span
-                className={
-                  confirmVariant === "danger"
-                    ? "mt-0.5 shrink-0 text-red-600"
-                    : "mt-0.5 shrink-0 text-blue-700"
-                }
-              >
-                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 id={titleId} className="text-lg font-semibold text-gray-900">
-                  {title}
-                </h3>
-                <p id={messageId} className="mt-2 text-sm leading-relaxed text-gray-600">
-                  {message}
-                </p>
-              </div>
-            </div>
-
-            {confirmPhrase && (
-              <div className="mt-4">
-                <label htmlFor={phraseId} className="block text-sm text-gray-600">
-                  {confirmPhraseLabel}{" "}
-                  <span className="font-semibold text-gray-900">{confirmPhrase}</span>
-                </label>
-                <input
-                  id={phraseId}
-                  ref={phraseRef}
-                  type="text"
-                  value={typed}
-                  onChange={(e) => setTyped(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && phraseSatisfied && !loading) {
-                      e.preventDefault();
-                      handleConfirm();
-                    }
-                  }}
-                  autoComplete="off"
-                  aria-describedby={messageId}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                />
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="cursor-pointer"
-                onClick={() => setOpen(false)}
-                disabled={loading}
-              >
-                {cancelLabel}
-              </Button>
-              <Button
-                ref={confirmRef}
-                variant={confirmVariant}
-                size="sm"
-                className="cursor-pointer"
-                onClick={handleConfirm}
-                disabled={loading || !phraseSatisfied}
-              >
-                {loading ? "Memproses…" : confirmLabel}
-              </Button>
+      <AlertDialog open={isOpen} onOpenChange={setOpen}>
+        <AlertDialogContent
+          // Dengan frasa, fokus jatuh ke kotak ketik — tombol konfirmasinya
+          // masih mati, jadi memfokuskannya hanya akan menyesatkan.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            if (confirmPhrase) phraseRef.current?.focus();
+            else confirmRef.current?.focus();
+          }}
+          onEscapeKeyDown={loading ? (event) => event.preventDefault() : undefined}
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className={
+                confirmVariant === "danger"
+                  ? "mt-0.5 shrink-0 text-destructive"
+                  : "mt-0.5 shrink-0 text-primary"
+              }
+            >
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            </span>
+            {/* `messageId` di pembungkus, BUKAN mengganti id milik Radix
+                Description — id itu dipakai aria-describedby dialognya. */}
+            <div className="min-w-0" id={messageId}>
+              <AlertDialogTitle>{title}</AlertDialogTitle>
+              <AlertDialogDescription className="mt-2">
+                {message}
+              </AlertDialogDescription>
             </div>
           </div>
-        </div>
-      )}
+
+          {confirmPhrase && (
+            <div className="mt-4">
+              <label htmlFor={phraseId} className="block text-sm text-muted-foreground">
+                {confirmPhraseLabel}{" "}
+                <span className="font-semibold text-foreground">{confirmPhrase}</span>
+              </label>
+              <input
+                id={phraseId}
+                ref={phraseRef}
+                type="text"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && phraseSatisfied && !loading) {
+                    e.preventDefault();
+                    handleConfirm();
+                  }
+                }}
+                autoComplete="off"
+                aria-describedby={messageId}
+                className="mt-1 block w-full rounded-md border border-border px-3 py-2 text-sm focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
+              />
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
+              {cancelLabel}
+            </Button>
+            <Button
+              ref={confirmRef}
+              variant={confirmVariant}
+              size="sm"
+              className="cursor-pointer"
+              onClick={handleConfirm}
+              disabled={loading || !phraseSatisfied}
+            >
+              {loading ? "Memproses…" : confirmLabel}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

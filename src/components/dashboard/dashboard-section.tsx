@@ -24,9 +24,9 @@ export function DashboardSection({
     <section className={cn("space-y-5", className)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           {description && (
-            <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -34,7 +34,7 @@ export function DashboardSection({
           {href && (
             <Link
               href={href}
-              className="cursor-pointer text-sm font-medium text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline"
+              className="cursor-pointer text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline"
             >
               {hrefLabel} →
             </Link>

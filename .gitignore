@@ -59,3 +59,6 @@ next-env.d.ts
 # python caches from local tooling/skills
 __pycache__/
 *.pyc
+
+# Local DB dumps / backups — never commit
+backups/

@@ -241,16 +241,16 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   return (
     <div className="max-w-2xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           <TermTooltip term="kas_bank">{heading.title}</TermTooltip>
         </h1>
-        <p className="mt-1 text-sm text-gray-500">{heading.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{heading.description}</p>
         <LearnMore term="kas_bank" className="mt-1" label="Pelajari ini: kas & bank" />
       </header>
 
       {error && (
         <div
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
           role="alert"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -286,7 +286,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>{periodIssue}</span>
                   </p>
@@ -306,13 +306,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   autoFocus={arah === "masuk"}
                   className={cn(
                     "text-right tabular-nums",
-                    arah === "masuk" && "border-green-500 ring-1 ring-green-500"
+                    arah === "masuk" && "border-success ring-1 ring-success"
                   )}
                   label={accountantOn ? "Debit — Uang Masuk" : "Uang Masuk"}
                   value={debit}
                   onChange={(e) => setDebit(e.target.value)}
                 />
-                <p className="mt-1 flex items-center gap-1 text-xs text-green-700">
+                <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
                   <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Menambah saldo kas/bank</span>
                 </p>
@@ -327,13 +327,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   autoFocus={arah === "keluar"}
                   className={cn(
                     "text-right tabular-nums",
-                    arah === "keluar" && "border-red-500 ring-1 ring-red-500"
+                    arah === "keluar" && "border-destructive ring-1 ring-destructive"
                   )}
                   label={accountantOn ? "Kredit — Uang Keluar" : "Uang Keluar"}
                   value={credit}
                   onChange={(e) => setCredit(e.target.value)}
                 />
-                <p className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Mengurangi saldo kas/bank</span>
                 </p>
@@ -353,7 +353,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   }))}
                   required
                 />
-                <p className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+                <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
                     {accountantOn ? (
@@ -373,9 +373,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
             </div>
 
             {value > 0 && (
-              <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 text-sm">
-                <span className="text-gray-500">Nilai dasar (IDR)</span>
-                <span className="font-medium text-gray-900 tabular-nums">
+              <div className="mt-4 flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Nilai dasar (IDR)</span>
+                <span className="font-medium text-foreground tabular-nums">
                   {isForeign && !Number(rate)
                     ? "— isi kurs dulu"
                     : new Intl.NumberFormat("id-ID", {
@@ -392,14 +392,14 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 in Mode Akuntan; it renders the engine's own rule, changing
                 nothing about what is posted. */}
             {accountantOn && journalPreview && (
-              <div className="mt-4 rounded-md border border-gray-200 bg-white">
-                <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm font-medium text-gray-700">
-                  <BookText className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <div className="mt-4 rounded-md border border-border bg-white">
+                <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium text-foreground">
+                  <BookText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Lihat jurnal — pratinjau
                 </div>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-gray-500">
+                    <tr className="text-xs text-muted-foreground">
                       <th className="px-3 py-1.5 text-left font-medium">Akun</th>
                       <th className="px-3 py-1.5 text-right font-medium">Debit</th>
                       <th className="px-3 py-1.5 text-right font-medium">Kredit</th>
@@ -407,14 +407,14 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   </thead>
                   <tbody>
                     {journalPreview.map((line, i) => (
-                      <tr key={i} className="border-t border-gray-100">
-                        <td className="px-3 py-1.5 text-gray-800">{line.account}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-800">
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-3 py-1.5 text-foreground">{line.account}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
                           {line.debit > 0
                             ? new Intl.NumberFormat("id-ID").format(line.debit)
                             : "-"}
                         </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-800">
+                        <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
                           {line.credit > 0
                             ? new Intl.NumberFormat("id-ID").format(line.credit)
                             : "-"}
@@ -423,7 +423,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                     ))}
                   </tbody>
                 </table>
-                <p className="px-3 py-2 text-xs text-gray-500">
+                <p className="px-3 py-2 text-xs text-muted-foreground">
                   Jurnal dibuat otomatis saat transaksi disimpan. Nilai dalam {currency}.
                 </p>
               </div>
@@ -467,7 +467,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   onChange={(e) => setRate(e.target.value)}
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.
                 </p>
               </div>

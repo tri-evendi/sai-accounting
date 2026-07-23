@@ -182,12 +182,12 @@ export function AllocationEditor({
   }
 
   return (
-    <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left">
-      <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-        <Link2 className="h-4 w-4 text-gray-500" aria-hidden="true" />
+    <div className="mt-2 rounded-lg border border-border bg-muted p-3 text-left">
+      <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         Pembelian yang dilunasi pembayaran ini
       </h4>
-      <p className="mb-3 text-xs text-gray-600">
+      <p className="mb-3 text-xs text-muted-foreground">
         Mengubah alokasi hanya memperbaiki laporan sisa utang per dokumen —{" "}
         <strong>tidak mengubah jurnal</strong> dan tidak memindahkan uang. Bila
         dikosongkan, sisa per dokumen kembali <strong>diperkirakan</strong>{" "}
@@ -195,18 +195,18 @@ export function AllocationEditor({
       </p>
 
       {error && (
-        <div className="mb-3 rounded-md bg-red-50 p-2 text-xs text-red-700" role="alert">
+        <div className="mb-3 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
           {error}
         </div>
       )}
 
       {loading ? (
-        <p className="flex items-center gap-1.5 text-xs text-gray-500">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           Memuat daftar pembelian...
         </p>
       ) : !data ? null : data.purchases.length === 0 ? (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Tidak ada pembelian dengan sisa utang untuk supplier ini, jadi tidak ada
           yang bisa dialokasikan.
         </p>
@@ -227,13 +227,13 @@ export function AllocationEditor({
             return (
               <li
                 key={p.id}
-                className="rounded-md border border-gray-200 bg-white p-2.5 transition-colors duration-150 hover:border-gray-300"
+                className="rounded-md border border-border bg-white p-2.5 transition-colors duration-150 hover:border-border"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <label className="flex cursor-pointer items-start gap-2 text-sm">
                     <input
                       type="checkbox"
-                      className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300"
+                      className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
                       checked={checked}
                       disabled={noRate}
                       onChange={(e) =>
@@ -253,13 +253,13 @@ export function AllocationEditor({
                       }
                     />
                     <span>
-                      <span className="font-medium text-gray-900">TRX-{p.id}</span>
-                      <span className="block text-xs text-gray-500 tabular-nums">
+                      <span className="font-medium text-foreground">TRX-{p.id}</span>
+                      <span className="block text-xs text-muted-foreground tabular-nums">
                         {formatDateShort(p.date)}
                         {p.dueDate && <> · j.tempo {formatDateShort(p.dueDate)}</>}
                       </span>
                       {p.note && (
-                        <span className="block max-w-64 truncate text-xs text-gray-400">
+                        <span className="block max-w-64 truncate text-xs text-muted-foreground">
                           {p.note}
                         </span>
                       )}
@@ -267,18 +267,18 @@ export function AllocationEditor({
                   </label>
 
                   <div className="text-right">
-                    <span className="block text-xs text-gray-500">Sisa utang</span>
-                    <span className="block text-sm font-medium text-gray-900 tabular-nums">
+                    <span className="block text-xs text-muted-foreground">Sisa utang</span>
+                    <span className="block text-sm font-medium text-foreground tabular-nums">
                       {noRate ? "Kurs belum diisi" : formatCurrency(p.remainingBase!, "IDR")}
                     </span>
-                    <span className="block text-xs text-gray-400 tabular-nums">
+                    <span className="block text-xs text-muted-foreground tabular-nums">
                       Nilai {formatCurrency(p.amount, p.currency)}
                     </span>
                   </div>
                 </div>
 
                 {noRate && (
-                  <p className="mt-1.5 text-xs text-amber-700">
+                  <p className="mt-1.5 text-xs text-warning-strong">
                     Pembelian valas tanpa kurs — sisa utang dalam IDR tidak diketahui,
                     jadi belum bisa dialokasikan.
                   </p>
@@ -288,7 +288,7 @@ export function AllocationEditor({
                   <div className="mt-2 flex items-center gap-2">
                     <label
                       htmlFor={`realloc-${paymentId}-${p.id}`}
-                      className="whitespace-nowrap text-xs text-gray-600"
+                      className="whitespace-nowrap text-xs text-muted-foreground"
                     >
                       Dibayar ({paymentCurrency})
                     </label>
@@ -301,13 +301,13 @@ export function AllocationEditor({
                       onChange={(e) =>
                         setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
                       }
-                      className="w-40 rounded-md border border-gray-300 px-2 py-1 text-right text-sm tabular-nums transition-colors duration-150 focus:border-blue-700 focus:ring-1 focus:ring-blue-700 focus:outline-none"
+                      className="w-40 rounded-md border border-border px-2 py-1 text-right text-sm tabular-nums transition-colors duration-150 focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
                     />
                   </div>
                 )}
 
                 {overLine && (
-                  <p className="mt-1.5 text-xs text-red-700" role="alert">
+                  <p className="mt-1.5 text-xs text-destructive-strong" role="alert">
                     Melebihi sisa utang pembelian ini.
                   </p>
                 )}
@@ -317,31 +317,31 @@ export function AllocationEditor({
         </ul>
       )}
 
-      <div className="mt-3 space-y-1 border-t border-gray-200 pt-2 text-xs">
+      <div className="mt-3 space-y-1 border-t border-border pt-2 text-xs">
         <p className="flex justify-between">
-          <span className="text-gray-600">Jumlah pembayaran</span>
-          <span className="font-medium text-gray-900 tabular-nums">
+          <span className="text-muted-foreground">Jumlah pembayaran</span>
+          <span className="font-medium text-foreground tabular-nums">
             {formatCurrency(paymentAmount, paymentCurrency)}
           </span>
         </p>
         <p className="flex justify-between">
-          <span className="text-gray-600">Total dialokasikan</span>
+          <span className="text-muted-foreground">Total dialokasikan</span>
           <span
-            className={`font-medium tabular-nums ${overAllocated ? "text-red-700" : "text-gray-900"}`}
+            className={`font-medium tabular-nums ${overAllocated ? "text-destructive-strong" : "text-foreground"}`}
           >
             {formatCurrency(total, paymentCurrency)}
           </span>
         </p>
         <p className="flex justify-between">
-          <span className="text-gray-600">Belum dialokasikan (diperkirakan)</span>
-          <span className="font-medium text-gray-900 tabular-nums">
+          <span className="text-muted-foreground">Belum dialokasikan (diperkirakan)</span>
+          <span className="font-medium text-foreground tabular-nums">
             {formatCurrency(unallocated, paymentCurrency)}
           </span>
         </p>
       </div>
 
       {overAllocated && (
-        <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700" role="alert">
+        <p className="mt-2 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
           Total alokasi melebihi jumlah pembayaran ini.
         </p>
       )}

@@ -34,23 +34,23 @@ const ICONS: Record<string, LucideIcon> = {
 
 const TONE_STYLES: Record<QuickActionTone, { icon: string; note: string; label: string }> = {
   in: {
-    icon: "bg-green-50 text-green-700 group-hover:bg-green-100",
-    note: "text-green-700",
+    icon: "bg-success-soft text-success-strong group-hover:bg-success-soft",
+    note: "text-success-strong",
     label: "Uang masuk",
   },
   out: {
-    icon: "bg-red-50 text-red-700 group-hover:bg-red-100",
-    note: "text-red-700",
+    icon: "bg-destructive-soft text-destructive-strong group-hover:bg-destructive-soft",
+    note: "text-destructive-strong",
     label: "Uang keluar",
   },
   stock: {
-    icon: "bg-amber-50 text-amber-700 group-hover:bg-amber-100",
-    note: "text-amber-700",
+    icon: "bg-warning-soft text-warning-strong group-hover:bg-warning-soft",
+    note: "text-warning-strong",
     label: "Barang",
   },
   neutral: {
-    icon: "bg-blue-50 text-blue-700 group-hover:bg-blue-100",
-    note: "text-blue-700",
+    icon: "bg-primary/10 text-primary group-hover:bg-primary/10",
+    note: "text-primary",
     label: "Dokumen",
   },
 };
@@ -61,12 +61,12 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
   return (
     <section data-tour="aksi-cepat" aria-labelledby="aksi-cepat-judul">
       <div className="mb-3 flex items-center gap-2">
-        <Zap className="h-5 w-5 text-blue-600" aria-hidden="true" />
-        <h2 id="aksi-cepat-judul" className="text-lg font-semibold text-gray-900">
+        <Zap className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2 id="aksi-cepat-judul" className="text-lg font-semibold text-foreground">
           Aksi Cepat
         </h2>
       </div>
-      <p className="mb-4 text-sm text-gray-500">
+      <p className="mb-4 text-sm text-muted-foreground">
         Pekerjaan yang paling sering dilakukan — pilih satu untuk langsung membuka formulirnya.
       </p>
 
@@ -79,9 +79,9 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
               key={action.key}
               href={action.href}
               className={cn(
-                "group flex min-h-[6.5rem] cursor-pointer items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm",
+                "group flex min-h-[6.5rem] cursor-pointer items-start gap-4 rounded-xl border border-border bg-white p-4 shadow-sm",
                 "transition-shadow duration-200 hover:shadow-md",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
             >
               <span
@@ -93,11 +93,11 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
                 <Icon className="h-6 w-6" aria-hidden="true" />
               </span>
               <span className="min-w-0">
-                <span className="block text-base font-semibold text-gray-900">{action.label}</span>
+                <span className="block text-base font-semibold text-foreground">{action.label}</span>
                 <span className={cn("mt-0.5 block text-xs font-medium", tone.note)}>
                   {tone.label}
                 </span>
-                <span className="mt-1 block text-sm leading-snug text-gray-500">
+                <span className="mt-1 block text-sm leading-snug text-muted-foreground">
                   {action.description}
                 </span>
               </span>

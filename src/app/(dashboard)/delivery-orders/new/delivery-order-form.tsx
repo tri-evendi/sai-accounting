@@ -264,7 +264,7 @@ export function DeliveryOrderForm({
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -290,7 +290,7 @@ export function DeliveryOrderForm({
                 required
               />
               {periodIssue && (
-                <p className="mt-1 flex items-start gap-1 text-xs text-red-700" role="alert">
+                <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                   <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>{periodIssue}</span>
                 </p>
@@ -307,9 +307,9 @@ export function DeliveryOrderForm({
                 value={consigneeId != null ? String(consigneeId) : null}
                 onChange={(v) => setConsigneeId(v == null ? null : Number(v))}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Belum ada?{" "}
-                <Link href="/consignees/new" target="_blank" className="text-blue-600 hover:underline">
+                <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
                   Tambah consignee
                 </Link>
                 .
@@ -369,7 +369,7 @@ export function DeliveryOrderForm({
               const requested = line.itemId != null ? requestedByItem.get(line.itemId) ?? 0 : 0;
               const over = item != null && requested > item.currentStock;
               return (
-                <div key={i} className="rounded-md border border-gray-200 p-3">
+                <div key={i} className="rounded-md border border-border p-3">
                   <div className="flex items-end gap-3">
                     <div className="flex-1">
                       <SearchableSelect
@@ -383,22 +383,22 @@ export function DeliveryOrderForm({
                       />
                     </div>
                     <div className="w-24">
-                      <label className="mb-1 block text-xs font-medium text-gray-500">Bags</label>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">Bags</label>
                       <input
                         type="number"
                         min={0}
-                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                        className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                         value={line.bags}
                         onChange={(e) => updateLine(i, { bags: Number(e.target.value) })}
                       />
                     </div>
                     <div className="w-28">
-                      <label className="mb-1 block text-xs font-medium text-gray-500">Kg/Bag</label>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">Kg/Bag</label>
                       <input
                         type="number"
                         min={0}
                         step="0.01"
-                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums"
+                        className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
                         value={line.kgPerBag}
                         onChange={(e) => updateLine(i, { kgPerBag: Number(e.target.value) })}
                       />
@@ -406,7 +406,7 @@ export function DeliveryOrderForm({
                     <button
                       type="button"
                       onClick={() => removeLine(i)}
-                      className="cursor-pointer pb-2 text-red-400 transition-colors duration-150 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={lines.length === 1}
                       aria-label={`Hapus baris barang ${i + 1}`}
                     >
@@ -414,13 +414,13 @@ export function DeliveryOrderForm({
                     </button>
                   </div>
                   <div className="mt-2 flex justify-between text-xs">
-                    <span className={over ? "font-medium text-red-600" : "text-gray-500"}>
+                    <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                       {item
                         ? `Tersedia ${formatNumber(item.currentStock)} ${item.unit || "kg"}`
                         : "Pilih barang untuk melihat stok"}
                       {over && " — melebihi stok, surat jalan akan ditolak!"}
                     </span>
-                    <span className="tabular-nums text-gray-700">
+                    <span className="tabular-nums text-foreground">
                       = {formatNumber(lineKg(line))} kg
                     </span>
                   </div>
@@ -436,12 +436,12 @@ export function DeliveryOrderForm({
         <CardContent className="py-3">
           <dl className="space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-gray-500">Total Bags</dt>
-              <dd className="tabular-nums font-medium text-gray-900">{formatNumber(totalBags)}</dd>
+              <dt className="text-muted-foreground">Total Bags</dt>
+              <dd className="tabular-nums font-medium text-foreground">{formatNumber(totalBags)}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="font-medium text-gray-500">Total Keluar (kg)</dt>
-              <dd className="text-lg font-bold tabular-nums text-gray-900">
+              <dt className="font-medium text-muted-foreground">Total Keluar (kg)</dt>
+              <dd className="text-lg font-bold tabular-nums text-foreground">
                 {formatNumber(totalKg)} kg
               </dd>
             </div>

@@ -63,7 +63,7 @@ function Amount({ value, currency }: { value: number; currency: string }) {
   return (
     <span
       className={`inline-flex items-center justify-end gap-1 tabular-nums ${
-        inflow ? "text-green-700" : "text-red-700"
+        inflow ? "text-success-strong" : "text-destructive-strong"
       }`}
     >
       {inflow ? (
@@ -193,10 +193,10 @@ export function ReconciliationWorkspace({
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Rekonsiliasi Bank ({currency})
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Periode {formatDateShort(statement.periodStart)} — {formatDateShort(statement.periodEnd)}
           </p>
         </div>
@@ -223,7 +223,7 @@ export function ReconciliationWorkspace({
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+        <div className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
           {error}
           {rowErrors.length > 0 && (
             <ul className="mt-2 list-disc pl-5 space-y-0.5">
@@ -240,29 +240,29 @@ export function ReconciliationWorkspace({
         <CardContent className="py-4">
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
-              <p className="text-xs text-gray-500">Saldo Awal → Akhir (koran)</p>
-              <p className="text-sm font-medium text-gray-900 tabular-nums">
+              <p className="text-xs text-muted-foreground">Saldo Awal → Akhir (koran)</p>
+              <p className="text-sm font-medium text-foreground tabular-nums">
                 {formatCurrency(statement.openingBalance, currency)} →{" "}
                 {formatCurrency(statement.closingBalance, currency)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Mutasi Koran (net)</p>
+              <p className="text-xs text-muted-foreground">Mutasi Koran (net)</p>
               <p className="text-sm font-medium tabular-nums">
                 <Amount value={summary.statementNet} currency={currency} />
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Buku Cocok (net)</p>
+              <p className="text-xs text-muted-foreground">Buku Cocok (net)</p>
               <p className="text-sm font-medium tabular-nums">
                 <Amount value={summary.matchedBookTotal} currency={currency} />
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Selisih (buku vs koran)</p>
+              <p className="text-xs text-muted-foreground">Selisih (buku vs koran)</p>
               <p
                 className={`text-lg font-bold tabular-nums ${
-                  Math.abs(summary.difference) < EPSILON ? "text-green-700" : "text-red-700"
+                  Math.abs(summary.difference) < EPSILON ? "text-success-strong" : "text-destructive-strong"
                 }`}
               >
                 {formatCurrency(summary.difference, currency)}
@@ -272,12 +272,12 @@ export function ReconciliationWorkspace({
 
           <div className="mt-3 flex items-center gap-2 text-sm">
             {summary.complete ? (
-              <span className="inline-flex items-center gap-1 text-green-700">
+              <span className="inline-flex items-center gap-1 text-success-strong">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 Selesai — semua transaksi cocok dan selisih 0.
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-amber-700">
+              <span className="inline-flex items-center gap-1 text-warning-strong">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 Belum selesai — {summary.unmatchedBookCount} transaksi buku &{" "}
                 {summary.unmatchedStatementCount} baris koran belum cocok.
@@ -299,11 +299,11 @@ export function ReconciliationWorkspace({
               <tbody>
                 {unmatchedBook.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-center text-gray-500">Semua transaksi buku sudah cocok.</td>
+                    <td className="px-4 py-6 text-center text-muted-foreground">Semua transaksi buku sudah cocok.</td>
                   </tr>
                 ) : (
                   unmatchedBook.map((b) => (
-                    <tr key={b.id} className="border-b border-gray-100">
+                    <tr key={b.id} className="border-b border-border">
                       <td className="px-2 py-2 w-8">
                         <input
                           type="radio"
@@ -314,8 +314,8 @@ export function ReconciliationWorkspace({
                           onChange={() => setSelectedBook(b.id)}
                         />
                       </td>
-                      <td className="px-2 py-2 text-gray-500 whitespace-nowrap">{formatDateShort(b.date)}</td>
-                      <td className="px-2 py-2 text-gray-900">{b.description}</td>
+                      <td className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(b.date)}</td>
+                      <td className="px-2 py-2 text-foreground">{b.description}</td>
                       <td className="px-2 py-2 text-right">
                         <Amount value={b.amount} currency={currency} />
                       </td>
@@ -337,11 +337,11 @@ export function ReconciliationWorkspace({
               <tbody>
                 {unmatchedLines.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-center text-gray-500">Semua baris koran sudah cocok.</td>
+                    <td className="px-4 py-6 text-center text-muted-foreground">Semua baris koran sudah cocok.</td>
                   </tr>
                 ) : (
                   unmatchedLines.map((l) => (
-                    <tr key={l.id} className="border-b border-gray-100">
+                    <tr key={l.id} className="border-b border-border">
                       <td className="px-2 py-2 w-8">
                         <input
                           type="radio"
@@ -352,8 +352,8 @@ export function ReconciliationWorkspace({
                           onChange={() => setSelectedLine(l.id)}
                         />
                       </td>
-                      <td className="px-2 py-2 text-gray-500 whitespace-nowrap">{formatDateShort(l.date)}</td>
-                      <td className="px-2 py-2 text-gray-900">{l.description}</td>
+                      <td className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(l.date)}</td>
+                      <td className="px-2 py-2 text-foreground">{l.description}</td>
                       <td className="px-2 py-2 text-right">
                         <Amount value={l.amount} currency={currency} />
                       </td>
@@ -368,12 +368,12 @@ export function ReconciliationWorkspace({
 
       {/* Match action bar */}
       {!locked && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted px-4 py-3">
           <Button size="sm" disabled={busy || selectedBook == null || selectedLine == null} onClick={doMatch}>
             <Link2 className="mr-1 h-4 w-4" aria-hidden="true" /> Cocokkan
           </Button>
           {selectedBookRow && selectedLineRow && !amountsAgree && (
-            <span className="inline-flex items-center gap-1 text-sm text-amber-700">
+            <span className="inline-flex items-center gap-1 text-sm text-warning-strong">
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               Nominal berbeda ({formatCurrency(selectedBookRow.amount, currency)} vs{" "}
               {formatCurrency(selectedLineRow.amount, currency)}) — tidak bisa dicocokkan.
@@ -382,7 +382,7 @@ export function ReconciliationWorkspace({
           {(selectedBook != null || selectedLine != null) && (
             <button
               type="button"
-              className="text-sm text-gray-500 hover:underline"
+              className="text-sm text-muted-foreground hover:underline"
               onClick={() => {
                 setSelectedBook(null);
                 setSelectedLine(null);
@@ -402,17 +402,17 @@ export function ReconciliationWorkspace({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="px-4 py-2 font-medium text-gray-500">Buku</th>
-                <th className="px-4 py-2 font-medium text-gray-500">Koran</th>
-                <th className="px-4 py-2 font-medium text-gray-500 text-right">Nominal</th>
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-2 font-medium text-muted-foreground">Buku</th>
+                <th className="px-4 py-2 font-medium text-muted-foreground">Koran</th>
+                <th className="px-4 py-2 font-medium text-muted-foreground text-right">Nominal</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {matchedLines.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
                     Belum ada pasangan yang dicocokkan.
                   </td>
                 </tr>
@@ -420,18 +420,18 @@ export function ReconciliationWorkspace({
                 matchedLines.map((l) => {
                   const b = l.cashAccountId != null ? bookById.get(l.cashAccountId) : undefined;
                   return (
-                    <tr key={l.id} className="border-b border-gray-100">
-                      <td className="px-4 py-2 text-gray-700">
+                    <tr key={l.id} className="border-b border-border">
+                      <td className="px-4 py-2 text-foreground">
                         {b ? (
                           <>
-                            <span className="text-gray-500">{formatDateShort(b.date)}</span> · {b.description}
+                            <span className="text-muted-foreground">{formatDateShort(b.date)}</span> · {b.description}
                           </>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-gray-700">
-                        <span className="text-gray-500">{formatDateShort(l.date)}</span> · {l.description}
+                      <td className="px-4 py-2 text-foreground">
+                        <span className="text-muted-foreground">{formatDateShort(l.date)}</span> · {l.description}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <Amount value={l.amount} currency={currency} />
@@ -440,7 +440,7 @@ export function ReconciliationWorkspace({
                         {!locked && (
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline disabled:opacity-50"
+                            className="inline-flex items-center gap-1 text-sm text-destructive hover:underline disabled:opacity-50"
                             disabled={busy}
                             onClick={() => doUnmatch(l.id)}
                           >
@@ -487,13 +487,13 @@ export function ReconciliationWorkspace({
               </div>
             </form>
 
-            <div className="mt-4 border-t border-gray-100 pt-4">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-700 hover:underline">
+            <div className="mt-4 border-t border-border pt-4">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline">
                 <Upload className="h-4 w-4" aria-hidden="true" />
                 Impor CSV
                 <input type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} disabled={busy} />
               </label>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Kolom: <code>date, description, amount</code> (atau <code>debit</code> &amp; <code>credit</code>).
                 Tanggal <code>YYYY-MM-DD</code> atau <code>DD/MM/YYYY</code>. Nominal angka polos, positif = masuk.
               </p>

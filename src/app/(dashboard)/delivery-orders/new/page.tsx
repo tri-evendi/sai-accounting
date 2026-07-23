@@ -47,10 +47,10 @@ export default async function NewDeliveryOrderPage() {
       <Breadcrumb
         items={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}
       />
-      <h1 className="text-2xl font-bold text-gray-900">
+      <h1 className="text-2xl font-bold text-foreground">
         <TermTooltip term="surat_jalan">Buat Surat Jalan</TermTooltip>
       </h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         Pilih consignee dan (opsional) dokumen sumber, lalu tentukan barang dan jumlah
         (bags × kg/bag). Menerbitkan surat jalan mengurangi stok dalam kilogram.
       </p>

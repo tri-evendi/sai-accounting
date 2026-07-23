@@ -72,7 +72,7 @@ export function CurrencyRateFields({
             onChange={(e) => onRateChange(e.target.value)}
             required
           />
-          <p className="mt-1 text-xs text-gray-500">{rateHint}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{rateHint}</p>
         </div>
       ) : (
         <div />

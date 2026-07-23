@@ -43,8 +43,8 @@ export default async function CategoriesPage() {
   return (
     <div className="max-w-4xl">
       <Breadcrumb items={[{ label: "Aset Tetap", href: "/fixed-assets" }, { label: "Kategori" }]} />
-      <h1 className="text-2xl font-bold text-gray-900">Kategori Aset</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Kategori Aset</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Kategori menentukan metode, umur manfaat, dan akun aset/akumulasi/beban yang dipakai
         aset di dalamnya. Aset baru menyalin nilai-nilai ini dan boleh menimpanya.
       </p>
@@ -69,31 +69,31 @@ export default async function CategoriesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Nama</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Metode</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Umur (bulan)</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Akun Aset</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Akumulasi</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Beban</th>
+                <tr className="border-b border-border text-left">
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Nama</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Metode</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Umur (bulan)</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun Aset</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Akumulasi</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Beban</th>
                 </tr>
               </thead>
               <tbody>
                 {categories.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-100">
-                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={c.id} className="border-b border-border">
+                    <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
+                    <td className="px-4 py-3 text-foreground">
                       {DEPRECIATION_METHOD_LABELS[c.defaultMethod as DepreciationMethod] ??
                         c.defaultMethod}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
                       {c.defaultUsefulLifeMonths}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{byId.get(c.assetAccountId)?.code ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
                       {byId.get(c.accumulatedAccountId)?.code ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {byId.get(c.expenseAccountId)?.code ?? "—"}
                     </td>
                   </tr>

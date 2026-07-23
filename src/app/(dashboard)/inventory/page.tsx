@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import {
   countStockHealth,
@@ -30,6 +31,9 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  // Stok terbuka untuk semua peran, tapi tetap wajib login — tanpa penjaga,
+  // data stok server-rendered bisa terbaca tanpa autentikasi (audit RBAC fase 0).
+  await requirePageSession(["bos", "core", "ptg"]);
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;

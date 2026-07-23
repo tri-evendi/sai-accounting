@@ -34,22 +34,22 @@ export default async function DocumentsPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Documents</h1>
-        <Link href="/documents/upload"><Button>+ Upload Document</Button></Link>
+        <h1 className="text-2xl font-bold text-foreground">Dokumen</h1>
+        <Link href="/documents/upload"><Button>+ Unggah Dokumen</Button></Link>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Uploaded Documents ({totalCount})</CardTitle>
+          <CardTitle>Dokumen Tersimpan ({totalCount})</CardTitle>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Filename</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Type</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Contract</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Uploaded</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Nama File</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Kontrak</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Diunggah</th>
               </tr>
             </thead>
             <tbody>

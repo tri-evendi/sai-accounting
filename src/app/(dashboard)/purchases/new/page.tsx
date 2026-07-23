@@ -37,8 +37,8 @@ export default async function NewPurchaseWizardPage() {
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Pemasok", href: "/suppliers" }, { label: "Pembelian Baru" }]} />
-      <h1 className="text-2xl font-bold text-foreground">Pembelian Baru</h1>
+      <Breadcrumb items={[{ label: "Pemasok", href: "/suppliers" }, { label: "Catat Pembelian" }]} />
+      <h1 className="text-2xl font-bold text-foreground">Catat Pembelian</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Dipandu langkah demi langkah: pemasok, barang, barang masuk gudang, lalu pencatatan
         utangnya. Anda bisa mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong>{" "}

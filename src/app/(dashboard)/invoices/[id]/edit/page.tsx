@@ -54,7 +54,7 @@ export default function EditInvoicePage() {
   useEffect(() => {
     fetch(`/api/invoices/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load invoice");
+        if (!res.ok) throw new Error("Gagal memuat data tagihan");
         return res.json();
       })
       .then((data) => {
@@ -147,7 +147,7 @@ export default function EditInvoicePage() {
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Failed to update invoice"));
+      setError(String(fieldMsg || data.error || "Gagal menyimpan perubahan tagihan"));
       setLoading(false);
     } else {
       router.push(`/invoices/${params.id}`);
@@ -155,12 +155,12 @@ export default function EditInvoicePage() {
     }
   }
 
-  if (fetching) return <PageLoader message="Loading invoice..." />;
-  if (!invoiceNo && !fetching) return <div className="text-destructive">Invoice not found</div>;
+  if (fetching) return <PageLoader message="Memuat data tagihan..." />;
+  if (!invoiceNo && !fetching) return <div className="text-destructive">Tagihan tidak ditemukan</div>;
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Edit Invoice {invoiceNo}</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Ubah Tagihan {invoiceNo}</h1>
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
@@ -168,19 +168,19 @@ export default function EditInvoicePage() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Invoice Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Tagihan</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="invoiceNo" label="Invoice Number" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
-              <Input id="date" type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <Input id="invoiceNo" label="Nomor Tagihan" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
+              <Input id="date" type="date" label="Tanggal" value={date} onChange={(e) => setDate(e.target.value)} required />
               <DueDateField value={dueDate} onChange={setDueDate} />
               <Select
                 id="status" label="Status" value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 options={[
-                  { value: "pending", label: "Pending" },
-                  { value: "signed", label: "Signed" },
-                  { value: "canceled", label: "Canceled" },
+                  { value: "pending", label: "Menunggu" },
+                  { value: "signed", label: "Sah" },
+                  { value: "canceled", label: "Dibatalkan" },
                 ]}
               />
               <InvoiceFxFields
@@ -195,9 +195,9 @@ export default function EditInvoicePage() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Items</CardTitle>
+              <CardTitle>Barang yang Dijual</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> Add Item
+                <Plus className="h-4 w-4 mr-1" /> Tambah Barang
               </Button>
             </div>
           </CardHeader>
@@ -206,19 +206,19 @@ export default function EditInvoicePage() {
               {items.map((item, i) => (
                 <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Item Name</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nama Barang</label>
                     <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Quantity</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Jumlah</label>
                     <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Price</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Harga</label>
                     <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Unit</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Satuan</label>
                     <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
                   </div>
                   <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
@@ -231,8 +231,8 @@ export default function EditInvoicePage() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
         </div>
       </form>
     </div>

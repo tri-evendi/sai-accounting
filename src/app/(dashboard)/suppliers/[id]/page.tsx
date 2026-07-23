@@ -20,6 +20,12 @@ import type { AppliedAdvance } from "@/components/shared/advance-compensation";
 
 export const dynamic = "force-dynamic";
 
+/** Label tampilan untuk `SupplierTransaction.type` — nilai DB tidak berubah. */
+const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  purchase: "Pembelian",
+  payment: "Pembayaran",
+};
+
 export default async function SupplierDetailPage({
   params,
   searchParams,
@@ -102,34 +108,34 @@ export default async function SupplierDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Suppliers", href: "/suppliers" }, { label: supplier.name }]} />
+      <Breadcrumb items={[{ label: "Pemasok", href: "/suppliers" }, { label: supplier.name }]} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">{supplier.name}</h1>
         <div className="flex gap-2">
           <Link href={`/suppliers/${id}/edit`}>
-            <Button variant="secondary">Edit</Button>
+            <Button variant="secondary">Ubah</Button>
           </Link>
           <Link href="/suppliers">
-            <Button variant="ghost">Back</Button>
+            <Button variant="ghost">Kembali</Button>
           </Link>
         </div>
       </div>
 
       {/* Supplier Info */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Supplier Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Informasi Pemasok</CardTitle></CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Nama</dt>
               <dd className="text-sm text-foreground">{supplier.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Address</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Alamat</dt>
               <dd className="text-sm text-foreground">{supplier.address || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Telepon</dt>
               <dd className="text-sm text-foreground">{supplier.phone || "-"}</dd>
             </div>
             <div>
@@ -182,7 +188,7 @@ export default async function SupplierDetailPage({
 
       {/* Transactions */}
       <Card>
-        <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Riwayat Transaksi</CardTitle></CardHeader>
         <div className="px-6 pb-2">
           <SupplierTransactionForm supplierId={supplier.id} />
         </div>
@@ -190,11 +196,11 @@ export default async function SupplierDetailPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Type</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Currency</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Jumlah</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Catatan</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Alokasi</th>
               </tr>
             </thead>
@@ -213,7 +219,7 @@ export default async function SupplierDetailPage({
                 supplier.transactions.map((t) => (
                   <tr key={t.id} className="border-b border-border align-top">
                     <td className="px-6 py-3 text-foreground">{formatDate(t.date)}</td>
-                    <td className="px-6 py-3 text-foreground capitalize">{t.type}</td>
+                    <td className="px-6 py-3 text-foreground">{TRANSACTION_TYPE_LABELS[t.type] ?? t.type}</td>
                     <td className="px-6 py-3 text-foreground text-right font-medium tabular-nums">
                       {formatCurrency(Number(t.amount), t.currency)}
                     </td>

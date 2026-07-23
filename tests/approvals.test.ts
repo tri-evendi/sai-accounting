@@ -34,7 +34,6 @@ import {
   reapprovalAction,
   canResubmit,
   wasResubmitted,
-  isUnreadDecision,
 } from "@/lib/approvals";
 import {
   approvalDecisionSchema,

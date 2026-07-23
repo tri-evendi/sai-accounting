@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,9 @@ export default async function SupplierDetailPage({
   /** `?alokasi=1` arrives from the "Perkiraan" badge on /payables (issue #38). */
   searchParams: Promise<{ alokasi?: string }>;
 }) {
+  // Sejajar dengan halaman daftarnya — tanpa ini, ptg bisa membaca detail
+  // pemasok + uang mukanya lewat URL langsung (temuan audit RBAC fase 0).
+  await requirePageSession(["bos", "core"]);
   const { id } = await params;
   const { alokasi } = await searchParams;
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/lib/constants";
 import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,7 +71,9 @@ export default async function DocumentsPage({
                 documents.map((doc) => (
                   <tr key={doc.id} className="border-b border-border hover:bg-muted">
                     <td className="px-6 py-3"><a href={doc.filepath} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">{doc.filename}</a></td>
-                    <td className="px-6 py-3 text-muted-foreground">{doc.type || "-"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">
+                      {doc.type ? DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type : "-"}
+                    </td>
                     <td className="px-6 py-3 text-muted-foreground">
                       {doc.contract ? doc.contract.contractNo : "-"}
                     </td>

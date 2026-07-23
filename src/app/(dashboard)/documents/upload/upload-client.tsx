@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@/lib/constants";
 import { Upload } from "lucide-react";
 
 interface ContractOption {
@@ -110,14 +111,10 @@ export function UploadClient() {
                 name="type"
                 label="Jenis Dokumen"
                 placeholder="-- Pilih Jenis --"
-                options={[
-                  { value: "bl", label: "Bill of Lading (B/L)" },
-                  { value: "invoice", label: "Tagihan (Invoice)" },
-                  { value: "coo", label: "Surat Keterangan Asal (COO)" },
-                  { value: "fumigation", label: "Sertifikat Fumigasi" },
-                  { value: "contract", label: "Kontrak" },
-                  { value: "other", label: "Lainnya" },
-                ]}
+                options={DOCUMENT_TYPES.map((value) => ({
+                  value,
+                  label: DOCUMENT_TYPE_LABELS[value],
+                }))}
               />
 
               <Select

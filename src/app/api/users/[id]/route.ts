@@ -61,6 +61,29 @@ export async function DELETE(
     return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
   }
 
-  await prisma.user.delete({ where: { id: userId } });
-  return NextResponse.json({ success: true });
+  try {
+    await prisma.user.delete({ where: { id: userId } });
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    const code = (e as { code?: string }).code;
+    // FK RESTRICT: user pernah mengajukan/memutus persetujuan
+    // (approval_requests.requested_by_id / decided_by_id, migrasi 0024). Dulu
+    // ini melempar 500 tak tertangani; kini 409 yang bisa ditindaklanjuti.
+    if (code === "P2003") {
+      return NextResponse.json(
+        {
+          error:
+            "Pengguna ini tidak bisa dihapus karena punya riwayat persetujuan. " +
+            "Ubah perannya atau nonaktifkan, jangan hapus.",
+          code: "referenced",
+        },
+        { status: 409 }
+      );
+    }
+    // Sudah terhapus / tidak ada
+    if (code === "P2025") {
+      return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
+    }
+    throw e;
+  }
 }

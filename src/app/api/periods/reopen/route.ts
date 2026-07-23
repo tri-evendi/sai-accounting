@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { periodLabel } from "@/lib/period";
@@ -14,7 +14,7 @@ import { periodReopenSchema } from "@/lib/validations/period";
  * log together with who had closed the period and when.
  */
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("period.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

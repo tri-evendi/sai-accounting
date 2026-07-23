@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { listClosedPeriods } from "@/lib/period";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * hal yang sama di dalam transaksinya sendiri.
  */
 export default async function StockUpdatePage() {
-  await requirePageSession();
+  await requirePagePermission("inventory.write");
 
   const [items, closedPeriods] = await Promise.all([
     prisma.item.findMany({

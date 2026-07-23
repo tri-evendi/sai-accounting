@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { purchaseReturnSchema, returnSubtotal } from "@/lib/validations/return";
 import { fxAmounts, BASE_CURRENCY } from "@/lib/validations/fx";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postForSource, round2 } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -32,7 +32,7 @@ import {
 } from "@/lib/returns-data";
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("return.read");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("return.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

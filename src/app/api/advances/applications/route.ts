@@ -22,7 +22,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { advanceApplicationsSchema } from "@/lib/validations/advance";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { resolveApplicationLines, getAdvanceTargetState } from "@/lib/advances";
@@ -30,7 +30,7 @@ import { writeAuditLog } from "@/lib/audit";
 
 /** Remaining balance of a compensation target, for the form that fills it in. */
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.read");
   if (!result.authorized) return result.response;
 
   const url = new URL(request.url);
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
  * so that this order cannot be skipped by a cascade.
  */
 export async function DELETE(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.write");
   if (!result.authorized) return result.response;
 
   const id = Number(new URL(request.url).searchParams.get("id"));

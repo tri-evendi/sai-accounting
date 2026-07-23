@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import type { Role } from "@/lib/constants";
+import { ACCOUNTING_PERMISSIONS, can, type Permission } from "@/lib/authz";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { redirect } from "next/navigation";
 
@@ -38,6 +39,31 @@ export async function requireAccountantPage(allowedRoles: Role[] = ["bos"]) {
   const session = await requirePageSession(allowedRoles);
 
   if (!effectiveAccountantMode(session.user)) {
+    redirect("/dashboard");
+  }
+
+  return session;
+}
+
+/**
+ * Penjaga halaman berbasis IZIN (audit RBAC fase 1) — pengganti bertahap
+ * `requirePageSession([peran])`: halaman mendeklarasikan izinnya, matriks
+ * peran hidup di `lib/authz.ts`. Izin permukaan akuntansi
+ * (`ACCOUNTING_PERMISSIONS`) otomatis berlapis Mode Akuntan, menggantikan
+ * `requireAccountantPage`.
+ */
+export async function requirePagePermission(permission: Permission) {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  if (!can(session.user, permission)) {
+    redirect("/dashboard");
+  }
+
+  if (ACCOUNTING_PERMISSIONS.has(permission) && !effectiveAccountantMode(session.user)) {
     redirect("/dashboard");
   }
 

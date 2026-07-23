@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { advancePaymentSchema } from "@/lib/validations/advance";
 import { fxAmounts } from "@/lib/validations/fx";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getAdvances, summarizeAdvances, type AdvanceType } from "@/lib/advances";
@@ -37,7 +37,7 @@ async function nextAdvanceNo(
 }
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.read");
   if (!result.authorized) return result.response;
 
   const url = new URL(request.url);
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("advance.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

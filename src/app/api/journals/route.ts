@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { journalSchema } from "@/lib/validations/journal";
 import { postJournal, UnbalancedJournalError } from "@/lib/ledger";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("journal.read");
   if (!result.authorized) return result.response;
 
   const journals = await prisma.journal.findMany({
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("journal.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

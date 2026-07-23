@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ export default async function DeliveryOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("delivery_order.read");
   const { id } = await params;
 
   const order = await prisma.deliveryOrder.findUnique({

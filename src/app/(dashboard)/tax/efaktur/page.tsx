@@ -10,7 +10,7 @@
  * columns, not a byte-exact DJP import file. Validate against the current DJP
  * schema before production filing (see `@/lib/efaktur`).
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ export default async function EfakturPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("tax.read");
   const params = await searchParams;
 
   const defaults = currentMonthRange();

@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -84,7 +84,7 @@ function ReportCard({ report }: { report: ReportDefinition }) {
 }
 
 export default async function ReportsPage() {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("report.read");
   const groups = reportsByCategory();
 
   return (

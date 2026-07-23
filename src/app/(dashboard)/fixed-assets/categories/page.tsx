@@ -1,7 +1,7 @@
 /**
  * Kategori aset tetap (issue #28) — daftar + buat. Master data; tanpa jurnal.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,7 @@ const codeToId = (accounts: { id: number; code: string }[], code: string) =>
   accounts.find((a) => a.code === code)?.id;
 
 export default async function CategoriesPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("fixed_asset.read");
 
   const [categories, accounts] = await Promise.all([
     getCategories(),

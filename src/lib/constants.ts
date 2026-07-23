@@ -10,6 +10,13 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
+/**
+ * Tuple nilai peran untuk `z.enum` — SATU sumber (audit RBAC fase 1).
+ * Jangan mengetik ulang `["bos","core","ptg"]` di route/skrip; impor ini
+ * (atau `roleEnum` dari `lib/validations/common.ts`).
+ */
+export const ROLE_VALUES = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
+
 /** Sebutan peran dalam bahasa Indonesia (issue #1) — tampilan saja. */
 export const ROLE_LABELS: Record<Role, string> = {
   bos: "Pimpinan",

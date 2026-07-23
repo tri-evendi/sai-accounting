@@ -8,14 +8,14 @@
  * lock, surfaced here as a 422 with the not-saved notice.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { depreciationRunSchema } from "@/lib/validations/fixed-asset";
 import { runDepreciation } from "@/lib/fixed-assets";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.write");
   if (!result.authorized) return result.response;
 
   const parsed = depreciationRunSchema.safeParse(await request.json());

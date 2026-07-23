@@ -8,7 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
 
@@ -22,7 +22,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("approval_rule.manage");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -91,7 +91,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("approval_rule.manage");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

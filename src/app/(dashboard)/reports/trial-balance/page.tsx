@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getTrialBalance } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ export default async function TrialBalancePage({
 }: {
   searchParams: Promise<{ asOf?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("report.read");
   const sp = await searchParams;
   const { asOf, asOfISO } = resolveAsOf(sp.asOf);
   const tb = await getTrialBalance(asOf);

@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { accountSchema } from "@/lib/validations/account";
 import { normalBalanceFor } from "@/lib/accounting";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 
 export async function GET() {
   // `core` needs to read the chart of accounts to pick a counter account on the
   // cash form. Writing accounts stays `bos`-only.
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("account.read");
   if (!result.authorized) return result.response;
 
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("account.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

@@ -3,13 +3,13 @@
  * No journal — a move changes where an asset sits, not its value.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { assetTransferSchema } from "@/lib/validations/fixed-asset";
 import { transferAsset } from "@/lib/fixed-assets";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.write");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

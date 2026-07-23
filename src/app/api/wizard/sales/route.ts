@@ -31,7 +31,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { invoiceSchema } from "@/lib/validations/invoice";
@@ -60,7 +60,7 @@ function stepError(
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("invoice.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

@@ -12,9 +12,8 @@
  */
 import { z } from "zod";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
-import { ROLES } from "@/lib/constants";
+import { ROLE_VALUES } from "@/lib/constants";
 
-const roleValues = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
 
 /**
  * Ambang nilai in IDR base. Non-negative (an ambang below zero would match
@@ -27,7 +26,7 @@ const threshold = z.coerce.number().nonnegative().max(9_999_999_999_999);
 export const approvalRuleSchema = z.object({
   documentType: z.enum(APPROVAL_DOCUMENT_TYPES),
   minAmount: threshold,
-  approverRole: z.enum(roleValues),
+  approverRole: z.enum(ROLE_VALUES),
   note: z.string().max(1000).trim().optional().nullable(),
   isActive: z.boolean().optional(),
 });

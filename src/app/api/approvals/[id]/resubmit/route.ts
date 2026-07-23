@@ -22,7 +22,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalResubmitSchema } from "@/lib/validations/approval";
 import { ApprovalTransitionError, assertTransition, canResubmit } from "@/lib/approvals";
@@ -31,7 +31,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth();
+  const result = await requireApiPermission("approval.view");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

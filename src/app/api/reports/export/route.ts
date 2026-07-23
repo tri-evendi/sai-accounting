@@ -12,14 +12,14 @@
  * downloads the resulting bytes.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
 import { STATEMENT_TITLES, type StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export async function POST(request: Request) {
-  const authz = await requireAuth(["bos"]);
+  const authz = await requireApiPermission("report.export");
   if (!authz.authorized) return authz.response;
 
   let body: unknown;

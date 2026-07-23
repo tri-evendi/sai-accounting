@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export default async function ContractsPage({
 }: {
   searchParams: Promise<{ status?: string; search?: string; page?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("contract.read");
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;

@@ -4,7 +4,7 @@
  * actual net sales (see @/lib/budget-report); the customer/item tags are a
  * planning breakdown the ledger does not itself split revenue by.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listSalesTargets } from "@/lib/budget-report";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,7 +18,7 @@ export default async function SalesTargetsPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("budget.manage");
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();

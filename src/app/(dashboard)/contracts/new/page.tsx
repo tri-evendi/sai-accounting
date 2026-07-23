@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { listClosedPeriods } from "@/lib/period";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  * hanya memindahkan kabar buruknya lebih awal.
  */
 export default async function NewContractPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("contract.write");
 
   const closedPeriods = await listClosedPeriods();
 

@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { fixedAssetSchema } from "@/lib/validations/fixed-asset";
 import {
   getFixedAssets,
@@ -21,7 +21,7 @@ import {
 import { writeAuditLog } from "@/lib/audit";
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.read");
   if (!result.authorized) return result.response;
 
   const sp = new URL(request.url).searchParams;
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.write");
   if (!result.authorized) return result.response;
 
   const parsed = fixedAssetSchema.safeParse(await request.json());

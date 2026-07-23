@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { stockUpdateSchema, itemSchema } from "@/lib/validations/inventory";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 
 export async function GET() {
-  const result = await requireAuth(); // all roles can view inventory
+  const result = await requireApiPermission("inventory.read"); // all roles can view inventory
   if (!result.authorized) return result.response;
 
   const items = await prisma.item.findMany({
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(); // all roles can update inventory
+  const result = await requireApiPermission("inventory.write"); // all roles can update inventory
   if (!result.authorized) return result.response;
 
   const body = await request.json();

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getReconciliation } from "@/lib/bank-statements";
 import { movementSigned } from "@/lib/reconciliation";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
@@ -12,7 +12,7 @@ export default async function ReconciliationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("reconciliation.read");
 
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();

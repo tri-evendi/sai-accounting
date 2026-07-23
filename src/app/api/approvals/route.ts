@@ -10,12 +10,12 @@
  * rather than from a parameter.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { approvalListQuerySchema } from "@/lib/validations/approval";
 import { listMyApprovalRequests, listPendingApprovals } from "@/lib/approval-queue";
 
 export async function GET(request: Request) {
-  const result = await requireAuth();
+  const result = await requireApiPermission("approval.view");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);

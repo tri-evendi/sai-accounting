@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export default async function FinancePage({
 }: {
   searchParams: Promise<{ type?: string; currency?: string; month?: string; year?: string; page?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("cash.read");
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;

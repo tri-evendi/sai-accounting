@@ -5,7 +5,7 @@
  * compared against the income statement, so a balance-sheet account could never
  * show a realisation. The picker is filtered here; the API re-checks.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { listBudgets } from "@/lib/budget-report";
@@ -20,7 +20,7 @@ export default async function BudgetAccountsPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("budget.manage");
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();

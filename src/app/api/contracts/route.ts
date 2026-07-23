@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractFx, contractSchema, contractSubtotal } from "@/lib/validations/contract";
 import { toDateOrNull } from "@/lib/validations/common";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 
 export async function GET() {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("contract.read");
   if (!result.authorized) return result.response;
 
   const contracts = await prisma.contract.findMany({
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("contract.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

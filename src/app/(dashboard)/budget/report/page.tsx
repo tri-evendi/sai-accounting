@@ -6,7 +6,7 @@
  * reconciles with the P&L. This page reads and posts nothing. Over/under is shown
  * with an icon + label + sign (VarianceBadge), never colour alone.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
 import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default async function BudgetReportPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("budget.manage");
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();

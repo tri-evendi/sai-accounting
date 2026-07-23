@@ -6,11 +6,11 @@
  * jadi ia hanya boleh menghitung — bukan menarik seluruh daftar.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { getApprovalCounts } from "@/lib/approval-queue";
 
 export async function GET() {
-  const result = await requireAuth();
+  const result = await requireApiPermission("approval.view");
   if (!result.authorized) return result.response;
 
   const counts = await getApprovalCounts(

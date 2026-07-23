@@ -6,13 +6,13 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { fixedAssetCategorySchema } from "@/lib/validations/fixed-asset";
 import { getCategories } from "@/lib/fixed-assets";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.read");
   if (!result.authorized) return result.response;
 
   const activeOnly = new URL(request.url).searchParams.get("activeOnly") === "1";
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.write");
   if (!result.authorized) return result.response;
 
   const parsed = fixedAssetCategorySchema.safeParse(await request.json());

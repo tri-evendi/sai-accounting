@@ -21,7 +21,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deliveryOrderSchema } from "@/lib/validations/delivery-order";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { createDeliveryOrderInTx, loadItemNames } from "@/lib/document-writes";
@@ -30,7 +30,7 @@ import { OverIssueError } from "@/lib/delivery-orders";
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
 export async function GET() {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("delivery_order.read");
   if (!result.authorized) return result.response;
 
   const orders = await prisma.deliveryOrder.findMany({
@@ -46,7 +46,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("delivery_order.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

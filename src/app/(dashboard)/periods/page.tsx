@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { listPeriods } from "@/lib/period-close";
 import { PeriodManager } from "./period-manager";
 import { PageHeader } from "@/components/ui/page-header";
@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function PeriodsPage() {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("period.manage");
 
   const periods = await listPeriods();
 

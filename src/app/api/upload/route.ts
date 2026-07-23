@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -26,7 +26,7 @@ function validateFileContent(buffer: Buffer, ext: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("document.write");
   if (!result.authorized) return result.response;
 
   const formData = await request.formData();

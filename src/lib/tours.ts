@@ -63,14 +63,44 @@ export const TOURS: TourDef[] = [
     ],
   },
   {
-    id: "buat_penjualan",
-    path: "/invoices/new",
-    title: "Cara mencatat penjualan",
+    id: "persetujuan",
+    path: "/approvals",
+    title: "Cara kerja persetujuan",
     steps: [
       {
-        title: "Mencatat penjualan",
+        title: "Kenapa ada halaman ini",
         body:
-          "Halaman ini membuat tagihan penjualan (faktur) untuk pelanggan. Isi identitas tagihan, lalu daftar barangnya.",
+          "Transaksi yang nilainya besar tidak langsung masuk pembukuan — ia menunggu keputusan di sini dulu. Dokumennya sudah tersimpan aman; yang tertunda hanya pencatatan jurnalnya.",
+      },
+      {
+        title: "Menunggu Keputusan Anda",
+        body:
+          "Antrean yang harus Anda putuskan. Buka dokumennya lewat tautan, lalu Setujui (jurnal langsung terbit) atau Tolak dengan catatan alasan supaya pemohon tahu apa yang perlu diperbaiki.",
+        target: "persetujuan-antrean",
+      },
+      {
+        title: "Pengajuan Saya",
+        body:
+          "Kabar untuk dokumen yang Anda ajukan: masih menunggu, disetujui, atau ditolak beserta alasannya. Dokumen yang ditolak bisa diperbaiki lalu diajukan ulang dari sini.",
+        target: "persetujuan-pengajuan",
+      },
+      {
+        title: "Riwayat Keputusan",
+        body:
+          "Semua keputusan yang pernah dibuat peran Anda tercatat di sini — bisa diurutkan, jadi mudah menjawab pertanyaan seperti “keputusan terbesar bulan ini”.",
+        target: "persetujuan-riwayat",
+      },
+    ],
+  },
+  {
+    id: "buat_penjualan",
+    path: "/invoices/new",
+    title: "Cara membuat tagihan",
+    steps: [
+      {
+        title: "Membuat tagihan",
+        body:
+          "Halaman ini membuat tagihan penjualan (faktur) untuk pelanggan. Isi identitas tagihan, lalu daftar barangnya. Kalau lebih suka dipandu langkah demi langkah, pakai “Catat Penjualan” di menu Penjualan.",
       },
       {
         title: "Identitas tagihan",

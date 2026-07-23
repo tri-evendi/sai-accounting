@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { reverseJournal } from "@/lib/ledger";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { postingErrorResponse } from "@/lib/api-errors";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("journal.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

@@ -8,12 +8,12 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { budgetSchema } from "@/lib/validations/budget";
 import { accountCategoryFor } from "@/lib/accounting";
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("budget.manage");
   if (!result.authorized) return result.response;
 
   const parsed = budgetSchema.safeParse(await request.json());

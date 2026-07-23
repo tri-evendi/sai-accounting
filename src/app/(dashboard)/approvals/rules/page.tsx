@@ -2,7 +2,7 @@
  * Aturan Persetujuan — jenis dokumen + ambang nilai + peran penyetuju (#25).
  * bos-only, seperti permukaan kebijakan lain (Tutup Periode, Anggaran, Setup).
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { listApprovalRules } from "@/lib/approval-queue";
 import { ApprovalRules } from "./approval-rules-client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalRulesPage() {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("approval_rule.manage");
   const rules = await listApprovalRules({ includeInactive: true });
 
   return (

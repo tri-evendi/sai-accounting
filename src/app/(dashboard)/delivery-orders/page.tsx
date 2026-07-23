@@ -6,7 +6,7 @@
  * dan menautkan ke detail + cetak PDF. Kuantitas rata-kanan & tabular per MASTER.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import { Truck, Plus, Info } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function DeliveryOrdersPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("delivery_order.read");
 
   const orders = await prisma.deliveryOrder.findMany({
     orderBy: { date: "desc" },

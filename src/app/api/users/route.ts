@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
+import { roleEnum } from "@/lib/validations/common";
 
 const createUserSchema = z.object({
   username: z.string().min(1).max(50).trim(),
   password: z.string().min(8).max(128),
   name: z.string().max(100).trim().optional(),
-  role: z.enum(["bos", "core", "ptg"]).default("core"),
+  role: roleEnum.default("core"),
 });
 
 export async function GET() {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("user.manage");
   if (!result.authorized) return result.response;
 
   const users = await prisma.user.findMany({
@@ -24,7 +25,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("user.manage");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

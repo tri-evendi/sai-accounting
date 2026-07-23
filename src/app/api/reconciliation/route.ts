@@ -7,12 +7,12 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { bankStatementSchema } from "@/lib/validations/reconciliation";
 
 export async function GET() {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("reconciliation.read");
   if (!result.authorized) return result.response;
 
   const statements = await prisma.bankStatement.findMany({
@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("reconciliation.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

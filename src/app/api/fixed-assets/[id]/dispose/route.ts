@@ -6,14 +6,14 @@
  * invariant both apply. Rolls back atomically if the journal cannot be built.
  */
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { assetDisposalSchema } from "@/lib/validations/fixed-asset";
 import { disposeAsset } from "@/lib/fixed-assets";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("fixed_asset.write");
   if (!result.authorized) return result.response;
 
   const id = Number((await context.params).id);

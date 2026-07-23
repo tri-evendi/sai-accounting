@@ -3,7 +3,7 @@
  * accumulated depreciation and book value per location.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getFixedAssets, groupByLocation } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -14,7 +14,7 @@ import { MapPin } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function AssetsByLocationPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("fixed_asset.read");
 
   const rows = await getFixedAssets({ status: "active" });
   const groups = groupByLocation(rows);

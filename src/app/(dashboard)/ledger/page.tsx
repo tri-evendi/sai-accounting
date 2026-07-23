@@ -1,4 +1,4 @@
-import { requireAccountantPage } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getAccountLedger } from "@/lib/ledger";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,7 @@ export default async function LedgerPage({
 }: {
   searchParams: Promise<{ accountId?: string; from?: string; to?: string }>;
 }) {
-  await requireAccountantPage(["bos"]);
+  await requirePagePermission("ledger.read");
   const sp = await searchParams;
 
   const accounts = await prisma.account.findMany({

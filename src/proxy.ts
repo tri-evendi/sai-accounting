@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { rolesFor, type Permission } from "@/lib/authz";
 
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
@@ -13,16 +14,32 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
-/** Routes limited to specific roles (prefix match). */
-const ROLE_ROUTES: { prefix: string; roles: string[] }[] = [
-  { prefix: "/finance", roles: ["bos", "core"] },
-  { prefix: "/contracts", roles: ["bos", "core"] },
-  { prefix: "/invoices", roles: ["bos", "core"] },
-  { prefix: "/suppliers", roles: ["bos", "core"] },
-  { prefix: "/customers", roles: ["bos", "core"] },
-  { prefix: "/documents", roles: ["bos", "core"] },
-  { prefix: "/users", roles: ["bos"] },
-  { prefix: "/api/audit", roles: ["bos"] },
+/**
+ * Lapisan CADANGAN per-prefix (audit RBAC fase 2): perannya tidak lagi
+ * diketik di sini, melainkan diturunkan dari matriks `lib/authz.ts` lewat
+ * izin TERLONGGAR di bawah prefix itu (mis. `/accounts` memakai
+ * `account.read` karena core boleh membaca daftar akun via API, walau
+ * halamannya bos-only — penjaga halaman/route yang mengetatkan).
+ * Penegakan sesungguhnya tetap `requirePagePermission` /
+ * `requireApiPermission` di tiap halaman/route.
+ */
+const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
+  { prefix: "/finance", permission: "cash.read" },
+  { prefix: "/contracts", permission: "contract.read" },
+  { prefix: "/invoices", permission: "invoice.read" },
+  { prefix: "/suppliers", permission: "supplier.read" },
+  { prefix: "/customers", permission: "customer.read" },
+  { prefix: "/documents", permission: "document.read" },
+  { prefix: "/users", permission: "user.manage" },
+  { prefix: "/api/audit", permission: "audit.read" },
+  { prefix: "/reports", permission: "report.read" },
+  { prefix: "/budget", permission: "budget.manage" },
+  { prefix: "/journal", permission: "journal.read" },
+  { prefix: "/ledger", permission: "ledger.read" },
+  { prefix: "/accounts", permission: "account.read" },
+  { prefix: "/periods", permission: "period.manage" },
+  { prefix: "/setup", permission: "setup.manage" },
+  { prefix: "/tax", permission: "tax.read" },
 ];
 
 export async function proxy(request: NextRequest) {
@@ -76,9 +93,10 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = token.role as string | undefined;
-  for (const rule of ROLE_ROUTES) {
+  for (const rule of ROUTE_PERMISSIONS) {
     if (pathname.startsWith(rule.prefix) || pathname.startsWith(`/api${rule.prefix}`)) {
-      if (!role || !rule.roles.includes(role)) {
+      const roles = rolesFor(rule.permission) as readonly string[];
+      if (!role || !roles.includes(role)) {
         if (pathname.startsWith("/api/")) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }

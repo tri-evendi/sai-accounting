@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReturnForm } from "./return-form";
@@ -10,7 +10,7 @@ export default async function NewReturnPage({
 }: {
   searchParams: Promise<{ type?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("return.write");
   const sp = await searchParams;
   const initialType = sp.type === "purchase" ? "purchase" : "sales";
 

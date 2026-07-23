@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cashTransactionSchema } from "@/lib/validations/finance";
 import { fxAmounts } from "@/lib/validations/fx";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
@@ -11,7 +11,7 @@ import { handlePostingError } from "@/lib/api-errors";
 class CounterAccountError extends Error {}
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("cash.read");
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("cash.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

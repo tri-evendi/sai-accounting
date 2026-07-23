@@ -7,7 +7,7 @@
  *
  * Terbuka untuk semua peran: memahami istilah bukan hak istimewa.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { PageHeader } from "@/components/ui/page-header";
 import { TERM_LIST } from "@/lib/labels";
 import { GlossaryBrowser } from "./glossary-browser";
@@ -15,7 +15,7 @@ import { GlossaryBrowser } from "./glossary-browser";
 export const dynamic = "force-dynamic";
 
 export default async function GlossaryPage() {
-  await requirePageSession(["bos", "core", "ptg"]);
+  await requirePagePermission("glossary.read");
 
   return (
     <div className="mx-auto max-w-5xl">

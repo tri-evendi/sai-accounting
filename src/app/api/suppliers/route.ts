@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supplierSchema } from "@/lib/validations/finance";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 
 export async function GET() {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("supplier.read");
   if (!result.authorized) return result.response;
 
   const suppliers = await prisma.supplier.findMany({
@@ -16,7 +16,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("supplier.write");
   if (!result.authorized) return result.response;
 
   const body = await request.json();

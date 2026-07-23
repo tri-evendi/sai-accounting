@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  * terakhir.
  */
 export default async function NewSaleWizardPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("invoice.write");
 
   const [customers, contracts, consignees, items, closedPeriods] = await Promise.all([
     prisma.customer.findMany({

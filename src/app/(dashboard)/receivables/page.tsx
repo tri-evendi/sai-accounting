@@ -6,7 +6,7 @@
  * cross-document total is expressed in IDR base.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getReceivables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -28,7 +28,7 @@ export default async function ReceivablesPage({
 }: {
   searchParams: Promise<{ asOf?: string; overdue?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("receivable.read");
   const sp = await searchParams;
   const asOfStr = sp.asOf ?? todayISO();
   const asOf = new Date(`${asOfStr}T23:59:59.999`);

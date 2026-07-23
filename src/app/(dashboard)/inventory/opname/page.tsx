@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import {
   countStockHealth,
   summarizeInventory,
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StockOpnamePage() {
   // Sama seperti /inventory: semua peran boleh, tapi wajib login (audit RBAC fase 0).
-  await requirePageSession(["bos", "core", "ptg"]);
+  await requirePagePermission("inventory.write");
   const allItems = await prisma.item.findMany({
     include: { stock: true },
     orderBy: { name: "asc" },

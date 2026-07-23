@@ -3,7 +3,7 @@
  * input target penjualan, and the Realisasi vs Anggaran report. bos-only, like
  * the other planning/reporting surfaces.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { Card } from "@/components/ui/card";
 import { ClipboardList, Target, GaugeCircle } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -33,7 +33,7 @@ const SURFACES = [
 ];
 
 export default async function BudgetHubPage() {
-  await requirePageSession(["bos"]);
+  await requirePagePermission("budget.manage");
 
   return (
     <div>

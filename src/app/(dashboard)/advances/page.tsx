@@ -10,7 +10,7 @@
  * IDR value at all and is labelled as such rather than folded in at 1:1.
  */
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { getAdvances, summarizeAdvances, ADVANCE_TYPE_LABELS } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ export default async function AdvancesPage({
 }: {
   searchParams: Promise<{ type?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("advance.read");
   const sp = await searchParams;
   const type = sp.type === "sales" || sp.type === "purchase" ? sp.type : undefined;
 

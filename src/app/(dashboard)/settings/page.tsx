@@ -6,12 +6,12 @@
  * spesifik-peran (mis. panel Audit Log) tetap dibedakan di dalam komponen
  * client dan API-nya tetap ber-gate peran masing-masing.
  */
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { SettingsClient } from "./settings-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  await requirePageSession(["bos", "core", "ptg"]);
+  await requirePagePermission("settings.view");
   return <SettingsClient />;
 }

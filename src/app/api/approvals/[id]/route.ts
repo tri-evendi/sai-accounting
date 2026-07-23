@@ -20,7 +20,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource, type PostingSourceType } from "@/lib/posting";
@@ -41,7 +41,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth();
+  const result = await requireApiPermission("approval.decide");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -171,7 +171,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth();
+  const result = await requireApiPermission("approval.view");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

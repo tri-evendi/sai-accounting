@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supplierSchema } from "@/lib/validations/finance";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 
@@ -9,7 +9,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("supplier.read");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -29,7 +29,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos", "core"]);
+  const result = await requireApiPermission("supplier.write");
   if (!result.authorized) return result.response;
 
   const { id } = await params;
@@ -55,7 +55,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("supplier.delete");
   if (!result.authorized) return result.response;
 
   const { id } = await params;

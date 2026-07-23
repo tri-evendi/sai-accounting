@@ -9,13 +9,13 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
 import { listApprovalRules } from "@/lib/approval-queue";
 
 export async function GET(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("approval_rule.manage");
   if (!result.authorized) return result.response;
 
   const includeInactive = new URL(request.url).searchParams.get("all") === "1";
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const result = await requireAuth(["bos"]);
+  const result = await requireApiPermission("approval_rule.manage");
   if (!result.authorized) return result.response;
 
   const parsed = approvalRuleSchema.safeParse(await request.json());

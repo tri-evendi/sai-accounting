@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function ReconciliationListPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("reconciliation.read");
 
   const statements = await prisma.bankStatement.findMany({
     orderBy: [{ periodEnd: "desc" }, { id: "desc" }],

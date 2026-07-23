@@ -3,7 +3,7 @@
  * (issue #28).
  */
 import { notFound } from "next/navigation";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getFixedAsset } from "@/lib/fixed-assets";
 import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
@@ -23,7 +23,7 @@ export default async function FixedAssetDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("fixed_asset.read");
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,7 +22,7 @@ export default async function NewInvoicePage({
 }: {
   searchParams: Promise<{ contractId?: string }>;
 }) {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("invoice.write");
 
   const { contractId } = await searchParams;
   const [contracts, closedPeriods] = await Promise.all([

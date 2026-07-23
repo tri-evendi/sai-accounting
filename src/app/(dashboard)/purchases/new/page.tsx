@@ -1,4 +1,4 @@
-import { requirePageSession } from "@/lib/page-auth";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * sekali saja, lewat `POST /api/wizard/purchase` di langkah terakhir.
  */
 export default async function NewPurchaseWizardPage() {
-  await requirePageSession(["bos", "core"]);
+  await requirePagePermission("purchase.write");
 
   const [suppliers, items, closedPeriods] = await Promise.all([
     prisma.supplier.findMany({

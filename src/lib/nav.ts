@@ -3,7 +3,7 @@
  *
  * Menu tidak lagi berupa daftar modul yang datar dan sebagian berbahasa Inggris,
  * melainkan dikelompokkan menurut pekerjaan sehari-hari: Penjualan, Pembelian,
- * Kas & Bank, Stok, Laporan, Pengaturan. Labelnya memakai bahasa tugas dari
+ * Kas & Bank, Stok, Laporan, Bantuan & Pengaturan. Labelnya memakai bahasa tugas dari
  * `src/lib/labels.ts` (issue #1), sehingga menu, kamus istilah, dan tooltip
  * memakai kata yang sama persis.
  *
@@ -87,6 +87,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // issue #14 — Surat Jalan mengurangi stok saat terbit, tetapi alurnya milik
       // penjualan (barang keluar untuk pembeli), jadi tempatnya di sini.
       { href: "/delivery-orders", label: "Surat Jalan", icon: "PackageCheck", roles: ["bos", "core"], termKey: "surat_jalan" },
+      // Arsip dokumen ekspor (B/L, COO, fumigasi) menyertai kontrak & surat
+      // jalan — ini pekerjaan penjualan, bukan pengaturan aplikasi.
+      { href: "/documents", label: "Dokumen", icon: "Upload", roles: ["bos", "core"] },
       { href: "/receivables", label: "Pelanggan Belum Bayar", icon: "HandCoins", roles: ["bos", "core"], termKey: "piutang" },
       // Retur mencakup retur penjualan & pembelian; ditaruh di satu tempat agar
       // tidak muncul dua kali di menu.
@@ -110,7 +113,9 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "kas",
     label: "Kas & Bank",
     items: [
-      { href: "/finance", label: "Kas & Bank", icon: "DollarSign", roles: ["bos", "core"], termKey: "kas_bank" },
+      // "Buku Kas & Bank", bukan "Kas & Bank": label item tidak boleh kembar
+      // dengan label kelompoknya (lihat penjaga di tests/quick-actions.test.ts).
+      { href: "/finance", label: "Buku Kas & Bank", icon: "DollarSign", roles: ["bos", "core"], termKey: "kas_bank" },
       { href: "/reconciliation", label: "Cocokkan Rekening Koran", icon: "Scale", roles: ["bos", "core"], termKey: "rekonsiliasi_bank" },
     ],
   },
@@ -137,11 +142,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/accounts", label: "Daftar Akun", icon: "BookOpen", roles: ["bos"], accountingOnly: true, termKey: "akun_perkiraan" },
     ],
   },
+  // Label grup ≠ label item mana pun di dalamnya ("Pengaturan" berisi
+  // "Pengaturan" membingungkan); "Bantuan & Pengaturan" juga jujur untuk ptg
+  // yang di sini hanya melihat Kamus Istilah + Pengaturan.
   {
     id: "pengaturan",
-    label: "Pengaturan",
+    label: "Bantuan & Pengaturan",
     items: [
-      { href: "/documents", label: "Dokumen", icon: "Upload", roles: ["bos", "core"] },
       { href: "/glossary", label: "Kamus Istilah", icon: "BookMarked", roles: ["bos", "core", "ptg"] },
       { href: "/periods", label: "Kunci Bulan", icon: "Lock", roles: ["bos"], termKey: "tutup_periode" },
       { href: "/setup", label: "Setup & Saldo Awal", icon: "Wand2", roles: ["bos"], termKey: "saldo_awal" },

@@ -33,9 +33,9 @@ export default async function ConsigneesPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Consignees ({totalCount})</h1>
+        <h1 className="text-2xl font-bold text-foreground">Penerima Barang ({totalCount})</h1>
         <Link href="/consignees/new">
-          <Button>+ New Consignee</Button>
+          <Button>+ Tambah Penerima Barang</Button>
         </Link>
       </div>
 
@@ -44,10 +44,10 @@ export default async function ConsigneesPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Country</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Contact</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Address</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Nama</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Negara</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Kontak</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Alamat</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -77,9 +77,9 @@ export default async function ConsigneesPage({
                     <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">{c.address || "-"}</td>
                     <td className="px-6 py-3">
                       {c.isActive ? (
-                        <Badge variant="success">Active</Badge>
+                        <Badge variant="success">Aktif</Badge>
                       ) : (
-                        <Badge variant="default">Inactive</Badge>
+                        <Badge variant="default">Nonaktif</Badge>
                       )}
                     </td>
                   </tr>

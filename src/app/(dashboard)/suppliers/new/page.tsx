@@ -32,7 +32,7 @@ export default function NewSupplierPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create supplier");
+      setError(data.error || "Gagal menyimpan pemasok");
       setLoading(false);
     } else {
       router.push("/suppliers");
@@ -42,7 +42,7 @@ export default function NewSupplierPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground mb-6">New Supplier</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Pemasok Baru</h1>
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
@@ -50,12 +50,12 @@ export default function NewSupplierPage() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Supplier Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Data Pemasok</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              <Input id="name" name="name" label="Supplier Name" required />
-              <Input id="address" name="address" label="Address" />
-              <Input id="phone" name="phone" label="Phone" />
+              <Input id="name" name="name" label="Nama Pemasok" required />
+              <Input id="address" name="address" label="Alamat" />
+              <Input id="phone" name="phone" label="Telepon" />
               <Input id="email" name="email" type="email" label="Email" />
             </div>
           </CardContent>
@@ -63,10 +63,10 @@ export default function NewSupplierPage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Supplier"}
+            {loading ? "Menyimpan..." : "Simpan"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Cancel
+            Batal
           </Button>
         </div>
       </form>

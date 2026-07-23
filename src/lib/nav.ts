@@ -10,7 +10,7 @@
  * Modul ini MURNI: tanpa React/ikon/Prisma. Ikon disebut sebagai NAMA (string)
  * lalu dipetakan ke komponen `lucide-react` di sidebar — pola yang sama dengan
  * `src/lib/report-catalog.ts`. Karena murni, penyaringan peran + Mode Akuntan
- * bisa diuji langsung di `tests/nav.test.ts`.
+ * bisa diuji langsung di `tests/quick-actions.test.ts`.
  *
  * Penyaringan di sini bersifat TAMPILAN. Otorisasi sebenarnya tetap dilakukan
  * server-side oleh `requirePageSession` / `requireAccountantPage` pada tiap
@@ -77,6 +77,11 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "penjualan",
     label: "Penjualan",
     items: [
+      // Wizard terpandu (issue #5) berdiri paling atas: sebelumnya hanya bisa
+      // dijangkau dari Aksi Cepat beranda, sehingga dari halaman lain pengguna
+      // awam justru tersasar ke formulir polos. Menu = pintu utama, wizard =
+      // jalan utama.
+      { href: "/sales/new", label: "Catat Penjualan", icon: "SquarePen", roles: ["bos", "core"], termKey: "faktur" },
       { href: "/contracts", label: "Kontrak", icon: "FileText", roles: ["bos", "core"], termKey: "kontrak" },
       { href: "/invoices", label: "Tagihan Penjualan", icon: "Receipt", roles: ["bos", "core"], termKey: "faktur" },
       // issue #14 — Surat Jalan mengurangi stok saat terbit, tetapi alurnya milik
@@ -94,6 +99,8 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "pembelian",
     label: "Pembelian",
     items: [
+      // Kembaran "Catat Penjualan" di atas — alasannya sama (issue #5).
+      { href: "/purchases/new", label: "Catat Pembelian", icon: "ShoppingCart", roles: ["bos", "core"], termKey: "pembelian" },
       { href: "/suppliers", label: "Pemasok", icon: "Truck", roles: ["bos", "core"], termKey: "pemasok" },
       { href: "/payables", label: "Tagihan Harus Dibayar", icon: "Wallet", roles: ["bos", "core"], termKey: "utang" },
       { href: "/advances", label: "Uang Muka", icon: "Coins", roles: ["bos", "core"], termKey: "uang_muka" },

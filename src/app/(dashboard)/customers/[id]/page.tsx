@@ -23,37 +23,37 @@ export default async function CustomerDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <Breadcrumb items={[{ label: "Customers", href: "/customers" }, { label: customer.name }]} />
+      <Breadcrumb items={[{ label: "Pelanggan", href: "/customers" }, { label: customer.name }]} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">{customer.name}</h1>
         <div className="flex gap-2">
           <Link href={`/customers/${customer.id}/edit`}>
-            <Button variant="secondary">Edit</Button>
+            <Button variant="secondary">Ubah</Button>
           </Link>
           <Link href="/customers">
-            <Button variant="ghost">Back</Button>
+            <Button variant="ghost">Kembali</Button>
           </Link>
         </div>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Customer Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Informasi Pelanggan</CardTitle></CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Nama</dt>
               <dd className="text-sm text-foreground">{customer.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Person In Charge</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Narahubung (PIC)</dt>
               <dd className="text-sm text-foreground">{customer.pic || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Address</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Alamat</dt>
               <dd className="text-sm text-foreground">{customer.address || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Telepon</dt>
               <dd className="text-sm text-foreground">{customer.phone || "-"}</dd>
             </div>
             <div>
@@ -67,7 +67,7 @@ export default async function CustomerDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Created</dt>
+              <dt className="text-sm font-medium text-muted-foreground">Dibuat</dt>
               <dd className="text-sm text-foreground">{formatDate(customer.createdAt)}</dd>
             </div>
           </dl>

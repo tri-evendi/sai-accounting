@@ -99,8 +99,8 @@ model ContractItem {
   contractId Int      @map("contract_id")
   itemName   String   @map("item_name") @db.VarChar(100)
   bags       Int      @default(0)
-  kgPerBag   Decimal  @default(0) @map("kg_per_bag") @db.Decimal(10, 2)
-  pricePerKg Decimal  @default(0) @map("price_per_kg") @db.Decimal(10, 2)
+  kgPerBag   Decimal  @default(0) @map("kg_per_bag") @db.Decimal(15, 3)
+  pricePerKg Decimal  @default(0) @map("price_per_kg") @db.Decimal(15, 2)
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
@@ -215,7 +215,7 @@ model InvoiceItem {
   id        Int     @id @default(autoincrement())
   invoiceId Int     @map("invoice_id")
   itemName  String  @map("item_name") @db.VarChar(100)
-  quantity  Decimal @default(0) @db.Decimal(10, 2)
+  quantity  Decimal @default(0) @db.Decimal(15, 3)
   price     Decimal @default(0) @db.Decimal(15, 2)
   unit      String? @db.VarChar(20)
 
@@ -262,7 +262,7 @@ model Item {
 model Stock {
   id       Int      @id @default(autoincrement())
   itemId   Int      @map("item_id")
-  quantity Decimal  @db.Decimal(10, 2)
+  quantity Decimal  @db.Decimal(15, 3)
   type     String   @db.VarChar(10) // enum-like: in, out
   date     DateTime
   /// IDR cost per unit for `in` movements — the input to weighted-average COGS.
@@ -759,7 +759,7 @@ model CurrencyConversion {
   fromCur  String   @map("from_currency") @db.VarChar(5)
   toCur    String   @map("to_currency") @db.VarChar(5)
   amount   Decimal  @db.Decimal(15, 2)
-  rate     Decimal  @db.Decimal(15, 4)
+  rate     Decimal  @db.Decimal(18, 6)
   result   Decimal  @db.Decimal(15, 2)
 
   @@map("currency_conversions")
@@ -1358,7 +1358,7 @@ model DeliveryOrderItem {
   itemName        String   @map("item_name") @db.VarChar(100)
   /// Bentuk bags/kg mengikuti ContractItem persis: `bags` Int + `kgPerBag`.
   bags            Int      @default(0)
-  kgPerBag        Decimal  @default(0) @map("kg_per_bag") @db.Decimal(10, 2)
+  kgPerBag        Decimal  @default(0) @map("kg_per_bag") @db.Decimal(15, 3)
   /// Kuantitas yang dikeluarkan dari stok, dalam KG (= bags × kgPerBag).
   /// Decimal(15,3) per docs/DATABASE.md. KG adalah unit fungible stok/HPP di
   /// app ini (unit_cost = IDR per kg; kontrak berharga per kg).

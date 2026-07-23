@@ -30,6 +30,12 @@ model User {
   accountantMode Boolean? @map("accountant_mode")
   // ───────────────────────────────────────────────────────────
 
+  /// Pencabutan sesi (audit RBAC fase 3). JWT menyimpan angka ini saat login;
+  /// revalidasi berkala membandingkannya dengan DB — beda = sesi mati. Dinaikkan
+  /// oleh mutasi admin yang harus memutus sesi berjalan (ganti peran, reset
+  /// kata sandi); penghapusan pengguna otomatis mencabut (barisnya hilang).
+  sessionVersion Int @default(1) @map("session_version")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

@@ -9,7 +9,7 @@
  * dikirim ke browser — bukan sekadar disembunyikan dengan CSS.
  *
  * Penyaringan ini tetap TAMPILAN saja; setiap halaman tujuan punya penjaga
- * server-nya sendiri (`requirePageSession`), jadi peran yang mengetik URL
+ * server-nya sendiri (`requirePagePermission`), jadi peran yang mengetik URL
  * langsung tetap ditolak di sana.
  */
 

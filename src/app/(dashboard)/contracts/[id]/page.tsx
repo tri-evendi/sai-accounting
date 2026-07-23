@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
+import { can } from "@/lib/authz";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,9 +124,8 @@ export default async function ContractDetailPage({
           <Link href={`/contracts/${contract.id}/edit`}>
             <Button variant="secondary">Edit</Button>
           </Link>
-          {/* Hanya Manager yang boleh menghapus — cermin dari
-              `requireAuth(["bos"])` di route DELETE-nya (issue #6). */}
-          {session.user.role === "bos" && (
+          {/* Cermin izin `contract.delete` yang dicek route DELETE-nya (issue #6). */}
+          {can(session.user, "contract.delete") && (
             <DeleteDocumentButton
               endpoint={`/api/contracts/${contract.id}`}
               label="Hapus Kontrak"

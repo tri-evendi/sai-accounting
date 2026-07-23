@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { roleEnum } from "@/lib/validations/common";
+import { writeAuditLog } from "@/lib/audit";
 
 const createUserSchema = z.object({
   username: z.string().min(1).max(50).trim(),
@@ -55,6 +56,18 @@ export async function POST(request: Request) {
       status: 1, // force password change on first login
     },
     select: { id: true, username: true, name: true, role: true, status: true },
+  });
+
+  // audit RBAC fase 3 — pemberian akun (dan perannya) kini terekam.
+  await writeAuditLog({
+    userId: result.session.user.id,
+    username: result.session.user.name,
+    role: result.session.user.role,
+    action: "user.create",
+    entity: "user",
+    entityId: user.id,
+    details: { username: user.username, role: user.role },
+    request,
   });
 
   return NextResponse.json(user, { status: 201 });

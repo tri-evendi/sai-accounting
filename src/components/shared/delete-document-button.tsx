@@ -12,7 +12,7 @@
  * Penolakan dari server ditampilkan apa adanya: route DELETE kontrak sudah
  * menjelaskan dalam bahasa Indonesia mengapa sebuah kontrak yang sudah dipakai
  * faktur/surat jalan tidak boleh dihapus, dan penjelasan itu jauh lebih berguna
- * daripada kalimat generik. Wewenangnya tetap di server (`requireAuth(["bos"])`);
+ * daripada kalimat generik. Wewenangnya tetap di server (izin `*.delete` via `requireApiPermission`);
  * menyembunyikan tombol ini hanyalah kerapian tampilan.
  */
 

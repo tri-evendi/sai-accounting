@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROLE_LABELS, APP_NAME, COMPANY_NAME, type Role } from "@/lib/constants";
+import { can } from "@/lib/authz";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
@@ -15,7 +16,8 @@ export function SettingsClient() {
 
   if (!session) return null;
 
-  const isManager = session.user.role === "bos";
+  // audit RBAC fase 4 — panel Audit Log tampil bila punya izin membacanya.
+  const isManager = can(session.user, "audit.read");
 
   return (
     <div className={isManager ? "max-w-5xl" : "max-w-2xl"}>

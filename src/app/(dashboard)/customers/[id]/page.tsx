@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { requirePageSession } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,9 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Sejajar dengan halaman daftarnya — tanpa ini, ptg bisa membaca detail
+  // pelanggan lewat URL langsung (temuan audit RBAC fase 0).
+  await requirePageSession(["bos", "core"]);
   const { id } = await params;
 
   const customer = await prisma.customer.findUnique({

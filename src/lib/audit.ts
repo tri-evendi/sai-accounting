@@ -98,7 +98,15 @@ export type AuditAction =
    * matriks bawaan di kode (semua baris override dihapus).
    */
   | "authz.override.update"
-  | "authz.override.reset";
+  | "authz.override.reset"
+  /**
+   * Izin khusus per pengguna (issue #75). `user.authz.override.update`
+   * mencatat set override yang DISIMPAN untuk seorang pengguna (izin ×
+   * boleh/tidak — tidak pernah ada rahasia); `user.authz.override.reset` =
+   * pengguna kembali mengikuti perannya sepenuhnya (semua barisnya dihapus).
+   */
+  | "user.authz.override.update"
+  | "user.authz.override.reset";
 
 export type AuditEntity =
   | "cash_account"
@@ -122,7 +130,9 @@ export type AuditEntity =
   | "approval_request"
   | "approval_rule"
   /** Override matriks izin (issue #73). */
-  | "role_permission_override";
+  | "role_permission_override"
+  /** Izin khusus per pengguna (issue #75). */
+  | "user_permission_override";
 
 export type AuditLogEntry = {
   id: string;

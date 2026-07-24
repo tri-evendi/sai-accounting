@@ -4,7 +4,8 @@
 > **`src/lib/authz.ts`**. Kode tidak pernah bertanya "perannya bos atau core?" —
 > kode bertanya **"punya izin `resource.action`?"**
 > Sejak issue #73 matriks di kode adalah **BAWAAN (baseline)**; matriks
-> **EFEKTIF** = bawaan + override DB yang dikelola dari halaman `/permissions`
+> **EFEKTIF** = bawaan + override DB yang dikelola dari halaman `/permissions`;
+> sejak issue #75 di atasnya masih ada lapisan **izin khusus per PENGGUNA**
 > (lihat § Konfigurasi runtime).
 
 ## Peran
@@ -53,10 +54,50 @@ berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal d
   (PUT = GANTI seluruh set; daftar kosong = reset). Setiap simpan **diaudit**
   (`authz.override.update`/`.reset`) beserta aktor + perannya.
 - **Tampilan ikut efektif**: sidebar memuat set izin efektif dari
-  `GET /api/user/permissions` (self-scoped, tampilan saja); `nav.ts` &
-  `quick-actions.ts` kini mendeklarasikan **izin** per item (bukan daftar
-  peran) dan menerima set efektif; keputusan server component (beranda,
-  tombol hapus detail, panel audit Pengaturan) membaca loader efektif.
+  `GET /api/user/permissions` (self-scoped, tampilan saja; sejak #75 sudah
+  TERMASUK izin khusus per pengguna); `nav.ts` & `quick-actions.ts` kini
+  mendeklarasikan **izin** per item (bukan daftar peran) dan menerima set
+  efektif; keputusan server component (beranda, tombol hapus detail, panel
+  audit Pengaturan) membaca loader efektif.
+
+### Izin khusus per pengguna (issue #75) — lapisan di atas peran
+
+- **Urutan evaluasi** sebuah izin untuk seorang pengguna:
+  `bawaan di kode` → `override peran (role_permission_overrides)` →
+  `override pengguna (user_permission_overrides, migrasi 0030)`. Baris
+  pengguna MENANG atas keputusan perannya: `allowed` true menghadiahkan izin
+  yang perannya tidak punya, false mencabutnya. **Pengguna tanpa baris =
+  mengikuti perannya sepenuhnya** ("Ikuti peran"). Baris yatim diabaikan —
+  deny-by-default tetap tak bisa dibobol lewat data.
+- **Logika murni** di `src/lib/authz-user-overrides.ts`
+  (`tests/authz-user-overrides.test.ts`); sambungan Prisma tetap hanya di
+  `authz-effective.ts` (`canEffective()` kini membaca keduanya;
+  `effectivePermissionsFor()` = set FINAL seorang pengguna).
+- **Cache PER PENGGUNA ± 60 dtk** (konstanta TTL yang sama dengan matriks
+  efektif) + invalidasi eksplisit per id saat menulis — total jeda terasa
+  tetap ≤ ±1 menit. Gagal baca DB → jatuh ke izin level peran (dicatat,
+  tidak disembunyikan). `session_version` SENGAJA tidak dinaikkan saat
+  menyimpan: izin tidak hidup di JWT, penegakan membaca cache ber-TTL yang
+  sama dengan revalidasi sesi, jadi menaikkan versi hanya memaksa login
+  ulang tanpa mempercepat propagasi.
+- **Anti-lockout & invarian saat MENULIS** (`validateUserOverrides`, pesan
+  Indonesia): pengguna ber-peran bos tidak bisa dicabut `authz.manage` /
+  `user.manage`-nya (sel `PROTECTED_CELLS` yang sama dengan #73);
+  `delete ⊆ write ⊆ read` wajib tetap berlaku pada set izin **FINAL**
+  pengguna hasil usulan; izin asing/kembar ditolak. Baris yang sama dengan
+  nilai efektif perannya dinormalkan (dibuang) — yang tersimpan selalu
+  penyimpangan sungguhan.
+- **UI**: panel "Izin Khusus" di halaman `/users` (per pengguna, tri-state
+  "Ikuti peran (Boleh/Tidak)" / "Selalu boleh" / "Selalu tidak"). API
+  `GET/PUT /api/users/[id]/permissions`, penjaga **`authz.manage`** (mengubah
+  otorisasi = kewenangan /permissions, bukan sekadar `user.manage`; PUT =
+  GANTI seluruh set; daftar kosong = ikuti peran). Setiap simpan **diaudit**
+  (`user.authz.override.update`/`.reset`) beserta aktor + perannya.
+- **Catatan**: mengganti PERAN pengguna tidak menghapus izin khususnya —
+  baris lama ikut diterapkan di atas peran barunya (tampak di panelnya dan
+  bisa dihapus dari sana). Validasi invarian dievaluasi saat MENULIS; seperti
+  di #73, perubahan matriks peran belakangan tidak divalidasi ulang terhadap
+  override pengguna yang sudah tersimpan.
 
 ## Empat lapisan penegakan
 

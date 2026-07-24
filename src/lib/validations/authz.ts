@@ -28,3 +28,23 @@ export const overridesPayloadSchema = z.object({
 });
 
 export type OverridesPayload = z.infer<typeof overridesPayloadSchema>;
+
+/**
+ * Payload PUT /api/users/[id]/permissions (issue #75): set LENGKAP override
+ * pengguna itu — bukan patch — daftar kosong = "ikuti peran sepenuhnya".
+ * Bentuk saja; invarian lintas-baris (anti-lockout bos, delete ⊆ write ⊆
+ * read pada set FINAL) dicek `validateUserOverrides`.
+ */
+export const userOverrideRowSchema = z.object({
+  permission: permissionEnum,
+  allowed: z.boolean(),
+});
+
+export const userOverridesPayloadSchema = z.object({
+  overrides: z
+    .array(userOverrideRowSchema)
+    // Paling banyak satu baris per izin — lebih dari itu pasti kembar.
+    .max(PERMISSIONS.length, "Terlalu banyak baris override."),
+});
+
+export type UserOverridesPayload = z.infer<typeof userOverridesPayloadSchema>;

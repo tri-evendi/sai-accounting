@@ -18,11 +18,22 @@ export async function GET() {
   if (!result.authorized) return result.response;
 
   const users = await prisma.user.findMany({
-    select: { id: true, username: true, name: true, role: true, status: true, createdAt: true },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      // issue #75 — jumlah izin khusus, untuk lencana di baris pengguna.
+      _count: { select: { permissionOverrides: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(users);
+  return NextResponse.json(
+    users.map(({ _count, ...user }) => ({ ...user, overrideCount: _count.permissionOverrides }))
+  );
 }
 
 export async function POST(request: Request) {

@@ -10,8 +10,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
-import { Trash2, UserPlus, RotateCcw } from "lucide-react";
+import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/constants";
+import { UserPermissionsPanel } from "./user-permissions-panel";
 
 interface User {
   id: number;
@@ -20,6 +21,8 @@ interface User {
   role: string;
   status: number;
   createdAt: string;
+  /** Jumlah izin khusus tersimpan (issue #75) — lencana di tombol per baris. */
+  overrideCount: number;
 }
 
 export function UsersClient() {
@@ -27,6 +30,8 @@ export function UsersClient() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  // issue #75 — pengguna yang panel "Izin Khusus"-nya sedang terbuka.
+  const [permissionsFor, setPermissionsFor] = useState<number | null>(null);
   const [error, setError] = useState("");
   const { toast } = useToast();
 
@@ -94,6 +99,7 @@ export function UsersClient() {
     const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
     if (res.ok) {
       toast("User deleted");
+      if (permissionsFor === userId) setPermissionsFor(null);
       await fetchUsers();
     } else {
       const data = await res.json();
@@ -160,6 +166,17 @@ export function UsersClient() {
         </Card>
       )}
 
+      {/* Izin Khusus per pengguna (issue #75) — panel inline, pola yang sama
+          dengan form Create; key me-reset state saat berpindah pengguna. */}
+      {permissionsFor !== null && (
+        <UserPermissionsPanel
+          key={permissionsFor}
+          userId={permissionsFor}
+          onClose={() => setPermissionsFor(null)}
+          onSaved={fetchUsers}
+        />
+      )}
+
       {/* Users Table */}
       <Card>
         <div className="overflow-x-auto">
@@ -190,6 +207,25 @@ export function UsersClient() {
                   </td>
                   <td className="px-6 py-3 text-right">
                     <div className="flex justify-end gap-1">
+                      <button
+                        className="relative p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10 cursor-pointer"
+                        title="Izin khusus pengguna ini"
+                        aria-label={`Izin khusus untuk ${user.username}`}
+                        onClick={() =>
+                          setPermissionsFor(permissionsFor === user.id ? null : user.id)
+                        }
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        {user.overrideCount > 0 && (
+                          <Badge
+                            variant="warning"
+                            className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
+                            title={`${user.overrideCount} izin khusus tersimpan`}
+                          >
+                            {user.overrideCount}
+                          </Badge>
+                        )}
+                      </button>
                       <ConfirmDialog
                         title="Reset Password"
                         message={`Reset password for "${user.username}" to "changeme123"? They will be forced to change it on next login.`}

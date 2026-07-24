@@ -40,6 +40,8 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   closedPeriods Period[]
+  /// Izin khusus per pengguna (issue #75) — lihat UserPermissionOverride.
+  permissionOverrides UserPermissionOverride[]
 
   @@map("users")
 }
@@ -68,6 +70,39 @@ model RolePermissionOverride {
   @@unique([role, permission])
   @@index([role])
   @@map("role_permission_overrides")
+}
+
+// ─── issue #75 — Izin khusus per pengguna ────────────────
+/// Lapisan KEDUA di atas matriks efektif peran (#73): penyimpangan per
+/// (pengguna × izin). Urutan evaluasi: bawaan → override peran → override
+/// pengguna — `allowed` true menghadiahkan izin yang perannya tidak punya,
+/// false mencabut izin yang perannya punya. TANPA baris = pengguna mengikuti
+/// perannya sepenuhnya. Baris yatim (izin yang sudah dihapus dari kode)
+/// diabaikan saat evaluasi. Anti-lockout & delete ⊆ write ⊆ read pada set
+/// izin FINAL pengguna divalidasi SEBELUM disimpan
+/// (src/lib/authz-user-overrides.ts).
+///
+/// onDelete: Cascade — sengaja BEDA dari FK users lain (periods /
+/// approval_requests memakai Restrict karena barisnya adalah SEJARAH):
+/// override adalah KONFIGURASI yang tak bermakna tanpa penggunanya, dan
+/// Restrict justru akan memblokir penghapusan pengguna hanya karena ia punya
+/// izin khusus.
+model UserPermissionOverride {
+  id     Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  /// Kunci izin "resource.action" — harus ada di PERMISSION_ROLES.
+  permission String  @db.VarChar(50)
+  allowed    Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Satu keputusan per (pengguna × izin).
+  @@unique([userId, permission])
+  @@index([userId])
+  @@map("user_permission_overrides")
 }
 
 // ─── Contracts ───────────────────────────────────────────

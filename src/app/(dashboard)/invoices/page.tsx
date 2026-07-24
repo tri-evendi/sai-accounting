@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Money } from "@/components/ui/money";
 import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -96,30 +97,42 @@ export default async function InvoicesPage({
               <TableHead>Tanggal</TableHead>
               <TableHead className="text-right">Jumlah Barang</TableHead>
               <TableHead className="text-right">Pembayaran</TableHead>
+              <TableHead className="text-right">Nilai</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoices.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="p-0">
+                <TableCell colSpan={6} className="p-0">
                   <EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Catat penjualan pertama Anda — alurnya dipandu langkah demi langkah." actionLabel="Catat Penjualan (dipandu)" actionHref="/sales/new" />
                 </TableCell>
               </TableRow>
             ) : (
-              invoices.map((inv) => (
-                <TableRow key={inv.id}>
-                  <TableCell>
-                    <Link href={`/invoices/${inv.id}`} className="cursor-pointer font-medium text-primary hover:underline">
-                      {inv.invoiceNo}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(inv.date)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">{inv.items.length}</TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">{inv.payments.length}</TableCell>
-                  <TableCell><StatusBadge status={inv.status} /></TableCell>
-                </TableRow>
-              ))
+              invoices.map((inv) => {
+                // Nilai faktur di mata uangnya sendiri: subtotal baris + PPN.
+                // Sama seperti `invoiceSubtotal` di lib/receivables — dihitung
+                // dari sumber, bukan kolom denormal, agar tak bisa basi.
+                const total =
+                  inv.items.reduce((s, i) => s + Number(i.quantity) * Number(i.price), 0) +
+                  Number(inv.taxAmount ?? 0);
+                return (
+                  <TableRow key={inv.id}>
+                    <TableCell>
+                      <Link href={`/invoices/${inv.id}`} className="cursor-pointer font-medium text-primary hover:underline">
+                        {inv.invoiceNo}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(inv.date)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">{inv.items.length}</TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">{inv.payments.length}</TableCell>
+                    <TableCell className="text-right">
+                      <Money value={total} currency={inv.currency || "IDR"} />
+                    </TableCell>
+                    <TableCell><StatusBadge status={inv.status} /></TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

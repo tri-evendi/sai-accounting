@@ -96,7 +96,7 @@ export function NewCustomerForm() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nama Pelanggan</FormLabel>
+                      <FormLabel required>Nama Pelanggan</FormLabel>
                       <FormControl>
                         <TextInput autoFocus {...field} />
                       </FormControl>

@@ -24,6 +24,7 @@ import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 import { Undo2, Plus, Info } from "lucide-react";
 import { ReturnPdfButton } from "./pdf-button";
 
@@ -35,6 +36,7 @@ export default async function ReturnsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   await requirePagePermission("return.read");
+  const t = await getT();
   const sp = await searchParams;
   const tab = sp.tab === "purchase" ? "purchase" : "sales";
 
@@ -58,18 +60,13 @@ export default async function ReturnsPage({
   return (
     <div>
       <PageHeader
-        title="Retur"
-        description={
-          <>
-            Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok,
-            piutang/utang, dan PPN-nya.
-          </>
-        }
+        title={t("returns.title")}
+        description={t("returns.description")}
         actions={
           <Link href={`/returns/new?type=${tab}`}>
             <Button className="cursor-pointer">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Buat Retur
+              {t("returns.addNew")}
             </Button>
           </Link>
         }
@@ -77,8 +74,16 @@ export default async function ReturnsPage({
 
       <div className="mb-6 flex flex-wrap gap-2">
         {[
-          { label: `Retur Penjualan (${salesReturns.length})`, href: "/returns?tab=sales", active: tab === "sales" },
-          { label: `Retur Pembelian (${purchaseReturns.length})`, href: "/returns?tab=purchase", active: tab === "purchase" },
+          {
+            label: t("returns.tabSales", { count: salesReturns.length }),
+            href: "/returns?tab=sales",
+            active: tab === "sales",
+          },
+          {
+            label: t("returns.tabPurchase", { count: purchaseReturns.length }),
+            href: "/returns?tab=purchase",
+            active: tab === "purchase",
+          },
         ].map((f) => (
           <Link
             key={f.label}
@@ -97,18 +102,16 @@ export default async function ReturnsPage({
       <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          Retur dinilai dengan <strong>kurs dokumen asal</strong> dan tidak boleh melebihi
-          jumlah/nilai yang tersisa. Retur penjualan mengembalikan stok masuk; retur
-          pembelian mengeluarkan stok.
+          {t("returns.noteA")} <strong>{t("returns.noteStrong")}</strong> {t("returns.noteB")}
         </span>
       </p>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={<Undo2 className="h-12 w-12" />}
-          title={tab === "sales" ? "Belum ada retur penjualan" : "Belum ada retur pembelian"}
-          description="Catat barang yang dikembalikan dari faktur atau pembelian di sini."
-          actionLabel="Buat Retur"
+          title={tab === "sales" ? t("returns.emptySales") : t("returns.emptyPurchase")}
+          description={t("returns.emptyDescription")}
+          actionLabel={t("returns.addNew")}
           actionHref={`/returns/new?type=${tab}`}
         />
       ) : (
@@ -116,16 +119,16 @@ export default async function ReturnsPage({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>No. Retur</TableHead>
-                <TableHead>Tanggal</TableHead>
+                <TableHead>{t("returns.colNo")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
                 <TableHead>
-                  {tab === "sales" ? "Faktur / Pelanggan" : "Pembelian / Supplier"}
+                  {tab === "sales" ? t("returns.colOriginSales") : t("returns.colOriginPurchase")}
                 </TableHead>
-                <TableHead className="text-right">DPP</TableHead>
-                <TableHead className="text-right">PPN</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Total (IDR)</TableHead>
-                <TableHead className="text-right">Nota</TableHead>
+                <TableHead className="text-right">{t("returns.colDpp")}</TableHead>
+                <TableHead className="text-right">{t("common.vat")}</TableHead>
+                <TableHead className="text-right">{t("common.total")}</TableHead>
+                <TableHead className="text-right">{t("returns.colTotalIdr")}</TableHead>
+                <TableHead className="text-right">{t("returns.colNota")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,7 +174,7 @@ export default async function ReturnsPage({
                         {r.baseAmount != null ? (
                           <Money value={Number(r.baseAmount)} currency="IDR" />
                         ) : (
-                          <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                          <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

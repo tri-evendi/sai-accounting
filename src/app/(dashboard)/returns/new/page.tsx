@@ -1,6 +1,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 import { ReturnForm } from "./return-form";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export default async function NewReturnPage({
   searchParams: Promise<{ type?: string }>;
 }) {
   await requirePagePermission("return.write");
+  const t = await getT();
   const sp = await searchParams;
   const initialType = sp.type === "purchase" ? "purchase" : "sales";
 
@@ -45,14 +47,12 @@ export default async function NewReturnPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Barang Dikembalikan", href: "/returns" }, { label: "Buat" }]}
-        title="Buat Retur"
-        description={
-          <>
-            Pilih dokumen asal, lalu tentukan barang/jumlah yang dikembalikan. Nilai dan PPN
-            mengikuti dokumen asal dan tidak boleh melebihi sisa yang dapat diretur.
-          </>
-        }
+        breadcrumbs={[
+          { label: t("returns.breadcrumb"), href: "/returns" },
+          { label: t("returns.breadcrumbCreate") },
+        ]}
+        title={t("returns.createTitle")}
+        description={t("returns.createDescription")}
       />
       <ReturnForm
         initialType={initialType}

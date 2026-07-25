@@ -131,6 +131,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Target Penjualan memakainya apa adanya.
     "budget.targetAmountField",
     "budget.colTarget",
+    // Kurung tutup + titik setelah dua contoh nama akun yang dicetak miring —
+    // sama di kedua bahasa Latin, penuh-lebar di bahasa Mandarin (）。).
+    "finance.exampleTail",
     // Tanda titik penutup kalimat yang terpotong oleh penekanan <strong> —
     // sama di kedua bahasa Latin, berbeda di bahasa Mandarin (。).
     "common.fullStop",

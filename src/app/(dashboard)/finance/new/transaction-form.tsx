@@ -34,10 +34,12 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { cn } from "@/lib/utils";
-import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
+import type { CashType } from "@/lib/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import { closedPeriodIssue, negativeValueIssue, type ClosedPeriodRef } from "@/lib/form-guards";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { cashTypeLabels } from "@/lib/i18n/labels";
 
 interface AccountOption {
   id: number;
@@ -54,19 +56,10 @@ const BASE_CURRENCY = "IDR";
  * Pengaruhnya MURNI tampilan — isian, muatan POST, dan mesin jurnal tidak
  * berubah sedikit pun; kedua kolom tetap bisa diisi seperti biasa.
  */
-const ARAH_HEADINGS = {
-  masuk: {
-    title: "Terima Uang",
-    description: "Catat uang yang masuk ke kas atau rekening bank.",
-  },
-  keluar: {
-    title: "Bayar",
-    description: "Catat uang yang keluar dari kas atau rekening bank.",
-  },
-  default: {
-    title: "Catat Transaksi Kas & Bank",
-    description: "Catat uang masuk atau uang keluar beserta kategorinya.",
-  },
+const ARAH_HEADING_KEYS = {
+  masuk: { title: "finance.headingReceiveTitle", description: "finance.headingReceiveDesc" },
+  keluar: { title: "finance.headingPayTitle", description: "finance.headingPayDesc" },
+  default: { title: "finance.headingDefaultTitle", description: "finance.headingDefaultDesc" },
 } as const;
 
 function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
@@ -74,7 +67,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const searchParams = useSearchParams();
   const arahParam = searchParams.get("arah");
   const arah = arahParam === "masuk" || arahParam === "keluar" ? arahParam : null;
-  const heading = ARAH_HEADINGS[arah ?? "default"];
+  const t = useT();
+  const cashLabels = cashTypeLabels(useDictionary());
+  const headingKeys = ARAH_HEADING_KEYS[arah ?? "default"];
+  const heading = {
+    title: t(headingKeys.title),
+    description: t(headingKeys.description),
+  };
   const { data: session } = useSession();
   // issue #11 — when Mode Akuntan is OFF we hide debit/kredit terminology; when
   // ON we keep it and add a read-only "Lihat jurnal" preview. Display-only: the
@@ -101,14 +100,14 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const isForeign = currency !== BASE_CURRENCY;
   const value = Number(debit) > 0 ? Number(debit) : Number(credit);
   const baseValue = isForeign ? value * (Number(rate) || 0) : value;
-  const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal transaksi");
+  const periodIssue = closedPeriodIssue(date, closedPeriods, t("finance.dateGuardLabel"));
 
   // "Lihat jurnal" preview (issue #11) — mirrors buildCashTransactionLines
   // exactly (money in: D Kas/Bank, K akun lawan; money out: the reverse). It
   // RENDERS what the engine already computes; it introduces no posting rule.
   const counterAccount = accounts.find((a) => String(a.id) === counterAccountId);
   const isMoneyIn = Number(debit) > 0;
-  const cashSideLabel = `${CASH_TYPE_LABELS[type]} (Kas/Bank)`;
+  const cashSideLabel = t("finance.cashSide", { type: cashLabels[type] });
   const journalPreview =
     value > 0 && counterAccount
       ? isMoneyIn
@@ -172,8 +171,8 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     if (debitVal === 0 && creditVal === 0) {
       reportFailure(
         accountantOn
-          ? "Isi salah satu: Uang Masuk (debit) atau Uang Keluar (kredit). Salah satunya harus lebih dari 0."
-          : "Isi salah satu: Uang Masuk atau Uang Keluar. Salah satunya harus lebih dari 0.",
+          ? t("finance.errNeedOneAccountant")
+          : t("finance.errNeedOnePlain"),
         "debit",
         false
       );
@@ -181,8 +180,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     }
     if (debitVal > 0 && creditVal > 0) {
       reportFailure(
-        "Satu transaksi hanya boleh satu arah: isi Uang Masuk saja, atau Uang Keluar saja. " +
-          "Bila uang memang berpindah antar kas, catat dua transaksi terpisah.",
+        t("finance.errBothSides"),
         "debit",
         false
       );
@@ -193,8 +191,8 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     if (!counterAccountIdVal) {
       reportFailure(
         accountantOn
-          ? "Pilih akun lawan — jurnal otomatis membutuhkan sisi kedua transaksi."
-          : "Pilih kategori — dari mana uang ini datang atau untuk apa dipakai.",
+          ? t("finance.errPickCounterAccount")
+          : t("finance.errPickCategory"),
         "counterAccountId",
         false
       );
@@ -202,7 +200,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     }
     if (isForeign && !(Number(formData.get("rate")) > 0)) {
       reportFailure(
-        `Kurs wajib diisi untuk transaksi ${currency}: tanpa kurs, nilai rupiah di buku besar tidak bisa dihitung.`,
+        t("finance.errRateRequired", { currency }),
         "rate",
         true
       );
@@ -230,7 +228,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      const failure = resolveSubmitFailure("kas", data, "Transaksi belum bisa disimpan.");
+      const failure = resolveSubmitFailure("kas", data, t("finance.saveFailed"));
       setLoading(false);
       reportFailure(failure.message, failure.field, failure.section === "lanjutan");
     } else {
@@ -241,8 +239,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
 
   /** Ringkasan isian lanjutan supaya nilainya tidak ikut hilang saat terlipat. */
   const advancedSummary = [
-    isForeign ? `${currency} · kurs ${Number(rate) > 0 ? rate : "belum diisi"}` : "Rupiah (IDR)",
-    note.trim() ? "ada catatan" : null,
+    isForeign
+      ? t("finance.advCurrency", {
+          currency,
+          rate: Number(rate) > 0 ? rate : t("common.notEntered"),
+        })
+      : t("common.rupiahIdr"),
+    note.trim() ? t("finance.advHasNote") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -251,11 +254,11 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Buku Kas & Bank", href: "/finance" }, { label: heading.title }]}
+        breadcrumbs={[{ label: t("finance.title"), href: "/finance" }, { label: heading.title }]}
         title={<TermTooltip term="kas_bank">{heading.title}</TermTooltip>}
         description={heading.description}
       />
-      <LearnMore term="kas_bank" className="mt-1 mb-6" label="Pelajari ini: kas & bank" />
+      <LearnMore term="kas_bank" className="mt-1 mb-6" label={t("finance.learnMore")} />
 
       {error && (
         <div
@@ -270,18 +273,18 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Rincian Transaksi</CardTitle>
+            <CardTitle>{t("finance.detailsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
-                id="type" name="type" label="Jenis Kas"
+                id="type" name="type" label={t("finance.filterType")}
                 value={type}
                 onChange={(e) => setType(e.target.value as CashType)}
                 options={[
-                  { value: "bank", label: "Bank" },
-                  { value: "kas_besar", label: "Kas Besar" },
-                  { value: "kas_kecil", label: "Kas Kecil" },
+                  { value: "bank", label: cashLabels.bank },
+                  { value: "kas_besar", label: cashLabels.kas_besar },
+                  { value: "kas_kecil", label: cashLabels.kas_kecil },
                 ]}
               />
               <div>
@@ -289,7 +292,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   id="date"
                   name="date"
                   type="date"
-                  label="Tanggal"
+                  label={t("common.date")}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
@@ -302,7 +305,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 )}
               </div>
               <div className="sm:col-span-2">
-                <Input id="description" name="description" label="Keterangan" required />
+                <Input id="description" name="description" label={t("common.description")} required />
               </div>
 
               <div>
@@ -317,13 +320,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                     "text-right tabular-nums",
                     arah === "masuk" && "border-success ring-1 ring-success"
                   )}
-                  label={accountantOn ? "Debit — Uang Masuk" : "Uang Masuk"}
+                  label={accountantOn ? t("finance.labelDebitAccountant") : t("finance.colMoneyIn")}
                   value={debit}
                   onChange={(e) => setDebit(e.target.value)}
                 />
                 <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
                   <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Menambah saldo kas/bank</span>
+                  <span>{t("finance.hintIncrease")}</span>
                 </p>
               </div>
               <div>
@@ -338,13 +341,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                     "text-right tabular-nums",
                     arah === "keluar" && "border-destructive ring-1 ring-destructive"
                   )}
-                  label={accountantOn ? "Kredit — Uang Keluar" : "Uang Keluar"}
+                  label={accountantOn ? t("finance.labelCreditAccountant") : t("finance.colMoneyOut")}
                   value={credit}
                   onChange={(e) => setCredit(e.target.value)}
                 />
                 <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Mengurangi saldo kas/bank</span>
+                  <span>{t("finance.hintDecrease")}</span>
                 </p>
               </div>
 
@@ -352,8 +355,10 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 <Select
                   id="counterAccountId"
                   name="counterAccountId"
-                  label={accountantOn ? "Akun Lawan (jurnal otomatis)" : "Kategori"}
-                  placeholder={accountantOn ? "-- Pilih akun lawan --" : "-- Pilih kategori --"}
+                  label={accountantOn ? t("finance.counterAccountLabel") : t("finance.categoryLabel")}
+                  placeholder={
+                    accountantOn ? t("finance.pickCounterAccount") : t("finance.pickCategory")
+                  }
                   value={counterAccountId}
                   onChange={(e) => setCounterAccountId(e.target.value)}
                   options={accounts.map((a) => ({
@@ -367,13 +372,15 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   <span>
                     {accountantOn ? (
                       <>
-                        Sisi kedua dari jurnal otomatis: dari mana uang ini datang, atau untuk apa
-                        uang ini dipakai (mis. <em>Beban Listrik</em>, <em>Piutang Usaha</em>).
+                        {t("finance.counterHintAccountant")} <em>{t("finance.exampleElectricity")}</em>,{" "}
+                        <em>{t("finance.exampleReceivable")}</em>
+                        {t("finance.exampleTail")}
                       </>
                     ) : (
                       <>
-                        Dari mana uang ini datang, atau untuk apa uang ini dipakai (mis.{" "}
-                        <em>Beban Listrik</em>, <em>Piutang Usaha</em>).
+                        {t("finance.counterHintPlain")} <em>{t("finance.exampleElectricity")}</em>,{" "}
+                        <em>{t("finance.exampleReceivable")}</em>
+                        {t("finance.exampleTail")}
                       </>
                     )}
                   </span>
@@ -383,10 +390,10 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
 
             {value > 0 && (
               <div className="mt-4 flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-                <span className="text-muted-foreground">Nilai dasar (IDR)</span>
+                <span className="text-muted-foreground">{t("finance.baseValueLabel")}</span>
                 <span className="font-medium text-foreground tabular-nums">
                   {isForeign && !Number(rate)
-                    ? "— isi kurs dulu"
+                    ? t("finance.fillRateFirst")
                     : new Intl.NumberFormat("id-ID", {
                         style: "currency",
                         currency: "IDR",
@@ -404,16 +411,20 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
               <div className="mt-4 rounded-md border border-border bg-card">
                 <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium text-foreground">
                   <BookText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  Lihat jurnal — pratinjau
+                  {t("finance.journalPreviewTitle")}
                 </div>
                 {/* Tabel pratinjau ringkas: padding rapat menimpa bawaan primitif
                     agar tampilannya sama dengan sebelum migrasi. */}
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs hover:bg-transparent">
-                      <TableHead className="h-auto px-3 py-1.5 text-xs">Akun</TableHead>
-                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">Debit</TableHead>
-                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">Kredit</TableHead>
+                      <TableHead className="h-auto px-3 py-1.5 text-xs">{t("common.account")}</TableHead>
+                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">
+                        {t("common.debit")}
+                      </TableHead>
+                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">
+                        {t("common.credit")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -435,7 +446,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   </TableBody>
                 </Table>
                 <p className="px-3 py-2 text-xs text-muted-foreground">
-                  Jurnal dibuat otomatis saat transaksi disimpan. Nilai dalam {currency}.
+                  {t("finance.journalPreviewNote", { currency })}
                 </p>
               </div>
             )}
@@ -445,7 +456,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
         {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
         <DisclosureSection
           className="mb-6"
-          description="Mata uang selain rupiah (beserta kursnya) dan catatan tambahan. Transaksi rupiah biasa tidak perlu membukanya."
+          description={t("finance.advancedDescription")}
           summary={advancedSummary}
           open={advancedOpen}
           onOpenChange={setAdvancedOpen}
@@ -453,11 +464,11 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
-              id="currency" name="currency" label="Mata Uang"
+              id="currency" name="currency" label={t("common.currency")}
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               options={[
-                { value: "IDR", label: "IDR (Rupiah)" },
+                { value: "IDR", label: t("finance.currencyIdrOption") },
                 { value: "USD", label: "USD" },
                 { value: "CNY", label: "CNY" },
               ]}
@@ -472,14 +483,14 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   min="0"
                   className="text-right tabular-nums"
                   label={
-                    <TermTooltip term="kurs">{`Kurs 1 ${currency} ke IDR`}</TermTooltip>
+                    <TermTooltip term="kurs">{t("finance.rateLabel", { currency })}</TermTooltip>
                   }
                   value={rate}
                   onChange={(e) => setRate(e.target.value)}
                   required
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.
+                  {t("finance.rateHint")}
                 </p>
               </div>
             ) : (
@@ -489,7 +500,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
               <Input
                 id="note"
                 name="note"
-                label="Catatan (opsional)"
+                label={t("common.notesOptional")}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -499,7 +510,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
 
         <div className="flex gap-3">
           <Button type="submit" className="cursor-pointer" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan Transaksi"}
+            {loading ? t("common.saving") : t("finance.submit")}
           </Button>
           <Button
             type="button"
@@ -507,7 +518,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
             className="cursor-pointer"
             onClick={() => router.push("/finance")}
           >
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>
@@ -520,8 +531,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
  * Next.js `use-search-params`), jadi formulirnya dibungkus di sini.
  */
 export function NewTransactionClient({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
+  const t = useT();
   return (
-    <Suspense fallback={<PageLoader message="Menyiapkan formulir..." />}>
+    <Suspense fallback={<PageLoader message={t("finance.preparingForm")} />}>
       <NewTransactionForm closedPeriods={closedPeriods} />
     </Suspense>
   );

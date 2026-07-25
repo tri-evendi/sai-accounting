@@ -17,12 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
+import type { CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
 import { CheckCircle2, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MONTH_NAMES } from "@/lib/month-names";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
@@ -35,6 +36,9 @@ export default async function FinancePage({
   searchParams: Promise<{ type?: string; currency?: string; month?: string; year?: string; page?: string }>;
 }) {
   await requirePagePermission("cash.read");
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
+  const cashLabels = cashTypeLabels(dictionary);
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -104,22 +108,23 @@ export default async function FinancePage({
   // Generate filter options
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
-  // Nama bulan bahasa Indonesia dipakai bersama seluruh aplikasi (issue #1).
-  const months = MONTH_NAMES;
+  const months = monthNames(dictionary);
 
   return (
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="kas_bank">Buku Kas &amp; Bank</TermTooltip>}
+        title={<TermTooltip term="kas_bank">{t("finance.title")}</TermTooltip>}
         actions={
           <>
             <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
-            <Link href="/finance/new"><Button>+ Catat Transaksi</Button></Link>
+            <Link href="/finance/new">
+              <Button>{t("finance.addNew")}</Button>
+            </Link>
           </>
         }
       />
-      <LearnMore term="kas_bank" className="mt-1 mb-6" label="Pelajari ini: kas &amp; bank" />
+      <LearnMore term="kas_bank" className="mt-1 mb-6" label={t("finance.learnMore")} />
 
       {/* Filters */}
       <Card className="mb-6">
@@ -127,29 +132,29 @@ export default async function FinancePage({
           <form method="get" className="flex flex-wrap gap-3 items-end">
             {/* Account Type */}
             <div>
-              <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kas</label>
+              <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.filterType")}</label>
               <NativeSelect
                 id="filter-type"
                 name="type"
                 defaultValue={params.type || ""}
                 options={[
-                  { value: "", label: "Semua Jenis" },
-                  { value: "bank", label: "Bank" },
-                  { value: "kas_besar", label: "Kas Besar" },
-                  { value: "kas_kecil", label: "Kas Kecil" },
+                  { value: "", label: t("finance.allTypes") },
+                  { value: "bank", label: cashLabels.bank },
+                  { value: "kas_besar", label: cashLabels.kas_besar },
+                  { value: "kas_kecil", label: cashLabels.kas_kecil },
                 ]}
               />
             </div>
 
             {/* Currency */}
             <div>
-              <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
+              <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">{t("common.currency")}</label>
               <NativeSelect
                 id="filter-currency"
                 name="currency"
                 defaultValue={params.currency || ""}
                 options={[
-                  { value: "", label: "Semua" },
+                  { value: "", label: t("common.all") },
                   { value: "IDR", label: "IDR" },
                   { value: "USD", label: "USD" },
                   { value: "CNY", label: "CNY" },
@@ -159,13 +164,13 @@ export default async function FinancePage({
 
             {/* Year */}
             <div>
-              <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">Tahun</label>
+              <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.yearField")}</label>
               <NativeSelect
                 id="filter-year"
                 name="year"
                 defaultValue={params.year || ""}
                 options={[
-                  { value: "", label: "Semua Tahun" },
+                  { value: "", label: t("finance.allYears") },
                   ...years.map((y) => ({ value: String(y), label: String(y) })),
                 ]}
               />
@@ -173,22 +178,24 @@ export default async function FinancePage({
 
             {/* Month */}
             <div>
-              <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">Bulan</label>
+              <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.monthField")}</label>
               <NativeSelect
                 id="filter-month"
                 name="month"
                 defaultValue={params.month || ""}
                 options={[
-                  { value: "", label: "Semua Bulan" },
+                  { value: "", label: t("finance.allMonths") },
                   ...months.map((m, i) => ({ value: String(i + 1), label: m })),
                 ]}
               />
             </div>
 
-            <Button type="submit" size="sm" className="cursor-pointer">Saring</Button>
+            <Button type="submit" size="sm" className="cursor-pointer">
+              {t("finance.filterSubmit")}
+            </Button>
             <Link href="/finance">
               <Button type="button" variant="ghost" size="sm" className="cursor-pointer">
-                Bersihkan
+                {t("finance.filterClear")}
               </Button>
             </Link>
           </form>
@@ -200,7 +207,7 @@ export default async function FinancePage({
         {balances.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              Belum ada catatan kas {params.year ? "untuk periode ini" : ""}
+              {params.year ? t("finance.noCashRecordsPeriod") : t("finance.noCashRecords")}
             </CardContent>
           </Card>
         ) : (
@@ -210,7 +217,7 @@ export default async function FinancePage({
               <Card key={`${b.type}_${b.currency}`}>
                 <CardHeader>
                   <CardTitle className="text-sm text-muted-foreground">
-                    {CASH_TYPE_LABELS[b.type as CashType] || b.type} ({b.currency})
+                    {cashLabels[b.type as CashType] || b.type} ({b.currency})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -219,20 +226,22 @@ export default async function FinancePage({
                   </p>
                   <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
                     <span className="tabular-nums">
-                      Masuk: {formatCurrency(b.debit, b.currency)}
+                      {t("finance.inLabel", { amount: formatCurrency(b.debit, b.currency) })}
                     </span>
                     <span className="tabular-nums">
-                      Keluar: {formatCurrency(b.credit, b.currency)}
+                      {t("finance.outLabel", { amount: formatCurrency(b.credit, b.currency) })}
                     </span>
                   </div>
                   {b.type === "bank" && reconByCurrency.get(b.currency) && (
                     <div className="mt-2 flex items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                       <span>
-                        Rekonsiliasi: {reconByCurrency.get(b.currency)!.reconciledCount}/
-                        {reconByCurrency.get(b.currency)!.totalCount} cocok
+                        {t("finance.reconLabel", {
+                          matched: reconByCurrency.get(b.currency)!.reconciledCount,
+                          total: reconByCurrency.get(b.currency)!.totalCount,
+                        })}
                       </span>
                       {reconByCurrency.get(b.currency)!.latestStatus === "locked" && (
-                        <Badge variant="success">Terkunci</Badge>
+                        <Badge variant="success">{t("finance.locked")}</Badge>
                       )}
                     </div>
                   )}
@@ -246,22 +255,22 @@ export default async function FinancePage({
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Transaksi ({totalCount})</CardTitle>
+          <CardTitle>{t("finance.txListTitle", { count: totalCount })}</CardTitle>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Jenis Kas</TableHead>
-              <TableHead>Keterangan</TableHead>
-              <TableHead>Mata Uang</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("finance.filterType")}</TableHead>
+              <TableHead>{t("common.description")}</TableHead>
+              <TableHead>{t("common.currency")}</TableHead>
               <TableHead className="text-right">
-                <TermTooltip term="debit">Uang Masuk</TermTooltip>
+                <TermTooltip term="debit">{t("finance.colMoneyIn")}</TermTooltip>
               </TableHead>
               <TableHead className="text-right">
-                <TermTooltip term="kredit">Uang Keluar</TermTooltip>
+                <TermTooltip term="kredit">{t("finance.colMoneyOut")}</TermTooltip>
               </TableHead>
-              <TableHead>Rekonsiliasi</TableHead>
+              <TableHead>{t("finance.colReconciliation")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -270,47 +279,47 @@ export default async function FinancePage({
                 <TableCell colSpan={7} className="p-0">
                   <EmptyState
                     icon={<Wallet className="h-12 w-12" />}
-                    title="Belum ada transaksi kas & bank"
-                    description="Catat uang masuk atau uang keluar pertama Anda; jurnalnya dibuat otomatis."
-                    actionLabel="+ Catat Transaksi"
+                    title={t("finance.emptyTitle")}
+                    description={t("finance.emptyDescription")}
+                    actionLabel={t("finance.addNew")}
                     actionHref="/finance/new"
                   />
                 </TableCell>
               </TableRow>
             ) : (
-              transactions.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(t.date)}</TableCell>
+              transactions.map((tx) => (
+                <TableRow key={tx.id}>
+                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(tx.date)}</TableCell>
                   <TableCell className="text-foreground">
-                    {CASH_TYPE_LABELS[t.type as CashType] || t.type}
+                    {cashLabels[tx.type as CashType] || tx.type}
                   </TableCell>
-                  <TableCell className="text-foreground">{t.description}</TableCell>
-                  <TableCell className="text-muted-foreground">{t.currency}</TableCell>
+                  <TableCell className="text-foreground">{tx.description}</TableCell>
+                  <TableCell className="text-muted-foreground">{tx.currency}</TableCell>
                   {/* Uang masuk hijau / uang keluar merah (semantik warna uang
                       MASTER.md); label kolomnya sendiri sudah membedakan
                       keduanya, jadi warna bukan satu-satunya penanda. */}
                   <TableCell className="text-right">
-                    {Number(t.debit) > 0 ? (
-                      <Money value={Number(t.debit)} currency={t.currency} className="text-success" />
+                    {Number(tx.debit) > 0 ? (
+                      <Money value={Number(tx.debit)} currency={tx.currency} className="text-success" />
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {Number(t.credit) > 0 ? (
-                      <Money value={Number(t.credit)} currency={t.currency} className="text-destructive" />
+                    {Number(tx.credit) > 0 ? (
+                      <Money value={Number(tx.credit)} currency={tx.currency} className="text-destructive" />
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    {t.type === "bank" ? (
-                      t.reconciled ? (
+                    {tx.type === "bank" ? (
+                      tx.reconciled ? (
                         <span className="inline-flex items-center gap-1 text-xs text-success-strong">
-                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Cocok
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("finance.reconMatched")}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Belum</span>
+                        <span className="text-xs text-muted-foreground">{t("finance.reconNot")}</span>
                       )
                     ) : (
                       <span className="text-xs text-muted-foreground/60">—</span>

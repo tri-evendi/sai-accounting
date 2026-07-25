@@ -45,6 +45,8 @@ import {
   cashTypeLabels,
   contractStatusLabels,
   documentTypeLabels,
+  permissionLabels,
+  permissionResourceLabels,
   roleLabels,
   statusFilterLabels,
 } from "@/lib/i18n/labels";
@@ -61,6 +63,7 @@ import {
   APPROVAL_STATUS_LABELS,
   decisionMessage,
 } from "@/lib/approvals";
+import { PERMISSION_LABELS, RESOURCE_LABELS } from "@/lib/authz-labels";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -296,6 +299,9 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     // Peta persetujuan sumbernya `lib/approvals.ts` (modul murni).
     expect(approvalDocumentTypeLabels(id)).toEqual(APPROVAL_DOCUMENT_TYPE_LABELS);
     expect(approvalStatusLabels(id)).toEqual(APPROVAL_STATUS_LABELS);
+    // Label matriks izin sumbernya `lib/authz-labels.ts` (modul murni juga).
+    expect(permissionResourceLabels(id)).toEqual(RESOURCE_LABELS);
+    expect(permissionLabels(id)).toEqual(PERMISSION_LABELS);
   });
 
   it("kalimat keadaan pengajuan `id` sama persis dengan decisionMessage()", () => {
@@ -332,6 +338,8 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
         ["accountType", accountTypeLabels(dictionary)],
         ["approvalDocumentType", approvalDocumentTypeLabels(dictionary)],
         ["approvalStatus", approvalStatusLabels(dictionary)],
+        ["permissionResource", permissionResourceLabels(dictionary)],
+        ["permission", permissionLabels(dictionary)],
       ] as const) {
         for (const [key, label] of Object.entries(labels)) {
           expect(label?.trim().length, `${locale}: ${name}.${key} kosong`).toBeGreaterThan(0);

@@ -40,6 +40,12 @@ import {
   type ApprovalStatus,
 } from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
+import type { Permission } from "@/lib/authz";
+import {
+  PERMISSION_LABELS,
+  RESOURCE_LABELS,
+  type PermissionResource,
+} from "@/lib/authz-labels";
 import type { Dictionary } from "./dictionary";
 
 /**
@@ -207,4 +213,117 @@ export function approvalDecisionMessage(
       ? m.pending
       : m.draft;
   return template.replace("{document}", document);
+}
+
+/**
+ * Nama kelompok baris matriks izin. Bentuknya ditegakkan literal seperti peta
+ * lain di berkas ini: resource baru di `authz.ts` langsung memerahkan berkas
+ * ini di ketiga bahasa sekaligus (jaminan issue #73 dikali tiga).
+ * `lib/authz-labels.ts` MURNI — aman diimpor komponen client.
+ */
+export function permissionResourceLabels(
+  dictionary: Dictionary | null | undefined
+): Record<PermissionResource, string> {
+  if (!dictionary) return RESOURCE_LABELS;
+  const r = dictionary.permissionResource;
+  return {
+    approval: r.approval,
+    approval_rule: r.approval_rule,
+    contract: r.contract,
+    invoice: r.invoice,
+    delivery_order: r.delivery_order,
+    receivable: r.receivable,
+    return: r.return,
+    customer: r.customer,
+    consignee: r.consignee,
+    document: r.document,
+    supplier: r.supplier,
+    payable: r.payable,
+    advance: r.advance,
+    purchase: r.purchase,
+    cash: r.cash,
+    reconciliation: r.reconciliation,
+    inventory: r.inventory,
+    fixed_asset: r.fixed_asset,
+    report: r.report,
+    budget: r.budget,
+    tax: r.tax,
+    account: r.account,
+    journal: r.journal,
+    ledger: r.ledger,
+    period: r.period,
+    setup: r.setup,
+    user: r.user,
+    audit: r.audit,
+    company_setting: r.company_setting,
+    authz: r.authz,
+    glossary: r.glossary,
+    settings: r.settings,
+  };
+}
+
+/** Satu kalimat per izin: apa yang BOLEH dilakukan pemegangnya. */
+export function permissionLabels(
+  dictionary: Dictionary | null | undefined
+): Record<Permission, string> {
+  if (!dictionary) return PERMISSION_LABELS;
+  const p = dictionary.permission;
+  return {
+    "approval.view": p.approval_view,
+    "approval.decide": p.approval_decide,
+    "approval_rule.manage": p.approval_rule_manage,
+    "contract.read": p.contract_read,
+    "contract.write": p.contract_write,
+    "contract.delete": p.contract_delete,
+    "invoice.read": p.invoice_read,
+    "invoice.write": p.invoice_write,
+    "invoice.delete": p.invoice_delete,
+    "delivery_order.read": p.delivery_order_read,
+    "delivery_order.write": p.delivery_order_write,
+    "receivable.read": p.receivable_read,
+    "return.read": p.return_read,
+    "return.write": p.return_write,
+    "customer.read": p.customer_read,
+    "customer.write": p.customer_write,
+    "customer.delete": p.customer_delete,
+    "consignee.read": p.consignee_read,
+    "consignee.write": p.consignee_write,
+    "consignee.delete": p.consignee_delete,
+    "document.read": p.document_read,
+    "document.write": p.document_write,
+    "supplier.read": p.supplier_read,
+    "supplier.write": p.supplier_write,
+    "supplier.delete": p.supplier_delete,
+    "payable.read": p.payable_read,
+    "advance.read": p.advance_read,
+    "advance.write": p.advance_write,
+    "advance.delete": p.advance_delete,
+    "purchase.write": p.purchase_write,
+    "purchase.delete": p.purchase_delete,
+    "cash.read": p.cash_read,
+    "cash.write": p.cash_write,
+    "reconciliation.read": p.reconciliation_read,
+    "reconciliation.write": p.reconciliation_write,
+    "inventory.read": p.inventory_read,
+    "inventory.write": p.inventory_write,
+    "fixed_asset.read": p.fixed_asset_read,
+    "fixed_asset.write": p.fixed_asset_write,
+    "report.read": p.report_read,
+    "report.export": p.report_export,
+    "budget.manage": p.budget_manage,
+    "tax.read": p.tax_read,
+    "account.read": p.account_read,
+    "account.manage": p.account_manage,
+    "journal.read": p.journal_read,
+    "journal.write": p.journal_write,
+    "ledger.read": p.ledger_read,
+    "period.manage": p.period_manage,
+    "setup.manage": p.setup_manage,
+    "user.manage": p.user_manage,
+    "audit.read": p.audit_read,
+    "company_setting.manage": p.company_setting_manage,
+    "authz.manage": p.authz_manage,
+    "glossary.read": p.glossary_read,
+    "settings.view": p.settings_view,
+  };
 }

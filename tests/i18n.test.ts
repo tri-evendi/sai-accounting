@@ -79,6 +79,23 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // memakai 开/关).
     "accountantMode.on",
     "accountantMode.off",
+    // Kata serapan yang ejaannya IDENTIK di kedua bahasa — "menerjemahkan"-nya
+    // hanya akan menghasilkan kata yang sama.
+    "common.status",
+    "common.total",
+    "contracts.advStatus",
+    "invoices.totalCurrency",
+    "deliveryOrders.colTotalKg",
+    "returns.colTotalIdr",
+    // Istilah dagang karung: "bags" dan "kg/bag" dipakai apa adanya di dokumen
+    // ekspor berbahasa Indonesia maupun Inggris (bahasa Mandarin memakai 袋).
+    "common.bags",
+    "common.kgPerBag",
+    "sales.shipKgPerBag",
+    "deliveryOrders.totalBags",
+    // Tanda titik penutup kalimat yang terpotong oleh penekanan <strong> —
+    // sama di kedua bahasa Latin, berbeda di bahasa Mandarin (。).
+    "common.fullStop",
   ]),
 };
 

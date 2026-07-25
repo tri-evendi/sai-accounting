@@ -14,6 +14,7 @@ import {
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 import { Ship } from "lucide-react";
 import Link from "next/link";
 
@@ -25,6 +26,7 @@ export default async function ConsigneesPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("consignee.read");
+  const t = await getT();
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -42,10 +44,10 @@ export default async function ConsigneesPage({
   return (
     <div>
       <PageHeader
-        title={<>Penerima Barang ({totalCount})</>}
+        title={<>{t("consignees.title", { count: totalCount })}</>}
         actions={
           <Link href="/consignees/new">
-            <Button>+ Tambah Penerima Barang</Button>
+            <Button>{t("consignees.addNew")}</Button>
           </Link>
         }
       />
@@ -54,11 +56,11 @@ export default async function ConsigneesPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nama</TableHead>
-              <TableHead>Negara</TableHead>
-              <TableHead>Kontak</TableHead>
-              <TableHead>Alamat</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("consignees.colCountry")}</TableHead>
+              <TableHead>{t("consignees.colContact")}</TableHead>
+              <TableHead>{t("common.address")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,9 +69,9 @@ export default async function ConsigneesPage({
                 <TableCell colSpan={5} className="p-0">
                   <EmptyState
                     icon={<Ship className="h-12 w-12" />}
-                    title="Belum ada penerima barang"
-                    description="Penerima barang (consignee) adalah pihak yang menerima kiriman di tujuan ekspor. Catat yang pertama agar bisa dipilih di kontrak dan surat jalan."
-                    actionLabel="+ Tambah Penerima Barang"
+                    title={t("consignees.emptyTitle")}
+                    description={t("consignees.emptyDescription")}
+                    actionLabel={t("consignees.addNew")}
                     actionHref="/consignees/new"
                   />
                 </TableCell>
@@ -87,9 +89,9 @@ export default async function ConsigneesPage({
                   <TableCell className="text-muted-foreground max-w-xs truncate">{c.address || "-"}</TableCell>
                   <TableCell>
                     {c.isActive ? (
-                      <Badge variant="success">Aktif</Badge>
+                      <Badge variant="success">{t("common.active")}</Badge>
                     ) : (
-                      <Badge variant="default">Nonaktif</Badge>
+                      <Badge variant="default">{t("common.inactive")}</Badge>
                     )}
                   </TableCell>
                 </TableRow>

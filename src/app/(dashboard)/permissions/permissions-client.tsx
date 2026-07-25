@@ -17,8 +17,9 @@
  * konfirmasi; hasil lewat toast.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
+import { RoleManager } from "./role-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,25 +85,25 @@ export function PermissionsClient() {
   const labelOf = (key: string) =>
     data?.roles.find((r) => r.key === key)?.label ?? ROLE_LABELS[key] ?? key;
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/authz/overrides")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(res.status === 403 ? "Anda tidak punya izin mengelola hak akses." : "Gagal memuat hak akses.");
-        return (await res.json()) as OverridesResponse;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setData(json);
-        setDraft(toDraft(json.effective, json.roles.map((r) => r.key)));
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setLoadError(err.message);
-      });
-    return () => {
-      cancelled = true;
-    };
+  const loadOverrides = useCallback(async () => {
+    try {
+      const res = await fetch("/api/authz/overrides");
+      if (!res.ok) {
+        throw new Error(
+          res.status === 403 ? "Anda tidak punya izin mengelola hak akses." : "Gagal memuat hak akses."
+        );
+      }
+      const json = (await res.json()) as OverridesResponse;
+      setData(json);
+      setDraft(toDraft(json.effective, json.roles.map((r) => r.key)));
+    } catch (err) {
+      setLoadError((err as Error).message);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadOverrides();
+  }, [loadOverrides]);
 
   const isBaselineAllowed = (permission: Permission, role: Role) =>
     (data?.baseline[permission] ?? []).includes(role);
@@ -220,6 +221,9 @@ export function PermissionsClient() {
           </>
         }
       />
+
+      {/* Kelola peran (buat/ubah/hapus) — perubahan memuat ulang kolom matriks. */}
+      <RoleManager onRolesChanged={loadOverrides} />
 
       {errors.length > 0 && (
         <div

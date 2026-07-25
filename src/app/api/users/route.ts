@@ -3,14 +3,16 @@ import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
-import { roleEnum } from "@/lib/validations/common";
+import { activeRoleKeys } from "@/lib/roles";
 import { writeAuditLog } from "@/lib/audit";
 
+// Peran kini DATA (tabel roles), jadi bentuknya string; keberadaan & keaktifan
+// peran divalidasi terhadap DB setelah parse (bukan enum tetap).
 const createUserSchema = z.object({
   username: z.string().min(1).max(50).trim(),
   password: z.string().min(8).max(128),
   name: z.string().max(100).trim().optional(),
-  role: roleEnum.default("core"),
+  role: z.string().trim().min(1).max(20).default("core"),
 });
 
 export async function GET() {
@@ -48,6 +50,11 @@ export async function POST(request: Request) {
       { error: "Invalid input", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  // Peran harus ada & aktif (peran dinamis) — validasi ke DB.
+  if (!(await activeRoleKeys()).includes(parsed.data.role)) {
+    return NextResponse.json({ error: "Peran tidak dikenal atau nonaktif." }, { status: 400 });
   }
 
   // Check username uniqueness

@@ -87,7 +87,14 @@
     "from": "Dari",
     "to": "Sampai",
     "show": "Tampilkan",
-    "pickAccount": "— Pilih akun —"
+    "pickAccount": "— Pilih akun —",
+    "customer": "Pelanggan",
+    "document": "Dokumen",
+    "dueDate": "Jatuh Tempo",
+    "age": "Umur",
+    "remainingIdr": "Sisa (IDR)",
+    "notFilledIn": "Belum diisi",
+    "overdueDocs": "{count} dokumen sudah lewat jatuh tempo."
   },
   "nav": {
     "groups": {
@@ -1056,5 +1063,51 @@
     "summaryLoadFailed": "Gagal memuat ringkasan periode",
     "closeFailed": "Gagal menutup periode",
     "reopenFailed": "Gagal membuka kembali periode"
+  },
+  "receivables": {
+    "title": "Pelanggan Belum Bayar",
+    "description": "Faktur & kontrak yang masih punya sisa tagihan per {date}.",
+    "agingCaption": "Umur dihitung sejak jatuh tempo bila ada; bila tidak, sejak tanggal dokumen.",
+    "partyTotalsTitle": "Sisa piutang per pelanggan",
+    "colDocumentValue": "Nilai Dokumen",
+    "docTypeInvoice": "Faktur",
+    "docTypeContract": "Kontrak",
+    "emptyOverdue": "Tidak ada piutang yang lewat jatuh tempo. Perlu diingat: dokumen tanpa tanggal jatuh tempo tidak ikut terhitung di sini.",
+    "emptyAll": "Semua piutang sudah lunas. Belum ada sisa tagihan."
+  },
+  "payables": {
+    "title": "Tagihan yang Harus Dibayar",
+    "description": "Pembelian dari pemasok yang masih punya sisa per {date}.",
+    "agingCaption": "Umur dihitung sejak jatuh tempo bila ada; bila tidak, sejak tanggal transaksi.",
+    "advanceLabel": "Uang muka ke supplier (uang keluar, belum dikompensasi)",
+    "advanceFrom": "Dari {count} uang muka yang masih bersisa.",
+    "advanceNot": "Tidak",
+    "advanceHintA": "dikurangkan dari total utang di atas — uangnya sudah keluar dan tercatat sebagai",
+    "advanceAsset": "aset",
+    "advanceHintB": ". Sisa utang sebuah pembelian baru berkurang setelah uang mukanya",
+    "advanceCompensated": "dikompensasi",
+    "advanceHintC": "ke pembelian itu, lewat panel",
+    "advancePanel": "Uang Muka Pembelian",
+    "advanceHintD": "di halaman supplier.",
+    "unratedLabel": "Belum berkurs",
+    "unratedHint": "Uang muka valas tanpa kurs — tidak ikut dijumlahkan.",
+    "viewAllAdvances": "Lihat semua uang muka pembelian",
+    "estRows": "{count} baris",
+    "estMarked": "ditandai",
+    "estimateBadge": "Perkiraan",
+    "estHintA": "— sebagian pembayarannya belum ditautkan ke pembelian tertentu, sehingga sisanya diperkirakan dengan melunasi pembelian",
+    "estOldestFirst": "terlama lebih dulu",
+    "estHintB": ". Baris tanpa tanda itu memakai alokasi pembayaran yang benar-benar dicatat. Total per supplier tepat pada kedua kasus; hanya pembagian per baris yang berbeda. Untuk menghilangkan perkiraan, klik",
+    "fixAllocation": "Perbaiki alokasi",
+    "estHintC": "pada baris yang ditandai lalu pilih pembelian yang dilunasi — ini hanya memperbaiki laporan dan",
+    "estNoJournalChange": "tidak mengubah jurnal",
+    "noEstimateNote": "Setiap sisa utang di bawah dihitung dari alokasi pembayaran yang tercatat — bukan perkiraan.",
+    "partyTotalsTitle": "Sisa utang per supplier",
+    "colSupplier": "Supplier",
+    "docTypePurchase": "Pembelian",
+    "colPurchaseValue": "Nilai Pembelian",
+    "estimateTitle": "Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu.",
+    "emptyOverdue": "Tidak ada utang yang lewat jatuh tempo. Perlu diingat: pembelian tanpa tanggal jatuh tempo tidak ikut terhitung di sini.",
+    "emptyAll": "Semua utang supplier sudah lunas. Belum ada sisa."
   }
 }

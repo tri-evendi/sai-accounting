@@ -12,6 +12,7 @@ import { listBudgets } from "@/lib/budget-report";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { BudgetAccountsClient } from "./budget-accounts-client";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function BudgetAccountsPage({
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
   await requirePagePermission("budget.manage");
+  const t = await getT();
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();
@@ -42,9 +44,12 @@ export default async function BudgetAccountsPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Anggaran Akun" }]}
-        title="Anggaran Akun"
-        description="Nilai anggaran per akun pendapatan/beban untuk tiap bulan, dalam IDR. Satu anggaran per akun per bulan — menyimpan ulang akan menimpa nilai sebelumnya."
+        breadcrumbs={[
+          { label: t("budget.breadcrumb"), href: "/budget" },
+          { label: t("budget.surfaceAccountsTitle") },
+        ]}
+        title={t("budget.surfaceAccountsTitle")}
+        description={t("budget.accountsDescription")}
       />
 
       <div className="mb-6">

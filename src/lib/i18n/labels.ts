@@ -32,6 +32,7 @@ import {
   type SystemRole,
 } from "@/lib/constants";
 import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { MONTH_NAMES } from "@/lib/month-names";
 import type { Dictionary } from "./dictionary";
 
 /**
@@ -71,6 +72,17 @@ export function accountTypeLabel(
   value: string
 ): string {
   return accountTypeLabels(dictionary)[value] ?? value;
+}
+
+/**
+ * Nama bulan, urut Januari→Desember (indeks 0 = Januari, seperti
+ * `MONTH_NAMES`). `lib/month-names.ts` bebas Prisma, jadi cadangan bahasa
+ * Indonesianya aman diimpor komponen client — sama seperti `constants.ts`.
+ */
+export function monthNames(dictionary: Dictionary | null | undefined): readonly string[] {
+  if (!dictionary) return MONTH_NAMES;
+  const m = dictionary.month;
+  return [m.m1, m.m2, m.m3, m.m4, m.m5, m.m6, m.m7, m.m8, m.m9, m.m10, m.m11, m.m12];
 }
 
 /** Label peran SISTEM. Peran kustom (data, tabel `roles`) tetap ambil label dari DB. */

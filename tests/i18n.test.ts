@@ -119,6 +119,18 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // dalam bahasa Inggris.
     "payables.colSupplier",
     "advances.partySupplier",
+    // Nama bulan yang ejaannya sama dalam bahasa Indonesia & Inggris (bahasa
+    // Mandarin memakai 4月/9月/11月).
+    "month.m4",
+    "month.m9",
+    "month.m11",
+    // Pola "bulan tahun": sama di kedua bahasa Latin, dibalik di bahasa Mandarin
+    // ({year}年{month}).
+    "common.monthOfYear",
+    // "Target" adalah kata serapan yang ejaannya identik; label & judul kolom
+    // Target Penjualan memakainya apa adanya.
+    "budget.targetAmountField",
+    "budget.colTarget",
     // Tanda titik penutup kalimat yang terpotong oleh penekanan <strong> —
     // sama di kedua bahasa Latin, berbeda di bahasa Mandarin (。).
     "common.fullStop",

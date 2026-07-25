@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
@@ -242,13 +243,12 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
               <label htmlFor="rule-note" className="block text-sm font-medium text-foreground">
                 Catatan (opsional)
               </label>
-              <textarea
+              <Textarea
                 id="rule-note"
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Contoh: kebijakan direksi per Januari 2026"
-                className="block w-full rounded-md border border-border px-3 py-2 text-sm transition-colors duration-150 focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
               />
             </div>
 

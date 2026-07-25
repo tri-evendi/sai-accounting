@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
 export function LedgerFilter({
@@ -46,11 +47,9 @@ export function LedgerFilter({
           onChange={(e) => setD(e.target.value)}
         />
         <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={overdue}
-            onChange={(e) => setOverdue(e.target.checked)}
-            className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-2 focus:ring-ring"
+            onCheckedChange={(v) => setOverdue(v === true)}
           />
           Hanya yang sudah jatuh tempo
         </label>

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/loading";
+import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 
@@ -300,13 +301,12 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                     >
                       Alasan buka kembali
                     </label>
-                    <textarea
+                    <Textarea
                       id="reopen-reason"
                       rows={2}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Contoh: koreksi faktur SI.2026.03.00007 yang salah nominal"
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
                       Wajib diisi (minimal 5 karakter) dan dicatat di log audit.
@@ -343,13 +343,12 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                     >
                       Catatan penutupan (opsional)
                     </label>
-                    <textarea
+                    <Textarea
                       id="close-note"
                       rows={2}
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Contoh: sudah dicocokkan dengan rekening koran"
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
                     />
 
                     {summary.blockerCount > 0 && (

@@ -12,6 +12,7 @@
  */
 
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
@@ -164,11 +165,10 @@ export function WizardPartnerStep({
                       maxLength={30}
                     />
                     <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground sm:col-span-2">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
+                      <Checkbox
+                        className="mt-1"
                         checked={value.taxExempt}
-                        onChange={(e) => onChange({ taxExempt: e.target.checked })}
+                        onCheckedChange={(v) => onChange({ taxExempt: v === true })}
                       />
                       <span>
                         Bebas PPN

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -91,12 +92,12 @@ export default async function ContractsPage({
 
       {/* Search */}
       <form className="mb-4">
-        <input
+        <TextInput
           type="text"
           name="search"
           placeholder="Cari no. kontrak, pembeli, atau penerima barang..."
           defaultValue={params.search}
-          className="w-full max-w-md rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full max-w-md"
         />
         <button type="submit" className="ml-2 cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-ring">Cari</button>
       </form>

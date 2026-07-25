@@ -8,6 +8,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
+import { NativeSelect } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -127,45 +128,61 @@ export default async function FinancePage({
             {/* Account Type */}
             <div>
               <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kas</label>
-              <select id="filter-type" name="type" defaultValue={params.type || ""} className="rounded-md border border-border px-3 py-2 text-sm">
-                <option value="">Semua Jenis</option>
-                <option value="bank">Bank</option>
-                <option value="kas_besar">Kas Besar</option>
-                <option value="kas_kecil">Kas Kecil</option>
-              </select>
+              <NativeSelect
+                id="filter-type"
+                name="type"
+                defaultValue={params.type || ""}
+                options={[
+                  { value: "", label: "Semua Jenis" },
+                  { value: "bank", label: "Bank" },
+                  { value: "kas_besar", label: "Kas Besar" },
+                  { value: "kas_kecil", label: "Kas Kecil" },
+                ]}
+              />
             </div>
 
             {/* Currency */}
             <div>
               <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
-              <select id="filter-currency" name="currency" defaultValue={params.currency || ""} className="rounded-md border border-border px-3 py-2 text-sm">
-                <option value="">Semua</option>
-                <option value="IDR">IDR</option>
-                <option value="USD">USD</option>
-                <option value="CNY">CNY</option>
-              </select>
+              <NativeSelect
+                id="filter-currency"
+                name="currency"
+                defaultValue={params.currency || ""}
+                options={[
+                  { value: "", label: "Semua" },
+                  { value: "IDR", label: "IDR" },
+                  { value: "USD", label: "USD" },
+                  { value: "CNY", label: "CNY" },
+                ]}
+              />
             </div>
 
             {/* Year */}
             <div>
               <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">Tahun</label>
-              <select id="filter-year" name="year" defaultValue={params.year || ""} className="rounded-md border border-border px-3 py-2 text-sm">
-                <option value="">Semua Tahun</option>
-                {years.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+              <NativeSelect
+                id="filter-year"
+                name="year"
+                defaultValue={params.year || ""}
+                options={[
+                  { value: "", label: "Semua Tahun" },
+                  ...years.map((y) => ({ value: String(y), label: String(y) })),
+                ]}
+              />
             </div>
 
             {/* Month */}
             <div>
               <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">Bulan</label>
-              <select id="filter-month" name="month" defaultValue={params.month || ""} className="rounded-md border border-border px-3 py-2 text-sm">
-                <option value="">Semua Bulan</option>
-                {months.map((m, i) => (
-                  <option key={i} value={i + 1}>{m}</option>
-                ))}
-              </select>
+              <NativeSelect
+                id="filter-month"
+                name="month"
+                defaultValue={params.month || ""}
+                options={[
+                  { value: "", label: "Semua Bulan" },
+                  ...months.map((m, i) => ({ value: String(i + 1), label: m })),
+                ]}
+              />
             </div>
 
             <Button type="submit" size="sm" className="cursor-pointer">Saring</Button>

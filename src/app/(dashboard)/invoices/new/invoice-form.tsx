@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -504,9 +504,9 @@ export function NewInvoiceForm({
                         >
                           Nama Barang
                         </label>
-                        <input
+                        <TextInput
                           id={`itemName-${i}`}
-                          className="block w-full rounded-md border border-border px-3 py-2 text-sm"
+                          className="w-full"
                           value={item.itemName}
                           onChange={(e) => updateItem(i, "itemName", e.target.value)}
                           required
@@ -519,12 +519,12 @@ export function NewInvoiceForm({
                         >
                           Jumlah
                         </label>
-                        <input
+                        <TextInput
                           id={`quantity-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                          className="w-full text-right tabular-nums"
                           value={item.quantity}
                           onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
                         />
@@ -536,12 +536,12 @@ export function NewInvoiceForm({
                         >
                           Harga
                         </label>
-                        <input
+                        <TextInput
                           id={`price-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                          className="w-full text-right tabular-nums"
                           value={item.price}
                           onChange={(e) => updateItem(i, "price", Number(e.target.value))}
                         />
@@ -553,9 +553,9 @@ export function NewInvoiceForm({
                         >
                           Satuan
                         </label>
-                        <input
+                        <TextInput
                           id={`unit-${i}`}
-                          className="block w-full rounded-md border border-border px-3 py-2 text-sm"
+                          className="w-full"
                           value={item.unit}
                           onChange={(e) => updateItem(i, "unit", e.target.value)}
                         />

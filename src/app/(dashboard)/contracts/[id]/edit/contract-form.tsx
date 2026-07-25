@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -222,19 +222,19 @@ export function EditContractForm() {
                 <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Item Name</label>
-                    <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
+                    <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-20">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Bags</label>
-                    <input type="number" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
+                    <TextInput type="number" className="w-full" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
                   </div>
                   <div className="w-24">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Kg/Bag</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
+                    <TextInput type="number" step="0.01" className="w-full" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Price/Kg</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
+                    <TextInput type="number" step="0.01" className="w-full" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
                   </div>
                   <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
                     <Trash2 className="h-4 w-4" />

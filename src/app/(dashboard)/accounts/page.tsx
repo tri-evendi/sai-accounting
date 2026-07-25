@@ -2,6 +2,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { accountTypeLabel } from "@/lib/accounting";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -94,12 +95,12 @@ export default async function AccountsPage({
 
       {/* Pencarian kode/nama — berguna saat daftar akun sudah panjang. */}
       <form className="mb-4 flex gap-2" action="/accounts">
-        <input
+        <TextInput
           type="search"
           name="search"
           defaultValue={q}
           placeholder="Cari kode atau nama akun…"
-          className="h-9 w-full max-w-xs rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full max-w-xs"
         />
         <Button type="submit" variant="secondary" size="sm">
           Cari

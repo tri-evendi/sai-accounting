@@ -22,6 +22,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -231,15 +233,14 @@ export function AllocationEditor({
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <label className="flex cursor-pointer items-start gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
+                    <Checkbox
+                      className="mt-1"
                       checked={checked}
                       disabled={noRate}
-                      onChange={(e) =>
+                      onCheckedChange={(v) =>
                         setAlloc((prev) => {
                           const next = { ...prev };
-                          if (e.target.checked) {
+                          if (v === true) {
                             // Default to clearing the document in full when the
                             // payment is in IDR; otherwise leave blank rather
                             // than guess a figure across currencies.
@@ -292,7 +293,7 @@ export function AllocationEditor({
                     >
                       Dibayar ({paymentCurrency})
                     </label>
-                    <input
+                    <TextInput
                       id={`realloc-${paymentId}-${p.id}`}
                       type="number"
                       step="0.01"
@@ -301,7 +302,7 @@ export function AllocationEditor({
                       onChange={(e) =>
                         setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
                       }
-                      className="w-40 rounded-md border border-border px-2 py-1 text-right text-sm tabular-nums transition-colors duration-150 focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
+                      className="w-40 text-right tabular-nums"
                     />
                   </div>
                 )}

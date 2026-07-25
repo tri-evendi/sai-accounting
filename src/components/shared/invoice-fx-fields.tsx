@@ -26,6 +26,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import {
   BASE_CURRENCY,
@@ -187,18 +188,16 @@ export function InvoiceFxAdvancedFields({
       {/* PPN control (issue #16) */}
       <div className="sm:col-span-2 rounded-md border border-border p-3">
         <label htmlFor="taxable" className="flex cursor-pointer items-center gap-2">
-          <input
+          <Checkbox
             id="taxable"
             name="taxable"
-            type="checkbox"
-            className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
             checked={taxable}
-            onChange={(e) =>
+            onCheckedChange={(v) =>
               onChange({
-                taxable: e.target.checked,
+                taxable: v === true,
                 // Turning PPN on with no rate yet gives the statutory default.
                 taxRate:
-                  e.target.checked && !(Number(taxRate) > 0) ? String(DEFAULT_TAX_RATE) : taxRate,
+                  v === true && !(Number(taxRate) > 0) ? String(DEFAULT_TAX_RATE) : taxRate,
               })
             }
           />

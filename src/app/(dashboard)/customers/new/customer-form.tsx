@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -181,14 +182,15 @@ export function NewCustomerForm() {
                         htmlFor="taxExempt"
                         className="flex cursor-pointer items-start gap-2"
                       >
-                        <input
-                          id="taxExempt"
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                          onBlur={field.onBlur}
-                          className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                        />
+                        <FormControl>
+                          <Checkbox
+                            id="taxExempt"
+                            className="mt-0.5"
+                            checked={field.value}
+                            onCheckedChange={(v) => field.onChange(v === true)}
+                            onBlur={field.onBlur}
+                          />
+                        </FormControl>
                         <span className="text-sm text-foreground">
                           Bebas PPN (ekspor / non-PKP)
                           <span className="block text-xs text-muted-foreground">

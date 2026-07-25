@@ -1261,7 +1261,22 @@
     "submit": "Simpan Uang Muka",
     "saveFailed": "Gagal menyimpan uang muka.",
     "saved": "Uang muka tersimpan dan sudah dijurnal.",
-    "networkFailed": "Tidak dapat menghubungi server. Coba lagi."
+    "networkFailed": "Tidak dapat menghubungi server. Coba lagi.",
+    "compTargetInvoice": "faktur",
+    "compTargetPurchase": "pembelian",
+    "compPartyInvoice": "pelanggan",
+    "compPartySupplier": "supplier",
+    "compApplied": "Uang muka dikompensasi. Tagihan {target} berkurang.",
+    "compNoneLeft": "Tidak ada sisa uang muka lain untuk {party} ini.",
+    "compNoneAtAll": "Belum ada uang muka yang bisa dikompensasi ke {target} ini.",
+    "compColAdvance": "Uang Muka",
+    "compColRemaining": "Sisa",
+    "compColApply": "Kompensasi ke {target} ini",
+    "compCrossCurrency": "Mata uang berbeda dari {target} ({currency}) — isi jumlahnya sendiri.",
+    "compDateField": "Tanggal kompensasi",
+    "compOutstanding": "Sisa tagihan {target}",
+    "compTotal": "Total dikompensasi",
+    "compOverTarget": "Total kompensasi melebihi sisa tagihan {target} ini."
   },
   "reports": {
     "title": "Pusat Laporan",
@@ -2622,5 +2637,11 @@
     "checkHasTransactionsWarn": "Belum ada jurnal di periode ini. Pastikan memang tidak ada transaksi.",
     "checkPeriodEnded": "Periode sudah berakhir",
     "checkPeriodEndedWarn": "{period} belum berakhir. Menutupnya sekarang akan menolak transaksi baru bertanggal di sisa bulan ini."
+  },
+  "payments": {
+    "addPayment": "Tambah Pembayaran",
+    "formTitle": "Catat Pembayaran",
+    "rateHint": "Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.",
+    "submit": "Simpan Pembayaran"
   }
 }

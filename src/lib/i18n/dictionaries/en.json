@@ -1261,7 +1261,22 @@
     "submit": "Save Advance",
     "saveFailed": "Could not save the advance.",
     "saved": "The advance has been saved and journalised.",
-    "networkFailed": "Could not reach the server. Please try again."
+    "networkFailed": "Could not reach the server. Please try again.",
+    "compTargetInvoice": "invoice",
+    "compTargetPurchase": "purchase",
+    "compPartyInvoice": "customer",
+    "compPartySupplier": "supplier",
+    "compApplied": "The advance has been applied. The {target} balance is reduced.",
+    "compNoneLeft": "There is no other advance left for this {party}.",
+    "compNoneAtAll": "There is no advance that can be applied to this {target} yet.",
+    "compColAdvance": "Advance",
+    "compColRemaining": "Remaining",
+    "compColApply": "Apply to this {target}",
+    "compCrossCurrency": "A different currency from the {target} ({currency}) — enter the amount yourself.",
+    "compDateField": "Application date",
+    "compOutstanding": "Outstanding on the {target}",
+    "compTotal": "Total applied",
+    "compOverTarget": "The total applied exceeds what is still outstanding on this {target}."
   },
   "reports": {
     "title": "Report Centre",
@@ -2622,5 +2637,11 @@
     "checkHasTransactionsWarn": "There are no journals in this period yet. Make sure there really were no transactions.",
     "checkPeriodEnded": "Period has ended",
     "checkPeriodEndedWarn": "{period} has not ended yet. Closing it now will reject new transactions dated in the rest of this month."
+  },
+  "payments": {
+    "addPayment": "Add Payment",
+    "formTitle": "Record Payment",
+    "rateHint": "Required — the receipt journal is recorded in IDR using this rate.",
+    "submit": "Save Payment"
   }
 }

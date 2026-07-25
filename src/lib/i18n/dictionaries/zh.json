@@ -1261,7 +1261,22 @@
     "submit": "保存预付/预收款",
     "saveFailed": "保存预付/预收款失败。",
     "saved": "预付/预收款已保存并生成记账凭证。",
-    "networkFailed": "无法连接服务器，请重试。"
+    "networkFailed": "无法连接服务器，请重试。",
+    "compTargetInvoice": "发票",
+    "compTargetPurchase": "采购",
+    "compPartyInvoice": "客户",
+    "compPartySupplier": "供应商",
+    "compApplied": "预付款已核销。{target}的欠款相应减少。",
+    "compNoneLeft": "该{party}没有其他剩余预付款。",
+    "compNoneAtAll": "目前没有可核销到该{target}的预付款。",
+    "compColAdvance": "预付款",
+    "compColRemaining": "余额",
+    "compColApply": "核销至该{target}",
+    "compCrossCurrency": "币种与该{target}（{currency}）不同——请自行填写金额。",
+    "compDateField": "核销日期",
+    "compOutstanding": "{target}未结清金额",
+    "compTotal": "核销合计",
+    "compOverTarget": "核销合计超过该{target}的未结清余额。"
   },
   "reports": {
     "title": "报表中心",
@@ -2622,5 +2637,11 @@
     "checkHasTransactionsWarn": "本期尚无日记账。请确认确实没有交易发生。",
     "checkPeriodEnded": "期间已结束",
     "checkPeriodEndedWarn": "{period} 尚未结束。现在关闭将拒绝日期落在本月剩余时间内的新交易。"
+  },
+  "payments": {
+    "addPayment": "新增付款",
+    "formTitle": "登记付款",
+    "rateHint": "必填——收款凭证按此汇率以印尼盾记账。",
+    "submit": "保存付款"
   }
 }

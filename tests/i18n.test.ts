@@ -132,6 +132,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // dalam bahasa Inggris.
     "payables.colSupplier",
     "advances.partySupplier",
+    // Kata benda mitra pada kalimat kompensasi uang muka ke transaksi
+    // pembelian — teks Indonesianya memang "supplier", identik dengan Inggris.
+    "advances.compPartySupplier",
     // Nama bulan yang ejaannya sama dalam bahasa Indonesia & Inggris (bahasa
     // Mandarin memakai 4月/9月/11月).
     "month.m4",

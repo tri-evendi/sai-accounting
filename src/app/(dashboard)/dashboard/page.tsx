@@ -173,9 +173,9 @@ export default async function DashboardPage() {
   const lowStockItems = toLowStockAlerts(inventorySummary);
 
   const stockStatusData = [
-    { name: t("dashboard.stockHealthy"), value: stockHealth.healthy },
-    { name: t("dashboard.stockLow"), value: stockHealth.lowStock },
-    { name: t("dashboard.stockEmpty"), value: stockHealth.empty },
+    { name: t("inventory.levelHealthy"), value: stockHealth.healthy },
+    { name: t("inventory.levelLow"), value: stockHealth.lowStock },
+    { name: t("inventory.levelEmpty"), value: stockHealth.empty },
   ];
 
   const stockLevelData = inventorySummary.map((i) => ({

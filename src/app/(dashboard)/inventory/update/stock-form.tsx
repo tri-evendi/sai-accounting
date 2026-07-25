@@ -35,6 +35,7 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
+import { useT } from "@/lib/i18n/client";
 
 export interface StockItemOption {
   id: number;
@@ -59,6 +60,7 @@ export function StockUpdateForm({
   items: StockItemOption[];
   closedPeriods: ClosedPeriodRef[];
 }) {
+  const t = useT();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,11 +115,13 @@ export function StockUpdateForm({
       setNewItemUnit("kg");
       setShowNewItem(false);
       await refreshItems();
-      setSuccess("Barang baru tersimpan");
+      setSuccess(t("inventory.itemSaved"));
       setTimeout(() => setSuccess(""), 3000);
     } else {
       const data = await res.json().catch(() => null);
-      setError(humanizeFieldMessage("itemName", data?.error ?? "Barang baru belum bisa disimpan."));
+      setError(
+        humanizeFieldMessage("itemName", data?.error ?? t("inventory.itemSaveFailed"))
+      );
     }
   }
 
@@ -140,11 +144,11 @@ export function StockUpdateForm({
       setError(
         firstField
           ? humanizeFieldMessage(firstField[0], firstField[1]?.[0])
-          : humanizeFieldMessage(null, data?.error ?? "Pergerakan stok belum bisa disimpan.")
+          : humanizeFieldMessage(null, data?.error ?? t("inventory.movementSaveFailed"))
       );
       setLoading(false);
     } else {
-      setSuccess("Pergerakan stok tersimpan");
+      setSuccess(t("inventory.movementSaved"));
       setLoading(false);
       setQuantity("");
       await refreshItems();
@@ -161,7 +165,7 @@ export function StockUpdateForm({
     const formData = new FormData(e.currentTarget);
     const itemIdVal = Number(formData.get("itemId")) || 0;
     if (!itemIdVal) {
-      setError("Pilih barang lebih dulu — pergerakan stok selalu milik satu barang.");
+      setError(t("inventory.pickItemFirst"));
       return;
     }
 
@@ -180,7 +184,7 @@ export function StockUpdateForm({
       return;
     }
     if (!(qtyValue > 0)) {
-      setError("Jumlah harus lebih besar dari 0 — pergerakan stok nol tidak mengubah apa pun.");
+      setError(t("inventory.qtyPositive"));
       return;
     }
 
@@ -224,8 +228,8 @@ export function StockUpdateForm({
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>}
-        description="Catat barang yang masuk ke gudang atau keluar dari gudang."
+        title={<TermTooltip term="persediaan">{t("common.addRemoveStock")}</TermTooltip>}
+        description={t("inventory.updateDescription")}
         actions={
           <Button
             variant="secondary"
@@ -233,11 +237,11 @@ export function StockUpdateForm({
             className="shrink-0 cursor-pointer"
             onClick={() => setShowNewItem(!showNewItem)}
           >
-            {showNewItem ? "Batal" : "+ Barang Baru"}
+            {showNewItem ? t("common.cancel") : t("inventory.newItemToggle")}
           </Button>
         }
       />
-      <LearnMore term="hpp" className="mt-1 mb-6" label="Pelajari ini: modal barang yang terjual" />
+      <LearnMore term="hpp" className="mt-1 mb-6" label={t("inventory.learnMoreCogs")} />
 
       {error && (
         <div
@@ -257,16 +261,16 @@ export function StockUpdateForm({
       {/* New Item Form */}
       {showNewItem && (
         <Card className="mb-6">
-          <CardHeader><CardTitle>Tambah Barang Baru</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("inventory.newItemTitle")}</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleCreateItem} className="flex items-end gap-3">
               <div className="flex-1">
-                <Input id="newItemName" label="Nama Barang" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
+                <Input id="newItemName" label={t("common.itemName")} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
               </div>
               <div className="w-28">
-                <Input id="newItemUnit" label="Satuan" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
+                <Input id="newItemUnit" label={t("common.unit")} value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
               </div>
-              <Button type="submit" size="sm" className="cursor-pointer">Simpan</Button>
+              <Button type="submit" size="sm" className="cursor-pointer">{t("common.save")}</Button>
             </form>
           </CardContent>
         </Card>
@@ -274,13 +278,13 @@ export function StockUpdateForm({
 
       {/* Stock Update Form */}
       <Card>
-        <CardHeader><CardTitle>Catat Pergerakan Stok</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("inventory.movementTitle")}</CardTitle></CardHeader>
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
               icon={<Package className="h-12 w-12" />}
-              title="Belum ada barang untuk dicatat"
-              description="Buat barang pertama Anda dengan tombol &ldquo;+ Barang Baru&rdquo; di atas, lalu catat stok masuknya."
+              title={t("inventory.emptyFormTitle")}
+              description={t("inventory.emptyFormDescription")}
             />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -288,8 +292,8 @@ export function StockUpdateForm({
                 <Select
                   id="itemId"
                   name="itemId"
-                  label="Barang"
-                  placeholder="-- Pilih Barang --"
+                  label={t("common.item")}
+                  placeholder={t("inventory.pickItemPlaceholder")}
                   value={itemId}
                   onChange={(e) => setItemId(e.target.value)}
                   options={items.map((item) => ({
@@ -300,19 +304,22 @@ export function StockUpdateForm({
                 />
                 {selected && (
                   <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                    Stok saat ini: {formatNumber(selected.currentStock)} {selected.unit || "kg"}
+                    {t("inventory.currentStockHint", {
+                      qty: formatNumber(selected.currentStock),
+                      unit: selected.unit || "kg",
+                    })}
                   </p>
                 )}
               </div>
               <Select
                 id="type"
                 name="type"
-                label="Jenis Pergerakan"
+                label={t("inventory.movementTypeLabel")}
                 value={movementType}
                 onChange={(e) => setMovementType(e.target.value as "in" | "out")}
                 options={[
-                  { value: "in", label: "Barang Masuk (diterima)" },
-                  { value: "out", label: "Barang Keluar (dikirim)" },
+                  { value: "in", label: t("inventory.movementIn") },
+                  { value: "out", label: t("inventory.movementOut") },
                 ]}
               />
               <div>
@@ -323,7 +330,7 @@ export function StockUpdateForm({
                   step="0.01"
                   min="0"
                   className="text-right tabular-nums"
-                  label="Jumlah"
+                  label={t("common.quantity")}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   required
@@ -332,9 +339,10 @@ export function StockUpdateForm({
                   <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
                     <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>
-                      Melebihi stok yang tersedia ({formatNumber(selected.currentStock)}{" "}
-                      {selected.unit || "kg"}). Stok tidak boleh menjadi negatif, jadi
-                      pergerakan ini akan ditolak.
+                      {t("inventory.overStockWarning", {
+                        qty: formatNumber(selected.currentStock),
+                        unit: selected.unit || "kg",
+                      })}
                     </span>
                   </p>
                 )}
@@ -348,21 +356,17 @@ export function StockUpdateForm({
                     step="0.01"
                     min="0"
                     className="text-right tabular-nums"
-                    label={<TermTooltip term="hpp">Harga Pokok per Unit (IDR)</TermTooltip>}
+                    label={<TermTooltip term="hpp">{t("inventory.unitCostLabel")}</TermTooltip>}
                     required
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Wajib diisi. Dipakai menghitung HPP (rata-rata tertimbang) saat barang keluar —
-                    tanpa ini, laba akan tercatat terlalu tinggi.
+                    {t("inventory.unitCostHint")}
                   </p>
                 </div>
               ) : (
                 <p className="flex items-start gap-1.5 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  <span>
-                    HPP dihitung otomatis dari rata-rata harga pokok barang masuk, lalu diposting
-                    ke jurnal (D: Beban Pokok Penjualan / K: Persediaan).
-                  </span>
+                  <span>{t("inventory.cogsAutoHint")}</span>
                 </p>
               )}
               <div>
@@ -370,7 +374,7 @@ export function StockUpdateForm({
                   id="date"
                   name="date"
                   type="date"
-                  label="Tanggal"
+                  label={t("common.date")}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
@@ -382,11 +386,11 @@ export function StockUpdateForm({
                   </p>
                 )}
               </div>
-              <Input id="note" name="note" label="Catatan (opsional)" />
+              <Input id="note" name="note" label={t("common.notesOptional")} />
 
               <div className="flex gap-3">
                 <Button type="submit" className="cursor-pointer" disabled={loading}>
-                  {loading ? "Menyimpan..." : "Simpan Pergerakan Stok"}
+                  {loading ? t("common.saving") : t("inventory.submitMovement")}
                 </Button>
                 <Button
                   type="button"
@@ -394,7 +398,7 @@ export function StockUpdateForm({
                   className="cursor-pointer"
                   onClick={() => router.push("/inventory")}
                 >
-                  Kembali ke Stok Barang
+                  {t("inventory.backToInventory")}
                 </Button>
               </div>
             </form>
@@ -404,9 +408,9 @@ export function StockUpdateForm({
 
       {/* Konfirmasi pengeluaran stok besar (issue #6). */}
       <ConfirmDialog
-        title="Pengeluaran stok dalam jumlah besar"
+        title={t("inventory.largeOutTitle")}
         message={confirmMessage}
-        confirmLabel="Ya, catat"
+        confirmLabel={t("inventory.largeOutConfirm")}
         confirmVariant="danger"
         open={pending != null}
         onOpenChange={(o) => {

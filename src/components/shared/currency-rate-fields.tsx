@@ -17,6 +17,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useT } from "@/lib/i18n/client";
 
 export const BASE_CURRENCY = "IDR";
 
@@ -42,9 +43,10 @@ export function CurrencyRateFields({
   rate,
   onCurrencyChange,
   onRateChange,
-  currencyLabel = "Mata Uang",
-  rateHint = "Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.",
+  currencyLabel,
+  rateHint,
 }: CurrencyRateFieldsProps) {
+  const t = useT();
   const isForeign = currency !== BASE_CURRENCY;
 
   return (
@@ -52,7 +54,7 @@ export function CurrencyRateFields({
       <Select
         id="currency"
         name="currency"
-        label={currencyLabel}
+        label={currencyLabel ?? t("common.currency")}
         value={currency}
         onChange={(e) => onCurrencyChange(e.target.value)}
         options={CURRENCY_OPTIONS}
@@ -67,12 +69,14 @@ export function CurrencyRateFields({
             step="0.000001"
             min="0"
             className="text-right tabular-nums"
-            label={`Kurs 1 ${currency} ke IDR`}
+            label={t("fx.rateToIdr", { currency })}
             value={rate}
             onChange={(e) => onRateChange(e.target.value)}
             required
           />
-          <p className="mt-1 text-xs text-muted-foreground">{rateHint}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {rateHint ?? t("fx.rateHintDefault")}
+          </p>
         </div>
       ) : (
         <div />

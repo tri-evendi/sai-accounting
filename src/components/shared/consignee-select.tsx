@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/lib/i18n/client";
 
 interface ConsigneeOption {
   id: number;
@@ -43,6 +44,7 @@ export function ConsigneeSelect({
   defaultText,
   current,
 }: ConsigneeSelectProps) {
+  const t = useT();
   const [consignees, setConsignees] = useState<ConsigneeOption[]>([]);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function ConsigneeSelect({
   if (current && !options.some((o) => o.value === String(current.id))) {
     options.unshift({
       value: String(current.id),
-      label: `${current.name} (nonaktif)`,
+      label: t("consignee.inactiveSuffix", { name: current.name }),
       description: describe(current),
     });
   }
@@ -80,27 +82,27 @@ export function ConsigneeSelect({
     <div className="space-y-1.5 sm:col-span-2">
       <SearchableSelect
         id="consigneeId"
-        label="Consignee (master)"
-        placeholder="Pilih consignee dari master…"
-        searchPlaceholder="Cari nama / negara / kontak…"
-        emptyText="Tidak ada consignee cocok"
+        label={t("consignee.masterField")}
+        placeholder={t("consignee.masterPlaceholder")}
+        searchPlaceholder={t("consignee.searchPlaceholder")}
+        emptyText={t("consignee.noMatch")}
         options={options}
         value={consigneeId != null ? String(consigneeId) : null}
         onChange={(v) => onConsigneeIdChange(v == null ? null : Number(v))}
       />
       <p className="text-xs text-muted-foreground">
-        Belum ada di master?{" "}
+        {t("consignee.notInMaster")}{" "}
         <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
-          Tambah consignee
+          {t("consignee.addLink")}
         </Link>
-        , lalu pilih di sini.
+        {t("consignee.addTail")}
       </p>
       <Input
         id="consignee"
         name="consignee"
-        label="Consignee (teks lama — fallback)"
+        label={t("consignee.legacyField")}
         defaultValue={defaultText ?? ""}
-        placeholder="Dipakai bila belum dipilih dari master"
+        placeholder={t("consignee.legacyPlaceholder")}
       />
     </div>
   );

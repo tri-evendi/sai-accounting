@@ -519,7 +519,22 @@
     "loadFailed": "加载发票数据失败",
     "updateFailed": "保存发票更改失败",
     "loadingInvoice": "正在加载发票数据...",
-    "notFound": "未找到发票"
+    "notFound": "未找到发票",
+    "customerFieldFx": "客户",
+    "customerPickPlaceholder": "-- 选择客户 --",
+    "customerTaxExemptSuffix": "{name} · 免增值税",
+    "customerHint": "将发票与客户关联，使应收账款可按客户细分（账龄）。旧发票可留空。",
+    "taxableLabel": "应缴增值税（销项税）",
+    "taxRateHint": "印尼标准增值税率为 11%。出口 / 不征税请填 0。",
+    "notTaxableHint": "不征增值税（0%）——常见于出口 / 免税客户。日记账中不会出现增值税分录。",
+    "pebSectionTitle": "出口单证（PEB）",
+    "pebHint": "对于出口销售（增值税 0%），PEB 号码取代税务发票号码，并用于电子发票导出。选填。",
+    "dppLine": "计税依据 · DPP（{currency}）",
+    "vatLine": "增值税 {rate}（{currency}）",
+    "vatNotTaxable": "（不征税）",
+    "totalLine": "发票合计（{currency}）",
+    "baseUnknown": "— 请先填写汇率",
+    "pebDate": "PEB 日期"
   },
   "sales": {
     "title": "录入销售",
@@ -2382,5 +2397,41 @@
         }
       }
     }
+  },
+  "consignee": {
+    "masterField": "收货人（主数据）",
+    "masterPlaceholder": "从主数据中选择收货人…",
+    "searchPlaceholder": "搜索名称 / 国家 / 联系人…",
+    "noMatch": "没有匹配的收货人",
+    "inactiveSuffix": "{name}（已停用）",
+    "notInMaster": "主数据中还没有？",
+    "addLink": "添加收货人",
+    "addTail": "，然后在此处选择。",
+    "legacyField": "收货人（旧文本——备用）",
+    "legacyPlaceholder": "未从主数据中选择时使用"
+  },
+  "fx": {
+    "rateToIdr": "汇率：1 {currency} 兑 IDR",
+    "rateHintDefault": "外币必填——总账中的印尼盾金额按此汇率折算。"
+  },
+  "dueDate": {
+    "field": "到期日（选填）",
+    "hint": "约定的付款日期。应收/应付报表据此将单据标记为“已逾期”。若留空，账龄自单据日期起算，且单据永远不会被标记为逾期。"
+  },
+  "documentPreview": {
+    "hint": "单据预览——可下载或打印。",
+    "print": "打印",
+    "download": "下载"
+  },
+  "chainStatus": {
+    "selesai": "已完成",
+    "sebagian": "部分完成",
+    "belum": "未开始"
+  },
+  "chainStage": {
+    "contract": "合同",
+    "delivery": "送货单",
+    "invoice": "发票",
+    "payment": "付款"
   }
 }

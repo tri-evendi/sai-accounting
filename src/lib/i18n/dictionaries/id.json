@@ -519,7 +519,22 @@
     "loadFailed": "Gagal memuat data tagihan",
     "updateFailed": "Gagal menyimpan perubahan tagihan",
     "loadingInvoice": "Memuat data tagihan...",
-    "notFound": "Tagihan tidak ditemukan"
+    "notFound": "Tagihan tidak ditemukan",
+    "customerFieldFx": "Pelanggan (Customer)",
+    "customerPickPlaceholder": "-- Pilih pelanggan --",
+    "customerTaxExemptSuffix": "{name} · bebas PPN",
+    "customerHint": "Menautkan faktur ke pelanggan agar Piutang Usaha bisa dirinci per pelanggan (umur piutang). Boleh dikosongkan untuk faktur lama.",
+    "taxableLabel": "Kena PPN (PPN Keluaran)",
+    "taxRateHint": "Standar PPN Indonesia 11%. Isi 0 untuk ekspor / tidak kena PPN.",
+    "notTaxableHint": "Tidak kena PPN (0%) — biasa untuk ekspor / pelanggan bebas PPN. Tidak ada baris PPN pada jurnal.",
+    "pebSectionTitle": "Dokumen Ekspor (PEB)",
+    "pebHint": "Untuk penjualan ekspor (PPN 0%), nomor PEB menggantikan nomor Faktur Pajak dan dipakai pada ekspor e-Faktur. Opsional.",
+    "dppLine": "DPP · Dasar Pengenaan Pajak ({currency})",
+    "vatLine": "PPN {rate} ({currency})",
+    "vatNotTaxable": "(tidak kena)",
+    "totalLine": "Total tagihan ({currency})",
+    "baseUnknown": "— isi kurs dulu",
+    "pebDate": "Tanggal PEB"
   },
   "sales": {
     "title": "Catat Penjualan",
@@ -2382,5 +2397,41 @@
         }
       }
     }
+  },
+  "consignee": {
+    "masterField": "Consignee (master)",
+    "masterPlaceholder": "Pilih consignee dari master…",
+    "searchPlaceholder": "Cari nama / negara / kontak…",
+    "noMatch": "Tidak ada consignee cocok",
+    "inactiveSuffix": "{name} (nonaktif)",
+    "notInMaster": "Belum ada di master?",
+    "addLink": "Tambah consignee",
+    "addTail": ", lalu pilih di sini.",
+    "legacyField": "Consignee (teks lama — fallback)",
+    "legacyPlaceholder": "Dipakai bila belum dipilih dari master"
+  },
+  "fx": {
+    "rateToIdr": "Kurs 1 {currency} ke IDR",
+    "rateHintDefault": "Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini."
+  },
+  "dueDate": {
+    "field": "Jatuh Tempo (opsional)",
+    "hint": "Tanggal pembayaran disepakati. Dipakai laporan Piutang/Utang untuk menandai \"Jatuh Tempo\". Bila dikosongkan, umur dihitung sejak tanggal dokumen dan dokumen tidak pernah ditandai jatuh tempo."
+  },
+  "documentPreview": {
+    "hint": "Pratinjau dokumen — bisa diunduh atau dicetak.",
+    "print": "Cetak",
+    "download": "Unduh"
+  },
+  "chainStatus": {
+    "selesai": "Selesai",
+    "sebagian": "Sebagian",
+    "belum": "Belum"
+  },
+  "chainStage": {
+    "contract": "Kontrak",
+    "delivery": "Surat Jalan",
+    "invoice": "Faktur",
+    "payment": "Pembayaran"
   }
 }

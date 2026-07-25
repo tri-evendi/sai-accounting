@@ -1,6 +1,14 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -430,56 +438,54 @@ export default async function DashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pergerakan stok terakhir</CardTitle>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left bg-muted/80">
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Jumlah</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentMovements.length === 0 ? (
-                  <tr>
-                    <td colSpan={4}>
-                      <EmptyState
-                        icon={<Package className="h-12 w-12" />}
-                        title="Belum ada pergerakan stok"
-                        description="Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama."
-                        actionLabel="Tambah / Kurangi Stok"
-                        actionHref="/inventory/update"
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  recentMovements.map((m, i) => (
-                    <tr key={i} className="border-b border-border hover:bg-muted/80">
-                      <td className="px-6 py-3 font-medium text-foreground">{m.itemName}</td>
-                      <td className="px-6 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            m.type === "in"
-                              ? "bg-success-soft text-success-strong"
-                              : "bg-destructive-soft text-destructive-strong"
-                          }`}
-                        >
-                          {m.type === "in" ? "Barang Masuk" : "Barang Keluar"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-right font-semibold tabular-nums">
-                        {m.quantity}
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {new Date(m.date).toLocaleDateString("id-ID")}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
+                <TableHead>Barang</TableHead>
+                <TableHead>Jenis</TableHead>
+                <TableHead className="text-right">Jumlah</TableHead>
+                <TableHead>Tanggal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentMovements.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="p-0">
+                    <EmptyState
+                      icon={<Package className="h-12 w-12" />}
+                      title="Belum ada pergerakan stok"
+                      description="Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama."
+                      actionLabel="Tambah / Kurangi Stok"
+                      actionHref="/inventory/update"
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                recentMovements.map((m, i) => (
+                  <TableRow key={i} className="hover:bg-muted/80">
+                    <TableCell className="font-medium text-foreground">{m.itemName}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          m.type === "in"
+                            ? "bg-success-soft text-success-strong"
+                            : "bg-destructive-soft text-destructive-strong"
+                        }`}
+                      >
+                        {m.type === "in" ? "Barang Masuk" : "Barang Keluar"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {m.quantity}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(m.date).toLocaleDateString("id-ID")}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </DashboardSection>
 
@@ -532,42 +538,43 @@ export default async function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Saldo per akun</CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left bg-muted/80">
-                      <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Masuk</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Keluar</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {financeBalances.map((b) => (
-                      <tr key={`${b.type}_${b.currency}`} className="border-b border-border">
-                        <td className="px-6 py-3 text-foreground">
-                          {CASH_TYPE_LABELS[b.type as CashType] || b.type}
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground">{b.currency}</td>
-                        <td className="px-6 py-3 text-right text-success tabular-nums">
-                          {formatCurrency(b.debit, b.currency)}
-                        </td>
-                        <td className="px-6 py-3 text-right text-destructive tabular-nums">
-                          {formatCurrency(b.credit, b.currency)}
-                        </td>
-                        <td
-                          className={`px-6 py-3 text-right font-semibold tabular-nums ${
-                            b.balance >= 0 ? "text-success" : "text-destructive"
-                          }`}
-                        >
-                          {formatCurrency(b.balance, b.currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/80 hover:bg-muted/80">
+                    <TableHead>Akun</TableHead>
+                    <TableHead>Mata Uang</TableHead>
+                    <TableHead className="text-right">Uang Masuk</TableHead>
+                    <TableHead className="text-right">Uang Keluar</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {financeBalances.map((b) => (
+                    <TableRow key={`${b.type}_${b.currency}`}>
+                      <TableCell className="text-foreground">
+                        {CASH_TYPE_LABELS[b.type as CashType] || b.type}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{b.currency}</TableCell>
+                      {/* Warna kolom = semantik uang masuk/keluar (hijau/merah per
+                          kolom, bukan per tanda) — tidak 1:1 dengan MoneyCell,
+                          jadi format lama dipertahankan. */}
+                      <TableCell className="text-right text-success tabular-nums">
+                        {formatCurrency(b.debit, b.currency)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive tabular-nums">
+                        {formatCurrency(b.credit, b.currency)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-semibold tabular-nums ${
+                          b.balance >= 0 ? "text-success" : "text-destructive"
+                        }`}
+                      >
+                        {formatCurrency(b.balance, b.currency)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
           )}
 
@@ -635,55 +642,53 @@ export default async function DashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Kontrak terbaru</CardTitle>
             </CardHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left bg-muted/80">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">
-                      <TermTooltip term="kontrak">No. Kontrak</TermTooltip>
-                    </th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Pembeli</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestContracts.length === 0 ? (
-                    <tr>
-                      <td colSpan={4}>
-                        <EmptyState
-                          icon={<FileText className="h-12 w-12" />}
-                          title="Belum ada kontrak"
-                          description="Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya."
-                          actionLabel="+ Buat Kontrak"
-                          actionHref="/contracts/new"
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    latestContracts.map((c) => (
-                      <tr key={c.id} className="border-b border-border hover:bg-muted/80">
-                        <td className="px-6 py-3">
-                          <Link
-                            href={`/contracts/${c.id}`}
-                            className="text-primary hover:underline font-medium"
-                          >
-                            {c.contractNo}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-3 text-foreground">{c.buyer}</td>
-                        <td className="px-6 py-3 text-muted-foreground">
-                          {new Date(c.date).toLocaleDateString("id-ID")}
-                        </td>
-                        <td className="px-6 py-3">
-                          <StatusBadge status={c.status} />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/80 hover:bg-muted/80">
+                  <TableHead>
+                    <TermTooltip term="kontrak">No. Kontrak</TermTooltip>
+                  </TableHead>
+                  <TableHead>Pembeli</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {latestContracts.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="p-0">
+                      <EmptyState
+                        icon={<FileText className="h-12 w-12" />}
+                        title="Belum ada kontrak"
+                        description="Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya."
+                        actionLabel="+ Buat Kontrak"
+                        actionHref="/contracts/new"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  latestContracts.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-muted/80">
+                      <TableCell>
+                        <Link
+                          href={`/contracts/${c.id}`}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {c.contractNo}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-foreground">{c.buyer}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(c.date).toLocaleDateString("id-ID")}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={c.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </Card>
         </DashboardSection>
       )}

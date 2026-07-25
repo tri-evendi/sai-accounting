@@ -13,6 +13,14 @@ import { useRouter } from "next/navigation";
 import { Download, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
@@ -172,22 +180,25 @@ export function ImportAccountsForm() {
                 Perbaiki {rowErrors.length} baris berikut, lalu unggah ulang. Belum ada yang diimpor.
               </p>
               <div className="mt-3 max-h-64 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-destructive-strong/80">
-                      <th className="py-1 pr-4 font-medium">Baris</th>
-                      <th className="py-1 font-medium">Masalah</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                {/* Tabel ringkas di dalam panel galat: padding rapat & warna
+                    destructive menimpa bawaan primitif agar tampilannya tetap
+                    sama dengan sebelum migrasi. */}
+                <Table>
+                  <TableHeader className="[&_tr]:border-destructive-strong/10">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="h-auto py-1 pr-4 pl-0 text-destructive-strong/80">Baris</TableHead>
+                      <TableHead className="h-auto px-0 py-1 text-destructive-strong/80">Masalah</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {rowErrors.map((r, i) => (
-                      <tr key={i} className="border-t border-destructive-strong/10">
-                        <td className="py-1 pr-4 tabular-nums text-destructive-strong">{r.row}</td>
-                        <td className="py-1 text-destructive-strong">{r.message}</td>
-                      </tr>
+                      <TableRow key={i} className="border-destructive-strong/10 hover:bg-transparent">
+                        <TableCell className="py-1 pr-4 pl-0 tabular-nums text-destructive-strong">{r.row}</TableCell>
+                        <TableCell className="px-0 py-1 text-destructive-strong">{r.message}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}

@@ -19,6 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { AlertCircle, ArrowDownLeft, ArrowUpRight, BookText, Info, Lock } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
@@ -398,32 +406,34 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   <BookText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Lihat jurnal — pratinjau
                 </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs text-muted-foreground">
-                      <th className="px-3 py-1.5 text-left font-medium">Akun</th>
-                      <th className="px-3 py-1.5 text-right font-medium">Debit</th>
-                      <th className="px-3 py-1.5 text-right font-medium">Kredit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                {/* Tabel pratinjau ringkas: padding rapat menimpa bawaan primitif
+                    agar tampilannya sama dengan sebelum migrasi. */}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-xs hover:bg-transparent">
+                      <TableHead className="h-auto px-3 py-1.5 text-xs">Akun</TableHead>
+                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">Debit</TableHead>
+                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">Kredit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {journalPreview.map((line, i) => (
-                      <tr key={i} className="border-t border-border">
-                        <td className="px-3 py-1.5 text-foreground">{line.account}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
+                      <TableRow key={i} className="hover:bg-transparent">
+                        <TableCell className="px-3 py-1.5 text-foreground">{line.account}</TableCell>
+                        <TableCell className="px-3 py-1.5 text-right tabular-nums text-foreground">
                           {line.debit > 0
                             ? new Intl.NumberFormat("id-ID").format(line.debit)
                             : "-"}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
+                        </TableCell>
+                        <TableCell className="px-3 py-1.5 text-right tabular-nums text-foreground">
                           {line.credit > 0
                             ? new Intl.NumberFormat("id-ID").format(line.credit)
                             : "-"}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
                 <p className="px-3 py-2 text-xs text-muted-foreground">
                   Jurnal dibuat otomatis saat transaksi disimpan. Nilai dalam {currency}.
                 </p>

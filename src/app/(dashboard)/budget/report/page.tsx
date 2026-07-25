@@ -12,6 +12,16 @@ import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
@@ -138,63 +148,63 @@ export default async function BudgetReportPage({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Realisasi</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Selisih</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">%</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.rows.map((r) => (
-                  <tr key={r.code} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
-                      {r.name}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.budget, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.actual, "IDR")}
-                    </td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                      {signedCurrency(r.variance)}
-                    </td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                      {pctLabel(r.variancePct)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <VarianceBadge status={r.status} favorable={r.favorable} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border font-bold">
-                  <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(report.totals.budget, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(report.totals.actual, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {signedCurrency(report.totals.variance)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {pctLabel(report.totals.variancePct)}
-                  </td>
-                  <td className="px-4 py-3" />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Akun</TableHead>
+                <TableHead className="text-right">Anggaran</TableHead>
+                <TableHead className="text-right">Realisasi</TableHead>
+                <TableHead className="text-right">Selisih</TableHead>
+                <TableHead className="text-right">%</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {report.rows.map((r) => (
+                <TableRow key={r.code}>
+                  <TableCell className="text-foreground">
+                    <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
+                    {r.name}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.budget} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.actual} currency="IDR" />
+                  </TableCell>
+                  {/* Selisih diwarnai menurut favorable (bukan tanda) dan membawa
+                      awalan "+" eksplisit — bukan pemetaan 1:1 ke MoneyCell. */}
+                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
+                    {signedCurrency(r.variance)}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
+                    {pctLabel(r.variancePct)}
+                  </TableCell>
+                  <TableCell>
+                    <VarianceBadge status={r.status} favorable={r.favorable} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="border-t-2 bg-transparent">
+              <TableRow className="font-bold hover:bg-transparent">
+                <TableCell className="text-foreground">Total</TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={report.totals.budget} currency="IDR" />
+                </TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={report.totals.actual} currency="IDR" />
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {signedCurrency(report.totals.variance)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
+                  {pctLabel(report.totals.variancePct)}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
+          </Table>
         </Card>
       )}
     </div>

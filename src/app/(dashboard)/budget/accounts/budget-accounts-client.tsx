@@ -12,9 +12,17 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { MONTH_NAMES } from "@/lib/month-names";
-import { formatCurrency } from "@/lib/utils";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, ClipboardList } from "lucide-react";
 
@@ -169,30 +177,29 @@ export function BudgetAccountsClient({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgets.map((b) => (
-                  <tr key={b.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      {MONTH_NAMES[b.month - 1]} {b.year}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
-                      {b.accountName}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(b.amount, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Bulan</TableHead>
+                <TableHead>Akun</TableHead>
+                <TableHead className="text-right">Anggaran</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {budgets.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell className="text-foreground">
+                    {MONTH_NAMES[b.month - 1]} {b.year}
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
+                    {b.accountName}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={b.amount} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="text-right">
                       {/* Menghapus anggaran mengubah angka "Realisasi vs Anggaran"
                           yang mungkin sudah dibaca orang lain, jadi dikonfirmasi
                           dulu (issue #6). */}
@@ -217,12 +224,11 @@ export function BudgetAccountsClient({
                           </button>
                         }
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

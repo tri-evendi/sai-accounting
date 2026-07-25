@@ -8,7 +8,16 @@ import { getFixedAssets, groupByLocation } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCurrency } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { MapPin } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -49,53 +58,51 @@ export default async function AssetsByLocationPage() {
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Lokasi</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Jumlah Aset</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Akum. Penyusutan</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Buku</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((g) => (
-                  <tr key={g.location ?? "__none__"} className="border-b border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      {g.location ?? <span className="text-muted-foreground">Tanpa lokasi</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">{g.count}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(g.cost, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(g.accumulated, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(g.book, "IDR")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border font-semibold">
-                  <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">{totals.count}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(totals.cost, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(totals.accumulated, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(totals.book, "IDR")}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Lokasi</TableHead>
+                <TableHead className="text-right">Jumlah Aset</TableHead>
+                <TableHead className="text-right">Nilai Perolehan</TableHead>
+                <TableHead className="text-right">Akum. Penyusutan</TableHead>
+                <TableHead className="text-right">Nilai Buku</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {groups.map((g) => (
+                <TableRow key={g.location ?? "__none__"}>
+                  <TableCell className="font-medium text-foreground">
+                    {g.location ?? <span className="text-muted-foreground">Tanpa lokasi</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">{g.count}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={g.cost} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={g.accumulated} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={g.book} currency="IDR" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="border-t-2 bg-transparent">
+              <TableRow className="font-semibold hover:bg-transparent">
+                <TableCell className="text-foreground">Total</TableCell>
+                <TableCell className="text-right tabular-nums text-foreground">{totals.count}</TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={totals.cost} currency="IDR" />
+                </TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={totals.accumulated} currency="IDR" />
+                </TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={totals.book} currency="IDR" />
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         </Card>
       )}
 

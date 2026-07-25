@@ -4,6 +4,15 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { DeliveryOrderPdfButton } from "./pdf-button";
@@ -122,46 +131,44 @@ export default async function DeliveryOrderDetailPage({
           <CardTitle>Barang</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Barang</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Bags</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Kg/Bag</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((it) => (
-                  <tr key={it.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">{it.itemName}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(it.bags)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(Number(it.kgPerBag))}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(Number(it.quantity))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-border font-semibold">
-                  <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatNumber(totalBags)}
-                  </td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatNumber(totalKg)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Barang</TableHead>
+                <TableHead className="text-right">Bags</TableHead>
+                <TableHead className="text-right">Kg/Bag</TableHead>
+                <TableHead className="text-right">Total (kg)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {order.items.map((it) => (
+                <TableRow key={it.id}>
+                  <TableCell className="text-foreground">{it.itemName}</TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(it.bags)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(Number(it.kgPerBag))}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(Number(it.quantity))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="bg-transparent">
+              <TableRow className="font-semibold hover:bg-transparent">
+                <TableCell className="text-foreground">Total</TableCell>
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {formatNumber(totalBags)}
+                </TableCell>
+                <TableCell />
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {formatNumber(totalKg)}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         </CardContent>
       </Card>
     </div>

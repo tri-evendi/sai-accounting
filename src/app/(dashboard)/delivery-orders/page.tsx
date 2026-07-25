@@ -11,6 +11,14 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort } from "@/lib/utils";
@@ -69,55 +77,53 @@ export default async function DeliveryOrdersPage() {
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">No. Surat Jalan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Consignee</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen Sumber</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Bags</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (kg)</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => {
-                  const totalBags = o.items.reduce((s, i) => s + i.bags, 0);
-                  const totalKg = o.items.reduce((s, i) => s + Number(i.quantity), 0);
-                  const source =
-                    o.contract?.contractNo || o.invoice?.invoiceNo || "—";
-                  return (
-                    <tr key={o.id} className="border-b border-border hover:bg-muted">
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        <Link
-                          href={`/delivery-orders/${o.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          {o.no}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-foreground">{formatDateShort(o.date)}</td>
-                      <td className="px-4 py-3 text-foreground">{o.consignee?.name || "—"}</td>
-                      <td className="px-4 py-3 text-foreground">{source}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatNumber(totalBags)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatNumber(totalKg)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={o.status === "canceled" ? "danger" : "success"}>
-                          {o.status === "canceled" ? "Dibatalkan" : "Diterbitkan"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>No. Surat Jalan</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Consignee</TableHead>
+                <TableHead>Dokumen Sumber</TableHead>
+                <TableHead className="text-right">Bags</TableHead>
+                <TableHead className="text-right">Total (kg)</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.map((o) => {
+                const totalBags = o.items.reduce((s, i) => s + i.bags, 0);
+                const totalKg = o.items.reduce((s, i) => s + Number(i.quantity), 0);
+                const source =
+                  o.contract?.contractNo || o.invoice?.invoiceNo || "—";
+                return (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium text-foreground">
+                      <Link
+                        href={`/delivery-orders/${o.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {o.no}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-foreground">{formatDateShort(o.date)}</TableCell>
+                    <TableCell className="text-foreground">{o.consignee?.name || "—"}</TableCell>
+                    <TableCell className="text-foreground">{source}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground">
+                      {formatNumber(totalBags)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground">
+                      {formatNumber(totalKg)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={o.status === "canceled" ? "danger" : "success"}>
+                        {o.status === "canceled" ? "Dibatalkan" : "Diterbitkan"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

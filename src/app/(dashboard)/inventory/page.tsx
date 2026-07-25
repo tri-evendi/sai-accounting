@@ -14,6 +14,14 @@ import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { InventoryPageActions } from "./inventory-actions";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Money } from "@/components/ui/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,59 +129,57 @@ export default async function InventoryPage({
         <CardHeader>
           <CardTitle>Ringkasan Stok ({totalCount})</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Satuan</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Masuk</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total Keluar</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Sisa Stok</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Biaya/Unit</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Nilai</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Kondisi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventory.length === 0 ? (
-                <tr><td colSpan={8}><EmptyState icon={<PackageIcon className="h-12 w-12" />} title="Belum ada barang di stok" description="Catat barang masuk pertama Anda." actionLabel="Tambah / Kurangi Stok" actionHref="/inventory/update" /></td></tr>
-              ) : (
-                inventory.map((item) => {
-                  const level = getStockLevel(item.currentStock);
-                  return (
-                  <tr key={item.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-6 py-3 font-medium text-foreground">{item.name}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{item.unit || "-"}</td>
-                    <td className="px-6 py-3 text-right text-success tabular-nums">{item.totalIn}</td>
-                    <td className="px-6 py-3 text-right text-destructive tabular-nums">{item.totalOut}</td>
-                    <td className="px-6 py-3 text-right font-semibold tabular-nums">{item.currentStock}</td>
-                    <td className="px-6 py-3 text-right">
-                      {item.unitCost !== null ? (
-                        <Money value={item.unitCost} currency="IDR" />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      {item.stockValue !== null ? (
-                        <Money value={item.stockValue} currency="IDR" className="font-semibold" />
-                      ) : (
-                        <span className="text-muted-foreground" title="Belum ada biaya masuk">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge variant={getStockBadgeVariant(level)}>
-                        {STOCK_LEVEL_LABELS[level]}
-                      </Badge>
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Barang</TableHead>
+              <TableHead>Satuan</TableHead>
+              <TableHead className="text-right">Total Masuk</TableHead>
+              <TableHead className="text-right">Total Keluar</TableHead>
+              <TableHead className="text-right">Sisa Stok</TableHead>
+              <TableHead className="text-right">Biaya/Unit</TableHead>
+              <TableHead className="text-right">Nilai</TableHead>
+              <TableHead>Kondisi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {inventory.length === 0 ? (
+              <TableRow className="hover:bg-transparent"><TableCell colSpan={8} className="p-0"><EmptyState icon={<PackageIcon className="h-12 w-12" />} title="Belum ada barang di stok" description="Catat barang masuk pertama Anda." actionLabel="Tambah / Kurangi Stok" actionHref="/inventory/update" /></TableCell></TableRow>
+            ) : (
+              inventory.map((item) => {
+                const level = getStockLevel(item.currentStock);
+                return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium text-foreground">{item.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.unit || "-"}</TableCell>
+                  <TableCell className="text-right text-success tabular-nums">{item.totalIn}</TableCell>
+                  <TableCell className="text-right text-destructive tabular-nums">{item.totalOut}</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">{item.currentStock}</TableCell>
+                  <TableCell className="text-right">
+                    {item.unitCost !== null ? (
+                      <Money value={item.unitCost} currency="IDR" />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item.stockValue !== null ? (
+                      <Money value={item.stockValue} currency="IDR" className="font-semibold" />
+                    ) : (
+                      <span className="text-muted-foreground" title="Belum ada biaya masuk">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStockBadgeVariant(level)}>
+                      {STOCK_LEVEL_LABELS[level]}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/inventory" searchParams={params} />
       </Card>
     </div>

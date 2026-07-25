@@ -23,6 +23,14 @@ import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -368,66 +376,58 @@ export function NewInvoiceForm({
             )}
 
             {outstanding && !loadingOutstanding && (
-              <div className="mt-4 overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted text-left">
-                      <th className="px-3 py-2 font-medium text-muted-foreground">Barang</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Kontrak (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Dikirim (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Difakturkan (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Sisa (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Siap difakturkan (kg)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="mt-4 rounded-md border border-border">
+                {/* Tabel ringkas (px-3 py-2) — padding rapat sengaja menimpa
+                    bawaan primitif agar sama dengan tampilan sebelum migrasi. */}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted hover:bg-muted">
+                      <TableHead className="h-auto px-3 py-2">Barang</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">Kontrak (kg)</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">Dikirim (kg)</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">Difakturkan (kg)</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">Sisa (kg)</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">Siap difakturkan (kg)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {outstanding.lines.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
                           Kontrak ini belum punya baris barang.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       outstanding.lines.map((l) => (
-                        <tr key={l.key} className="border-b border-border last:border-0">
-                          <td className="px-3 py-2 text-foreground">
+                        <TableRow key={l.key}>
+                          <TableCell className="px-3 py-2 text-foreground">
                             {l.itemName}
                             {l.remainingKg === 0 && (
                               <Badge variant="success" className="ml-2">
                                 Sudah penuh
                               </Badge>
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.contractedKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.deliveredKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.invoicedKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
                             {formatNumber(l.remainingKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.readyToInvoiceKg)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
 

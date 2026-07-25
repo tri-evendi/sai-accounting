@@ -17,6 +17,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { HandCoins, Info, Plus } from "lucide-react";
 
@@ -117,81 +126,77 @@ export default async function AdvancesPage({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Nomor</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Jenis</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Pihak</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Kontrak</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                    Sudah dikompensasi
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa (IDR)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">{r.advanceNo}</td>
-                    <td className="px-4 py-3">
-                      {/* Badge always carries text — colour is never the only signal. */}
-                      <Badge variant={r.type === "sales" ? "success" : "warning"}>
-                        {r.type === "sales" ? "Diterima" : "Dibayar"}
-                      </Badge>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {ADVANCE_TYPE_LABELS[r.type]}
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Nomor</TableHead>
+                <TableHead>Jenis</TableHead>
+                <TableHead>Pihak</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Kontrak</TableHead>
+                <TableHead className="text-right">Nilai</TableHead>
+                <TableHead className="text-right">Sudah dikompensasi</TableHead>
+                <TableHead className="text-right">Sisa</TableHead>
+                <TableHead className="text-right">Sisa (IDR)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium text-foreground">{r.advanceNo}</TableCell>
+                  <TableCell>
+                    {/* Badge always carries text — colour is never the only signal. */}
+                    <Badge variant={r.type === "sales" ? "success" : "warning"}>
+                      {r.type === "sales" ? "Diterima" : "Dibayar"}
+                    </Badge>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {ADVANCE_TYPE_LABELS[r.type]}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-foreground">{r.partyName}</TableCell>
+                  <TableCell className="text-foreground">{formatDateShort(r.date)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.contractNo ? (
+                      <Link
+                        href={`/contracts/${r.contractId}`}
+                        className="cursor-pointer text-primary transition-colors hover:underline"
+                      >
+                        {r.contractNo}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.amount} currency={r.currency} />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.applied} currency={r.currency} />
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    <Money value={r.remaining} currency={r.currency} />
+                    {r.isFullyApplied && (
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        Sudah habis
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{r.partyName}</td>
-                    <td className="px-4 py-3 text-foreground">{formatDateShort(r.date)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {r.contractNo ? (
-                        <Link
-                          href={`/contracts/${r.contractId}`}
-                          className="cursor-pointer text-primary transition-colors hover:underline"
-                        >
-                          {r.contractNo}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.amount, r.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.applied, r.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
-                      {formatCurrency(r.remaining, r.currency)}
-                      {r.isFullyApplied && (
-                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                          Sudah habis
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {r.remainingBase != null ? (
-                        formatCurrency(r.remainingBase, "IDR")
-                      ) : (
-                        <span className="text-xs text-warning-strong">Kurs belum diisi</span>
-                      )}
-                      {r.unratedApplications > 0 && (
-                        <span className="mt-0.5 block text-xs text-warning-strong">
-                          {r.unratedApplications} kompensasi belum berkurs
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.remainingBase != null ? (
+                      <Money value={r.remainingBase} currency="IDR" />
+                    ) : (
+                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                    )}
+                    {r.unratedApplications > 0 && (
+                      <span className="mt-0.5 block text-xs text-warning-strong">
+                        {r.unratedApplications} kompensasi belum berkurs
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

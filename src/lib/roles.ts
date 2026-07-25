@@ -23,7 +23,9 @@ export interface RoleRecord {
 export async function getRoles(client = prisma): Promise<RoleRecord[]> {
   const rows = await client.role.findMany({
     select: { key: true, label: true, isSystem: true, isActive: true },
-    orderBy: [{ isSystem: "desc" }, { label: "asc" }],
+    // Peran sistem dulu (urut pembuatan: bos, core, ptg), lalu peran kustom
+    // urut pembuatan — tata urut yang stabil & familiar bagi pengguna.
+    orderBy: [{ isSystem: "desc" }, { id: "asc" }],
   });
   return rows;
 }

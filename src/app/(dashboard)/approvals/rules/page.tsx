@@ -4,6 +4,7 @@
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import { listApprovalRules } from "@/lib/approval-queue";
+import { getActiveRoles } from "@/lib/roles";
 import { ApprovalRules } from "./approval-rules-client";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -11,7 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ApprovalRulesPage() {
   await requirePagePermission("approval_rule.manage");
-  const rules = await listApprovalRules({ includeInactive: true });
+  const [rules, roles] = await Promise.all([
+    listApprovalRules({ includeInactive: true }),
+    getActiveRoles(),
+  ]);
 
   return (
     <div>
@@ -29,7 +33,7 @@ export default async function ApprovalRulesPage() {
         }
       />
 
-      <ApprovalRules rules={rules} />
+      <ApprovalRules rules={rules} roles={roles.map((r) => ({ key: r.key, label: r.label }))} />
     </div>
   );
 }

@@ -24,6 +24,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
+import { useDictionary, useT } from "@/lib/i18n/client";
 
 interface RowError {
   row: number;
@@ -39,6 +40,10 @@ interface ImportResult {
 export function ImportAccountsForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
+  // Legenda kode tipe Accurate: kodenya dari `lib/coa-import.ts`, artinya dari
+  // kamus. Di luar LocaleProvider jatuh ke label bahasa Indonesia di modul itu.
+  const legend = useDictionary()?.accounts.accurateType;
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -51,7 +56,7 @@ export function ImportAccountsForm() {
     setRowErrors([]);
     setResult(null);
     if (!file) {
-      setError("Pilih file Excel terlebih dahulu.");
+      setError(t("accounts.pickFileFirst"));
       return;
     }
     setLoading(true);
@@ -62,46 +67,63 @@ export function ImportAccountsForm() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || "Gagal mengimpor file.");
+      setError(data.error || t("accounts.importFailed"));
       if (Array.isArray(data.rowErrors)) setRowErrors(data.rowErrors);
       return;
     }
     setResult(data as ImportResult);
-    toast(`${data.created} akun ditambahkan${data.skipped ? `, ${data.skipped} dilewati` : ""}.`);
+    toast(
+      data.skipped
+        ? t("accounts.toastImportedWithSkipped", { created: data.created, skipped: data.skipped })
+        : t("accounts.toastImported", { created: data.created })
+    );
     router.refresh();
   }
 
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Akun Perkiraan", href: "/accounts" }, { label: "Impor dari Excel" }]}
-        title="Impor Akun Perkiraan"
-        description="Tambahkan banyak akun sekaligus dari file Excel. Unduh template, isi, lalu unggah di sini."
+        breadcrumbs={[
+          { label: t("accounts.breadcrumb"), href: "/accounts" },
+          { label: t("accounts.importFromExcel") },
+        ]}
+        title={t("accounts.importTitle")}
+        description={t("accounts.importDescription")}
       />
 
       {/* Persiapan file — mengikuti konvensi Accurate yang biasa dipakai staff. */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Persiapan File</CardTitle>
+          <CardTitle>{t("accounts.prepTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>File harus berformat Excel (<code>.xlsx</code>). Baris pertama adalah judul kolom dan tidak diimpor.</li>
-            <li>Kolom berurutan: <strong>Kode · Nama · Tipe · Mata Uang</strong>. Mata uang boleh dikosongkan (default IDR).</li>
-            <li>Kolom <strong>Tipe</strong> memakai kode berikut; saldo normal ditentukan otomatis dari tipe.</li>
+            <li>
+              {t("accounts.prepRule1Before")}
+              <code>.xlsx</code>
+              {t("accounts.prepRule1After")}
+            </li>
+            <li>
+              {t("accounts.prepRule2Before")} <strong>{t("accounts.prepRule2Columns")}</strong>
+              {t("accounts.prepRule2After")}
+            </li>
+            <li>
+              {t("accounts.prepRule3Before")} <strong>{t("accounts.prepRule3Strong")}</strong>{" "}
+              {t("accounts.prepRule3After")}
+            </li>
           </ul>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
-            {ACCURATE_TYPE_LEGEND.map((t) => (
-              <div key={t.code} className="flex gap-2">
-                <code className="font-mono text-foreground">{t.code}</code>
-                <span>= {t.label}</span>
+            {ACCURATE_TYPE_LEGEND.map((row) => (
+              <div key={row.code} className="flex gap-2">
+                <code className="font-mono text-foreground">{row.code}</code>
+                <span>= {legend?.[row.code as keyof typeof legend] ?? row.label}</span>
               </div>
             ))}
           </div>
           <a href="/api/accounts/import" download>
             <Button variant="secondary" type="button" className="mt-2">
               <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-              Unduh Template Excel
+              {t("accounts.downloadTemplate")}
             </Button>
           </a>
         </CardContent>
@@ -110,7 +132,7 @@ export function ImportAccountsForm() {
       {/* Unggah */}
       <Card>
         <CardHeader>
-          <CardTitle>Unggah &amp; Impor</CardTitle>
+          <CardTitle>{t("accounts.uploadTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -120,9 +142,9 @@ export function ImportAccountsForm() {
             >
               <FileSpreadsheet className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm font-medium text-foreground">
-                {file ? file.name : "Pilih file Excel (.xlsx)"}
+                {file ? file.name : t("accounts.filePlaceholder")}
               </span>
-              <span className="text-xs text-muted-foreground">Maksimal 5 MB · hingga 10.000 baris</span>
+              <span className="text-xs text-muted-foreground">{t("accounts.fileLimits")}</span>
               <input
                 id="coa-file"
                 type="file"
@@ -146,10 +168,10 @@ export function ImportAccountsForm() {
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={loading || !file}>
                 <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                {loading ? "Mengimpor…" : "Impor Akun"}
+                {loading ? t("accounts.importing") : t("accounts.importSubmit")}
               </Button>
               <Button variant="secondary" type="button" onClick={() => router.push("/accounts")}>
-                Batal
+                {t("common.cancel")}
               </Button>
             </div>
           </form>
@@ -159,15 +181,20 @@ export function ImportAccountsForm() {
             <div className="mt-6 rounded-lg border border-success-strong/20 bg-success-soft p-4">
               <p className="flex items-center gap-2 font-medium text-success-strong">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                Impor selesai
+                {t("accounts.doneTitle")}
               </p>
               <p className="mt-1 text-sm text-success-strong">
-                {result.created} akun ditambahkan
-                {result.skipped > 0 && ` · ${result.skipped} dilewati (kode sudah ada)`} dari {result.total} baris.
+                {result.skipped > 0
+                  ? t("accounts.summaryWithSkipped", {
+                      created: result.created,
+                      skipped: result.skipped,
+                      total: result.total,
+                    })
+                  : t("accounts.summary", { created: result.created, total: result.total })}
               </p>
               {result.skippedCodes.length > 0 && (
                 <p className="mt-1 text-xs text-success-strong/80">
-                  Kode dilewati: {result.skippedCodes.join(", ")}
+                  {t("accounts.skippedCodes", { codes: result.skippedCodes.join(", ") })}
                 </p>
               )}
             </div>
@@ -177,7 +204,7 @@ export function ImportAccountsForm() {
           {rowErrors.length > 0 && (
             <div className="mt-6 rounded-lg border border-destructive-strong/20 bg-destructive-soft p-4">
               <p className="font-medium text-destructive-strong">
-                Perbaiki {rowErrors.length} baris berikut, lalu unggah ulang. Belum ada yang diimpor.
+                {t("accounts.rowErrorsTitle", { count: rowErrors.length })}
               </p>
               <div className="mt-3 max-h-64 overflow-y-auto">
                 {/* Tabel ringkas di dalam panel galat: padding rapat & warna
@@ -186,8 +213,8 @@ export function ImportAccountsForm() {
                 <Table>
                   <TableHeader className="[&_tr]:border-destructive-strong/10">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="h-auto py-1 pr-4 pl-0 text-destructive-strong/80">Baris</TableHead>
-                      <TableHead className="h-auto px-0 py-1 text-destructive-strong/80">Masalah</TableHead>
+                      <TableHead className="h-auto py-1 pr-4 pl-0 text-destructive-strong/80">{t("accounts.colRow")}</TableHead>
+                      <TableHead className="h-auto px-0 py-1 text-destructive-strong/80">{t("accounts.colProblem")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

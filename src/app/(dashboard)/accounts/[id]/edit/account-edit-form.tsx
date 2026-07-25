@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoader } from "@/components/ui/loading";
 import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { accountTypeLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 
 interface AccountOption {
@@ -29,6 +31,8 @@ interface AccountData {
 export function EditAccountForm() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const t = useT();
+  const typeLabels = accountTypeLabels(useDictionary());
   const id = params.id;
 
   const [fetching, setFetching] = useState(true);
@@ -64,10 +68,10 @@ export function EditAccountForm() {
         setFetching(false);
       })
       .catch(() => {
-        setError("Gagal memuat akun");
+        setError(t("accounts.loadFailed"));
         setFetching(false);
       });
-  }, [id]);
+  }, [id, t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -89,7 +93,7 @@ export function EditAccountForm() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Gagal menyimpan akun");
+      setError(data.error || t("accounts.updateFailed"));
       setLoading(false);
     } else {
       router.push("/accounts");
@@ -97,13 +101,16 @@ export function EditAccountForm() {
     }
   }
 
-  if (fetching) return <PageLoader message="Memuat akun..." />;
+  if (fetching) return <PageLoader message={t("accounts.loading")} />;
 
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Daftar Akun", href: "/accounts" }, { label: "Ubah Akun" }]}
-        title="Ubah Akun"
+        breadcrumbs={[
+          { label: t("accounts.breadcrumbChart"), href: "/accounts" },
+          { label: t("accounts.editTitle") },
+        ]}
+        title={t("accounts.editTitle")}
       />
 
       {error && (
@@ -113,56 +120,56 @@ export function EditAccountForm() {
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Informasi Akun</CardTitle>
+            <CardTitle>{t("accounts.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="code"
-                label="Kode Perkiraan"
+                label={t("accounts.codeField")}
                 required
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
               />
               <Input
                 id="name"
-                label="Nama Akun"
+                label={t("accounts.nameField")}
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
               <Select
                 id="type"
-                label="Tipe Akun"
+                label={t("accounts.typeField")}
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                options={ACCOUNT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                options={ACCOUNT_TYPES.map((type) => ({ value: type.value, label: typeLabels[type.value] }))}
               />
               <Select
                 id="parentId"
-                label="Induk Akun (opsional)"
+                label={t("accounts.parentField")}
                 value={form.parentId}
                 onChange={(e) => setForm({ ...form, parentId: e.target.value })}
                 options={[
-                  { value: "", label: "— Tanpa induk —" },
+                  { value: "", label: t("accounts.noParent") },
                   ...parents.map((p) => ({ value: String(p.id), label: `${p.code} — ${p.name}` })),
                 ]}
               />
               <Select
                 id="currency"
-                label="Mata Uang"
+                label={t("common.currency")}
                 value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
                 options={CURRENCIES.map((c) => ({ value: c, label: c }))}
               />
               <Select
                 id="isActive"
-                label="Status"
+                label={t("common.status")}
                 value={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.value })}
                 options={[
-                  { value: "true", label: "Aktif" },
-                  { value: "false", label: "Nonaktif" },
+                  { value: "true", label: t("common.active") },
+                  { value: "false", label: t("common.inactive") },
                 ]}
               />
             </div>
@@ -171,10 +178,10 @@ export function EditAccountForm() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan Perubahan"}
+            {loading ? t("common.saving") : t("common.saveChanges")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

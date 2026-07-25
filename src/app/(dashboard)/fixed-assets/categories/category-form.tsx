@@ -10,9 +10,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { DEPRECIATION_METHOD_LABELS } from "@/lib/depreciation";
 import { Loader2 } from "lucide-react";
 import type { AccountOption } from "../new/asset-form";
+import { useT } from "@/lib/i18n/client";
 
 export function CategoryForm({
   assetAccounts,
@@ -27,6 +27,7 @@ export function CategoryForm({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   const [name, setName] = useState("");
   const [months, setMonths] = useState("");
@@ -66,15 +67,15 @@ export function CategoryForm({
       if (!res.ok) {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan kategori.");
+        setError(first ?? data?.error ?? t("fixedAssets.saveCategoryFailed"));
         return;
       }
-      toast("Kategori tersimpan.", "success");
+      toast(t("fixedAssets.categorySaved"), "success");
       setName("");
       setMonths("");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("fixedAssets.networkFailed"));
     } finally {
       setSaving(false);
     }
@@ -82,15 +83,15 @@ export function CategoryForm({
 
   return (
     <Card className="p-6">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Kategori baru</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{t("fixedAssets.newCategory")}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             id="cat-name"
-            label="Nama kategori"
+            label={t("fixedAssets.categoryNameField")}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="mis. Kendaraan"
+            placeholder={t("fixedAssets.categoryNamePlaceholder")}
             required
           />
           <Input
@@ -99,46 +100,48 @@ export function CategoryForm({
             min="1"
             step="1"
             className="text-right tabular-nums"
-            label="Umur manfaat default (bulan)"
+            label={t("fixedAssets.defaultLifeField")}
             value={months}
             onChange={(e) => setMonths(e.target.value)}
             required
           />
           <Select
             id="cat-method"
-            label="Metode default"
+            label={t("fixedAssets.defaultMethodField")}
             value="straight_line"
             disabled
             onChange={() => {}}
-            options={Object.entries(DEPRECIATION_METHOD_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+            options={[
+              { value: "straight_line", label: t("depreciationMethod.straight_line") },
+            ]}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <Select
             id="cat-asset"
-            label="Akun aset"
+            label={t("fixedAssets.assetAccountField")}
             value={assetAccountId}
             onChange={(e) => setAssetAccountId(e.target.value)}
             options={acctOptions(assetAccounts)}
-            placeholder="Pilih akun"
+            placeholder={t("fixedAssets.pickAccount")}
             required
           />
           <Select
             id="cat-accum"
-            label="Akun akumulasi penyusutan"
+            label={t("fixedAssets.accumulatedAccountField")}
             value={accumulatedAccountId}
             onChange={(e) => setAccumulatedAccountId(e.target.value)}
             options={acctOptions(accumulatedAccounts)}
-            placeholder="Pilih akun"
+            placeholder={t("fixedAssets.pickAccount")}
             required
           />
           <Select
             id="cat-expense"
-            label="Akun beban penyusutan"
+            label={t("fixedAssets.expenseAccountField")}
             value={expenseAccountId}
             onChange={(e) => setExpenseAccountId(e.target.value)}
             options={acctOptions(expenseAccounts)}
-            placeholder="Pilih akun"
+            placeholder={t("fixedAssets.pickAccount")}
             required
           />
         </div>
@@ -149,7 +152,7 @@ export function CategoryForm({
         )}
         <Button type="submit" disabled={saving} className="cursor-pointer">
           {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          Simpan Kategori
+          {t("fixedAssets.saveCategory")}
         </Button>
       </form>
     </Card>

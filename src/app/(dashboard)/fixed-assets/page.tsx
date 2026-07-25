@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Boxes, Info, MapPin, Plus, Tags } from "lucide-react";
 import { RunDepreciation } from "./run-depreciation";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function FixedAssetsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   await requirePagePermission("fixed_asset.read");
+  const t = await getT();
   const sp = await searchParams;
   const status = sp.status === "active" || sp.status === "disposed" ? sp.status : undefined;
 
@@ -45,31 +47,26 @@ export default async function FixedAssetsPage({
   return (
     <div>
       <PageHeader
-        title="Aset Tetap"
-        description={
-          <>
-            Kendaraan, alat, dan bangunan beserta penyusutannya. Nilai buku &amp; beban
-            penyusutan tercermin otomatis di Neraca dan Laba Rugi.
-          </>
-        }
+        title={t("fixedAssets.title")}
+        description={t("fixedAssets.descriptionBefore")}
         actions={
           <>
             <Link href="/fixed-assets/by-location">
               <Button variant="secondary" className="cursor-pointer">
                 <MapPin className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Aset per Lokasi
+                {t("fixedAssets.byLocation")}
               </Button>
             </Link>
             <Link href="/fixed-assets/categories">
               <Button variant="secondary" className="cursor-pointer">
                 <Tags className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Kategori
+                {t("fixedAssets.categories")}
               </Button>
             </Link>
             <Link href="/fixed-assets/new">
               <Button className="cursor-pointer">
                 <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Aset Baru
+                {t("fixedAssets.addNew")}
               </Button>
             </Link>
           </>
@@ -78,23 +75,23 @@ export default async function FixedAssetsPage({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Aset aktif</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.activeCount")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{summary.activeCount}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Nilai perolehan</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.cost")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.cost, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Akumulasi penyusutan</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.accumulated")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.accumulated, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Nilai buku</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.bookValue")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.book, "IDR")}
           </p>
@@ -105,12 +102,22 @@ export default async function FixedAssetsPage({
 
       <div className="my-6 flex flex-wrap gap-2">
         {[
-          { label: "Semua", href: "/fixed-assets", active: !status },
-          { label: "Aktif", href: "/fixed-assets?status=active", active: status === "active" },
-          { label: "Dilepas", href: "/fixed-assets?status=disposed", active: status === "disposed" },
+          { key: "all", label: t("fixedAssets.filterAll"), href: "/fixed-assets", active: !status },
+          {
+            key: "active",
+            label: t("fixedAssets.filterActive"),
+            href: "/fixed-assets?status=active",
+            active: status === "active",
+          },
+          {
+            key: "disposed",
+            label: t("fixedAssets.filterDisposed"),
+            href: "/fixed-assets?status=disposed",
+            active: status === "disposed",
+          },
         ].map((f) => (
           <Link
-            key={f.label}
+            key={f.key}
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
@@ -126,17 +133,17 @@ export default async function FixedAssetsPage({
       {!hasCategories ? (
         <EmptyState
           icon={<Tags className="h-12 w-12" />}
-          title="Buat kategori aset dulu"
-          description="Kategori menentukan metode, umur manfaat, dan akun aset/akumulasi/beban penyusutan yang dipakai aset di dalamnya."
-          actionLabel="Buat Kategori"
+          title={t("fixedAssets.noCategoryTitle")}
+          description={t("fixedAssets.noCategoryDescription")}
+          actionLabel={t("fixedAssets.createCategory")}
           actionHref="/fixed-assets/categories"
         />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<Boxes className="h-12 w-12" />}
-          title="Belum ada aset"
-          description="Daftarkan kendaraan, alat, atau bangunan agar penyusutannya dihitung otomatis."
-          actionLabel="Aset Baru"
+          title={t("fixedAssets.emptyTitle")}
+          description={t("fixedAssets.emptyDescription")}
+          actionLabel={t("fixedAssets.addNew")}
           actionHref="/fixed-assets/new"
         />
       ) : (
@@ -144,15 +151,15 @@ export default async function FixedAssetsPage({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Nomor</TableHead>
-                <TableHead>Nama</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Lokasi</TableHead>
-                <TableHead>Perolehan</TableHead>
-                <TableHead className="text-right">Nilai Perolehan</TableHead>
-                <TableHead className="text-right">Akum. Penyusutan</TableHead>
-                <TableHead className="text-right">Nilai Buku</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("fixedAssets.colNumber")}</TableHead>
+                <TableHead>{t("fixedAssets.colName")}</TableHead>
+                <TableHead>{t("fixedAssets.colCategory")}</TableHead>
+                <TableHead>{t("fixedAssets.colLocation")}</TableHead>
+                <TableHead>{t("fixedAssets.colAcquired")}</TableHead>
+                <TableHead className="text-right">{t("fixedAssets.colCost")}</TableHead>
+                <TableHead className="text-right">{t("fixedAssets.colAccumulated")}</TableHead>
+                <TableHead className="text-right">{t("fixedAssets.colBookValue")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,11 +188,11 @@ export default async function FixedAssetsPage({
                   </TableCell>
                   <TableCell>
                     {r.status === "disposed" ? (
-                      <Badge variant="default">Dilepas</Badge>
+                      <Badge variant="default">{t("fixedAssets.statusDisposed")}</Badge>
                     ) : r.isFullyDepreciated ? (
-                      <Badge variant="warning">Habis susut</Badge>
+                      <Badge variant="warning">{t("fixedAssets.statusFullyDepreciated")}</Badge>
                     ) : (
-                      <Badge variant="success">Aktif</Badge>
+                      <Badge variant="success">{t("common.active")}</Badge>
                     )}
                   </TableCell>
                 </TableRow>
@@ -198,9 +205,8 @@ export default async function FixedAssetsPage({
       <p className="mt-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          Penyusutan garis lurus dijalankan per bulan dan diposting sebagai{" "}
-          <strong>D: Beban Penyusutan / K: Akumulasi Penyusutan</strong>. Menjalankan ulang
-          bulan yang sudah diposting tidak menggandakan jurnal.
+          {t("fixedAssets.footnoteBefore")} <strong>{t("fixedAssets.footnoteEntry")}</strong>
+          {t("fixedAssets.footnoteAfter")}
         </span>
       </p>
     </div>

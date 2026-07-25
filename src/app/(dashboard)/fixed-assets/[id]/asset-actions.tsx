@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { ArrowRightLeft, Banknote, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 function todayISO() {
   const d = new Date();
@@ -25,6 +26,7 @@ function todayISO() {
 export function AssetActions({ assetId, bookValue }: { assetId: number; bookValue: number }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   // Disposal
   const [dDate, setDDate] = useState(todayISO());
@@ -58,13 +60,13 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       });
       const data = await res.json();
       if (!res.ok) {
-        setDError(data?.error ?? "Gagal mencatat pelepasan.");
+        setDError(data?.error ?? t("fixedAssets.disposeFailed"));
         return;
       }
-      toast("Pelepasan tercatat dan sudah dijurnal.", "success");
+      toast(t("fixedAssets.disposeSaved"), "success");
       router.refresh();
     } catch {
-      setDError("Tidak dapat menghubungi server. Coba lagi.");
+      setDError(t("fixedAssets.networkFailed"));
     } finally {
       setDisposing(false);
     }
@@ -82,15 +84,15 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       });
       const data = await res.json();
       if (!res.ok) {
-        setTError(data?.error ?? "Gagal memindahkan aset.");
+        setTError(data?.error ?? t("fixedAssets.moveFailed"));
         return;
       }
-      toast("Lokasi aset diperbarui.", "success");
+      toast(t("fixedAssets.moveSaved"), "success");
       setToLocation("");
       setTNote("");
       router.refresh();
     } catch {
-      setTError("Tidak dapat menghubungi server. Coba lagi.");
+      setTError(t("fixedAssets.networkFailed"));
     } finally {
       setMoving(false);
     }
@@ -101,24 +103,24 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       <Card className="p-6">
         <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
           <ArrowRightLeft className="h-5 w-5 text-primary" aria-hidden="true" />
-          Pindah lokasi
+          {t("fixedAssets.moveTitle")}
         </h2>
-        <p className="mb-4 text-xs text-muted-foreground">Mencatat perpindahan — tidak membuat jurnal.</p>
+        <p className="mb-4 text-xs text-muted-foreground">{t("fixedAssets.moveHint")}</p>
         <form onSubmit={transfer} className="space-y-3">
-          <Input id="t-date" type="date" label="Tanggal" value={tDate} onChange={(e) => setTDate(e.target.value)} required />
+          <Input id="t-date" type="date" label={t("common.date")} value={tDate} onChange={(e) => setTDate(e.target.value)} required />
           <Input
             id="t-loc"
-            label="Lokasi tujuan"
+            label={t("fixedAssets.moveToField")}
             value={toLocation}
             onChange={(e) => setToLocation(e.target.value)}
-            placeholder="mis. Gudang Cabang"
+            placeholder={t("fixedAssets.moveToPlaceholder")}
             required
           />
-          <Input id="t-note" label="Catatan (opsional)" value={tNote} onChange={(e) => setTNote(e.target.value)} maxLength={500} />
+          <Input id="t-note" label={t("common.notesOptional")} value={tNote} onChange={(e) => setTNote(e.target.value)} maxLength={500} />
           {tError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{tError}</p>}
           <Button type="submit" variant="secondary" disabled={moving} className="cursor-pointer">
             {moving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-            Pindahkan
+            {t("fixedAssets.moveAction")}
           </Button>
         </form>
       </Card>
@@ -126,38 +128,37 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       <Card className="p-6">
         <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
           <Banknote className="h-5 w-5 text-primary" aria-hidden="true" />
-          Pelepasan / penjualan
+          {t("fixedAssets.disposeTitle")}
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Menghapus nilai aset &amp; akumulasi penyusutannya, mencatat hasil, dan menjurnal
-          laba/rugi pelepasan.
+          {t("fixedAssets.disposeHint")}
         </p>
         <form onSubmit={dispose} className="space-y-3">
-          <Input id="d-date" type="date" label="Tanggal pelepasan" value={dDate} onChange={(e) => setDDate(e.target.value)} required />
+          <Input id="d-date" type="date" label={t("fixedAssets.disposeDateField")} value={dDate} onChange={(e) => setDDate(e.target.value)} required />
           <Input
             id="d-proceeds"
             type="number"
             step="0.01"
             min="0"
             className="text-right tabular-nums"
-            label="Hasil pelepasan (IDR)"
+            label={t("fixedAssets.disposeProceedsField")}
             value={proceeds}
             onChange={(e) => setProceeds(e.target.value)}
-            placeholder="0 jika dibuang / scrap"
+            placeholder={t("fixedAssets.disposeProceedsPlaceholder")}
           />
-          <Input id="d-note" label="Catatan (opsional)" value={dNote} onChange={(e) => setDNote(e.target.value)} maxLength={500} />
+          <Input id="d-note" label={t("common.notesOptional")} value={dNote} onChange={(e) => setDNote(e.target.value)} maxLength={500} />
           <p className="text-sm text-muted-foreground tabular-nums">
-            Nilai buku saat ini: <strong className="text-foreground">{formatCurrency(bookValue, "IDR")}</strong>
+            {t("fixedAssets.currentBookValue")} <strong className="text-foreground">{formatCurrency(bookValue, "IDR")}</strong>
           </p>
           {gainLoss != null && (
             <p className="text-sm tabular-nums">
               {gainLoss >= 0 ? (
                 <span className="text-success-strong">
-                  Laba pelepasan: <strong>{formatCurrency(gainLoss, "IDR")}</strong>
+                  {t("fixedAssets.disposalGain")} <strong>{formatCurrency(gainLoss, "IDR")}</strong>
                 </span>
               ) : (
                 <span className="text-destructive-strong">
-                  Rugi pelepasan: <strong>({formatCurrency(Math.abs(gainLoss), "IDR")})</strong>
+                  {t("fixedAssets.disposalLoss")} <strong>({formatCurrency(Math.abs(gainLoss), "IDR")})</strong>
                 </span>
               )}
             </p>
@@ -165,7 +166,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
           {dError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{dError}</p>}
           <Button type="submit" variant="danger" disabled={disposing} className="cursor-pointer">
             {disposing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-            Catat Pelepasan
+            {t("fixedAssets.disposeAction")}
           </Button>
         </form>
       </Card>

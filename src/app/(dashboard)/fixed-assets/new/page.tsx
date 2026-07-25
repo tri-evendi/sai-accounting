@@ -6,11 +6,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tags } from "lucide-react";
 import { AssetForm } from "./asset-form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewFixedAssetPage() {
   await requirePagePermission("fixed_asset.write");
+  const t = await getT();
 
   const [categories, accounts] = await Promise.all([
     getCategories(true),
@@ -26,16 +28,16 @@ export default async function NewFixedAssetPage() {
       <div className="w-full">
         <PageHeader
           breadcrumbs={[
-            { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
-            { label: "Aset Baru" },
+            { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
+            { label: t("fixedAssets.addNew") },
           ]}
-          title="Daftarkan Aset Tetap"
+          title={t("fixedAssets.newTitle")}
         />
         <EmptyState
           icon={<Tags className="h-12 w-12" />}
-          title="Buat kategori aset dulu"
-          description="Setiap aset harus masuk sebuah kategori yang menetapkan metode, umur manfaat, dan akun-akunnya."
-          actionLabel="Buat Kategori"
+          title={t("fixedAssets.noCategoryTitle")}
+          description={t("fixedAssets.noCategoryFormDescription")}
+          actionLabel={t("fixedAssets.createCategory")}
           actionHref="/fixed-assets/categories"
         />
       </div>
@@ -50,17 +52,17 @@ export default async function NewFixedAssetPage() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
-          { label: "Aset Baru" },
+          { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
+          { label: t("fixedAssets.addNew") },
         ]}
-        title="Daftarkan Aset Tetap"
+        title={t("fixedAssets.newTitle")}
         description={
           <>
-            Kendaraan, alat, atau bangunan yang akan disusutkan otomatis.{" "}
+            {t("fixedAssets.newDescriptionBefore")}{" "}
             <Link href="/fixed-assets/categories" className="text-primary hover:underline">
-              Kelola kategori
+              {t("fixedAssets.manageCategories")}
             </Link>
-            .
+            {t("common.fullStop")}
           </>
         }
       />

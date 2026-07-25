@@ -743,7 +743,12 @@
     "contactPic": "联系人 / 负责人",
     "saveFailed": "保存收货人失败",
     "infoTitle": "收货人信息",
-    "relatedContracts": "相关合同"
+    "relatedContracts": "相关合同",
+    "editTitle": "编辑收货人",
+    "loadFailed": "加载收货人资料失败",
+    "updateFailed": "保存收货人修改失败",
+    "loading": "正在加载收货人资料...",
+    "activeHint": "已停用的收货人不再出现在合同的选择列表中，但既有合同的关联仍然保留。"
   },
   "customers": {
     "title": "客户（{count}）",

@@ -743,7 +743,12 @@
     "contactPic": "Kontak / PIC",
     "saveFailed": "Gagal menyimpan penerima barang",
     "infoTitle": "Informasi Penerima Barang",
-    "relatedContracts": "Kontrak Terkait"
+    "relatedContracts": "Kontrak Terkait",
+    "editTitle": "Ubah Penerima Barang",
+    "loadFailed": "Gagal memuat data penerima barang",
+    "updateFailed": "Gagal menyimpan perubahan penerima barang",
+    "loading": "Memuat data penerima barang...",
+    "activeHint": "Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut."
   },
   "customers": {
     "title": "Pelanggan ({count})",

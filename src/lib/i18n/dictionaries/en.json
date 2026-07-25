@@ -743,7 +743,12 @@
     "contactPic": "Contact / PIC",
     "saveFailed": "Failed to save the consignee",
     "infoTitle": "Consignee Information",
-    "relatedContracts": "Related Contracts"
+    "relatedContracts": "Related Contracts",
+    "editTitle": "Edit Consignee",
+    "loadFailed": "Could not load the consignee",
+    "updateFailed": "Could not save the consignee changes",
+    "loading": "Loading consignee...",
+    "activeHint": "An inactive consignee no longer appears in the Contract picker, but existing contracts stay linked."
   },
   "customers": {
     "title": "Customers ({count})",

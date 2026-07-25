@@ -56,7 +56,7 @@ export default async function BudgetReportPage({
   const periodText = month === undefined ? `Tahun ${year}` : periodLabel(year, month);
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Realisasi vs Anggaran" }]}
         title="Realisasi vs Anggaran"

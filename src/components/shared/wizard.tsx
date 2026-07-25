@@ -125,7 +125,7 @@ export function Wizard({
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                     state === "done" && "bg-success-soft text-success-strong",
-                    state === "current" && "bg-primary text-white",
+                    state === "current" && "bg-primary text-primary-foreground",
                     state === "todo" && "bg-muted text-muted-foreground"
                   )}
                 >
@@ -162,7 +162,7 @@ export function Wizard({
                     onClick={() => onNavigate(s.id)}
                     aria-current={undefined}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 py-2",
+                      "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2",
                       "transition-colors duration-150 hover:border-border hover:bg-muted",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     )}
@@ -176,7 +176,7 @@ export function Wizard({
                       "flex w-full items-center gap-2 rounded-lg border px-3 py-2",
                       state === "current"
                         ? "border-primary bg-primary/10"
-                        : "border-border bg-white"
+                        : "border-border bg-card"
                     )}
                   >
                     {content}

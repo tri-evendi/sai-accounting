@@ -17,6 +17,11 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       "connect-src 'self'",
       "font-src 'self'",
+      // PDF pratinjau dokumen (faktur/kontrak/dll) dirender sebagai blob: di
+      // dalam <iframe>/<embed> — izinkan blob: sesama-asal untuk frame/object,
+      // tanpa membuka sumber luar apa pun (tetap 'self' selain blob:).
+      "frame-src 'self' blob:",
+      "object-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -251,7 +252,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
         )}
 
         {!isPurchase && (
-          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-white p-3">
+          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-card p-3">
             <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-foreground">
               <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Lunasi Pembelian (opsional)
@@ -281,15 +282,14 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <label className="flex cursor-pointer items-start gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
+                          <Checkbox
+                            className="mt-1"
                             checked={checked}
                             disabled={noRate}
-                            onChange={(e) =>
+                            onCheckedChange={(v) =>
                               setAlloc((prev) => {
                                 const next = { ...prev };
-                                if (e.target.checked) {
+                                if (v === true) {
                                   // Default to clearing the document in full when
                                   // the payment is in IDR; otherwise leave blank
                                   // rather than guess across currencies.
@@ -342,7 +342,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                           >
                             Dibayar ({currency})
                           </label>
-                          <input
+                          <TextInput
                             id={`alloc-${p.id}`}
                             type="number"
                             step="0.01"
@@ -351,7 +351,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                             onChange={(e) =>
                               setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
                             }
-                            className="w-40 rounded-md border border-border px-2 py-1 text-right text-sm tabular-nums focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
+                            className="w-40 text-right tabular-nums"
                           />
                         </div>
                       )}

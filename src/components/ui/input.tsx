@@ -96,10 +96,25 @@ function Input({
   const inputId = id ?? generatedId;
   const errorId = `${inputId}-error`;
   const isInvalid = invalid ?? Boolean(error);
+  // Tanda wajib mengikuti atribut `required` native yang diteruskan pemanggil —
+  // satu sumber, tak bisa menyimpang dari validasi HTML/zod (a11y: MASTER.md).
+  const required = props.required;
 
   return (
     <div className="space-y-1">
-      {label && <Label htmlFor={inputId}>{label}</Label>}
+      {label && (
+        <Label htmlFor={inputId}>
+          {label}
+          {required && (
+            <>
+              <span aria-hidden="true" className="ml-0.5 text-destructive">
+                *
+              </span>
+              <span className="sr-only"> (wajib)</span>
+            </>
+          )}
+        </Label>
+      )}
       <TextInput
         id={inputId}
         fieldSize={fieldSize}

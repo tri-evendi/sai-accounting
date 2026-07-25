@@ -23,7 +23,7 @@ export default async function NewFixedAssetPage() {
 
   if (categories.length === 0) {
     return (
-      <div className="max-w-3xl">
+      <div className="w-full">
         <PageHeader
           breadcrumbs={[
             { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
@@ -47,7 +47,7 @@ export default async function NewFixedAssetPage() {
   const expenseAccounts = accounts.filter((a) => a.type === "expense" || a.type === "other_expense");
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Barang Milik Perusahaan", href: "/fixed-assets" },

@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
-import { ROLES, ROLE_LABELS, type Role } from "@/lib/constants";
+import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 
 interface User {
@@ -25,7 +25,7 @@ interface User {
   overrideCount: number;
 }
 
-export function UsersClient() {
+export function UsersClient({ roles }: { roles: { key: string; label: string }[] }) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -150,11 +150,8 @@ export function UsersClient() {
               <Input id="name" name="name" label="Display Name" />
               <Select
                 id="role" name="role" label="Role"
-                options={[
-                  { value: "core", label: "Staff (core)" },
-                  { value: "bos", label: "Manager (bos)" },
-                  { value: "ptg", label: "PTG Department" },
-                ]}
+                defaultValue={ROLES.CORE}
+                options={roles.map((r) => ({ value: r.key, label: r.label }))}
               />
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={creating}>
@@ -197,7 +194,7 @@ export function UsersClient() {
                   <td className="px-6 py-3 text-foreground">{user.name || "-"}</td>
                   <td className="px-6 py-3">
                     <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
-                      {ROLE_LABELS[user.role as Role] || user.role}
+                      {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
                     </Badge>
                   </td>
                   <td className="px-6 py-3">

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileText, Truck, Package, Wallet, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
+import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 
 interface ContractPDFData {
   contractNo: string;
@@ -24,65 +25,40 @@ interface ContractPDFData {
 }
 
 export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
-      const doc = generateContractPDF(contract);
-      doc.save(`Contract_${contract.contractNo}.pdf`);
-      toast("PDF downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate PDF", "error");
-    }
-    setLoading(false);
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileDown className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Export PDF"}
-    </Button>
+    <PdfDocumentButton
+      title={`Kontrak ${contract.contractNo}`}
+      filename={`Contract_${contract.contractNo}.pdf`}
+      generate={async () => {
+        const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
+        return generateContractPDF(contract);
+      }}
+    />
   );
 }
 
 export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
-      const doc = generateShippingPDF({
-        contractNo: contract.contractNo,
-        date: contract.date,
-        buyer: contract.buyer,
-        consignee: contract.consignee,
-        shipment: contract.shipment,
-        items: contract.items.map((i) => ({
-          itemName: i.itemName,
-          bags: i.bags,
-          kgPerBag: i.kgPerBag,
-        })),
-      });
-      doc.save(`SuratJalan_${contract.contractNo}.pdf`);
-      toast("Shipping document downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate PDF", "error");
-    }
-    setLoading(false);
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <Truck className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Surat Jalan"}
-    </Button>
+    <PdfDocumentButton
+      label="Surat Jalan"
+      title={`Surat Jalan ${contract.contractNo}`}
+      filename={`SuratJalan_${contract.contractNo}.pdf`}
+      generate={async () => {
+        const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
+        return generateShippingPDF({
+          contractNo: contract.contractNo,
+          date: contract.date,
+          buyer: contract.buyer,
+          consignee: contract.consignee,
+          shipment: contract.shipment,
+          items: contract.items.map((i) => ({
+            itemName: i.itemName,
+            bags: i.bags,
+            kgPerBag: i.kgPerBag,
+          })),
+        });
+      }}
+    />
   );
 }
 
@@ -103,28 +79,17 @@ interface InvoicePDFData {
 }
 
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-      const doc = generateStockReportPDF(items);
-      doc.save(`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
-      toast("Stock report downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate stock report", "error");
-    }
-    setLoading(false);
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
-      <Package className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Export Stock PDF"}
-    </Button>
+    <PdfDocumentButton
+      label="Pratinjau Stok"
+      title="Laporan Stok"
+      filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
+      disabled={items.length === 0}
+      generate={async () => {
+        const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
+        return generateStockReportPDF(items);
+      }}
+    />
   );
 }
 
@@ -135,28 +100,16 @@ export function FinanceReportPDFButton({
   balances: FinanceBalanceRow[];
   transactions: FinanceReportRow[];
 }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-      const doc = generateFinanceReportPDF(balances, transactions);
-      doc.save(`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
-      toast("Finance report downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate finance report", "error");
-    }
-    setLoading(false);
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <Wallet className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Export Finance PDF"}
-    </Button>
+    <PdfDocumentButton
+      label="Pratinjau Kas & Bank"
+      title="Laporan Kas & Bank"
+      filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
+      generate={async () => {
+        const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
+        return generateFinanceReportPDF(balances, transactions);
+      }}
+    />
   );
 }
 
@@ -167,29 +120,17 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateStatementPDF, STATEMENT_TITLES } = await import("@/lib/pdf/statement-pdf");
-      const doc = generateStatementPDF(payload);
-      const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");
-      doc.save(`${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
-      toast("PDF berhasil diunduh");
-    } catch (err) {
-      console.error(err);
-      toast("Gagal membuat PDF", "error");
-    }
-    setLoading(false);
-  }
-
+  const dateSlug = new Date().toISOString().slice(0, 10);
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileDown className="h-4 w-4 mr-1" />
-      {loading ? "Menyiapkan..." : "Unduh PDF"}
-    </Button>
+    <PdfDocumentButton
+      label="Pratinjau & Cetak"
+      title="Laporan Keuangan"
+      filename={`Laporan_${dateSlug}.pdf`}
+      generate={async () => {
+        const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
+        return generateStatementPDF(payload);
+      }}
+    />
   );
 }
 
@@ -244,27 +185,16 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
 }
 
 export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
-      const doc = generateInvoicePDF(invoice);
-      doc.save(`Invoice_${invoice.invoiceNo}.pdf`);
-      toast("PDF downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate PDF", "error");
-    }
-    setLoading(false);
-  }
-
+  // Pratinjau + Unduh + Cetak lewat komponen dokumen bersama (contoh penerapan;
+  // dokumen lain menyusul dengan pola yang sama).
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileText className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Export PDF"}
-    </Button>
+    <PdfDocumentButton
+      title={`Faktur ${invoice.invoiceNo}`}
+      filename={`Invoice_${invoice.invoiceNo}.pdf`}
+      generate={async () => {
+        const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
+        return generateInvoicePDF(invoice);
+      }}
+    />
   );
 }

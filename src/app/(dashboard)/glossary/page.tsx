@@ -18,7 +18,7 @@ export default async function GlossaryPage() {
   await requirePagePermission("glossary.read");
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <PageHeader
         title="Kamus Istilah"
         description={

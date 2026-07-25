@@ -105,7 +105,7 @@ export function NewJournalForm() {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Catatan Transaksi", href: "/journal" }, { label: "Jurnal Baru" }]}
         title="Jurnal Baru"

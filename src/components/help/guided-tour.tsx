@@ -38,8 +38,11 @@ interface Box {
 }
 
 const SPOTLIGHT_PADDING = 8;
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 380;
 const CARD_GAP = 12;
+/** Perkiraan tinggi kartu untuk keputusan penempatan (atas/bawah/samping) &
+ *  penjepitan agar kartu tak pernah keluar layar. */
+const CARD_EST_HEIGHT = 240;
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -172,26 +175,40 @@ export function GuidedTour() {
       }
     : null;
 
-  // Kartu ditaruh di bawah sasaran bila muat, kalau tidak di atasnya; tanpa
-  // sasaran, kartu tampil di tengah layar.
+  // Penempatan kartu: coba DI BAWAH sasaran, lalu DI ATAS; bila sasaran terlalu
+  // tinggi untuk keduanya (mis. sidebar setinggi layar di langkah "menu"), taruh
+  // DI SAMPING kanannya dan berpusat vertikal. Apa pun hasilnya, posisi akhir
+  // DIJEPIT agar kartu selalu utuh di dalam viewport (dulu bug: penempatan "atas"
+  // untuk sidebar mendorong kartu keluar dari tepi atas layar).
   const viewportH = typeof window === "undefined" ? 0 : window.innerHeight;
   const viewportW = typeof window === "undefined" ? 0 : window.innerWidth;
+  const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), Math.max(min, max));
   let cardStyle: React.CSSProperties;
   if (spotlight) {
-    const below = spotlight.top + spotlight.height + CARD_GAP;
-    const placeBelow = below + 220 < viewportH;
-    const left = Math.min(
-      Math.max(spotlight.left, CARD_GAP),
-      Math.max(viewportW - CARD_WIDTH - CARD_GAP, CARD_GAP)
-    );
-    cardStyle = placeBelow
-      ? { top: below, left, width: CARD_WIDTH, maxWidth: "calc(100vw - 24px)" }
-      : {
-          bottom: Math.max(viewportH - spotlight.top + CARD_GAP, CARD_GAP),
-          left,
-          width: CARD_WIDTH,
-          maxWidth: "calc(100vw - 24px)",
-        };
+    const belowTop = spotlight.top + spotlight.height + CARD_GAP;
+    const aboveTop = spotlight.top - CARD_GAP - CARD_EST_HEIGHT;
+    const fitsBelow = belowTop + CARD_EST_HEIGHT + CARD_GAP <= viewportH;
+    const fitsAbove = aboveTop >= CARD_GAP;
+
+    let top: number;
+    let left: number;
+    if (fitsBelow) {
+      top = belowTop;
+      left = spotlight.left;
+    } else if (fitsAbove) {
+      top = aboveTop;
+      left = spotlight.left;
+    } else {
+      // Sasaran lebih tinggi dari ruang atas/bawah → di samping kanan, tengah.
+      top = (viewportH - CARD_EST_HEIGHT) / 2;
+      left = spotlight.left + spotlight.width + CARD_GAP;
+    }
+    cardStyle = {
+      top: clamp(top, CARD_GAP, viewportH - CARD_EST_HEIGHT - CARD_GAP),
+      left: clamp(left, CARD_GAP, viewportW - CARD_WIDTH - CARD_GAP),
+      width: CARD_WIDTH,
+      maxWidth: "calc(100vw - 24px)",
+    };
   } else {
     cardStyle = {
       top: "50%",
@@ -241,7 +258,7 @@ export function GuidedTour() {
         aria-labelledby="tour-step-title"
         tabIndex={-1}
         className={cn(
-          "fixed rounded-xl border border-border bg-white p-4 shadow-lg focus:outline-none"
+          "fixed rounded-xl border border-border bg-card p-4 shadow-lg focus:outline-none"
         )}
         style={cardStyle}
       >
@@ -278,28 +295,28 @@ export function GuidedTour() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="cursor-pointer"
+                className="cursor-pointer px-4"
                 onClick={() => setIndex((i) => Math.max((i ?? 0) - 1, 0))}
               >
-                <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Kembali
               </Button>
             )}
             <Button
               type="button"
               size="sm"
-              className="cursor-pointer"
+              className="cursor-pointer px-4"
               onClick={() => (isLast ? close() : setIndex((i) => (i ?? 0) + 1))}
             >
               {isLast ? (
                 <>
-                  <Check className="mr-1 h-4 w-4" aria-hidden="true" />
+                  <Check className="h-4 w-4" aria-hidden="true" />
                   Selesai
                 </>
               ) : (
                 <>
                   Lanjut
-                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </Button>

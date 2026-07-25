@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -43,7 +44,7 @@ export function NewConsigneeForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Penerima Barang", href: "/consignees" },
@@ -60,7 +61,7 @@ export function NewConsigneeForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" name="name" label="Nama Penerima Barang" required />
               <Input id="country" name="country" label="Negara" />
               <Input id="contact" name="contact" label="Kontak / PIC" />
@@ -68,23 +69,13 @@ export function NewConsigneeForm() {
                 <label htmlFor="address" className="block text-sm font-medium text-foreground">
                   Alamat
                 </label>
-                <textarea
-                  id="address"
-                  name="address"
-                  rows={3}
-                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+                <Textarea id="address" name="address" rows={3} />
               </div>
               <div className="space-y-1">
                 <label htmlFor="notes" className="block text-sm font-medium text-foreground">
                   Catatan
                 </label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  rows={2}
-                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+                <Textarea id="notes" name="notes" rows={2} />
               </div>
             </div>
           </CardContent>

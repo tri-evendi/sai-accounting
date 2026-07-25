@@ -1,9 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Truck } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
+import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 
 interface DeliveryOrderPdf {
   no: string;
@@ -16,47 +13,34 @@ interface DeliveryOrderPdf {
 }
 
 /**
- * Cetak Surat Jalan. Reuses the EXISTING jsPDF renderer `generateShippingPDF`
- * (src/lib/pdf/shipping-pdf.ts) — the same surat-jalan document the contract
- * detail already prints — so there is one shipping-document layout, not two. The
- * DO number stands in for `contractNo`, and kendaraan/kontainer are folded into
- * the `shipment` line the template already renders.
+ * Pratinjau + Cetak Surat Jalan. Memakai renderer jsPDF yang SAMA
+ * (`generateShippingPDF`) dengan surat-jalan di detail kontrak — satu layout,
+ * bukan dua. Nomor DO menggantikan `contractNo`; kendaraan/kontainer dilipat ke
+ * baris `shipment`.
  */
 export function DeliveryOrderPdfButton({ order }: { order: DeliveryOrderPdf }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
-      const shipment = [
-        order.vehicleNo ? `Kendaraan: ${order.vehicleNo}` : null,
-        order.containerNo ? `Kontainer: ${order.containerNo}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      const doc = generateShippingPDF({
-        contractNo: order.no,
-        date: order.date,
-        buyer: order.buyer,
-        consignee: order.consignee,
-        shipment: shipment || null,
-        items: order.items,
-      });
-      doc.save(`SuratJalan_${order.no}.pdf`);
-      toast("Surat jalan diunduh");
-    } catch (err) {
-      console.error(err);
-      toast("Gagal membuat PDF", "error");
-    }
-    setLoading(false);
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <Truck className="mr-1 h-4 w-4" />
-      {loading ? "Menyiapkan…" : "Cetak Surat Jalan"}
-    </Button>
+    <PdfDocumentButton
+      label="Surat Jalan"
+      title={`Surat Jalan ${order.no}`}
+      filename={`SuratJalan_${order.no}.pdf`}
+      generate={async () => {
+        const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
+        const shipment = [
+          order.vehicleNo ? `Kendaraan: ${order.vehicleNo}` : null,
+          order.containerNo ? `Kontainer: ${order.containerNo}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return generateShippingPDF({
+          contractNo: order.no,
+          date: order.date,
+          buyer: order.buyer,
+          consignee: order.consignee,
+          shipment: shipment || null,
+          items: order.items,
+        });
+      }}
+    />
   );
 }

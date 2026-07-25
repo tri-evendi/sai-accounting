@@ -16,7 +16,10 @@ export function Spinner({ className }: { className?: string }) {
 
 export function PageLoader({ message = "Memuat..." }: { message?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-3">
+    // Berpusat vertikal di ruang yang tersedia (bukan menempel di atas). 60vh
+    // aman untuk dua konteksnya: layar penuh saat sesi dimuat, dan di dalam area
+    // konten pada form/halaman yang menunggu data — tanpa memicu gulir.
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
       <Spinner className="h-8 w-8" />
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>

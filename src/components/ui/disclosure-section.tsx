@@ -119,7 +119,7 @@ export function DisclosureSection({
       open={expanded}
       onOpenChange={handleOpenChange}
       className={cn(
-        "rounded-lg border bg-white transition-colors duration-150",
+        "rounded-lg border bg-card transition-colors duration-150",
         invalid ? "border-destructive" : "border-border",
         className
       )}

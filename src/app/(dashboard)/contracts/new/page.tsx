@@ -22,7 +22,7 @@ export default async function NewContractPage() {
   const closedPeriods = await listClosedPeriods();
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: "Buat Kontrak" }]}

@@ -12,11 +12,20 @@ export function formatCurrency(amount: number, currency: string = "IDR") {
     CNY: "zh-CN",
   };
 
-  return new Intl.NumberFormat(localeMap[currency] || "id-ID", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "IDR" ? 0 : 2,
-  }).format(amount);
+  try {
+    return new Intl.NumberFormat(localeMap[currency] || "id-ID", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: currency === "IDR" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    // `Intl.NumberFormat` throws `RangeError: Invalid currency code` for any code
+    // that is not valid ISO-4217 (legacy/dirty data such as "Rp" or "S$"). A bad
+    // string on a single document must never 500 a whole ledger page, so fall back
+    // to the plain number followed by the raw code as a visible label. Fix the
+    // underlying value through the document's edit form.
+    return `${new Intl.NumberFormat("id-ID").format(amount)} ${currency}`.trim();
+  }
 }
 
 export function formatDate(date: Date | string) {

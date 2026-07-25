@@ -70,7 +70,7 @@ export function DocumentChainTimeline({
                 className="absolute left-1/2 top-5 hidden h-px w-full bg-muted lg:block"
               />
             )}
-            <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-white p-4">
+            <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2">
                 <span
                   className={cn(

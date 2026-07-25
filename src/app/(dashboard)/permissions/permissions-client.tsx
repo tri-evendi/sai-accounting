@@ -17,8 +17,9 @@
  * konfirmasi; hasil lewat toast.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
+import { RoleManager } from "./role-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,7 +35,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, ROLE_VALUES, type Role } from "@/lib/constants";
+import { ROLE_LABELS, type Role } from "@/lib/constants";
 import type { Permission } from "@/lib/authz";
 import {
   isProtectedCell,
@@ -48,17 +49,19 @@ interface OverridesResponse {
   baseline: Record<string, string[]>;
   effective: Record<string, string[]>;
   overrides: Array<{ role: string; permission: string; allowed: boolean }>;
+  /** Kolom matriks — peran dari DB (termasuk peran kustom). */
+  roles: Array<{ key: string; label: string }>;
 }
 
 /** Kunci sel matriks di state draft. */
 const cellKey = (permission: Permission, role: Role) => `${permission}|${role}`;
 
 /** `Record<izin, peran[]>` → draft per sel `izin|peran → boolean`. */
-function toDraft(matrix: Record<string, string[]>): Record<string, boolean> {
+function toDraft(matrix: Record<string, string[]>, roleKeys: string[]): Record<string, boolean> {
   const draft: Record<string, boolean> = {};
   for (const group of permissionGroups()) {
     for (const permission of group.permissions) {
-      for (const role of ROLE_VALUES) {
+      for (const role of roleKeys) {
         draft[cellKey(permission, role)] = (matrix[permission] ?? []).includes(role);
       }
     }
@@ -77,26 +80,30 @@ export function PermissionsClient() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const groups = useMemo(() => permissionGroups(), []);
+  // Kolom matriks berasal dari DB (peran, termasuk kustom), bukan enum kode.
+  const roleKeys = useMemo(() => (data?.roles ?? []).map((r) => r.key), [data]);
+  const labelOf = (key: string) =>
+    data?.roles.find((r) => r.key === key)?.label ?? ROLE_LABELS[key] ?? key;
+
+  const loadOverrides = useCallback(async () => {
+    try {
+      const res = await fetch("/api/authz/overrides");
+      if (!res.ok) {
+        throw new Error(
+          res.status === 403 ? "Anda tidak punya izin mengelola hak akses." : "Gagal memuat hak akses."
+        );
+      }
+      const json = (await res.json()) as OverridesResponse;
+      setData(json);
+      setDraft(toDraft(json.effective, json.roles.map((r) => r.key)));
+    } catch (err) {
+      setLoadError((err as Error).message);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/authz/overrides")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(res.status === 403 ? "Anda tidak punya izin mengelola hak akses." : "Gagal memuat hak akses.");
-        return (await res.json()) as OverridesResponse;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setData(json);
-        setDraft(toDraft(json.effective));
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setLoadError(err.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadOverrides();
+  }, [loadOverrides]);
 
   const isBaselineAllowed = (permission: Permission, role: Role) =>
     (data?.baseline[permission] ?? []).includes(role);
@@ -107,7 +114,7 @@ export function PermissionsClient() {
     const rows: PermissionOverride[] = [];
     for (const group of groups) {
       for (const permission of group.permissions) {
-        for (const role of ROLE_VALUES) {
+        for (const role of roleKeys) {
           const allowed = draft[cellKey(permission, role)] ?? false;
           if (allowed !== (data.baseline[permission] ?? []).includes(role)) {
             rows.push({ role, permission, allowed });
@@ -116,14 +123,14 @@ export function PermissionsClient() {
       }
     }
     return rows;
-  }, [data, draft, groups]);
+  }, [data, draft, groups, roleKeys]);
 
   /** Beda terhadap keadaan TERSIMPAN (efektif server) — tombol Simpan hidup? */
   const isDirty = useMemo(() => {
     if (!data) return false;
-    const saved = toDraft(data.effective);
+    const saved = toDraft(data.effective, roleKeys);
     return Object.keys(draft).some((key) => draft[key] !== saved[key]);
-  }, [data, draft]);
+  }, [data, draft, roleKeys]);
 
   const savedOverrideCount = data?.overrides.length ?? 0;
 
@@ -159,7 +166,7 @@ export function PermissionsClient() {
       }
       const next = json as OverridesResponse;
       setData(next);
-      setDraft(toDraft(next.effective));
+      setDraft(toDraft(next.effective, next.roles.map((r) => r.key)));
       setErrors([]);
       toast(successMessage);
     } catch {
@@ -215,6 +222,9 @@ export function PermissionsClient() {
         }
       />
 
+      {/* Kelola peran (buat/ubah/hapus) — perubahan memuat ulang kolom matriks. */}
+      <RoleManager onRolesChanged={loadOverrides} />
+
       {errors.length > 0 && (
         <div
           role="alert"
@@ -245,9 +255,9 @@ export function PermissionsClient() {
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[280px]">Izin</TableHead>
-              {ROLE_VALUES.map((role) => (
-                <TableHead key={role} className="w-32 text-center">
-                  {ROLE_LABELS[role]}
+              {(data?.roles ?? []).map((r) => (
+                <TableHead key={r.key} className="w-32 text-center">
+                  {r.label}
                 </TableHead>
               ))}
             </TableRow>
@@ -258,6 +268,8 @@ export function PermissionsClient() {
                 key={group.resource}
                 label={group.label}
                 permissions={group.permissions}
+                roleKeys={roleKeys}
+                labelOf={labelOf}
                 draft={draft}
                 isBaselineAllowed={isBaselineAllowed}
                 onToggle={toggleCell}
@@ -309,6 +321,8 @@ export function PermissionsClient() {
 function PermissionGroupRows({
   label,
   permissions,
+  roleKeys,
+  labelOf,
   draft,
   isBaselineAllowed,
   onToggle,
@@ -316,6 +330,8 @@ function PermissionGroupRows({
 }: {
   label: string;
   permissions: Permission[];
+  roleKeys: string[];
+  labelOf: (key: string) => string;
   draft: Record<string, boolean>;
   isBaselineAllowed: (permission: Permission, role: Role) => boolean;
   onToggle: (permission: Permission, role: Role, next: boolean) => void;
@@ -324,7 +340,7 @@ function PermissionGroupRows({
   return (
     <>
       <TableRow className="bg-muted/60 hover:bg-muted/60">
-        <TableCell colSpan={1 + ROLE_VALUES.length} className="py-2 text-sm font-semibold text-foreground">
+        <TableCell colSpan={1 + roleKeys.length} className="py-2 text-sm font-semibold text-foreground">
           {label}
         </TableCell>
       </TableRow>
@@ -334,7 +350,7 @@ function PermissionGroupRows({
             <div className="text-sm text-foreground">{PERMISSION_LABELS[permission]}</div>
             <div className="text-xs text-muted-foreground">{permission}</div>
           </TableCell>
-          {ROLE_VALUES.map((role) => {
+          {roleKeys.map((role) => {
             const key = cellKey(permission, role);
             const allowed = draft[key] ?? false;
             const changed = allowed !== isBaselineAllowed(permission, role);
@@ -349,7 +365,7 @@ function PermissionGroupRows({
                     checked={allowed}
                     disabled={disabled || locked}
                     onCheckedChange={(state) => onToggle(permission, role, state === true)}
-                    aria-label={`${ROLE_LABELS[role]}: ${PERMISSION_LABELS[permission]}`}
+                    aria-label={`${labelOf(role)}: ${PERMISSION_LABELS[permission]}`}
                     title={
                       locked
                         ? "Terkunci — Pimpinan harus selalu bisa mengelola pengguna & hak akses."

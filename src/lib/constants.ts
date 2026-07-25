@@ -2,23 +2,31 @@ export const APP_NAME = "SAI Management";
 export const COMPANY_NAME = "PT Subur Anugerah Indonesia";
 export const COMPANY_ADDRESS = "Komplek Pergudangan Kapuk Ecopark, Jakarta";
 
+/** Kunci peran SISTEM bawaan (tak bisa dihapus/dinonaktifkan). Dipakai guard
+ *  di kode: anti-lockout, default Mode Akuntan, dsb. Peran lain kini DATA
+ *  (tabel `roles`, migration 0031) dan dibaca lewat `@/lib/roles`. */
 export const ROLES = {
   BOS: "bos",
   CORE: "core",
   PTG: "ptg",
 } as const;
 
-export type Role = (typeof ROLES)[keyof typeof ROLES];
+/**
+ * Peran kini DATA (tabel `roles`), bukan enum tetap — maka tipenya `string`
+ * agar peran kustom yang dibuat Pimpinan tetap valid. `ROLES`/`ROLE_VALUES`
+ * adalah peran SISTEM bawaan; `ROLE_LABELS` fallback labelnya.
+ */
+export type Role = string;
 
 /**
- * Tuple nilai peran untuk `z.enum` — SATU sumber (audit RBAC fase 1).
- * Jangan mengetik ulang `["bos","core","ptg"]` di route/skrip; impor ini
- * (atau `roleEnum` dari `lib/validations/common.ts`).
+ * Tuple nilai peran SISTEM untuk `z.enum` fallback & seed. Validasi peran user
+ * yang mengizinkan peran kustom kini lewat `@/lib/roles` (cek ke DB), bukan
+ * hanya tuple ini.
  */
 export const ROLE_VALUES = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
 
-/** Sebutan peran dalam bahasa Indonesia (issue #1) — tampilan saja. */
-export const ROLE_LABELS: Record<Role, string> = {
+/** Label peran SISTEM (fallback tampilan). Peran kustom ambil label dari DB. */
+export const ROLE_LABELS: Record<string, string> = {
   bos: "Pimpinan",
   core: "Staf Kantor",
   ptg: "Bagian Gudang (PTG)",

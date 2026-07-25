@@ -19,7 +19,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
@@ -243,9 +243,9 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                     >
                       Nama Barang
                     </label>
-                    <input
+                    <TextInput
                       id={`itemName-${i}`}
-                      className="block w-full rounded-md border border-border px-3 py-2 text-sm"
+                      className="w-full"
                       value={item.itemName}
                       onChange={(e) => updateItem(i, "itemName", e.target.value)}
                       required
@@ -258,11 +258,11 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                     >
                       Bags
                     </label>
-                    <input
+                    <TextInput
                       id={`bags-${i}`}
                       type="number"
                       min={0}
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="w-full text-right tabular-nums"
                       value={item.bags}
                       onChange={(e) => updateItem(i, "bags", Number(e.target.value))}
                     />
@@ -274,12 +274,12 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                     >
                       Kg/Bag
                     </label>
-                    <input
+                    <TextInput
                       id={`kgPerBag-${i}`}
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="w-full text-right tabular-nums"
                       value={item.kgPerBag}
                       onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))}
                     />
@@ -291,12 +291,12 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                     >
                       Harga/Kg
                     </label>
-                    <input
+                    <TextInput
                       id={`pricePerKg-${i}`}
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="w-full text-right tabular-nums"
                       value={item.pricePerKg}
                       onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))}
                     />

@@ -38,7 +38,7 @@ export default async function NewInvoicePage({
   const preselected = Number(contractId);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Buat Tagihan" }]}

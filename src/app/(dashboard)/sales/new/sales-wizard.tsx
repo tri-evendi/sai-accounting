@@ -20,7 +20,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
@@ -501,12 +503,12 @@ export function SalesWizard({
                         >
                           Jumlah (kg)
                         </label>
-                        <input
+                        <TextInput
                           id={`quantity-${i}`}
                           type="number"
                           min={0}
                           step="0.001"
-                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                          className="text-right tabular-nums"
                           value={line.quantity}
                           onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
                         />
@@ -518,12 +520,12 @@ export function SalesWizard({
                         >
                           Harga per kg ({currency})
                         </label>
-                        <input
+                        <TextInput
                           id={`price-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                          className="text-right tabular-nums"
                           value={line.price}
                           onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
                         />
@@ -586,17 +588,17 @@ export function SalesWizard({
         <Card>
           <CardContent className="space-y-4 py-4">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
+              <Checkbox
+                className="mt-1"
                 checked={draft.delivery.include}
-                onChange={(e) =>
+                onCheckedChange={(v) =>
                   patch((d) => {
+                    const checked = v === true;
                     const next = {
                       ...d,
-                      delivery: { ...d.delivery, include: e.target.checked },
+                      delivery: { ...d.delivery, include: checked },
                     };
-                    return e.target.checked ? fillDeliveryFromOrder(next) : next;
+                    return checked ? fillDeliveryFromOrder(next) : next;
                   })
                 }
               />
@@ -669,14 +671,12 @@ export function SalesWizard({
                       return (
                         <div key={i} className="rounded-md border border-border p-3">
                           <label className="flex cursor-pointer items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 cursor-pointer rounded border-border"
+                            <Checkbox
                               checked={line.ship}
                               disabled={line.itemId == null}
-                              onChange={(e) =>
+                              onCheckedChange={(v) =>
                                 updateLine(i, {
-                                  ship: e.target.checked,
+                                  ship: v === true,
                                   shipKgPerBag:
                                     line.shipKgPerBag > 0 ? line.shipKgPerBag : line.quantity,
                                   shipBags: line.shipBags > 0 ? line.shipBags : 1,
@@ -704,11 +704,11 @@ export function SalesWizard({
                                   >
                                     Jumlah bags
                                   </label>
-                                  <input
+                                  <TextInput
                                     id={`shipBags-${i}`}
                                     type="number"
                                     min={0}
-                                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                                    className="text-right tabular-nums"
                                     value={line.shipBags}
                                     onChange={(e) =>
                                       updateLine(i, { shipBags: Number(e.target.value) })
@@ -722,12 +722,12 @@ export function SalesWizard({
                                   >
                                     Kg per bag
                                   </label>
-                                  <input
+                                  <TextInput
                                     id={`shipKgPerBag-${i}`}
                                     type="number"
                                     min={0}
                                     step="0.001"
-                                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                                    className="text-right tabular-nums"
                                     value={line.shipKgPerBag}
                                     onChange={(e) =>
                                       updateLine(i, { shipKgPerBag: Number(e.target.value) })
@@ -908,12 +908,12 @@ export function SalesWizard({
                     >
                       Ditagihkan (kg)
                     </label>
-                    <input
+                    <TextInput
                       id={`billQuantity-${i}`}
                       type="number"
                       min={0}
                       step="0.001"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="text-right tabular-nums"
                       value={line.billQuantity}
                       onChange={(e) => updateLine(i, { billQuantity: Number(e.target.value) })}
                     />
@@ -967,9 +967,13 @@ export function SalesWizard({
                 >
                   Mata uang
                 </label>
-                <select
+                <NativeSelect
                   id="currency"
-                  className="block w-full cursor-pointer rounded-md border border-border px-3 py-2 text-sm"
+                  options={[
+                    { value: "IDR", label: "IDR (Rupiah)" },
+                    { value: "USD", label: "USD" },
+                    { value: "CNY", label: "CNY" },
+                  ]}
                   value={currency}
                   onChange={(e) =>
                     patch((d) => {
@@ -986,23 +990,19 @@ export function SalesWizard({
                       };
                     })
                   }
-                >
-                  <option value="IDR">IDR (Rupiah)</option>
-                  <option value="USD">USD</option>
-                  <option value="CNY">CNY</option>
-                </select>
+                />
               </div>
               {currency !== "IDR" && (
                 <div>
                   <label htmlFor="rate" className="mb-1 block text-sm font-medium text-foreground">
                     <TermTooltip term="kurs">Kurs</TermTooltip> 1 {currency} ke IDR
                   </label>
-                  <input
+                  <TextInput
                     id="rate"
                     type="number"
                     min={0}
                     step="0.000001"
-                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                    className="text-right tabular-nums"
                     value={draft.invoice.rate || ""}
                     onChange={(e) =>
                       patch((d) => ({
@@ -1018,14 +1018,12 @@ export function SalesWizard({
               )}
               <div>
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 cursor-pointer rounded border-border"
+                  <Checkbox
                     checked={draft.invoice.taxable}
-                    onChange={(e) =>
+                    onCheckedChange={(v) =>
                       patch((d) => ({
                         ...d,
-                        invoice: { ...d.invoice, taxable: e.target.checked },
+                        invoice: { ...d.invoice, taxable: v === true },
                       }))
                     }
                   />
@@ -1039,13 +1037,13 @@ export function SalesWizard({
                     >
                       Tarif PPN (%)
                     </label>
-                    <input
+                    <TextInput
                       id="taxRate"
                       type="number"
                       min={0}
                       max={100}
                       step="0.01"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="text-right tabular-nums"
                       value={draft.invoice.taxRate}
                       onChange={(e) =>
                         patch((d) => ({

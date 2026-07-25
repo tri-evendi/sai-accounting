@@ -15,7 +15,10 @@ function BrandPanel({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between overflow-hidden bg-foreground px-8 py-10 text-white",
+        // Panel brand sengaja gelap di KEDUA tema (seperti sidebar), jadi pakai
+        // token permukaan-gelap permanen `sidebar`, bukan `bg-foreground`+putih
+        // yang akan terbalik (teks putih di atas latar terang) saat mode gelap.
+        "relative flex flex-col justify-between overflow-hidden bg-sidebar px-8 py-10 text-sidebar-foreground",
         className
       )}
     >
@@ -28,13 +31,13 @@ function BrandPanel({ className }: { className?: string }) {
           SAI
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
-        <p className="mt-2 text-sm font-medium text-white/80">{COMPANY_NAME}</p>
-        <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/70">
+        <p className="mt-2 text-sm font-medium text-sidebar-foreground/80">{COMPANY_NAME}</p>
+        <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
           Contract &amp; inventory management for internal teams.
         </p>
       </div>
-      <div className="relative flex items-start gap-2 text-sm text-white/70">
-        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/70" aria-hidden />
+      <div className="relative flex items-start gap-2 text-sm text-sidebar-foreground/70">
+        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sidebar-foreground/70" aria-hidden />
         <p>{COMPANY_ADDRESS}</p>
       </div>
     </div>
@@ -54,14 +57,14 @@ export function AuthShell({
       <BrandPanel className="hidden lg:flex lg:w-[30%] lg:min-w-[280px] lg:max-w-sm lg:shrink-0" />
 
       <div className="flex flex-1 flex-col">
-        <div className="border-b border-border bg-foreground px-6 py-5 lg:hidden">
-          <p className="text-lg font-bold text-white">{APP_NAME}</p>
-          <p className="text-sm text-white/70">{COMPANY_NAME}</p>
+        <div className="border-b border-border bg-sidebar px-6 py-5 lg:hidden">
+          <p className="text-lg font-bold text-sidebar-foreground">{APP_NAME}</p>
+          <p className="text-sm text-sidebar-foreground/70">{COMPANY_NAME}</p>
         </div>
 
         <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-12">
           <div className="w-full max-w-md">
-            <div className="rounded-xl border border-border bg-white p-8 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
               <div className="mb-8">
                 {icon && (
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-ring">

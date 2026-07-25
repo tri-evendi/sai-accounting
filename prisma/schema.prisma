@@ -46,6 +46,27 @@ model User {
   @@map("users")
 }
 
+// ─── Peran dinamis (dikelola dari UI) ────────────────────
+/// Peran sebagai DATA, bukan enum kode. `key` = nilai yang disimpan di
+/// `users.role` & `role_permission_overrides.role` (string, tak berubah).
+/// Peran SISTEM (bos/core/ptg) di-seed migration 0031 dengan is_system=true
+/// dan tak boleh dihapus/dinonaktifkan (dijaga di aplikasi). Peran kustom lahir
+/// tanpa izin bawaan — izinnya sepenuhnya dari `role_permission_overrides`
+/// (allowed:true), diatur di /permissions. Label untuk tampilan; `ROLE_LABELS`
+/// di kode tinggal fallback peran sistem.
+model Role {
+  id       Int     @id @default(autoincrement())
+  key      String  @unique @db.VarChar(20)
+  label    String  @db.VarChar(50)
+  isSystem Boolean @default(false) @map("is_system")
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
 // ─── issue #73 — RBAC dapat dikonfigurasi ────────────────
 /// Override per-sel di atas matriks izin BAWAAN (`PERMISSION_ROLES` di
 /// src/lib/authz.ts). Tabel KOSONG = perilaku persis bawaan; satu baris =

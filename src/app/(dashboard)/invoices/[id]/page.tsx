@@ -91,7 +91,7 @@ export default async function InvoiceDetailPage({
   }, 0);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: invoice.invoiceNo }]}
         title={<>Invoice {invoice.invoiceNo}</>}

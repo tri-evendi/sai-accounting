@@ -63,6 +63,18 @@ describe("formatMoney", () => {
   it("default-nya IDR", () => {
     expect(formatMoney(5000)).toBe(formatMoney(5000, "IDR"));
   });
+
+  it("tidak melempar untuk kode mata uang tak sah (data kotor seperti 'Rp')", () => {
+    // Regresi crash /receivables: satu dokumen ber-currency bukan ISO-4217
+    // membuat `Intl` melempar dan menjatuhkan seluruh halaman. Header modul
+    // menjanjikan "string lain diterima apa adanya" — jadi tampilkan mentah.
+    for (const bad of ["Rp", "RP", "S$", "Rupiah", ""]) {
+      expect(() => formatMoney(1500, bad)).not.toThrow();
+    }
+    const out = formatMoney(1500, "Rp");
+    expect(out).toContain("Rp");
+    expect(out).toContain("1.500");
+  });
 });
 
 describe("formatAmount", () => {

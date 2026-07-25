@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -384,21 +384,21 @@ export function DeliveryOrderForm({
                     </div>
                     <div className="w-24">
                       <label className="mb-1 block text-xs font-medium text-muted-foreground">Bags</label>
-                      <input
+                      <TextInput
                         type="number"
                         min={0}
-                        className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                        className="text-right tabular-nums"
                         value={line.bags}
                         onChange={(e) => updateLine(i, { bags: Number(e.target.value) })}
                       />
                     </div>
                     <div className="w-28">
                       <label className="mb-1 block text-xs font-medium text-muted-foreground">Kg/Bag</label>
-                      <input
+                      <TextInput
                         type="number"
                         min={0}
                         step="0.01"
-                        className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                        className="text-right tabular-nums"
                         value={line.kgPerBag}
                         onChange={(e) => updateLine(i, { kgPerBag: Number(e.target.value) })}
                       />

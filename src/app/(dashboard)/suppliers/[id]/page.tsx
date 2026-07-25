@@ -111,7 +111,7 @@ export default async function SupplierDetailPage({
       : null;
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: supplier.name }]}
         title={supplier.name}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
@@ -160,7 +160,7 @@ export function EditInvoiceForm() {
   if (!invoiceNo && !fetching) return <div className="text-destructive">Tagihan tidak ditemukan</div>;
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Tagihan Penjualan", href: "/invoices" },
@@ -214,19 +214,19 @@ export function EditInvoiceForm() {
                 <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Nama Barang</label>
-                    <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
+                    <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-24">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Jumlah</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} />
+                    <TextInput type="number" step="0.01" className="w-full" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Harga</label>
-                    <input type="number" step="0.01" className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} />
+                    <TextInput type="number" step="0.01" className="w-full" value={item.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} />
                   </div>
                   <div className="w-20">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Satuan</label>
-                    <input className="block w-full rounded-md border border-border px-3 py-2 text-sm" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
+                    <TextInput className="w-full" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
                   </div>
                   <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
                     <Trash2 className="h-4 w-4" />

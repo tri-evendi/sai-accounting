@@ -21,6 +21,7 @@ import {
   stockShortfallMessage,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
+import { useT } from "@/lib/i18n/client";
 import { AlertCircle, Lock, Package, Trash2, Plus } from "lucide-react";
 
 interface ContractOption {
@@ -83,6 +84,7 @@ export function DeliveryOrderForm({
   closedPeriods,
 }: Props) {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -123,12 +125,12 @@ export function DeliveryOrderForm({
   const itemOptions: SearchableOption[] = items.map((i) => ({
     value: String(i.id),
     label: i.name,
-    description: `Stok: ${formatNumber(i.currentStock)} ${i.unit || "kg"}`,
+    description: t("common.stockOption", { qty: formatNumber(i.currentStock), unit: i.unit || "kg" }),
   }));
 
   const totalBags = lines.reduce((s, l) => s + (l.bags || 0), 0);
   const totalKg = lines.reduce((s, l) => s + lineKg(l), 0);
-  const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal surat jalan");
+  const periodIssue = closedPeriodIssue(date, closedPeriods, t("deliveryOrders.dateGuardLabel"));
 
   function updateLine(index: number, patch: Partial<LineState>) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
@@ -167,7 +169,7 @@ export function DeliveryOrderForm({
       setError(
         humanizeFieldMessage(
           null,
-          String(fieldMsg || data?.error || "Surat jalan belum bisa diterbitkan.")
+          String(fieldMsg || data?.error || t("deliveryOrders.submitFailed"))
         )
       );
       setLoading(false);
@@ -192,20 +194,20 @@ export function DeliveryOrderForm({
       }));
 
     if (payloadItems.length === 0) {
-      setError("Tambahkan minimal satu barang sebelum menerbitkan surat jalan.");
+      setError(t("deliveryOrders.noItems"));
       return;
     }
 
     // ── Penjaga sebelum kirim (cermin dari penjaga server) ──
-    const periodIssueNow = closedPeriodIssue(date, closedPeriods, "Tanggal surat jalan");
+    const periodIssueNow = closedPeriodIssue(date, closedPeriods, t("deliveryOrders.dateGuardLabel"));
     if (periodIssueNow) {
       setError(periodIssueNow);
       return;
     }
     const negative = negativeValueIssue(
       lines.flatMap((l, i) => [
-        { field: `bags-${i}`, value: l.bags, label: `Jumlah bags baris ${i + 1}` },
-        { field: `kgPerBag-${i}`, value: l.kgPerBag, label: `Kg per bag baris ${i + 1}` },
+        { field: `bags-${i}`, value: l.bags, label: t("contracts.bagsRowLabel", { n: i + 1 }) },
+        { field: `kgPerBag-${i}`, value: l.kgPerBag, label: t("contracts.kgPerBagRowLabel", { n: i + 1 }) },
       ])
     );
     if (negative) {
@@ -218,7 +220,7 @@ export function DeliveryOrderForm({
       findStockShortfalls(
         [...requestedByItem.entries()].map(([itemId, kg]) => ({
           itemId,
-          itemName: itemById.get(itemId)?.name ?? "Barang",
+          itemName: itemById.get(itemId)?.name ?? t("common.item"),
           kg,
         })),
         new Map(items.map((i) => [i.id, i.currentStock]))
@@ -250,7 +252,7 @@ export function DeliveryOrderForm({
       const [itemId, kg] = large;
       const item = itemById.get(itemId);
       setConfirmMessage(
-        largeStockOutMessage(item?.name ?? "Barang", kg, item?.currentStock ?? 0, item?.unit || "kg")
+        largeStockOutMessage(item?.name ?? t("common.item"), kg, item?.currentStock ?? 0, item?.unit || "kg")
       );
       setPending(body);
       return;
@@ -274,7 +276,7 @@ export function DeliveryOrderForm({
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>
-            <TermTooltip term="surat_jalan">Detail Surat Jalan</TermTooltip>
+            <TermTooltip term="surat_jalan">{t("deliveryOrders.detailsTitle")}</TermTooltip>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -284,7 +286,7 @@ export function DeliveryOrderForm({
                 id="date"
                 name="date"
                 type="date"
-                label="Tanggal"
+                label={t("common.date")}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
@@ -299,46 +301,46 @@ export function DeliveryOrderForm({
             <div className="space-y-1.5">
               <SearchableSelect
                 id="consigneeId"
-                label="Consignee"
-                placeholder="Pilih consignee…"
-                searchPlaceholder="Cari nama / negara / kontak…"
-                emptyText="Tidak ada consignee cocok"
+                label={t("deliveryOrders.colConsignee")}
+                placeholder={t("deliveryOrders.pickConsignee")}
+                searchPlaceholder={t("deliveryOrders.searchConsignee")}
+                emptyText={t("deliveryOrders.noConsigneeMatch")}
                 options={consigneeOptions}
                 value={consigneeId != null ? String(consigneeId) : null}
                 onChange={(v) => setConsigneeId(v == null ? null : Number(v))}
               />
               <p className="text-xs text-muted-foreground">
-                Belum ada?{" "}
+                {t("deliveryOrders.addConsigneePrompt")}{" "}
                 <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
-                  Tambah consignee
+                  {t("deliveryOrders.addConsigneeLink")}
                 </Link>
-                .
+                {t("common.fullStop")}
               </p>
             </div>
             <SearchableSelect
               id="contractId"
-              label="Kontrak sumber (opsional)"
-              placeholder="Pilih kontrak…"
-              searchPlaceholder="Cari no. kontrak / buyer…"
-              emptyText="Tidak ada kontrak cocok"
+              label={t("invoices.contractSourceOptional")}
+              placeholder={t("invoices.pickContract")}
+              searchPlaceholder={t("invoices.searchContract")}
+              emptyText={t("invoices.noContractMatch")}
               options={contractOptions}
               value={contractId != null ? String(contractId) : null}
               onChange={(v) => onContractChange(v == null ? null : Number(v))}
             />
             <SearchableSelect
               id="invoiceId"
-              label="Faktur sumber (opsional)"
-              placeholder="Pilih faktur…"
-              searchPlaceholder="Cari no. faktur / pelanggan…"
-              emptyText="Tidak ada faktur cocok"
+              label={t("deliveryOrders.invoiceSourceOptional")}
+              placeholder={t("deliveryOrders.pickInvoice")}
+              searchPlaceholder={t("deliveryOrders.searchInvoice")}
+              emptyText={t("deliveryOrders.noInvoiceMatch")}
               options={invoiceOptions}
               value={invoiceId != null ? String(invoiceId) : null}
               onChange={(v) => setInvoiceId(v == null ? null : Number(v))}
             />
-            <Input id="vehicleNo" name="vehicleNo" label="No. Kendaraan (opsional)" />
-            <Input id="containerNo" name="containerNo" label="No. Kontainer (opsional)" />
+            <Input id="vehicleNo" name="vehicleNo" label={t("deliveryOrders.vehicleNoOptional")} />
+            <Input id="containerNo" name="containerNo" label={t("deliveryOrders.containerNoOptional")} />
             <div className="sm:col-span-2">
-              <Input id="notes" name="notes" label="Catatan (opsional)" />
+              <Input id="notes" name="notes" label={t("common.notesOptional")} />
             </div>
           </div>
         </CardContent>
@@ -347,9 +349,9 @@ export function DeliveryOrderForm({
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Barang</CardTitle>
+            <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-              <Plus className="mr-1 h-4 w-4" /> Tambah Barang
+              <Plus className="mr-1 h-4 w-4" /> {t("common.addItem")}
             </Button>
           </div>
         </CardHeader>
@@ -357,9 +359,9 @@ export function DeliveryOrderForm({
           {items.length === 0 ? (
             <EmptyState
               icon={<Package className="h-12 w-12" />}
-              title="Belum ada barang di daftar stok"
-              description="Surat jalan mengurangi stok, jadi barangnya harus sudah tercatat lebih dulu. Catat barang masuk pertama Anda."
-              actionLabel="Tambah / Kurangi Stok"
+              title={t("common.emptyStockTitle")}
+              description={t("deliveryOrders.emptyStockDescription")}
+              actionLabel={t("common.addRemoveStock")}
               actionHref="/inventory/update"
             />
           ) : (
@@ -373,17 +375,17 @@ export function DeliveryOrderForm({
                   <div className="flex items-end gap-3">
                     <div className="flex-1">
                       <SearchableSelect
-                        label="Barang"
-                        placeholder="Pilih barang…"
-                        searchPlaceholder="Cari barang…"
-                        emptyText="Tidak ada barang cocok"
+                        label={t("common.item")}
+                        placeholder={t("common.pickItem")}
+                        searchPlaceholder={t("common.searchItem")}
+                        emptyText={t("common.noItemMatch")}
                         options={itemOptions}
                         value={line.itemId != null ? String(line.itemId) : null}
                         onChange={(v) => updateLine(i, { itemId: v == null ? null : Number(v) })}
                       />
                     </div>
                     <div className="w-24">
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">Bags</label>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("common.bags")}</label>
                       <TextInput
                         type="number"
                         min={0}
@@ -393,7 +395,7 @@ export function DeliveryOrderForm({
                       />
                     </div>
                     <div className="w-28">
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">Kg/Bag</label>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("common.kgPerBag")}</label>
                       <TextInput
                         type="number"
                         min={0}
@@ -410,7 +412,7 @@ export function DeliveryOrderForm({
                       onClick={() => removeLine(i)}
                       className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                       disabled={lines.length === 1}
-                      aria-label={`Hapus baris barang ${i + 1}`}
+                      aria-label={t("common.removeItemRow", { n: i + 1 })}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -418,9 +420,16 @@ export function DeliveryOrderForm({
                   <div className="mt-2 flex justify-between text-xs">
                     <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                       {item
-                        ? `Tersedia ${formatNumber(item.currentStock)} ${item.unit || "kg"}`
-                        : "Pilih barang untuk melihat stok"}
-                      {over && " — melebihi stok, surat jalan akan ditolak!"}
+                        ? over
+                          ? t("deliveryOrders.lineAvailableOver", {
+                              stock: formatNumber(item.currentStock),
+                              unit: item.unit || "kg",
+                            })
+                          : t("deliveryOrders.lineAvailable", {
+                              stock: formatNumber(item.currentStock),
+                              unit: item.unit || "kg",
+                            })
+                        : t("deliveryOrders.linePickItem")}
                     </span>
                     <span className="tabular-nums text-foreground">
                       = {formatNumber(lineKg(line))} kg
@@ -438,11 +447,11 @@ export function DeliveryOrderForm({
         <CardContent className="py-3">
           <dl className="space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Total Bags</dt>
+              <dt className="text-muted-foreground">{t("deliveryOrders.totalBags")}</dt>
               <dd className="tabular-nums font-medium text-foreground">{formatNumber(totalBags)}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="font-medium text-muted-foreground">Total Keluar (kg)</dt>
+              <dt className="font-medium text-muted-foreground">{t("deliveryOrders.totalOutKg")}</dt>
               <dd className="text-lg font-bold tabular-nums text-foreground">
                 {formatNumber(totalKg)} kg
               </dd>
@@ -453,7 +462,7 @@ export function DeliveryOrderForm({
 
       <div className="flex gap-3">
         <Button type="submit" className="cursor-pointer" disabled={loading}>
-          {loading ? "Menerbitkan…" : "Terbitkan Surat Jalan"}
+          {loading ? t("deliveryOrders.submitting") : t("deliveryOrders.submit")}
         </Button>
         <Button
           type="button"
@@ -461,16 +470,16 @@ export function DeliveryOrderForm({
           className="cursor-pointer"
           onClick={() => router.back()}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
 
       {/* Konfirmasi pengeluaran stok besar (issue #6) — terkendali, karena
           pemicunya adalah tombol Simpan yang sudah ada, bukan tombol tersendiri. */}
       <ConfirmDialog
-        title="Pengeluaran stok dalam jumlah besar"
+        title={t("deliveryOrders.confirmTitle")}
         message={confirmMessage}
-        confirmLabel="Ya, terbitkan"
+        confirmLabel={t("deliveryOrders.confirmLabel")}
         confirmVariant="danger"
         open={pending != null}
         onOpenChange={(o) => {

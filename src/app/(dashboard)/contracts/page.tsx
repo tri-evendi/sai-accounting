@@ -98,7 +98,7 @@ export default async function ContractsPage({
           defaultValue={params.search}
           className="w-full max-w-md rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-ring">Cari</button>
+        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-ring">Cari</button>
       </form>
 
       {/* Table */}

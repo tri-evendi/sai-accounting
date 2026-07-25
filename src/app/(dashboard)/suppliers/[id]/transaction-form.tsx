@@ -251,7 +251,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
         )}
 
         {!isPurchase && (
-          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-white p-3">
+          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-card p-3">
             <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-foreground">
               <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Lunasi Pembelian (opsional)

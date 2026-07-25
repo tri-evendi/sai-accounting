@@ -227,7 +227,7 @@ export function AllocationEditor({
             return (
               <li
                 key={p.id}
-                className="rounded-md border border-border bg-white p-2.5 transition-colors duration-150 hover:border-border"
+                className="rounded-md border border-border bg-card p-2.5 transition-colors duration-150 hover:border-border"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <label className="flex cursor-pointer items-start gap-2 text-sm">

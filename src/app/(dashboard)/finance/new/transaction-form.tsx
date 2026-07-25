@@ -393,7 +393,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 in Mode Akuntan; it renders the engine's own rule, changing
                 nothing about what is posted. */}
             {accountantOn && journalPreview && (
-              <div className="mt-4 rounded-md border border-border bg-white">
+              <div className="mt-4 rounded-md border border-border bg-card">
                 <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium text-foreground">
                   <BookText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Lihat jurnal — pratinjau

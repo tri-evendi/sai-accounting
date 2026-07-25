@@ -241,7 +241,7 @@ export function GuidedTour() {
         aria-labelledby="tour-step-title"
         tabIndex={-1}
         className={cn(
-          "fixed rounded-xl border border-border bg-white p-4 shadow-lg focus:outline-none"
+          "fixed rounded-xl border border-border bg-card p-4 shadow-lg focus:outline-none"
         )}
         style={cardStyle}
       >

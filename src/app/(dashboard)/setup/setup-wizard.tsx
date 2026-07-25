@@ -247,7 +247,7 @@ export function SetupWizard({
             className={
               "flex items-center gap-2 rounded-md px-3 py-1.5 " +
               (i === step
-                ? "bg-primary text-white"
+                ? "bg-primary text-primary-foreground"
                 : i < step
                 ? "bg-success-soft text-success-strong"
                 : "bg-muted text-muted-foreground")

@@ -182,6 +182,8 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
       {/* Backdrop for mobile */}
       {open && (
         <div
+          // Scrim overlay memang hitam transparan, bukan permukaan bertema.
+          // eslint-disable-next-line no-restricted-syntax
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={onClose}
         />

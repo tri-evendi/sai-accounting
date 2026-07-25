@@ -72,7 +72,7 @@ export function AccountantModeToggle() {
         "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60",
         isOn
           ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/10"
-          : "border-border bg-white text-muted-foreground hover:bg-muted"
+          : "border-border bg-card text-muted-foreground hover:bg-muted"
       )}
     >
       {saving ? (
@@ -84,7 +84,7 @@ export function AccountantModeToggle() {
       <span
         className={cn(
           "rounded px-1.5 py-0.5 text-xs font-semibold",
-          isOn ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+          isOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
         )}
       >
         {isOn ? "ON" : "OFF"}

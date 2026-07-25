@@ -60,7 +60,7 @@ export function HelpMenu() {
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
           open
             ? "border-primary/30 bg-primary/10 text-primary"
-            : "border-border bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
+            : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <HelpCircle className="h-4 w-4" aria-hidden="true" />
@@ -71,7 +71,7 @@ export function HelpMenu() {
         <div
           role="menu"
           aria-label="Menu bantuan"
-          className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-border bg-white p-1 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-border bg-card p-1 shadow-lg"
         >
           <Link
             role="menuitem"

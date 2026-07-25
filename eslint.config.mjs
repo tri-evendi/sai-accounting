@@ -9,18 +9,23 @@ import nextTs from "eslint-config-next/typescript";
  * `border-destructive`). Tanpa ini, kelas mentah merayap kembali lewat PR
  * berikutnya dan dark mode / rebranding kembali jadi pekerjaan ratusan file.
  *
- * Cakupan warna sengaja dibatasi ke palet yang PUNYA padanan token; `white`/
- * `black` (tanpa angka) tidak ditolak. Bila suatu kasus sah butuh warna mentah
- * (mis. brand pihak ketiga), matikan setempat dengan
- * `// eslint-disable-next-line no-restricted-syntax` beserta alasannya.
+ * Cakupan mencakup palet ber-angka (mis. `blue-600`) DAN `white`/`black`
+ * telanjang: keduanya tidak mengikuti tema. `--card` sudah punya varian gelap,
+ * jadi `bg-white` tetap putih saat mode gelap sementara sekelilingnya menggelap
+ * (top bar pernah begini). Pakai token: `bg-card`/`bg-background` untuk
+ * permukaan, `text-primary-foreground` untuk teks di atas `bg-primary`,
+ * `bg-sidebar`/`text-sidebar-foreground` untuk permukaan gelap permanen. Untuk
+ * scrim overlay yang memang harus hitam (mis. `bg-black/50`), matikan setempat
+ * dengan `// eslint-disable-next-line no-restricted-syntax` beserta alasannya.
  */
 const RAW_PALETTE =
-  "(bg|text|border|ring|ring-offset|divide|from|to|via|placeholder|fill|stroke|outline|decoration|accent|caret|shadow)-(blue|gray|red|green|yellow|amber|slate|emerald|rose|sky|indigo|zinc|neutral|stone)-[0-9]";
+  "(bg|text|border|ring|ring-offset|divide|from|to|via|placeholder|fill|stroke|outline|decoration|accent|caret|shadow)-((blue|gray|red|green|yellow|amber|slate|emerald|rose|sky|indigo|zinc|neutral|stone)-[0-9]|(white|black)\\b)";
 
 const rawPaletteMessage =
   "Kelas palet Tailwind mentah dilarang (issue #54). Pakai token semantik: " +
   "biru→primary, merah→destructive, hijau→success, amber/kuning→warning, " +
-  "abu→foreground/muted-foreground/muted/border. Lihat design-system/sai-accounting/MASTER.md.";
+  "abu→foreground/muted-foreground/muted/border, putih/hitam→card/background/" +
+  "primary-foreground/sidebar. Lihat design-system/sai-accounting/MASTER.md.";
 
 const noRawPalette = {
   files: ["src/**/*.{ts,tsx}"],

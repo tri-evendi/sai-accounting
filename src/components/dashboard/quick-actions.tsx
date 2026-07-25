@@ -79,7 +79,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
               key={action.key}
               href={action.href}
               className={cn(
-                "group flex min-h-[6.5rem] cursor-pointer items-start gap-4 rounded-xl border border-border bg-white p-4 shadow-sm",
+                "group flex min-h-[6.5rem] cursor-pointer items-start gap-4 rounded-xl border border-border bg-card p-4 shadow-sm",
                 "transition-shadow duration-200 hover:shadow-md",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}

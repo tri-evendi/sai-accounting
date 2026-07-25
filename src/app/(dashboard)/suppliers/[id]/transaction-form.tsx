@@ -9,6 +9,7 @@ import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 import { ArrowDownLeft, ArrowUpRight, Link2, Plus } from "lucide-react";
 
 const BASE_CURRENCY = "IDR";
@@ -37,6 +38,7 @@ interface OutstandingPurchase {
 export function SupplierTransactionForm({ supplierId }: { supplierId: number }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -92,7 +94,10 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
     // Caught here as well as server-side so the user sees it before a round trip.
     if (!isPurchase && allocTotal > amount + EPSILON) {
       setError(
-        `Total alokasi (${formatCurrency(allocTotal, currency)}) melebihi jumlah pembayaran (${formatCurrency(amount, currency)}).`
+        t("suppliers.txOverAlloc", {
+          allocated: formatCurrency(allocTotal, currency),
+          amount: formatCurrency(amount, currency),
+        })
       );
       setLoading(false);
       return;
@@ -124,12 +129,12 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Gagal menyimpan transaksi"));
+      setError(String(fieldMsg || data.error || t("suppliers.txSaveFailed")));
       setLoading(false);
       return;
     }
 
-    toast("Transaksi supplier tersimpan dan sudah dijurnal");
+    toast(t("suppliers.txSaved"));
     setOpen(false);
     setLoading(false);
     setAlloc({});
@@ -139,14 +144,14 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4 mr-1" /> Add Transaction
+        <Plus className="h-4 w-4 mr-1" /> {t("suppliers.addTransaction")}
       </Button>
     );
   }
 
   return (
     <div className="rounded-lg border border-border bg-muted p-4 mt-4">
-      <h4 className="text-sm font-semibold text-foreground mb-3">Record Supplier Transaction</h4>
+      <h4 className="text-sm font-semibold text-foreground mb-3">{t("suppliers.txFormTitle")}</h4>
 
       {error && (
         <div className="mb-3 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
@@ -159,23 +164,23 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           <Select
             id="trx-type"
             name="type"
-            label="Jenis Transaksi"
+            label={t("suppliers.txTypeLabel")}
             value={type}
             onChange={(e) => handleTypeChange(e.target.value as "purchase" | "payment")}
             options={[
-              { value: "purchase", label: "Pembelian (Purchase)" },
-              { value: "payment", label: "Pembayaran (Payment)" },
+              { value: "purchase", label: t("suppliers.txTypePurchase") },
+              { value: "payment", label: t("suppliers.txTypePayment") },
             ]}
           />
           {isPurchase ? (
             <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Menambah Hutang Usaha</span>
+              <span>{t("suppliers.txEffectPurchase")}</span>
             </p>
           ) : (
             <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
               <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Mengurangi Hutang Usaha & saldo kas</span>
+              <span>{t("suppliers.txEffectPayment")}</span>
             </p>
           )}
         </div>
@@ -184,7 +189,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           id="trx-date"
           name="date"
           type="date"
-          label="Tanggal"
+          label={t("common.date")}
           defaultValue={new Date().toISOString().split("T")[0]}
           required
         />
@@ -198,14 +203,14 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           step="0.01"
           min="0"
           className="text-right tabular-nums"
-          label={isPurchase ? "Nilai (sebelum PPN)" : "Jumlah Pembayaran"}
+          label={isPurchase ? t("suppliers.txAmountPurchase") : t("suppliers.txAmountPayment")}
           required
         />
 
         <Select
           id="trx-currency"
           name="currency"
-          label="Mata Uang"
+          label={t("common.currency")}
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
           options={[
@@ -224,12 +229,10 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               step="0.000001"
               min="0"
               className="text-right tabular-nums"
-              label={`Kurs 1 ${currency} ke IDR`}
+              label={t("suppliers.txRateLabel", { currency })}
               required
             />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Wajib diisi — buku besar mencatat nilai IDR.
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("common.rateRequiredHint")}</p>
           </div>
         )}
 
@@ -242,12 +245,10 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               step="0.01"
               min="0"
               className="text-right tabular-nums"
-              label="PPN Masukan (opsional)"
+              label={t("suppliers.txInputVat")}
               defaultValue="0"
             />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Diposting terpisah ke akun PPN Masukan.
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("suppliers.txInputVatHint")}</p>
           </div>
         )}
 
@@ -255,21 +256,18 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           <fieldset className="sm:col-span-2 rounded-lg border border-border bg-card p-3">
             <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-foreground">
               <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Lunasi Pembelian (opsional)
+              {t("suppliers.txAllocLegend")}
             </legend>
 
             <p className="mb-3 text-xs text-muted-foreground">
-              Pilih pembelian yang dibayar oleh transaksi ini. Bila dikosongkan, sisa
-              utang per dokumen hanya <strong>diperkirakan</strong> (pembelian terlama
-              dilunasi lebih dulu).
+              {t("suppliers.txAllocHintA")} <strong>{t("suppliers.txAllocHintStrong")}</strong>{" "}
+              {t("suppliers.txAllocHintB")}
             </p>
 
             {loadingPurchases ? (
-              <p className="text-xs text-muted-foreground">Memuat daftar pembelian...</p>
+              <p className="text-xs text-muted-foreground">{t("suppliers.allocLoading")}</p>
             ) : purchases.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Tidak ada pembelian dengan sisa utang untuk supplier ini.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("suppliers.txNoOutstanding")}</p>
             ) : (
               <ul className="space-y-2">
                 {purchases.map((p) => {
@@ -306,7 +304,12 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                             <span className="font-medium text-foreground">TRX-{p.id}</span>
                             <span className="block text-xs text-muted-foreground tabular-nums">
                               {formatDateShort(p.date)}
-                              {p.dueDate && <> · j.tempo {formatDateShort(p.dueDate)}</>}
+                              {p.dueDate && (
+                                <>
+                                  {" · "}
+                                  {t("suppliers.dueShort", { date: formatDateShort(p.dueDate) })}
+                                </>
+                              )}
                             </span>
                             {p.note && (
                               <span className="block max-w-64 truncate text-xs text-muted-foreground">
@@ -317,20 +320,25 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                         </label>
 
                         <div className="text-right">
-                          <span className="block text-xs text-muted-foreground">Sisa utang</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {t("suppliers.outstandingDebt")}
+                          </span>
                           <span className="block text-sm font-medium text-foreground tabular-nums">
-                            {noRate ? "Kurs belum diisi" : formatCurrency(p.remainingBase!, "IDR")}
+                            {noRate
+                              ? t("common.rateMissing")
+                              : formatCurrency(p.remainingBase!, "IDR")}
                           </span>
                           <span className="block text-xs text-muted-foreground tabular-nums">
-                            Nilai {formatCurrency(p.amount, p.currency)}
+                            {t("suppliers.lineValue", {
+                              amount: formatCurrency(p.amount, p.currency),
+                            })}
                           </span>
                         </div>
                       </div>
 
                       {noRate && (
                         <p className="mt-1.5 text-xs text-warning-strong">
-                          Pembelian valas tanpa kurs — sisa utang dalam IDR tidak
-                          diketahui, jadi belum bisa dialokasikan.
+                          {t("suppliers.noRateLine")}
                         </p>
                       )}
 
@@ -340,7 +348,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                             htmlFor={`alloc-${p.id}`}
                             className="text-xs text-muted-foreground whitespace-nowrap"
                           >
-                            Dibayar ({currency})
+                            {t("suppliers.paidIn", { currency })}
                           </label>
                           <TextInput
                             id={`alloc-${p.id}`}
@@ -363,7 +371,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
 
             {allocEntries.length > 0 && (
               <p className="mt-3 flex justify-between border-t border-border pt-2 text-xs">
-                <span className="text-muted-foreground">Total dialokasikan</span>
+                <span className="text-muted-foreground">{t("suppliers.totalAllocated")}</span>
                 <span className="font-medium text-foreground tabular-nums">
                   {formatCurrency(allocTotal, currency)}
                 </span>
@@ -373,15 +381,15 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
         )}
 
         <div className="sm:col-span-2">
-          <Input id="trx-note" name="note" label="Catatan (opsional)" />
+          <Input id="trx-note" name="note" label={t("common.notesOptional")} />
         </div>
 
         <div className="sm:col-span-2 flex gap-2">
           <Button type="submit" size="sm" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan Transaksi"}
+            {loading ? t("common.saving") : t("suppliers.txSubmit")}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

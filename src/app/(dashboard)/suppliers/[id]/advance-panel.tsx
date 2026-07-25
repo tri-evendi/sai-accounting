@@ -48,6 +48,7 @@ import {
   type ContractOption,
 } from "@/app/(dashboard)/advances/new/advance-form";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 import { ArrowUpFromLine, HandCoins, Info, Plus, X } from "lucide-react";
 
 /** One purchase this supplier's advances can be compensated into. */
@@ -99,6 +100,7 @@ export function SupplierAdvancePanel({
   appliedByPurchase: Record<number, AppliedAdvance[]>;
 }) {
   const router = useRouter();
+  const t = useT();
   const [recording, setRecording] = useState(false);
   const [targetId, setTargetId] = useState<string>("");
 
@@ -127,34 +129,34 @@ export function SupplierAdvancePanel({
         <span>
           <span className="inline-flex items-center gap-1 font-medium text-foreground">
             <ArrowUpFromLine className="h-3.5 w-3.5" aria-hidden="true" />
-            Uang keluar
+            {t("suppliers.introMoneyOut")}
           </span>{" "}
-          ke supplier <strong>sebelum</strong> barangnya diterima, dicatat sebagai{" "}
-          <strong>Uang Muka Pembelian</strong> — sebuah <em>aset</em>, <strong>bukan</strong>{" "}
-          beban. Beban baru diakui saat pembeliannya dicatat; uang muka ini lalu
-          dikompensasikan ke pembelian tersebut untuk mengurangi sisa utangnya.
+          {t("suppliers.introA")} <strong>{t("suppliers.introBefore")}</strong>{" "}
+          {t("suppliers.introB")} <strong>{t("suppliers.introAdvance")}</strong>{" "}
+          {t("suppliers.introC")} <em>{t("suppliers.introAsset")}</em>{" "}
+          <strong>{t("suppliers.introNot")}</strong> {t("suppliers.introD")}
         </span>
       </p>
 
       {/* Balance tiles — the number the panel exists to answer. */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-border p-3">
-          <p className="text-xs text-muted-foreground">Sisa uang muka belum dikompensasi</p>
+          <p className="text-xs text-muted-foreground">{t("suppliers.outstandingLabel")}</p>
           <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
             {formatCurrency(outstandingBase, "IDR")}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Nilai dasar IDR dari {open.length} uang muka yang masih bersisa.
+            {t("suppliers.outstandingHint", { count: open.length })}
           </p>
         </div>
         <div className="rounded-md border border-border p-3">
-          <p className="text-xs text-muted-foreground">Belum berkurs</p>
+          <p className="text-xs text-muted-foreground">{t("suppliers.unratedLabel")}</p>
           <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
             {unratedAdvanceCount}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Uang muka valas tanpa kurs — <strong>tidak</strong> ikut dijumlahkan di
-            total IDR sebelah kiri.
+            {t("suppliers.unratedHintA")} <strong>{t("suppliers.unratedHintStrong")}</strong>{" "}
+            {t("suppliers.unratedHintB")}
           </p>
         </div>
       </div>
@@ -165,7 +167,7 @@ export function SupplierAdvancePanel({
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-sm font-semibold text-foreground">
-              Catat uang muka ke {supplier.name}
+              {t("suppliers.recordAdvanceTo", { name: supplier.name })}
             </h4>
             <Button
               type="button"
@@ -175,7 +177,7 @@ export function SupplierAdvancePanel({
               onClick={() => setRecording(false)}
             >
               <X className="mr-1 h-4 w-4" aria-hidden="true" />
-              Tutup
+              {t("common.close")}
             </Button>
           </div>
           <AdvanceForm
@@ -196,15 +198,14 @@ export function SupplierAdvancePanel({
           onClick={() => setRecording(true)}
         >
           <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Catat Uang Muka
+          {t("suppliers.recordAdvance")}
         </Button>
       )}
 
       {/* Advances paid to this supplier */}
       {advances.length === 0 ? (
         <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-          Belum ada uang muka ke supplier ini. Catat pembayaran di muka lewat tombol
-          di atas.
+          {t("suppliers.noAdvances")}
         </p>
       ) : (
         // Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
@@ -213,15 +214,15 @@ export function SupplierAdvancePanel({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto px-4 py-2">Nomor</TableHead>
-                <TableHead className="h-auto px-4 py-2">Tanggal</TableHead>
-                <TableHead className="h-auto px-4 py-2">Kontrak</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-right">Nilai</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("suppliers.colNumber")}</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("common.date")}</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("suppliers.colContract")}</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">{t("suppliers.colValue")}</TableHead>
                 <TableHead className="h-auto px-4 py-2 text-right">
-                  Sudah dikompensasi
+                  {t("suppliers.colApplied")}
                 </TableHead>
-                <TableHead className="h-auto px-4 py-2 text-right">Sisa</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-right">Sisa (IDR)</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">{t("suppliers.colRemaining")}</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">{t("suppliers.colRemainingIdr")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,7 +233,7 @@ export function SupplierAdvancePanel({
                     {/* Badge always carries text — colour is never the only signal. */}
                     <span className="mt-0.5 block">
                       <Badge variant={a.isFullyApplied ? "default" : "warning"}>
-                        {a.isFullyApplied ? "Habis" : "Bersisa"}
+                        {a.isFullyApplied ? t("suppliers.badgeUsedUp") : t("suppliers.badgeRemaining")}
                       </Badge>
                     </span>
                   </TableCell>
@@ -265,11 +266,11 @@ export function SupplierAdvancePanel({
                     {a.remainingBase != null ? (
                       <Money value={a.remainingBase} currency="IDR" />
                     ) : (
-                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                      <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
                     )}
                     {a.unratedApplications > 0 && (
                       <span className="mt-0.5 block text-xs text-warning-strong">
-                        {a.unratedApplications} kompensasi belum berkurs
+                        {t("suppliers.unratedApplications", { count: a.unratedApplications })}
                       </span>
                     )}
                   </TableCell>
@@ -284,26 +285,25 @@ export function SupplierAdvancePanel({
       <div className="border-t border-border pt-4">
         <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <HandCoins className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          Kompensasi ke pembelian
+          {t("suppliers.compensateTitle")}
         </h4>
         <p className="mt-1 mb-3 text-xs text-muted-foreground">
-          Pilih pembelian yang mau dikurangi, lalu isi berapa dari tiap uang muka
-          yang dipakai. Kompensasi <strong>memindahkan</strong> nilai dari Uang Muka
-          Pembelian ke utang supplier — tidak ada uang yang berpindah lagi.
+          {t("suppliers.compensateHintA")} <strong>{t("suppliers.compensateHintStrong")}</strong>{" "}
+          {t("suppliers.compensateHintB")}
         </p>
 
         {purchases.length === 0 ? (
           <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
-              Tidak ada pembelian dengan sisa utang untuk supplier ini, jadi belum ada
-              yang bisa dikompensasi.
+              {t("suppliers.noTargets")}
               {unratedPurchaseCount > 0 && (
                 <>
                   {" "}
-                  <strong>{unratedPurchaseCount} pembelian</strong> valas belum berkurs —
-                  sisa utangnya dalam IDR tidak diketahui, jadi belum bisa jadi sasaran
-                  kompensasi. Isi kursnya lebih dulu.
+                  <strong>
+                    {t("suppliers.unratedPurchaseCount", { count: unratedPurchaseCount })}
+                  </strong>{" "}
+                  {t("suppliers.unratedPurchaseRest")}
                 </>
               )}
             </span>
@@ -313,22 +313,22 @@ export function SupplierAdvancePanel({
             <div className="max-w-md">
               <Select
                 id="advance-target"
-                label="Pembelian yang dikurangi"
+                label={t("suppliers.targetLabel")}
                 value={targetId}
                 onChange={(e) => setTargetId(e.target.value)}
-                placeholder="Pilih pembelian"
+                placeholder={t("suppliers.pickPurchase")}
                 options={purchases.map((p) => ({
                   value: String(p.id),
-                  label: `${p.label} · ${formatDateShort(new Date(p.date))} · sisa ${formatCurrency(
-                    p.remainingBase,
-                    "IDR"
-                  )}`,
+                  label: t("suppliers.targetOption", {
+                    label: p.label,
+                    date: formatDateShort(new Date(p.date)),
+                    remaining: formatCurrency(p.remainingBase, "IDR"),
+                  }),
                 }))}
               />
               {unratedPurchaseCount > 0 && (
                 <p className="mt-1 text-xs text-warning-strong">
-                  {unratedPurchaseCount} pembelian valas belum berkurs dan tidak
-                  ditampilkan di sini. Isi kursnya lebih dulu agar bisa dikompensasi.
+                  {t("suppliers.unratedNotShown", { count: unratedPurchaseCount })}
                 </p>
               )}
             </div>
@@ -338,8 +338,9 @@ export function SupplierAdvancePanel({
                 <p className="mb-3 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                   <span className="font-medium text-foreground">{selected.label}</span>
                   <span className="text-xs text-muted-foreground">
-                    Nilai {formatCurrency(selected.amount, selected.currency)} · sisa
-                    utang{" "}
+                    {t("suppliers.selectedValue", {
+                      amount: formatCurrency(selected.amount, selected.currency),
+                    })}{" "}
                     <strong className="tabular-nums text-foreground">
                       {formatCurrency(selected.remainingBase, "IDR")}
                     </strong>

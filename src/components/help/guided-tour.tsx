@@ -22,6 +22,7 @@ import { X, ArrowLeft, ArrowRight, Check, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { tourForPath, tourStorageKey, type TourDef } from "@/lib/tours";
+import { useT } from "@/lib/i18n/client";
 
 export const TOUR_REPLAY_EVENT = "sai:tour:replay";
 
@@ -65,6 +66,7 @@ function hasSeen(tour: TourDef): boolean {
 }
 
 export function GuidedTour() {
+  const t = useT();
   const pathname = usePathname();
   const tour = tourForPath(pathname);
   const [index, setIndex] = useState<number | null>(null);
@@ -270,7 +272,7 @@ export function GuidedTour() {
           <button
             type="button"
             onClick={close}
-            aria-label="Tutup tur"
+            aria-label={t("tour.close")}
             className="-m-1 cursor-pointer rounded p-1 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -284,11 +286,11 @@ export function GuidedTour() {
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-xs tabular-nums text-muted-foreground">
-            Langkah {index + 1} dari {tour.steps.length}
+            {t("wizard.stepOf", { step: index + 1, total: tour.steps.length })}
           </p>
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" size="sm" className="cursor-pointer" onClick={close}>
-              Lewati
+              {t("tour.skip")}
             </Button>
             {index > 0 && (
               <Button
@@ -299,7 +301,7 @@ export function GuidedTour() {
                 onClick={() => setIndex((i) => Math.max((i ?? 0) - 1, 0))}
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Kembali
+                {t("common.back")}
               </Button>
             )}
             <Button
@@ -311,11 +313,11 @@ export function GuidedTour() {
               {isLast ? (
                 <>
                   <Check className="h-4 w-4" aria-hidden="true" />
-                  Selesai
+                  {t("tour.finish")}
                 </>
               ) : (
                 <>
-                  Lanjut
+                  {t("wizard.next")}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}

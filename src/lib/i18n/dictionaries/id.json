@@ -2523,6 +2523,59 @@
       "nameSupplier": "Nama pemasok",
       "notSavedCustomer": "Pelanggan baru ini",
       "notSavedSupplier": "Pemasok baru ini"
-    }
+    },
+    "draftExpired": "Draf sebelumnya sudah lebih dari 12 jam, jadi tidak dipakai lagi — harga dan jumlah yang lama bisa sudah tidak berlaku. Tidak ada data yang tersimpan; silakan mulai dari langkah pertama.",
+    "draftUnreadable": "Draf sebelumnya tidak bisa dibaca lagi, jadi dimulai dari kosong. Tidak ada data yang tersimpan di sistem."
+  },
+  "audit": {
+    "title": "Catatan Audit Keamanan",
+    "description": "Perubahan kas, stok, dan akun (khusus Pimpinan)",
+    "accessDenied": "Akses ditolak",
+    "loadFailed": "Gagal memuat catatan audit",
+    "empty": "Belum ada catatan audit",
+    "colTime": "Waktu",
+    "colUser": "Pengguna",
+    "colAction": "Tindakan",
+    "colDetails": "Rincian",
+    "colIp": "IP"
+  },
+  "auditAction": {
+    "finance_create": "Transaksi kas & bank",
+    "stock_in": "Barang masuk",
+    "stock_out": "Barang keluar",
+    "item_create": "Barang baru",
+    "auth_password_change": "Kata sandi diganti",
+    "approval_request": "Persetujuan diajukan",
+    "approval_approve": "Persetujuan diberikan",
+    "approval_reject": "Persetujuan ditolak",
+    "approval_rule_create": "Aturan persetujuan dibuat",
+    "approval_rule_update": "Aturan persetujuan diubah",
+    "approval_rule_deactivate": "Aturan persetujuan dinonaktifkan",
+    "authz_override_update": "Hak akses diubah",
+    "authz_override_reset": "Hak akses direset ke bawaan"
+  },
+  "tour": {
+    "close": "Tutup tur",
+    "skip": "Lewati",
+    "finish": "Selesai"
+  },
+  "learnMore": {
+    "label": "Pelajari ini: {term}"
+  },
+  "pagination": {
+    "aria": "Navigasi halaman"
+  },
+  "searchableSelect": {
+    "placeholder": "Pilih…",
+    "searchPlaceholder": "Cari…",
+    "empty": "Tidak ada yang cocok",
+    "clear": "Kosongkan pilihan"
+  },
+  "pdf": {
+    "previewStock": "Pratinjau Stok",
+    "previewFinance": "Pratinjau Kas & Bank",
+    "previewAndPrint": "Pratinjau & Cetak",
+    "preparing": "Menyiapkan…",
+    "generateFailed": "Gagal membuat dokumen."
   }
 }

@@ -166,6 +166,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Persetujuan. "rupiah" ditulis sama dalam bahasa Indonesia maupun Inggris;
     // bahasa Mandarin memakai 印尼盾.
     "approvals.rulesDescStrong1",
+    // Judul kolom alamat IP di catatan audit — singkatan teknis yang sama di
+    // ketiga bahasa.
+    "audit.colIp",
     // Isian Email pada langkah mitra wizard: kata yang sama dalam bahasa
     // Indonesia maupun Inggris (bahasa Mandarin memakai 电子邮箱).
     "wizard.partner.emailField",

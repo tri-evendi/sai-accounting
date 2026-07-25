@@ -2523,6 +2523,59 @@
       "nameSupplier": "Supplier name",
       "notSavedCustomer": "This new customer is",
       "notSavedSupplier": "This new supplier is"
-    }
+    },
+    "draftExpired": "The previous draft is more than 12 hours old, so it is no longer used — the old prices and quantities may no longer apply. Nothing was saved; please start from the first step.",
+    "draftUnreadable": "The previous draft can no longer be read, so we start from empty. Nothing is saved in the system."
+  },
+  "audit": {
+    "title": "Security audit log",
+    "description": "Cash, stock, and account changes (management only)",
+    "accessDenied": "Access denied",
+    "loadFailed": "Failed to load the audit log",
+    "empty": "No audit entries yet",
+    "colTime": "Time",
+    "colUser": "User",
+    "colAction": "Action",
+    "colDetails": "Details",
+    "colIp": "IP"
+  },
+  "auditAction": {
+    "finance_create": "Cash & bank transaction",
+    "stock_in": "Stock in",
+    "stock_out": "Stock out",
+    "item_create": "New item",
+    "auth_password_change": "Password changed",
+    "approval_request": "Approval requested",
+    "approval_approve": "Approval granted",
+    "approval_reject": "Approval rejected",
+    "approval_rule_create": "Approval rule created",
+    "approval_rule_update": "Approval rule updated",
+    "approval_rule_deactivate": "Approval rule deactivated",
+    "authz_override_update": "Access rights changed",
+    "authz_override_reset": "Access rights reset to defaults"
+  },
+  "tour": {
+    "close": "Close the tour",
+    "skip": "Skip",
+    "finish": "Finish"
+  },
+  "learnMore": {
+    "label": "Learn this: {term}"
+  },
+  "pagination": {
+    "aria": "Page navigation"
+  },
+  "searchableSelect": {
+    "placeholder": "Select…",
+    "searchPlaceholder": "Search…",
+    "empty": "No matches",
+    "clear": "Clear selection"
+  },
+  "pdf": {
+    "previewStock": "Preview Stock",
+    "previewFinance": "Preview Cash & Bank",
+    "previewAndPrint": "Preview & Print",
+    "preparing": "Preparing…",
+    "generateFailed": "The document could not be generated."
   }
 }

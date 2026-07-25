@@ -12,6 +12,7 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
+import { getT } from "@/lib/i18n/server";
 
 interface LearnMoreProps {
   /** Kunci entri kamus, mis. "piutang". */
@@ -21,9 +22,11 @@ interface LearnMoreProps {
   className?: string;
 }
 
-export function LearnMore({ term, label, className }: LearnMoreProps) {
+export async function LearnMore({ term, label, className }: LearnMoreProps) {
   const entry = getTerm(term);
   if (!entry) return null;
+
+  const t = await getT();
 
   return (
     <Link
@@ -36,7 +39,7 @@ export function LearnMore({ term, label, className }: LearnMoreProps) {
       )}
     >
       <BookOpen className="h-4 w-4" aria-hidden="true" />
-      {label ?? `Pelajari ini: ${entry.label}`}
+      {label ?? t("learnMore.label", { term: entry.label })}
     </Link>
   );
 }

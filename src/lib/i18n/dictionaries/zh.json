@@ -2523,6 +2523,59 @@
       "nameSupplier": "供应商名称",
       "notSavedCustomer": "这个新客户",
       "notSavedSupplier": "这个新供应商"
-    }
+    },
+    "draftExpired": "上一份草稿已超过 12 小时，故不再使用——旧的价格与数量可能已失效。没有任何数据被保存；请从第一步重新开始。",
+    "draftUnreadable": "上一份草稿已无法读取，因此从空白开始。系统中没有保存任何数据。"
+  },
+  "audit": {
+    "title": "安全审计日志",
+    "description": "资金、库存与账户变更（仅管理层可见）",
+    "accessDenied": "访问被拒绝",
+    "loadFailed": "加载审计日志失败",
+    "empty": "暂无审计记录",
+    "colTime": "时间",
+    "colUser": "用户",
+    "colAction": "操作",
+    "colDetails": "详情",
+    "colIp": "IP 地址"
+  },
+  "auditAction": {
+    "finance_create": "资金与银行交易",
+    "stock_in": "入库",
+    "stock_out": "出库",
+    "item_create": "新增货物",
+    "auth_password_change": "密码已修改",
+    "approval_request": "已提交审批",
+    "approval_approve": "审批已通过",
+    "approval_reject": "审批已驳回",
+    "approval_rule_create": "已创建审批规则",
+    "approval_rule_update": "已修改审批规则",
+    "approval_rule_deactivate": "已停用审批规则",
+    "authz_override_update": "访问权限已变更",
+    "authz_override_reset": "访问权限已恢复默认"
+  },
+  "tour": {
+    "close": "关闭导览",
+    "skip": "跳过",
+    "finish": "完成"
+  },
+  "learnMore": {
+    "label": "了解一下：{term}"
+  },
+  "pagination": {
+    "aria": "分页导航"
+  },
+  "searchableSelect": {
+    "placeholder": "请选择…",
+    "searchPlaceholder": "搜索…",
+    "empty": "没有匹配项",
+    "clear": "清除选择"
+  },
+  "pdf": {
+    "previewStock": "预览库存",
+    "previewFinance": "预览现金与银行",
+    "previewAndPrint": "预览并打印",
+    "preparing": "正在准备…",
+    "generateFailed": "生成单据失败。"
   }
 }

@@ -92,7 +92,7 @@ export default async function BalanceSheetPage({
     totalLiabilitiesEquity: bs.totalLiabilitiesEquity,
     balanced: bs.balanced,
   };
-  const summary = balanceSheetSummary(bs, asOfLabel);
+  const summary = balanceSheetSummary(bs, asOfLabel, t);
 
   return (
     <div>

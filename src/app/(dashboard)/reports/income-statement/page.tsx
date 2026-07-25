@@ -90,7 +90,7 @@ export default async function IncomeStatementPage({
     totalExpense: is.totalExpense,
     netIncome: is.netIncome,
   };
-  const summary = incomeStatementSummary(is, periodLabel);
+  const summary = incomeStatementSummary(is, periodLabel, t);
 
   return (
     <div>

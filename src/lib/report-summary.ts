@@ -14,8 +14,18 @@
  * The output is UI-agnostic data (`ReportSummary`): a one-sentence `narrative`
  * plus `cards` shaped for `SummaryCard`. The page maps cards straight onto that
  * component and fills in the `href` back to the owning report.
+ *
+ * ── Bahasa: penerjemah DISUNTIKKAN, bukan dipanggil di sini ─────────────────
+ * Modul ini MURNI dan diuji langsung (`tests/report-summary.test.ts` mengunci
+ * kalimatnya), jadi ia tidak boleh menarik `getT()` — yang berarti
+ * `server-only` + `cookies()` dan seketika mematikan tesnya. Sebagai gantinya
+ * tiap fungsi menerima `t`: halaman laporan (komponen server) meneruskan
+ * `await getT()`, dan tesnya meneruskan penerjemah dari `id.json`. Bentuk
+ * `ReportSummary` tidak berubah sedikit pun — isinya tetap string biasa, hanya
+ * kini dalam bahasa pengguna.
  */
 import { formatCurrency } from "@/lib/utils";
+import type { TranslateFn } from "@/lib/i18n/client";
 
 /** Same literal union as `SummaryCard`'s `MoneyDirection`, structurally assignable. */
 export type SummaryDirection = "in" | "out" | "profit" | "loss" | "receivable" | "payable";
@@ -49,7 +59,8 @@ interface IncomeStatementTotals {
  */
 export function incomeStatementSummary(
   is: IncomeStatementTotals,
-  periodLabel: string
+  periodLabel: string,
+  t: TranslateFn
 ): ReportSummary {
   const net = is.netIncome;
   const profit = Math.round(net * 100) > 0;
@@ -57,34 +68,46 @@ export function incomeStatementSummary(
 
   let narrative: string;
   if (profit) {
-    narrative = `${periodLabel}: untung ${rp(net)}, karena penjualan (${rp(is.totalRevenue)}) lebih besar daripada beban (${rp(is.totalExpense)}).`;
+    narrative = t("reportSummary.isProfit", {
+      period: periodLabel,
+      amount: rp(net),
+      revenue: rp(is.totalRevenue),
+      expense: rp(is.totalExpense),
+    });
   } else if (loss) {
-    narrative = `${periodLabel}: rugi ${rp(Math.abs(net))}, karena beban (${rp(is.totalExpense)}) lebih besar daripada penjualan (${rp(is.totalRevenue)}).`;
+    narrative = t("reportSummary.isLoss", {
+      period: periodLabel,
+      amount: rp(Math.abs(net)),
+      revenue: rp(is.totalRevenue),
+      expense: rp(is.totalExpense),
+    });
   } else {
-    narrative = `${periodLabel}: impas — penjualan dan beban sama besar (${rp(is.totalRevenue)}).`;
+    narrative = t("reportSummary.isBreakEven", {
+      period: periodLabel,
+      amount: rp(is.totalRevenue),
+    });
   }
 
   return {
     narrative,
     cards: [
       {
-        title: "Uang Masuk",
+        title: t("finance.colMoneyIn"),
         amount: is.totalRevenue,
         direction: "in",
-        explanation: "Total penjualan dan pemasukan yang dibukukan pada periode ini.",
+        explanation: t("reportSummary.isMoneyInExplanation"),
       },
       {
-        title: "Uang Keluar",
+        title: t("finance.colMoneyOut"),
         amount: is.totalExpense,
         direction: "out",
-        explanation: "Total beban dan pengeluaran yang dibukukan pada periode ini.",
+        explanation: t("reportSummary.isMoneyOutExplanation"),
       },
       {
-        title: "Selisih (Untung / Rugi)",
+        title: t("dashboard.profitLoss"),
         amount: Math.abs(net),
         direction: profit || !loss ? "profit" : "loss",
-        explanation:
-          "Uang masuk dikurangi uang keluar. Tanda plus berarti untung, minus berarti rugi.",
+        explanation: t("reportSummary.isNetExplanation"),
       },
     ],
   };
@@ -101,33 +124,43 @@ interface BalanceSheetTotals {
 /** "Apa yang dimiliki vs apa yang jadi kewajiban" at a point in time. */
 export function balanceSheetSummary(
   bs: BalanceSheetTotals,
-  asOfLabel: string
+  asOfLabel: string,
+  t: TranslateFn
 ): ReportSummary {
   const equityTotal = bs.totalEquity + bs.netIncome;
   const narrative = bs.balanced
-    ? `${asOfLabel}: total harta ${rp(bs.totalAssets)} = utang ${rp(bs.totalLiabilities)} + modal ${rp(equityTotal)}. Buku seimbang.`
-    : `${asOfLabel}: harta (${rp(bs.totalAssets)}) belum sama dengan utang + modal (${rp(bs.totalLiabilities + equityTotal)}) — periksa jurnal.`;
+    ? t("reportSummary.bsBalanced", {
+        asOf: asOfLabel,
+        assets: rp(bs.totalAssets),
+        liabilities: rp(bs.totalLiabilities),
+        equity: rp(equityTotal),
+      })
+    : t("reportSummary.bsUnbalanced", {
+        asOf: asOfLabel,
+        assets: rp(bs.totalAssets),
+        total: rp(bs.totalLiabilities + equityTotal),
+      });
 
   return {
     narrative,
     cards: [
       {
-        title: "Harta (Aset)",
+        title: t("reportSummary.bsAssets"),
         amount: bs.totalAssets,
         direction: "in",
-        explanation: "Semua yang dimiliki usaha: kas, piutang, persediaan, aset tetap.",
+        explanation: t("reportSummary.bsAssetsExplanation"),
       },
       {
-        title: "Utang (Liabilitas)",
+        title: t("reportSummary.bsLiabilities"),
         amount: bs.totalLiabilities,
         direction: "out",
-        explanation: "Kewajiban yang masih harus dibayar ke pihak lain.",
+        explanation: t("reportSummary.bsLiabilitiesExplanation"),
       },
       {
-        title: "Modal (Ekuitas)",
+        title: t("reportSummary.bsEquity"),
         amount: equityTotal,
         direction: "profit",
-        explanation: "Hak pemilik atas usaha, termasuk laba/rugi berjalan.",
+        explanation: t("reportSummary.bsEquityExplanation"),
       },
     ],
   };
@@ -141,32 +174,46 @@ interface CashFlowTotals {
 }
 
 /** "Kas naik/turun berapa" over the period, from the cash-flow totals. */
-export function cashFlowSummary(cf: CashFlowTotals, periodLabel: string): ReportSummary {
+export function cashFlowSummary(
+  cf: CashFlowTotals,
+  periodLabel: string,
+  t: TranslateFn
+): ReportSummary {
   const up = Math.round(cf.netChange * 100) > 0;
   const down = Math.round(cf.netChange * 100) < 0;
-  const verb = up ? "bertambah" : down ? "berkurang" : "tidak berubah";
-  const narrative = `${periodLabel}: kas ${verb} ${rp(Math.abs(cf.netChange))} — dari ${rp(cf.openingCash)} menjadi ${rp(cf.closingCash)}.`;
+  const verb = up
+    ? t("reportSummary.cfVerbUp")
+    : down
+      ? t("reportSummary.cfVerbDown")
+      : t("reportSummary.cfVerbSame");
+  const narrative = t("reportSummary.cfNarrative", {
+    period: periodLabel,
+    verb,
+    amount: rp(Math.abs(cf.netChange)),
+    opening: rp(cf.openingCash),
+    closing: rp(cf.closingCash),
+  });
 
   return {
     narrative,
     cards: [
       {
-        title: "Kas Awal",
+        title: t("reportSummary.cfOpening"),
         amount: cf.openingCash,
         direction: "in",
-        explanation: "Saldo seluruh kas & bank di awal periode.",
+        explanation: t("reportSummary.cfOpeningExplanation"),
       },
       {
-        title: "Perubahan Kas",
+        title: t("reportSummary.cfChange"),
         amount: Math.abs(cf.netChange),
         direction: up ? "profit" : "loss",
-        explanation: "Selisih kas masuk dan kas keluar sepanjang periode.",
+        explanation: t("reportSummary.cfChangeExplanation"),
       },
       {
-        title: "Kas Akhir",
+        title: t("reportSummary.cfClosing"),
         amount: cf.closingCash,
         direction: "in",
-        explanation: "Saldo seluruh kas & bank di akhir periode.",
+        explanation: t("reportSummary.cfClosingExplanation"),
       },
     ],
   };

@@ -173,7 +173,7 @@ export default async function CashFlowPage({
     reconciled: cf.reconciled,
     suspectUnrated: cf.suspectUnrated,
   };
-  const summary = cashFlowSummary(cf, periodLabel);
+  const summary = cashFlowSummary(cf, periodLabel, t);
 
   return (
     <div>

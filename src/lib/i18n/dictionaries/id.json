@@ -2205,5 +2205,27 @@
     "deleteRoleTitle": "Hapus peran \"{label}\"?",
     "deleteRoleMessage": "Peran ini dan seluruh pengaturan izinnya dihapus permanen. Hanya bisa bila tak ada pengguna yang memakainya. Tindakan ini tidak bisa dibatalkan.",
     "deleteRoleLabel": "Hapus peran"
+  },
+  "documents": {
+    "addNew": "+ Unggah Dokumen",
+    "listTitle": "Dokumen Tersimpan ({count})",
+    "colFilename": "Nama File",
+    "colUploadedAt": "Diunggah",
+    "emptyTitle": "Belum ada dokumen",
+    "emptyDescription": "Simpan salinan dokumen ekspor (B/L, PEB, packing list) di sini agar mudah dicari saat dibutuhkan.",
+    "open": "Buka",
+    "preview": "Pratinjau",
+    "uploadTitle": "Unggah Dokumen",
+    "errPickFile": "Pilih file terlebih dahulu",
+    "errUpload": "Gagal mengunggah file",
+    "formTitle": "Data Dokumen",
+    "fileField": "File",
+    "pickFile": "Klik untuk memilih file",
+    "fileHint": "JPG, PNG, GIF, PDF (maks 10MB)",
+    "typeField": "Jenis Dokumen",
+    "typePlaceholder": "-- Pilih Jenis --",
+    "contractField": "Kontrak Terkait (opsional)",
+    "contractPlaceholder": "-- Tanpa Kontrak --",
+    "uploading": "Mengunggah..."
   }
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/lib/constants";
+import { type DocumentType } from "@/lib/constants";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { documentTypeLabels } from "@/lib/i18n/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,8 @@ export default async function DocumentsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("document.read");
+  const t = await getT();
+  const typeLabels = documentTypeLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -45,22 +49,26 @@ export default async function DocumentsPage({
   return (
     <div>
       <PageHeader
-        title="Dokumen"
-        actions={<Link href="/documents/upload"><Button>+ Unggah Dokumen</Button></Link>}
+        title={t("nav.items.documents")}
+        actions={
+          <Link href="/documents/upload">
+            <Button>{t("documents.addNew")}</Button>
+          </Link>
+        }
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Dokumen Tersimpan ({totalCount})</CardTitle>
+          <CardTitle>{t("documents.listTitle", { count: totalCount })}</CardTitle>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nama File</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Kontrak</TableHead>
-              <TableHead>Diunggah</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("documents.colFilename")}</TableHead>
+              <TableHead>{t("suppliers.colType")}</TableHead>
+              <TableHead>{t("nav.items.contracts")}</TableHead>
+              <TableHead>{t("documents.colUploadedAt")}</TableHead>
+              <TableHead className="text-right">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -69,9 +77,9 @@ export default async function DocumentsPage({
                 <TableCell colSpan={5} className="p-0">
                   <EmptyState
                     icon={<FileText className="h-12 w-12" />}
-                    title="Belum ada dokumen"
-                    description="Simpan salinan dokumen ekspor (B/L, PEB, packing list) di sini agar mudah dicari saat dibutuhkan."
-                    actionLabel="+ Unggah Dokumen"
+                    title={t("documents.emptyTitle")}
+                    description={t("documents.emptyDescription")}
+                    actionLabel={t("documents.addNew")}
                     actionHref="/documents/upload"
                   />
                 </TableCell>
@@ -81,7 +89,7 @@ export default async function DocumentsPage({
                 <TableRow key={doc.id}>
                   <TableCell><a href={doc.filepath} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">{doc.filename}</a></TableCell>
                   <TableCell className="text-muted-foreground">
-                    {doc.type ? DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type : "-"}
+                    {doc.type ? typeLabels[doc.type as DocumentType] ?? doc.type : "-"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {doc.contract ? doc.contract.contractNo : "-"}

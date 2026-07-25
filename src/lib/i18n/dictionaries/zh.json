@@ -2205,5 +2205,27 @@
     "deleteRoleTitle": "删除角色“{label}”？",
     "deleteRoleMessage": "该角色及其全部权限设置将被永久删除。仅当无任何用户使用该角色时才可执行。此操作无法撤销。",
     "deleteRoleLabel": "删除角色"
+  },
+  "documents": {
+    "addNew": "+ 上传单证",
+    "listTitle": "已存单证（{count}）",
+    "colFilename": "文件名",
+    "colUploadedAt": "上传时间",
+    "emptyTitle": "暂无单证",
+    "emptyDescription": "将出口单证（提单、PEB、装箱单）的副本存放于此，便于随时查找。",
+    "open": "打开",
+    "preview": "预览",
+    "uploadTitle": "上传单证",
+    "errPickFile": "请先选择文件",
+    "errUpload": "文件上传失败",
+    "formTitle": "单证资料",
+    "fileField": "文件",
+    "pickFile": "点击选择文件",
+    "fileHint": "JPG、PNG、GIF、PDF（最大 10MB）",
+    "typeField": "单证类型",
+    "typePlaceholder": "-- 选择类型 --",
+    "contractField": "关联合同（选填）",
+    "contractPlaceholder": "-- 不关联合同 --",
+    "uploading": "上传中…"
   }
 }

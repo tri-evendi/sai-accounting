@@ -164,6 +164,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Persetujuan. "rupiah" ditulis sama dalam bahasa Indonesia maupun Inggris;
     // bahasa Mandarin memakai 印尼盾.
     "approvals.rulesDescStrong1",
+    // Nama isian unggah dokumen: kata "File" identik di kedua bahasa Latin
+    // (bahasa Mandarin memakai 文件).
+    "documents.fileField",
     // Label aksesibilitas sel matriks izin: "{peran}: {izin}" — hanya dua
     // penampung dan sebuah titik dua, jadi tidak ada yang bisa diterjemahkan
     // (bahasa Mandarin memakai titik dua penuh-lebar).

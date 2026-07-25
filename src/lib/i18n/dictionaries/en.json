@@ -2205,5 +2205,27 @@
     "deleteRoleTitle": "Delete the role \"{label}\"?",
     "deleteRoleMessage": "This role and all of its permission settings are deleted permanently. Only possible when no user still holds it. This cannot be undone.",
     "deleteRoleLabel": "Delete role"
+  },
+  "documents": {
+    "addNew": "+ Upload Document",
+    "listTitle": "Stored Documents ({count})",
+    "colFilename": "File Name",
+    "colUploadedAt": "Uploaded",
+    "emptyTitle": "No documents yet",
+    "emptyDescription": "Keep copies of export documents (B/L, PEB, packing list) here so they are easy to find when you need them.",
+    "open": "Open",
+    "preview": "Preview",
+    "uploadTitle": "Upload Document",
+    "errPickFile": "Choose a file first",
+    "errUpload": "Failed to upload the file",
+    "formTitle": "Document Details",
+    "fileField": "File",
+    "pickFile": "Click to choose a file",
+    "fileHint": "JPG, PNG, GIF, PDF (max 10MB)",
+    "typeField": "Document Type",
+    "typePlaceholder": "-- Choose Type --",
+    "contractField": "Related Contract (optional)",
+    "contractPlaceholder": "-- No Contract --",
+    "uploading": "Uploading..."
   }
 }

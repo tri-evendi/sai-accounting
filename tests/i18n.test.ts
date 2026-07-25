@@ -131,6 +131,14 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Target Penjualan memakainya apa adanya.
     "budget.targetAmountField",
     "budget.colTarget",
+    // "Bank (IDR)" — nama jenis kas + kode mata uang, identik di kedua bahasa
+    // (bandingkan `cashType.bank` yang sudah terdaftar di atas).
+    "reconciliation.accountBank",
+    // "Draft" adalah kata serapan yang dipakai apa adanya di kedua bahasa;
+    // bahasa Mandarin memakai 草稿.
+    "reconciliation.statusDraft",
+    // Ampersand penyambung dua nama kolom CSV (debit & credit).
+    "reconciliation.csvHintAnd",
     // Kurung tutup + titik setelah dua contoh nama akun yang dicetak miring —
     // sama di kedua bahasa Latin, penuh-lebar di bahasa Mandarin (）。).
     "finance.exampleTail",

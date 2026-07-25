@@ -15,7 +15,16 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
+import { formatDateShort } from "@/lib/utils";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -198,65 +207,71 @@ export default async function EfakturPage({
         <CardHeader>
           <CardTitle>Pratinjau Baris Ekspor</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Jenis</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">No. Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Pembeli</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Mata Uang</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">DPP</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">PPN</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">No. PEB</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8}>
-                    <EmptyState
-                      icon={<ReceiptText className="h-12 w-12" />}
-                      title="Tidak ada baris siap ekspor pada masa ini"
-                      description="Hanya faktur ber-PPN keluaran (atau ekspor) di masa yang dipilih yang muncul di sini. Pilih masa lain, atau buat tagihan penjualannya dulu."
-                      actionLabel="+ Buat Tagihan"
-                      actionHref="/invoices/new"
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jenis</TableHead>
+              <TableHead>No. Dokumen</TableHead>
+              <TableHead>Pembeli</TableHead>
+              <TableHead>Mata Uang</TableHead>
+              <TableHead className="text-right">DPP</TableHead>
+              <TableHead className="text-right">PPN</TableHead>
+              <TableHead>No. PEB</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    icon={<ReceiptText className="h-12 w-12" />}
+                    title="Tidak ada baris siap ekspor pada masa ini"
+                    description="Hanya faktur ber-PPN keluaran (atau ekspor) di masa yang dipilih yang muncul di sini. Pilih masa lain, atau buat tagihan penjualannya dulu."
+                    actionLabel="+ Buat Tagihan"
+                    actionHref="/invoices/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row, i) => (
+                <TableRow key={`${row.nomor_dokumen}-${i}`}>
+                  <TableCell className="text-muted-foreground">{formatDateShort(row.tanggal_dokumen)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        "inline-flex rounded px-2 py-0.5 text-xs font-medium " +
+                        (row.jenis === "ekspor"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-foreground")
+                      }
+                    >
+                      {row.jenis}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-foreground">{row.nomor_dokumen}</TableCell>
+                  <TableCell className="text-foreground">{row.nama_pembeli || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{row.mata_uang}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="text-foreground"
+                      value={Number(row.dpp)}
+                      currency={row.mata_uang}
                     />
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, i) => (
-                  <tr key={`${row.nomor_dokumen}-${i}`} className="border-b border-border">
-                    <td className="px-4 py-3 text-muted-foreground">{formatDateShort(row.tanggal_dokumen)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          "inline-flex rounded px-2 py-0.5 text-xs font-medium " +
-                          (row.jenis === "ekspor"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-foreground")
-                        }
-                      >
-                        {row.jenis}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{row.nomor_dokumen}</td>
-                    <td className="px-4 py-3 text-foreground">{row.nama_pembeli || "-"}</td>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.mata_uang}</td>
-                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                      {formatCurrency(Number(row.dpp), row.mata_uang)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                      {formatCurrency(Number(row.ppn), row.mata_uang)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.nomor_peb || "-"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="text-foreground"
+                      value={Number(row.ppn)}
+                      currency={row.mata_uang}
+                    />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{row.nomor_peb || "-"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

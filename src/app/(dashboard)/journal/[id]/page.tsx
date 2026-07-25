@@ -3,6 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -73,20 +83,20 @@ export default async function JournalDetailPage({
       )}
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit (IDR)</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit (IDR)</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Kode</TableHead>
+              <TableHead>Akun</TableHead>
+              <TableHead className="text-right">Debit (IDR)</TableHead>
+              <TableHead className="text-right">Kredit (IDR)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {journal.lines.map((l) => (
-              <tr key={l.id} className="border-b border-border">
-                <td className="px-6 py-3 font-mono text-foreground tabular-nums">{l.account.code}</td>
-                <td className="px-6 py-3">
+              <TableRow key={l.id}>
+                <TableCell className="font-mono text-foreground tabular-nums">{l.account.code}</TableCell>
+                <TableCell>
                   {l.account.name}
                   {l.currency !== "IDR" && (
                     <span className="ml-2 text-xs text-muted-foreground">
@@ -94,31 +104,43 @@ export default async function JournalDetailPage({
                     </span>
                   )}
                   {l.memo && <span className="ml-2 text-xs text-muted-foreground">— {l.memo}</span>}
-                </td>
-                <td className="px-6 py-3 text-right tabular-nums">
-                  {Number(l.baseDebit) > 0 ? formatCurrency(Number(l.baseDebit), "IDR") : "—"}
-                </td>
-                <td className="px-6 py-3 text-right tabular-nums">
-                  {Number(l.baseCredit) > 0 ? formatCurrency(Number(l.baseCredit), "IDR") : "—"}
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {Number(l.baseDebit) > 0 ? (
+                    <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {Number(l.baseCredit) > 0 ? (
+                    <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-border font-semibold">
-              <td className="px-6 py-3" colSpan={2}>
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="font-semibold hover:bg-transparent">
+              <TableCell colSpan={2}>
                 Total{" "}
                 {totalDebit === totalCredit ? (
                   <Badge variant="success">Seimbang</Badge>
                 ) : (
                   <Badge variant="danger">Tidak seimbang</Badge>
                 )}
-              </td>
-              <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(totalDebit, "IDR")}</td>
-              <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(totalCredit, "IDR")}</td>
-            </tr>
-          </tfoot>
-        </table>
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={totalDebit} currency="IDR" hideCurrency />
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={totalCredit} currency="IDR" hideCurrency />
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
     </div>
   );

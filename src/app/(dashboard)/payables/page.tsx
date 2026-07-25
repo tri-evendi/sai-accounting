@@ -15,6 +15,15 @@ import { getPayables } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -158,98 +167,96 @@ export default async function PayablesPage({
       <PartyTotals rows={byParty} title="Sisa utang per supplier" />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Supplier</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Jatuh Tempo</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Umur</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Nilai Pembelian</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Sisa (IDR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-border">
-                  <td className="px-4 py-3 text-foreground">{r.partyName}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={r.href}
-                      className="text-primary hover:underline cursor-pointer transition-colors"
-                    >
-                      {r.documentNo}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">Pembelian</span>
-                    {r.terms && (
-                      <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
-                        {r.terms}
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Supplier</TableHead>
+              <TableHead>Dokumen</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jatuh Tempo</TableHead>
+              <TableHead>Umur</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Nilai Pembelian</TableHead>
+              <TableHead className="text-right">Sisa (IDR)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="text-foreground">{r.partyName}</TableCell>
+                <TableCell>
+                  <Link
+                    href={r.href}
+                    className="text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {r.documentNo}
+                  </Link>
+                  <span className="block text-xs text-muted-foreground">Pembelian</span>
+                  {r.terms && (
+                    <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
+                      {r.terms}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
+                <TableCell className="text-foreground tabular-nums">
+                  {r.dueDate ? (
+                    formatDateShort(r.dueDate)
+                  ) : (
+                    <span className="text-muted-foreground">Belum diisi</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
+                </TableCell>
+                <TableCell>
+                  <PaymentStatusBadge status={r.status} />
+                </TableCell>
+                <TableCell className="text-right text-foreground tabular-nums">
+                  <Money value={r.total} currency={r.currency} />
+                  {r.currency !== "IDR" && (
+                    <span className="block text-xs text-muted-foreground">{r.currency}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium text-foreground tabular-nums">
+                  {r.outstandingBase == null ? (
+                    <span className="text-warning-strong">Kurs belum diisi</span>
+                  ) : (
+                    <Money value={r.outstandingBase} currency="IDR" />
+                  )}
+                  {r.allocationEstimated && (
+                    <span className="mt-1 block">
+                      <span
+                        title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
+                      >
+                        <Badge variant="warning">Perkiraan</Badge>
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">{formatDateShort(r.date)}</td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">
-                    {r.dueDate ? (
-                      formatDateShort(r.dueDate)
-                    ) : (
-                      <span className="text-muted-foreground">Belum diisi</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <PaymentStatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                    {formatCurrency(r.total, r.currency)}
-                    {r.currency !== "IDR" && (
-                      <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-foreground tabular-nums">
-                    {r.outstandingBase == null ? (
-                      <span className="text-warning-strong">Kurs belum diisi</span>
-                    ) : (
-                      formatCurrency(r.outstandingBase, "IDR")
-                    )}
-                    {r.allocationEstimated && (
-                      <span className="mt-1 block">
-                        <span
-                          title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
-                        >
-                          <Badge variant="warning">Perkiraan</Badge>
-                        </span>
-                        {/* The fix, offered where the problem is noticed (issue
-                            #38): this opens the allocation editor on the payment
-                            responsible, so the guess can be replaced with fact
-                            without deleting and re-posting the payment. */}
-                        <Link
-                          href={`${r.href}?alokasi=1`}
-                          className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
-                        >
-                          Perbaiki alokasi
-                        </Link>
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                    {overdueOnly
-                      ? "Tidak ada utang yang lewat jatuh tempo. Perlu diingat: pembelian tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
-                      : "Semua utang supplier sudah lunas. Belum ada sisa."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      {/* The fix, offered where the problem is noticed (issue
+                          #38): this opens the allocation editor on the payment
+                          responsible, so the guess can be replaced with fact
+                          without deleting and re-posting the payment. */}
+                      <Link
+                        href={`${r.href}?alokasi=1`}
+                        className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
+                      >
+                        Perbaiki alokasi
+                      </Link>
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                  {overdueOnly
+                    ? "Tidak ada utang yang lewat jatuh tempo. Perlu diingat: pembelian tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
+                    : "Semua utang supplier sudah lunas. Belum ada sisa."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

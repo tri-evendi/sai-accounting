@@ -676,14 +676,16 @@ function PartnerSection({
 
 function RemoveButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive-soft hover:text-destructive cursor-pointer"
+      className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
       aria-label="Hapus baris"
     >
       <Trash2 className="h-4 w-4" aria-hidden="true" />
-    </button>
+    </Button>
   );
 }
 

@@ -16,8 +16,16 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
 import { ROLE_LABELS, ROLES } from "@/lib/constants";
 import { APPROVAL_DOCUMENT_TYPES, APPROVAL_DOCUMENT_TYPE_LABELS } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
@@ -121,82 +129,75 @@ export function ApprovalRules({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Jenis Dokumen</th>
-                    <th className="px-6 py-3 text-right font-medium text-muted-foreground">
-                      Mulai Nilai (IDR)
-                    </th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Penyetuju</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="px-6 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rules.map((rule) => (
-                    <tr
-                      key={rule.id}
-                      className="border-b border-border transition-colors duration-150 hover:bg-muted"
-                    >
-                      <td className="px-6 py-3 font-medium text-foreground">
-                        {rule.documentTypeLabel}
-                        {rule.note && (
-                          <span className="block text-xs font-normal text-muted-foreground">
-                            {rule.note}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {formatCurrency(rule.minAmount, "IDR")}
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {roleLabel(rule.approverRole)}
-                      </td>
-                      <td className="px-6 py-3">
-                        {rule.isActive ? (
-                          <Badge variant="success">
-                            <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
-                            Aktif
-                          </Badge>
-                        ) : (
-                          <Badge variant="default">
-                            <Ban className="mr-1 h-3 w-3" aria-hidden="true" />
-                            Nonaktif
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        {rule.isActive && (
-                          <ConfirmDialog
-                            title="Nonaktifkan aturan ini?"
-                            message={
-                              "Dokumen baru tidak lagi dicocokkan dengan aturan ini. Pengajuan yang " +
-                              "sudah terbit tetap tercatat dan tetap harus diputuskan."
-                            }
-                            confirmLabel="Nonaktifkan"
-                            confirmVariant="danger"
-                            onConfirm={() => deactivate(rule)}
-                            trigger={
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                disabled={busy}
-                                className="cursor-pointer"
-                              >
-                                <Ban className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                Nonaktifkan
-                              </Button>
-                            }
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Jenis Dokumen</TableHead>
+                  <TableHead className="text-right">Mulai Nilai (IDR)</TableHead>
+                  <TableHead>Penyetuju</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="font-medium text-foreground">
+                      {rule.documentTypeLabel}
+                      {rule.note && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {rule.note}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={rule.minAmount} currency="IDR" hideCurrency />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {roleLabel(rule.approverRole)}
+                    </TableCell>
+                    <TableCell>
+                      {rule.isActive ? (
+                        <Badge variant="success">
+                          <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
+                          Aktif
+                        </Badge>
+                      ) : (
+                        <Badge variant="default">
+                          <Ban className="mr-1 h-3 w-3" aria-hidden="true" />
+                          Nonaktif
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {rule.isActive && (
+                        <ConfirmDialog
+                          title="Nonaktifkan aturan ini?"
+                          message={
+                            "Dokumen baru tidak lagi dicocokkan dengan aturan ini. Pengajuan yang " +
+                            "sudah terbit tetap tercatat dan tetap harus diputuskan."
+                          }
+                          confirmLabel="Nonaktifkan"
+                          confirmVariant="danger"
+                          onConfirm={() => deactivate(rule)}
+                          trigger={
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={busy}
+                              className="cursor-pointer"
+                            >
+                              <Ban className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                              Nonaktifkan
+                            </Button>
+                          }
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

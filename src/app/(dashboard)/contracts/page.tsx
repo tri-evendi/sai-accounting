@@ -99,7 +99,9 @@ export default async function ContractsPage({
           defaultValue={params.search}
           className="w-full max-w-md"
         />
-        <button type="submit" className="ml-2 cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-ring">Cari</button>
+        <Button type="submit" className="ml-2">
+          Cari
+        </Button>
       </form>
 
       {/* Table */}

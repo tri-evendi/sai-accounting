@@ -12,9 +12,17 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { MONTH_NAMES } from "@/lib/month-names";
-import { formatCurrency } from "@/lib/utils";
 import type { SalesTargetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, Target } from "lucide-react";
 
@@ -186,39 +194,40 @@ export function SalesTargetClient({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Pelanggan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Komoditas</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Target</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {targets.map((t) => (
-                  <tr key={t.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      {MONTH_NAMES[t.month - 1]} {t.year}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{t.customerName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-foreground">{t.itemName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(t.amount, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Bulan</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Komoditas</TableHead>
+                <TableHead className="text-right">Target</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {targets.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-foreground">
+                    {MONTH_NAMES[t.month - 1]} {t.year}
+                  </TableCell>
+                  <TableCell className="text-foreground">{t.customerName ?? "Semua"}</TableCell>
+                  <TableCell className="text-foreground">{t.itemName ?? "Semua"}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={t.amount} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="text-right">
                       <ConfirmDialog
                         title="Hapus target penjualan ini?"
                         message={`Target ${MONTH_NAMES[t.month - 1]} ${t.year} (${t.customerName ?? "semua pelanggan"} · ${t.itemName ?? "semua barang"}) akan dihapus. Laporan pencapaian bulan itu akan kehilangan pembandingnya. Penjualan yang sudah tercatat tidak berubah.`}
                         confirmLabel="Hapus Target"
                         onConfirm={() => handleDelete(t.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === t.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
                             aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
                           >
                             {deleting === t.id ? (
@@ -227,15 +236,14 @@ export function SalesTargetClient({
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
                             Hapus
-                          </button>
+                          </Button>
                         }
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

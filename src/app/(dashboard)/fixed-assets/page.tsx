@@ -12,6 +12,15 @@ import { getFixedAssets, summarizeFixedAssets, getCategories } from "@/lib/fixed
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -132,59 +141,57 @@ export default async function FixedAssetsPage({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Nomor</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Nama</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Kategori</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Lokasi</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Perolehan</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Akum. Penyusutan</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nilai Buku</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      <Link
-                        href={`/fixed-assets/${r.id}`}
-                        className="cursor-pointer text-primary transition-colors hover:underline"
-                      >
-                        {r.assetNo}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{r.name}</td>
-                    <td className="px-4 py-3 text-foreground">{r.categoryName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.location ?? "—"}</td>
-                    <td className="px-4 py-3 text-foreground">{formatDateShort(r.acquisitionDate)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.acquisitionCost, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.accumulatedDepreciation, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
-                      {formatCurrency(r.bookValue, "IDR")}
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.status === "disposed" ? (
-                        <Badge variant="default">Dilepas</Badge>
-                      ) : r.isFullyDepreciated ? (
-                        <Badge variant="warning">Habis susut</Badge>
-                      ) : (
-                        <Badge variant="success">Aktif</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Nomor</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Lokasi</TableHead>
+                <TableHead>Perolehan</TableHead>
+                <TableHead className="text-right">Nilai Perolehan</TableHead>
+                <TableHead className="text-right">Akum. Penyusutan</TableHead>
+                <TableHead className="text-right">Nilai Buku</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium text-foreground">
+                    <Link
+                      href={`/fixed-assets/${r.id}`}
+                      className="cursor-pointer text-primary transition-colors hover:underline"
+                    >
+                      {r.assetNo}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-foreground">{r.name}</TableCell>
+                  <TableCell className="text-foreground">{r.categoryName}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.location ?? "—"}</TableCell>
+                  <TableCell className="text-foreground">{formatDateShort(r.acquisitionDate)}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.acquisitionCost} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.accumulatedDepreciation} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="font-medium" value={r.bookValue} currency="IDR" />
+                  </TableCell>
+                  <TableCell>
+                    {r.status === "disposed" ? (
+                      <Badge variant="default">Dilepas</Badge>
+                    ) : r.isFullyDepreciated ? (
+                      <Badge variant="warning">Habis susut</Badge>
+                    ) : (
+                      <Badge variant="success">Aktif</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
 

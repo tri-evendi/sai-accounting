@@ -9,6 +9,15 @@ import { getFixedAsset } from "@/lib/fixed-assets";
 import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { MONTH_NAMES } from "@/lib/period";
@@ -161,32 +170,30 @@ export default async function FixedAssetDetailPage({
           {depreciations.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada penyusutan yang diposting.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Periode</th>
-                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Beban</th>
-                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Akum.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {depreciations.map((d) => (
-                    <tr key={d.id} className="border-b border-border">
-                      <td className="px-4 py-2 text-foreground">
-                        {MONTH_NAMES[d.month - 1]} {d.year}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(num(d.amount), "IDR")}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(num(d.accumulatedAfter), "IDR")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Periode</TableHead>
+                  <TableHead className="text-right">Beban</TableHead>
+                  <TableHead className="text-right">Akum.</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {depreciations.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="text-foreground">
+                      {MONTH_NAMES[d.month - 1]} {d.year}
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={num(d.amount)} currency="IDR" />
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={num(d.accumulatedAfter)} currency="IDR" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </Card>
 
@@ -197,26 +204,24 @@ export default async function FixedAssetDetailPage({
           {moves.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada perpindahan lokasi.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Dari</th>
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Ke</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {moves.map((m) => (
-                    <tr key={m.id} className="border-b border-border">
-                      <td className="px-4 py-2 text-foreground">{formatDateShort(m.date)}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{m.fromLocation ?? "—"}</td>
-                      <td className="px-4 py-2 text-foreground">{m.toLocation ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Dari</TableHead>
+                  <TableHead>Ke</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {moves.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-foreground">{formatDateShort(m.date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.fromLocation ?? "—"}</TableCell>
+                    <TableCell className="text-foreground">{m.toLocation ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </Card>
       </div>

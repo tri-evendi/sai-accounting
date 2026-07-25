@@ -15,6 +15,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 
@@ -119,34 +127,36 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
         </p>
 
         {/* Daftar peran */}
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Nama Peran</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Kunci</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+            primitif agar sama dengan tampilan sebelum migrasi. */}
+        <div className="rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2">Nama Peran</TableHead>
+                <TableHead className="h-auto px-4 py-2">Kunci</TableHead>
+                <TableHead className="h-auto px-4 py-2">Status</TableHead>
+                <TableHead className="h-auto px-4 py-2" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {roles.map((role) => (
-                <tr key={role.key} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2 font-medium text-foreground">
+                <TableRow key={role.key}>
+                  <TableCell className="px-4 py-2 font-medium text-foreground">
                     <span className="flex items-center gap-1.5">
                       {role.label}
                       {role.isSystem && (
                         <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Peran sistem" />
                       )}
                     </span>
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{role.key}</td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 font-mono text-xs text-muted-foreground">{role.key}</TableCell>
+                  <TableCell className="px-4 py-2">
                     <Badge variant={role.isActive ? "success" : "default"}>
                       {role.isActive ? "Aktif" : "Nonaktif"}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell className="px-4 py-2">
                     <div className="flex items-center justify-end gap-2">
                       {!role.isSystem && (
                         <>
@@ -177,11 +187,11 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
                         </>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Tambah peran */}

@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import {
@@ -58,7 +66,13 @@ interface Summary {
   unmatchedStatementCount: number;
 }
 
-/** Signed money, never colour-only: sign + arrow icon + red/green. */
+/**
+ * Signed money, never colour-only: sign + arrow icon + red/green.
+ *
+ * Sengaja BUKAN `Money`/`MoneyCell` (issue #52): warnanya mengikuti arah kas
+ * (masuk/keluar, pasangan `*-strong`) dan selalu disertai ikon panah + tanda
+ * +/−, sedangkan `Money` hanya mewarnai nilai negatif.
+ */
 function Amount({ value, currency }: { value: number; currency: string }) {
   const inflow = value >= 0;
   return (
@@ -300,37 +314,35 @@ export function ReconciliationWorkspace({
           <CardHeader>
             <CardTitle>Buku (Kas/Bank Internal) — belum cocok</CardTitle>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <tbody>
-                {unmatchedBook.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-6 text-center text-muted-foreground">Semua transaksi buku sudah cocok.</td>
-                  </tr>
-                ) : (
-                  unmatchedBook.map((b) => (
-                    <tr key={b.id} className="border-b border-border">
-                      <td className="px-2 py-2 w-8">
-                        <input
-                          type="radio"
-                          name="book"
-                          aria-label={`Pilih transaksi buku ${b.description}`}
-                          checked={selectedBook === b.id}
-                          disabled={locked}
-                          onChange={() => setSelectedBook(b.id)}
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(b.date)}</td>
-                      <td className="px-2 py-2 text-foreground">{b.description}</td>
-                      <td className="px-2 py-2 text-right">
-                        <Amount value={b.amount} currency={currency} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableBody>
+              {unmatchedBook.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell className="px-4 py-6 text-center text-muted-foreground">Semua transaksi buku sudah cocok.</TableCell>
+                </TableRow>
+              ) : (
+                unmatchedBook.map((b) => (
+                  <TableRow key={b.id}>
+                    <TableCell className="w-8 px-2 py-2">
+                      <input
+                        type="radio"
+                        name="book"
+                        aria-label={`Pilih transaksi buku ${b.description}`}
+                        checked={selectedBook === b.id}
+                        disabled={locked}
+                        onChange={() => setSelectedBook(b.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(b.date)}</TableCell>
+                    <TableCell className="px-2 py-2 text-foreground">{b.description}</TableCell>
+                    <TableCell className="px-2 py-2 text-right">
+                      <Amount value={b.amount} currency={currency} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
 
         {/* Statement side */}
@@ -338,37 +350,35 @@ export function ReconciliationWorkspace({
           <CardHeader>
             <CardTitle>Rekening Koran — belum cocok</CardTitle>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <tbody>
-                {unmatchedLines.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-6 text-center text-muted-foreground">Semua baris koran sudah cocok.</td>
-                  </tr>
-                ) : (
-                  unmatchedLines.map((l) => (
-                    <tr key={l.id} className="border-b border-border">
-                      <td className="px-2 py-2 w-8">
-                        <input
-                          type="radio"
-                          name="line"
-                          aria-label={`Pilih baris koran ${l.description}`}
-                          checked={selectedLine === l.id}
-                          disabled={locked}
-                          onChange={() => setSelectedLine(l.id)}
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(l.date)}</td>
-                      <td className="px-2 py-2 text-foreground">{l.description}</td>
-                      <td className="px-2 py-2 text-right">
-                        <Amount value={l.amount} currency={currency} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableBody>
+              {unmatchedLines.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell className="px-4 py-6 text-center text-muted-foreground">Semua baris koran sudah cocok.</TableCell>
+                </TableRow>
+              ) : (
+                unmatchedLines.map((l) => (
+                  <TableRow key={l.id}>
+                    <TableCell className="w-8 px-2 py-2">
+                      <input
+                        type="radio"
+                        name="line"
+                        aria-label={`Pilih baris koran ${l.description}`}
+                        checked={selectedLine === l.id}
+                        disabled={locked}
+                        onChange={() => setSelectedLine(l.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(l.date)}</TableCell>
+                    <TableCell className="px-2 py-2 text-foreground">{l.description}</TableCell>
+                    <TableCell className="px-2 py-2 text-right">
+                      <Amount value={l.amount} currency={currency} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </div>
 
@@ -386,16 +396,18 @@ export function ReconciliationWorkspace({
             </span>
           )}
           {(selectedBook != null || selectedLine != null) && (
-            <button
+            <Button
               type="button"
-              className="text-sm text-muted-foreground hover:underline"
+              variant="link"
+              size="sm"
+              className="px-0 text-muted-foreground"
               onClick={() => {
                 setSelectedBook(null);
                 setSelectedLine(null);
               }}
             >
               Bersihkan pilihan
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -405,62 +417,62 @@ export function ReconciliationWorkspace({
         <CardHeader>
           <CardTitle>Sudah Cocok ({matchedLines.length})</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Buku</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Koran</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground text-right">Nominal</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {matchedLines.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
-                    Belum ada pasangan yang dicocokkan.
-                  </td>
-                </tr>
-              ) : (
-                matchedLines.map((l) => {
-                  const b = l.cashAccountId != null ? bookById.get(l.cashAccountId) : undefined;
-                  return (
-                    <tr key={l.id} className="border-b border-border">
-                      <td className="px-4 py-2 text-foreground">
-                        {b ? (
-                          <>
-                            <span className="text-muted-foreground">{formatDateShort(b.date)}</span> · {b.description}
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-foreground">
-                        <span className="text-muted-foreground">{formatDateShort(l.date)}</span> · {l.description}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <Amount value={l.amount} currency={currency} />
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {!locked && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-sm text-destructive hover:underline disabled:opacity-50"
-                            disabled={busy}
-                            onClick={() => doUnmatch(l.id)}
-                          >
-                            <Unlink className="h-3.5 w-3.5" aria-hidden="true" /> Lepas
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-auto px-4 py-2">Buku</TableHead>
+              <TableHead className="h-auto px-4 py-2">Koran</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-right">Nominal</TableHead>
+              <TableHead className="h-auto px-4 py-2"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {matchedLines.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  Belum ada pasangan yang dicocokkan.
+                </TableCell>
+              </TableRow>
+            ) : (
+              matchedLines.map((l) => {
+                const b = l.cashAccountId != null ? bookById.get(l.cashAccountId) : undefined;
+                return (
+                  <TableRow key={l.id}>
+                    <TableCell className="px-4 py-2 text-foreground">
+                      {b ? (
+                        <>
+                          <span className="text-muted-foreground">{formatDateShort(b.date)}</span> · {b.description}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-foreground">
+                      <span className="text-muted-foreground">{formatDateShort(l.date)}</span> · {l.description}
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-right">
+                      <Amount value={l.amount} currency={currency} />
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-right">
+                      {!locked && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                          disabled={busy}
+                          onClick={() => doUnmatch(l.id)}
+                        >
+                          <Unlink className="h-3.5 w-3.5" aria-hidden="true" /> Lepas
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
       {/* Add lines: manual + CSV */}

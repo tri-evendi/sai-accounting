@@ -536,8 +536,10 @@ export function SalesWizard({
                           {formatCurrency(line.quantity * line.price, currency)}
                         </span>
                       </div>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() =>
                           patch((d) => ({
                             ...d,
@@ -547,10 +549,10 @@ export function SalesWizard({
                         }
                         disabled={draft.lines.length === 1}
                         aria-label={`Hapus baris barang ${i + 1}`}
-                        className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
+                      </Button>
                     </div>
                     <p className="mt-2 text-xs">
                       {line.itemId == null ? (

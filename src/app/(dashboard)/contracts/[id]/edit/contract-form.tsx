@@ -236,9 +236,16 @@ export function EditContractForm() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Price/Kg</label>
                     <TextInput type="number" step="0.01" className="w-full" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
                   </div>
-                  <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(i)}
+                    aria-label={`Hapus baris barang ${i + 1}`}
+                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

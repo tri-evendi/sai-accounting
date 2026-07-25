@@ -2,11 +2,21 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { getTrialBalance } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { resolveAsOf } from "@/lib/report-catalog";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Scale } from "lucide-react";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -49,50 +59,58 @@ export default async function TrialBalancePage({
       <AsOfFilter basePath="/reports/trial-balance" asOf={asOfISO} />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Nama Akun</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tb.rows.map((r) => (
-                <tr key={r.code} className="border-b border-border">
-                  <td className="px-6 py-2.5 font-mono text-foreground tabular-nums">{r.code}</td>
-                  <td className="px-6 py-2.5">{r.name}</td>
-                  <td className="px-6 py-2.5 text-right tabular-nums">{r.debit > 0 ? formatCurrency(r.debit, "IDR") : "—"}</td>
-                  <td className="px-6 py-2.5 text-right tabular-nums">{r.credit > 0 ? formatCurrency(r.credit, "IDR") : "—"}</td>
-                </tr>
-              ))}
-              {tb.rows.length === 0 && (
-                <tr>
-                  <td colSpan={4}>
-                    <EmptyState
-                      icon={<Scale className="h-12 w-12" />}
-                      title="Belum ada saldo sampai tanggal ini"
-                      description="Neraca saldo dibangun dari jurnal. Catat transaksi pertama Anda, atau pilih tanggal yang lebih akhir."
-                      actionLabel="+ Catat Transaksi"
-                      actionHref="/finance/new"
-                    />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border font-semibold">
-                <td className="px-6 py-3" colSpan={2}>
-                  Total {tb.balanced ? <Badge variant="success">Seimbang</Badge> : <Badge variant="danger">Tidak seimbang</Badge>}
-                </td>
-                <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(tb.totalDebit, "IDR")}</td>
-                <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(tb.totalCredit, "IDR")}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Kode</TableHead>
+              <TableHead>Nama Akun</TableHead>
+              <TableHead className="text-right">Debit</TableHead>
+              <TableHead className="text-right">Kredit</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tb.rows.map((r) => (
+              <TableRow key={r.code}>
+                <TableCell className="py-2.5 font-mono text-foreground tabular-nums">{r.code}</TableCell>
+                <TableCell className="py-2.5">{r.name}</TableCell>
+                {/* Saldo nol tampil "—", bukan "Rp 0" — jadi selnya tetap
+                    dirender sendiri dengan `Money` di dalamnya. */}
+                <TableCell className="py-2.5 text-right tabular-nums">
+                  {r.debit > 0 ? <Money value={r.debit} currency="IDR" /> : "—"}
+                </TableCell>
+                <TableCell className="py-2.5 text-right tabular-nums">
+                  {r.credit > 0 ? <Money value={r.credit} currency="IDR" /> : "—"}
+                </TableCell>
+              </TableRow>
+            ))}
+            {tb.rows.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="p-0">
+                  <EmptyState
+                    icon={<Scale className="h-12 w-12" />}
+                    title="Belum ada saldo sampai tanggal ini"
+                    description="Neraca saldo dibangun dari jurnal. Catat transaksi pertama Anda, atau pilih tanggal yang lebih akhir."
+                    actionLabel="+ Catat Transaksi"
+                    actionHref="/finance/new"
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="font-semibold hover:bg-transparent">
+              <TableCell colSpan={2}>
+                Total {tb.balanced ? <Badge variant="success">Seimbang</Badge> : <Badge variant="danger">Tidak seimbang</Badge>}
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={tb.totalDebit} currency="IDR" />
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={tb.totalCredit} currency="IDR" />
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
     </div>
   );

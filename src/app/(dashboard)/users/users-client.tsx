@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
@@ -176,83 +184,99 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
 
       {/* Users Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Username</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-border hover:bg-muted">
-                  <td className="px-6 py-3 font-medium text-foreground">{user.username}</td>
-                  <td className="px-6 py-3 text-foreground">{user.name || "-"}</td>
-                  <td className="px-6 py-3">
-                    <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
-                      {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3">
-                    <Badge variant={user.status === 1 ? "warning" : "success"}>
-                      {user.status === 1 ? "Must Change Password" : "Active"}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        className="relative p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10 cursor-pointer"
-                        title="Izin khusus pengguna ini"
-                        aria-label={`Izin khusus untuk ${user.username}`}
-                        onClick={() =>
-                          setPermissionsFor(permissionsFor === user.id ? null : user.id)
-                        }
-                      >
-                        <KeyRound className="h-4 w-4" />
-                        {user.overrideCount > 0 && (
-                          <Badge
-                            variant="warning"
-                            className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
-                            title={`${user.overrideCount} izin khusus tersimpan`}
-                          >
-                            {user.overrideCount}
-                          </Badge>
-                        )}
-                      </button>
-                      <ConfirmDialog
-                        title="Reset Password"
-                        message={`Reset password for "${user.username}" to "changeme123"? They will be forced to change it on next login.`}
-                        confirmLabel="Reset"
-                        confirmVariant="primary"
-                        onConfirm={() => handleResetPassword(user.id)}
-                        trigger={
-                          <button className="p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10" title="Reset password">
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                        }
-                      />
-                      <ConfirmDialog
-                        title="Delete User"
-                        message={`Are you sure you want to delete user "${user.username}"? This cannot be undone.`}
-                        confirmLabel="Delete"
-                        onConfirm={() => handleDelete(user.id)}
-                        trigger={
-                          <button className="p-1.5 text-muted-foreground hover:text-destructive rounded hover:bg-destructive-soft" title="Delete user">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        }
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Username</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium text-foreground">{user.username}</TableCell>
+                <TableCell className="text-foreground">{user.name || "-"}</TableCell>
+                <TableCell>
+                  <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
+                    {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={user.status === 1 ? "warning" : "success"}>
+                    {user.status === 1 ? "Must Change Password" : "Active"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {/* `gap-2` (8px), bukan `gap-1`: tiga aksi ikon yang berdampingan
+                      butuh jarak sentuh minimum agar tidak salah tekan di layar
+                      sentuh — lihat "target sentuh" di MASTER.md. */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                      title="Izin khusus pengguna ini"
+                      aria-label={`Izin khusus untuk ${user.username}`}
+                      onClick={() =>
+                        setPermissionsFor(permissionsFor === user.id ? null : user.id)
+                      }
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      {user.overrideCount > 0 && (
+                        <Badge
+                          variant="warning"
+                          className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
+                          title={`${user.overrideCount} izin khusus tersimpan`}
+                        >
+                          {user.overrideCount}
+                        </Badge>
+                      )}
+                    </Button>
+                    <ConfirmDialog
+                      title="Reset Password"
+                      message={`Reset password for "${user.username}" to "changeme123"? They will be forced to change it on next login.`}
+                      confirmLabel="Reset"
+                      confirmVariant="primary"
+                      onConfirm={() => handleResetPassword(user.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title="Reset password"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <ConfirmDialog
+                      title="Delete User"
+                      message={`Are you sure you want to delete user "${user.username}"? This cannot be undone.`}
+                      confirmLabel="Delete"
+                      onConfirm={() => handleDelete(user.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

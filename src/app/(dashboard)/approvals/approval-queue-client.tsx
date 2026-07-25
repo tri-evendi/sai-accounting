@@ -32,6 +32,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, moneyColumn } from "@/components/ui/data-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
@@ -393,109 +402,105 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
               Belum ada dokumen Anda yang butuh persetujuan.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Dokumen</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Diajukan</th>
-                    <th className="px-6 py-3 text-right font-medium text-muted-foreground">Nilai</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Keputusan</th>
-                    <th className="px-6 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {mine.map((row) => {
-                    const isUnread =
-                      (row.status === "approved" || row.status === "rejected") &&
-                      row.readAt === null;
-                    return (
-                      <tr
-                        key={row.id}
-                        className={`border-b border-border transition-colors duration-150 ${
-                          isUnread ? "bg-warning-soft" : "hover:bg-muted"
-                        }`}
-                      >
-                        <td className="px-6 py-3">
-                          <DocumentTitle row={row} />
-                          <p className="text-xs text-muted-foreground">{row.message}</p>
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-muted-foreground tabular-nums">
-                          {formatDate(row.createdAt)}
-                        </td>
-                        <td className="px-6 py-3 text-right text-foreground">
-                          <Money value={row.amount} currency={row.currency} />
-                        </td>
-                        <td className="px-6 py-3">
-                          <StatusBadge status={row.status} label={row.statusLabel} />
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground">
-                          {row.decidedAt ? (
-                            <>
-                              <span className="block whitespace-nowrap tabular-nums">
-                                {formatDate(row.decidedAt)}
-                              </span>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Dokumen</TableHead>
+                  <TableHead>Diajukan</TableHead>
+                  <TableHead className="text-right">Nilai</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Keputusan</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mine.map((row) => {
+                  const isUnread =
+                    (row.status === "approved" || row.status === "rejected") &&
+                    row.readAt === null;
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className={isUnread ? "bg-warning-soft hover:bg-warning-soft" : undefined}
+                    >
+                      <TableCell>
+                        <DocumentTitle row={row} />
+                        <p className="text-xs text-muted-foreground">{row.message}</p>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
+                        {formatDate(row.createdAt)}
+                      </TableCell>
+                      <TableCell className="p-0">
+                        <MoneyCell value={row.amount} currency={row.currency} />
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={row.status} label={row.statusLabel} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {row.decidedAt ? (
+                          <>
+                            <span className="block whitespace-nowrap tabular-nums">
+                              {formatDate(row.decidedAt)}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              oleh {row.decidedByName}
+                            </span>
+                            {row.decisionNote && (
                               <span className="block text-xs text-muted-foreground">
-                                oleh {row.decidedByName}
+                                “{row.decisionNote}”
                               </span>
-                              {row.decisionNote && (
-                                <span className="block text-xs text-muted-foreground">
-                                  “{row.decisionNote}”
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            "—"
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-col items-end gap-2">
+                          {isUnread && row.requestedById === currentUserId && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={busyId === row.id}
+                              onClick={() => markRead(row)}
+                              className="cursor-pointer"
+                            >
+                              <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                              Tandai dibaca
+                            </Button>
                           )}
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <div className="flex flex-col items-end gap-2">
-                            {isUnread && row.requestedById === currentUserId && (
+                          {/* issue #44 — dokumen yang ditolak tidak lagi buntu:
+                              perbaiki dokumennya, lalu ajukan ulang di sini. */}
+                          {row.status === "rejected" && (
+                            <>
+                              <Input
+                                id={`resubmit-note-${row.id}`}
+                                label="Catatan (opsional)"
+                                placeholder="Apa yang sudah diperbaiki?"
+                                value={notes[row.id] ?? ""}
+                                onChange={(e) =>
+                                  setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                                }
+                                className="w-56"
+                              />
                               <Button
-                                variant="secondary"
                                 size="sm"
                                 disabled={busyId === row.id}
-                                onClick={() => markRead(row)}
+                                onClick={() => resubmit(row)}
                                 className="cursor-pointer"
                               >
-                                <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                Tandai dibaca
+                                <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                Ajukan Ulang
                               </Button>
-                            )}
-                            {/* issue #44 — dokumen yang ditolak tidak lagi buntu:
-                                perbaiki dokumennya, lalu ajukan ulang di sini. */}
-                            {row.status === "rejected" && (
-                              <>
-                                <Input
-                                  id={`resubmit-note-${row.id}`}
-                                  label="Catatan (opsional)"
-                                  placeholder="Apa yang sudah diperbaiki?"
-                                  value={notes[row.id] ?? ""}
-                                  onChange={(e) =>
-                                    setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
-                                  }
-                                  className="w-56"
-                                />
-                                <Button
-                                  size="sm"
-                                  disabled={busyId === row.id}
-                                  onClick={() => resubmit(row)}
-                                  className="cursor-pointer"
-                                >
-                                  <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                  Ajukan Ulang
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

@@ -2,6 +2,14 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { accountTypeLabel } from "@/lib/accounting";
@@ -25,29 +33,29 @@ export default async function AccountsPage({
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
 
   const rowCells = (a: (typeof accounts)[number], depth: number): ReactNode => (
-    <tr key={a.id} className="border-b border-border hover:bg-muted">
-      <td className="px-6 py-3 font-mono text-foreground tabular-nums">{a.code}</td>
-      <td className="px-6 py-3">
+    <TableRow key={a.id}>
+      <TableCell className="font-mono text-foreground tabular-nums">{a.code}</TableCell>
+      <TableCell>
         <span style={{ paddingLeft: depth * 20 }} className="inline-block">
           {depth > 0 && <span className="text-muted-foreground">└ </span>}
           <Link href={`/accounts/${a.id}/edit`} className="text-primary hover:underline font-medium">
             {a.name}
           </Link>
         </span>
-      </td>
-      <td className="px-6 py-3 text-muted-foreground">{accountTypeLabel(a.type)}</td>
-      <td className="px-6 py-3 text-muted-foreground">{a.currency}</td>
-      <td className="px-6 py-3 text-muted-foreground capitalize">
+      </TableCell>
+      <TableCell className="text-muted-foreground">{accountTypeLabel(a.type)}</TableCell>
+      <TableCell className="text-muted-foreground">{a.currency}</TableCell>
+      <TableCell className="text-muted-foreground capitalize">
         {a.normalBalance === "debit" ? "Debit" : "Kredit"}
-      </td>
-      <td className="px-6 py-3">
+      </TableCell>
+      <TableCell>
         {a.isActive ? (
           <Badge variant="success">Aktif</Badge>
         ) : (
           <Badge variant="default">Nonaktif</Badge>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 
   const rows: ReactNode[] = [];
@@ -115,23 +123,23 @@ export default async function AccountsPage({
       </form>
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Nama Akun</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Saldo Normal</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Kode</TableHead>
+              <TableHead>Nama Akun</TableHead>
+              <TableHead>Tipe</TableHead>
+              <TableHead>Mata Uang</TableHead>
+              <TableHead>Saldo Normal</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.length > 0 ? (
               rows
             ) : (
-              <tr>
-                <td colSpan={6}>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
                   {q ? (
                     <EmptyState
                       icon={<ListTree className="h-12 w-12" />}
@@ -147,11 +155,11 @@ export default async function AccountsPage({
                       actionHref="/accounts/import"
                     />
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

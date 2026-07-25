@@ -3,7 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
+import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -41,33 +50,35 @@ export default async function JournalPage() {
       />
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Nomor</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Keterangan</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total (IDR)</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Nomor</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Tipe</TableHead>
+              <TableHead>Keterangan</TableHead>
+              <TableHead className="text-right">Total (IDR)</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {journals.length > 0 ? (
               journals.map((j) => {
                 const total = j.lines.reduce((s, l) => s + Number(l.baseDebit), 0);
                 return (
-                  <tr key={j.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-6 py-3">
+                  <TableRow key={j.id}>
+                    <TableCell>
                       <Link href={`/journal/${j.id}`} className="font-mono text-primary hover:underline">
                         {j.number}
                       </Link>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground tabular-nums">{formatDateShort(j.date)}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{TYPE_LABELS[j.type] ?? j.type}</td>
-                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</td>
-                    <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
-                    <td className="px-6 py-3">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(j.date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{TYPE_LABELS[j.type] ?? j.type}</TableCell>
+                    <TableCell className="text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={total} currency="IDR" hideCurrency />
+                    </TableCell>
+                    <TableCell>
                       {j.isReversed ? (
                         <Badge variant="warning">Dibalik</Badge>
                       ) : j.type === "reversal" ? (
@@ -75,13 +86,13 @@ export default async function JournalPage() {
                       ) : (
                         <Badge variant="success">Aktif</Badge>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             ) : (
-              <tr>
-                <td colSpan={6}>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={<BookText className="h-12 w-12" />}
                     title="Belum ada jurnal"
@@ -89,11 +100,11 @@ export default async function JournalPage() {
                     actionLabel="+ Buat Jurnal Manual"
                     actionHref="/journal/new"
                   />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

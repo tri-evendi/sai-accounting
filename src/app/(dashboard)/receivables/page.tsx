@@ -9,12 +9,21 @@ import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getReceivables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -69,89 +78,87 @@ export default async function ReceivablesPage({
       <PartyTotals rows={byParty} title="Sisa piutang per pelanggan" />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Pelanggan</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Jatuh Tempo</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Umur</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Nilai Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Sisa (IDR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} className="border-b border-border">
-                  <td className="px-4 py-3 text-foreground">{r.partyName}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={r.href}
-                      className="text-primary hover:underline cursor-pointer transition-colors"
-                    >
-                      {r.documentNo}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">
-                      {r.kind === "invoice" ? "Faktur" : "Kontrak"}
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Pelanggan</TableHead>
+              <TableHead>Dokumen</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jatuh Tempo</TableHead>
+              <TableHead>Umur</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Nilai Dokumen</TableHead>
+              <TableHead className="text-right">Sisa (IDR)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={`${r.kind}-${r.id}`}>
+                <TableCell className="text-foreground">{r.partyName}</TableCell>
+                <TableCell>
+                  <Link
+                    href={r.href}
+                    className="text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {r.documentNo}
+                  </Link>
+                  <span className="block text-xs text-muted-foreground">
+                    {r.kind === "invoice" ? "Faktur" : "Kontrak"}
+                  </span>
+                  {/* Free text, straight from top1/top2 — informational only. */}
+                  {r.terms && (
+                    <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
+                      {r.terms}
                     </span>
-                    {/* Free text, straight from top1/top2 — informational only. */}
-                    {r.terms && (
-                      <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
-                        {r.terms}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">{formatDateShort(r.date)}</td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">
-                    {r.dueDate ? (
-                      formatDateShort(r.dueDate)
-                    ) : (
-                      <span className="text-muted-foreground">Belum diisi</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <PaymentStatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                    {formatCurrency(r.total, r.currency)}
-                    {r.currency !== "IDR" && (
-                      <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-foreground tabular-nums">
-                    {r.outstandingBase == null ? (
-                      <span className="text-warning-strong">Kurs belum diisi</span>
-                    ) : (
-                      formatCurrency(r.outstandingBase, "IDR")
-                    )}
-                    {/* Only shown when every payment shared the document's currency —
-                        otherwise there is no single-currency remainder to state. */}
-                    {r.outstanding != null && r.currency !== "IDR" && (
-                      <span className="block text-xs text-muted-foreground">
-                        {formatCurrency(r.outstanding, r.currency)}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                    {overdueOnly
-                      ? "Tidak ada piutang yang lewat jatuh tempo. Perlu diingat: dokumen tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
-                      : "Semua piutang sudah lunas. Belum ada sisa tagihan."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
+                <TableCell className="text-foreground tabular-nums">
+                  {r.dueDate ? (
+                    formatDateShort(r.dueDate)
+                  ) : (
+                    <span className="text-muted-foreground">Belum diisi</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
+                </TableCell>
+                <TableCell>
+                  <PaymentStatusBadge status={r.status} />
+                </TableCell>
+                <TableCell className="text-right text-foreground tabular-nums">
+                  <Money value={r.total} currency={r.currency} />
+                  {r.currency !== "IDR" && (
+                    <span className="block text-xs text-muted-foreground">{r.currency}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium text-foreground tabular-nums">
+                  {r.outstandingBase == null ? (
+                    <span className="text-warning-strong">Kurs belum diisi</span>
+                  ) : (
+                    <Money value={r.outstandingBase} currency="IDR" />
+                  )}
+                  {/* Only shown when every payment shared the document's currency —
+                      otherwise there is no single-currency remainder to state. */}
+                  {r.outstanding != null && r.currency !== "IDR" && (
+                    <span className="block text-xs text-muted-foreground">
+                      <Money value={r.outstanding} currency={r.currency} />
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                  {overdueOnly
+                    ? "Tidak ada piutang yang lewat jatuh tempo. Perlu diingat: dokumen tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
+                    : "Semua piutang sudah lunas. Belum ada sisa tagihan."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

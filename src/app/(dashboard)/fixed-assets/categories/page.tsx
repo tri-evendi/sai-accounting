@@ -7,6 +7,14 @@ import { getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
 import { Tags } from "lucide-react";
 import { CategoryForm } from "./category-form";
@@ -68,41 +76,39 @@ export default async function CategoriesPage() {
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Nama</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Metode</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Umur (bulan)</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun Aset</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akumulasi</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Beban</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((c) => (
-                  <tr key={c.id} className="border-b border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
-                    <td className="px-4 py-3 text-foreground">
-                      {DEPRECIATION_METHOD_LABELS[c.defaultMethod as DepreciationMethod] ??
-                        c.defaultMethod}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {c.defaultUsefulLifeMonths}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {byId.get(c.accumulatedAccountId)?.code ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {byId.get(c.expenseAccountId)?.code ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Nama</TableHead>
+                <TableHead>Metode</TableHead>
+                <TableHead className="text-right">Umur (bulan)</TableHead>
+                <TableHead>Akun Aset</TableHead>
+                <TableHead>Akumulasi</TableHead>
+                <TableHead>Beban</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium text-foreground">{c.name}</TableCell>
+                  <TableCell className="text-foreground">
+                    {DEPRECIATION_METHOD_LABELS[c.defaultMethod as DepreciationMethod] ??
+                      c.defaultMethod}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {c.defaultUsefulLifeMonths}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {byId.get(c.accumulatedAccountId)?.code ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {byId.get(c.expenseAccountId)?.code ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

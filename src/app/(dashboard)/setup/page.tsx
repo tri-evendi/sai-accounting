@@ -10,7 +10,16 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money } from "@/components/ui/money";
+import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
 import { CheckCircle2 } from "lucide-react";
@@ -77,35 +86,44 @@ export default async function SetupPage() {
               <CardTitle>Jurnal Pembuka · {journal.number}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="py-2 pr-4 font-medium">Akun</th>
-                      <th className="py-2 pr-4 text-right font-medium">Debit (IDR)</th>
-                      <th className="py-2 text-right font-medium">Kredit (IDR)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {journal.lines.map((l) => (
-                      <tr key={l.id} className="border-b border-border">
-                        <td className="py-2 pr-4 text-foreground">
-                          <span className="text-muted-foreground">{l.account.code}</span> {l.account.name}
-                          {l.memo ? (
-                            <span className="block text-xs text-muted-foreground">{l.memo}</span>
-                          ) : null}
-                        </td>
-                        <td className="py-2 pr-4 text-right tabular-nums text-foreground">
-                          {Number(l.baseDebit) > 0 ? formatCurrency(Number(l.baseDebit), "IDR") : "—"}
-                        </td>
-                        <td className="py-2 text-right tabular-nums text-foreground">
-                          {Number(l.baseCredit) > 0 ? formatCurrency(Number(l.baseCredit), "IDR") : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {/* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat
+                  sengaja menimpa bawaan primitif agar sama dengan tampilan
+                  sebelum migrasi. */}
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-auto py-2 pr-4 pl-0">Akun</TableHead>
+                    <TableHead className="h-auto py-2 pr-4 pl-0 text-right">Debit (IDR)</TableHead>
+                    <TableHead className="h-auto px-0 py-2 text-right">Kredit (IDR)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {journal.lines.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="py-2 pr-4 pl-0 text-foreground">
+                        <span className="text-muted-foreground">{l.account.code}</span> {l.account.name}
+                        {l.memo ? (
+                          <span className="block text-xs text-muted-foreground">{l.memo}</span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="py-2 pr-4 pl-0 text-right tabular-nums text-foreground">
+                        {Number(l.baseDebit) > 0 ? (
+                          <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="px-0 py-2 text-right tabular-nums text-foreground">
+                        {Number(l.baseCredit) > 0 ? (
+                          <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
               <p className="mt-4 text-sm text-muted-foreground">
                 Saldo awal ini sudah tercermin di{" "}
                 <Link href="/reports" className="text-primary underline">

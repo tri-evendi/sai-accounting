@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface AuditEntry {
   id: number;
@@ -84,36 +92,36 @@ export function AuditLogPanel() {
         ) : logs.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">No audit entries yet</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Time</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">User</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Action</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Details</th>
-                  <th className="py-2 font-medium text-muted-foreground">IP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id} className="border-b border-border">
-                    <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
-                      {new Date(log.createdAt).toLocaleString("id-ID")}
-                    </td>
-                    <td className="py-2 pr-4 font-medium">{log.username}</td>
-                    <td className="py-2 pr-4">
-                      {ACTION_LABELS[log.action] || log.action}
-                    </td>
-                    <td className="py-2 pr-4 text-muted-foreground max-w-xs truncate">
-                      {formatDetails(log)}
-                    </td>
-                    <td className="py-2 text-muted-foreground text-xs">{log.ipAddress || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          /* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat sengaja
+             menimpa bawaan primitif agar sama dengan tampilan sebelum migrasi. */
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto py-2 pr-4 pl-0">Time</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">User</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">Action</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">Details</TableHead>
+                <TableHead className="h-auto px-0 py-2">IP</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="py-2 pr-4 pl-0 text-muted-foreground whitespace-nowrap">
+                    {new Date(log.createdAt).toLocaleString("id-ID")}
+                  </TableCell>
+                  <TableCell className="py-2 pr-4 pl-0 font-medium">{log.username}</TableCell>
+                  <TableCell className="py-2 pr-4 pl-0">
+                    {ACTION_LABELS[log.action] || log.action}
+                  </TableCell>
+                  <TableCell className="py-2 pr-4 pl-0 text-muted-foreground max-w-xs truncate">
+                    {formatDetails(log)}
+                  </TableCell>
+                  <TableCell className="px-0 py-2 text-muted-foreground text-xs">{log.ipAddress || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-4 pt-2 border-t">

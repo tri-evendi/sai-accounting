@@ -12,9 +12,17 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { MONTH_NAMES } from "@/lib/month-names";
-import { formatCurrency } from "@/lib/utils";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, ClipboardList } from "lucide-react";
 
@@ -169,30 +177,29 @@ export function BudgetAccountsClient({
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgets.map((b) => (
-                  <tr key={b.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      {MONTH_NAMES[b.month - 1]} {b.year}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
-                      {b.accountName}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(b.amount, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Bulan</TableHead>
+                <TableHead>Akun</TableHead>
+                <TableHead className="text-right">Anggaran</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {budgets.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell className="text-foreground">
+                    {MONTH_NAMES[b.month - 1]} {b.year}
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
+                    {b.accountName}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={b.amount} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="text-right">
                       {/* Menghapus anggaran mengubah angka "Realisasi vs Anggaran"
                           yang mungkin sudah dibaca orang lain, jadi dikonfirmasi
                           dulu (issue #6). */}
@@ -202,10 +209,12 @@ export function BudgetAccountsClient({
                         confirmLabel="Hapus Anggaran"
                         onConfirm={() => handleDelete(b.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === b.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
                             aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
                           >
                             {deleting === b.id ? (
@@ -214,15 +223,14 @@ export function BudgetAccountsClient({
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
                             Hapus
-                          </button>
+                          </Button>
                         }
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

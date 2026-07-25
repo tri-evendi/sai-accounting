@@ -38,7 +38,7 @@ interface Box {
 }
 
 const SPOTLIGHT_PADDING = 8;
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 380;
 const CARD_GAP = 12;
 
 function prefersReducedMotion(): boolean {
@@ -278,7 +278,7 @@ export function GuidedTour() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="cursor-pointer"
+                className="cursor-pointer px-4"
                 onClick={() => setIndex((i) => Math.max((i ?? 0) - 1, 0))}
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -288,7 +288,7 @@ export function GuidedTour() {
             <Button
               type="button"
               size="sm"
-              className="cursor-pointer"
+              className="cursor-pointer px-4"
               onClick={() => (isLast ? close() : setIndex((i) => (i ?? 0) + 1))}
             >
               {isLast ? (

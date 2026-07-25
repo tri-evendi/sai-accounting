@@ -222,10 +222,12 @@ export function SalesTargetClient({
                         confirmLabel="Hapus Target"
                         onConfirm={() => handleDelete(t.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === t.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
                             aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
                           >
                             {deleting === t.id ? (
@@ -234,7 +236,7 @@ export function SalesTargetClient({
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
                             Hapus
-                          </button>
+                          </Button>
                         }
                       />
                     </TableCell>

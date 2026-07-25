@@ -212,12 +212,14 @@ export function AdvanceCompensationSection({
                     )}
                   </TableCell>
                   <TableCell className="px-4 py-2 text-right">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleRemove(a.id)}
                       disabled={busyId === a.id}
                       aria-label={`Batalkan kompensasi ${a.advanceNo}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive-strong transition-colors duration-200 hover:bg-destructive-soft disabled:cursor-not-allowed disabled:opacity-50"
+                      className="gap-1 px-2 text-xs text-destructive-strong hover:bg-destructive-soft hover:text-destructive-strong"
                     >
                       {busyId === a.id ? (
                         <Loader2
@@ -228,7 +230,7 @@ export function AdvanceCompensationSection({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       )}
                       Batalkan
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

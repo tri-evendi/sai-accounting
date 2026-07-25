@@ -209,10 +209,12 @@ export function BudgetAccountsClient({
                         confirmLabel="Hapus Anggaran"
                         onConfirm={() => handleDelete(b.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === b.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
                             aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
                           >
                             {deleting === b.id ? (
@@ -221,7 +223,7 @@ export function BudgetAccountsClient({
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
                             Hapus
-                          </button>
+                          </Button>
                         }
                       />
                     </TableCell>

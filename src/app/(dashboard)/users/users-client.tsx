@@ -210,9 +210,15 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <button
-                      className="relative p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10 cursor-pointer"
+                  {/* `gap-2` (8px), bukan `gap-1`: tiga aksi ikon yang berdampingan
+                      butuh jarak sentuh minimum agar tidak salah tekan di layar
+                      sentuh — lihat "target sentuh" di MASTER.md. */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-muted-foreground hover:bg-primary/10 hover:text-primary"
                       title="Izin khusus pengguna ini"
                       aria-label={`Izin khusus untuk ${user.username}`}
                       onClick={() =>
@@ -229,7 +235,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                           {user.overrideCount}
                         </Badge>
                       )}
-                    </button>
+                    </Button>
                     <ConfirmDialog
                       title="Reset Password"
                       message={`Reset password for "${user.username}" to "changeme123"? They will be forced to change it on next login.`}
@@ -237,9 +243,15 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                       confirmVariant="primary"
                       onConfirm={() => handleResetPassword(user.id)}
                       trigger={
-                        <button className="p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10" title="Reset password">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title="Reset password"
+                        >
                           <RotateCcw className="h-4 w-4" />
-                        </button>
+                        </Button>
                       }
                     />
                     <ConfirmDialog
@@ -248,9 +260,15 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                       confirmLabel="Delete"
                       onConfirm={() => handleDelete(user.id)}
                       trigger={
-                        <button className="p-1.5 text-muted-foreground hover:text-destructive rounded hover:bg-destructive-soft" title="Delete user">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
+                          title="Delete user"
+                        >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       }
                     />
                   </div>

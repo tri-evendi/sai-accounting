@@ -213,14 +213,16 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
             {summary ? `Ringkasan ${summary.label}` : "Ringkasan Periode"}
           </CardTitle>
           {selected && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => loadSummary(selected.year, selected.month)}
-              className="cursor-pointer text-muted-foreground transition-colors duration-150 hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               aria-label="Muat ulang ringkasan"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            </button>
+            </Button>
           )}
         </CardHeader>
 

@@ -396,16 +396,18 @@ export function ReconciliationWorkspace({
             </span>
           )}
           {(selectedBook != null || selectedLine != null) && (
-            <button
+            <Button
               type="button"
-              className="text-sm text-muted-foreground hover:underline"
+              variant="link"
+              size="sm"
+              className="px-0 text-muted-foreground"
               onClick={() => {
                 setSelectedBook(null);
                 setSelectedLine(null);
               }}
             >
               Bersihkan pilihan
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -453,14 +455,16 @@ export function ReconciliationWorkspace({
                     </TableCell>
                     <TableCell className="px-4 py-2 text-right">
                       {!locked && (
-                        <button
+                        <Button
                           type="button"
-                          className="inline-flex items-center gap-1 text-sm text-destructive hover:underline disabled:opacity-50"
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
                           disabled={busy}
                           onClick={() => doUnmatch(l.id)}
                         >
                           <Unlink className="h-3.5 w-3.5" aria-hidden="true" /> Lepas
-                        </button>
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

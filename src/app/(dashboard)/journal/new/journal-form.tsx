@@ -209,15 +209,17 @@ export function NewJournalForm() {
                       />
                     </TableCell>
                     <TableCell className="py-2 pr-0 pl-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         aria-label="Hapus baris"
-                        className="text-muted-foreground hover:text-destructive disabled:opacity-30"
+                        className="text-muted-foreground hover:text-destructive"
                         disabled={lines.length <= 2}
                         onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

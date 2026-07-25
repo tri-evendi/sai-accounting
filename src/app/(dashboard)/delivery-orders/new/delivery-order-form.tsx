@@ -403,15 +403,17 @@ export function DeliveryOrderForm({
                         onChange={(e) => updateLine(i, { kgPerBag: Number(e.target.value) })}
                       />
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeLine(i)}
-                      className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                       disabled={lines.length === 1}
                       aria-label={`Hapus baris barang ${i + 1}`}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="mt-2 flex justify-between text-xs">
                     <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>

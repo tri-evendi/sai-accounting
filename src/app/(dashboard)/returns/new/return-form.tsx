@@ -414,18 +414,20 @@ export function ReturnForm({
                   />
                 </div>
                 <div className="sm:col-span-1">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() =>
                       setPurchaseLines((prev) =>
                         prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev
                       )
                     }
-                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"
+                    className="text-muted-foreground"
                     aria-label="Hapus baris"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

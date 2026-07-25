@@ -228,9 +228,16 @@ export function EditInvoiceForm() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Satuan</label>
                     <TextInput className="w-full" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
                   </div>
-                  <button type="button" onClick={() => removeItem(i)} className="text-destructive hover:text-destructive pb-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(i)}
+                    aria-label={`Hapus baris barang ${i + 1}`}
+                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

@@ -23,6 +23,15 @@
  *
  *  4. **Status langkah tidak pernah warna saja.** Setiap langkah membawa teks
  *     "Selesai / Sedang diisi / Belum" dan ikon centang, sesuai MASTER.md.
+ *
+ * **Kenapa penanda langkah tetap `<button>` mentah.** Tombol aksi wizard
+ * ("Kembali"/"Lanjut"/"Selesai") memakai primitif `Button`, tetapi kartu
+ * penanda langkah TIDAK: ia adalah kembaran interaktif dari `<div>` di
+ * sebelahnya (langkah yang belum boleh dilompati) dan harus tampil identik —
+ * kartu dua baris, tinggi mengikuti isi, `rounded-lg`, `flex-1` selebar kolom.
+ * `Button` memaksa tinggi tetap 40px, `justify-center`, dan `whitespace-nowrap`
+ * yang justru merusak kesamaan itu. Dikecualikan sadar di
+ * `tests/design-system-primitives.test.ts`.
  */
 
 import { useState } from "react";

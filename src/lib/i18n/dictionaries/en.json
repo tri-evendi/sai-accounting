@@ -301,6 +301,12 @@
     "sales": "Sales Advance",
     "purchase": "Purchase Advance"
   },
+  "cashFlowCategory": {
+    "operating": "Operating Activities",
+    "investing": "Investing Activities",
+    "financing": "Financing Activities",
+    "uncategorised": "Not Categorised"
+  },
   "table": {
     "page": "Page {page} of {pages}"
   },
@@ -1222,5 +1228,150 @@
     "saveFailed": "Could not save the advance.",
     "saved": "The advance has been saved and journalised.",
     "networkFailed": "Could not reach the server. Please try again."
+  },
+  "reports": {
+    "title": "Report Centre",
+    "description": "Every report in one place, grouped by category. Pick a report, set the period, then export to PDF or Excel. Figures are in IDR (the ledger base value).",
+    "comingSoon": "Coming soon",
+    "openReport": "Open report",
+    "breadcrumb": "Report Centre",
+    "asOfWithCurrency": "As of {date} · figures in IDR",
+    "periodWithCurrency": "Period {from} – {to} · figures in IDR",
+    "asOfDate": "As of date",
+    "trialBalanceTitle": "Trial Balance",
+    "trialBalanceEmptyTitle": "No balances up to this date",
+    "trialBalanceEmptyDescription": "The trial balance is built from journal entries. Record your first transaction, or pick a later date.",
+    "recordTransaction": "+ Record Transaction",
+    "balanced": "Balanced",
+    "unbalanced": "Not balanced",
+    "balanceSheetTitle": "Balance Sheet",
+    "balanceSheetBalanced": "Balanced: Assets = Liabilities + Equity",
+    "balanceSheetUnbalanced": "Not balanced — check the journal",
+    "sectionAssets": "Assets",
+    "sectionLiabilities": "Liabilities",
+    "sectionEquity": "Equity",
+    "sectionTotal": "Total {section}",
+    "currentNetIncome": "Current Profit / Loss",
+    "totalAssets": "Total Assets",
+    "totalLiabilitiesEquity": "Total Liabilities + Equity",
+    "incomeStatementTitle": "Income Statement",
+    "sectionRevenue": "Revenue",
+    "sectionExpense": "Expenses",
+    "netIncomeRow": "Net Profit / Loss",
+    "profit": "Profit",
+    "loss": "Loss",
+    "cashFlowTitle": "Cash Flow",
+    "flowNil": "Nil",
+    "flowIn": "Cash in",
+    "flowOut": "Cash out",
+    "needsReview": "Needs review",
+    "uncategorisedHint": "This cash moved through accounts whose type is not yet mapped to operating, investing, or financing. The figures still count towards the totals, but the account types need tidying up in the Chart of Accounts.",
+    "noCashMovement": "No cash moved in this period.",
+    "groupSubtotal": "{group} subtotal",
+    "unratedWarningStrong": "{count} journal lines",
+    "unratedWarningRest": "are in a foreign currency but were recorded at a rate of 1, so their rupiah value has probably not been converted. The figures below still follow the ledger — fix the rate on those entries so the report is accurate.",
+    "openingCash": "Opening cash",
+    "cashChange": "Change in cash",
+    "closingCash": "Closing cash",
+    "colSourceUse": "Source / Use of Cash",
+    "colCashIn": "Cash In",
+    "colCashOut": "Cash Out",
+    "netCashRow": "Increase / Decrease in Cash",
+    "matchesLedger": "Matches the General Ledger",
+    "doesNotMatch": "Does not match",
+    "netCashChange": "Net Change in Cash",
+    "perCashAccountTitle": "Breakdown by Cash & Bank Account",
+    "perCashAccountHint": "The opening and closing balance of each cash account. The difference must equal the change in cash above — that is what the “Matches the General Ledger” badge checks.",
+    "colOpeningBalance": "Opening Balance",
+    "colChange": "Change",
+    "colClosingBalance": "Closing Balance",
+    "catalogCategory": {
+      "keuangan": {
+        "label": "Financial",
+        "description": "Profit and loss, balance sheet, cash flow, and budget realisation."
+      },
+      "penjualan": {
+        "label": "Sales",
+        "description": "Customer receivables and sales-target realisation."
+      },
+      "pembelian": {
+        "label": "Purchasing",
+        "description": "Supplier payables and purchase analysis."
+      },
+      "stok": {
+        "label": "Stock",
+        "description": "Inventory value and movements."
+      },
+      "kas_bank": {
+        "label": "Cash & Bank",
+        "description": "Cash and bank position, plus reconciliation."
+      },
+      "pajak": {
+        "label": "Tax",
+        "description": "Output/input VAT export (e-Faktur / CTAS)."
+      }
+    },
+    "catalogReport": {
+      "trial_balance": {
+        "title": "Trial Balance",
+        "description": "Debit/credit balance of every account on one date — it must balance."
+      },
+      "income_statement": {
+        "title": "Income Statement",
+        "description": "Revenue less expenses for a period, plus a plain-language summary."
+      },
+      "balance_sheet": {
+        "title": "Balance Sheet",
+        "description": "The Assets = Liabilities + Equity position on one date."
+      },
+      "cash_flow": {
+        "title": "Cash Flow",
+        "description": "Cash in and out by category: operating, investing, financing."
+      },
+      "budget_realization": {
+        "title": "Realisation vs Budget",
+        "description": "Compare the budget with actuals from the income statement, and the variance."
+      },
+      "receivables": {
+        "title": "Receivables & Ageing",
+        "description": "Unsettled customer bills, grouped by age."
+      },
+      "sales_target": {
+        "title": "Sales Target Realisation",
+        "description": "Sales targets against real sales from the ledger."
+      },
+      "sales_by_customer": {
+        "title": "Sales by Customer",
+        "description": "A recap of sales per customer over a period."
+      },
+      "payables": {
+        "title": "Payables & Ageing",
+        "description": "Supplier bills you have not paid yet, grouped by age."
+      },
+      "purchases_by_supplier": {
+        "title": "Purchases by Supplier",
+        "description": "A recap of purchases per supplier over a period."
+      },
+      "stock_value": {
+        "title": "Inventory Value",
+        "description": "Current inventory quantity and value per commodity."
+      },
+      "stock_movement": {
+        "title": "Stock Card / Movements",
+        "description": "The in/out history of each commodity over a period."
+      },
+      "cash_bank": {
+        "title": "Cash & Bank Report",
+        "description": "The balance and movements of each cash & bank account."
+      },
+      "bank_reconciliation": {
+        "title": "Bank Reconciliation",
+        "description": "Match the book's movements against the bank statement."
+      },
+      "efaktur": {
+        "title": "e-Faktur Export (DJP/CTAS)",
+        "description": "Export output tax invoices to the DJP import format."
+      }
+    }
   }
 }

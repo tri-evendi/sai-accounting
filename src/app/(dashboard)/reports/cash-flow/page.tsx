@@ -22,6 +22,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { ArrowDownLeft, ArrowUpRight, AlertTriangle, Minus } from "lucide-react";
 import type { CashFlowGroup } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +37,14 @@ export const dynamic = "force-dynamic";
  * disertai ikon panah + tanda +/−, sedangkan `Money` hanya mewarnai nilai
  * negatif. Nol pun tampil sebagai ikon "–" berlabel "Nihil", bukan "Rp 0".
  */
-function Flow({ amount }: { amount: number }) {
+type T = (key: DictionaryKey, values?: Record<string, string | number>) => string;
+
+function Flow({ amount, t }: { amount: number; t: T }) {
   if (Math.round(amount * 100) === 0) {
     return (
       <span className="inline-flex items-center justify-end gap-1 text-muted-foreground tabular-nums">
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-        <span className="sr-only">Nihil</span>
+        <span className="sr-only">{t("reports.flowNil")}</span>
       </span>
     );
   }
@@ -53,7 +57,7 @@ function Flow({ amount }: { amount: number }) {
       }`}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{inflow ? "Kas masuk" : "Kas keluar"}</span>
+      <span className="sr-only">{inflow ? t("reports.flowIn") : t("reports.flowOut")}</span>
       <span>
         {inflow ? "+" : "−"}
         {formatCurrency(Math.abs(amount), "IDR")}
@@ -62,7 +66,7 @@ function Flow({ amount }: { amount: number }) {
   );
 }
 
-function Section({ group }: { group: CashFlowGroup }) {
+function Section({ group, label, t }: { group: CashFlowGroup; label: string; t: T }) {
   const unknown = group.category === "uncategorised";
   return (
     <>
@@ -71,19 +75,17 @@ function Section({ group }: { group: CashFlowGroup }) {
       >
         <TableCell className="py-2 font-semibold text-foreground" colSpan={3}>
           <span className="inline-flex items-center gap-2">
-            {group.label}
+            {label}
             {unknown && (
               <Badge variant="warning">
                 <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
-                Perlu ditinjau
+                {t("reports.needsReview")}
               </Badge>
             )}
           </span>
           {unknown && (
             <p className="mt-1 text-xs font-normal text-warning-strong">
-              Kas ini bergerak lewat akun yang jenisnya belum dipetakan ke operasi, investasi
-              atau pendanaan. Angkanya tetap dihitung dalam total, tapi perlu dirapikan di
-              Daftar Akun.
+              {t("reports.uncategorisedHint")}
             </p>
           )}
         </TableCell>
@@ -109,15 +111,17 @@ function Section({ group }: { group: CashFlowGroup }) {
       {group.lines.length === 0 && (
         <TableRow className="hover:bg-transparent">
           <TableCell className="py-2 pl-10 text-muted-foreground" colSpan={3}>
-            Tidak ada pergerakan kas pada periode ini.
+            {t("reports.noCashMovement")}
           </TableCell>
         </TableRow>
       )}
 
       <TableRow className="font-medium">
-        <TableCell className="py-2 text-foreground">Jumlah {group.label}</TableCell>
+        <TableCell className="py-2 text-foreground">
+          {t("reports.groupSubtotal", { group: label })}
+        </TableCell>
         <TableCell className="py-2 text-right" colSpan={2}>
-          <Flow amount={group.net} />
+          <Flow amount={group.net} t={t} />
         </TableCell>
       </TableRow>
     </>
@@ -130,10 +134,20 @@ export default async function CashFlowPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const cf = await getCashFlow(from, to);
+  // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
+  // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+  // Label kelompok arus kas untuk LAYAR; payload PDF tetap memakai `g.label`.
+  const groupLabels: Record<string, string> = {
+    operating: t("cashFlowCategory.operating"),
+    investing: t("cashFlowCategory.investing"),
+    financing: t("cashFlowCategory.financing"),
+    uncategorised: t("cashFlowCategory.uncategorised"),
+  };
 
   const payload: StatementPayload = {
     kind: "cash-flow",
@@ -164,9 +178,15 @@ export default async function CashFlowPage({
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Arus Kas" }]}
-        title="Arus Kas"
-        description={<>{periodLabel} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.cashFlowTitle") },
+        ]}
+        title={t("reports.cashFlowTitle")}
+        description={t("reports.periodWithCurrency", {
+          from: formatDate(from),
+          to: formatDate(to),
+        })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -184,10 +204,10 @@ export default async function CashFlowPage({
           <div className="flex gap-3 px-6 py-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
             <p className="text-sm text-warning-strong">
-              <span className="font-medium">{cf.suspectUnrated} baris jurnal</span> bermata uang
-              asing tercatat dengan kurs 1, sehingga nilai rupiahnya kemungkinan belum
-              dikonversi. Angka di bawah tetap mengikuti buku besar — perbaiki kursnya di jurnal
-              terkait agar laporan akurat.
+              <span className="font-medium">
+                {t("reports.unratedWarningStrong", { count: cf.suspectUnrated })}
+              </span>{" "}
+              {t("reports.unratedWarningRest")}
             </p>
           </div>
         </Card>
@@ -196,7 +216,7 @@ export default async function CashFlowPage({
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Kas awal periode</p>
+            <p className="text-sm text-muted-foreground">{t("reports.openingCash")}</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.openingCash, "IDR")}
             </p>
@@ -204,15 +224,15 @@ export default async function CashFlowPage({
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Perubahan kas</p>
+            <p className="text-sm text-muted-foreground">{t("reports.cashChange")}</p>
             <p className="mt-1 text-xl font-semibold">
-              <Flow amount={cf.netChange} />
+              <Flow amount={cf.netChange} t={t} />
             </p>
           </div>
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Kas akhir periode</p>
+            <p className="text-sm text-muted-foreground">{t("reports.closingCash")}</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.closingCash, "IDR")}
             </p>
@@ -224,9 +244,9 @@ export default async function CashFlowPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Sumber / Penggunaan Kas</TableHead>
-              <TableHead className="text-right">Kas Masuk</TableHead>
-              <TableHead className="text-right">Kas Keluar</TableHead>
+              <TableHead>{t("reports.colSourceUse")}</TableHead>
+              <TableHead className="text-right">{t("reports.colCashIn")}</TableHead>
+              <TableHead className="text-right">{t("reports.colCashOut")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -235,18 +255,18 @@ export default async function CashFlowPage({
             {cf.groups
               .filter((g) => g.category !== "uncategorised" || g.lines.length > 0)
               .map((g) => (
-                <Section key={g.category} group={g} />
+                <Section key={g.category} group={g} label={groupLabels[g.category] ?? g.label} t={t} />
               ))}
           </TableBody>
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="text-base font-bold hover:bg-transparent">
               <TableCell className="py-4 text-foreground">
-                Kenaikan / Penurunan Kas
+                {t("reports.netCashRow")}
                 <span className="ml-2 align-middle">
                   {cf.reconciled ? (
-                    <Badge variant="success">Cocok dengan Buku Besar</Badge>
+                    <Badge variant="success">{t("reports.matchesLedger")}</Badge>
                   ) : (
-                    <Badge variant="danger">Tidak cocok</Badge>
+                    <Badge variant="danger">{t("reports.doesNotMatch")}</Badge>
                   )}
                 </span>
               </TableCell>
@@ -259,10 +279,10 @@ export default async function CashFlowPage({
             </TableRow>
             <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
               <TableCell className="text-foreground" colSpan={2}>
-                Perubahan Kas Bersih
+                {t("reports.netCashChange")}
               </TableCell>
               <TableCell className="text-right">
-                <Flow amount={cf.netChange} />
+                <Flow amount={cf.netChange} t={t} />
               </TableCell>
             </TableRow>
           </TableFooter>
@@ -272,19 +292,18 @@ export default async function CashFlowPage({
       {cf.cashAccounts.length > 0 && (
         <Card className="mt-6">
           <div className="border-b border-border px-6 py-4">
-            <h2 className="font-semibold text-foreground">Rincian per Akun Kas &amp; Bank</h2>
+            <h2 className="font-semibold text-foreground">{t("reports.perCashAccountTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Saldo awal dan akhir tiap akun kas. Selisihnya harus sama dengan perubahan kas di
-              atas — itulah yang dicek oleh lencana &ldquo;Cocok dengan Buku Besar&rdquo;.
+              {t("reports.perCashAccountHint")}
             </p>
           </div>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Akun</TableHead>
-                <TableHead className="text-right">Saldo Awal</TableHead>
-                <TableHead className="text-right">Perubahan</TableHead>
-                <TableHead className="text-right">Saldo Akhir</TableHead>
+                <TableHead>{t("common.account")}</TableHead>
+                <TableHead className="text-right">{t("reports.colOpeningBalance")}</TableHead>
+                <TableHead className="text-right">{t("reports.colChange")}</TableHead>
+                <TableHead className="text-right">{t("reports.colClosingBalance")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +317,7 @@ export default async function CashFlowPage({
                     <MoneyCell className="py-2.5" value={a.opening} currency="IDR" />
                   </TableCell>
                   <TableCell className="py-2.5 text-right">
-                    <Flow amount={a.net} />
+                    <Flow amount={a.net} t={t} />
                   </TableCell>
                   <TableCell className="p-0">
                     <MoneyCell className="py-2.5" value={a.closing} currency="IDR" />

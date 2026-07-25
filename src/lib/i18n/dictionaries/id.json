@@ -301,6 +301,12 @@
     "sales": "Uang Muka Penjualan",
     "purchase": "Uang Muka Pembelian"
   },
+  "cashFlowCategory": {
+    "operating": "Aktivitas Operasi",
+    "investing": "Aktivitas Investasi",
+    "financing": "Aktivitas Pendanaan",
+    "uncategorised": "Belum Terkategori"
+  },
   "table": {
     "page": "Halaman {page} dari {pages}"
   },
@@ -1222,5 +1228,150 @@
     "saveFailed": "Gagal menyimpan uang muka.",
     "saved": "Uang muka tersimpan dan sudah dijurnal.",
     "networkFailed": "Tidak dapat menghubungi server. Coba lagi."
+  },
+  "reports": {
+    "title": "Pusat Laporan",
+    "description": "Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur periode, lalu ekspor ke PDF atau Excel. Nilai dalam IDR (nilai dasar buku besar).",
+    "comingSoon": "Segera hadir",
+    "openReport": "Buka laporan",
+    "breadcrumb": "Pusat Laporan",
+    "asOfWithCurrency": "Per {date} · nilai dalam IDR",
+    "periodWithCurrency": "Periode {from} – {to} · nilai dalam IDR",
+    "asOfDate": "Per Tanggal",
+    "trialBalanceTitle": "Neraca Saldo",
+    "trialBalanceEmptyTitle": "Belum ada saldo sampai tanggal ini",
+    "trialBalanceEmptyDescription": "Neraca saldo dibangun dari jurnal. Catat transaksi pertama Anda, atau pilih tanggal yang lebih akhir.",
+    "recordTransaction": "+ Catat Transaksi",
+    "balanced": "Seimbang",
+    "unbalanced": "Tidak seimbang",
+    "balanceSheetTitle": "Neraca",
+    "balanceSheetBalanced": "Seimbang: Aset = Liabilitas + Ekuitas",
+    "balanceSheetUnbalanced": "Tidak seimbang — periksa jurnal",
+    "sectionAssets": "Aset",
+    "sectionLiabilities": "Liabilitas",
+    "sectionEquity": "Ekuitas",
+    "sectionTotal": "Total {section}",
+    "currentNetIncome": "Laba/Rugi Berjalan",
+    "totalAssets": "Total Aset",
+    "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
+    "incomeStatementTitle": "Laba / Rugi",
+    "sectionRevenue": "Pendapatan",
+    "sectionExpense": "Beban",
+    "netIncomeRow": "Laba / Rugi Bersih",
+    "profit": "Laba",
+    "loss": "Rugi",
+    "cashFlowTitle": "Arus Kas",
+    "flowNil": "Nihil",
+    "flowIn": "Kas masuk",
+    "flowOut": "Kas keluar",
+    "needsReview": "Perlu ditinjau",
+    "uncategorisedHint": "Kas ini bergerak lewat akun yang jenisnya belum dipetakan ke operasi, investasi atau pendanaan. Angkanya tetap dihitung dalam total, tapi perlu dirapikan di Daftar Akun.",
+    "noCashMovement": "Tidak ada pergerakan kas pada periode ini.",
+    "groupSubtotal": "Jumlah {group}",
+    "unratedWarningStrong": "{count} baris jurnal",
+    "unratedWarningRest": "bermata uang asing tercatat dengan kurs 1, sehingga nilai rupiahnya kemungkinan belum dikonversi. Angka di bawah tetap mengikuti buku besar — perbaiki kursnya di jurnal terkait agar laporan akurat.",
+    "openingCash": "Kas awal periode",
+    "cashChange": "Perubahan kas",
+    "closingCash": "Kas akhir periode",
+    "colSourceUse": "Sumber / Penggunaan Kas",
+    "colCashIn": "Kas Masuk",
+    "colCashOut": "Kas Keluar",
+    "netCashRow": "Kenaikan / Penurunan Kas",
+    "matchesLedger": "Cocok dengan Buku Besar",
+    "doesNotMatch": "Tidak cocok",
+    "netCashChange": "Perubahan Kas Bersih",
+    "perCashAccountTitle": "Rincian per Akun Kas & Bank",
+    "perCashAccountHint": "Saldo awal dan akhir tiap akun kas. Selisihnya harus sama dengan perubahan kas di atas — itulah yang dicek oleh lencana “Cocok dengan Buku Besar”.",
+    "colOpeningBalance": "Saldo Awal",
+    "colChange": "Perubahan",
+    "colClosingBalance": "Saldo Akhir",
+    "catalogCategory": {
+      "keuangan": {
+        "label": "Keuangan",
+        "description": "Laba/rugi, neraca, arus kas dan realisasi anggaran."
+      },
+      "penjualan": {
+        "label": "Penjualan",
+        "description": "Piutang pelanggan dan realisasi target penjualan."
+      },
+      "pembelian": {
+        "label": "Pembelian",
+        "description": "Utang ke pemasok dan analisa pembelian."
+      },
+      "stok": {
+        "label": "Stok",
+        "description": "Nilai dan pergerakan persediaan."
+      },
+      "kas_bank": {
+        "label": "Kas & Bank",
+        "description": "Posisi kas & bank dan rekonsiliasi."
+      },
+      "pajak": {
+        "label": "Pajak",
+        "description": "Ekspor pajak keluaran/masukan (e-Faktur / CTAS)."
+      }
+    },
+    "catalogReport": {
+      "trial_balance": {
+        "title": "Neraca Saldo",
+        "description": "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang."
+      },
+      "income_statement": {
+        "title": "Laba / Rugi",
+        "description": "Pendapatan dikurangi beban untuk suatu periode, plus ringkasan bahasa awam."
+      },
+      "balance_sheet": {
+        "title": "Neraca",
+        "description": "Posisi Aset = Liabilitas + Ekuitas pada satu tanggal."
+      },
+      "cash_flow": {
+        "title": "Arus Kas",
+        "description": "Kas masuk dan keluar per kategori: operasi, investasi, pendanaan."
+      },
+      "budget_realization": {
+        "title": "Realisasi vs Anggaran",
+        "description": "Bandingkan anggaran dengan realisasi dari Laba/Rugi, beserta selisihnya."
+      },
+      "receivables": {
+        "title": "Piutang & Umur Piutang",
+        "description": "Tagihan pelanggan yang belum lunas, dikelompokkan per umur."
+      },
+      "sales_target": {
+        "title": "Realisasi Target Penjualan",
+        "description": "Target penjualan dibanding penjualan riil dari buku besar."
+      },
+      "sales_by_customer": {
+        "title": "Penjualan per Pelanggan",
+        "description": "Rekap penjualan per pelanggan pada suatu periode."
+      },
+      "payables": {
+        "title": "Utang & Umur Utang",
+        "description": "Tagihan pemasok yang belum Anda bayar, dikelompokkan per umur."
+      },
+      "purchases_by_supplier": {
+        "title": "Pembelian per Pemasok",
+        "description": "Rekap pembelian per pemasok pada suatu periode."
+      },
+      "stock_value": {
+        "title": "Nilai Persediaan",
+        "description": "Kuantitas dan nilai persediaan terkini per komoditas."
+      },
+      "stock_movement": {
+        "title": "Kartu Stok / Mutasi",
+        "description": "Riwayat masuk-keluar tiap komoditas pada suatu periode."
+      },
+      "cash_bank": {
+        "title": "Laporan Kas & Bank",
+        "description": "Saldo dan mutasi tiap akun kas & bank."
+      },
+      "bank_reconciliation": {
+        "title": "Rekonsiliasi Bank",
+        "description": "Cocokkan mutasi buku dengan rekening koran bank."
+      },
+      "efaktur": {
+        "title": "Ekspor e-Faktur (DJP/CTAS)",
+        "description": "Ekspor faktur pajak keluaran ke format impor DJP."
+      }
+    }
   }
 }

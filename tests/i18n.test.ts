@@ -94,6 +94,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "deliveryOrders.colTotalKg",
     "returns.colTotalIdr",
     "journal.colTotalIdr",
+    // "Total {section}" — pola yang sama di kedua bahasa; hanya bahasa Mandarin
+    // membalik urutannya ({section}合计).
+    "reports.sectionTotal",
     // "Total Debit" — dua kata serapan berurutan; pasangannya "Total Kredit"/
     // "Total Credit" memang berbeda.
     "periods.totalDebit",

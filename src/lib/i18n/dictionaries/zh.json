@@ -301,6 +301,12 @@
     "sales": "销售预收款",
     "purchase": "采购预付款"
   },
+  "cashFlowCategory": {
+    "operating": "经营活动",
+    "investing": "投资活动",
+    "financing": "筹资活动",
+    "uncategorised": "尚未分类"
+  },
   "table": {
     "page": "第 {page} 页，共 {pages} 页"
   },
@@ -1222,5 +1228,150 @@
     "saveFailed": "保存预付/预收款失败。",
     "saved": "预付/预收款已保存并生成记账凭证。",
     "networkFailed": "无法连接服务器，请重试。"
+  },
+  "reports": {
+    "title": "报表中心",
+    "description": "所有报表集中于此，按类别分组。选择报表、设定期间，然后导出为 PDF 或 Excel。金额以 IDR（总账本位币）表示。",
+    "comingSoon": "即将推出",
+    "openReport": "打开报表",
+    "breadcrumb": "报表中心",
+    "asOfWithCurrency": "截至 {date} · 金额以 IDR 表示",
+    "periodWithCurrency": "期间 {from} – {to} · 金额以 IDR 表示",
+    "asOfDate": "截止日期",
+    "trialBalanceTitle": "试算表",
+    "trialBalanceEmptyTitle": "截至此日期尚无余额",
+    "trialBalanceEmptyDescription": "试算表根据记账凭证生成。请先记录第一笔交易，或选择较晚的日期。",
+    "recordTransaction": "+ 记录交易",
+    "balanced": "平衡",
+    "unbalanced": "不平衡",
+    "balanceSheetTitle": "资产负债表",
+    "balanceSheetBalanced": "平衡：资产 = 负债 + 所有者权益",
+    "balanceSheetUnbalanced": "不平衡——请检查记账凭证",
+    "sectionAssets": "资产",
+    "sectionLiabilities": "负债",
+    "sectionEquity": "所有者权益",
+    "sectionTotal": "{section}合计",
+    "currentNetIncome": "本期利润",
+    "totalAssets": "资产合计",
+    "totalLiabilitiesEquity": "负债与所有者权益合计",
+    "incomeStatementTitle": "利润表",
+    "sectionRevenue": "营业收入",
+    "sectionExpense": "营业费用",
+    "netIncomeRow": "净利润",
+    "profit": "盈利",
+    "loss": "亏损",
+    "cashFlowTitle": "现金流量表",
+    "flowNil": "无",
+    "flowIn": "现金流入",
+    "flowOut": "现金流出",
+    "needsReview": "需要复核",
+    "uncategorisedHint": "这些现金流经的科目，其类型尚未归入经营、投资或筹资活动。金额仍计入合计，但需要在会计科目表中整理这些科目类型。",
+    "noCashMovement": "本期间没有现金流动。",
+    "groupSubtotal": "{group}小计",
+    "unratedWarningStrong": "{count} 行凭证明细",
+    "unratedWarningRest": "为外币但按汇率 1 记账，其 IDR 金额很可能尚未换算。下方数字仍以总账为准——请在相关凭证中修正汇率，报表才会准确。",
+    "openingCash": "期初现金",
+    "cashChange": "现金变动",
+    "closingCash": "期末现金",
+    "colSourceUse": "现金来源 / 运用",
+    "colCashIn": "现金流入",
+    "colCashOut": "现金流出",
+    "netCashRow": "现金增减",
+    "matchesLedger": "与总账一致",
+    "doesNotMatch": "不一致",
+    "netCashChange": "现金净变动",
+    "perCashAccountTitle": "各现金及银行科目明细",
+    "perCashAccountHint": "各现金科目的期初与期末余额。其差额必须等于上方的现金变动——这正是「与总账一致」标记所校验的内容。",
+    "colOpeningBalance": "期初余额",
+    "colChange": "变动",
+    "colClosingBalance": "期末余额",
+    "catalogCategory": {
+      "keuangan": {
+        "label": "财务",
+        "description": "利润表、资产负债表、现金流量表与预算执行情况。"
+      },
+      "penjualan": {
+        "label": "销售",
+        "description": "客户应收账款与销售目标完成情况。"
+      },
+      "pembelian": {
+        "label": "采购",
+        "description": "供应商应付账款与采购分析。"
+      },
+      "stok": {
+        "label": "库存",
+        "description": "存货价值与出入库变动。"
+      },
+      "kas_bank": {
+        "label": "现金与银行",
+        "description": "现金与银行头寸及对账。"
+      },
+      "pajak": {
+        "label": "税务",
+        "description": "销项/进项增值税导出（e-Faktur / CTAS）。"
+      }
+    },
+    "catalogReport": {
+      "trial_balance": {
+        "title": "试算表",
+        "description": "某一日期全部科目的借贷余额——必须平衡。"
+      },
+      "income_statement": {
+        "title": "利润表",
+        "description": "某一期间的收入减去费用，并附通俗易懂的说明。"
+      },
+      "balance_sheet": {
+        "title": "资产负债表",
+        "description": "某一日期的资产 = 负债 + 所有者权益状况。"
+      },
+      "cash_flow": {
+        "title": "现金流量表",
+        "description": "按经营、投资、筹资类别列示的现金流入与流出。"
+      },
+      "budget_realization": {
+        "title": "预算执行对比",
+        "description": "将预算与利润表实际数进行对比，并列示差异。"
+      },
+      "receivables": {
+        "title": "应收账款与账龄",
+        "description": "尚未结清的客户账款，按账龄分组。"
+      },
+      "sales_target": {
+        "title": "销售目标完成情况",
+        "description": "销售目标与总账中的实际销售额对比。"
+      },
+      "sales_by_customer": {
+        "title": "客户销售汇总",
+        "description": "某一期间按客户汇总的销售情况。"
+      },
+      "payables": {
+        "title": "应付账款与账龄",
+        "description": "尚未支付的供应商账款，按账龄分组。"
+      },
+      "purchases_by_supplier": {
+        "title": "供应商采购汇总",
+        "description": "某一期间按供应商汇总的采购情况。"
+      },
+      "stock_value": {
+        "title": "存货价值",
+        "description": "各商品的当前存货数量与金额。"
+      },
+      "stock_movement": {
+        "title": "库存台账 / 出入库",
+        "description": "某一期间各商品的出入库明细。"
+      },
+      "cash_bank": {
+        "title": "现金与银行报表",
+        "description": "各现金及银行科目的余额与发生额。"
+      },
+      "bank_reconciliation": {
+        "title": "银行对账",
+        "description": "将账簿发生额与银行对账单进行核对。"
+      },
+      "efaktur": {
+        "title": "电子发票（e-Faktur）导出（DJP/CTAS）",
+        "description": "将销项税务发票导出为 DJP 导入格式。"
+      }
+    }
   }
 }

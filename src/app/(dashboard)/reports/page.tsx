@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { reportsByCategory, type ReportDefinition } from "@/lib/report-catalog";
 import { PageHeader } from "@/components/ui/page-header";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +44,32 @@ const ICONS: Record<string, LucideIcon> = {
   FileSpreadsheet,
 };
 
-function ReportCard({ report }: { report: ReportDefinition }) {
+/**
+ * Judul & penjelasan laporan hidup di kamus, dikunci dari `id` katalog
+ * ("trial-balance" → "trial_balance"). Katalog di `lib/report-catalog.ts` tetap
+ * pemilik struktur, status, dan href-nya; bila suatu id belum ada di kamus,
+ * teks bahasa Indonesia dari katalog yang dipakai.
+ */
+function catalogText(
+  dictionary: Dictionary,
+  id: string
+): { title: string; description: string } | undefined {
+  const entries = dictionary.reports.catalogReport;
+  return entries[id.replace(/-/g, "_") as keyof typeof entries];
+}
+
+function ReportCard({
+  report,
+  dictionary,
+  t,
+}: {
+  report: ReportDefinition;
+  dictionary: Dictionary;
+  t: (key: "reports.comingSoon" | "reports.openReport") => string;
+}) {
   const Icon = ICONS[report.icon] ?? FileBarChart;
   const soon = report.status === "coming_soon";
+  const text = catalogText(dictionary, report.id);
 
   const inner = (
     <Card
@@ -60,15 +85,15 @@ function ReportCard({ report }: { report: ReportDefinition }) {
             className={soon ? "h-6 w-6 text-muted-foreground" : "h-6 w-6 text-primary"}
             aria-hidden="true"
           />
-          {soon && <Badge variant="default">Segera hadir</Badge>}
+          {soon && <Badge variant="default">{t("reports.comingSoon")}</Badge>}
         </div>
         <h3 className={`mt-3 font-semibold ${soon ? "text-muted-foreground" : "text-foreground"}`}>
-          {report.title}
+          {text?.title ?? report.title}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">{report.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{text?.description ?? report.description}</p>
         {!soon && (
           <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
-            Buka laporan <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            {t("reports.openReport")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </span>
         )}
       </div>
@@ -85,15 +110,18 @@ function ReportCard({ report }: { report: ReportDefinition }) {
 
 export default async function ReportsPage() {
   await requirePagePermission("report.read");
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
   const groups = reportsByCategory();
+  const categoryText = dictionary.reports.catalogCategory;
 
   return (
     <div>
       <div data-tour="pusat-laporan">
         <PageHeader
           className="mb-8"
-          title="Pusat Laporan"
-          description="Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur periode, lalu ekspor ke PDF atau Excel. Nilai dalam IDR (nilai dasar buku besar)."
+          title={t("reports.title")}
+          description={t("reports.description")}
         />
       </div>
 
@@ -104,12 +132,16 @@ export default async function ReportsPage() {
             data-tour={groupIndex === 0 ? "laporan-kategori-pertama" : undefined}
           >
             <div className="mb-3">
-              <h2 className="text-lg font-semibold text-foreground">{group.label}</h2>
-              <p className="text-sm text-muted-foreground">{group.description}</p>
+              <h2 className="text-lg font-semibold text-foreground">
+                {categoryText[group.category]?.label ?? group.label}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {categoryText[group.category]?.description ?? group.description}
+              </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {group.reports.map((r) => (
-                <ReportCard key={r.id} report={r} />
+                <ReportCard key={r.id} report={r} dictionary={dictionary} t={t} />
               ))}
             </div>
           </section>

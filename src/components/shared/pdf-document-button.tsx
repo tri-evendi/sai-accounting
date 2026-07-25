@@ -23,12 +23,14 @@ export function PdfDocumentButton({
   generate,
   label = "Pratinjau & Cetak",
   variant = "secondary",
+  disabled = false,
 }: {
   title: string;
   filename: string;
   generate: () => Promise<jsPDF>;
   label?: string;
   variant?: "primary" | "secondary";
+  disabled?: boolean;
 }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,7 @@ export function PdfDocumentButton({
 
   return (
     <>
-      <Button variant={variant} size="sm" onClick={openPreview} disabled={loading}>
+      <Button variant={variant} size="sm" onClick={openPreview} disabled={loading || disabled}>
         <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
         {loading ? "Menyiapkan…" : label}
       </Button>

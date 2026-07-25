@@ -1276,7 +1276,11 @@
     "compDateField": "Tanggal kompensasi",
     "compOutstanding": "Sisa tagihan {target}",
     "compTotal": "Total dikompensasi",
-    "compOverTarget": "Total kompensasi melebihi sisa tagihan {target} ini."
+    "compOverTarget": "Total kompensasi melebihi sisa tagihan {target} ini.",
+    "compErrNoAmount": "Isi jumlah kompensasi pada minimal satu uang muka.",
+    "compErrNetwork": "Tidak dapat menghubungi server. Coba lagi.",
+    "compErrRemove": "Gagal membatalkan kompensasi.",
+    "compRemoved": "Kompensasi dibatalkan. Jurnalnya dibalik, bukan dihapus."
   },
   "reports": {
     "title": "Pusat Laporan",
@@ -2642,6 +2646,19 @@
     "addPayment": "Tambah Pembayaran",
     "formTitle": "Catat Pembayaran",
     "rateHint": "Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.",
-    "submit": "Simpan Pembayaran"
+    "submit": "Simpan Pembayaran",
+    "errSave": "Gagal mencatat pembayaran. Coba lagi.",
+    "saved": "Pembayaran berhasil dicatat"
+  },
+  "documentDelete": {
+    "errDelete": "Dokumen ini belum bisa dihapus.",
+    "deleted": "Dokumen dihapus. Jurnalnya ikut dibalik.",
+    "errNetwork": "Tidak dapat menghubungi server. Coba lagi.",
+    "retypePrompt": "Ketik ulang nomor dokumennya untuk memastikan:"
+  },
+  "excel": {
+    "downloaded": "Excel berhasil diunduh",
+    "failed": "Gagal membuat Excel",
+    "download": "Unduh Excel"
   }
 }

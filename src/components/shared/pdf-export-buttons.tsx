@@ -147,6 +147,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
  * (summable, exact) number cells rather than pre-formatted strings.
  */
 export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -173,10 +174,10 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Excel berhasil diunduh");
+      toast(t("excel.downloaded"));
     } catch (err) {
       console.error(err);
-      toast("Gagal membuat Excel", "error");
+      toast(t("excel.failed"), "error");
     }
     setLoading(false);
   }
@@ -184,7 +185,7 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
   return (
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
       <FileSpreadsheet className="h-4 w-4 mr-1" />
-      {loading ? "Menyiapkan..." : "Unduh Excel"}
+      {loading ? t("pdf.preparing") : t("excel.download")}
     </Button>
   );
 }

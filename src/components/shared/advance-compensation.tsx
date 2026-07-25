@@ -130,7 +130,7 @@ export function AdvanceCompensationSection({
     e.preventDefault();
     setError(null);
     if (lines.length === 0) {
-      setError("Isi jumlah kompensasi pada minimal satu uang muka.");
+      setError(t("advances.compErrNoAmount"));
       return;
     }
     setSaving(true);
@@ -163,7 +163,7 @@ export function AdvanceCompensationSection({
       setAmounts({});
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("advances.compErrNetwork"));
     } finally {
       setSaving(false);
     }
@@ -179,13 +179,13 @@ export function AdvanceCompensationSection({
       );
       const data = await response.json();
       if (!response.ok) {
-        setError(data?.error ?? "Gagal membatalkan kompensasi.");
+        setError(data?.error ?? t("advances.compErrRemove"));
         return;
       }
-      toast("Kompensasi dibatalkan. Jurnalnya dibalik, bukan dihapus.", "success");
+      toast(t("advances.compRemoved"), "success");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("advances.compErrNetwork"));
     } finally {
       setBusyId(null);
     }

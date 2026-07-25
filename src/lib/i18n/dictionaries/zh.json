@@ -1276,7 +1276,11 @@
     "compDateField": "核销日期",
     "compOutstanding": "{target}未结清金额",
     "compTotal": "核销合计",
-    "compOverTarget": "核销合计超过该{target}的未结清余额。"
+    "compOverTarget": "核销合计超过该{target}的未结清余额。",
+    "compErrNoAmount": "请至少为一笔预付款填写核销金额。",
+    "compErrNetwork": "无法连接服务器。请重试。",
+    "compErrRemove": "核销撤销失败。",
+    "compRemoved": "核销已撤销。其凭证为红冲，而非删除。"
   },
   "reports": {
     "title": "报表中心",
@@ -2642,6 +2646,19 @@
     "addPayment": "新增付款",
     "formTitle": "登记付款",
     "rateHint": "必填——收款凭证按此汇率以印尼盾记账。",
-    "submit": "保存付款"
+    "submit": "保存付款",
+    "errSave": "付款登记失败。请重试。",
+    "saved": "付款已登记"
+  },
+  "documentDelete": {
+    "errDelete": "该单据暂时无法删除。",
+    "deleted": "单据已删除，其凭证同时红冲。",
+    "errNetwork": "无法连接服务器。请重试。",
+    "retypePrompt": "请重新输入单据号以确认："
+  },
+  "excel": {
+    "downloaded": "Excel 文件已下载",
+    "failed": "生成 Excel 文件失败",
+    "download": "下载 Excel"
   }
 }

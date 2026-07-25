@@ -1276,7 +1276,11 @@
     "compDateField": "Application date",
     "compOutstanding": "Outstanding on the {target}",
     "compTotal": "Total applied",
-    "compOverTarget": "The total applied exceeds what is still outstanding on this {target}."
+    "compOverTarget": "The total applied exceeds what is still outstanding on this {target}.",
+    "compErrNoAmount": "Enter an amount to apply on at least one advance.",
+    "compErrNetwork": "Could not reach the server. Please try again.",
+    "compErrRemove": "The application could not be reversed.",
+    "compRemoved": "The application has been reversed. Its journal was reversed, not deleted."
   },
   "reports": {
     "title": "Report Centre",
@@ -2642,6 +2646,19 @@
     "addPayment": "Add Payment",
     "formTitle": "Record Payment",
     "rateHint": "Required — the receipt journal is recorded in IDR using this rate.",
-    "submit": "Save Payment"
+    "submit": "Save Payment",
+    "errSave": "The payment could not be recorded. Please try again.",
+    "saved": "Payment recorded"
+  },
+  "documentDelete": {
+    "errDelete": "This document cannot be deleted yet.",
+    "deleted": "Document deleted. Its journal was reversed too.",
+    "errNetwork": "Could not reach the server. Please try again.",
+    "retypePrompt": "Retype the document number to confirm:"
+  },
+  "excel": {
+    "downloaded": "The Excel file has been downloaded",
+    "failed": "The Excel file could not be created",
+    "download": "Download Excel"
   }
 }

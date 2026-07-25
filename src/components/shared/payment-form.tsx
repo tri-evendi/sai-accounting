@@ -89,12 +89,12 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
       form.setError("root", {
-        message: String(fieldMsg || data.error || "Gagal mencatat pembayaran. Coba lagi."),
+        message: String(fieldMsg || data.error || t("payments.errSave")),
       });
       return;
     }
 
-    toast("Pembayaran berhasil dicatat");
+    toast(t("payments.saved"));
     form.reset();
     setOpen(false);
     onSuccess?.();

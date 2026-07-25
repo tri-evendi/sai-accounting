@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ReverseButton } from "./reverse-button";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function JournalDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("journal.read");
+  const t = await getT();
   const { id } = await params;
 
   const journal = await prisma.journal.findUnique({
@@ -46,7 +48,7 @@ export default async function JournalDetailPage({
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Catatan Transaksi", href: "/journal" }, { label: journal.number }]}
+        breadcrumbs={[{ label: t("journal.breadcrumb"), href: "/journal" }, { label: journal.number }]}
         title={<span className="font-mono">{journal.number}</span>}
         description={formatDate(journal.date)}
         actions={canReverse && <ReverseButton journalId={journal.id} />}
@@ -54,31 +56,35 @@ export default async function JournalDetailPage({
 
       {journal.isReversed && (
         <div className="mb-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
-          Jurnal ini sudah dibalik
-          {journal.reversals[0] && (
+          {journal.reversals[0] ? (
             <>
-              {" "}oleh{" "}
+              {t("journal.reversedByBefore")}{" "}
               <Link href={`/journal/${journal.reversals[0].id}`} className="font-mono underline">
                 {journal.reversals[0].number}
               </Link>
+              {t("journal.reversedByAfter")}
+            </>
+          ) : (
+            <>
+              {t("journal.reversedNotice")}
+              {t("common.fullStop")}
             </>
           )}
-          .
         </div>
       )}
       {journal.reversalOf && (
         <div className="mb-4 rounded-md bg-muted p-3 text-sm text-foreground">
-          Pembalikan dari{" "}
+          {t("journal.reversalOfBefore")}{" "}
           <Link href={`/journal/${journal.reversalOf.id}`} className="font-mono underline">
             {journal.reversalOf.number}
           </Link>
-          .
+          {t("journal.reversalOfAfter")}
         </div>
       )}
 
       {journal.note && (
         <p className="mb-4 text-sm text-muted-foreground">
-          <span className="font-medium text-muted-foreground">Keterangan:</span> {journal.note}
+          <span className="font-medium text-muted-foreground">{t("journal.noteLabel")}</span> {journal.note}
         </p>
       )}
 
@@ -86,10 +92,10 @@ export default async function JournalDetailPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Kode</TableHead>
-              <TableHead>Akun</TableHead>
-              <TableHead className="text-right">Debit (IDR)</TableHead>
-              <TableHead className="text-right">Kredit (IDR)</TableHead>
+              <TableHead>{t("journal.colCode")}</TableHead>
+              <TableHead>{t("common.account")}</TableHead>
+              <TableHead className="text-right">{t("journal.colDebitIdr")}</TableHead>
+              <TableHead className="text-right">{t("journal.colCreditIdr")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -125,11 +131,11 @@ export default async function JournalDetailPage({
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="font-semibold hover:bg-transparent">
               <TableCell colSpan={2}>
-                Total{" "}
+                {t("common.total")}{" "}
                 {totalDebit === totalCredit ? (
-                  <Badge variant="success">Seimbang</Badge>
+                  <Badge variant="success">{t("journal.balanced")}</Badge>
                 ) : (
-                  <Badge variant="danger">Tidak seimbang</Badge>
+                  <Badge variant="danger">{t("journal.unbalanced")}</Badge>
                 )}
               </TableCell>
               <TableCell className="p-0">

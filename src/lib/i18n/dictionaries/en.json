@@ -86,7 +86,8 @@
     "account": "Account",
     "from": "From",
     "to": "To",
-    "show": "Show"
+    "show": "Show",
+    "pickAccount": "— Select account —"
   },
   "nav": {
     "groups": {
@@ -880,7 +881,6 @@
   },
   "ledger": {
     "title": "General Ledger",
-    "pickAccountOption": "— Select account —",
     "pickAccountPrompt": "Select an account to see its movements and running balance.",
     "normalBalance": "Normal balance",
     "colJournalNo": "Journal No.",
@@ -965,6 +965,53 @@
       "EXPS": "Expenses",
       "OEXP": "Other expenses",
       "OINC": "Other income"
+    }
+  },
+  "journal": {
+    "title": "General Journal ({count})",
+    "addNew": "+ New Journal Entry",
+    "colNumber": "Number",
+    "colType": "Type",
+    "colTotalIdr": "Total (IDR)",
+    "statusReversed": "Reversed",
+    "statusReversal": "Reversal",
+    "emptyTitle": "No journal entries yet",
+    "emptyDescription": "Most journal entries are created automatically from invoices, contracts, cash, and stock. Manual entries are for corrections and adjustments.",
+    "emptyAction": "+ Create Manual Entry",
+    "breadcrumb": "Journal Entries",
+    "reversedNotice": "This entry has been reversed",
+    "reversedByBefore": "This entry has been reversed by",
+    "reversedByAfter": ".",
+    "reversalOfBefore": "Reversal of",
+    "reversalOfAfter": ".",
+    "noteLabel": "Description:",
+    "colCode": "Code",
+    "colDebitIdr": "Debit (IDR)",
+    "colCreditIdr": "Credit (IDR)",
+    "balanced": "Balanced",
+    "unbalanced": "Not balanced",
+    "reverseTitle": "Reverse Entry",
+    "reverseMessage": "This creates a reversing entry. The original entry is not deleted, only marked as reversed. Continue?",
+    "reverseFailed": "Could not reverse the entry",
+    "newTitle": "New Journal Entry",
+    "infoTitle": "Journal Information",
+    "notePlaceholder": "Optional",
+    "linesTitle": "Journal Lines",
+    "totalBase": "Total (base IDR)",
+    "difference": "Difference {amount}",
+    "addRow": "Add Row",
+    "removeRow": "Remove row",
+    "submit": "Save Entry",
+    "minLines": "A journal entry needs at least 2 filled lines.",
+    "notBalanced": "The entry is not balanced yet (total debit must equal total credit in IDR).",
+    "saveFailed": "Could not save the journal entry",
+    "type": {
+      "general": "General",
+      "sales": "Sales",
+      "purchase": "Purchase",
+      "cash": "Cash/Bank",
+      "adjustment": "Adjustment",
+      "reversal": "Reversal"
     }
   }
 }

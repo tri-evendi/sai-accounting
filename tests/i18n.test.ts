@@ -93,6 +93,15 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "invoices.totalCurrency",
     "deliveryOrders.colTotalKg",
     "returns.colTotalIdr",
+    "journal.colTotalIdr",
+    // "Debit (IDR)" — kata serapan + kode mata uang; hanya bahasa Mandarin yang
+    // berbeda (借方（IDR）).
+    "journal.colDebitIdr",
+    // Ekor kalimat setelah tautan nomor jurnal. Dalam bahasa Indonesia maupun
+    // Inggris kalimatnya berakhir tepat di tautan, jadi yang tersisa hanya titik;
+    // bahasa Mandarin masih perlu kata kerjanya di belakang (…冲销。).
+    "journal.reversedByAfter",
+    "journal.reversalOfAfter",
     // Istilah dagang karung: "bags" dan "kg/bag" dipakai apa adanya di dokumen
     // ekspor berbahasa Indonesia maupun Inggris (bahasa Mandarin memakai 袋).
     "common.bags",

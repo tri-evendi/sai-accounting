@@ -44,7 +44,7 @@ export default async function LedgerPage({
   const ledger = accountId ? await getAccountLedger(accountId, from, to) : null;
 
   const accountOptions = [
-    { value: "", label: t("ledger.pickAccountOption") },
+    { value: "", label: t("common.pickAccount") },
     ...accounts.map((a) => ({ value: String(a.id), label: `${a.code} — ${a.name}` })),
   ];
 

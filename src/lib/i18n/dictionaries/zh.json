@@ -86,7 +86,8 @@
     "account": "科目",
     "from": "起始日期",
     "to": "结束日期",
-    "show": "显示"
+    "show": "显示",
+    "pickAccount": "— 选择科目 —"
   },
   "nav": {
     "groups": {
@@ -880,7 +881,6 @@
   },
   "ledger": {
     "title": "总账",
-    "pickAccountOption": "— 选择科目 —",
     "pickAccountPrompt": "选择一个科目，查看其发生额与累计余额。",
     "normalBalance": "正常余额",
     "colJournalNo": "凭证号",
@@ -965,6 +965,53 @@
       "EXPS": "费用",
       "OEXP": "其他费用",
       "OINC": "其他收入"
+    }
+  },
+  "journal": {
+    "title": "记账凭证（{count}）",
+    "addNew": "+ 新建凭证",
+    "colNumber": "凭证号",
+    "colType": "类型",
+    "colTotalIdr": "合计（IDR）",
+    "statusReversed": "已冲销",
+    "statusReversal": "冲销凭证",
+    "emptyTitle": "还没有记账凭证",
+    "emptyDescription": "大部分记账凭证由发票、合同、现金和库存自动生成。手工凭证用于更正和调整。",
+    "emptyAction": "+ 新建手工凭证",
+    "breadcrumb": "交易记录",
+    "reversedNotice": "此凭证已被冲销",
+    "reversedByBefore": "此凭证已被",
+    "reversedByAfter": "冲销。",
+    "reversalOfBefore": "此凭证冲销的是",
+    "reversalOfAfter": "。",
+    "noteLabel": "摘要：",
+    "colCode": "科目编号",
+    "colDebitIdr": "借方（IDR）",
+    "colCreditIdr": "贷方（IDR）",
+    "balanced": "平衡",
+    "unbalanced": "不平衡",
+    "reverseTitle": "冲销凭证",
+    "reverseMessage": "这将生成一张冲销凭证。原凭证不会被删除，只会标记为已冲销。是否继续？",
+    "reverseFailed": "冲销凭证失败",
+    "newTitle": "新建记账凭证",
+    "infoTitle": "凭证信息",
+    "notePlaceholder": "可选",
+    "linesTitle": "凭证明细",
+    "totalBase": "合计（IDR 本位币）",
+    "difference": "差额 {amount}",
+    "addRow": "添加行",
+    "removeRow": "删除此行",
+    "submit": "保存凭证",
+    "minLines": "记账凭证至少需要两行内容。",
+    "notBalanced": "凭证尚未平衡（借方合计必须等于贷方合计，均以 IDR 计）。",
+    "saveFailed": "保存凭证失败",
+    "type": {
+      "general": "普通",
+      "sales": "销售",
+      "purchase": "采购",
+      "cash": "现金/银行",
+      "adjustment": "调整",
+      "reversal": "冲销"
     }
   }
 }

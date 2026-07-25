@@ -17,20 +17,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-const TYPE_LABELS: Record<string, string> = {
-  general: "Umum",
-  sales: "Penjualan",
-  purchase: "Pembelian",
-  cash: "Kas/Bank",
-  adjustment: "Penyesuaian",
-  reversal: "Pembalikan",
-};
-
 export default async function JournalPage() {
   await requirePagePermission("journal.read");
+  const t = await getT();
+  const typeLabels: Record<string, string> = {
+    general: t("journal.type.general"),
+    sales: t("journal.type.sales"),
+    purchase: t("journal.type.purchase"),
+    cash: t("journal.type.cash"),
+    adjustment: t("journal.type.adjustment"),
+    reversal: t("journal.type.reversal"),
+  };
 
   const journals = await prisma.journal.findMany({
     orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -41,10 +42,10 @@ export default async function JournalPage() {
   return (
     <div>
       <PageHeader
-        title={<>Jurnal Umum ({journals.length})</>}
+        title={t("journal.title", { count: journals.length })}
         actions={
           <Link href="/journal/new">
-            <Button>+ Jurnal Baru</Button>
+            <Button>{t("journal.addNew")}</Button>
           </Link>
         }
       />
@@ -53,12 +54,12 @@ export default async function JournalPage() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nomor</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Tipe</TableHead>
-              <TableHead>Keterangan</TableHead>
-              <TableHead className="text-right">Total (IDR)</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("journal.colNumber")}</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("journal.colType")}</TableHead>
+              <TableHead>{t("common.description")}</TableHead>
+              <TableHead className="text-right">{t("journal.colTotalIdr")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -73,18 +74,18 @@ export default async function JournalPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(j.date)}</TableCell>
-                    <TableCell className="text-muted-foreground">{TYPE_LABELS[j.type] ?? j.type}</TableCell>
+                    <TableCell className="text-muted-foreground">{typeLabels[j.type] ?? j.type}</TableCell>
                     <TableCell className="text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</TableCell>
                     <TableCell className="p-0">
                       <MoneyCell value={total} currency="IDR" hideCurrency />
                     </TableCell>
                     <TableCell>
                       {j.isReversed ? (
-                        <Badge variant="warning">Dibalik</Badge>
+                        <Badge variant="warning">{t("journal.statusReversed")}</Badge>
                       ) : j.type === "reversal" ? (
-                        <Badge variant="default">Pembalikan</Badge>
+                        <Badge variant="default">{t("journal.statusReversal")}</Badge>
                       ) : (
-                        <Badge variant="success">Aktif</Badge>
+                        <Badge variant="success">{t("common.active")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -95,9 +96,9 @@ export default async function JournalPage() {
                 <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={<BookText className="h-12 w-12" />}
-                    title="Belum ada jurnal"
-                    description="Sebagian besar jurnal dibuat otomatis dari faktur, kontrak, kas, dan stok. Jurnal manual dipakai untuk koreksi dan penyesuaian."
-                    actionLabel="+ Buat Jurnal Manual"
+                    title={t("journal.emptyTitle")}
+                    description={t("journal.emptyDescription")}
+                    actionLabel={t("journal.emptyAction")}
                     actionHref="/journal/new"
                   />
                 </TableCell>

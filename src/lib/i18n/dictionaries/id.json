@@ -86,7 +86,8 @@
     "account": "Akun",
     "from": "Dari",
     "to": "Sampai",
-    "show": "Tampilkan"
+    "show": "Tampilkan",
+    "pickAccount": "— Pilih akun —"
   },
   "nav": {
     "groups": {
@@ -880,7 +881,6 @@
   },
   "ledger": {
     "title": "Buku Besar",
-    "pickAccountOption": "— Pilih akun —",
     "pickAccountPrompt": "Pilih akun untuk menampilkan mutasi & saldo berjalan.",
     "normalBalance": "Saldo normal",
     "colJournalNo": "No. Jurnal",
@@ -965,6 +965,53 @@
       "EXPS": "Beban",
       "OEXP": "Beban lain-lain",
       "OINC": "Pendapatan lain-lain"
+    }
+  },
+  "journal": {
+    "title": "Jurnal Umum ({count})",
+    "addNew": "+ Jurnal Baru",
+    "colNumber": "Nomor",
+    "colType": "Tipe",
+    "colTotalIdr": "Total (IDR)",
+    "statusReversed": "Dibalik",
+    "statusReversal": "Pembalikan",
+    "emptyTitle": "Belum ada jurnal",
+    "emptyDescription": "Sebagian besar jurnal dibuat otomatis dari faktur, kontrak, kas, dan stok. Jurnal manual dipakai untuk koreksi dan penyesuaian.",
+    "emptyAction": "+ Buat Jurnal Manual",
+    "breadcrumb": "Catatan Transaksi",
+    "reversedNotice": "Jurnal ini sudah dibalik",
+    "reversedByBefore": "Jurnal ini sudah dibalik oleh",
+    "reversedByAfter": ".",
+    "reversalOfBefore": "Pembalikan dari",
+    "reversalOfAfter": ".",
+    "noteLabel": "Keterangan:",
+    "colCode": "Kode",
+    "colDebitIdr": "Debit (IDR)",
+    "colCreditIdr": "Kredit (IDR)",
+    "balanced": "Seimbang",
+    "unbalanced": "Tidak seimbang",
+    "reverseTitle": "Balik Jurnal",
+    "reverseMessage": "Ini membuat jurnal pembalikan. Jurnal asli tidak dihapus, hanya ditandai sudah dibalik. Lanjutkan?",
+    "reverseFailed": "Gagal membalik jurnal",
+    "newTitle": "Jurnal Baru",
+    "infoTitle": "Informasi Jurnal",
+    "notePlaceholder": "Opsional",
+    "linesTitle": "Rincian Jurnal",
+    "totalBase": "Total (IDR base)",
+    "difference": "Selisih {amount}",
+    "addRow": "Tambah Baris",
+    "removeRow": "Hapus baris",
+    "submit": "Simpan Jurnal",
+    "minLines": "Jurnal minimal 2 baris berisi.",
+    "notBalanced": "Jurnal belum seimbang (total debit harus sama dengan total kredit dalam IDR).",
+    "saveFailed": "Gagal menyimpan jurnal",
+    "type": {
+      "general": "Umum",
+      "sales": "Penjualan",
+      "purchase": "Pembelian",
+      "cash": "Kas/Bank",
+      "adjustment": "Penyesuaian",
+      "reversal": "Pembalikan"
     }
   }
 }

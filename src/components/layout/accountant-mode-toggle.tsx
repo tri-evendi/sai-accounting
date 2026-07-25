@@ -3,36 +3,38 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Calculator, Loader2, Info } from "lucide-react";
+import { Calculator, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { ROLES } from "@/lib/constants";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
  * Mode Akuntan toggle (issue #11) — the primary surface for the preference.
  *
  * Lives in the navbar. Reads the current user's role + stored preference from
- * the session, shows the EFFECTIVE mode, and on click persists the flipped value
- * for THIS user only (PATCH /api/user/accountant-mode), refreshes the session
- * token so the change sticks without a re-login, then `router.refresh()` so the
- * server components (sidebar visibility + page guards) re-evaluate immediately.
+ * the session and shows the EFFECTIVE mode. Menekan tombol TIDAK langsung
+ * mengganti mode: ia membuka dialog konfirmasi yang MENJELASKAN apa yang akan
+ * berubah (ON vs OFF) dulu, baru menerapkan bila dikonfirmasi. Ini juga jadi
+ * satu-satunya tempat penjelasan (menggantikan tooltip lama yang penuh jargon):
+ * pengguna yang cuma ingin tahu tinggal buka lalu "Batal".
  *
- * Display-only: it changes what the user sees, never their role/authorisation.
- * The on/off state is conveyed by icon + text label (not colour alone) and
- * exposed to assistive tech via `aria-pressed`.
+ * Display-only: it changes what the user sees, never their role/authorisation,
+ * and never what the posting engine writes.
  */
 export function AccountantModeToggle() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!session?.user) return null;
 
   const role = session.user.role;
   // The toggle is meaningful only where there are accounting surfaces or
-  // transaction forms with debit/kredit terms: bos (menus + forms) and core
-  // (forms). ptg has neither, so it never sees a control that would do nothing.
+  // transaction forms with debit/kredit terminology: bos (menus + forms) and
+  // core (forms). ptg has neither, so it never sees a control that would do
+  // nothing.
   if (role !== ROLES.BOS && role !== ROLES.CORE) return null;
 
   const isOn = effectiveAccountantMode({
@@ -40,7 +42,7 @@ export function AccountantModeToggle() {
     accountantMode: session.user.accountantMode,
   });
 
-  async function handleToggle() {
+  async function applyToggle() {
     if (saving) return;
     const next = !isOn;
     setSaving(true);
@@ -60,16 +62,31 @@ export function AccountantModeToggle() {
     }
   }
 
+  // Pesan konfirmasi bahasa sehari-hari, menjelaskan AKIBAT dari pilihan ini —
+  // jargon dijelaskan (jurnal, buku besar), bukan diasumsikan.
+  const dialogTitle = isOn ? "Matikan Mode Akuntan?" : "Nyalakan Mode Akuntan?";
+  const dialogMessage = isOn
+    ? "Mode Akuntan sekarang ON. Mematikannya menyembunyikan menu akuntansi — " +
+      "Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — " +
+      "dan label debit/kredit di formulir, sehingga tampilan jadi bahasa sehari-hari " +
+      "saja (uang masuk/keluar). Ini hanya mengubah TAMPILAN Anda, bukan data, angka, " +
+      "atau hak akses. Bisa dinyalakan lagi kapan saja."
+    : "Mode Akuntan sekarang OFF. Menyalakannya menampilkan menu akuntansi — " +
+      "Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — " +
+      "dan label debit/kredit di formulir. Cocok bila Anda paham pembukuan. Ini hanya " +
+      "mengubah TAMPILAN Anda, bukan data, angka, atau hak akses. Bisa dimatikan lagi " +
+      "kapan saja.";
+
   return (
-    <div className="flex items-center gap-1">
+    <>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={() => setDialogOpen(true)}
         disabled={saving}
         role="switch"
         aria-checked={isOn}
-        aria-label={`Mode Akuntan ${isOn ? "aktif" : "nonaktif"}`}
-        title="Klik untuk menampilkan / menyembunyikan surface & istilah akuntansi. Ikon (i) untuk penjelasan."
+        aria-label={`Mode Akuntan ${isOn ? "aktif" : "nonaktif"} — ketuk untuk mengganti`}
+        title="Ketuk untuk mengganti — akan muncul penjelasan sebelum diterapkan"
         className={cn(
           "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60",
           isOn
@@ -93,54 +110,18 @@ export function AccountantModeToggle() {
         </span>
       </button>
 
-      {/* Penjelasan ON/OFF — dapat diklik (ramah sentuh), bukan tooltip hover
-          yang penuh jargon. Bahasa sehari-hari, jargon dijelaskan bukan diasumsi. */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label="Apa itu Mode Akuntan?"
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Info className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="p-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Calculator className="h-4 w-4 text-primary" aria-hidden="true" />
-            <h3 className="font-semibold text-foreground">Mode Akuntan</h3>
-            <span
-              className={cn(
-                "ml-auto rounded px-1.5 py-0.5 text-xs font-semibold",
-                isOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              )}
-            >
-              Sekarang: {isOn ? "ON" : "OFF"}
-            </span>
-          </div>
-          <p className="mt-2 text-muted-foreground">
-            Mengatur seberapa &ldquo;akuntansi&rdquo; tampilan Anda. Hanya mengubah yang{" "}
-            <strong className="text-foreground">terlihat</strong> — tidak mengubah data, angka,
-            maupun hak akses Anda.
-          </p>
-          <div className="mt-3 space-y-2">
-            <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
-              <p className="font-medium text-primary">ON — untuk yang paham pembukuan</p>
-              <p className="mt-0.5 text-muted-foreground">
-                Menampilkan menu &amp; istilah akuntansi: Catatan Transaksi (jurnal), Rincian per
-                Akun (buku besar), Daftar Akun, serta label debit/kredit di formulir.
-              </p>
-            </div>
-            <div className="rounded-md border border-border bg-muted/40 p-2.5">
-              <p className="font-medium text-foreground">OFF — untuk pemakai awam</p>
-              <p className="mt-0.5 text-muted-foreground">
-                Menyembunyikan yang teknis itu. Hanya bahasa sehari-hari (uang masuk/keluar,
-                pelanggan belum bayar). Lebih ringkas dan tidak membingungkan.
-              </p>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+      {/* Dialog konfirmasi yang menjelaskan pilihan sebelum diterapkan. "Batal"
+          juga berfungsi sebagai jalan "cuma ingin tahu" tanpa mengubah apa pun. */}
+      <ConfirmDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmLabel={isOn ? "Ya, matikan" : "Ya, nyalakan"}
+        cancelLabel="Batal"
+        confirmVariant="primary"
+        onConfirm={applyToggle}
+      />
+    </>
   );
 }

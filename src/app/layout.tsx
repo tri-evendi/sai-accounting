@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_SC } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
@@ -12,28 +12,23 @@ const inter = Inter({
 });
 
 /**
- * Aksara Han untuk bahasa Mandarin (fondasi i18n).
+ * Aksara Han (bahasa Mandarin) SENGAJA tidak memakai webfont.
  *
- * Inter hanya memuat subset `latin`: satu pun aksara Tionghoa tidak ada di
- * dalamnya, jadi tanpa font ini seluruh UI Mandarin jatuh ke font cadangan
- * sistem — tampilannya berbeda mesin per mesin dan sering rusak.
+ * Inter hanya memuat subset `latin`, jadi aksara Tionghoa memang harus datang
+ * dari font lain — tapi font itu font SISTEM, bukan unduhan (lihat tumpukan
+ * `html:lang(zh)` di globals.css). Alasannya biaya build: `next/font/google`
+ * mengunduh font saat BUILD, dan Noto Sans SC dipecah Google menjadi **101
+ * berkas woff2** terpisah (terukur, bukan perkiraan). Build produksi di mesin
+ * ini sudah ~10 menit dengan RAM ~1 GB dan berjalan di dalam
+ * `docker compose up --build -d`; menambah 101 pengambilan jaringan ke jalur
+ * itu berarti satu unduhan gagal = deploy gagal — harga yang mahal untuk
+ * perbedaan yang nyaris tak terlihat.
  *
- * Dua rincian yang disengaja:
- *  • `preload: false` — berkas Han berukuran besar dan dipecah menjadi puluhan
- *    blok `unicode-range`. Tanpa ini, pembaca Indonesia/Inggris ikut menanggung
- *    preload font yang tak pernah mereka pakai; dengan ini browser baru
- *    mengambil blok yang benar-benar dibutuhkan halaman Mandarin.
- *  • Urutan tumpukan di `globals.css` menaruh Inter DULU, Noto Sans SC sesudahnya
- *    (lihat `html:lang(zh)`), sehingga angka & huruf Latin tetap dari Inter —
- *    aturan `tabular-nums` MASTER.md tetap berlaku di ketiga bahasa — dan hanya
- *    aksara Han yang jatuh ke Noto.
+ * Yang hilang kecil: setiap perangkat nyata sudah punya font UI CJK berkualitas
+ * (PingFang SC di Mac/iOS, Microsoft YaHei di Windows, Noto Sans CJK di
+ * Android/Linux). Pembaca Mandarin justru mendapat font yang sudah familier,
+ * tanpa FOUT dan tanpa mengunduh berkas Han berukuran megabita.
  */
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sans-sc",
-  subsets: ["latin"],
-  display: "swap",
-  preload: false,
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary(await getLocale());
@@ -56,10 +51,7 @@ export default async function RootLayout({
   const dictionary = await getDictionary(locale);
 
   return (
-    <html
-      lang={locale}
-      className={`${inter.variable} ${notoSansSC.variable} h-full`}
-    >
+    <html lang={locale} className={`${inter.variable} h-full`}>
       <body className="min-h-full">
         <LocaleProvider locale={locale} dictionary={dictionary}>
           {children}

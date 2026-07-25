@@ -26,7 +26,7 @@ export function SettingsClient({ canReadAudit }: SettingsClientProps) {
   const isManager = canReadAudit;
 
   return (
-    <div className={isManager ? "max-w-5xl" : "max-w-2xl"}>
+    <div className="w-full">
       <PageHeader title="Pengaturan" />
 
       <Card className="mb-6">

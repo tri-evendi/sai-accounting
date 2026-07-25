@@ -276,7 +276,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-10">
+    <div className="w-full space-y-10">
       <PageHeader
         title="Beranda"
         description={<>Ringkasan stok, kas, dan penjualan untuk {session.user.name}</>}

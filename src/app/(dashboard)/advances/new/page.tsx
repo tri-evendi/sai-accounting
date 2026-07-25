@@ -2,11 +2,13 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { AdvanceForm } from "./advance-form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewAdvancePage() {
   await requirePagePermission("advance.write");
+  const t = await getT();
 
   const [customers, suppliers, contracts] = await Promise.all([
     prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -22,9 +24,12 @@ export default async function NewAdvancePage() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Uang Muka", href: "/advances" }, { label: "Catat" }]}
-        title="Catat Uang Muka"
-        description="Untuk uang yang diterima atau dibayar sebelum fakturnya terbit."
+        breadcrumbs={[
+          { label: t("advances.title"), href: "/advances" },
+          { label: t("advances.breadcrumbRecord") },
+        ]}
+        title={t("advances.record")}
+        description={t("advances.newDescription")}
       />
       <AdvanceForm customers={customers} suppliers={suppliers} contracts={contracts} />
     </div>

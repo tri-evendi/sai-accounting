@@ -11,7 +11,7 @@
  */
 import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
-import { getAdvances, summarizeAdvances, ADVANCE_TYPE_LABELS } from "@/lib/advances";
+import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
 import { Money, MoneyCell } from "@/components/ui/money";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { HandCoins, Info, Plus } from "lucide-react";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -37,28 +38,31 @@ export default async function AdvancesPage({
   searchParams: Promise<{ type?: string }>;
 }) {
   await requirePagePermission("advance.read");
+  const t = await getT();
   const sp = await searchParams;
   const type = sp.type === "sales" || sp.type === "purchase" ? sp.type : undefined;
 
   const rows = await getAdvances({ type });
   const open = rows.filter((r) => !r.isFullyApplied);
   const summary = summarizeAdvances(open);
+  // Nama akun tempat uang muka mendarat — dipakai sebagai keterangan di kolom Jenis.
+  const typeLabels = { sales: t("advanceType.sales"), purchase: t("advanceType.purchase") };
 
   return (
     <div>
       <PageHeader
-        title="Uang Muka"
+        title={t("advances.title")}
         description={
           <>
-            Uang yang diterima atau dibayar <strong>sebelum</strong> fakturnya terbit.
-            Belum dihitung sebagai penjualan atau beban sampai dikompensasi ke faktur.
+            {t("advances.descriptionBefore")} <strong>{t("advances.descriptionStrong")}</strong>{" "}
+            {t("advances.descriptionAfter")}
           </>
         }
         actions={
           <Link href="/advances/new">
             <Button className="cursor-pointer">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Catat Uang Muka
+              {t("advances.record")}
             </Button>
           </Link>
         }
@@ -67,12 +71,22 @@ export default async function AdvancesPage({
       {/* Filter — plain links, no client JS needed for three states. */}
       <div className="mb-6 flex flex-wrap gap-2">
         {[
-          { label: "Semua", href: "/advances", active: !type },
-          { label: "Penjualan (diterima)", href: "/advances?type=sales", active: type === "sales" },
-          { label: "Pembelian (dibayar)", href: "/advances?type=purchase", active: type === "purchase" },
+          { key: "all", label: t("advances.filterAll"), href: "/advances", active: !type },
+          {
+            key: "sales",
+            label: t("advances.filterSales"),
+            href: "/advances?type=sales",
+            active: type === "sales",
+          },
+          {
+            key: "purchase",
+            label: t("advances.filterPurchase"),
+            href: "/advances?type=purchase",
+            active: type === "purchase",
+          },
         ].map((f) => (
           <Link
-            key={f.label}
+            key={f.key}
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
@@ -87,21 +101,21 @@ export default async function AdvancesPage({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Uang muka belum dikompensasi</p>
+          <p className="text-sm text-muted-foreground">{t("advances.outstandingLabel")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(summary.outstandingBase, "IDR")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Nilai dasar IDR dari {summary.count} uang muka yang masih bersisa.
+            {t("advances.outstandingHint", { count: summary.count })}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Belum berkurs</p>
+          <p className="text-sm text-muted-foreground">{t("advances.unratedLabel")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {summary.unresolvedCount}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Uang muka valas tanpa kurs — tidak dihitung dalam total IDR di atas.
+            {t("advances.unratedHint")}
           </p>
         </Card>
       </div>
@@ -109,19 +123,20 @@ export default async function AdvancesPage({
       <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          Uang muka masuk ke akun <strong>Uang Muka Penjualan</strong> (kewajiban) atau{" "}
-          <strong>Uang Muka Pembelian</strong> (aset) — <strong>bukan</strong> pendapatan
-          atau beban. Saat fakturnya terbit, buka faktur tersebut lalu pilih{" "}
-          <strong>Kompensasi uang muka</strong> untuk mengurangi tagihannya.
+          {t("advances.noteBefore")} <strong>{t("advances.noteSalesAccount")}</strong>{" "}
+          {t("advances.noteLiability")} <strong>{t("advances.notePurchaseAccount")}</strong>{" "}
+          {t("advances.noteAssetBefore")} <strong>{t("advances.noteNot")}</strong>{" "}
+          {t("advances.noteAfter")} <strong>{t("advances.noteCompensate")}</strong>{" "}
+          {t("advances.noteTail")}
         </span>
       </p>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={<HandCoins className="h-12 w-12" />}
-          title="Belum ada uang muka"
-          description="Catat pembayaran di muka dari pelanggan atau ke supplier di sini."
-          actionLabel="Catat Uang Muka"
+          title={t("advances.emptyTitle")}
+          description={t("advances.emptyDescription")}
+          actionLabel={t("advances.record")}
           actionHref="/advances/new"
         />
       ) : (
@@ -129,15 +144,15 @@ export default async function AdvancesPage({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Nomor</TableHead>
-                <TableHead>Jenis</TableHead>
-                <TableHead>Pihak</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Kontrak</TableHead>
-                <TableHead className="text-right">Nilai</TableHead>
-                <TableHead className="text-right">Sudah dikompensasi</TableHead>
-                <TableHead className="text-right">Sisa</TableHead>
-                <TableHead className="text-right">Sisa (IDR)</TableHead>
+                <TableHead>{t("advances.colNumber")}</TableHead>
+                <TableHead>{t("advances.colType")}</TableHead>
+                <TableHead>{t("advances.colParty")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>{t("advances.colContract")}</TableHead>
+                <TableHead className="text-right">{t("advances.colValue")}</TableHead>
+                <TableHead className="text-right">{t("advances.colApplied")}</TableHead>
+                <TableHead className="text-right">{t("advances.colRemaining")}</TableHead>
+                <TableHead className="text-right">{t("common.remainingIdr")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,10 +162,10 @@ export default async function AdvancesPage({
                   <TableCell>
                     {/* Badge always carries text — colour is never the only signal. */}
                     <Badge variant={r.type === "sales" ? "success" : "warning"}>
-                      {r.type === "sales" ? "Diterima" : "Dibayar"}
+                      {r.type === "sales" ? t("advances.badgeReceived") : t("advances.badgePaid")}
                     </Badge>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {ADVANCE_TYPE_LABELS[r.type]}
+                      {typeLabels[r.type]}
                     </span>
                   </TableCell>
                   <TableCell className="text-foreground">{r.partyName}</TableCell>
@@ -177,7 +192,7 @@ export default async function AdvancesPage({
                     <Money value={r.remaining} currency={r.currency} />
                     {r.isFullyApplied && (
                       <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                        Sudah habis
+                        {t("advances.usedUp")}
                       </span>
                     )}
                   </TableCell>
@@ -185,11 +200,11 @@ export default async function AdvancesPage({
                     {r.remainingBase != null ? (
                       <Money value={r.remainingBase} currency="IDR" />
                     ) : (
-                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                      <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
                     )}
                     {r.unratedApplications > 0 && (
                       <span className="mt-0.5 block text-xs text-warning-strong">
-                        {r.unratedApplications} kompensasi belum berkurs
+                        {t("advances.unratedApplications", { count: r.unratedApplications })}
                       </span>
                     )}
                   </TableCell>

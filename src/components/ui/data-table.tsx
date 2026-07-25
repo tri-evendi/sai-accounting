@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/table";
 import { type CurrencyCode } from "@/lib/money-format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 /* ------------------------------------------------------------------ */
 /* Helper kolom — aturan tampilan hidup di sini, bukan di tiap halaman */
@@ -160,6 +161,7 @@ export function DataTable<TData>({
   initialSorting = [],
   className,
 }: DataTableProps<TData>) {
+  const t = useT();
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
 
   /*
@@ -270,7 +272,10 @@ export function DataTable<TData>({
       {pageSize && table.getPageCount() > 1 && (
         <div className="flex items-center justify-between border-t border-border px-6 py-3">
           <p className="text-sm text-muted-foreground">
-            Halaman {table.getState().pagination.pageIndex + 1} dari {table.getPageCount()}
+            {t("table.page", {
+              page: table.getState().pagination.pageIndex + 1,
+              pages: table.getPageCount(),
+            })}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -279,7 +284,7 @@ export function DataTable<TData>({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              Sebelumnya
+              {t("common.previous")}
             </Button>
             <Button
               variant="secondary"
@@ -287,7 +292,7 @@ export function DataTable<TData>({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Berikutnya
+              {t("common.next")}
             </Button>
           </div>
         </div>

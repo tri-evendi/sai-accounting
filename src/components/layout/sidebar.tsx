@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
 import {
   NAV_HOME,
   activeNavHref,
@@ -136,10 +137,12 @@ function NavLink({
   item,
   active,
   onClose,
+  t,
 }: {
   item: NavItem;
   active: boolean;
   onClose: () => void;
+  t: TranslateFn;
 }) {
   const Icon = ICONS[item.icon] ?? LayoutDashboard;
   return (
@@ -159,13 +162,14 @@ function NavLink({
       )}
     >
       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">{t(item.labelKey)}</span>
     </Link>
   );
 }
 
 export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const t = useT();
   // issue #11 — permukaan akuntansi (Catatan Transaksi, Rincian per Akun, Daftar
   // Akun) hanya muncul bila peran mengizinkan DAN Mode Akuntan efektif ON. Aturan
   // itu hidup di `isNavItemVisible`, satu keputusan dengan penjaga halaman.
@@ -216,7 +220,7 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
           </Link>
           <button
             onClick={onClose}
-            aria-label="Tutup menu"
+            aria-label={t("sidebar.closeMenu")}
             className="lg:hidden cursor-pointer text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground"
           >
             <X className="h-5 w-5" aria-hidden="true" />
@@ -225,12 +229,17 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
 
         {/* Navigation — dikelompokkan per area tugas */}
         <nav
-          aria-label="Menu utama"
+          aria-label={t("sidebar.mainMenu")}
           data-tour="menu-tugas"
           className="flex-1 overflow-y-auto px-3 py-4"
         >
           {homeVisible && (
-            <NavLink item={NAV_HOME} active={activeHref === NAV_HOME.href} onClose={onClose} />
+            <NavLink
+              item={NAV_HOME}
+              active={activeHref === NAV_HOME.href}
+              onClose={onClose}
+              t={t}
+            />
           )}
 
           {groups.map((group) => {
@@ -247,7 +256,7 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
                   className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                 >
                   <span className="flex items-center gap-1.5">
-                    {group.label}
+                    {t(group.labelKey)}
                     {/* Grup ditutup tapi berisi halaman aktif → titik penanda. */}
                     {!open && hasActive && (
                       <span className="h-1.5 w-1.5 rounded-full bg-sidebar-primary" aria-hidden="true" />
@@ -269,6 +278,7 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
                         item={item}
                         active={activeHref === item.href}
                         onClose={onClose}
+                        t={t}
                       />
                     ))}
                   </div>

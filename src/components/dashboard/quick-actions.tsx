@@ -1,7 +1,7 @@
 /**
  * Panel "Aksi Cepat" (issue #2) — enam pekerjaan tersering, satu klik dari Beranda.
  *
- * Server component: daftar aksinya sudah disaring per peran di server
+ * Server component (async): daftar aksinya sudah disaring per peran di server
  * (`quickActionsForRole`), jadi tombol yang tidak boleh dipakai peran tersebut
  * tidak ikut dikirim ke browser — bukan disembunyikan dengan CSS.
  *
@@ -21,6 +21,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import type { QuickAction, QuickActionTone } from "@/lib/quick-actions";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -32,43 +34,45 @@ const ICONS: Record<string, LucideIcon> = {
   FileText,
 };
 
-const TONE_STYLES: Record<QuickActionTone, { icon: string; note: string; label: string }> = {
+const TONE_STYLES: Record<QuickActionTone, { icon: string; note: string; labelKey: DictionaryKey }> = {
   in: {
     icon: "bg-success-soft text-success-strong group-hover:bg-success-soft",
     note: "text-success-strong",
-    label: "Uang masuk",
+    labelKey: "quickActions.tone.in",
   },
   out: {
     icon: "bg-destructive-soft text-destructive-strong group-hover:bg-destructive-soft",
     note: "text-destructive-strong",
-    label: "Uang keluar",
+    labelKey: "quickActions.tone.out",
   },
   stock: {
     icon: "bg-warning-soft text-warning-strong group-hover:bg-warning-soft",
     note: "text-warning-strong",
-    label: "Barang",
+    labelKey: "quickActions.tone.stock",
   },
   neutral: {
     icon: "bg-primary/10 text-primary group-hover:bg-primary/10",
     note: "text-primary",
-    label: "Dokumen",
+    labelKey: "quickActions.tone.neutral",
   },
 };
 
-export function QuickActions({ actions }: { actions: QuickAction[] }) {
+export async function QuickActions({ actions }: { actions: QuickAction[] }) {
   if (actions.length === 0) return null;
+
+  // Server component: kamus diambil langsung di server, jadi panel ini tidak
+  // menambah satu byte pun ke bundel client.
+  const t = await getT();
 
   return (
     <section data-tour="aksi-cepat" aria-labelledby="aksi-cepat-judul">
       <div className="mb-3 flex items-center gap-2">
         <Zap className="h-5 w-5 text-primary" aria-hidden="true" />
         <h2 id="aksi-cepat-judul" className="text-lg font-semibold text-foreground">
-          Aksi Cepat
+          {t("quickActions.title")}
         </h2>
       </div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Pekerjaan yang paling sering dilakukan — pilih satu untuk langsung membuka formulirnya.
-      </p>
+      <p className="mb-4 text-sm text-muted-foreground">{t("quickActions.subtitle")}</p>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {actions.map((action) => {
@@ -93,12 +97,14 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
                 <Icon className="h-6 w-6" aria-hidden="true" />
               </span>
               <span className="min-w-0">
-                <span className="block text-base font-semibold text-foreground">{action.label}</span>
+                <span className="block text-base font-semibold text-foreground">
+                  {t(action.labelKey)}
+                </span>
                 <span className={cn("mt-0.5 block text-xs font-medium", tone.note)}>
-                  {tone.label}
+                  {t(tone.labelKey)}
                 </span>
                 <span className="mt-1 block text-sm leading-snug text-muted-foreground">
-                  {action.description}
+                  {t(action.descriptionKey)}
                 </span>
               </span>
             </Link>

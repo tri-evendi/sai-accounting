@@ -1,0 +1,229 @@
+{
+  "app": {
+    "description": "Contract & Inventory Management System — PT Subur Anugerah Indonesia"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "continue": "Continue",
+    "loading": "Loading...",
+    "loadingSession": "Loading your session...",
+    "processing": "Processing...",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "language": "Language"
+  },
+  "nav": {
+    "groups": {
+      "approvals": "Approvals",
+      "sales": "Sales",
+      "purchasing": "Purchasing",
+      "cash": "Cash & Bank",
+      "inventory": "Stock & Assets",
+      "reports": "Reports",
+      "settings": "Help & Settings"
+    },
+    "items": {
+      "dashboard": "Home",
+      "approvals": "Needs Approval",
+      "approvalRules": "Approval Rules",
+      "recordSale": "Record a Sale",
+      "contracts": "Contracts",
+      "invoices": "Sales Invoices",
+      "deliveryOrders": "Delivery Orders",
+      "documents": "Documents",
+      "receivables": "Unpaid by Customers",
+      "returns": "Returned Goods",
+      "customers": "Customers",
+      "consignees": "Consignees",
+      "recordPurchase": "Record a Purchase",
+      "suppliers": "Suppliers",
+      "payables": "Bills to Pay",
+      "advances": "Advances",
+      "cashBook": "Cash & Bank Book",
+      "reconciliation": "Match Bank Statement",
+      "inventory": "Stock on Hand",
+      "inventoryUpdate": "Add / Remove Stock",
+      "inventoryOpname": "Stock Count",
+      "fixedAssets": "Company-Owned Assets",
+      "reports": "Report Centre",
+      "budget": "Plans & Targets",
+      "efaktur": "e-Faktur Export",
+      "journal": "Transaction Records",
+      "ledger": "Details by Account",
+      "accounts": "Chart of Accounts",
+      "glossary": "Glossary",
+      "periods": "Lock a Month",
+      "setup": "Setup & Opening Balances",
+      "users": "Users",
+      "permissions": "Access Rights",
+      "settings": "Settings"
+    }
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "subtitle": "The jobs done most often — pick one to open its form straight away.",
+    "tone": {
+      "in": "Money in",
+      "out": "Money out",
+      "stock": "Goods",
+      "neutral": "Document"
+    },
+    "items": {
+      "catat_penjualan": {
+        "label": "Record a Sale",
+        "description": "Guided: pick the customer, enter the goods, then raise the invoice."
+      },
+      "catat_pembelian": {
+        "label": "Record a Purchase",
+        "description": "Guided: pick the supplier, enter the goods bought, then record what you owe."
+      },
+      "terima_uang": {
+        "label": "Receive Money",
+        "description": "Record money coming into cash or a bank account."
+      },
+      "bayar": {
+        "label": "Pay",
+        "description": "Record money going out of cash or a bank account."
+      },
+      "tambah_stok": {
+        "label": "Add Stock",
+        "description": "Record goods entering or leaving the warehouse."
+      },
+      "buat_kontrak": {
+        "label": "Create a Contract",
+        "description": "Record a sales agreement before the goods are shipped."
+      }
+    }
+  },
+  "sidebar": {
+    "mainMenu": "Main menu",
+    "closeMenu": "Close menu"
+  },
+  "navbar": {
+    "openMenu": "Open menu"
+  },
+  "accountantMode": {
+    "label": "Accountant Mode",
+    "on": "ON",
+    "off": "OFF",
+    "state": {
+      "on": "on",
+      "off": "off"
+    },
+    "toggleAria": "Accountant Mode {state} — tap to change",
+    "toggleTitle": "Tap to change — an explanation appears before anything is applied",
+    "turnOffTitle": "Turn Accountant Mode off?",
+    "turnOnTitle": "Turn Accountant Mode on?",
+    "turnOffMessage": "Accountant Mode is currently ON. Turning it off hides the accounting menus — Transaction Records (journal), Details by Account (general ledger), Chart of Accounts — and the debit/credit labels on forms, so the screen speaks everyday language only (money in / money out). This changes only YOUR view: not the data, the figures, or your access rights. You can turn it back on at any time.",
+    "turnOnMessage": "Accountant Mode is currently OFF. Turning it on shows the accounting menus — Transaction Records (journal), Details by Account (general ledger), Chart of Accounts — and the debit/credit labels on forms. Useful if you know bookkeeping. This changes only YOUR view: not the data, the figures, or your access rights. You can turn it off again at any time.",
+    "confirmTurnOff": "Yes, turn it off",
+    "confirmTurnOn": "Yes, turn it on"
+  },
+  "approvalBadge": {
+    "pending": "{count} documents waiting for your approval",
+    "unread": "{count} updates on the requests you submitted"
+  },
+  "userMenu": {
+    "trigger": "Account: {name} ({role})",
+    "menu": "Account menu",
+    "changePassword": "Change Password",
+    "signOut": "Sign out",
+    "language": "Language",
+    "languageMenu": "Choose a language",
+    "languageSwitching": "Switching language..."
+  },
+  "helpMenu": {
+    "trigger": "Help",
+    "menu": "Help menu",
+    "glossaryTitle": "Glossary",
+    "glossaryDescription": "Accounting terms explained in everyday words.",
+    "replayTour": "Replay this page's tour",
+    "noTour": "This page has no guided tour yet. Tours are available on Home, Record a Sale, and the Report Centre."
+  },
+  "auth": {
+    "brandTagline": "Contract & inventory management for internal teams.",
+    "login": {
+      "heading": "Sign in",
+      "description": "Use your company account to open dashboards, contracts, and stock.",
+      "username": "Username",
+      "usernamePlaceholder": "your.username",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "checkingSession": "Checking your session...",
+      "forgotPassword": "Forgotten your password? Contact your system administrator to reset access.",
+      "invalidCredentials": "Invalid username or password. Please try again."
+    },
+    "changePassword": {
+      "heading": "Change your password",
+      "description": "Your account needs a new password before you can continue.",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "hint": "Use at least 8 characters. Do not reuse passwords from other systems.",
+      "submit": "Save password",
+      "submitting": "Saving...",
+      "mismatch": "The new password and its confirmation do not match.",
+      "tooShort": "Password must be at least 8 characters.",
+      "failed": "Could not change the password. Please try again."
+    }
+  },
+  "status": {
+    "all": "All",
+    "contract": {
+      "signed": "Signed",
+      "pending": "Pending",
+      "canceled": "Cancelled"
+    }
+  },
+  "documentType": {
+    "bl": "Bill of Lading (B/L)",
+    "invoice": "Invoice",
+    "coo": "Certificate of Origin (COO)",
+    "fumigation": "Fumigation Certificate",
+    "contract": "Contract",
+    "other": "Other"
+  },
+  "role": {
+    "bos": "Management",
+    "core": "Office Staff",
+    "ptg": "Warehouse Staff (PTG)"
+  },
+  "cashType": {
+    "bank": "Bank",
+    "kas_besar": "Main Cash",
+    "kas_kecil": "Petty Cash"
+  },
+  "table": {
+    "page": "Page {page} of {pages}"
+  },
+  "disclosure": {
+    "expand": "Open",
+    "collapse": "Close",
+    "reviewNeeded": "Needs checking"
+  },
+  "term": {
+    "badge": "Accounting term",
+    "example": "Example:",
+    "learnMore": "Learn more"
+  },
+  "confirm": {
+    "retypeLabel": "Retype to confirm:"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Could not reach the server. Check your connection.",
+    "unauthorized": "You do not have access to this page.",
+    "notFound": "Data not found."
+  }
+}

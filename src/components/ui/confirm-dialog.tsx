@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { matchesConfirmPhrase } from "@/lib/form-guards";
+import { useT } from "@/lib/i18n/client";
 import { AlertTriangle } from "lucide-react";
 
 interface ConfirmDialogProps {
@@ -61,16 +62,23 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = "Lanjutkan",
-  cancelLabel = "Batal",
+  confirmLabel,
+  cancelLabel,
   confirmVariant = "danger",
   onConfirm,
   trigger,
   open,
   onOpenChange,
   confirmPhrase,
-  confirmPhraseLabel = "Ketik ulang untuk memastikan:",
+  confirmPhraseLabel,
 }: ConfirmDialogProps) {
+  // Label bawaan diambil dari kamus, bukan literal: dialog ini dipakai puluhan
+  // permukaan yang tidak menyetel labelnya sendiri, jadi di sinilah bahasa
+  // "Lanjutkan / Batal" ikut berganti untuk semuanya sekaligus.
+  const t = useT();
+  const confirmText = confirmLabel ?? t("common.continue");
+  const cancelText = cancelLabel ?? t("common.cancel");
+  const phraseLabel = confirmPhraseLabel ?? t("confirm.retypeLabel");
   const [uncontrolled, setUncontrolled] = useState(false);
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : uncontrolled;
@@ -149,7 +157,7 @@ export function ConfirmDialog({
           {confirmPhrase && (
             <div className="mt-4">
               <label htmlFor={phraseId} className="block text-sm text-muted-foreground">
-                {confirmPhraseLabel}{" "}
+                {phraseLabel}{" "}
                 <span className="font-semibold text-foreground">{confirmPhrase}</span>
               </label>
               <input
@@ -179,7 +187,7 @@ export function ConfirmDialog({
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              {cancelLabel}
+              {cancelText}
             </Button>
             <Button
               ref={confirmRef}
@@ -189,7 +197,7 @@ export function ConfirmDialog({
               onClick={handleConfirm}
               disabled={loading || !phraseSatisfied}
             >
-              {loading ? "Memproses…" : confirmLabel}
+              {loading ? t("common.processing") : confirmText}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

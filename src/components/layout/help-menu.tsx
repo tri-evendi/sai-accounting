@@ -19,9 +19,11 @@ import { cn } from "@/lib/utils";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { tourForPath } from "@/lib/tours";
 import { replayTour } from "@/components/help/guided-tour";
+import { useT } from "@/lib/i18n/client";
 
 export function HelpMenu() {
   const pathname = usePathname();
+  const t = useT();
   const tour = tourForPath(pathname);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,7 +56,7 @@ export function HelpMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Bantuan"
+        aria-label={t("helpMenu.trigger")}
         className={cn(
           "flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors duration-150",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
@@ -64,13 +66,13 @@ export function HelpMenu() {
         )}
       >
         <HelpCircle className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden sm:inline">Bantuan</span>
+        <span className="hidden sm:inline">{t("helpMenu.trigger")}</span>
       </button>
 
       {open && (
         <div
           role="menu"
-          aria-label="Menu bantuan"
+          aria-label={t("helpMenu.menu")}
           className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-border bg-card p-1 shadow-lg"
         >
           <Link
@@ -81,9 +83,11 @@ export function HelpMenu() {
           >
             <BookMarked className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
-              <span className="block font-medium text-foreground">Kamus Istilah</span>
+              <span className="block font-medium text-foreground">
+                {t("helpMenu.glossaryTitle")}
+              </span>
               <span className="block text-xs text-muted-foreground">
-                Arti istilah akuntansi dengan bahasa sehari-hari.
+                {t("helpMenu.glossaryDescription")}
               </span>
             </span>
           </Link>
@@ -100,15 +104,14 @@ export function HelpMenu() {
             >
               <Compass className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span>
-                <span className="block font-medium text-foreground">Ulangi tur halaman ini</span>
+                <span className="block font-medium text-foreground">
+                  {t("helpMenu.replayTour")}
+                </span>
                 <span className="block text-xs text-muted-foreground">{tour.title}</span>
               </span>
             </button>
           ) : (
-            <p className="px-3 py-2 text-xs text-muted-foreground">
-              Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan
-              Pusat Laporan.
-            </p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">{t("helpMenu.noTour")}</p>
           )}
         </div>
       )}

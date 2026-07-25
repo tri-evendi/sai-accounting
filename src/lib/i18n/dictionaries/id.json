@@ -1,0 +1,229 @@
+{
+  "app": {
+    "description": "Sistem Manajemen Kontrak & Stok — PT Subur Anugerah Indonesia"
+  },
+  "common": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "close": "Tutup",
+    "delete": "Hapus",
+    "edit": "Ubah",
+    "add": "Tambah",
+    "search": "Cari",
+    "continue": "Lanjutkan",
+    "loading": "Memuat...",
+    "loadingSession": "Memuat sesi...",
+    "processing": "Memproses...",
+    "back": "Kembali",
+    "next": "Berikutnya",
+    "previous": "Sebelumnya",
+    "yes": "Ya",
+    "no": "Tidak",
+    "all": "Semua",
+    "language": "Bahasa"
+  },
+  "nav": {
+    "groups": {
+      "approvals": "Persetujuan",
+      "sales": "Penjualan",
+      "purchasing": "Pembelian",
+      "cash": "Kas & Bank",
+      "inventory": "Stok & Aset",
+      "reports": "Laporan",
+      "settings": "Bantuan & Pengaturan"
+    },
+    "items": {
+      "dashboard": "Beranda",
+      "approvals": "Perlu Persetujuan",
+      "approvalRules": "Aturan Persetujuan",
+      "recordSale": "Catat Penjualan",
+      "contracts": "Kontrak",
+      "invoices": "Tagihan Penjualan",
+      "deliveryOrders": "Surat Jalan",
+      "documents": "Dokumen",
+      "receivables": "Pelanggan Belum Bayar",
+      "returns": "Barang Dikembalikan",
+      "customers": "Pelanggan",
+      "consignees": "Penerima Barang",
+      "recordPurchase": "Catat Pembelian",
+      "suppliers": "Pemasok",
+      "payables": "Tagihan Harus Dibayar",
+      "advances": "Uang Muka",
+      "cashBook": "Buku Kas & Bank",
+      "reconciliation": "Cocokkan Rekening Koran",
+      "inventory": "Stok Barang",
+      "inventoryUpdate": "Tambah / Kurangi Stok",
+      "inventoryOpname": "Hitung Ulang Stok",
+      "fixedAssets": "Barang Milik Perusahaan",
+      "reports": "Pusat Laporan",
+      "budget": "Rencana & Target",
+      "efaktur": "Ekspor e-Faktur",
+      "journal": "Catatan Transaksi",
+      "ledger": "Rincian per Akun",
+      "accounts": "Daftar Akun",
+      "glossary": "Kamus Istilah",
+      "periods": "Kunci Bulan",
+      "setup": "Setup & Saldo Awal",
+      "users": "Pengguna",
+      "permissions": "Hak Akses",
+      "settings": "Pengaturan"
+    }
+  },
+  "quickActions": {
+    "title": "Aksi Cepat",
+    "subtitle": "Pekerjaan yang paling sering dilakukan — pilih satu untuk langsung membuka formulirnya.",
+    "tone": {
+      "in": "Uang masuk",
+      "out": "Uang keluar",
+      "stock": "Barang",
+      "neutral": "Dokumen"
+    },
+    "items": {
+      "catat_penjualan": {
+        "label": "Catat Penjualan",
+        "description": "Dipandu: pilih pelanggan, isi barang, lalu buat tagihannya."
+      },
+      "catat_pembelian": {
+        "label": "Catat Pembelian",
+        "description": "Dipandu: pilih pemasok, isi barang yang dibeli, lalu catat utangnya."
+      },
+      "terima_uang": {
+        "label": "Terima Uang",
+        "description": "Catat uang yang masuk ke kas atau rekening bank."
+      },
+      "bayar": {
+        "label": "Bayar",
+        "description": "Catat uang yang keluar dari kas atau rekening bank."
+      },
+      "tambah_stok": {
+        "label": "Tambah Stok",
+        "description": "Catat barang masuk atau keluar gudang."
+      },
+      "buat_kontrak": {
+        "label": "Buat Kontrak",
+        "description": "Catat kesepakatan penjualan sebelum barang dikirim."
+      }
+    }
+  },
+  "sidebar": {
+    "mainMenu": "Menu utama",
+    "closeMenu": "Tutup menu"
+  },
+  "navbar": {
+    "openMenu": "Buka menu"
+  },
+  "accountantMode": {
+    "label": "Mode Akuntan",
+    "on": "ON",
+    "off": "OFF",
+    "state": {
+      "on": "aktif",
+      "off": "nonaktif"
+    },
+    "toggleAria": "Mode Akuntan {state} — ketuk untuk mengganti",
+    "toggleTitle": "Ketuk untuk mengganti — akan muncul penjelasan sebelum diterapkan",
+    "turnOffTitle": "Matikan Mode Akuntan?",
+    "turnOnTitle": "Nyalakan Mode Akuntan?",
+    "turnOffMessage": "Mode Akuntan sekarang ON. Mematikannya menyembunyikan menu akuntansi — Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — dan label debit/kredit di formulir, sehingga tampilan jadi bahasa sehari-hari saja (uang masuk/keluar). Ini hanya mengubah TAMPILAN Anda, bukan data, angka, atau hak akses. Bisa dinyalakan lagi kapan saja.",
+    "turnOnMessage": "Mode Akuntan sekarang OFF. Menyalakannya menampilkan menu akuntansi — Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — dan label debit/kredit di formulir. Cocok bila Anda paham pembukuan. Ini hanya mengubah TAMPILAN Anda, bukan data, angka, atau hak akses. Bisa dimatikan lagi kapan saja.",
+    "confirmTurnOff": "Ya, matikan",
+    "confirmTurnOn": "Ya, nyalakan"
+  },
+  "approvalBadge": {
+    "pending": "{count} dokumen menunggu persetujuan Anda",
+    "unread": "{count} kabar baru atas pengajuan Anda"
+  },
+  "userMenu": {
+    "trigger": "Akun: {name} ({role})",
+    "menu": "Menu akun",
+    "changePassword": "Ubah Kata Sandi",
+    "signOut": "Keluar",
+    "language": "Bahasa",
+    "languageMenu": "Pilih bahasa",
+    "languageSwitching": "Mengganti bahasa..."
+  },
+  "helpMenu": {
+    "trigger": "Bantuan",
+    "menu": "Menu bantuan",
+    "glossaryTitle": "Kamus Istilah",
+    "glossaryDescription": "Arti istilah akuntansi dengan bahasa sehari-hari.",
+    "replayTour": "Ulangi tur halaman ini",
+    "noTour": "Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan Pusat Laporan."
+  },
+  "auth": {
+    "brandTagline": "Pengelolaan kontrak & stok untuk tim internal.",
+    "login": {
+      "heading": "Masuk",
+      "description": "Gunakan akun perusahaan Anda untuk membuka dasbor, kontrak, dan stok.",
+      "username": "Nama Pengguna",
+      "usernamePlaceholder": "nama.pengguna",
+      "password": "Kata Sandi",
+      "submit": "Masuk",
+      "submitting": "Sedang masuk...",
+      "checkingSession": "Memeriksa sesi Anda...",
+      "forgotPassword": "Lupa kata sandi? Hubungi admin sistem untuk mengatur ulang akses.",
+      "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi."
+    },
+    "changePassword": {
+      "heading": "Ganti Kata Sandi Anda",
+      "description": "Akun Anda harus memakai kata sandi baru sebelum bisa melanjutkan.",
+      "current": "Kata Sandi Saat Ini",
+      "new": "Kata Sandi Baru",
+      "confirm": "Ulangi Kata Sandi Baru",
+      "hint": "Gunakan minimal 8 karakter. Jangan memakai ulang kata sandi dari sistem lain.",
+      "submit": "Simpan Kata Sandi",
+      "submitting": "Menyimpan...",
+      "mismatch": "Kata sandi baru dan ulangannya tidak sama.",
+      "tooShort": "Kata sandi minimal 8 karakter.",
+      "failed": "Gagal mengganti kata sandi. Silakan coba lagi."
+    }
+  },
+  "status": {
+    "all": "Semua",
+    "contract": {
+      "signed": "Sah",
+      "pending": "Menunggu",
+      "canceled": "Dibatalkan"
+    }
+  },
+  "documentType": {
+    "bl": "Bill of Lading (B/L)",
+    "invoice": "Tagihan (Invoice)",
+    "coo": "Surat Keterangan Asal (COO)",
+    "fumigation": "Sertifikat Fumigasi",
+    "contract": "Kontrak",
+    "other": "Lainnya"
+  },
+  "role": {
+    "bos": "Pimpinan",
+    "core": "Staf Kantor",
+    "ptg": "Bagian Gudang (PTG)"
+  },
+  "cashType": {
+    "bank": "Bank",
+    "kas_besar": "Kas Besar",
+    "kas_kecil": "Kas Kecil"
+  },
+  "table": {
+    "page": "Halaman {page} dari {pages}"
+  },
+  "disclosure": {
+    "expand": "Buka",
+    "collapse": "Tutup",
+    "reviewNeeded": "Perlu diperiksa"
+  },
+  "term": {
+    "badge": "Istilah akuntansi",
+    "example": "Contoh:",
+    "learnMore": "Pelajari selengkapnya"
+  },
+  "confirm": {
+    "retypeLabel": "Ketik ulang untuk memastikan:"
+  },
+  "errors": {
+    "generic": "Terjadi kesalahan. Silakan coba lagi.",
+    "network": "Gagal menghubungi server. Periksa koneksi Anda.",
+    "unauthorized": "Anda tidak punya akses ke halaman ini.",
+    "notFound": "Data tidak ditemukan."
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "app": {
+    "description": "合同与库存管理系统 — PT Subur Anugerah Indonesia"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "search": "搜索",
+    "continue": "继续",
+    "loading": "加载中...",
+    "loadingSession": "正在加载会话...",
+    "processing": "处理中...",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "yes": "是",
+    "no": "否",
+    "all": "全部",
+    "language": "语言"
+  },
+  "nav": {
+    "groups": {
+      "approvals": "审批",
+      "sales": "销售",
+      "purchasing": "采购",
+      "cash": "现金与银行",
+      "inventory": "库存与资产",
+      "reports": "报表",
+      "settings": "帮助与设置"
+    },
+    "items": {
+      "dashboard": "首页",
+      "approvals": "待我审批",
+      "approvalRules": "审批规则",
+      "recordSale": "录入销售",
+      "contracts": "合同",
+      "invoices": "销售发票",
+      "deliveryOrders": "送货单",
+      "documents": "单证",
+      "receivables": "客户欠款",
+      "returns": "退货",
+      "customers": "客户",
+      "consignees": "收货人",
+      "recordPurchase": "录入采购",
+      "suppliers": "供应商",
+      "payables": "待付账款",
+      "advances": "预付款",
+      "cashBook": "现金与银行账簿",
+      "reconciliation": "银行对账",
+      "inventory": "库存",
+      "inventoryUpdate": "增加 / 减少库存",
+      "inventoryOpname": "库存盘点",
+      "fixedAssets": "公司资产",
+      "reports": "报表中心",
+      "budget": "计划与目标",
+      "efaktur": "电子发票（e-Faktur）导出",
+      "journal": "交易记录（记账凭证）",
+      "ledger": "各科目明细（总账）",
+      "accounts": "会计科目表",
+      "glossary": "术语表",
+      "periods": "月度锁定",
+      "setup": "初始设置与期初余额",
+      "users": "用户",
+      "permissions": "访问权限",
+      "settings": "设置"
+    }
+  },
+  "quickActions": {
+    "title": "快捷操作",
+    "subtitle": "最常做的几项工作 — 选择一项即可直接打开对应表单。",
+    "tone": {
+      "in": "资金流入",
+      "out": "资金流出",
+      "stock": "货物",
+      "neutral": "单据"
+    },
+    "items": {
+      "catat_penjualan": {
+        "label": "录入销售",
+        "description": "分步引导：选择客户、录入货物，然后开具发票。"
+      },
+      "catat_pembelian": {
+        "label": "录入采购",
+        "description": "分步引导：选择供应商、录入采购的货物，然后记录应付款。"
+      },
+      "terima_uang": {
+        "label": "收款",
+        "description": "记录进入现金或银行账户的款项。"
+      },
+      "bayar": {
+        "label": "付款",
+        "description": "记录从现金或银行账户支出的款项。"
+      },
+      "tambah_stok": {
+        "label": "增加库存",
+        "description": "记录货物入库或出库。"
+      },
+      "buat_kontrak": {
+        "label": "新建合同",
+        "description": "在发货之前记录销售协议。"
+      }
+    }
+  },
+  "sidebar": {
+    "mainMenu": "主菜单",
+    "closeMenu": "关闭菜单"
+  },
+  "navbar": {
+    "openMenu": "打开菜单"
+  },
+  "accountantMode": {
+    "label": "会计模式",
+    "on": "开",
+    "off": "关",
+    "state": {
+      "on": "已开启",
+      "off": "已关闭"
+    },
+    "toggleAria": "会计模式{state} — 点按切换",
+    "toggleTitle": "点按切换 — 应用之前会先显示说明",
+    "turnOffTitle": "关闭会计模式？",
+    "turnOnTitle": "开启会计模式？",
+    "turnOffMessage": "会计模式当前为开启。关闭后将隐藏会计菜单 —— 交易记录（记账凭证）、各科目明细（总账）、会计科目表 —— 以及表单上的借贷标签，界面只使用日常用语（资金流入 / 流出）。这只改变您个人看到的界面，不会改变数据、金额或访问权限。您可以随时重新开启。",
+    "turnOnMessage": "会计模式当前为关闭。开启后将显示会计菜单 —— 交易记录（记账凭证）、各科目明细（总账）、会计科目表 —— 以及表单上的借贷标签。适合熟悉记账的用户。这只改变您个人看到的界面，不会改变数据、金额或访问权限。您可以随时再次关闭。",
+    "confirmTurnOff": "是，关闭",
+    "confirmTurnOn": "是，开启"
+  },
+  "approvalBadge": {
+    "pending": "{count} 份单据等待您审批",
+    "unread": "{count} 条关于您提交申请的新消息"
+  },
+  "userMenu": {
+    "trigger": "账户：{name}（{role}）",
+    "menu": "账户菜单",
+    "changePassword": "修改密码",
+    "signOut": "退出登录",
+    "language": "语言",
+    "languageMenu": "选择语言",
+    "languageSwitching": "正在切换语言..."
+  },
+  "helpMenu": {
+    "trigger": "帮助",
+    "menu": "帮助菜单",
+    "glossaryTitle": "术语表",
+    "glossaryDescription": "用日常语言解释会计术语。",
+    "replayTour": "重播本页导览",
+    "noTour": "本页暂无导览。首页、录入销售和报表中心提供导览。"
+  },
+  "auth": {
+    "brandTagline": "面向内部团队的合同与库存管理系统。",
+    "login": {
+      "heading": "登录",
+      "description": "使用您的公司账户查看仪表板、合同与库存。",
+      "username": "用户名",
+      "usernamePlaceholder": "您的用户名",
+      "password": "密码",
+      "submit": "登录",
+      "submitting": "正在登录...",
+      "checkingSession": "正在检查您的登录状态...",
+      "forgotPassword": "忘记密码？请联系系统管理员重置访问权限。",
+      "invalidCredentials": "用户名或密码不正确，请重试。"
+    },
+    "changePassword": {
+      "heading": "修改您的密码",
+      "description": "您的账户需要设置新密码后才能继续使用。",
+      "current": "当前密码",
+      "new": "新密码",
+      "confirm": "确认新密码",
+      "hint": "请至少使用 8 个字符，不要重复使用其他系统的密码。",
+      "submit": "保存密码",
+      "submitting": "正在保存...",
+      "mismatch": "新密码与确认密码不一致。",
+      "tooShort": "密码至少需要 8 个字符。",
+      "failed": "修改密码失败，请重试。"
+    }
+  },
+  "status": {
+    "all": "全部",
+    "contract": {
+      "signed": "已签署",
+      "pending": "待处理",
+      "canceled": "已取消"
+    }
+  },
+  "documentType": {
+    "bl": "提单（B/L）",
+    "invoice": "发票",
+    "coo": "原产地证书（COO）",
+    "fumigation": "熏蒸证书",
+    "contract": "合同",
+    "other": "其他"
+  },
+  "role": {
+    "bos": "管理层",
+    "core": "办公室职员",
+    "ptg": "仓库人员（PTG）"
+  },
+  "cashType": {
+    "bank": "银行",
+    "kas_besar": "主现金",
+    "kas_kecil": "零用现金"
+  },
+  "table": {
+    "page": "第 {page} 页，共 {pages} 页"
+  },
+  "disclosure": {
+    "expand": "展开",
+    "collapse": "收起",
+    "reviewNeeded": "需要检查"
+  },
+  "term": {
+    "badge": "会计术语",
+    "example": "示例：",
+    "learnMore": "了解更多"
+  },
+  "confirm": {
+    "retypeLabel": "请重新输入以确认："
+  },
+  "errors": {
+    "generic": "出现错误，请重试。",
+    "network": "无法连接服务器，请检查网络连接。",
+    "unauthorized": "您没有访问此页面的权限。",
+    "notFound": "未找到数据。"
+  }
+}

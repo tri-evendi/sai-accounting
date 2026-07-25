@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { ROLES } from "@/lib/constants";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useT } from "@/lib/i18n/client";
 
 /**
  * Mode Akuntan toggle (issue #11) — the primary surface for the preference.
@@ -23,6 +24,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
  * and never what the posting engine writes.
  */
 export function AccountantModeToggle() {
+  const t = useT();
   const { data: session, update } = useSession();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -63,19 +65,15 @@ export function AccountantModeToggle() {
   }
 
   // Pesan konfirmasi bahasa sehari-hari, menjelaskan AKIBAT dari pilihan ini —
-  // jargon dijelaskan (jurnal, buku besar), bukan diasumsikan.
-  const dialogTitle = isOn ? "Matikan Mode Akuntan?" : "Nyalakan Mode Akuntan?";
+  // jargon dijelaskan (jurnal, buku besar), bukan diasumsikan. Teksnya hidup di
+  // kamus (`accountantMode.*`) supaya penjelasan panjang ini ikut berbahasa
+  // pengguna, bukan hanya tombolnya.
+  const dialogTitle = isOn
+    ? t("accountantMode.turnOffTitle")
+    : t("accountantMode.turnOnTitle");
   const dialogMessage = isOn
-    ? "Mode Akuntan sekarang ON. Mematikannya menyembunyikan menu akuntansi — " +
-      "Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — " +
-      "dan label debit/kredit di formulir, sehingga tampilan jadi bahasa sehari-hari " +
-      "saja (uang masuk/keluar). Ini hanya mengubah TAMPILAN Anda, bukan data, angka, " +
-      "atau hak akses. Bisa dinyalakan lagi kapan saja."
-    : "Mode Akuntan sekarang OFF. Menyalakannya menampilkan menu akuntansi — " +
-      "Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun — " +
-      "dan label debit/kredit di formulir. Cocok bila Anda paham pembukuan. Ini hanya " +
-      "mengubah TAMPILAN Anda, bukan data, angka, atau hak akses. Bisa dimatikan lagi " +
-      "kapan saja.";
+    ? t("accountantMode.turnOffMessage")
+    : t("accountantMode.turnOnMessage");
 
   return (
     <>
@@ -85,8 +83,10 @@ export function AccountantModeToggle() {
         disabled={saving}
         role="switch"
         aria-checked={isOn}
-        aria-label={`Mode Akuntan ${isOn ? "aktif" : "nonaktif"} — ketuk untuk mengganti`}
-        title="Ketuk untuk mengganti — akan muncul penjelasan sebelum diterapkan"
+        aria-label={t("accountantMode.toggleAria", {
+          state: isOn ? t("accountantMode.state.on") : t("accountantMode.state.off"),
+        })}
+        title={t("accountantMode.toggleTitle")}
         className={cn(
           "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60",
           isOn
@@ -99,14 +99,14 @@ export function AccountantModeToggle() {
         ) : (
           <Calculator className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="hidden sm:inline">Mode Akuntan</span>
+        <span className="hidden sm:inline">{t("accountantMode.label")}</span>
         <span
           className={cn(
             "rounded px-1.5 py-0.5 text-xs font-semibold",
             isOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}
         >
-          {isOn ? "ON" : "OFF"}
+          {isOn ? t("accountantMode.on") : t("accountantMode.off")}
         </span>
       </button>
 
@@ -117,8 +117,9 @@ export function AccountantModeToggle() {
         onOpenChange={setDialogOpen}
         title={dialogTitle}
         message={dialogMessage}
-        confirmLabel={isOn ? "Ya, matikan" : "Ya, nyalakan"}
-        cancelLabel="Batal"
+        confirmLabel={
+          isOn ? t("accountantMode.confirmTurnOff") : t("accountantMode.confirmTurnOn")
+        }
         confirmVariant="primary"
         onConfirm={applyToggle}
       />

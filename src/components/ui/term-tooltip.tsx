@@ -28,6 +28,7 @@
  */
 
 import Link from "next/link";
+import { useT } from "@/lib/i18n/client";
 import { useRef, useState } from "react";
 import { HelpCircle, ArrowRight } from "lucide-react";
 import {
@@ -52,6 +53,7 @@ interface TermTooltipProps {
 }
 
 export function TermTooltip({ term, children, className, hideGlossaryLink }: TermTooltipProps) {
+  const t = useT();
   const entry = getTerm(term);
   const [open, setOpen] = useState(false);
   /** true selama pembukaan terakhir dipicu hover — menentukan soal fokus. */
@@ -127,13 +129,13 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
           onMouseLeave={scheduleClose}
         >
           <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Istilah akuntansi
+            {t("term.badge")}
           </span>
           <span className="mt-0.5 block text-sm font-semibold text-foreground">{entry.term}</span>
           <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">{entry.definisi}</span>
           {entry.contoh && (
             <span className="mt-2 block rounded-md bg-muted p-2 text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">Contoh: </span>
+              <span className="font-medium text-foreground">{t("term.example")} </span>
               {entry.contoh}
             </span>
           )}
@@ -142,7 +144,7 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
               href={glossaryHref(entry.key)}
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              Pelajari selengkapnya
+              {t("term.learnMore")}
               <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
           )}

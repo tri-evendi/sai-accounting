@@ -25,7 +25,21 @@ export type Role = string;
  */
 export const ROLE_VALUES = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
 
-/** Label peran SISTEM (fallback tampilan). Peran kustom ambil label dari DB. */
+/** Peran SISTEM bawaan sebagai tipe union — dipakai peta label bertipe penuh. */
+export type SystemRole = (typeof ROLE_VALUES)[number];
+
+/**
+ * Label peran SISTEM (fallback tampilan). Peran kustom ambil label dari DB.
+ *
+ * Peta di berkas ini adalah label BAHASA INDONESIA — bahasa sumber aplikasi.
+ * Versi yang mengikuti pilihan bahasa pengguna ada di `src/lib/i18n/labels.ts`
+ * (`roleLabels`, `contractStatusLabels`, …) dan membaca teksnya dari kamus;
+ * `tests/i18n.test.ts` menjaga agar isi kamus `id` PERSIS sama dengan peta di
+ * sini, jadi keduanya tak bisa menyimpang diam-diam.
+ *
+ * Tetap `Record<string, string>` (bukan `Record<SystemRole, string>`): peran
+ * kini DATA, dan titik pakainya mencari label untuk peran kustom juga.
+ */
 export const ROLE_LABELS: Record<string, string> = {
   bos: "Pimpinan",
   core: "Staf Kantor",

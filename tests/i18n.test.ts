@@ -68,6 +68,7 @@ import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { WORKFLOWS } from "@/lib/workflows";
 import { PURCHASE_STEPS, SALES_STEPS } from "@/lib/wizard";
+import { TOURS } from "@/lib/tours";
 import id from "@/lib/i18n/dictionaries/id.json";
 import en from "@/lib/i18n/dictionaries/en.json";
 import zh from "@/lib/i18n/dictionaries/zh.json";
@@ -326,6 +327,16 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
       for (const step of steps) {
         expect(translate(id, step.titleKey), step.id).toBe(step.title);
         expect(translate(id, step.descriptionKey), step.id).toBe(step.description);
+      }
+    }
+  });
+
+  it("judul & isi tur panduan sama persis dengan nilai kamus `id`", () => {
+    for (const tour of TOURS) {
+      expect(translate(id, tour.titleKey), tour.id).toBe(tour.title);
+      for (const step of tour.steps) {
+        expect(translate(id, step.titleKey), `${tour.id} / ${step.title}`).toBe(step.title);
+        expect(translate(id, step.bodyKey), `${tour.id} / ${step.title}`).toBe(step.body);
       }
     }
   });

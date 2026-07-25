@@ -267,7 +267,7 @@ export function GuidedTour() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-medium text-primary">
             <Compass className="h-4 w-4" aria-hidden="true" />
-            {tour.title}
+            {t(tour.titleKey)}
           </div>
           <button
             type="button"
@@ -280,9 +280,9 @@ export function GuidedTour() {
         </div>
 
         <h2 id="tour-step-title" className="mt-2 text-base font-semibold text-foreground">
-          {step.title}
+          {t(step.titleKey)}
         </h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-xs tabular-nums text-muted-foreground">

@@ -2660,5 +2660,83 @@
     "downloaded": "The Excel file has been downloaded",
     "failed": "The Excel file could not be created",
     "download": "Download Excel"
+  },
+  "tours": {
+    "beranda": {
+      "title": "Getting to know the Home page",
+      "s1": {
+        "title": "Welcome",
+        "body": "This short tour shows three things: how to record everyday work, how to read the summary figures, and where to look up what a term means. You can skip it at any time and replay it from the Help menu."
+      },
+      "s2": {
+        "title": "Quick Actions",
+        "body": "The six most frequent jobs live here — record a sale, record a purchase, receive money, pay, add stock, create a contract. One click straight to the form."
+      },
+      "s3": {
+        "title": "Plain-language summary",
+        "body": "This month's key figures without accounting jargon. Every card links to its source report, so each number can always be checked."
+      },
+      "s4": {
+        "title": "A menu per kind of work",
+        "body": "The left-hand menu is grouped by job: Sales, Purchasing, Cash & Bank, Stock & Assets, Reports, Help & Settings."
+      },
+      "s5": {
+        "title": "Help & Glossary",
+        "body": "Not sure what a term means? Open the Help menu for the Glossary, or replay this page's tour at any time."
+      }
+    },
+    "persetujuan": {
+      "title": "How approvals work",
+      "s1": {
+        "title": "Why this page exists",
+        "body": "A large-value transaction does not go straight into the books — it waits for a decision here first. The document itself is safely saved; only its journal entry is held back."
+      },
+      "s2": {
+        "title": "Waiting for Your Decision",
+        "body": "The queue you have to decide on. Open the document through the link, then Approve (its journal is issued immediately) or Reject with a reason so the requester knows what to fix."
+      },
+      "s3": {
+        "title": "My Submissions",
+        "body": "News about the documents you submitted: still waiting, approved, or rejected with the reason. A rejected document can be corrected and resubmitted from here."
+      },
+      "s4": {
+        "title": "Decision History",
+        "body": "Every decision your role has ever made is recorded here — and it can be sorted, so questions like “the largest decision this month” are easy to answer."
+      }
+    },
+    "buat_penjualan": {
+      "title": "How to create an invoice",
+      "s1": {
+        "title": "Creating an invoice",
+        "body": "This page creates a sales invoice for a customer. Fill in the invoice's identity, then its list of goods. If you would rather be guided step by step, use “Record a Sale” in the Sales menu."
+      },
+      "s2": {
+        "title": "Invoice identity",
+        "body": "The invoice number, date, payment deadline, customer, and currency. For a foreign currency the rate is required, so the value is recorded in rupiah."
+      },
+      "s3": {
+        "title": "The goods being sold",
+        "body": "Add the item, the quantity, and the unit price. The total is computed automatically, including sales tax where it applies."
+      },
+      "s4": {
+        "title": "Save",
+        "body": "Once saved, the invoice appears in the list straight away and its outstanding balance moves into \"Unpaid by Customers\" until it is settled."
+      }
+    },
+    "laporan": {
+      "title": "How to read the reports",
+      "s1": {
+        "title": "Report Centre",
+        "body": "Every report lives on this one page, grouped by category. Pick a report, set its period, then export it to PDF or Excel."
+      },
+      "s2": {
+        "title": "Start with the ones used most",
+        "body": "\"Profit or Loss\" answers whether the month was profitable; \"Wealth & Debt Position\" shows the situation on one date; \"Money In & Out\" traces the cash that actually moved."
+      },
+      "s3": {
+        "title": "What each term means",
+        "body": "Report names use everyday language; the formal term can be opened through the \"?\" icon or in the Glossary from the Help menu."
+      }
+    }
   }
 }

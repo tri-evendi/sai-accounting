@@ -224,7 +224,7 @@ export function PurchaseWizard({
       {/* ── 1. Pemasok ────────────────────────────────────────────────── */}
       {stepId === "pemasok" && (
         <WizardPartnerStep
-          noun="pemasok"
+          kind="supplier"
           options={supplierOptions}
           value={draft.supplier}
           manageHref="/suppliers"

@@ -2433,5 +2433,96 @@
     "delivery": "Surat Jalan",
     "invoice": "Faktur",
     "payment": "Pembayaran"
+  },
+  "wizard": {
+    "stepsAria": "Langkah pengisian",
+    "stepOf": "Langkah {step} dari {total}",
+    "stateDone": "Selesai",
+    "stateCurrent": "Sedang diisi",
+    "stateTodo": "Belum",
+    "optionalSuffix": "(opsional)",
+    "blockersTitle": "Masih ada yang perlu dilengkapi sebelum lanjut:",
+    "next": "Lanjut",
+    "nothingSavedBefore": "Belum ada apa pun yang tersimpan. Semua isian baru dicatat setelah tombol",
+    "nothingSavedAfter": "di langkah terakhir ditekan.",
+    "cancelTitle": "Batalkan pengisian?",
+    "cancelMessage": "Draf yang sedang diisi akan dihapus dari peramban. Tidak ada data yang tersimpan di sistem — tidak ada pelanggan, surat jalan, maupun tagihan yang tertinggal setengah jadi.",
+    "cancelConfirm": "Ya, batalkan",
+    "cancelKeep": "Lanjutkan mengisi",
+    "sales": {
+      "pelanggan": {
+        "title": "Pelanggan",
+        "description": "Pilih pelanggan yang sudah ada, atau isi datanya bila pembeli baru."
+      },
+      "barang": {
+        "title": "Barang & Harga",
+        "description": "Barang apa yang dijual, berapa banyak, dan berapa harganya per kg."
+      },
+      "pengiriman": {
+        "title": "Surat Jalan",
+        "description": "Bila barangnya sudah dikirim, catat pengirimannya. Boleh dilewati."
+      },
+      "faktur": {
+        "title": "Tagihan",
+        "description": "Nomor dan tanggal tagihan, lalu berapa banyak yang ditagihkan."
+      },
+      "ringkasan": {
+        "title": "Ringkasan",
+        "description": "Periksa sekali lagi. Data baru tersimpan setelah menekan Selesai."
+      }
+    },
+    "purchase": {
+      "pemasok": {
+        "title": "Pemasok",
+        "description": "Pilih pemasok yang sudah ada, atau isi datanya bila pemasok baru."
+      },
+      "barang": {
+        "title": "Barang & Harga",
+        "description": "Barang apa yang dibeli, berapa banyak, dan berapa harga belinya."
+      },
+      "penerimaan": {
+        "title": "Barang Masuk",
+        "description": "Bila barangnya sudah sampai gudang, catat penerimaannya. Boleh dilewati."
+      },
+      "pembelian": {
+        "title": "Catat Pembelian",
+        "description": "Tanggal, jatuh tempo, dan PPN Masukan atas pembelian ini."
+      },
+      "ringkasan": {
+        "title": "Ringkasan",
+        "description": "Periksa sekali lagi. Data baru tersimpan setelah menekan Selesai."
+      }
+    },
+    "partner": {
+      "nounCustomer": "pelanggan",
+      "nounSupplier": "pemasok",
+      "modeExisting": "Sudah terdaftar",
+      "modeNew": "Baru — isi datanya",
+      "emptyTitle": "Belum ada {noun} terdaftar",
+      "emptyDescription": "Pilih \"Baru — isi datanya\" di atas untuk mencatat {noun} pertama Anda sekalian dalam alur ini.",
+      "manageAction": "Kelola {noun}",
+      "pickLabel": "Pilih {noun}",
+      "pickPlaceholder": "Pilih {noun}…",
+      "searchPlaceholder": "Cari nama {noun}…",
+      "emptyText": "Tidak ada {noun} cocok",
+      "phoneField": "Telepon (opsional)",
+      "notSavedStrong": "belum",
+      "notSavedAfter": "tersimpan. Datanya ikut tercatat sekali saja bersama seluruh isian wizard, di langkah terakhir.",
+      "disclosureCustomer": "Alamat, email, NPWP, dan status PPN — boleh diisi belakangan lewat menu {noun}.",
+      "disclosureSupplier": "Alamat, email — boleh diisi belakangan lewat menu {noun}.",
+      "summaryNoAddress": "tanpa alamat",
+      "summaryNoEmail": "tanpa email",
+      "emailField": "Email",
+      "picField": "Narahubung (PIC)",
+      "npwpField": "NPWP pembeli",
+      "taxExemptLabel": "Bebas PPN",
+      "taxExemptHint": "Centang untuk pembeli ekspor atau non-PKP; tagihannya otomatis tidak dikenai PPN.",
+      "thisCustomer": "Pelanggan ini",
+      "thisSupplier": "Pemasok ini",
+      "nameCustomer": "Nama pelanggan",
+      "nameSupplier": "Nama pemasok",
+      "notSavedCustomer": "Pelanggan baru ini",
+      "notSavedSupplier": "Pemasok baru ini"
+    }
   }
 }

@@ -67,6 +67,7 @@ import { PERMISSION_LABELS, RESOURCE_LABELS } from "@/lib/authz-labels";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { WORKFLOWS } from "@/lib/workflows";
+import { PURCHASE_STEPS, SALES_STEPS } from "@/lib/wizard";
 import id from "@/lib/i18n/dictionaries/id.json";
 import en from "@/lib/i18n/dictionaries/en.json";
 import zh from "@/lib/i18n/dictionaries/zh.json";
@@ -165,6 +166,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Persetujuan. "rupiah" ditulis sama dalam bahasa Indonesia maupun Inggris;
     // bahasa Mandarin memakai 印尼盾.
     "approvals.rulesDescStrong1",
+    // Isian Email pada langkah mitra wizard: kata yang sama dalam bahasa
+    // Indonesia maupun Inggris (bahasa Mandarin memakai 电子邮箱).
+    "wizard.partner.emailField",
     // Judul kartu total di ringkasan umur piutang/utang. Frasa Inggris
     // "Total Outstanding" memang dipakai apa adanya pada layar berbahasa
     // Indonesia (bahasa Mandarin memakai 未结清合计).
@@ -307,6 +311,15 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
         expect(translate(id, step.descriptionKey), `${workflow.id} / ${step.href}`).toBe(
           step.description
         );
+      }
+    }
+  });
+
+  it("judul & penjelasan langkah wizard sama persis dengan nilai kamus `id`", () => {
+    for (const steps of [SALES_STEPS, PURCHASE_STEPS]) {
+      for (const step of steps) {
+        expect(translate(id, step.titleKey), step.id).toBe(step.title);
+        expect(translate(id, step.descriptionKey), step.id).toBe(step.description);
       }
     }
   });

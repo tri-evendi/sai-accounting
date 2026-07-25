@@ -54,16 +54,25 @@ import {
 import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 import type { TermKey } from "@/lib/labels";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 // ══════════════════════════════ Langkah ══════════════════════════════
 
 /** Satu langkah wizard, dalam bahasa tugas (bukan istilah akuntansi). */
 export interface WizardStepMeta {
   id: string;
-  /** Judul pendek yang muncul di penanda langkah. */
+  /**
+   * Judul pendek yang muncul di penanda langkah, dalam bahasa SUMBER. Wizard
+   * menggambar `titleKey`; teks ini tetap ada karena modul ini murni & teruji —
+   * pola yang sama dengan `QUICK_ACTIONS` dan `WORKFLOWS`.
+   */
   title: string;
-  /** Satu kalimat: apa yang dikerjakan di sini. */
+  /** Satu kalimat: apa yang dikerjakan di sini (bahasa sumber). */
   description: string;
+  /** Kunci kamus untuk `title`. */
+  titleKey: DictionaryKey;
+  /** Kunci kamus untuk `description`. */
+  descriptionKey: DictionaryKey;
   /** Boleh dilewati tanpa mengisi apa pun. */
   optional?: boolean;
   /** Entri kamus istilah (#1/#21) — tidak ada definisi kedua ditulis di sini. */
@@ -76,17 +85,23 @@ export const SALES_STEPS = [
     id: "pelanggan",
     title: "Pelanggan",
     description: "Pilih pelanggan yang sudah ada, atau isi datanya bila pembeli baru.",
+    titleKey: "wizard.sales.pelanggan.title",
+    descriptionKey: "wizard.sales.pelanggan.description",
     termKey: "pelanggan",
   },
   {
     id: "barang",
     title: "Barang & Harga",
     description: "Barang apa yang dijual, berapa banyak, dan berapa harganya per kg.",
+    titleKey: "wizard.sales.barang.title",
+    descriptionKey: "wizard.sales.barang.description",
   },
   {
     id: "pengiriman",
     title: "Surat Jalan",
     description: "Bila barangnya sudah dikirim, catat pengirimannya. Boleh dilewati.",
+    titleKey: "wizard.sales.pengiriman.title",
+    descriptionKey: "wizard.sales.pengiriman.description",
     optional: true,
     termKey: "surat_jalan",
   },
@@ -94,12 +109,16 @@ export const SALES_STEPS = [
     id: "faktur",
     title: "Tagihan",
     description: "Nomor dan tanggal tagihan, lalu berapa banyak yang ditagihkan.",
+    titleKey: "wizard.sales.faktur.title",
+    descriptionKey: "wizard.sales.faktur.description",
     termKey: "faktur",
   },
   {
     id: "ringkasan",
     title: "Ringkasan",
     description: "Periksa sekali lagi. Data baru tersimpan setelah menekan Selesai.",
+    titleKey: "wizard.sales.ringkasan.title",
+    descriptionKey: "wizard.sales.ringkasan.description",
   },
 ] as const satisfies readonly WizardStepMeta[];
 
@@ -109,17 +128,23 @@ export const PURCHASE_STEPS = [
     id: "pemasok",
     title: "Pemasok",
     description: "Pilih pemasok yang sudah ada, atau isi datanya bila pemasok baru.",
+    titleKey: "wizard.purchase.pemasok.title",
+    descriptionKey: "wizard.purchase.pemasok.description",
     termKey: "pemasok",
   },
   {
     id: "barang",
     title: "Barang & Harga",
     description: "Barang apa yang dibeli, berapa banyak, dan berapa harga belinya.",
+    titleKey: "wizard.purchase.barang.title",
+    descriptionKey: "wizard.purchase.barang.description",
   },
   {
     id: "penerimaan",
     title: "Barang Masuk",
     description: "Bila barangnya sudah sampai gudang, catat penerimaannya. Boleh dilewati.",
+    titleKey: "wizard.purchase.penerimaan.title",
+    descriptionKey: "wizard.purchase.penerimaan.description",
     optional: true,
     termKey: "persediaan",
   },
@@ -127,12 +152,16 @@ export const PURCHASE_STEPS = [
     id: "pembelian",
     title: "Catat Pembelian",
     description: "Tanggal, jatuh tempo, dan PPN Masukan atas pembelian ini.",
+    titleKey: "wizard.purchase.pembelian.title",
+    descriptionKey: "wizard.purchase.pembelian.description",
     termKey: "pembelian",
   },
   {
     id: "ringkasan",
     title: "Ringkasan",
     description: "Periksa sekali lagi. Data baru tersimpan setelah menekan Selesai.",
+    titleKey: "wizard.purchase.ringkasan.title",
+    descriptionKey: "wizard.purchase.ringkasan.description",
   },
 ] as const satisfies readonly WizardStepMeta[];
 

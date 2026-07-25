@@ -377,7 +377,7 @@ export function SalesWizard({
       {/* ── 1. Pelanggan ──────────────────────────────────────────────── */}
       {stepId === "pelanggan" && (
         <WizardPartnerStep
-          noun="pelanggan"
+          kind="customer"
           options={customerOptions}
           value={draft.customer}
           withCustomerFields

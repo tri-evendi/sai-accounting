@@ -2433,5 +2433,96 @@
     "delivery": "送货单",
     "invoice": "发票",
     "payment": "付款"
+  },
+  "wizard": {
+    "stepsAria": "填写步骤",
+    "stepOf": "第 {step} 步，共 {total} 步",
+    "stateDone": "已完成",
+    "stateCurrent": "填写中",
+    "stateTodo": "未开始",
+    "optionalSuffix": "（可选）",
+    "blockersTitle": "继续之前仍有内容需要补齐：",
+    "next": "下一步",
+    "nothingSavedBefore": "目前尚未保存任何内容。所有填写的内容只有在最后一步点击",
+    "nothingSavedAfter": "按钮之后才会记录。",
+    "cancelTitle": "取消填写？",
+    "cancelMessage": "正在填写的草稿将从浏览器中删除。系统中没有保存任何数据——不会留下未完成的客户、送货单或发票。",
+    "cancelConfirm": "是，取消",
+    "cancelKeep": "继续填写",
+    "sales": {
+      "pelanggan": {
+        "title": "客户",
+        "description": "选择已有客户，或在买方为新客户时填写其资料。"
+      },
+      "barang": {
+        "title": "货物与价格",
+        "description": "销售什么货物、数量多少、每公斤单价多少。"
+      },
+      "pengiriman": {
+        "title": "送货单",
+        "description": "如货物已发出，请记录发货情况。可跳过。"
+      },
+      "faktur": {
+        "title": "发票",
+        "description": "发票号码与日期，以及开票金额。"
+      },
+      "ringkasan": {
+        "title": "摘要",
+        "description": "请再核对一次。点击“完成”后数据才会保存。"
+      }
+    },
+    "purchase": {
+      "pemasok": {
+        "title": "供应商",
+        "description": "选择已有供应商，或在供应商为新增时填写其资料。"
+      },
+      "barang": {
+        "title": "货物与价格",
+        "description": "采购什么货物、数量多少、采购价多少。"
+      },
+      "penerimaan": {
+        "title": "货物入库",
+        "description": "如货物已到仓库，请记录收货情况。可跳过。"
+      },
+      "pembelian": {
+        "title": "录入采购",
+        "description": "本次采购的日期、到期日与进项税。"
+      },
+      "ringkasan": {
+        "title": "摘要",
+        "description": "请再核对一次。点击“完成”后数据才会保存。"
+      }
+    },
+    "partner": {
+      "nounCustomer": "客户",
+      "nounSupplier": "供应商",
+      "modeExisting": "已登记",
+      "modeNew": "新增——填写资料",
+      "emptyTitle": "尚未登记任何{noun}",
+      "emptyDescription": "请在上方选择“新增——填写资料”，在本流程中一并登记您的第一个{noun}。",
+      "manageAction": "管理{noun}",
+      "pickLabel": "选择{noun}",
+      "pickPlaceholder": "选择{noun}…",
+      "searchPlaceholder": "搜索{noun}名称…",
+      "emptyText": "没有匹配的{noun}",
+      "phoneField": "电话（选填）",
+      "notSavedStrong": "尚未",
+      "notSavedAfter": "保存。其资料将在最后一步与向导中的其他内容一并一次性记录。",
+      "disclosureCustomer": "地址、电子邮箱、税号与增值税状态——可稍后在{noun}菜单中补充。",
+      "disclosureSupplier": "地址与电子邮箱——可稍后在{noun}菜单中补充。",
+      "summaryNoAddress": "无地址",
+      "summaryNoEmail": "无电子邮箱",
+      "emailField": "电子邮箱",
+      "picField": "联系人（PIC）",
+      "npwpField": "买方税号（NPWP）",
+      "taxExemptLabel": "免征增值税",
+      "taxExemptHint": "出口买方或非增值税登记买方请勾选；其发票将自动不计增值税。",
+      "thisCustomer": "该客户",
+      "thisSupplier": "该供应商",
+      "nameCustomer": "客户名称",
+      "nameSupplier": "供应商名称",
+      "notSavedCustomer": "这个新客户",
+      "notSavedSupplier": "这个新供应商"
+    }
   }
 }

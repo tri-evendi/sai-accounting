@@ -2433,5 +2433,96 @@
     "delivery": "Delivery Order",
     "invoice": "Invoice",
     "payment": "Payment"
+  },
+  "wizard": {
+    "stepsAria": "Form steps",
+    "stepOf": "Step {step} of {total}",
+    "stateDone": "Done",
+    "stateCurrent": "In progress",
+    "stateTodo": "Not started",
+    "optionalSuffix": "(optional)",
+    "blockersTitle": "A few things still need completing before you can continue:",
+    "next": "Next",
+    "nothingSavedBefore": "Nothing has been saved yet. Everything is recorded only once the",
+    "nothingSavedAfter": "button on the last step is pressed.",
+    "cancelTitle": "Cancel this form?",
+    "cancelMessage": "The draft you are filling in will be removed from the browser. Nothing is saved in the system — no customer, delivery order, or invoice is left half-finished.",
+    "cancelConfirm": "Yes, cancel",
+    "cancelKeep": "Keep filling it in",
+    "sales": {
+      "pelanggan": {
+        "title": "Customer",
+        "description": "Pick an existing customer, or fill in the details if the buyer is new."
+      },
+      "barang": {
+        "title": "Goods & Price",
+        "description": "What is being sold, how much of it, and the price per kg."
+      },
+      "pengiriman": {
+        "title": "Delivery Order",
+        "description": "If the goods have shipped, record the delivery. May be skipped."
+      },
+      "faktur": {
+        "title": "Invoice",
+        "description": "The invoice number and date, then how much is being billed."
+      },
+      "ringkasan": {
+        "title": "Summary",
+        "description": "Check it once more. Nothing is saved until you press Finish."
+      }
+    },
+    "purchase": {
+      "pemasok": {
+        "title": "Supplier",
+        "description": "Pick an existing supplier, or fill in the details if the supplier is new."
+      },
+      "barang": {
+        "title": "Goods & Price",
+        "description": "What is being bought, how much of it, and the purchase price."
+      },
+      "penerimaan": {
+        "title": "Goods Received",
+        "description": "If the goods have reached the warehouse, record the receipt. May be skipped."
+      },
+      "pembelian": {
+        "title": "Record the Purchase",
+        "description": "The date, due date, and input VAT on this purchase."
+      },
+      "ringkasan": {
+        "title": "Summary",
+        "description": "Check it once more. Nothing is saved until you press Finish."
+      }
+    },
+    "partner": {
+      "nounCustomer": "customer",
+      "nounSupplier": "supplier",
+      "modeExisting": "Already registered",
+      "modeNew": "New — enter the details",
+      "emptyTitle": "No {noun} registered yet",
+      "emptyDescription": "Choose \"New — enter the details\" above to record your first {noun} as part of this flow.",
+      "manageAction": "Manage {noun}",
+      "pickLabel": "Choose {noun}",
+      "pickPlaceholder": "Choose {noun}…",
+      "searchPlaceholder": "Search {noun} name…",
+      "emptyText": "No matching {noun}",
+      "phoneField": "Phone (optional)",
+      "notSavedStrong": "not",
+      "notSavedAfter": "saved yet. Its details are recorded once, together with everything else in the wizard, at the last step.",
+      "disclosureCustomer": "Address, email, tax number, and VAT status — these can be filled in later from the {noun} menu.",
+      "disclosureSupplier": "Address and email — these can be filled in later from the {noun} menu.",
+      "summaryNoAddress": "no address",
+      "summaryNoEmail": "no email",
+      "emailField": "Email",
+      "picField": "Contact person (PIC)",
+      "npwpField": "Buyer's tax number (NPWP)",
+      "taxExemptLabel": "VAT exempt",
+      "taxExemptHint": "Tick this for export buyers or non-VAT-registered buyers; their invoices carry no VAT automatically.",
+      "thisCustomer": "This customer",
+      "thisSupplier": "This supplier",
+      "nameCustomer": "Customer name",
+      "nameSupplier": "Supplier name",
+      "notSavedCustomer": "This new customer is",
+      "notSavedSupplier": "This new supplier is"
+    }
   }
 }

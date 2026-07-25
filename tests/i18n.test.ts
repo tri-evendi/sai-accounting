@@ -94,6 +94,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "deliveryOrders.colTotalKg",
     "returns.colTotalIdr",
     "journal.colTotalIdr",
+    // "Total Debit" — dua kata serapan berurutan; pasangannya "Total Kredit"/
+    // "Total Credit" memang berbeda.
+    "periods.totalDebit",
     // "Debit (IDR)" — kata serapan + kode mata uang; hanya bahasa Mandarin yang
     // berbeda (借方（IDR）).
     "journal.colDebitIdr",

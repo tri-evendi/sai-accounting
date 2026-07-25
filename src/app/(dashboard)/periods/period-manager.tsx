@@ -26,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
 
 interface PeriodRow {
   year: number;
@@ -40,29 +41,36 @@ interface PeriodRow {
 /** Icon + wording per check outcome — never colour on its own (MASTER.md §2). */
 const CHECK_STYLES: Record<
   PeriodCheck["status"],
-  { icon: typeof CheckCircle2; tone: string; label: string }
+  { icon: typeof CheckCircle2; tone: string; labelKey: "checkOk" | "checkWarning" | "checkBlocker" }
 > = {
-  ok: { icon: CheckCircle2, tone: "text-success", label: "Aman" },
-  warning: { icon: AlertTriangle, tone: "text-warning", label: "Perlu dicek" },
-  blocker: { icon: XCircle, tone: "text-destructive", label: "Harus diperbaiki" },
+  ok: { icon: CheckCircle2, tone: "text-success", labelKey: "checkOk" },
+  warning: { icon: AlertTriangle, tone: "text-warning", labelKey: "checkWarning" },
+  blocker: { icon: XCircle, tone: "text-destructive", labelKey: "checkBlocker" },
 };
 
-function StatusBadge({ status }: { status: string }) {
+const CHECK_LABEL_KEYS = {
+  checkOk: "periods.checkOk",
+  checkWarning: "periods.checkWarning",
+  checkBlocker: "periods.checkBlocker",
+} as const;
+
+function StatusBadge({ status, t }: { status: string; t: TranslateFn }) {
   return status === "closed" ? (
     <Badge variant="danger">
       <Lock className="mr-1 h-3 w-3" aria-hidden="true" />
-      Terkunci
+      {t("periods.statusClosed")}
     </Badge>
   ) : (
     <Badge variant="success">
       <LockOpen className="mr-1 h-3 w-3" aria-hidden="true" />
-      Terbuka
+      {t("periods.statusOpen")}
     </Badge>
   );
 }
 
 export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
   const router = useRouter();
+  const t = useT();
 
   const [selected, setSelected] = useState<{ year: number; month: number } | null>(
     periods[0] ? { year: periods[0].year, month: periods[0].month } : null
@@ -81,18 +89,18 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       const res = await fetch(`/api/periods/summary?year=${year}&month=${month}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || "Gagal memuat ringkasan periode");
+        setError(data.error || t("periods.summaryLoadFailed"));
         setSummary(null);
         return;
       }
       setSummary(await res.json());
     } catch {
-      setError("Gagal memuat ringkasan periode");
+      setError(t("periods.summaryLoadFailed"));
       setSummary(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (selected) loadSummary(selected.year, selected.month);
@@ -127,14 +135,14 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
     submit(
       "/api/periods",
       { year: summary!.year, month: summary!.month, note: note || null },
-      "Gagal menutup periode"
+      t("periods.closeFailed")
     );
 
   const onReopen = () =>
     submit(
       "/api/periods/reopen",
       { year: summary!.year, month: summary!.month, reason },
-      "Gagal membuka kembali periode"
+      t("periods.reopenFailed")
     );
 
   return (
@@ -142,14 +150,14 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       {/* ── Period list ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Periode</CardTitle>
+          <CardTitle>{t("periods.listTitle")}</CardTitle>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Periode</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ditutup</TableHead>
+              <TableHead>{t("periods.colPeriod")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead>{t("periods.colClosed")}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -166,7 +174,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                   >
                     <TableCell className="font-medium text-foreground">{p.label}</TableCell>
                     <TableCell>
-                      <StatusBadge status={p.status} />
+                      <StatusBadge status={p.status} t={t} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {p.closedAt ? (
@@ -174,7 +182,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                           {formatDate(p.closedAt)}
                           {p.closedByName && (
                             <span className="block text-xs text-muted-foreground">
-                              oleh {p.closedByName}
+                              {t("periods.closedBy", { name: p.closedByName })}
                             </span>
                           )}
                         </span>
@@ -189,7 +197,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         onClick={() => setSelected({ year: p.year, month: p.month })}
                         className="cursor-pointer"
                       >
-                        Tinjau
+                        {t("periods.review")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -198,7 +206,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
             ) : (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  Belum ada transaksi apa pun, jadi belum ada periode untuk ditutup.
+                  {t("periods.emptyList")}
                 </TableCell>
               </TableRow>
             )}
@@ -210,7 +218,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <CardTitle>
-            {summary ? `Ringkasan ${summary.label}` : "Ringkasan Periode"}
+            {summary ? t("periods.summaryOf", { label: summary.label }) : t("periods.summaryTitle")}
           </CardTitle>
           {selected && (
             <Button
@@ -219,7 +227,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
               size="icon"
               onClick={() => loadSummary(selected.year, selected.month)}
               className="text-muted-foreground hover:text-foreground"
-              aria-label="Muat ulang ringkasan"
+              aria-label={t("periods.reloadSummary")}
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
             </Button>
@@ -239,7 +247,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
 
           {!loading && !summary && !error && (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              Pilih sebuah periode di sebelah kiri untuk meninjaunya.
+              {t("periods.pickPeriod")}
             </p>
           )}
 
@@ -247,19 +255,19 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
             <>
               <div className="mb-5 grid grid-cols-3 gap-4 border-b border-border pb-5">
                 <div>
-                  <p className="text-xs text-muted-foreground">Jumlah Jurnal</p>
+                  <p className="text-xs text-muted-foreground">{t("periods.journalCount")}</p>
                   <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {summary.journalCount}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total Debit</p>
+                  <p className="text-xs text-muted-foreground">{t("periods.totalDebit")}</p>
                   <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                     {formatCurrency(summary.totalDebit, "IDR")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total Kredit</p>
+                  <p className="text-xs text-muted-foreground">{t("periods.totalCredit")}</p>
                   <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                     {formatCurrency(summary.totalCredit, "IDR")}
                   </p>
@@ -280,7 +288,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         <p className="text-sm font-medium text-foreground">
                           {c.label}{" "}
                           <span className={`text-xs font-normal ${style.tone}`}>
-                            · {style.label}
+                            · {t(CHECK_LABEL_KEYS[style.labelKey])}
                           </span>
                         </p>
                         <p className="text-sm text-muted-foreground">{c.detail}</p>
@@ -294,12 +302,19 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                 {summary.status === "closed" ? (
                   <>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Periode ini terkunci
-                      {summary.closedAt ? ` sejak ${formatDate(summary.closedAt)}` : ""}
-                      {summary.closedByName ? ` oleh ${summary.closedByName}` : ""}.
+                      {summary.closedAt && summary.closedByName
+                        ? t("periods.lockedSinceBy", {
+                            date: formatDate(summary.closedAt),
+                            name: summary.closedByName,
+                          })
+                        : summary.closedAt
+                          ? t("periods.lockedSince", { date: formatDate(summary.closedAt) })
+                          : summary.closedByName
+                            ? t("periods.lockedBy", { name: summary.closedByName })
+                            : t("periods.lockedPlain")}
                       {summary.note && (
                         <span className="mt-1 block text-muted-foreground">
-                          Catatan: {summary.note}
+                          {t("periods.noteLine", { note: summary.note })}
                         </span>
                       )}
                     </p>
@@ -307,26 +322,23 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                       htmlFor="reopen-reason"
                       className="mb-1 block text-sm font-medium text-foreground"
                     >
-                      Alasan buka kembali
+                      {t("periods.reopenReasonLabel")}
                     </label>
                     <Textarea
                       id="reopen-reason"
                       rows={2}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="Contoh: koreksi faktur SI.2026.03.00007 yang salah nominal"
+                      placeholder={t("periods.reopenReasonPlaceholder")}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Wajib diisi (minimal 5 karakter) dan dicatat di log audit.
+                      {t("periods.reopenReasonHint")}
                     </p>
                     <div className="mt-3">
                       <ConfirmDialog
-                        title={`Buka Kembali ${summary.label}`}
-                        message={
-                          `Membuka kembali ${summary.label} membuat transaksi di bulan itu bisa diubah lagi, ` +
-                          `sehingga laporan yang sudah terbit bisa ikut berubah. Tindakan ini dicatat di log audit. Lanjutkan?`
-                        }
-                        confirmLabel="Buka Kembali"
+                        title={t("periods.reopenTitle", { label: summary.label })}
+                        message={t("periods.reopenMessage", { label: summary.label })}
+                        confirmLabel={t("periods.reopenConfirm")}
                         confirmVariant="danger"
                         onConfirm={onReopen}
                         trigger={
@@ -337,7 +349,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                             className="cursor-pointer"
                           >
                             <LockOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                            Buka Kembali Periode
+                            {t("periods.reopenButton")}
                           </Button>
                         }
                       />
@@ -349,33 +361,28 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                       htmlFor="close-note"
                       className="mb-1 block text-sm font-medium text-foreground"
                     >
-                      Catatan penutupan (opsional)
+                      {t("periods.closeNoteLabel")}
                     </label>
                     <Textarea
                       id="close-note"
                       rows={2}
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
-                      placeholder="Contoh: sudah dicocokkan dengan rekening koran"
+                      placeholder={t("periods.closeNotePlaceholder")}
                     />
 
                     {summary.blockerCount > 0 && (
                       <p className="mt-3 flex items-start gap-2 text-sm text-destructive-strong">
                         <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                        Perbaiki {summary.blockerCount} masalah di atas dulu — periode belum
-                        bisa ditutup.
+                        {t("periods.blockerWarning", { count: summary.blockerCount })}
                       </p>
                     )}
 
                     <div className="mt-3">
                       <ConfirmDialog
-                        title={`Tutup ${summary.label}`}
-                        message={
-                          `Setelah ditutup, transaksi bertanggal di ${summary.label} tidak bisa dibuat, ` +
-                          `diubah, atau dihapus — termasuk lewat faktur, kontrak, pembayaran, dan kas. ` +
-                          `Periode masih bisa dibuka kembali oleh Manager bila perlu. Tutup sekarang?`
-                        }
-                        confirmLabel="Tutup Periode"
+                        title={t("periods.closeTitle", { label: summary.label })}
+                        message={t("periods.closeMessage", { label: summary.label })}
+                        confirmLabel={t("periods.closeAction")}
                         confirmVariant="primary"
                         onConfirm={onClose}
                         trigger={
@@ -385,7 +392,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                             className="cursor-pointer"
                           >
                             <Lock className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                            Tutup Periode
+                            {t("periods.closeAction")}
                           </Button>
                         }
                       />

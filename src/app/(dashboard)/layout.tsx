@@ -34,8 +34,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setSidebarOpen(true)}
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto">
+          {/* Batas lebar konten: di layar biasa (≤ ~1900px) praktis penuh, dan
+              hanya menahan peregangan berlebihan di monitor ultra-lebar
+              (2000px+) agar teks/field tak melar terlalu lebar — konten tetap
+              berpusat, bukan menumpuk di kiri. */}
+          <div className="mx-auto w-full max-w-[1600px] p-4 lg:p-6">
+            {children}
+          </div>
         </main>
       </div>
       {/* issue #21 — tur panduan: jalan sekali pada kunjungan pertama halaman

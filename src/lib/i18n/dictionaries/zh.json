@@ -2227,5 +2227,33 @@
     "contractField": "关联合同（选填）",
     "contractPlaceholder": "-- 不关联合同 --",
     "uploading": "上传中…"
+  },
+  "termCategory": {
+    "penjualan": "销售",
+    "pembelian": "采购",
+    "kas": "现金与银行",
+    "stok": "库存与资产",
+    "laporan": "报表与记账",
+    "pajak": "税务",
+    "umum": "通用"
+  },
+  "settings": {
+    "profileTitle": "个人资料",
+    "changePassword": "修改密码",
+    "helpDescription": "看不懂某个会计术语？打开术语表——每一条都用日常用语解释，并附有示例。",
+    "openGlossary": "打开术语表",
+    "aboutTitle": "关于本应用",
+    "aboutTagline": "记账、合同与库存管理系统"
+  },
+  "glossary": {
+    "descriptionBefore": "本应用使用的 {count} 个会计术语，均以日常用语解释并附示例。同样的术语也会以",
+    "descriptionAfter": "图标出现在其他页面的标签旁边。",
+    "searchLabel": "搜索术语",
+    "searchPlaceholder": "例如：应收账款、发票、折旧",
+    "filterAria": "按类别筛选",
+    "shown": "显示 {count} 个术语。",
+    "emptyTitle": "未找到术语",
+    "emptyDescription": "请换个词试试，例如“发票”“库存”或“税务”。清空搜索框即可查看全部术语。",
+    "openInApp": "在应用中打开"
   }
 }

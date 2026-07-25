@@ -40,6 +40,7 @@ import {
   type ApprovalStatus,
 } from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
+import { TERM_CATEGORY_LABELS, type TermCategory } from "@/lib/labels";
 import type { Permission } from "@/lib/authz";
 import {
   PERMISSION_LABELS,
@@ -325,5 +326,25 @@ export function permissionLabels(
     "authz.manage": p.authz_manage,
     "glossary.read": p.glossary_read,
     "settings.view": p.settings_view,
+  };
+}
+
+/**
+ * Nama kategori Kamus Istilah. Sumber bentuknya `TERM_CATEGORIES`
+ * (`lib/labels.ts`, modul murni): kategori baru langsung ditolak `tsc` di sini.
+ */
+export function termCategoryLabels(
+  dictionary: Dictionary | null | undefined
+): Record<TermCategory, string> {
+  if (!dictionary) return TERM_CATEGORY_LABELS;
+  const c = dictionary.termCategory;
+  return {
+    penjualan: c.penjualan,
+    pembelian: c.pembelian,
+    kas: c.kas,
+    stok: c.stok,
+    laporan: c.laporan,
+    pajak: c.pajak,
+    umum: c.umum,
   };
 }

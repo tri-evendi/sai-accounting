@@ -2227,5 +2227,33 @@
     "contractField": "Kontrak Terkait (opsional)",
     "contractPlaceholder": "-- Tanpa Kontrak --",
     "uploading": "Mengunggah..."
+  },
+  "termCategory": {
+    "penjualan": "Penjualan",
+    "pembelian": "Pembelian",
+    "kas": "Kas & Bank",
+    "stok": "Stok & Aset",
+    "laporan": "Laporan & Pembukuan",
+    "pajak": "Pajak",
+    "umum": "Umum"
+  },
+  "settings": {
+    "profileTitle": "Profil",
+    "changePassword": "Ganti Kata Sandi",
+    "helpDescription": "Tidak paham sebuah istilah akuntansi? Buka kamusnya — semuanya dijelaskan dengan bahasa sehari-hari beserta contoh.",
+    "openGlossary": "Buka Kamus Istilah",
+    "aboutTitle": "Tentang Aplikasi",
+    "aboutTagline": "Sistem pembukuan, kontrak, dan stok barang"
+  },
+  "glossary": {
+    "descriptionBefore": "{count} istilah akuntansi yang dipakai aplikasi ini, dijelaskan dengan bahasa sehari-hari beserta contohnya. Istilah yang sama juga muncul sebagai ikon",
+    "descriptionAfter": "di sebelah label pada layar lain.",
+    "searchLabel": "Cari istilah",
+    "searchPlaceholder": "mis. piutang, faktur, penyusutan",
+    "filterAria": "Saring per kategori",
+    "shown": "{count} istilah ditampilkan.",
+    "emptyTitle": "Istilah tidak ditemukan",
+    "emptyDescription": "Coba kata lain, misalnya “tagihan”, “stok”, atau “pajak”. Semua istilah bisa dilihat dengan mengosongkan pencarian.",
+    "openInApp": "Buka di aplikasi"
   }
 }

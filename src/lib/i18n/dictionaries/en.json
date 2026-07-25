@@ -2227,5 +2227,33 @@
     "contractField": "Related Contract (optional)",
     "contractPlaceholder": "-- No Contract --",
     "uploading": "Uploading..."
+  },
+  "termCategory": {
+    "penjualan": "Sales",
+    "pembelian": "Purchasing",
+    "kas": "Cash & Bank",
+    "stok": "Stock & Assets",
+    "laporan": "Reports & Bookkeeping",
+    "pajak": "Tax",
+    "umum": "General"
+  },
+  "settings": {
+    "profileTitle": "Profile",
+    "changePassword": "Change Password",
+    "helpDescription": "Not sure what an accounting term means? Open the glossary — every one is explained in plain language, with an example.",
+    "openGlossary": "Open the Glossary",
+    "aboutTitle": "About This App",
+    "aboutTagline": "Bookkeeping, contracts, and stock in one system"
+  },
+  "glossary": {
+    "descriptionBefore": "{count} accounting terms used by this app, explained in plain language with an example. The same terms also appear as a",
+    "descriptionAfter": "icon beside labels on the other screens.",
+    "searchLabel": "Search terms",
+    "searchPlaceholder": "e.g. receivables, invoice, depreciation",
+    "filterAria": "Filter by category",
+    "shown": "{count} terms shown.",
+    "emptyTitle": "No terms found",
+    "emptyDescription": "Try another word, for example “invoice”, “stock”, or “tax”. Clear the search box to see every term again.",
+    "openInApp": "Open in the app"
   }
 }

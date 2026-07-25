@@ -27,6 +27,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Loader2, HandCoins, Info, Trash2 } from "lucide-react";
@@ -170,33 +179,39 @@ export function AdvanceCompensationSection({
     <div className="space-y-4">
       {/* Already compensated */}
       {applied.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Jumlah</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">IDR</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        // Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+        // primitif agar sama dengan tampilan sebelum migrasi.
+        <div className="rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2">Uang Muka</TableHead>
+                <TableHead className="h-auto px-4 py-2">Tanggal</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">Jumlah</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">IDR</TableHead>
+                <TableHead className="h-auto px-4 py-2" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {applied.map((a) => (
-                <tr key={a.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                    {formatCurrency(a.amount, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
+                <TableRow key={a.id}>
+                  <TableCell className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</TableCell>
+                  <TableCell className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="px-4 py-2 text-foreground"
+                      value={a.amount}
+                      currency={a.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
                     {a.baseAmount != null ? (
-                      formatCurrency(a.baseAmount, "IDR")
+                      <Money value={a.baseAmount} currency="IDR" />
                     ) : (
                       <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                     )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => handleRemove(a.id)}
@@ -214,11 +229,11 @@ export function AdvanceCompensationSection({
                       )}
                       Batalkan
                     </button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -233,25 +248,27 @@ export function AdvanceCompensationSection({
         </p>
       ) : (
         <form onSubmit={handleApply} className="space-y-3">
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+          {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+              primitif agar sama dengan tampilan sebelum migrasi. */}
+          <div className="rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto px-4 py-2">Uang Muka</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-right">Sisa</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-right">
                     Kompensasi ke {noun.target} ini
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {advances.map((a) => {
                   const value = Number(amounts[a.id]) || 0;
                   const overLine = value > a.remaining + 0.005;
                   const crossCurrency = a.currency !== targetCurrency;
                   return (
-                    <tr key={a.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2">
+                    <TableRow key={a.id} className="hover:bg-transparent">
+                      <TableCell className="px-4 py-2">
                         <span className="font-medium text-foreground">{a.advanceNo}</span>
                         <span className="block text-xs text-muted-foreground">
                           {a.partyName} · {formatDateShort(new Date(a.date))}
@@ -262,16 +279,18 @@ export function AdvanceCompensationSection({
                             jumlahnya sendiri.
                           </span>
                         )}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(a.remaining, a.currency)}
+                      </TableCell>
+                      <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
+                        <Money value={a.remaining} currency={a.currency} />
                         <span className="block text-xs text-muted-foreground">
-                          {a.remainingBase != null
-                            ? formatCurrency(a.remainingBase, "IDR")
-                            : "Kurs belum diisi"}
+                          {a.remainingBase != null ? (
+                            <Money value={a.remainingBase} currency="IDR" />
+                          ) : (
+                            "Kurs belum diisi"
+                          )}
                         </span>
-                      </td>
-                      <td className="px-4 py-2">
+                      </TableCell>
+                      <TableCell className="px-4 py-2">
                         <Input
                           id={`adv-${targetKind}-${targetId}-${a.id}`}
                           type="number"
@@ -291,12 +310,12 @@ export function AdvanceCompensationSection({
                             Melebihi sisa uang muka.
                           </p>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-3">

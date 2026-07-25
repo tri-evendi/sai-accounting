@@ -2,6 +2,14 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
@@ -50,48 +58,46 @@ export default async function SuppliersPage({
       <LearnMore term="pembelian" className="mt-1 mb-6" label="Pelajari ini: cara mencatat pembelian" />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Nama</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Alamat</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Telepon</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Surel</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Transaksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <EmptyState
-                      icon={<Truck className="h-12 w-12" />}
-                      title="Belum ada pemasok"
-                      description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
-                      actionLabel="+ Tambah Pemasok"
-                      actionHref="/suppliers/new"
-                    />
-                  </td>
-                </tr>
-              ) : (
-                suppliers.map((s) => (
-                  <tr key={s.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-6 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
-                        {s.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.address || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.phone || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.email || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.transactions.length}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Nama</TableHead>
+              <TableHead>Alamat</TableHead>
+              <TableHead>Telepon</TableHead>
+              <TableHead>Surel</TableHead>
+              <TableHead>Transaksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {suppliers.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState
+                    icon={<Truck className="h-12 w-12" />}
+                    title="Belum ada pemasok"
+                    description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
+                    actionLabel="+ Tambah Pemasok"
+                    actionHref="/suppliers/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              suppliers.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
+                      {s.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{s.address || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.phone || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.email || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.transactions.length}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/suppliers" searchParams={params} />
       </Card>
     </div>

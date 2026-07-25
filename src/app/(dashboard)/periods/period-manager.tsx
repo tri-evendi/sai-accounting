@@ -15,6 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/loading";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
@@ -136,68 +144,66 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
         <CardHeader>
           <CardTitle>Daftar Periode</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Periode</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Ditutup</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {periods.length > 0 ? (
-                periods.map((p) => {
-                  const active = selected?.year === p.year && selected?.month === p.month;
-                  return (
-                    <tr
-                      key={`${p.year}-${p.month}`}
-                      className={`border-b border-border transition-colors duration-150 ${
-                        active ? "bg-primary/10" : "hover:bg-muted"
-                      }`}
-                    >
-                      <td className="px-6 py-3 font-medium text-foreground">{p.label}</td>
-                      <td className="px-6 py-3">
-                        <StatusBadge status={p.status} />
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {p.closedAt ? (
-                          <span className="tabular-nums">
-                            {formatDate(p.closedAt)}
-                            {p.closedByName && (
-                              <span className="block text-xs text-muted-foreground">
-                                oleh {p.closedByName}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <Button
-                          variant={active ? "primary" : "secondary"}
-                          size="sm"
-                          onClick={() => setSelected({ year: p.year, month: p.month })}
-                          className="cursor-pointer"
-                        >
-                          Tinjau
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
-                    Belum ada transaksi apa pun, jadi belum ada periode untuk ditutup.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Periode</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Ditutup</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {periods.length > 0 ? (
+              periods.map((p) => {
+                const active = selected?.year === p.year && selected?.month === p.month;
+                return (
+                  <TableRow
+                    key={`${p.year}-${p.month}`}
+                    // Baris terpilih tetap bertanda meski kursor berpindah,
+                    // jadi hover-nya dikunci ke warna terpilih.
+                    className={active ? "bg-primary/10 hover:bg-primary/10" : undefined}
+                  >
+                    <TableCell className="font-medium text-foreground">{p.label}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={p.status} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {p.closedAt ? (
+                        <span className="tabular-nums">
+                          {formatDate(p.closedAt)}
+                          {p.closedByName && (
+                            <span className="block text-xs text-muted-foreground">
+                              oleh {p.closedByName}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant={active ? "primary" : "secondary"}
+                        size="sm"
+                        onClick={() => setSelected({ year: p.year, month: p.month })}
+                        className="cursor-pointer"
+                      >
+                        Tinjau
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                  Belum ada transaksi apa pun, jadi belum ada periode untuk ditutup.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
       {/* ── Pre-close summary ── */}

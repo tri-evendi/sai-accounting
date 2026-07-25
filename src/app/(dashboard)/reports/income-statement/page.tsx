@@ -1,6 +1,14 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -16,27 +24,31 @@ export const dynamic = "force-dynamic";
 function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
   return (
     <>
-      <tr className="bg-muted">
-        <td className="px-6 py-2 font-semibold text-foreground" colSpan={2}>{title}</td>
-      </tr>
+      <TableRow className="bg-muted hover:bg-muted">
+        <TableCell className="py-2 font-semibold text-foreground" colSpan={2}>{title}</TableCell>
+      </TableRow>
       {lines.map((l) => (
-        <tr key={l.code} className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground">
+        <TableRow key={l.code}>
+          <TableCell className="py-2 pl-10 text-muted-foreground">
             <span className="font-mono text-muted-foreground mr-2">{l.code}</span>
             {l.name}
-          </td>
-          <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(l.amount, "IDR")}</td>
-        </tr>
+          </TableCell>
+          <TableCell className="p-0">
+            <MoneyCell className="py-2" value={l.amount} currency="IDR" />
+          </TableCell>
+        </TableRow>
       ))}
       {lines.length === 0 && (
-        <tr className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground" colSpan={2}>—</td>
-        </tr>
+        <TableRow className="hover:bg-transparent">
+          <TableCell className="py-2 pl-10 text-muted-foreground" colSpan={2}>—</TableCell>
+        </TableRow>
       )}
-      <tr className="border-b border-border font-medium">
-        <td className="px-6 py-2 text-foreground">Total {title}</td>
-        <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
-      </tr>
+      <TableRow className="font-medium">
+        <TableCell className="py-2 text-foreground">Total {title}</TableCell>
+        <TableCell className="p-0">
+          <MoneyCell className="py-2" value={total} currency="IDR" />
+        </TableCell>
+      </TableRow>
     </>
   );
 }
@@ -85,27 +97,30 @@ export default async function IncomeStatementPage({
       <PlainSummary summary={summary} />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody>
-              <Section title="Pendapatan" lines={is.revenue} total={is.totalRevenue} />
-              <Section title="Beban" lines={is.expense} total={is.totalExpense} />
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border text-base font-bold">
-                <td className="px-6 py-4 text-foreground">
-                  Laba / Rugi Bersih
-                  <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
-                    ({profit ? "Laba" : "Rugi"})
-                  </span>
-                </td>
-                <td className={`px-6 py-4 text-right tabular-nums ${profit ? "text-success-strong" : "text-destructive"}`}>
-                  {formatCurrency(is.netIncome, "IDR")}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableBody>
+            <Section title="Pendapatan" lines={is.revenue} total={is.totalRevenue} />
+            <Section title="Beban" lines={is.expense} total={is.totalExpense} />
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
+              <TableCell className="py-4 text-foreground">
+                Laba / Rugi Bersih
+                <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
+                  ({profit ? "Laba" : "Rugi"})
+                </span>
+              </TableCell>
+              {/* Laba/rugi diwarnai `text-success-strong`/`text-destructive`
+                  berpasangan dengan label "(Laba)"/"(Rugi)" di sebelahnya —
+                  bukan pewarnaan bawaan `Money` (hanya negatif, token
+                  `text-destructive`/`text-success`), jadi sel ini tetap
+                  dirender seperti semula demi paritas. */}
+              <TableCell className={`py-4 text-right tabular-nums ${profit ? "text-success-strong" : "text-destructive"}`}>
+                {formatCurrency(is.netIncome, "IDR")}
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
     </div>
   );

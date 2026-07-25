@@ -15,6 +15,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2, Info, Trash2, Plus } from "lucide-react";
@@ -283,67 +292,69 @@ export function ReturnForm({
       {/* Sales: per-line returnable table */}
       {type === "sales" && invoiceDetail && (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Barang</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Harga</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Sisa dpt diretur</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Jumlah retur</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Stok item</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoiceDetail.items.map((ln) => {
-                  const v = salesLines[ln.invoiceItemId];
-                  const qty = Number(v?.qty) || 0;
-                  const over = qty > ln.returnable + 1e-6;
-                  return (
-                    <tr key={ln.invoiceItemId} className="border-b border-border">
-                      <td className="px-4 py-3 text-foreground">
-                        {ln.itemName}
-                        {ln.unit && <span className="text-muted-foreground"> ({ln.unit})</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatCurrency(ln.price, invoiceDetail.currency)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {round3(ln.returnable)}
-                        <span className="block text-xs text-muted-foreground">
-                          dari {round3(ln.quantity)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Input
-                          id={`qty-${ln.invoiceItemId}`}
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          max={ln.returnable}
-                          className={`w-28 text-right tabular-nums ${over ? "border-destructive" : ""}`}
-                          value={v?.qty ?? ""}
-                          onChange={(e) => setSalesQty(ln.invoiceItemId, e.target.value)}
-                          disabled={ln.returnable <= 0}
-                        />
-                        {over && (
-                          <span className="mt-0.5 block text-xs text-destructive">Melebihi sisa</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Select
-                          id={`item-${ln.invoiceItemId}`}
-                          value={v?.itemId ?? ""}
-                          onChange={(e) => setSalesItem(ln.invoiceItemId, e.target.value)}
-                          options={itemOptions}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Barang</TableHead>
+                <TableHead className="text-right">Harga</TableHead>
+                <TableHead className="text-right">Sisa dpt diretur</TableHead>
+                <TableHead className="text-right">Jumlah retur</TableHead>
+                <TableHead>Stok item</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoiceDetail.items.map((ln) => {
+                const v = salesLines[ln.invoiceItemId];
+                const qty = Number(v?.qty) || 0;
+                const over = qty > ln.returnable + 1e-6;
+                return (
+                  <TableRow key={ln.invoiceItemId} className="hover:bg-transparent">
+                    <TableCell className="text-foreground">
+                      {ln.itemName}
+                      {ln.unit && <span className="text-muted-foreground"> ({ln.unit})</span>}
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell
+                        className="text-foreground"
+                        value={ln.price}
+                        currency={invoiceDetail.currency}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground">
+                      {round3(ln.returnable)}
+                      <span className="block text-xs text-muted-foreground">
+                        dari {round3(ln.quantity)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        id={`qty-${ln.invoiceItemId}`}
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        max={ln.returnable}
+                        className={`w-28 text-right tabular-nums ${over ? "border-destructive" : ""}`}
+                        value={v?.qty ?? ""}
+                        onChange={(e) => setSalesQty(ln.invoiceItemId, e.target.value)}
+                        disabled={ln.returnable <= 0}
+                      />
+                      {over && (
+                        <span className="mt-0.5 block text-xs text-destructive">Melebihi sisa</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        id={`item-${ln.invoiceItemId}`}
+                        value={v?.itemId ?? ""}
+                        onChange={(e) => setSalesItem(ln.invoiceItemId, e.target.value)}
+                        options={itemOptions}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </Card>
       )}
 

@@ -5,7 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
+import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Receipt } from "lucide-react";
@@ -198,78 +207,82 @@ export default async function SupplierDetailPage({
         <div className="px-6 pb-2">
           <SupplierTransactionForm supplierId={supplier.id} />
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Jumlah</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Catatan</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Alokasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {supplier.transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <EmptyState
-                      icon={<Receipt className="h-12 w-12" />}
-                      title="Belum ada transaksi dengan pemasok ini"
-                      description="Catat pembelian atau pembayaran pertamanya lewat formulir di atas; utang dan jurnalnya terbentuk otomatis."
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Tanggal</TableHead>
+              <TableHead>Jenis</TableHead>
+              <TableHead className="text-right">Jumlah</TableHead>
+              <TableHead>Mata Uang</TableHead>
+              <TableHead>Catatan</TableHead>
+              <TableHead>Alokasi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {supplier.transactions.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={<Receipt className="h-12 w-12" />}
+                    title="Belum ada transaksi dengan pemasok ini"
+                    description="Catat pembelian atau pembayaran pertamanya lewat formulir di atas; utang dan jurnalnya terbentuk otomatis."
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              supplier.transactions.map((t) => (
+                // Baris pembayaran bisa membawa daftar alokasi bertingkat, jadi
+                // seluruh selnya rata atas — `TableCell` bawaan rata tengah.
+                <TableRow key={t.id} className="[&>td]:align-top">
+                  <TableCell className="text-foreground">{formatDate(t.date)}</TableCell>
+                  <TableCell className="text-foreground">{TRANSACTION_TYPE_LABELS[t.type] ?? t.type}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="font-medium text-foreground"
+                      value={Number(t.amount)}
+                      currency={t.currency}
                     />
-                  </td>
-                </tr>
-              ) : (
-                supplier.transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-border align-top">
-                    <td className="px-6 py-3 text-foreground">{formatDate(t.date)}</td>
-                    <td className="px-6 py-3 text-foreground">{TRANSACTION_TYPE_LABELS[t.type] ?? t.type}</td>
-                    <td className="px-6 py-3 text-foreground text-right font-medium tabular-nums">
-                      {formatCurrency(Number(t.amount), t.currency)}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{t.currency}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{t.note || "-"}</td>
-                    <td className="px-6 py-3">
-                      {t.type !== "payment" ? (
-                        <span className="text-muted-foreground">-</span>
-                      ) : (
-                        <div>
-                          {t.allocationsMade.length === 0 ? (
-                            <span
-                              className="block"
-                              title="Pembayaran ini belum ditautkan ke pembelian tertentu, jadi sisa utang per dokumen hanya diperkirakan (pembelian terlama dilunasi lebih dulu)."
-                            >
-                              <Badge variant="warning">Perkiraan</Badge>
-                            </span>
-                          ) : (
-                            <ul className="space-y-0.5">
-                              {t.allocationsMade.map((a) => (
-                                <li key={a.id} className="text-xs text-foreground tabular-nums">
-                                  TRX-{a.purchaseId} ·{" "}
-                                  {formatCurrency(Number(a.amount), a.currency)}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          <AllocationEditor
-                            supplierId={supplier.id}
-                            paymentId={t.id}
-                            paymentAmount={Number(t.amount)}
-                            paymentCurrency={t.currency}
-                            allocatedCount={t.allocationsMade.length}
-                            autoOpen={autoOpenPaymentId === t.id}
-                          />
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{t.currency}</TableCell>
+                  <TableCell className="text-muted-foreground">{t.note || "-"}</TableCell>
+                  <TableCell>
+                    {t.type !== "payment" ? (
+                      <span className="text-muted-foreground">-</span>
+                    ) : (
+                      <div>
+                        {t.allocationsMade.length === 0 ? (
+                          <span
+                            className="block"
+                            title="Pembayaran ini belum ditautkan ke pembelian tertentu, jadi sisa utang per dokumen hanya diperkirakan (pembelian terlama dilunasi lebih dulu)."
+                          >
+                            <Badge variant="warning">Perkiraan</Badge>
+                          </span>
+                        ) : (
+                          <ul className="space-y-0.5">
+                            {t.allocationsMade.map((a) => (
+                              <li key={a.id} className="text-xs text-foreground tabular-nums">
+                                TRX-{a.purchaseId} ·{" "}
+                                <Money value={Number(a.amount)} currency={a.currency} />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <AllocationEditor
+                          supplierId={supplier.id}
+                          paymentId={t.id}
+                          paymentAmount={Number(t.amount)}
+                          paymentCurrency={t.currency}
+                          allocatedCount={t.allocationsMade.length}
+                          autoOpen={autoOpenPaymentId === t.id}
+                        />
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

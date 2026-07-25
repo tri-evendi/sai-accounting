@@ -10,6 +10,8 @@
  */
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -123,23 +125,25 @@ export function PartyTotals({
       <div className="px-6 py-3 border-b border-border">
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <tbody>
-            {rows.slice(0, 10).map((r) => (
-              <tr key={r.name} className="border-b border-border last:border-0">
-                <td className="px-6 py-2.5 text-foreground">{r.name}</td>
-                <td className="px-6 py-2.5 text-muted-foreground text-right tabular-nums">
-                  {r.count} dokumen
-                </td>
-                <td className="px-6 py-2.5 text-right font-medium text-foreground tabular-nums">
-                  {formatCurrency(r.outstandingBase, "IDR")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableBody>
+          {rows.slice(0, 10).map((r) => (
+            <TableRow key={r.name}>
+              <TableCell className="py-2.5 text-foreground">{r.name}</TableCell>
+              <TableCell className="py-2.5 text-muted-foreground text-right tabular-nums">
+                {r.count} dokumen
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell
+                  className="py-2.5 font-medium text-foreground"
+                  value={r.outstandingBase}
+                  currency="IDR"
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </Card>
   );
 }

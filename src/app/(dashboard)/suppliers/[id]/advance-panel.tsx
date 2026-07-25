@@ -30,6 +30,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
+import {
   AdvanceCompensationSection,
   type AdvanceOption,
   type AppliedAdvance,
@@ -198,25 +207,27 @@ export function SupplierAdvancePanel({
           di atas.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Nomor</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Kontrak</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Nilai</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+        // Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+        // primitif agar sama dengan tampilan sebelum migrasi.
+        <div className="rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2">Nomor</TableHead>
+                <TableHead className="h-auto px-4 py-2">Tanggal</TableHead>
+                <TableHead className="h-auto px-4 py-2">Kontrak</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">Nilai</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">
                   Sudah dikompensasi
-                </th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa (IDR)</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">Sisa</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">Sisa (IDR)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {advances.map((a) => (
-                <tr key={a.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2">
+                <TableRow key={a.id}>
+                  <TableCell className="px-4 py-2">
                     <span className="font-medium text-foreground">{a.advanceNo}</span>
                     {/* Badge always carries text — colour is never the only signal. */}
                     <span className="mt-0.5 block">
@@ -224,23 +235,35 @@ export function SupplierAdvancePanel({
                         {a.isFullyApplied ? "Habis" : "Bersisa"}
                       </Badge>
                     </span>
-                  </td>
-                  <td className="px-4 py-2 text-foreground tabular-nums">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-foreground tabular-nums">
                     {formatDateShort(new Date(a.date))}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">{a.contractNo ?? "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                    {formatCurrency(a.amount, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                    {formatCurrency(a.applied, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium tabular-nums text-foreground">
-                    {formatCurrency(a.remaining, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-muted-foreground">{a.contractNo ?? "—"}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="px-4 py-2 text-foreground"
+                      value={a.amount}
+                      currency={a.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="px-4 py-2 text-foreground"
+                      value={a.applied}
+                      currency={a.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="px-4 py-2 font-medium text-foreground"
+                      value={a.remaining}
+                      currency={a.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
                     {a.remainingBase != null ? (
-                      formatCurrency(a.remainingBase, "IDR")
+                      <Money value={a.remainingBase} currency="IDR" />
                     ) : (
                       <span className="text-xs text-warning-strong">Kurs belum diisi</span>
                     )}
@@ -249,11 +272,11 @@ export function SupplierAdvancePanel({
                         {a.unratedApplications} kompensasi belum berkurs
                       </span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

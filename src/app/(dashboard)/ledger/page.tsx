@@ -2,7 +2,17 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getAccountLedger } from "@/lib/ledger";
 import { Card } from "@/components/ui/card";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
+import { formatDateShort } from "@/lib/utils";
 import { accountTypeLabel } from "@/lib/accounting";
 import { LedgerFilter } from "./ledger-filter";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -65,71 +75,75 @@ export default async function LedgerPage({
           </div>
 
           <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">No. Jurnal</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Keterangan</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-border bg-muted">
-                    <td className="px-6 py-3 text-muted-foreground italic" colSpan={5}>
-                      Saldo Awal
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums font-medium">
-                      {formatCurrency(ledger.opening, "IDR")}
-                    </td>
-                  </tr>
-                  {ledger.rows.map((r) => (
-                    <tr key={r.lineId} className="border-b border-border hover:bg-muted">
-                      <td className="px-6 py-3 text-muted-foreground tabular-nums">{formatDateShort(r.date)}</td>
-                      <td className="px-6 py-3">
-                        <Link href={`/journal/${r.journalId}`} className="font-mono text-primary hover:underline">
-                          {r.number}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">{r.memo ?? r.note ?? "—"}</td>
-                      <td className="px-6 py-3 text-right tabular-nums">
-                        {r.debit > 0 ? formatCurrency(r.debit, "IDR") : "—"}
-                      </td>
-                      <td className="px-6 py-3 text-right tabular-nums">
-                        {r.credit > 0 ? formatCurrency(r.credit, "IDR") : "—"}
-                      </td>
-                      <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(r.balance, "IDR")}</td>
-                    </tr>
-                  ))}
-                  {ledger.rows.length === 0 && (
-                    <tr>
-                      <td colSpan={6}>
-                        <EmptyState
-                          icon={<BookOpen className="h-12 w-12" />}
-                          title="Tidak ada mutasi pada rentang ini"
-                          description="Coba lebarkan rentang tanggalnya atau pilih akun lain. Kalau memang belum ada apa-apa, mulailah dari mencatat transaksi kas."
-                          actionLabel="+ Catat Transaksi"
-                          actionHref="/finance/new"
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-border font-semibold">
-                    <td className="px-6 py-3" colSpan={3}>
-                      Total &amp; Saldo Akhir
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(ledger.totalDebit, "IDR")}</td>
-                    <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(ledger.totalCredit, "IDR")}</td>
-                    <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(ledger.closing, "IDR")}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>No. Jurnal</TableHead>
+                  <TableHead>Keterangan</TableHead>
+                  <TableHead className="text-right">Debit</TableHead>
+                  <TableHead className="text-right">Kredit</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow className="bg-muted hover:bg-muted">
+                  <TableCell className="text-muted-foreground italic" colSpan={5}>
+                    Saldo Awal
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="font-medium" value={ledger.opening} currency="IDR" />
+                  </TableCell>
+                </TableRow>
+                {ledger.rows.map((r) => (
+                  <TableRow key={r.lineId}>
+                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
+                    <TableCell>
+                      <Link href={`/journal/${r.journalId}`} className="font-mono text-primary hover:underline">
+                        {r.number}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.memo ?? r.note ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.debit > 0 ? <Money value={r.debit} currency="IDR" /> : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.credit > 0 ? <Money value={r.credit} currency="IDR" /> : "—"}
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={r.balance} currency="IDR" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {ledger.rows.length === 0 && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="p-0">
+                      <EmptyState
+                        icon={<BookOpen className="h-12 w-12" />}
+                        title="Tidak ada mutasi pada rentang ini"
+                        description="Coba lebarkan rentang tanggalnya atau pilih akun lain. Kalau memang belum ada apa-apa, mulailah dari mencatat transaksi kas."
+                        actionLabel="+ Catat Transaksi"
+                        actionHref="/finance/new"
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+              <TableFooter className="border-t-2 bg-transparent">
+                <TableRow className="font-semibold hover:bg-transparent">
+                  <TableCell colSpan={3}>Total &amp; Saldo Akhir</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={ledger.totalDebit} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={ledger.totalCredit} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={ledger.closing} currency="IDR" />
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
           </Card>
         </>
       )}

@@ -17,7 +17,8 @@ import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Receipt } from "lucide-react";
-import { STATUS_FILTER_LABELS } from "@/lib/constants";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -30,6 +31,8 @@ export default async function InvoicesPage({
   searchParams: Promise<{ status?: string; search?: string; page?: string }>;
 }) {
   await requirePagePermission("invoice.read");
+  const t = await getT();
+  const statusLabels = statusFilterLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -59,21 +62,21 @@ export default async function InvoicesPage({
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="faktur">Tagihan Penjualan ({totalCount})</TermTooltip>}
+        title={<TermTooltip term="faktur">{t("invoices.title", { count: totalCount })}</TermTooltip>}
         actions={
           <>
             {/* Alur terpandu = tombol utama (ramah amatir); formulir polos tetap
                 tersedia untuk yang sudah hafal alurnya (issue #5). */}
             <Link href="/sales/new" className="shrink-0">
-              <Button>Catat Penjualan (dipandu)</Button>
+              <Button>{t("invoices.recordSaleGuided")}</Button>
             </Link>
             <Link href="/invoices/new" className="shrink-0">
-              <Button variant="secondary">+ Buat Tagihan</Button>
+              <Button variant="secondary">{t("invoices.addNew")}</Button>
             </Link>
           </>
         }
       />
-      <LearnMore term="faktur" className="mt-1 mb-6" label="Pelajari ini: apa itu tagihan penjualan" />
+      <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">
@@ -83,7 +86,7 @@ export default async function InvoicesPage({
               variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
               size="sm"
             >
-              {STATUS_FILTER_LABELS[status] ?? status}
+              {statusLabels[status] ?? status}
             </Button>
           </Link>
         ))}
@@ -93,19 +96,19 @@ export default async function InvoicesPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>No. Tagihan</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead className="text-right">Jumlah Barang</TableHead>
-              <TableHead className="text-right">Pembayaran</TableHead>
-              <TableHead className="text-right">Nilai</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("invoices.colNo")}</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead className="text-right">{t("invoices.colItemCount")}</TableHead>
+              <TableHead className="text-right">{t("invoices.colPayments")}</TableHead>
+              <TableHead className="text-right">{t("invoices.colValue")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoices.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="p-0">
-                  <EmptyState icon={<Receipt className="h-12 w-12" />} title="Belum ada tagihan penjualan" description="Catat penjualan pertama Anda — alurnya dipandu langkah demi langkah." actionLabel="Catat Penjualan (dipandu)" actionHref="/sales/new" />
+                  <EmptyState icon={<Receipt className="h-12 w-12" />} title={t("invoices.emptyTitle")} description={t("invoices.emptyDescription")} actionLabel={t("invoices.recordSaleGuided")} actionHref="/sales/new" />
                 </TableCell>
               </TableRow>
             ) : (

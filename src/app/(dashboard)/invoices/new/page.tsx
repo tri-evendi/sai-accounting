@@ -5,6 +5,7 @@ import { listClosedPeriods } from "@/lib/period";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { getT } from "@/lib/i18n/server";
 import { NewInvoiceForm } from "./invoice-form";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default async function NewInvoicePage({
   searchParams: Promise<{ contractId?: string }>;
 }) {
   await requirePagePermission("invoice.write");
+  const t = await getT();
 
   const { contractId } = await searchParams;
   const [contracts, closedPeriods] = await Promise.all([
@@ -41,26 +43,22 @@ export default async function NewInvoicePage({
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Buat Tagihan" }]}
-        title={<TermTooltip term="faktur">Buat Tagihan</TermTooltip>}
+        breadcrumbs={[
+          { label: t("invoices.breadcrumb"), href: "/invoices" },
+          { label: t("invoices.createTitle") },
+        ]}
+        title={<TermTooltip term="faktur">{t("invoices.createTitle")}</TermTooltip>}
         description={
           <>
-            Bisa diketik manual, atau ditarik (&quot;Ambil&quot;) dari kontrak agar barang, sisa
-            jumlah, dan harganya terisi sendiri. Setelah disimpan, sisanya masuk ke daftar
-            &ldquo;Pelanggan Belum Bayar&rdquo; sampai dilunasi. Baru pertama kali? Lebih enak
-            lewat alur terpandu{" "}
+            {t("invoices.createDescriptionBefore")}{" "}
             <Link href="/sales/new" className="font-medium text-primary hover:underline">
-              Catat Penjualan
+              {t("invoices.createDescriptionLink")}
             </Link>
-            .
+            {t("common.fullStop")}
           </>
         }
       />
-      <LearnMore
-        term="faktur"
-        className="mt-1 mb-6"
-        label="Pelajari ini: apa itu tagihan penjualan"
-      />
+      <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
       <NewInvoiceForm
         contracts={contracts.map((c) => ({
           id: c.id,

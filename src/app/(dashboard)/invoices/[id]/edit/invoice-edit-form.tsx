@@ -16,6 +16,7 @@ import {
   type InvoiceFxValues,
 } from "@/components/shared/invoice-fx-fields";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
+import { useT } from "@/lib/i18n/client";
 
 interface InvoiceItem {
   itemName: string;
@@ -27,6 +28,7 @@ interface InvoiceItem {
 export function EditInvoiceForm() {
   const router = useRouter();
   const params = useParams();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -55,7 +57,7 @@ export function EditInvoiceForm() {
   useEffect(() => {
     fetch(`/api/invoices/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Gagal memuat data tagihan");
+        if (!res.ok) throw new Error(t("invoices.loadFailed"));
         return res.json();
       })
       .then((data) => {
@@ -106,7 +108,7 @@ export function EditInvoiceForm() {
         setError(err.message);
         setFetching(false);
       });
-  }, [params.id]);
+  }, [params.id, t]);
 
   function addItem() {
     setItems([...items, { itemName: "", quantity: 0, price: 0, unit: "kg" }]);
@@ -148,7 +150,7 @@ export function EditInvoiceForm() {
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Gagal menyimpan perubahan tagihan"));
+      setError(String(fieldMsg || data.error || t("invoices.updateFailed")));
       setLoading(false);
     } else {
       router.push(`/invoices/${params.id}`);
@@ -156,17 +158,17 @@ export function EditInvoiceForm() {
     }
   }
 
-  if (fetching) return <PageLoader message="Memuat data tagihan..." />;
-  if (!invoiceNo && !fetching) return <div className="text-destructive">Tagihan tidak ditemukan</div>;
+  if (fetching) return <PageLoader message={t("invoices.loadingInvoice")} />;
+  if (!invoiceNo && !fetching) return <div className="text-destructive">{t("invoices.notFound")}</div>;
 
   return (
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Tagihan Penjualan", href: "/invoices" },
-          { label: `Ubah Tagihan ${invoiceNo}` },
+          { label: t("invoices.breadcrumb"), href: "/invoices" },
+          { label: t("invoices.editTitle", { no: invoiceNo }) },
         ]}
-        title={<>Ubah Tagihan {invoiceNo}</>}
+        title={t("invoices.editTitle", { no: invoiceNo })}
       />
 
       {error && (
@@ -175,19 +177,19 @@ export function EditInvoiceForm() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Tagihan</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("invoices.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="invoiceNo" label="Nomor Tagihan" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
-              <Input id="date" type="date" label="Tanggal" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <Input id="invoiceNo" label={t("invoices.invoiceNo")} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
+              <Input id="date" type="date" label={t("common.date")} value={date} onChange={(e) => setDate(e.target.value)} required />
               <DueDateField value={dueDate} onChange={setDueDate} />
               <Select
-                id="status" label="Status" value={status}
+                id="status" label={t("common.status")} value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 options={[
-                  { value: "pending", label: "Menunggu" },
-                  { value: "signed", label: "Sah" },
-                  { value: "canceled", label: "Dibatalkan" },
+                  { value: "pending", label: t("status.contract.pending") },
+                  { value: "signed", label: t("status.contract.signed") },
+                  { value: "canceled", label: t("status.contract.canceled") },
                 ]}
               />
               <InvoiceFxFields
@@ -202,9 +204,9 @@ export function EditInvoiceForm() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Barang yang Dijual</CardTitle>
+              <CardTitle>{t("invoices.goodsSoldTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> Tambah Barang
+                <Plus className="h-4 w-4 mr-1" /> {t("common.addItem")}
               </Button>
             </div>
           </CardHeader>
@@ -213,19 +215,19 @@ export function EditInvoiceForm() {
               {items.map((item, i) => (
                 <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nama Barang</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.itemName")}</label>
                     <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Jumlah</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.quantity")}</label>
                     <TextInput type="number" step="0.01" className="w-full" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Harga</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.price")}</label>
                     <TextInput type="number" step="0.01" className="w-full" value={item.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Satuan</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.unit")}</label>
                     <TextInput className="w-full" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
                   </div>
                   <Button
@@ -233,7 +235,7 @@ export function EditInvoiceForm() {
                     variant="ghost"
                     size="icon"
                     onClick={() => removeItem(i)}
-                    aria-label={`Hapus baris barang ${i + 1}`}
+                    aria-label={t("common.removeItemRow", { n: i + 1 })}
                     className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -245,8 +247,8 @@ export function EditInvoiceForm() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
+          <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.save")}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
         </div>
       </form>
     </div>

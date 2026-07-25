@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Save } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 export function SellerIdentityForm({
   initial,
@@ -20,6 +21,7 @@ export function SellerIdentityForm({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
   const [npwp, setNpwp] = useState(initial.npwp ?? "");
   const [taxName, setTaxName] = useState(initial.taxName ?? "");
   const [taxAddress, setTaxAddress] = useState(initial.taxAddress ?? "");
@@ -35,13 +37,13 @@ export function SellerIdentityForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast(data.error || "Gagal menyimpan identitas pajak", "error");
+        toast(data.error || t("tax.saveFailed"), "error");
         return;
       }
-      toast("Identitas pajak penjual tersimpan", "success");
+      toast(t("tax.saved"), "success");
       router.refresh();
     } catch {
-      toast("Tidak dapat menghubungi server", "error");
+      toast(t("tax.networkFailed"), "error");
     } finally {
       setSaving(false);
     }
@@ -51,14 +53,14 @@ export function SellerIdentityForm({
     <div className="grid gap-4 sm:grid-cols-2">
       <Input
         id="npwp"
-        label="NPWP Penjual"
+        label={t("tax.npwpField")}
         value={npwp}
         onChange={(e) => setNpwp(e.target.value)}
         maxLength={30}
       />
       <Input
         id="taxName"
-        label="Nama sesuai NPWP (opsional)"
+        label={t("tax.taxNameField")}
         value={taxName}
         onChange={(e) => setTaxName(e.target.value)}
         maxLength={150}
@@ -66,7 +68,7 @@ export function SellerIdentityForm({
       <div className="sm:col-span-2">
         <Input
           id="taxAddress"
-          label="Alamat sesuai NPWP (opsional)"
+          label={t("tax.taxAddressField")}
           value={taxAddress}
           onChange={(e) => setTaxAddress(e.target.value)}
           maxLength={1000}
@@ -75,7 +77,7 @@ export function SellerIdentityForm({
       <div className="sm:col-span-2">
         <Button type="button" onClick={handleSave} disabled={saving}>
           <Save className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          {saving ? "Menyimpan..." : "Simpan Identitas Pajak"}
+          {saving ? t("common.saving") : t("tax.saveIdentity")}
         </Button>
       </div>
     </div>

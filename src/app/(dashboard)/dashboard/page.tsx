@@ -14,6 +14,8 @@ import { CASH_TYPE_LABELS, LOW_STOCK_THRESHOLD, type CashType } from "@/lib/cons
 import { effectivePermissionsFor } from "@/lib/authz-effective";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { visibleWorkflows } from "@/lib/workflows";
+import { WorkflowGuide } from "@/components/dashboard/workflow-guide";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -66,6 +68,9 @@ export default async function DashboardPage() {
   // issue #2 — Aksi Cepat disaring PER PERAN di server: tombol yang tidak boleh
   // dipakai peran ini tidak ikut dirender sama sekali (bukan disembunyikan CSS).
   const quickActions = quickActionsForRole(role, allowed);
+  // issue: panduan urutan "mulai dari mana" — alur bernomor per pekerjaan,
+  // disaring izin efektif seperti Aksi Cepat.
+  const workflows = visibleWorkflows(role, allowed);
   // audit RBAC fase 4 — keputusan tampilan per-seksi membaca matriks izin,
   // bukan membandingkan string peran.
   const canViewFinance = allowed.has("cash.read");
@@ -282,6 +287,11 @@ export default async function DashboardPage() {
           Paling atas karena beranda lebih sering dipakai untuk MENGERJAKAN
           sesuatu daripada untuk membaca angka. */}
       <QuickActions actions={quickActions} />
+
+      {/* ─── Alur Kerja (panduan urutan) ───
+          Tepat di bawah Aksi Cepat: setelah tombol "kerjakan sekarang", tunjukkan
+          URUTAN kerjanya bagi yang belum tahu mulai dari mana. */}
+      <WorkflowGuide workflows={workflows} />
 
       <StockAlertBanner items={lowStockItems} />
 

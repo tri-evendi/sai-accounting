@@ -37,6 +37,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SquarePen,
+  ChevronRight,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -177,6 +178,19 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
   // Kecocokan terpanjang: /inventory/opname menyorot "Hitung Ulang Stok" saja.
   const activeHref = activeNavHref(pathname, visibleNavHrefs(user, allowed));
 
+  // ── Grup menu bisa dilipat (issue: 28 item sekaligus terasa penuh) ──
+  // Default: hanya grup berisi halaman aktif yang terbuka; sisanya tertutup,
+  // jadi menu terlihat ~7 baris, bukan tembok panjang. State di memori: karena
+  // sidebar tinggal di layout yang persist, pilihan buka/tutup tetap bertahan
+  // saat berpindah halaman (reset hanya saat muat ulang penuh).
+  const activeGroupId =
+    groups.find((g) => g.items.some((i) => i.href === activeHref))?.id ?? null;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const isGroupOpen = (id: string) => openGroups[id] ?? id === activeGroupId;
+  const toggleGroup = (id: string) =>
+    setOpenGroups((prev) => ({ ...prev, [id]: !(prev[id] ?? id === activeGroupId) }));
+
   return (
     <>
       {/* Backdrop for mobile */}
@@ -219,23 +233,49 @@ export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
             <NavLink item={NAV_HOME} active={activeHref === NAV_HOME.href} onClose={onClose} />
           )}
 
-          {groups.map((group) => (
-            <div key={group.id} className="mt-5 first:mt-4">
-              <h2 className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
-                {group.label}
-              </h2>
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    active={activeHref === item.href}
-                    onClose={onClose}
+          {groups.map((group) => {
+            const open = isGroupOpen(group.id);
+            const hasActive = group.items.some((i) => i.href === activeHref);
+            const panelId = `nav-group-${group.id}`;
+            return (
+              <div key={group.id} className="mt-4 first:mt-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {group.label}
+                    {/* Grup ditutup tapi berisi halaman aktif → titik penanda. */}
+                    {!open && hasActive && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-sidebar-primary" aria-hidden="true" />
+                    )}
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-transform duration-150",
+                      open && "rotate-90"
+                    )}
+                    aria-hidden="true"
                   />
-                ))}
+                </button>
+                {open && (
+                  <div id={panelId} className="mt-1 space-y-1">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.href}
+                        item={item}
+                        active={activeHref === item.href}
+                        onClose={onClose}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Version */}

@@ -281,7 +281,7 @@ export function GuidedTour() {
                 className="cursor-pointer"
                 onClick={() => setIndex((i) => Math.max((i ?? 0) - 1, 0))}
               >
-                <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Kembali
               </Button>
             )}
@@ -293,13 +293,13 @@ export function GuidedTour() {
             >
               {isLast ? (
                 <>
-                  <Check className="mr-1 h-4 w-4" aria-hidden="true" />
+                  <Check className="h-4 w-4" aria-hidden="true" />
                   Selesai
                 </>
               ) : (
                 <>
                   Lanjut
-                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </Button>

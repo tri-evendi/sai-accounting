@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileText, Truck, Package, Wallet, FileSpreadsheet } from "lucide-react";
+import { FileDown, Truck, Package, Wallet, FileSpreadsheet } from "lucide-react";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
+import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 
 interface ContractPDFData {
   contractNo: string;
@@ -244,27 +245,16 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
 }
 
 export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-
-  async function handleExport() {
-    setLoading(true);
-    try {
-      const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
-      const doc = generateInvoicePDF(invoice);
-      doc.save(`Invoice_${invoice.invoiceNo}.pdf`);
-      toast("PDF downloaded");
-    } catch (err) {
-      console.error(err);
-      toast("Failed to generate PDF", "error");
-    }
-    setLoading(false);
-  }
-
+  // Pratinjau + Unduh + Cetak lewat komponen dokumen bersama (contoh penerapan;
+  // dokumen lain menyusul dengan pola yang sama).
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileText className="h-4 w-4 mr-1" />
-      {loading ? "Generating..." : "Export PDF"}
-    </Button>
+    <PdfDocumentButton
+      title={`Faktur ${invoice.invoiceNo}`}
+      filename={`Invoice_${invoice.invoiceNo}.pdf`}
+      generate={async () => {
+        const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
+        return generateInvoicePDF(invoice);
+      }}
+    />
   );
 }

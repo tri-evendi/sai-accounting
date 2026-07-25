@@ -34,7 +34,7 @@ export default async function SetupPage() {
       : null;
 
     return (
-      <div className="max-w-3xl">
+      <div className="w-full">
         <PageHeader className="mb-0" title="Setup Perusahaan" />
 
         <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
@@ -133,7 +133,7 @@ export default async function SetupPage() {
   ]);
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full">
       <PageHeader
         title={<>Setup Perusahaan &amp; Saldo Awal</>}
         description="Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali."

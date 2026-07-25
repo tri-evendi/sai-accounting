@@ -70,7 +70,7 @@ export function EditConsigneeForm() {
   if (fetching) return <PageLoader message="Memuat data penerima barang..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Penerima Barang", href: "/consignees" },
@@ -85,7 +85,7 @@ export function EditConsigneeForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" label="Nama Penerima Barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="country" label="Negara" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
               <Input id="contact" label="Kontak / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />

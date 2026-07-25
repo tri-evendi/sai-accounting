@@ -154,7 +154,7 @@ export function EditContractForm() {
   const dueDateStr = contract.dueDate ? new Date(contract.dueDate).toISOString().split("T")[0] : "";
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Kontrak", href: "/contracts" },

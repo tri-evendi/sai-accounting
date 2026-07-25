@@ -64,7 +64,7 @@ export function ImportAccountsForm() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Akun Perkiraan", href: "/accounts" }, { label: "Impor dari Excel" }]}
         title="Impor Akun Perkiraan"

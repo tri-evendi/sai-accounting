@@ -26,7 +26,7 @@ export default async function CustomerDetailPage({
   if (!customer) notFound();
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: customer.name }]}
         title={customer.name}

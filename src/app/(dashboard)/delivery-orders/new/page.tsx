@@ -43,7 +43,7 @@ export default async function NewDeliveryOrderPage() {
   ]);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}

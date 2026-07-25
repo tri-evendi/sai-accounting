@@ -43,7 +43,7 @@ export function NewConsigneeForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Penerima Barang", href: "/consignees" },
@@ -60,7 +60,7 @@ export function NewConsigneeForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" name="name" label="Nama Penerima Barang" required />
               <Input id="country" name="country" label="Negara" />
               <Input id="contact" name="contact" label="Kontak / PIC" />

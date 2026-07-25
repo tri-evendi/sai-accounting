@@ -72,7 +72,7 @@ export default async function DeliveryOrderDetailPage({
   ];
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: order.no }]}
         title={<>Surat Jalan {order.no}</>}

@@ -72,7 +72,7 @@ export function EditCustomerForm() {
   if (fetching) return <PageLoader message="Memuat data pelanggan..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Ubah Pelanggan" }]}
         title="Ubah Pelanggan"
@@ -84,7 +84,7 @@ export function EditCustomerForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Pelanggan</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" label="Nama Pelanggan" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="address" label="Alamat" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               <Input id="phone" label="Telepon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

@@ -56,7 +56,7 @@ export default async function EfakturPage({
   const downloadHref = `/api/tax/efaktur?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <PageHeader
         title="Ekspor e-Faktur (DJP/CTAS)"
         description={

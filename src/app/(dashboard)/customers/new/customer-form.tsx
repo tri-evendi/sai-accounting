@@ -77,7 +77,7 @@ export function NewCustomerForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Pelanggan Baru" }]}
         title="Pelanggan Baru"
@@ -90,12 +90,15 @@ export function NewCustomerForm() {
               <CardTitle>Data Pelanggan</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4">
+              {/* Grid responsif: 1 kolom di ponsel, 2 kolom di layar lebar —
+                  mengisi lebar penuh tanpa merentang satu input melebar sendiri.
+                  Field panjang (nama, alamat, checkbox) menjangkau 2 kolom. */}
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="sm:col-span-2">
                       <FormLabel required>Nama Pelanggan</FormLabel>
                       <FormControl>
                         <TextInput autoFocus {...field} />
@@ -108,7 +111,7 @@ export function NewCustomerForm() {
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="sm:col-span-2">
                       <FormLabel>Alamat</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
@@ -173,7 +176,7 @@ export function NewCustomerForm() {
                   control={form.control}
                   name="taxExempt"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="sm:col-span-2">
                       <label
                         htmlFor="taxExempt"
                         className="flex cursor-pointer items-start gap-2"

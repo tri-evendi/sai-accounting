@@ -65,7 +65,7 @@ export function UploadClient() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Dokumen", href: "/documents" }, { label: "Unggah Dokumen" }]}
         title="Unggah Dokumen"

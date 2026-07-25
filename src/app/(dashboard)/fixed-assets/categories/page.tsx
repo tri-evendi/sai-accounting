@@ -41,7 +41,7 @@ export default async function CategoriesPage() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Barang Milik Perusahaan", href: "/fixed-assets" },

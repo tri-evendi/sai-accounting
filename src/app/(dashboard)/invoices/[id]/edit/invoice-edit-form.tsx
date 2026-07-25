@@ -160,7 +160,7 @@ export function EditInvoiceForm() {
   if (!invoiceNo && !fetching) return <div className="text-destructive">Tagihan tidak ditemukan</div>;
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Tagihan Penjualan", href: "/invoices" },

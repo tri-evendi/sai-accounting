@@ -240,7 +240,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     .join(" · ");
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Buku Kas & Bank", href: "/finance" }, { label: heading.title }]}

@@ -100,7 +100,7 @@ export function EditAccountForm() {
   if (fetching) return <PageLoader message="Memuat akun..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Daftar Akun", href: "/accounts" }, { label: "Ubah Akun" }]}
         title="Ubah Akun"
@@ -116,7 +116,7 @@ export function EditAccountForm() {
             <CardTitle>Informasi Akun</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="code"
                 label="Kode Perkiraan"

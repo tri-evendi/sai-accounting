@@ -36,7 +36,7 @@ export default async function NewPurchaseWizardPage() {
   ]);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Catat Pembelian" }]}

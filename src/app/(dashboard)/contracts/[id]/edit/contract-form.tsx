@@ -15,6 +15,7 @@ import { Trash2, Plus } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
+import { useT } from "@/lib/i18n/client";
 
 interface ContractItem {
   itemName: string;
@@ -46,6 +47,7 @@ interface ContractData {
 export function EditContractForm() {
   const router = useRouter();
   const params = useParams();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -62,7 +64,7 @@ export function EditContractForm() {
   useEffect(() => {
     fetch(`/api/contracts/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load contract");
+        if (!res.ok) throw new Error(t("contracts.loadFailed"));
         return res.json();
       })
       .then((data) => {
@@ -84,7 +86,7 @@ export function EditContractForm() {
         setError(err.message);
         setFetching(false);
       });
-  }, [params.id]);
+  }, [params.id, t]);
 
   function addItem() {
     setItems([...items, { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
@@ -133,7 +135,7 @@ export function EditContractForm() {
       const fieldMsg = data.details?.fieldErrors
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || data.error || "Failed to update contract"));
+      setError(String(fieldMsg || data.error || t("contracts.updateFailed")));
       setLoading(false);
     } else {
       router.push(`/contracts/${params.id}`);
@@ -142,11 +144,11 @@ export function EditContractForm() {
   }
 
   if (fetching) {
-    return <PageLoader message="Loading contract..." />;
+    return <PageLoader message={t("contracts.loadingContract")} />;
   }
 
   if (!contract) {
-    return <div className="text-destructive">Contract not found</div>;
+    return <div className="text-destructive">{t("contracts.notFound")}</div>;
   }
 
   const dateStr = new Date(contract.date).toISOString().split("T")[0];
@@ -157,10 +159,10 @@ export function EditContractForm() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Kontrak", href: "/contracts" },
-          { label: `Ubah Kontrak ${contract.contractNo}` },
+          { label: t("contracts.breadcrumb"), href: "/contracts" },
+          { label: t("contracts.editTitle", { no: contract.contractNo }) },
         ]}
-        title={<>Ubah Kontrak {contract.contractNo}</>}
+        title={t("contracts.editTitle", { no: contract.contractNo })}
       />
 
       {error && (
@@ -169,38 +171,38 @@ export function EditContractForm() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Contract Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("contracts.detailsTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="contractNo" name="contractNo" label="Contract Number" defaultValue={contract.contractNo} required />
-              <Input id="date" name="date" type="date" label="Date" defaultValue={dateStr} required />
+              <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} defaultValue={contract.contractNo} required />
+              <Input id="date" name="date" type="date" label={t("contracts.contractDate")} defaultValue={dateStr} required />
               <DueDateField defaultValue={dueDateStr} />
-              <Input id="buyer" name="buyer" label="Buyer" defaultValue={contract.buyer} required />
+              <Input id="buyer" name="buyer" label={t("contracts.buyerField")} defaultValue={contract.buyer} required />
               <ConsigneeSelect
                 consigneeId={consigneeId}
                 onConsigneeIdChange={setConsigneeId}
                 defaultText={contract.consignee || ""}
                 current={contract.consigneeRef}
               />
-              <Input id="packaging" name="packaging" label="Packaging" defaultValue={contract.packaging || ""} />
-              <Input id="shipment" name="shipment" label="Shipment" defaultValue={contract.shipment || ""} />
-              <Input id="top1" name="top1" label="Terms of Payment 1" defaultValue={contract.top1 || ""} />
-              <Input id="top2" name="top2" label="Terms of Payment 2" defaultValue={contract.top2 || ""} />
+              <Input id="packaging" name="packaging" label={t("contracts.packaging")} defaultValue={contract.packaging || ""} />
+              <Input id="shipment" name="shipment" label={t("contracts.shipment")} defaultValue={contract.shipment || ""} />
+              <Input id="top1" name="top1" label={t("contracts.top1")} defaultValue={contract.top1 || ""} />
+              <Input id="top2" name="top2" label={t("contracts.top2")} defaultValue={contract.top2 || ""} />
               <CurrencyRateFields
                 currency={currency}
                 rate={rate}
                 onCurrencyChange={setCurrency}
                 onRateChange={setRate}
-                currencyLabel="Currency"
-                rateHint="Tersimpan pada kontrak — jurnal dibalik lalu diposting ulang memakai kurs ini."
+                currencyLabel={t("common.currency")}
+                rateHint={t("contracts.rateHintEdit")}
               />
               <Select
-                id="status" name="status" label="Status"
+                id="status" name="status" label={t("common.status")}
                 defaultValue={contract.status}
                 options={[
-                  { value: "pending", label: "Pending" },
-                  { value: "signed", label: "Signed" },
-                  { value: "canceled", label: "Canceled" },
+                  { value: "pending", label: t("status.contract.pending") },
+                  { value: "signed", label: t("status.contract.signed") },
+                  { value: "canceled", label: t("status.contract.canceled") },
                 ]}
               />
             </div>
@@ -210,9 +212,9 @@ export function EditContractForm() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Items</CardTitle>
+              <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> Add Item
+                <Plus className="h-4 w-4 mr-1" /> {t("common.addItem")}
               </Button>
             </div>
           </CardHeader>
@@ -221,19 +223,19 @@ export function EditContractForm() {
               {items.map((item, i) => (
                 <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Item Name</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.itemName")}</label>
                     <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
                   </div>
                   <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Bags</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.bags")}</label>
                     <TextInput type="number" className="w-full" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Kg/Bag</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.kgPerBag")}</label>
                     <TextInput type="number" step="0.01" className="w-full" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Price/Kg</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("contracts.pricePerKg")}</label>
                     <TextInput type="number" step="0.01" className="w-full" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
                   </div>
                   <Button
@@ -241,7 +243,7 @@ export function EditContractForm() {
                     variant="ghost"
                     size="icon"
                     onClick={() => removeItem(i)}
-                    aria-label={`Hapus baris barang ${i + 1}`}
+                    aria-label={t("common.removeItemRow", { n: i + 1 })}
                     className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -253,8 +255,8 @@ export function EditContractForm() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.saveChanges")}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
         </div>
       </form>
     </div>

@@ -3,6 +3,7 @@ import { listClosedPeriods } from "@/lib/period";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
+import { getT } from "@/lib/i18n/server";
 import { NewContractForm } from "./contract-form";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function NewContractPage() {
   await requirePagePermission("contract.write");
+  const t = await getT();
 
   const closedPeriods = await listClosedPeriods();
 
@@ -25,16 +27,14 @@ export default async function NewContractPage() {
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: "Buat Kontrak" }]}
-        title={<TermTooltip term="kontrak">Buat Kontrak</TermTooltip>}
-        description={
-          <>
-            Isi dulu yang pokok: nomor, tanggal, pembeli, dan barangnya. Termin, kemasan, dan
-            pengapalan ada di &ldquo;Detail lengkap&rdquo; dan boleh dilewati.
-          </>
-        }
+        breadcrumbs={[
+          { label: t("contracts.breadcrumb"), href: "/contracts" },
+          { label: t("contracts.createTitle") },
+        ]}
+        title={<TermTooltip term="kontrak">{t("contracts.createTitle")}</TermTooltip>}
+        description={t("contracts.createDescription")}
       />
-      <LearnMore term="kontrak" className="mt-1 mb-6" label="Pelajari ini: apa itu kontrak" />
+      <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreNew")} />
       <NewContractForm closedPeriods={closedPeriods} />
     </div>
   );

@@ -17,7 +17,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileText } from "lucide-react";
-import { STATUS_FILTER_LABELS } from "@/lib/constants";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -30,6 +31,8 @@ export default async function ContractsPage({
   searchParams: Promise<{ status?: string; search?: string; page?: string }>;
 }) {
   await requirePagePermission("contract.read");
+  const t = await getT();
+  const statusLabels = statusFilterLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -64,14 +67,14 @@ export default async function ContractsPage({
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="kontrak">Kontrak ({totalCount})</TermTooltip>}
+        title={<TermTooltip term="kontrak">{t("contracts.title", { count: totalCount })}</TermTooltip>}
         actions={
           <Link href="/contracts/new" className="shrink-0">
-            <Button>+ Buat Kontrak</Button>
+            <Button>{t("contracts.addNew")}</Button>
           </Link>
         }
       />
-      <LearnMore term="kontrak" className="mt-1 mb-6" label="Pelajari ini: apa itu kontrak penjualan" />
+      <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreList")} />
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">
@@ -84,7 +87,7 @@ export default async function ContractsPage({
               variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
               size="sm"
             >
-              {STATUS_FILTER_LABELS[status] ?? status}
+              {statusLabels[status] ?? status}
             </Button>
           </Link>
         ))}
@@ -95,12 +98,12 @@ export default async function ContractsPage({
         <TextInput
           type="text"
           name="search"
-          placeholder="Cari no. kontrak, pembeli, atau penerima barang..."
+          placeholder={t("contracts.searchPlaceholder")}
           defaultValue={params.search}
           className="w-full max-w-md"
         />
         <Button type="submit" className="ml-2">
-          Cari
+          {t("common.search")}
         </Button>
       </form>
 
@@ -109,22 +112,22 @@ export default async function ContractsPage({
         <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>No. Kontrak</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Pembeli</TableHead>
+                <TableHead>{t("contracts.colNo")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>{t("contracts.colBuyer")}</TableHead>
                 <TableHead>
-                  <TermTooltip term="penerima_barang">Penerima Barang</TermTooltip>
+                  <TermTooltip term="penerima_barang">{t("contracts.colConsignee")}</TermTooltip>
                 </TableHead>
-                <TableHead className="text-right">Jumlah Barang</TableHead>
-                <TableHead>Mata Uang</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-right">{t("contracts.colItemCount")}</TableHead>
+                <TableHead>{t("common.currency")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {contracts.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={7} className="p-0">
-                    <EmptyState icon={<FileText className="h-12 w-12" />} title="Belum ada kontrak" description="Buat kontrak pertama sebelum barang dikirim." actionLabel="+ Buat Kontrak" actionHref="/contracts/new" />
+                    <EmptyState icon={<FileText className="h-12 w-12" />} title={t("contracts.emptyTitle")} description={t("contracts.emptyDescription")} actionLabel={t("contracts.addNew")} actionHref="/contracts/new" />
                   </TableCell>
                 </TableRow>
               ) : (

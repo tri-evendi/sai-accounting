@@ -147,10 +147,13 @@ function NavLink({
       onClick={onClose}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+        // `border-l-4 border-transparent` di dasar: penanda aktif hanya
+        // mengganti WARNA border, bukan menambah lebarnya — jadi ikon/teks tak
+        // bergeser 4px saat berpindah item (anti-pattern "geser layout" MASTER).
+        "flex cursor-pointer items-center gap-3 rounded-md border-l-4 border-transparent px-3 py-2 text-sm font-medium transition-colors duration-150",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
         active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground border-l-4 border-sidebar-foreground"
+          ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-foreground"
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
       )}
     >

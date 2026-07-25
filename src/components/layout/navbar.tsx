@@ -15,7 +15,7 @@ interface NavbarProps {
 
 export function Navbar({ userName, role, onMenuClick, onSignOut }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
       <button
         onClick={onMenuClick}
         aria-label="Buka menu"

@@ -1457,7 +1457,12 @@
     "emptyReportTitle": "No budget for this period yet",
     "emptyReportDescription": "Set the account budgets first, under Account Budgets, and the actuals will appear here.",
     "emptyReportAction": "Go to Account Budgets",
-    "colActual": "Actual"
+    "colActual": "Actual",
+    "varianceOnTarget": "On target",
+    "varianceOver": "Above",
+    "varianceUnder": "Below",
+    "varianceSuffix": "budget",
+    "allMonths": "All months (full year)"
   },
   "finance": {
     "title": "Cash & Bank Book",
@@ -1769,7 +1774,20 @@
     "chartMonthlyTitle": "Monthly activity",
     "chartMonthlyDesc": "New contracts and invoices (last 6 months)",
     "latestContracts": "Latest contracts",
-    "emptyContractsDescription": "A contract starts the document chain: delivery orders, invoices, and payments all follow from it."
+    "emptyContractsDescription": "A contract starts the document chain: delivery orders, invoices, and payments all follow from it.",
+    "seeAll": "See all",
+    "lowStockTitle": "Low stock — {count} items have {threshold} units or fewer left",
+    "lowStockUnit": "units",
+    "lowStockMore": "+{count} more items in the stock list",
+    "lowStockLink": "Check with a Stock Count",
+    "seeDetail": "See details",
+    "breakdownDocs": "{currency} · {count} documents",
+    "unresolvedBefore": "{count} foreign-currency documents have no rate yet, so they are",
+    "unresolvedStrong": "not included in the total",
+    "unresolvedAfter": "shown here.",
+    "workflowTitle": "Workflows",
+    "workflowHint": "Not sure where to start? Follow the steps in order — each one opens its page.",
+    "workflowOptional": "optional"
   },
   "inventory": {
     "levelHealthy": "Healthy",
@@ -2255,5 +2273,114 @@
     "emptyTitle": "No terms found",
     "emptyDescription": "Try another word, for example “invoice”, “stock”, or “tax”. Clear the search box to see every term again.",
     "openInApp": "Open in the app"
+  },
+  "moneyDirection": {
+    "in": "In",
+    "out": "Out",
+    "profit": "Profit",
+    "loss": "Loss",
+    "receivable": "Not in yet",
+    "payable": "Not out yet"
+  },
+  "paymentStatus": {
+    "paid": "Paid",
+    "partial": "Partial",
+    "unpaid": "Unpaid",
+    "overdue": "Overdue"
+  },
+  "agingBucket": {
+    "b0_30": "0–30 days",
+    "b31_60": "31–60 days",
+    "b61_90": "61–90 days",
+    "b90_plus": "> 90 days"
+  },
+  "aging": {
+    "ageDays": "{days} days",
+    "sinceIssue": "since issue",
+    "pastDue": "past due",
+    "towardsDue": "until due",
+    "totalOutstanding": "Total Outstanding",
+    "baseNote": "Amounts in IDR (the ledger base value).",
+    "unresolvedBefore": "{count} foreign-currency documents have no rate yet, so their IDR value is unknown and they are",
+    "unresolvedStrong": "not included in the total",
+    "unresolvedAfter": ". Enter the rate on the document so it counts.",
+    "docCount": "{count} documents"
+  },
+  "ledgerFilter": {
+    "asOfField": "As of Date",
+    "overdueOnly": "Overdue only",
+    "hint": "The overdue filter only covers documents that carry a due date. A document without one cannot be judged late, so it never appears here — fill in the Due Date field on the document so it is tracked."
+  },
+  "charts": {
+    "noActivity": "No activity in the last 6 months",
+    "noStockLeft": "No stock left",
+    "noContracts": "No contracts recorded yet",
+    "noItems": "No items in stock yet",
+    "noCashMovement": "No {currency} cash movement in the last 6 months",
+    "seriesQuantity": "Quantity",
+    "tooltipMoneyIn": "Money in: {amount}",
+    "tooltipMoneyOut": "Money out: {amount}",
+    "tooltipDifference": "Difference: {amount}",
+    "tooltipCurrentStock": "Current stock"
+  },
+  "workflows": {
+    "penjualan": {
+      "label": "Sales Workflow",
+      "description": "From the deal to the money in — the order in which a sale is recorded.",
+      "steps": {
+        "kontrak": {
+          "label": "Create a Contract",
+          "description": "The agreement before the goods ship."
+        },
+        "penjualan": {
+          "label": "Record a Sale",
+          "description": "Guided: customer → goods → delivery order → invoice."
+        },
+        "terima": {
+          "label": "Receive Payment",
+          "description": "Record money coming into cash / bank."
+        },
+        "piutang": {
+          "label": "Watch Receivables",
+          "description": "See which customers have not paid."
+        }
+      }
+    },
+    "pembelian": {
+      "label": "Purchasing Workflow",
+      "description": "From buying the goods to settling the debt.",
+      "steps": {
+        "pembelian": {
+          "label": "Record a Purchase",
+          "description": "Guided: supplier → goods → payable."
+        },
+        "bayar": {
+          "label": "Pay the Supplier",
+          "description": "Record money going out of cash / bank."
+        },
+        "utang": {
+          "label": "Watch Payables",
+          "description": "See which bills still have to be paid."
+        }
+      }
+    },
+    "tutup_buku": {
+      "label": "Monthly Closing",
+      "description": "The end-of-month tidy-up before the final reports.",
+      "steps": {
+        "cocokkan": {
+          "label": "Reconcile the Account",
+          "description": "Match the records against the bank statement."
+        },
+        "kunci": {
+          "label": "Lock the Month",
+          "description": "Close the period so the figures can no longer change."
+        },
+        "laporan": {
+          "label": "View the Reports",
+          "description": "Profit & loss, balance sheet, cash flow."
+        }
+      }
+    }
   }
 }

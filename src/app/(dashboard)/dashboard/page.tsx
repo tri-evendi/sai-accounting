@@ -304,7 +304,7 @@ export default async function DashboardPage() {
       {/* ─── Alur Kerja (panduan urutan) ───
           Tepat di bawah Aksi Cepat: setelah tombol "kerjakan sekarang", tunjukkan
           URUTAN kerjanya bagi yang belum tahu mulai dari mana. */}
-      <WorkflowGuide workflows={workflows} />
+      <WorkflowGuide workflows={workflows} t={t} />
 
       <StockAlertBanner items={lowStockItems} />
 

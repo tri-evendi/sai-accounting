@@ -66,6 +66,7 @@ import {
 import { PERMISSION_LABELS, RESOURCE_LABELS } from "@/lib/authz-labels";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
+import { WORKFLOWS } from "@/lib/workflows";
 import id from "@/lib/i18n/dictionaries/id.json";
 import en from "@/lib/i18n/dictionaries/en.json";
 import zh from "@/lib/i18n/dictionaries/zh.json";
@@ -164,6 +165,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Persetujuan. "rupiah" ditulis sama dalam bahasa Indonesia maupun Inggris;
     // bahasa Mandarin memakai 印尼盾.
     "approvals.rulesDescStrong1",
+    // Judul kartu total di ringkasan umur piutang/utang. Frasa Inggris
+    // "Total Outstanding" memang dipakai apa adanya pada layar berbahasa
+    // Indonesia (bahasa Mandarin memakai 未结清合计).
+    "aging.totalOutstanding",
     // Nama isian unggah dokumen: kata "File" identik di kedua bahasa Latin
     // (bahasa Mandarin memakai 文件).
     "documents.fileField",
@@ -290,6 +295,19 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     for (const action of QUICK_ACTIONS) {
       expect(translate(id, action.labelKey), action.key).toBe(action.label);
       expect(translate(id, action.descriptionKey), action.key).toBe(action.description);
+    }
+  });
+
+  it("label & penjelasan Alur Kerja sama persis dengan nilai kamus `id`", () => {
+    for (const workflow of WORKFLOWS) {
+      expect(translate(id, workflow.labelKey), workflow.id).toBe(workflow.label);
+      expect(translate(id, workflow.descriptionKey), workflow.id).toBe(workflow.description);
+      for (const step of workflow.steps) {
+        expect(translate(id, step.labelKey), `${workflow.id} / ${step.href}`).toBe(step.label);
+        expect(translate(id, step.descriptionKey), `${workflow.id} / ${step.href}`).toBe(
+          step.description
+        );
+      }
     }
   });
 

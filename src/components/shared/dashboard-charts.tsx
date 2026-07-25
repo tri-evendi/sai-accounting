@@ -13,23 +13,19 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useT } from "@/lib/i18n/client";
 
 const CHART_HEIGHT = 260;
 
-// Kunci peta warna = label yang dikirim halaman (bahasa Indonesia, issue #1).
-// Legenda & label persen memakai teks itu juga, jadi kategori tidak pernah
-// dibedakan oleh warna saja.
-const CONTRACT_COLORS: Record<string, string> = {
-  Sah: "var(--success)",
-  Menunggu: "var(--warning)",
-  Dibatalkan: "var(--destructive)",
-};
+// Warna per POSISI, bukan per label. Sebelum multibahasa peta ini berkunci
+// teks Indonesia ("Sah", "Aman"); begitu labelnya ikut bahasa pengguna, kunci
+// seperti itu tak pernah cocok lagi dan semua irisan jadi abu-abu. Urutannya
+// sama dengan urutan data yang dikirim Beranda — sah/menunggu/dibatalkan dan
+// aman/menipis/habis. Legenda & label persen tetap berteks, jadi kategori
+// tidak pernah dibedakan oleh warna saja.
+const CONTRACT_COLORS = ["var(--success)", "var(--warning)", "var(--destructive)"];
 
-const STOCK_COLORS: Record<string, string> = {
-  Aman: "var(--success)",
-  Menipis: "var(--warning)",
-  Habis: "var(--destructive)",
-};
+const STOCK_COLORS = ["var(--success)", "var(--warning)", "var(--destructive)"];
 
 interface PieDatum {
   name: string;
@@ -74,10 +70,13 @@ function DonutChart({
   emptyMessage,
 }: {
   data: PieDatum[];
-  colors: Record<string, string>;
+  /** Warna per posisi data, dipasangkan SEBELUM baris nol disaring. */
+  colors: readonly string[];
   emptyMessage: string;
 }) {
-  const filtered = data.filter((d) => d.value > 0);
+  const filtered = data
+    .map((d, i) => ({ ...d, fill: colors[i] ?? "var(--muted-foreground)" }))
+    .filter((d) => d.value > 0);
   if (filtered.length === 0) {
     return <ChartEmpty message={emptyMessage} />;
   }
@@ -99,7 +98,7 @@ function DonutChart({
           labelLine={false}
         >
           {filtered.map((entry) => (
-            <Cell key={entry.name} fill={colors[entry.name] || "var(--muted-foreground)"} />
+            <Cell key={entry.name} fill={entry.fill} />
           ))}
         </Pie>
         <Tooltip />
@@ -114,21 +113,23 @@ function DonutChart({
 }
 
 export function ContractStatusChart({ data }: { data: PieDatum[] }) {
+  const t = useT();
   return (
     <DonutChart
       data={data}
       colors={CONTRACT_COLORS}
-      emptyMessage="Belum ada kontrak tercatat"
+      emptyMessage={t("charts.noContracts")}
     />
   );
 }
 
 export function StockStatusChart({ data }: { data: PieDatum[] }) {
+  const t = useT();
   return (
     <DonutChart
       data={data}
       colors={STOCK_COLORS}
-      emptyMessage="Belum ada barang di stok"
+      emptyMessage={t("charts.noItems")}
     />
   );
 }
@@ -140,8 +141,9 @@ interface MonthlyData {
 }
 
 export function MonthlyActivityChart({ data }: { data: MonthlyData[] }) {
+  const t = useT();
   if (data.length === 0) {
-    return <ChartEmpty message="Belum ada aktivitas dalam 6 bulan terakhir" />;
+    return <ChartEmpty message={t("charts.noActivity")} />;
   }
 
   return (
@@ -158,8 +160,8 @@ export function MonthlyActivityChart({ data }: { data: MonthlyData[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="contracts" fill="var(--chart-1)" name="Kontrak" radius={[4, 4, 0, 0]} maxBarSize={40} />
-        <Bar dataKey="invoices" fill="var(--chart-3)" name="Tagihan Penjualan" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="contracts" fill="var(--chart-1)" name={t("nav.items.contracts")} radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey="invoices" fill="var(--chart-3)" name={t("nav.items.invoices")} radius={[4, 4, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -172,13 +174,14 @@ interface StockLevelData {
 }
 
 export function StockLevelChart({ data }: { data: StockLevelData[] }) {
+  const t = useT();
   const topItems = [...data]
     .filter((d) => d.stock > 0)
     .sort((a, b) => b.stock - a.stock)
     .slice(0, 8);
 
   if (topItems.length === 0) {
-    return <ChartEmpty message="Belum ada stok tersisa" />;
+    return <ChartEmpty message={t("charts.noStockLeft")} />;
   }
 
   const chartHeight = Math.max(CHART_HEIGHT, topItems.length * 36 + 48);
@@ -204,11 +207,11 @@ export function StockLevelChart({ data }: { data: StockLevelData[] }) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={(value: any, _name: any, item: any) => {
             const unit = (item?.payload as StockLevelData)?.unit;
-            return [`${formatFull(Number(value ?? 0))}${unit ? ` ${unit}` : ""}`, "Stok saat ini"];
+            return [`${formatFull(Number(value ?? 0))}${unit ? ` ${unit}` : ""}`, t("charts.tooltipCurrentStock")];
           }}
           contentStyle={{ borderRadius: 8, border: "1px solid var(--border)", fontSize: 12 }}
         />
-        <Bar dataKey="stock" fill="var(--success)" name="Jumlah" radius={[0, 4, 4, 0]} maxBarSize={28} />
+        <Bar dataKey="stock" fill="var(--success)" name={t("charts.seriesQuantity")} radius={[0, 4, 4, 0]} maxBarSize={28} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -227,6 +230,7 @@ interface CashFlowChartProps {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CashFlowTooltip({ active, payload, label, currency }: any) {
+  const t = useT();
   if (!active || !payload?.length) return null;
   const income = payload.find((p: { dataKey: string }) => p.dataKey === "debit")?.value ?? 0;
   const expense = payload.find((p: { dataKey: string }) => p.dataKey === "credit")?.value ?? 0;
@@ -234,18 +238,23 @@ function CashFlowTooltip({ active, payload, label, currency }: any) {
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
       <p className="font-medium text-foreground mb-1.5">{label}</p>
-      <p className="text-success">Uang masuk: {formatMoney(income, currency)}</p>
-      <p className="text-destructive">Uang keluar: {formatMoney(expense, currency)}</p>
+      <p className="text-success">
+        {t("charts.tooltipMoneyIn", { amount: formatMoney(income, currency) })}
+      </p>
+      <p className="text-destructive">
+        {t("charts.tooltipMoneyOut", { amount: formatMoney(expense, currency) })}
+      </p>
       <p className="mt-1.5 font-medium text-foreground border-t border-border pt-1.5">
-        Selisih: {formatMoney(income - expense, currency)}
+        {t("charts.tooltipDifference", { amount: formatMoney(income - expense, currency) })}
       </p>
     </div>
   );
 }
 
 export function CashFlowChart({ data, currency }: CashFlowChartProps) {
+  const t = useT();
   if (data.length === 0 || data.every((d) => d.debit === 0 && d.credit === 0)) {
-    return <ChartEmpty message={`Belum ada pergerakan kas ${currency} dalam 6 bulan terakhir`} />;
+    return <ChartEmpty message={t("charts.noCashMovement", { currency })} />;
   }
 
   return (
@@ -262,8 +271,8 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
         />
         <Tooltip content={<CashFlowTooltip currency={currency} />} />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="debit" fill="var(--success)" name="Uang Masuk" radius={[4, 4, 0, 0]} maxBarSize={36} />
-        <Bar dataKey="credit" fill="var(--destructive)" name="Uang Keluar" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="debit" fill="var(--success)" name={t("finance.colMoneyIn")} radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="credit" fill="var(--destructive)" name={t("finance.colMoneyOut")} radius={[4, 4, 0, 0]} maxBarSize={36} />
       </BarChart>
     </ResponsiveContainer>
   );

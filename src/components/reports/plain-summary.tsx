@@ -20,31 +20,54 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReportSummary, SummaryDirection } from "@/lib/report-summary";
+import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 interface DirStyle {
   Icon: LucideIcon;
-  word: string;
+  word: DictionaryKey;
   value: string;
   sign: "" | "+" | "−";
 }
 
 const DIR: Record<SummaryDirection, DirStyle> = {
-  in: { Icon: ArrowDownToLine, word: "Masuk", value: "text-success-strong", sign: "" },
-  out: { Icon: ArrowUpFromLine, word: "Keluar", value: "text-destructive-strong", sign: "" },
-  profit: { Icon: TrendingUp, word: "Untung", value: "text-success-strong", sign: "+" },
-  loss: { Icon: TrendingDown, word: "Rugi", value: "text-destructive-strong", sign: "−" },
-  receivable: { Icon: ArrowDownToLine, word: "Belum masuk", value: "text-foreground", sign: "" },
-  payable: { Icon: ArrowUpFromLine, word: "Belum keluar", value: "text-foreground", sign: "" },
+  in: { Icon: ArrowDownToLine, word: "moneyDirection.in", value: "text-success-strong", sign: "" },
+  out: {
+    Icon: ArrowUpFromLine,
+    word: "moneyDirection.out",
+    value: "text-destructive-strong",
+    sign: "",
+  },
+  profit: { Icon: TrendingUp, word: "moneyDirection.profit", value: "text-success-strong", sign: "+" },
+  loss: {
+    Icon: TrendingDown,
+    word: "moneyDirection.loss",
+    value: "text-destructive-strong",
+    sign: "−",
+  },
+  receivable: {
+    Icon: ArrowDownToLine,
+    word: "moneyDirection.receivable",
+    value: "text-foreground",
+    sign: "",
+  },
+  payable: {
+    Icon: ArrowUpFromLine,
+    word: "moneyDirection.payable",
+    value: "text-foreground",
+    sign: "",
+  },
 };
 
-export function PlainSummary({ summary }: { summary: ReportSummary }) {
+export async function PlainSummary({ summary }: { summary: ReportSummary }) {
+  const t = await getT();
   return (
     <Card className="mb-6 border-primary/30 bg-primary/10">
       <div className="flex flex-col gap-4 p-5">
         <div className="flex items-start gap-3">
           <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div>
-            <h2 className="text-sm font-semibold text-primary">Ringkasan Bahasa Sehari-hari</h2>
+            <h2 className="text-sm font-semibold text-primary">{t("dashboard.plainTitle")}</h2>
             <p className="mt-1 text-sm leading-snug text-foreground">{summary.narrative}</p>
           </div>
         </div>

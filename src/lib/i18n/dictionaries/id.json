@@ -1457,7 +1457,12 @@
     "emptyReportTitle": "Belum ada anggaran untuk periode ini",
     "emptyReportDescription": "Tetapkan anggaran akun terlebih dahulu di menu Anggaran Akun, lalu realisasinya akan muncul di sini.",
     "emptyReportAction": "Ke Anggaran Akun",
-    "colActual": "Realisasi"
+    "colActual": "Realisasi",
+    "varianceOnTarget": "Sesuai",
+    "varianceOver": "Di atas",
+    "varianceUnder": "Di bawah",
+    "varianceSuffix": "anggaran",
+    "allMonths": "Semua bulan (setahun)"
   },
   "finance": {
     "title": "Buku Kas & Bank",
@@ -1769,7 +1774,20 @@
     "chartMonthlyTitle": "Aktivitas bulanan",
     "chartMonthlyDesc": "Kontrak dan tagihan baru (6 bulan terakhir)",
     "latestContracts": "Kontrak terbaru",
-    "emptyContractsDescription": "Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya."
+    "emptyContractsDescription": "Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya.",
+    "seeAll": "Lihat semua",
+    "lowStockTitle": "Stok menipis — {count} barang tersisa {threshold} satuan atau kurang",
+    "lowStockUnit": "satuan",
+    "lowStockMore": "+{count} barang lain di daftar stok",
+    "lowStockLink": "Periksa lewat Hitung Ulang Stok",
+    "seeDetail": "Lihat detail",
+    "breakdownDocs": "{currency} · {count} dokumen",
+    "unresolvedBefore": "{count} dokumen valas belum berkurs, jadi",
+    "unresolvedStrong": "tidak ikut dijumlahkan",
+    "unresolvedAfter": "di angka ini.",
+    "workflowTitle": "Alur Kerja",
+    "workflowHint": "Belum tahu mulai dari mana? Ikuti urutan langkah berikut — tiap langkah membuka halamannya.",
+    "workflowOptional": "opsional"
   },
   "inventory": {
     "levelHealthy": "Aman",
@@ -2255,5 +2273,114 @@
     "emptyTitle": "Istilah tidak ditemukan",
     "emptyDescription": "Coba kata lain, misalnya “tagihan”, “stok”, atau “pajak”. Semua istilah bisa dilihat dengan mengosongkan pencarian.",
     "openInApp": "Buka di aplikasi"
+  },
+  "moneyDirection": {
+    "in": "Masuk",
+    "out": "Keluar",
+    "profit": "Untung",
+    "loss": "Rugi",
+    "receivable": "Belum masuk",
+    "payable": "Belum keluar"
+  },
+  "paymentStatus": {
+    "paid": "Lunas",
+    "partial": "Sebagian",
+    "unpaid": "Belum Bayar",
+    "overdue": "Jatuh Tempo"
+  },
+  "agingBucket": {
+    "b0_30": "0–30 hari",
+    "b31_60": "31–60 hari",
+    "b61_90": "61–90 hari",
+    "b90_plus": "> 90 hari"
+  },
+  "aging": {
+    "ageDays": "{days} hari",
+    "sinceIssue": "sejak terbit",
+    "pastDue": "lewat tempo",
+    "towardsDue": "menuju tempo",
+    "totalOutstanding": "Total Outstanding",
+    "baseNote": "Nilai dalam IDR (nilai dasar buku besar).",
+    "unresolvedBefore": "{count} dokumen valas belum berkurs, jadi nilai IDR-nya tidak diketahui dan",
+    "unresolvedStrong": "tidak ikut dijumlahkan",
+    "unresolvedAfter": ". Isi kurs pada dokumen agar terhitung.",
+    "docCount": "{count} dokumen"
+  },
+  "ledgerFilter": {
+    "asOfField": "Per Tanggal",
+    "overdueOnly": "Hanya yang sudah jatuh tempo",
+    "hint": "Filter jatuh tempo hanya mencakup dokumen yang punya tanggal jatuh tempo. Dokumen tanpa tanggal jatuh tempo tidak bisa dinilai terlambat, jadi tidak pernah muncul di sini — isi kolom Jatuh Tempo pada dokumen agar ikut terpantau."
+  },
+  "charts": {
+    "noActivity": "Belum ada aktivitas dalam 6 bulan terakhir",
+    "noStockLeft": "Belum ada stok tersisa",
+    "noContracts": "Belum ada kontrak tercatat",
+    "noItems": "Belum ada barang di stok",
+    "noCashMovement": "Belum ada pergerakan kas {currency} dalam 6 bulan terakhir",
+    "seriesQuantity": "Jumlah",
+    "tooltipMoneyIn": "Uang masuk: {amount}",
+    "tooltipMoneyOut": "Uang keluar: {amount}",
+    "tooltipDifference": "Selisih: {amount}",
+    "tooltipCurrentStock": "Stok saat ini"
+  },
+  "workflows": {
+    "penjualan": {
+      "label": "Alur Penjualan",
+      "description": "Dari kesepakatan sampai uang masuk — urutan mencatat penjualan.",
+      "steps": {
+        "kontrak": {
+          "label": "Buat Kontrak",
+          "description": "Kesepakatan sebelum barang dikirim."
+        },
+        "penjualan": {
+          "label": "Catat Penjualan",
+          "description": "Dipandu: pelanggan → barang → surat jalan → faktur."
+        },
+        "terima": {
+          "label": "Terima Pembayaran",
+          "description": "Catat uang masuk ke kas / bank."
+        },
+        "piutang": {
+          "label": "Pantau Piutang",
+          "description": "Lihat pelanggan yang belum bayar."
+        }
+      }
+    },
+    "pembelian": {
+      "label": "Alur Pembelian",
+      "description": "Dari beli barang sampai utang lunas.",
+      "steps": {
+        "pembelian": {
+          "label": "Catat Pembelian",
+          "description": "Dipandu: pemasok → barang → utang."
+        },
+        "bayar": {
+          "label": "Bayar Pemasok",
+          "description": "Catat uang keluar dari kas / bank."
+        },
+        "utang": {
+          "label": "Pantau Utang",
+          "description": "Lihat tagihan yang harus dibayar."
+        }
+      }
+    },
+    "tutup_buku": {
+      "label": "Tutup Buku Bulanan",
+      "description": "Beres-beres tiap akhir bulan sebelum laporan final.",
+      "steps": {
+        "cocokkan": {
+          "label": "Cocokkan Rekening",
+          "description": "Samakan catatan dengan rekening koran bank."
+        },
+        "kunci": {
+          "label": "Kunci Bulan",
+          "description": "Tutup periode agar angkanya tak berubah lagi."
+        },
+        "laporan": {
+          "label": "Lihat Laporan",
+          "description": "Laba/rugi, neraca, arus kas."
+        }
+      }
+    }
   }
 }

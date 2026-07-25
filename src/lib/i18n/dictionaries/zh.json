@@ -1457,7 +1457,12 @@
     "emptyReportTitle": "此期间还没有预算",
     "emptyReportDescription": "请先在「科目预算」中设定科目预算，实际数便会显示在此处。",
     "emptyReportAction": "前往科目预算",
-    "colActual": "实际"
+    "colActual": "实际",
+    "varianceOnTarget": "符合目标",
+    "varianceOver": "高于",
+    "varianceUnder": "低于",
+    "varianceSuffix": "预算",
+    "allMonths": "全部月份（全年）"
   },
   "finance": {
     "title": "现金与银行账簿",
@@ -1769,7 +1774,20 @@
     "chartMonthlyTitle": "月度活动",
     "chartMonthlyDesc": "新增合同与发票（最近 6 个月）",
     "latestContracts": "最新合同",
-    "emptyContractsDescription": "合同是单据链的起点：出货单、发票与收款都由此产生。"
+    "emptyContractsDescription": "合同是单据链的起点：出货单、发票与收款都由此产生。",
+    "seeAll": "查看全部",
+    "lowStockTitle": "库存偏低——有 {count} 项货物余量不超过 {threshold} 个单位",
+    "lowStockUnit": "单位",
+    "lowStockMore": "库存清单中还有 {count} 项货物",
+    "lowStockLink": "通过库存盘点核对",
+    "seeDetail": "查看明细",
+    "breakdownDocs": "{currency} · {count} 张单据",
+    "unresolvedBefore": "有 {count} 张外币单据尚未填写汇率，因此",
+    "unresolvedStrong": "未计入合计",
+    "unresolvedAfter": "于此金额中。",
+    "workflowTitle": "工作流程",
+    "workflowHint": "不知从何入手？请按以下步骤顺序操作——每一步都会打开对应页面。",
+    "workflowOptional": "可选"
   },
   "inventory": {
     "levelHealthy": "充足",
@@ -2255,5 +2273,114 @@
     "emptyTitle": "未找到术语",
     "emptyDescription": "请换个词试试，例如“发票”“库存”或“税务”。清空搜索框即可查看全部术语。",
     "openInApp": "在应用中打开"
+  },
+  "moneyDirection": {
+    "in": "流入",
+    "out": "流出",
+    "profit": "盈利",
+    "loss": "亏损",
+    "receivable": "尚未流入",
+    "payable": "尚未流出"
+  },
+  "paymentStatus": {
+    "paid": "已结清",
+    "partial": "部分结清",
+    "unpaid": "未付",
+    "overdue": "已逾期"
+  },
+  "agingBucket": {
+    "b0_30": "0–30 天",
+    "b31_60": "31–60 天",
+    "b61_90": "61–90 天",
+    "b90_plus": "> 90 天"
+  },
+  "aging": {
+    "ageDays": "{days} 天",
+    "sinceIssue": "自开具起",
+    "pastDue": "已逾期",
+    "towardsDue": "距到期",
+    "totalOutstanding": "未结清合计",
+    "baseNote": "金额以印尼盾列示（总账本位币）。",
+    "unresolvedBefore": "有 {count} 张外币单据尚未填写汇率，其印尼盾金额无从得知，因此",
+    "unresolvedStrong": "未计入合计",
+    "unresolvedAfter": "。请在单据上填写汇率，使其纳入计算。",
+    "docCount": "{count} 张单据"
+  },
+  "ledgerFilter": {
+    "asOfField": "截至日期",
+    "overdueOnly": "仅显示已逾期",
+    "hint": "逾期筛选仅涵盖填有到期日的单据。没有到期日的单据无法判定是否逾期，因此不会出现在这里——请在单据上填写到期日，以便纳入跟踪。"
+  },
+  "charts": {
+    "noActivity": "最近 6 个月暂无活动",
+    "noStockLeft": "暂无剩余库存",
+    "noContracts": "尚未记录任何合同",
+    "noItems": "库存中暂无货物",
+    "noCashMovement": "最近 6 个月没有 {currency} 资金变动",
+    "seriesQuantity": "数量",
+    "tooltipMoneyIn": "资金流入：{amount}",
+    "tooltipMoneyOut": "资金流出：{amount}",
+    "tooltipDifference": "差额：{amount}",
+    "tooltipCurrentStock": "当前库存"
+  },
+  "workflows": {
+    "penjualan": {
+      "label": "销售流程",
+      "description": "从达成交易到收到货款——销售的记录顺序。",
+      "steps": {
+        "kontrak": {
+          "label": "新建合同",
+          "description": "发货前达成的协议。"
+        },
+        "penjualan": {
+          "label": "录入销售",
+          "description": "引导式：客户 → 货物 → 送货单 → 发票。"
+        },
+        "terima": {
+          "label": "收取货款",
+          "description": "记录流入现金 / 银行的资金。"
+        },
+        "piutang": {
+          "label": "跟踪应收账款",
+          "description": "查看尚未付款的客户。"
+        }
+      }
+    },
+    "pembelian": {
+      "label": "采购流程",
+      "description": "从采购货物到清偿欠款。",
+      "steps": {
+        "pembelian": {
+          "label": "录入采购",
+          "description": "引导式：供应商 → 货物 → 应付账款。"
+        },
+        "bayar": {
+          "label": "支付供应商",
+          "description": "记录从现金 / 银行流出的资金。"
+        },
+        "utang": {
+          "label": "跟踪应付账款",
+          "description": "查看仍需支付的账单。"
+        }
+      }
+    },
+    "tutup_buku": {
+      "label": "月度结账",
+      "description": "出具最终报表前的月末整理。",
+      "steps": {
+        "cocokkan": {
+          "label": "核对账户",
+          "description": "将账簿记录与银行对账单核对一致。"
+        },
+        "kunci": {
+          "label": "锁定月份",
+          "description": "关闭期间，使数字不再变动。"
+        },
+        "laporan": {
+          "label": "查看报表",
+          "description": "利润表、资产负债表、现金流量表。"
+        }
+      }
+    }
   }
 }

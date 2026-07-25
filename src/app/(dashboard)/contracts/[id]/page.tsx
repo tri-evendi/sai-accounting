@@ -81,7 +81,7 @@ export default async function ContractDetailPage({
   });
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: contract.contractNo }]}
         title={<>Contract {contract.contractNo}</>}

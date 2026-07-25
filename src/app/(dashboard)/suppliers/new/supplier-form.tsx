@@ -42,7 +42,7 @@ export function NewSupplierForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Pemasok Baru" }]}
         title="Pemasok Baru"
@@ -56,7 +56,7 @@ export function NewSupplierForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Pemasok</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" name="name" label="Nama Pemasok" required />
               <Input id="address" name="address" label="Alamat" />
               <Input id="phone" name="phone" label="Telepon" />

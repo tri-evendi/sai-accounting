@@ -14,6 +14,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
@@ -56,7 +57,7 @@ export default async function EfakturPage({
   const downloadHref = `/api/tax/efaktur?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <PageHeader
         title="Ekspor e-Faktur (DJP/CTAS)"
         description={
@@ -108,24 +109,24 @@ export default async function EfakturPage({
               <label htmlFor="from" className="block text-sm font-medium text-foreground">
                 Dari tanggal
               </label>
-              <input
+              <TextInput
                 id="from"
                 name="from"
                 type="date"
                 defaultValue={fromStr}
-                className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                className="mt-1"
               />
             </div>
             <div>
               <label htmlFor="to" className="block text-sm font-medium text-foreground">
                 Sampai tanggal
               </label>
-              <input
+              <TextInput
                 id="to"
                 name="to"
                 type="date"
                 defaultValue={toStr}
-                className="mt-1 block rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                className="mt-1"
               />
             </div>
             <Button type="submit" variant="secondary">

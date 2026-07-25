@@ -32,7 +32,7 @@ export default async function SalesTargetsPage({
   ]);
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Target Penjualan" }]}
         title="Target Penjualan"

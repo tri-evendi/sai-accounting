@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -86,11 +87,10 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="mb-1 block font-medium text-foreground">Tanggal opname</span>
-          <input
+          <TextInput
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </label>
         <p className="text-sm text-muted-foreground">
@@ -120,7 +120,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
                   <TableCell className="text-muted-foreground">{it.unit || "-"}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatNumber(it.currentStock)}</TableCell>
                   <TableCell className="text-right">
-                    <input
+                    <TextInput
                       type="number"
                       inputMode="decimal"
                       step="any"
@@ -131,7 +131,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
                       }
                       placeholder={String(it.currentStock)}
                       aria-label={`Hitung fisik ${it.name}`}
-                      className="h-9 w-28 rounded-md border border-border bg-background px-2 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="w-28 text-right tabular-nums"
                     />
                   </TableCell>
                   <TableCell className="text-right tabular-nums">

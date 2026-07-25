@@ -52,7 +52,7 @@ export function NewReconciliationForm() {
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Cocokkan Rekening Koran", href: "/reconciliation" },

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
@@ -70,7 +72,7 @@ export function EditConsigneeForm() {
   if (fetching) return <PageLoader message="Memuat data penerima barang..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[
           { label: "Penerima Barang", href: "/consignees" },
@@ -85,37 +87,34 @@ export function EditConsigneeForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" label="Nama Penerima Barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="country" label="Negara" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
               <Input id="contact" label="Kontak / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
               <div className="space-y-1">
                 <label htmlFor="address" className="block text-sm font-medium text-foreground">Alamat</label>
-                <textarea
+                <Textarea
                   id="address"
                   rows={3}
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <div className="space-y-1">
                 <label htmlFor="notes" className="block text-sm font-medium text-foreground">Catatan</label>
-                <textarea
+                <Textarea
                   id="notes"
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="block w-full rounded-md border border-border px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
               <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
-                <input
+                <Checkbox
                   id="isActive"
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
+                  className="mt-0.5"
                   checked={form.isActive}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
                 />
                 <span className="text-sm text-foreground">
                   Aktif

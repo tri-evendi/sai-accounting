@@ -40,7 +40,7 @@ export default async function BudgetAccountsPage({
   const budgets = await listBudgets(year, month);
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Anggaran Akun" }]}
         title="Anggaran Akun"

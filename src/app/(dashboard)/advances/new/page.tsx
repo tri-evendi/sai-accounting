@@ -20,7 +20,7 @@ export default async function NewAdvancePage() {
   ]);
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Uang Muka", href: "/advances" }, { label: "Catat" }]}
         title="Catat Uang Muka"

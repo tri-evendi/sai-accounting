@@ -105,8 +105,8 @@ export default async function FixedAssetsPage({
             href={f.href}
             className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
               f.active
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-white text-foreground hover:bg-muted"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:bg-muted"
             }`}
           >
             {f.label}

@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { ROLE_LABELS, ROLES, type Role } from "@/lib/constants";
+import { ROLE_LABELS, ROLES } from "@/lib/constants";
 import { APPROVAL_DOCUMENT_TYPES, APPROVAL_DOCUMENT_TYPE_LABELS } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
 
@@ -26,14 +27,20 @@ const DOCUMENT_OPTIONS = APPROVAL_DOCUMENT_TYPES.map((t) => ({
   label: APPROVAL_DOCUMENT_TYPE_LABELS[t],
 }));
 
-const ROLE_OPTIONS = (Object.values(ROLES) as Role[]).map((r) => ({
-  value: r,
-  label: ROLE_LABELS[r],
-}));
-
-export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
+export function ApprovalRules({
+  rules,
+  roles,
+}: {
+  rules: ApprovalRuleView[];
+  roles: { key: string; label: string }[];
+}) {
   const router = useRouter();
   const { toast } = useToast();
+
+  // Pilihan peran penyetuju dari DB (termasuk peran kustom).
+  const roleOptions = roles.map((r) => ({ value: r.key, label: r.label }));
+  const roleLabel = (key: string) =>
+    roles.find((r) => r.key === key)?.label ?? ROLE_LABELS[key] ?? key;
 
   const [documentType, setDocumentType] = useState<string>(APPROVAL_DOCUMENT_TYPES[0]);
   const [minAmount, setMinAmount] = useState("");
@@ -145,7 +152,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
                         {formatCurrency(rule.minAmount, "IDR")}
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">
-                        {ROLE_LABELS[rule.approverRole as Role] ?? rule.approverRole}
+                        {roleLabel(rule.approverRole)}
                       </td>
                       <td className="px-6 py-3">
                         {rule.isActive ? (
@@ -233,7 +240,7 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
             <Select
               id="rule-approver-role"
               label="Peran penyetuju"
-              options={ROLE_OPTIONS}
+              options={roleOptions}
               value={approverRole}
               onChange={(e) => setApproverRole(e.target.value)}
             />
@@ -242,13 +249,12 @@ export function ApprovalRules({ rules }: { rules: ApprovalRuleView[] }) {
               <label htmlFor="rule-note" className="block text-sm font-medium text-foreground">
                 Catatan (opsional)
               </label>
-              <textarea
+              <Textarea
                 id="rule-note"
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Contoh: kebijakan direksi per Januari 2026"
-                className="block w-full rounded-md border border-border px-3 py-2 text-sm transition-colors duration-150 focus:border-primary focus:ring-1 focus:ring-ring focus:outline-none"
               />
             </div>
 

@@ -72,8 +72,8 @@ export function GlossaryBrowser() {
                   "cursor-pointer rounded-full border px-3 py-1.5 text-sm font-medium transition-colors duration-150",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   active
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-white text-muted-foreground hover:bg-muted"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted"
                 )}
               >
                 {f.label}

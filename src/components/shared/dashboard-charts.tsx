@@ -232,7 +232,7 @@ function CashFlowTooltip({ active, payload, label, currency }: any) {
   const expense = payload.find((p: { dataKey: string }) => p.dataKey === "credit")?.value ?? 0;
 
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2 shadow-md text-xs">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
       <p className="font-medium text-foreground mb-1.5">{label}</p>
       <p className="text-success">Uang masuk: {formatMoney(income, currency)}</p>
       <p className="text-destructive">Uang keluar: {formatMoney(expense, currency)}</p>

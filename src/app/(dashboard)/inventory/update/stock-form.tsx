@@ -221,7 +221,7 @@ export function StockUpdateForm({
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         title={<TermTooltip term="persediaan">Tambah / Kurangi Stok</TermTooltip>}

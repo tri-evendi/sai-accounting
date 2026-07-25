@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -77,7 +78,7 @@ export function NewCustomerForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Pelanggan Baru" }]}
         title="Pelanggan Baru"
@@ -90,13 +91,16 @@ export function NewCustomerForm() {
               <CardTitle>Data Pelanggan</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4">
+              {/* Grid responsif: 1 kolom di ponsel, 2 kolom di layar lebar —
+                  mengisi lebar penuh tanpa merentang satu input melebar sendiri.
+                  Field panjang (nama, alamat, checkbox) menjangkau 2 kolom. */}
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nama Pelanggan</FormLabel>
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel required>Nama Pelanggan</FormLabel>
                       <FormControl>
                         <TextInput autoFocus {...field} />
                       </FormControl>
@@ -108,7 +112,7 @@ export function NewCustomerForm() {
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="sm:col-span-2">
                       <FormLabel>Alamat</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
@@ -173,19 +177,20 @@ export function NewCustomerForm() {
                   control={form.control}
                   name="taxExempt"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="sm:col-span-2">
                       <label
                         htmlFor="taxExempt"
                         className="flex cursor-pointer items-start gap-2"
                       >
-                        <input
-                          id="taxExempt"
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                          onBlur={field.onBlur}
-                          className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                        />
+                        <FormControl>
+                          <Checkbox
+                            id="taxExempt"
+                            className="mt-0.5"
+                            checked={field.value}
+                            onCheckedChange={(v) => field.onChange(v === true)}
+                            onBlur={field.onBlur}
+                          />
+                        </FormControl>
                         <span className="text-sm text-foreground">
                           Bebas PPN (ekspor / non-PKP)
                           <span className="block text-xs text-muted-foreground">

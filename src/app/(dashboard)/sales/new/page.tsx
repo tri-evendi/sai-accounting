@@ -51,7 +51,7 @@ export default async function NewSaleWizardPage() {
   ]);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         className="mb-1"
         breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
@@ -59,8 +59,8 @@ export default async function NewSaleWizardPage() {
         description={
           <>
             Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa
-            mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong> sampai tombol
-            &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
+            mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong>{" "}
+            sampai tombol &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
           </>
         }
       />

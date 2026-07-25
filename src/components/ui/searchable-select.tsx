@@ -93,7 +93,7 @@ export function SearchableSelect({
             aria-controls={listboxId}
             aria-haspopup="listbox"
             className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-white px-3 py-2 text-left text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+              "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             )}
           >
             <span className={cn("truncate", !selected && "text-muted-foreground")}>

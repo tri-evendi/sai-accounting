@@ -34,6 +34,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setSidebarOpen(true)}
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />
+        {/* Konten memenuhi lebar penuh area utama (tanpa batas maks) — sesuai
+            permintaan. Padding tepi tetap agar tidak menempel ke sisi. */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>

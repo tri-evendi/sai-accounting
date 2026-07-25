@@ -56,7 +56,7 @@ export function PlainSummary({ summary }: { summary: ReportSummary }) {
             return (
               <div
                 key={c.title}
-                className="rounded-lg border border-primary/30 bg-white p-3"
+                className="rounded-lg border border-primary/30 bg-card p-3"
                 title={c.explanation}
               >
                 <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

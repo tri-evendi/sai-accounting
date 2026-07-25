@@ -13,11 +13,20 @@ import { join } from "node:path";
 
 const DASHBOARD_DIR = join(__dirname, "..", "src", "app", "(dashboard)");
 
+/**
+ * File cadangan Next.js (`error`/`loading`/`not-found`/`global-error`) BUKAN
+ * halaman dalam arti konvensi ini: mereka dirender di luar pohon halaman normal
+ * (mis. `error.tsx` justru muncul saat render halaman gagal) dan tak bisa
+ * memakai `PageHeader` yang butuh sesi/konteks. Karena itu dikecualikan dari
+ * penjaga — judulnya boleh `<h1>` sendiri.
+ */
+const RESERVED = new Set(["error.tsx", "loading.tsx", "not-found.tsx", "global-error.tsx"]);
+
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return tsxFiles(full);
-    return entry.name.endsWith(".tsx") ? [full] : [];
+    return entry.name.endsWith(".tsx") && !RESERVED.has(entry.name) ? [full] : [];
   });
 }
 

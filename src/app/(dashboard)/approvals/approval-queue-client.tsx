@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, moneyColumn } from "@/components/ui/data-table";
 import { useToast } from "@/components/ui/toast";
@@ -317,7 +318,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                     >
                       Catatan keputusan
                     </label>
-                    <textarea
+                    <Textarea
                       id={`note-${row.id}`}
                       rows={2}
                       value={notes[row.id] ?? ""}
@@ -325,7 +326,6 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                         setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
                       }
                       placeholder="Contoh: harga sudah sesuai kontrak induk"
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
                       Wajib diisi (minimal 5 karakter) bila menolak. Semua keputusan dicatat di

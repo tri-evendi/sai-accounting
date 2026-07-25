@@ -64,7 +64,7 @@ export function NewAccountForm() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Daftar Akun", href: "/accounts" }, { label: "Akun Baru" }]}
         title="Akun Baru"
@@ -80,7 +80,7 @@ export function NewAccountForm() {
             <CardTitle>Informasi Akun</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="code"
                 label="Kode Perkiraan"

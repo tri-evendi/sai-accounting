@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
@@ -72,7 +73,7 @@ export function EditCustomerForm() {
   if (fetching) return <PageLoader message="Memuat data pelanggan..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Ubah Pelanggan" }]}
         title="Ubah Pelanggan"
@@ -84,7 +85,7 @@ export function EditCustomerForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Pelanggan</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" label="Nama Pelanggan" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="address" label="Alamat" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               <Input id="phone" label="Telepon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -92,12 +93,11 @@ export function EditCustomerForm() {
               <Input id="pic" label="Narahubung (PIC)" value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} />
               <Input id="npwp" label="NPWP (untuk e-Faktur)" value={form.npwp} onChange={(e) => setForm({ ...form, npwp: e.target.value })} />
               <label htmlFor="taxExempt" className="flex cursor-pointer items-start gap-2">
-                <input
+                <Checkbox
                   id="taxExempt"
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
+                  className="mt-0.5"
                   checked={form.taxExempt}
-                  onChange={(e) => setForm({ ...form, taxExempt: e.target.checked })}
+                  onCheckedChange={(v) => setForm({ ...form, taxExempt: v === true })}
                 />
                 <span className="text-sm text-foreground">
                   Bebas PPN (ekspor / non-PKP)

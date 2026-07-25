@@ -20,7 +20,9 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
@@ -288,12 +290,12 @@ export function PurchaseWizard({
                     >
                       Jumlah ({line.unit || "kg"})
                     </label>
-                    <input
+                    <TextInput
                       id={`purchaseQty-${i}`}
                       type="number"
                       min={0}
                       step="0.001"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="text-right tabular-nums"
                       value={line.quantity}
                       onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
                     />
@@ -305,12 +307,12 @@ export function PurchaseWizard({
                     >
                       Harga beli per {line.unit || "kg"} ({currency})
                     </label>
-                    <input
+                    <TextInput
                       id={`purchasePrice-${i}`}
                       type="number"
                       min={0}
                       step="0.01"
-                      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                      className="text-right tabular-nums"
                       value={line.price}
                       onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
                     />
@@ -361,14 +363,14 @@ export function PurchaseWizard({
         <Card>
           <CardContent className="space-y-4 py-4">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 cursor-pointer rounded border-border"
+              <Checkbox
+                className="mt-1"
                 checked={draft.receipt.include}
-                onChange={(e) =>
+                onCheckedChange={(v) =>
                   patch((d) => {
-                    const next = { ...d, receipt: { ...d.receipt, include: e.target.checked } };
-                    return e.target.checked ? fillReceiptFromOrder(next) : next;
+                    const checked = v === true;
+                    const next = { ...d, receipt: { ...d.receipt, include: checked } };
+                    return checked ? fillReceiptFromOrder(next) : next;
                   })
                 }
               />
@@ -406,14 +408,12 @@ export function PurchaseWizard({
                     return (
                       <div key={i} className="rounded-md border border-border p-3">
                         <label className="flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 cursor-pointer rounded border-border"
+                          <Checkbox
                             checked={line.receive}
                             disabled={line.itemId == null}
-                            onChange={(e) =>
+                            onCheckedChange={(v) =>
                               updateLine(i, {
-                                receive: e.target.checked,
+                                receive: v === true,
                                 receiveQuantity:
                                   line.receiveQuantity > 0 ? line.receiveQuantity : line.quantity,
                               })
@@ -439,12 +439,12 @@ export function PurchaseWizard({
                               >
                                 Masuk ({line.unit || "kg"})
                               </label>
-                              <input
+                              <TextInput
                                 id={`receiveQty-${i}`}
                                 type="number"
                                 min={0}
                                 step="0.001"
-                                className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                                className="text-right tabular-nums"
                                 value={line.receiveQuantity}
                                 onChange={(e) =>
                                   updateLine(i, { receiveQuantity: Number(e.target.value) })
@@ -555,9 +555,13 @@ export function PurchaseWizard({
                 >
                   Mata uang
                 </label>
-                <select
+                <NativeSelect
                   id="purchaseCurrency"
-                  className="block w-full cursor-pointer rounded-md border border-border px-3 py-2 text-sm"
+                  options={[
+                    { value: "IDR", label: "IDR (Rupiah)" },
+                    { value: "USD", label: "USD" },
+                    { value: "CNY", label: "CNY" },
+                  ]}
                   value={currency}
                   onChange={(e) =>
                     patch((d) => ({
@@ -565,11 +569,7 @@ export function PurchaseWizard({
                       purchase: { ...d.purchase, currency: e.target.value },
                     }))
                   }
-                >
-                  <option value="IDR">IDR (Rupiah)</option>
-                  <option value="USD">USD</option>
-                  <option value="CNY">CNY</option>
-                </select>
+                />
               </div>
               {currency !== "IDR" && (
                 <div>
@@ -579,12 +579,12 @@ export function PurchaseWizard({
                   >
                     <TermTooltip term="kurs">Kurs</TermTooltip> 1 {currency} ke IDR
                   </label>
-                  <input
+                  <TextInput
                     id="purchaseRate"
                     type="number"
                     min={0}
                     step="0.000001"
-                    className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                    className="text-right tabular-nums"
                     value={draft.purchase.rate || ""}
                     onChange={(e) =>
                       patch((d) => ({
@@ -605,12 +605,12 @@ export function PurchaseWizard({
                 >
                   PPN Masukan ({currency})
                 </label>
-                <input
+                <TextInput
                   id="taxAmount"
                   type="number"
                   min={0}
                   step="0.01"
-                  className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+                  className="text-right tabular-nums"
                   value={draft.purchase.taxAmount}
                   onChange={(e) =>
                     patch((d) => ({

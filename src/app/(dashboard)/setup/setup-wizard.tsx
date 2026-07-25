@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
@@ -247,7 +248,7 @@ export function SetupWizard({
             className={
               "flex items-center gap-2 rounded-md px-3 py-1.5 " +
               (i === step
-                ? "bg-primary text-white"
+                ? "bg-primary text-primary-foreground"
                 : i < step
                 ? "bg-success-soft text-success-strong"
                 : "bg-muted text-muted-foreground")
@@ -280,9 +281,9 @@ export function SetupWizard({
               <label htmlFor="address" className="block text-sm font-medium text-foreground">
                 Alamat
               </label>
-              <textarea
+              <Textarea
                 id="address"
-                className="mt-1 block w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                className="mt-1"
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}

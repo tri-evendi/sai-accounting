@@ -10,6 +10,7 @@ import {
 } from "@/lib/authz-overrides";
 import { invalidateEffectiveMatrix } from "@/lib/authz-effective";
 import { overridesPayloadSchema } from "@/lib/validations/authz";
+import { getRoles } from "@/lib/roles";
 import { writeAuditLog } from "@/lib/audit";
 
 /**
@@ -28,15 +29,20 @@ import { writeAuditLog } from "@/lib/audit";
  */
 
 async function currentState() {
-  const overrides = await prisma.rolePermissionOverride.findMany({
-    select: { role: true, permission: true, allowed: true, updatedAt: true },
-    orderBy: [{ role: "asc" }, { permission: "asc" }],
-  });
+  const [overrides, roles] = await Promise.all([
+    prisma.rolePermissionOverride.findMany({
+      select: { role: true, permission: true, allowed: true, updatedAt: true },
+      orderBy: [{ role: "asc" }, { permission: "asc" }],
+    }),
+    getRoles(),
+  ]);
   return {
     baseline: PERMISSION_ROLES,
     overrides,
     effective: applyOverrides(overrides),
     protectedCells: PROTECTED_CELLS,
+    // Kolom matriks = peran dari DB (termasuk peran kustom) — bukan enum kode.
+    roles: roles.map((r) => ({ key: r.key, label: r.label })),
   };
 }
 

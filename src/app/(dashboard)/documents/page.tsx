@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { DocumentPreviewButton } from "./document-preview-button";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +53,13 @@ export default async function DocumentsPage({
                 <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Kontrak</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Diunggah</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={5}>
                     <EmptyState
                       icon={<FileText className="h-12 w-12" />}
                       title="Belum ada dokumen"
@@ -78,6 +80,9 @@ export default async function DocumentsPage({
                       {doc.contract ? doc.contract.contractNo : "-"}
                     </td>
                     <td className="px-6 py-3 text-muted-foreground">{formatDate(doc.uploadedAt)}</td>
+                    <td className="px-6 py-3 text-right">
+                      <DocumentPreviewButton filename={doc.filename} filepath={doc.filepath} />
+                    </td>
                   </tr>
                 ))
               )}

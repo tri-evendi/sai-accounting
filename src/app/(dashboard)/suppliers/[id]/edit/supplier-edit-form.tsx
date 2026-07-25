@@ -61,7 +61,7 @@ export function EditSupplierForm() {
   if (fetching) return <PageLoader message="Memuat data pemasok..." />;
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Ubah Pemasok" }]}
         title="Ubah Pemasok"
@@ -73,7 +73,7 @@ export function EditSupplierForm() {
         <Card className="mb-6">
           <CardHeader><CardTitle>Data Pemasok</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input id="name" label="Nama Pemasok" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="address" label="Alamat" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               <Input id="phone" label="Telepon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

@@ -7,11 +7,14 @@
  * memastikan pengguna non-`bos` tidak sempat melihat halamannya sama sekali.
  */
 import { requirePagePermission } from "@/lib/page-auth";
+import { getActiveRoles } from "@/lib/roles";
 import { UsersClient } from "./users-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   await requirePagePermission("user.manage");
-  return <UsersClient />;
+  // Daftar peran dari DB (termasuk peran kustom) untuk pemilih peran.
+  const roles = await getActiveRoles();
+  return <UsersClient roles={roles.map((r) => ({ key: r.key, label: r.label }))} />;
 }

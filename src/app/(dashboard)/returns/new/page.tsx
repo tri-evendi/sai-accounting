@@ -43,7 +43,7 @@ export default async function NewReturnPage({
   ]);
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <PageHeader
         breadcrumbs={[{ label: "Barang Dikembalikan", href: "/returns" }, { label: "Buat" }]}
         title="Buat Retur"

@@ -106,7 +106,15 @@ export type AuditAction =
    * pengguna kembali mengikuti perannya sepenuhnya (semua barisnya dihapus).
    */
   | "user.authz.override.update"
-  | "user.authz.override.reset";
+  | "user.authz.override.reset"
+  /**
+   * Peran dinamis — CRUD peran dari UI (/permissions). `role.create`/`update`/
+   * `delete` mencatat key + label + perubahan; menghapus peran juga membuang
+   * baris override izinnya.
+   */
+  | "role.create"
+  | "role.update"
+  | "role.delete";
 
 export type AuditEntity =
   | "cash_account"
@@ -114,6 +122,7 @@ export type AuditEntity =
   | "item"
   | "supplier_transaction"
   | "user"
+  | "role"
   | "period"
   | "advance_payment"
   | "advance_application"

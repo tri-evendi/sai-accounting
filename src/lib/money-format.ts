@@ -42,12 +42,21 @@ function fractionDigits(currency: CurrencyCode) {
 /** "Rp 1.234.567" / "US$1.234,56" — mata uang eksplisit, separator id-ID. */
 export function formatMoney(value: number, currency: CurrencyCode = "IDR") {
   const digits = fractionDigits(currency);
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value);
+  try {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(value);
+  } catch {
+    // `Intl` melempar `RangeError: Invalid currency code` untuk kode bukan
+    // ISO-4217 (data lama/kotor seperti "Rp"). Header modul menjanjikan "string
+    // lain diterima apa adanya" — jadi jangan sampai satu nilai buruk menjatuhkan
+    // seluruh halaman: tampilkan kode mentah + angka. Perbaiki nilainya lewat
+    // form edit dokumen terkait.
+    return `${currency} ${formatAmount(value, currency)}`.trim();
+  }
 }
 
 /** Angka saja tanpa simbol — untuk kolom yang mata uangnya sudah di judul. */

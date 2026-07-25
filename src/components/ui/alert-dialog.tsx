@@ -33,6 +33,8 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Overlay
       className={cn(
+        // Scrim overlay memang hitam transparan, bukan permukaan bertema.
+        // eslint-disable-next-line no-restricted-syntax
         "fixed inset-0 z-[60] bg-black/50",
         "animate-overlay-in motion-reduce:animate-none",
         className

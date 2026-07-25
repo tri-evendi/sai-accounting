@@ -39,6 +39,9 @@ import {
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import {
   accountTypeLabels,
+  approvalDecisionMessage,
+  approvalDocumentTypeLabels,
+  approvalStatusLabels,
   cashTypeLabels,
   contractStatusLabels,
   documentTypeLabels,
@@ -53,6 +56,11 @@ import {
   ROLE_LABELS,
   STATUS_FILTER_LABELS,
 } from "@/lib/constants";
+import {
+  APPROVAL_DOCUMENT_TYPE_LABELS,
+  APPROVAL_STATUS_LABELS,
+  decisionMessage,
+} from "@/lib/approvals";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -145,6 +153,14 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Tanda titik penutup kalimat yang terpotong oleh penekanan <strong> —
     // sama di kedua bahasa Latin, berbeda di bahasa Mandarin (。).
     "common.fullStop",
+    // Ekor kalimat "sebelumnya ditolak": hanya titik dua + tanda kutip yang
+    // mengapit catatan penolakan. Tidak ada satu kata pun di dalamnya; bahasa
+    // Mandarin memakai tanda baca penuh-lebar (：“…”).
+    "approvals.resubmittedNote",
+    // Nama mata uang yang ditekankan <strong> pada penjelasan Aturan
+    // Persetujuan. "rupiah" ditulis sama dalam bahasa Indonesia maupun Inggris;
+    // bahasa Mandarin memakai 印尼盾.
+    "approvals.rulesDescStrong1",
   ]),
 };
 
@@ -277,6 +293,24 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     expect(accountTypeLabels(id)).toEqual(
       Object.fromEntries(ACCOUNT_TYPES.map((type) => [type.value, type.label]))
     );
+    // Peta persetujuan sumbernya `lib/approvals.ts` (modul murni).
+    expect(approvalDocumentTypeLabels(id)).toEqual(APPROVAL_DOCUMENT_TYPE_LABELS);
+    expect(approvalStatusLabels(id)).toEqual(APPROVAL_STATUS_LABELS);
+  });
+
+  it("kalimat keadaan pengajuan `id` sama persis dengan decisionMessage()", () => {
+    for (const status of ["approved", "rejected", "pending_approval", "draft"]) {
+      for (const request of [
+        { status, documentType: "invoice", documentNo: "SI.1" },
+        { status, documentType: "payment", documentNo: null },
+        // Jenis dokumen tak dikenal jatuh ke nilainya sendiri di kedua jalur.
+        { status, documentType: "surat_jalan", documentNo: "SJ-9" },
+      ]) {
+        expect(approvalDecisionMessage(id, request), `${status} ${request.documentType}`).toBe(
+          decisionMessage(request)
+        );
+      }
+    }
   });
 
   it("tanpa kamus, peta label jatuh ke bahasa Indonesia — bukan nilai mentah DB", () => {
@@ -296,6 +330,8 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
         ["cashType", cashTypeLabels(dictionary)],
         ["role", roleLabels(dictionary)],
         ["accountType", accountTypeLabels(dictionary)],
+        ["approvalDocumentType", approvalDocumentTypeLabels(dictionary)],
+        ["approvalStatus", approvalStatusLabels(dictionary)],
       ] as const) {
         for (const [key, label] of Object.entries(labels)) {
           expect(label?.trim().length, `${locale}: ${name}.${key} kosong`).toBeGreaterThan(0);

@@ -27,13 +27,10 @@ import {
 import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { ROLE_LABELS, ROLES } from "@/lib/constants";
-import { APPROVAL_DOCUMENT_TYPES, APPROVAL_DOCUMENT_TYPE_LABELS } from "@/lib/approvals";
+import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
-
-const DOCUMENT_OPTIONS = APPROVAL_DOCUMENT_TYPES.map((t) => ({
-  value: t,
-  label: APPROVAL_DOCUMENT_TYPE_LABELS[t],
-}));
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { approvalDocumentTypeLabels } from "@/lib/i18n/labels";
 
 export function ApprovalRules({
   rules,
@@ -42,6 +39,12 @@ export function ApprovalRules({
   rules: ApprovalRuleView[];
   roles: { key: string; label: string }[];
 }) {
+  const t = useT();
+  const documentTypeLabels = approvalDocumentTypeLabels(useDictionary());
+  const documentOptions = APPROVAL_DOCUMENT_TYPES.map((type) => ({
+    value: type,
+    label: documentTypeLabels[type],
+  }));
   const router = useRouter();
   const { toast } = useToast();
 
@@ -72,15 +75,15 @@ export function ApprovalRules({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal menyimpan aturan.", "error");
+        toast(data.error || t("approvals.errSaveRule"), "error");
         return;
       }
       setMinAmount("");
       setNote("");
-      toast("Aturan tersimpan.");
+      toast(t("approvals.ruleSaved"));
       router.refresh();
     } catch {
-      toast("Gagal menyimpan aturan.", "error");
+      toast(t("approvals.errSaveRule"), "error");
     } finally {
       setBusy(false);
     }
@@ -92,13 +95,13 @@ export function ApprovalRules({
       const res = await fetch(`/api/approvals/rules/${rule.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast(data.error || "Gagal menonaktifkan aturan.", "error");
+        toast(data.error || t("approvals.errDeactivate"), "error");
         return;
       }
-      toast("Aturan dinonaktifkan.", "info");
+      toast(t("approvals.ruleDeactivated"), "info");
       router.refresh();
     } catch {
-      toast("Gagal menonaktifkan aturan.", "error");
+      toast(t("approvals.errDeactivate"), "error");
     } finally {
       setBusy(false);
     }
@@ -111,31 +114,26 @@ export function ApprovalRules({
       {/* ── Daftar aturan ── */}
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <CardTitle>Daftar Aturan</CardTitle>
+          <CardTitle>{t("approvals.rulesListTitle")}</CardTitle>
           <Badge variant={active.length > 0 ? "success" : "default"}>
-            {active.length} aktif
+            {t("approvals.activeCount", { count: active.length })}
           </Badge>
         </CardHeader>
         <CardContent className="px-0 py-0">
           {rules.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
               <ShieldCheck className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">
-                Belum ada aturan — semua transaksi langsung masuk jurnal seperti biasa.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Tambahkan aturan pertama di formulir sebelah untuk mulai menyaring transaksi
-                bernilai besar.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("approvals.rulesEmptyTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("approvals.rulesEmptyHint")}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Jenis Dokumen</TableHead>
-                  <TableHead className="text-right">Mulai Nilai (IDR)</TableHead>
-                  <TableHead>Penyetuju</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("approvals.colDocumentType")}</TableHead>
+                  <TableHead className="text-right">{t("approvals.colMinAmount")}</TableHead>
+                  <TableHead>{t("approvals.colApproverRole")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -160,24 +158,21 @@ export function ApprovalRules({
                       {rule.isActive ? (
                         <Badge variant="success">
                           <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
-                          Aktif
+                          {t("common.active")}
                         </Badge>
                       ) : (
                         <Badge variant="default">
                           <Ban className="mr-1 h-3 w-3" aria-hidden="true" />
-                          Nonaktif
+                          {t("common.inactive")}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
                       {rule.isActive && (
                         <ConfirmDialog
-                          title="Nonaktifkan aturan ini?"
-                          message={
-                            "Dokumen baru tidak lagi dicocokkan dengan aturan ini. Pengajuan yang " +
-                            "sudah terbit tetap tercatat dan tetap harus diputuskan."
-                          }
-                          confirmLabel="Nonaktifkan"
+                          title={t("approvals.deactivateTitle")}
+                          message={t("approvals.deactivateMessage")}
+                          confirmLabel={t("approvals.deactivate")}
                           confirmVariant="danger"
                           onConfirm={() => deactivate(rule)}
                           trigger={
@@ -188,7 +183,7 @@ export function ApprovalRules({
                               className="cursor-pointer"
                             >
                               <Ban className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                              Nonaktifkan
+                              {t("approvals.deactivate")}
                             </Button>
                           }
                         />
@@ -205,25 +200,24 @@ export function ApprovalRules({
       {/* ── Tambah aturan ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Tambah Aturan</CardTitle>
+          <CardTitle>{t("approvals.addRuleTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={create} className="space-y-4">
             <Select
               id="rule-document-type"
-              label="Jenis dokumen"
-              options={DOCUMENT_OPTIONS}
+              label={t("approvals.fieldDocumentType")}
+              options={documentOptions}
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value)}
             />
             <p className="-mt-2 text-xs text-muted-foreground">
-              “Pembayaran” mencakup pelunasan faktur, pelunasan kontrak, dan pembayaran ke
-              supplier.
+              {t("approvals.paymentHint")}
             </p>
 
             <Input
               id="rule-min-amount"
-              label="Mulai nilai (IDR)"
+              label={t("approvals.fieldMinAmount")}
               type="number"
               min={0}
               step="0.01"
@@ -234,13 +228,12 @@ export function ApprovalRules({
               className="text-right tabular-nums"
             />
             <p className="-mt-2 text-xs text-muted-foreground">
-              Inklusif: dokumen senilai persis angka ini tetap perlu persetujuan. Bila beberapa
-              aturan cocok, yang berlaku adalah ambang tertinggi yang tercapai.
+              {t("approvals.minAmountHint")}
             </p>
 
             <Select
               id="rule-approver-role"
-              label="Peran penyetuju"
+              label={t("approvals.fieldApproverRole")}
               options={roleOptions}
               value={approverRole}
               onChange={(e) => setApproverRole(e.target.value)}
@@ -248,20 +241,20 @@ export function ApprovalRules({
 
             <div className="space-y-1">
               <label htmlFor="rule-note" className="block text-sm font-medium text-foreground">
-                Catatan (opsional)
+                {t("common.notesOptional")}
               </label>
               <Textarea
                 id="rule-note"
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Contoh: kebijakan direksi per Januari 2026"
+                placeholder={t("approvals.notePlaceholder")}
               />
             </div>
 
             <Button type="submit" disabled={busy || minAmount === ""} className="cursor-pointer">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Simpan Aturan
+              {t("approvals.submitRule")}
             </Button>
           </form>
         </CardContent>

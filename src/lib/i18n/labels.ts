@@ -32,6 +32,13 @@ import {
   type SystemRole,
 } from "@/lib/constants";
 import { ACCOUNT_TYPES } from "@/lib/accounting";
+import {
+  APPROVAL_DOCUMENT_TYPE_LABELS,
+  APPROVAL_STATUS_LABELS,
+  decisionMessage,
+  type ApprovalDocumentType,
+  type ApprovalStatus,
+} from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
 import type { Dictionary } from "./dictionary";
 
@@ -145,4 +152,59 @@ export function cashTypeLabels(
     kas_besar: dictionary.cashType.kas_besar,
     kas_kecil: dictionary.cashType.kas_kecil,
   };
+}
+
+/**
+ * Label jenis dokumen yang bisa tertahan gerbang persetujuan (kontrak, faktur,
+ * pembayaran). `lib/approvals.ts` MURNI — tanpa Prisma — jadi cadangan bahasa
+ * Indonesianya aman ikut ke bundel peramban, sama seperti `constants.ts`.
+ */
+export function approvalDocumentTypeLabels(
+  dictionary: Dictionary | null | undefined
+): Record<ApprovalDocumentType, string> {
+  if (!dictionary) return APPROVAL_DOCUMENT_TYPE_LABELS;
+  return {
+    contract: dictionary.approvalDocumentType.contract,
+    invoice: dictionary.approvalDocumentType.invoice,
+    payment: dictionary.approvalDocumentType.payment,
+  };
+}
+
+/** Label status pengajuan persetujuan (draf → menunggu → disetujui/ditolak). */
+export function approvalStatusLabels(
+  dictionary: Dictionary | null | undefined
+): Record<ApprovalStatus, string> {
+  if (!dictionary) return APPROVAL_STATUS_LABELS;
+  return {
+    draft: dictionary.approvalStatus.draft,
+    pending_approval: dictionary.approvalStatus.pending_approval,
+    approved: dictionary.approvalStatus.approved,
+    rejected: dictionary.approvalStatus.rejected,
+  };
+}
+
+/**
+ * Satu kalimat keadaan pengajuan — versi berbahasa dari `decisionMessage`
+ * (`lib/approvals.ts`), yang tetap dipakai sebagai cadangan bahasa Indonesia
+ * bila kamusnya tidak ada.
+ */
+export function approvalDecisionMessage(
+  dictionary: Dictionary | null | undefined,
+  request: { status: string; documentType: string; documentNo?: string | null }
+): string {
+  if (!dictionary) return decisionMessage(request);
+  const kind =
+    approvalDocumentTypeLabels(dictionary)[request.documentType as ApprovalDocumentType] ??
+    request.documentType;
+  const document = `${kind}${request.documentNo ? ` ${request.documentNo}` : ""}`;
+  const m = dictionary.approvalMessage;
+  const template =
+    request.status === "approved"
+      ? m.approved
+      : request.status === "rejected"
+      ? m.rejected
+      : request.status === "pending_approval"
+      ? m.pending
+      : m.draft;
+  return template.replace("{document}", document);
 }

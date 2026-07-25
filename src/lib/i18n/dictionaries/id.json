@@ -78,7 +78,15 @@
     "vat": "PPN",
     "addItemLower": "Tambah barang",
     "stockOption": "Stok: {qty} {unit}",
-    "fullStop": "."
+    "fullStop": ".",
+    "debit": "Debit",
+    "credit": "Kredit",
+    "balance": "Saldo",
+    "description": "Keterangan",
+    "account": "Akun",
+    "from": "Dari",
+    "to": "Sampai",
+    "show": "Tampilkan"
   },
   "nav": {
     "groups": {
@@ -261,6 +269,25 @@
     "bank": "Bank",
     "kas_besar": "Kas Besar",
     "kas_kecil": "Kas Kecil"
+  },
+  "accountType": {
+    "cash_bank": "Kas & Bank",
+    "account_receivable": "Piutang Usaha",
+    "inventory": "Persediaan",
+    "other_current_asset": "Aktiva Lancar Lainnya",
+    "fixed_asset": "Aktiva Tetap",
+    "accumulated_depreciation": "Akumulasi Penyusutan",
+    "other_asset": "Aktiva Lainnya",
+    "account_payable": "Hutang Usaha",
+    "tax_payable": "Hutang Pajak",
+    "other_current_liability": "Hutang Lancar Lainnya",
+    "long_term_liability": "Hutang Jangka Panjang",
+    "equity": "Ekuitas",
+    "revenue": "Pendapatan",
+    "other_income": "Pendapatan Lain-lain",
+    "cogs": "Beban Pokok Penjualan",
+    "expense": "Beban Operasional",
+    "other_expense": "Beban Lain-lain"
   },
   "table": {
     "page": "Halaman {page} dari {pages}"
@@ -850,5 +877,17 @@
     "txAllocHintB": "(pembelian terlama dilunasi lebih dulu).",
     "txNoOutstanding": "Tidak ada pembelian dengan sisa utang untuk pemasok ini.",
     "txSubmit": "Simpan Transaksi"
+  },
+  "ledger": {
+    "title": "Buku Besar",
+    "pickAccountOption": "— Pilih akun —",
+    "pickAccountPrompt": "Pilih akun untuk menampilkan mutasi & saldo berjalan.",
+    "normalBalance": "Saldo normal",
+    "colJournalNo": "No. Jurnal",
+    "openingBalance": "Saldo Awal",
+    "emptyTitle": "Tidak ada mutasi pada rentang ini",
+    "emptyDescription": "Coba lebarkan rentang tanggalnya atau pilih akun lain. Kalau memang belum ada apa-apa, mulailah dari mencatat transaksi kas.",
+    "emptyAction": "+ Catat Transaksi",
+    "totalAndClosing": "Total & Saldo Akhir"
   }
 }

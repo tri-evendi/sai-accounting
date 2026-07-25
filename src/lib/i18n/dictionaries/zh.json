@@ -78,7 +78,15 @@
     "vat": "增值税",
     "addItemLower": "添加货物",
     "stockOption": "库存：{qty} {unit}",
-    "fullStop": "。"
+    "fullStop": "。",
+    "debit": "借方",
+    "credit": "贷方",
+    "balance": "余额",
+    "description": "摘要",
+    "account": "科目",
+    "from": "起始日期",
+    "to": "结束日期",
+    "show": "显示"
   },
   "nav": {
     "groups": {
@@ -261,6 +269,25 @@
     "bank": "银行",
     "kas_besar": "主现金",
     "kas_kecil": "零用现金"
+  },
+  "accountType": {
+    "cash_bank": "现金及银行",
+    "account_receivable": "应收账款",
+    "inventory": "存货",
+    "other_current_asset": "其他流动资产",
+    "fixed_asset": "固定资产",
+    "accumulated_depreciation": "累计折旧",
+    "other_asset": "其他资产",
+    "account_payable": "应付账款",
+    "tax_payable": "应交税费",
+    "other_current_liability": "其他流动负债",
+    "long_term_liability": "长期负债",
+    "equity": "所有者权益",
+    "revenue": "营业收入",
+    "other_income": "其他收入",
+    "cogs": "主营业务成本",
+    "expense": "营业费用",
+    "other_expense": "其他费用"
   },
   "table": {
     "page": "第 {page} 页，共 {pages} 页"
@@ -850,5 +877,17 @@
     "txAllocHintB": "（最早的采购先结清）。",
     "txNoOutstanding": "此供应商没有仍有应付余额的采购。",
     "txSubmit": "保存交易"
+  },
+  "ledger": {
+    "title": "总账",
+    "pickAccountOption": "— 选择科目 —",
+    "pickAccountPrompt": "选择一个科目，查看其发生额与累计余额。",
+    "normalBalance": "正常余额",
+    "colJournalNo": "凭证号",
+    "openingBalance": "期初余额",
+    "emptyTitle": "此日期范围内没有发生额",
+    "emptyDescription": "请尝试扩大日期范围或选择其他科目。如果确实还没有任何记录，可以先记一笔现金交易。",
+    "emptyAction": "+ 记录交易",
+    "totalAndClosing": "合计与期末余额"
   }
 }

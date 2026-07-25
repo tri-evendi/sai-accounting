@@ -38,12 +38,14 @@ import {
 } from "@/lib/i18n/config";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import {
+  accountTypeLabels,
   cashTypeLabels,
   contractStatusLabels,
   documentTypeLabels,
   roleLabels,
   statusFilterLabels,
 } from "@/lib/i18n/labels";
+import { ACCOUNT_TYPES } from "@/lib/accounting";
 import {
   CASH_TYPE_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -83,6 +85,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // hanya akan menghasilkan kata yang sama.
     "common.status",
     "common.total",
+    // Istilah pembukuan berpasangan: "Debit" ditulis sama di kedua bahasa
+    // (pasangannya "Kredit"/"Credit" memang berbeda). Bahasa Mandarin memakai
+    // 借方/贷方.
+    "common.debit",
     "contracts.advStatus",
     "invoices.totalCurrency",
     "deliveryOrders.colTotalKg",
@@ -224,6 +230,10 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     expect(statusFilterLabels(id)).toEqual(STATUS_FILTER_LABELS);
     expect(documentTypeLabels(id)).toEqual(DOCUMENT_TYPE_LABELS);
     expect(cashTypeLabels(id)).toEqual(CASH_TYPE_LABELS);
+    // Tipe akun sumbernya `ACCOUNT_TYPES` (lib/accounting.ts), bukan constants.ts.
+    expect(accountTypeLabels(id)).toEqual(
+      Object.fromEntries(ACCOUNT_TYPES.map((type) => [type.value, type.label]))
+    );
   });
 
   it("tanpa kamus, peta label jatuh ke bahasa Indonesia — bukan nilai mentah DB", () => {
@@ -231,6 +241,7 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     expect(documentTypeLabels(undefined).bl).toBe(DOCUMENT_TYPE_LABELS.bl);
     expect(cashTypeLabels(null).kas_kecil).toBe(CASH_TYPE_LABELS.kas_kecil);
     expect(roleLabels(null).bos).toBe(ROLE_LABELS.bos);
+    expect(accountTypeLabels(null).cash_bank).toBe(ACCOUNT_TYPES[0].label);
   });
 
   it("peta label enum lengkap di KETIGA bahasa (jaminan issue #68 dikali tiga)", () => {
@@ -241,6 +252,7 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
         ["documentType", documentTypeLabels(dictionary)],
         ["cashType", cashTypeLabels(dictionary)],
         ["role", roleLabels(dictionary)],
+        ["accountType", accountTypeLabels(dictionary)],
       ] as const) {
         for (const [key, label] of Object.entries(labels)) {
           expect(label?.trim().length, `${locale}: ${name}.${key} kosong`).toBeGreaterThan(0);

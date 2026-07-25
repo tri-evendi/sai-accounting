@@ -78,7 +78,15 @@
     "vat": "VAT",
     "addItemLower": "Add item",
     "stockOption": "Stock: {qty} {unit}",
-    "fullStop": "."
+    "fullStop": ".",
+    "debit": "Debit",
+    "credit": "Credit",
+    "balance": "Balance",
+    "description": "Description",
+    "account": "Account",
+    "from": "From",
+    "to": "To",
+    "show": "Show"
   },
   "nav": {
     "groups": {
@@ -261,6 +269,25 @@
     "bank": "Bank",
     "kas_besar": "Main Cash",
     "kas_kecil": "Petty Cash"
+  },
+  "accountType": {
+    "cash_bank": "Cash & Bank",
+    "account_receivable": "Accounts Receivable",
+    "inventory": "Inventory",
+    "other_current_asset": "Other Current Assets",
+    "fixed_asset": "Fixed Assets",
+    "accumulated_depreciation": "Accumulated Depreciation",
+    "other_asset": "Other Assets",
+    "account_payable": "Accounts Payable",
+    "tax_payable": "Taxes Payable",
+    "other_current_liability": "Other Current Liabilities",
+    "long_term_liability": "Long-term Liabilities",
+    "equity": "Equity",
+    "revenue": "Revenue",
+    "other_income": "Other Income",
+    "cogs": "Cost of Goods Sold",
+    "expense": "Operating Expenses",
+    "other_expense": "Other Expenses"
   },
   "table": {
     "page": "Page {page} of {pages}"
@@ -850,5 +877,17 @@
     "txAllocHintB": "(the oldest purchase is settled first).",
     "txNoOutstanding": "This supplier has no purchase with an outstanding balance.",
     "txSubmit": "Save Transaction"
+  },
+  "ledger": {
+    "title": "General Ledger",
+    "pickAccountOption": "— Select account —",
+    "pickAccountPrompt": "Select an account to see its movements and running balance.",
+    "normalBalance": "Normal balance",
+    "colJournalNo": "Journal No.",
+    "openingBalance": "Opening Balance",
+    "emptyTitle": "No movements in this range",
+    "emptyDescription": "Try widening the date range or picking another account. If there really is nothing yet, start by recording a cash transaction.",
+    "emptyAction": "+ Record Transaction",
+    "totalAndClosing": "Total & Closing Balance"
   }
 }

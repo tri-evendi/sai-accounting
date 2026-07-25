@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/table";
 import { Money, MoneyCell } from "@/components/ui/money";
 import { formatDateShort } from "@/lib/utils";
-import { accountTypeLabel } from "@/lib/accounting";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookOpen } from "lucide-react";
@@ -28,6 +29,8 @@ export default async function LedgerPage({
   searchParams: Promise<{ accountId?: string; from?: string; to?: string }>;
 }) {
   await requirePagePermission("ledger.read");
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
   const sp = await searchParams;
 
   const accounts = await prisma.account.findMany({
@@ -41,13 +44,13 @@ export default async function LedgerPage({
   const ledger = accountId ? await getAccountLedger(accountId, from, to) : null;
 
   const accountOptions = [
-    { value: "", label: "— Pilih akun —" },
+    { value: "", label: t("ledger.pickAccountOption") },
     ...accounts.map((a) => ({ value: String(a.id), label: `${a.code} — ${a.name}` })),
   ];
 
   return (
     <div>
-      <PageHeader title="Buku Besar" />
+      <PageHeader title={t("ledger.title")} />
 
       <LedgerFilter
         accountOptions={accountOptions}
@@ -59,7 +62,7 @@ export default async function LedgerPage({
       {!ledger ? (
         <Card>
           <div className="px-6 py-10 text-center text-muted-foreground">
-            Pilih akun untuk menampilkan mutasi & saldo berjalan.
+            {t("ledger.pickAccountPrompt")}
           </div>
         </Card>
       ) : (
@@ -69,8 +72,8 @@ export default async function LedgerPage({
               <span className="font-mono">{ledger.account.code}</span> — {ledger.account.name}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {accountTypeLabel(ledger.account.type)} · Saldo normal{" "}
-              {ledger.account.normalBalance === "debit" ? "Debit" : "Kredit"}
+              {accountTypeLabel(dictionary, ledger.account.type)} · {t("ledger.normalBalance")}{" "}
+              {ledger.account.normalBalance === "debit" ? t("common.debit") : t("common.credit")}
             </p>
           </div>
 
@@ -78,18 +81,18 @@ export default async function LedgerPage({
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>No. Jurnal</TableHead>
-                  <TableHead>Keterangan</TableHead>
-                  <TableHead className="text-right">Debit</TableHead>
-                  <TableHead className="text-right">Kredit</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead>{t("common.date")}</TableHead>
+                  <TableHead>{t("ledger.colJournalNo")}</TableHead>
+                  <TableHead>{t("common.description")}</TableHead>
+                  <TableHead className="text-right">{t("common.debit")}</TableHead>
+                  <TableHead className="text-right">{t("common.credit")}</TableHead>
+                  <TableHead className="text-right">{t("common.balance")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableCell className="text-muted-foreground italic" colSpan={5}>
-                    Saldo Awal
+                    {t("ledger.openingBalance")}
                   </TableCell>
                   <TableCell className="p-0">
                     <MoneyCell className="font-medium" value={ledger.opening} currency="IDR" />
@@ -120,9 +123,9 @@ export default async function LedgerPage({
                     <TableCell colSpan={6} className="p-0">
                       <EmptyState
                         icon={<BookOpen className="h-12 w-12" />}
-                        title="Tidak ada mutasi pada rentang ini"
-                        description="Coba lebarkan rentang tanggalnya atau pilih akun lain. Kalau memang belum ada apa-apa, mulailah dari mencatat transaksi kas."
-                        actionLabel="+ Catat Transaksi"
+                        title={t("ledger.emptyTitle")}
+                        description={t("ledger.emptyDescription")}
+                        actionLabel={t("ledger.emptyAction")}
                         actionHref="/finance/new"
                       />
                     </TableCell>
@@ -131,7 +134,7 @@ export default async function LedgerPage({
               </TableBody>
               <TableFooter className="border-t-2 bg-transparent">
                 <TableRow className="font-semibold hover:bg-transparent">
-                  <TableCell colSpan={3}>Total &amp; Saldo Akhir</TableCell>
+                  <TableCell colSpan={3}>{t("ledger.totalAndClosing")}</TableCell>
                   <TableCell className="p-0">
                     <MoneyCell value={ledger.totalDebit} currency="IDR" />
                   </TableCell>

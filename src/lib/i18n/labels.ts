@@ -31,7 +31,47 @@ import {
   type DocumentType,
   type SystemRole,
 } from "@/lib/constants";
+import { ACCOUNT_TYPES } from "@/lib/accounting";
 import type { Dictionary } from "./dictionary";
+
+/**
+ * Label tipe akun (bagan akun). Sumber bentuknya `ACCOUNT_TYPES` di
+ * `lib/accounting.ts` — tipe akun baru yang belum punya kunci kamus langsung
+ * ditolak `tsc` di sini, persis seperti peta enum lain di berkas ini.
+ */
+export function accountTypeLabels(
+  dictionary: Dictionary | null | undefined
+): Record<string, string> {
+  if (!dictionary) return Object.fromEntries(ACCOUNT_TYPES.map((t) => [t.value, t.label]));
+  const d = dictionary.accountType;
+  return {
+    cash_bank: d.cash_bank,
+    account_receivable: d.account_receivable,
+    inventory: d.inventory,
+    other_current_asset: d.other_current_asset,
+    fixed_asset: d.fixed_asset,
+    accumulated_depreciation: d.accumulated_depreciation,
+    other_asset: d.other_asset,
+    account_payable: d.account_payable,
+    tax_payable: d.tax_payable,
+    other_current_liability: d.other_current_liability,
+    long_term_liability: d.long_term_liability,
+    equity: d.equity,
+    revenue: d.revenue,
+    other_income: d.other_income,
+    cogs: d.cogs,
+    expense: d.expense,
+    other_expense: d.other_expense,
+  };
+}
+
+/** Satu label tipe akun; nilai tak dikenal dikembalikan apa adanya. */
+export function accountTypeLabel(
+  dictionary: Dictionary | null | undefined,
+  value: string
+): string {
+  return accountTypeLabels(dictionary)[value] ?? value;
+}
 
 /** Label peran SISTEM. Peran kustom (data, tabel `roles`) tetap ambil label dari DB. */
 export function roleLabels(dictionary: Dictionary | null | undefined): Record<SystemRole, string> {

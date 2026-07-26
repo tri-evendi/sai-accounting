@@ -17,13 +17,16 @@
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/lib/constants";
 import {
-  APPROVAL_DOCUMENT_TYPE_LABELS,
-  APPROVAL_STATUS_LABELS,
   countUnreadDecisions,
-  decisionMessage,
   type ApprovalDocumentType,
   type ApprovalStatus,
 } from "@/lib/approvals";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import {
+  approvalDecisionMessage,
+  approvalDocumentTypeLabels,
+  approvalStatusLabels,
+} from "@/lib/i18n/labels";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -96,7 +99,21 @@ type RawRequest = {
   createdAt: Date;
 };
 
+/*
+ * Label & kalimat keadaan disusun DI SINI, bukan di komponennya.
+ *
+ * Modul ini sudah server-only (Prisma), jadi ia boleh membaca kamus bahasa
+ * aktif lewat `getDictionary` — persis seperti halaman server. Bentuk
+ * `ApprovalRequestView` tidak berubah sedikit pun: `documentTypeLabel`,
+ * `statusLabel`, dan `message` tetap string biasa, hanya kini sudah dalam
+ * bahasa pengguna. Konsumen keduanya (halaman `/approvals` dan
+ * `GET /api/approvals`) sama-sama berjalan di dalam satu permintaan, jadi
+ * cookie bahasanya selalu terbaca.
+ */
 async function withUserNames(rows: RawRequest[]): Promise<ApprovalRequestView[]> {
+  const dictionary = await getDictionary(await getLocale());
+  const documentTypeLabels = approvalDocumentTypeLabels(dictionary);
+  const statusLabels = approvalStatusLabels(dictionary);
   const ids = [
     ...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter((v): v is number => v != null)),
   ];
@@ -114,11 +131,12 @@ async function withUserNames(rows: RawRequest[]): Promise<ApprovalRequestView[]>
     documentId: r.documentId,
     documentType: r.documentType,
     documentTypeLabel:
-      APPROVAL_DOCUMENT_TYPE_LABELS[r.documentType as ApprovalDocumentType] ?? r.documentType,
+      documentTypeLabels[r.documentType as ApprovalDocumentType] ?? r.documentType,
     documentNo: r.documentNo,
     documentHref: documentHref(r.sourceType, r.documentId),
     status: r.status,
-    statusLabel: APPROVAL_STATUS_LABELS[r.status as ApprovalStatus] ?? r.status,
+    statusLabel:
+      statusLabels[r.status as keyof typeof statusLabels] ?? r.status,
     approverRole: r.approverRole,
     amount: num(r.amount),
     currency: r.currency,
@@ -134,7 +152,7 @@ async function withUserNames(rows: RawRequest[]): Promise<ApprovalRequestView[]>
     decisionNote: r.decisionNote,
     readAt: iso(r.readAt),
     createdAt: r.createdAt.toISOString(),
-    message: decisionMessage(r),
+    message: approvalDecisionMessage(dictionary, r),
   }));
 }
 
@@ -228,11 +246,12 @@ export async function listApprovalRules(
     where: options.includeInactive ? undefined : { isActive: true },
     orderBy: [{ documentType: "asc" }, { minAmount: "asc" }],
   });
+  const documentTypeLabels = approvalDocumentTypeLabels(await getDictionary(await getLocale()));
   return rules.map((r) => ({
     id: r.id,
     documentType: r.documentType,
     documentTypeLabel:
-      APPROVAL_DOCUMENT_TYPE_LABELS[r.documentType as ApprovalDocumentType] ?? r.documentType,
+      documentTypeLabels[r.documentType as ApprovalDocumentType] ?? r.documentType,
     minAmount: num(r.minAmount),
     approverRole: r.approverRole,
     note: r.note,

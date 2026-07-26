@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { ADVANCED_SECTION_TITLE } from "@/lib/form-sections";
+import { useT } from "@/lib/i18n/client";
 
 interface DisclosureSectionProps {
   /** Judul bagian; standarnya "Detail lengkap". */
@@ -70,6 +71,7 @@ export function DisclosureSection({
   children,
   className,
 }: DisclosureSectionProps) {
+  const t = useT();
   const [uncontrolled, setUncontrolled] = useState(defaultOpen);
   const isControlled = open !== undefined;
   const expanded = isControlled ? open : uncontrolled;
@@ -145,7 +147,7 @@ export function DisclosureSection({
             {invalid && (
               <span className="inline-flex items-center gap-1 rounded-full bg-destructive-soft px-2 py-0.5 text-xs font-medium text-destructive-strong">
                 <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                Perlu diperiksa
+                {t("disclosure.reviewNeeded")}
               </span>
             )}
           </span>
@@ -157,7 +159,7 @@ export function DisclosureSection({
           )}
         </span>
         <span className="shrink-0 text-xs font-medium text-primary">
-          {expanded ? "Tutup" : "Buka"}
+          {expanded ? t("disclosure.collapse") : t("disclosure.expand")}
         </span>
       </CollapsibleTrigger>
 

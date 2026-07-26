@@ -22,6 +22,7 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2, Info, Plus, Trash2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
 
 interface CashAccount {
   id: number;
@@ -54,8 +55,6 @@ interface PartnerRow {
   rate: string;
 }
 
-const STEPS = ["Identitas", "Mata Uang & Tahun Buku", "Bagan Akun", "Saldo Awal", "Tinjau"];
-
 export function SetupWizard({
   defaults,
   currencies,
@@ -71,8 +70,17 @@ export function SetupWizard({
   customers: Party[];
   suppliers: Party[];
 }) {
+  const t = useT();
   const router = useRouter();
   const { toast } = useToast();
+
+  const steps = [
+    t("setup.step1"),
+    t("setup.step2"),
+    t("setup.step3"),
+    t("setup.step4"),
+    t("setup.step5"),
+  ];
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -158,11 +166,11 @@ export function SetupWizard({
   async function handleSubmit() {
     setError(null);
     if (!totals.hasAny) {
-      setError("Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).");
+      setError(t("setup.errNoBalance"));
       return;
     }
     if (totals.unrated > 0) {
-      setError("Ada saldo mata uang asing tanpa kurs. Isi kursnya agar nilai IDR tidak salah.");
+      setError(t("setup.errUnrated"));
       return;
     }
     setSaving(true);
@@ -217,14 +225,14 @@ export function SetupWizard({
         const first = fieldErrors
           ? Object.values(fieldErrors).flat().find(Boolean)
           : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan saldo awal.");
+        setError(first ?? data?.error ?? t("setup.errSaveFailed"));
         return;
       }
-      toast("Setup selesai. Jurnal pembuka tersimpan dan seimbang.", "success");
+      toast(t("setup.toastDone"), "success");
       router.push("/reports");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("setup.errNetwork"));
     } finally {
       setSaving(false);
     }
@@ -241,8 +249,8 @@ export function SetupWizard({
   return (
     <div className="space-y-6">
       {/* Stepper */}
-      <ol className="flex flex-wrap gap-2 text-sm" aria-label="Langkah setup">
-        {STEPS.map((label, i) => (
+      <ol className="flex flex-wrap gap-2 text-sm" aria-label={t("setup.stepsAria")}>
+        {steps.map((label, i) => (
           <li
             key={label}
             className={
@@ -268,10 +276,10 @@ export function SetupWizard({
         {/* Step 0 — identity */}
         {step === 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Identitas Perusahaan</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.identityTitle")}</h2>
             <Input
               id="name"
-              label="Nama perusahaan"
+              label={t("setup.nameField")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={150}
@@ -279,7 +287,7 @@ export function SetupWizard({
             />
             <div>
               <label htmlFor="address" className="block text-sm font-medium text-foreground">
-                Alamat
+                {t("common.address")}
               </label>
               <Textarea
                 id="address"
@@ -292,11 +300,11 @@ export function SetupWizard({
             </div>
             <Input
               id="npwp"
-              label="NPWP (untuk e-Faktur)"
+              label={t("setup.npwpField")}
               value={npwp}
               onChange={(e) => setNpwp(e.target.value)}
               maxLength={30}
-              placeholder="Opsional — bisa diisi nanti"
+              placeholder={t("setup.npwpPlaceholder")}
             />
           </div>
         )}
@@ -304,11 +312,11 @@ export function SetupWizard({
         {/* Step 1 — base currency + fiscal year */}
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Mata Uang &amp; Tahun Buku</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.step2")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="baseCurrency"
-                label="Mata uang dasar (pelaporan)"
+                label={t("setup.baseCurrencyField")}
                 value={baseCurrency}
                 onChange={(e) => setBaseCurrency(e.target.value)}
                 options={currencyOptions}
@@ -316,7 +324,7 @@ export function SetupWizard({
               <Input
                 id="fiscalYearStart"
                 type="date"
-                label="Awal tahun buku"
+                label={t("setup.fiscalYearStartField")}
                 value={fiscalYearStart}
                 onChange={(e) => setFiscalYearStart(e.target.value)}
                 required
@@ -325,8 +333,7 @@ export function SetupWizard({
             <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                Buku besar dicatat dalam <strong>IDR</strong> sebagai mata uang dasar. Jurnal
-                pembuka akan ditanggali pada awal tahun buku, sebelum transaksi pertama.
+                {t("setup.ledgerNoteBefore")} <strong>IDR</strong> {t("setup.ledgerNoteAfter")}
               </span>
             </p>
           </div>
@@ -335,17 +342,16 @@ export function SetupWizard({
         {/* Step 2 — confirm COA */}
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Bagan Akun (COA)</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.coaTitle")}</h2>
             <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <span>
-                Bagan akun standar (trading/ekspor) sudah tersedia:{" "}
-                <strong className="tabular-nums">{coaCount}</strong> akun aktif. Saldo awal
-                di langkah berikutnya akan menggunakan akun-akun ini.
+                {t("setup.coaNoteBefore")}{" "}
+                <strong className="tabular-nums">{coaCount}</strong> {t("setup.coaNoteAfter")}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Anda dapat meninjau atau menyesuaikan akun di menu Akun Perkiraan kapan saja.
+              {t("setup.coaHint")}
             </p>
           </div>
         )}
@@ -353,18 +359,18 @@ export function SetupWizard({
         {/* Step 3 — opening balances */}
         {step === 3 && (
           <div className="space-y-8">
-            <h2 className="text-lg font-semibold text-foreground">Saldo Awal</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.step4")}</h2>
 
             {/* Kas / Bank */}
             <Section
-              title="Kas & Bank"
-              hint="Saldo kas dan rekening bank per awal tahun buku."
+              title={t("nav.groups.cash")}
+              hint={t("setup.cashSectionHint")}
               onAdd={() =>
                 cashAccounts.length > 0 &&
                 setCash((r) => [...r, { key: nextId(), accountId: "", amount: "", rate: "" }])
               }
-              addLabel="Tambah kas/bank"
-              empty={cashAccounts.length === 0 ? "Belum ada akun kas/bank di COA." : undefined}
+              addLabel={t("setup.cashAddLabel")}
+              empty={cashAccounts.length === 0 ? t("setup.cashEmpty") : undefined}
             >
               {cash.map((row) => {
                 const acc = cashById.get(row.accountId);
@@ -374,10 +380,10 @@ export function SetupWizard({
                     <div className="sm:col-span-5">
                       <Select
                         id={`cash-acc-${row.key}`}
-                        label="Akun"
+                        label={t("common.account")}
                         value={row.accountId}
                         onChange={(e) => updateCash(row.key, { accountId: e.target.value })}
-                        placeholder="Pilih akun"
+                        placeholder={t("setup.accountPick")}
                         options={cashAccounts.map((a) => ({
                           value: String(a.id),
                           label: `${a.code} · ${a.name} (${a.currency})`,
@@ -391,7 +397,11 @@ export function SetupWizard({
                         step="0.01"
                         min="0"
                         className="text-right tabular-nums"
-                        label={`Saldo${acc ? ` (${acc.currency})` : ""}`}
+                        label={
+                          acc
+                            ? t("setup.balanceWithCurrency", { currency: acc.currency })
+                            : t("common.balance")
+                        }
                         value={row.amount}
                         onChange={(e) => updateCash(row.key, { amount: e.target.value })}
                       />
@@ -404,7 +414,7 @@ export function SetupWizard({
                           step="0.000001"
                           min="0"
                           className="text-right tabular-nums"
-                          label="Kurs → IDR"
+                          label={t("setup.rateToIdr")}
                           value={row.rate}
                           onChange={(e) => updateCash(row.key, { rate: e.target.value })}
                         />
@@ -413,6 +423,7 @@ export function SetupWizard({
                     <div className="sm:col-span-1 flex justify-end">
                       <RemoveButton
                         onClick={() => setCash((r) => r.filter((x) => x.key !== row.key))}
+                        label={t("journal.removeRow")}
                       />
                     </div>
                   </div>
@@ -422,22 +433,26 @@ export function SetupWizard({
 
             {/* Piutang */}
             <PartnerSection
-              title="Piutang Usaha (per pelanggan)"
-              hint="Tagihan yang masih harus diterima dari tiap pelanggan."
+              title={t("setup.receivablesTitle")}
+              hint={t("setup.receivablesHint")}
               rows={receivables}
               setRows={setReceivables}
               parties={customers}
-              partyLabel="Pelanggan"
+              partyLabel={t("common.customer")}
+              addLabel={t("setup.addCustomer")}
+              pickLabel={t("setup.pickCustomer")}
+              emptyLabel={t("setup.emptyCustomers")}
               currencies={currencyOptions}
+              t={t}
               onUpdate={(k, p) => updatePartner(setReceivables, k, p)}
             />
 
             {/* Persediaan */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Persediaan</h3>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Nilai persediaan barang dagang (IDR) per awal tahun buku.
-              </p>
+              <h3 className="text-sm font-semibold text-foreground">
+                {t("accountType.inventory")}
+              </h3>
+              <p className="mb-2 text-xs text-muted-foreground">{t("setup.inventoryHint")}</p>
               <div className="sm:w-1/2">
                 <Input
                   id="inventory"
@@ -445,7 +460,7 @@ export function SetupWizard({
                   step="0.01"
                   min="0"
                   className="text-right tabular-nums"
-                  label="Nilai persediaan (IDR)"
+                  label={t("setup.inventoryField")}
                   value={inventory}
                   onChange={(e) => setInventory(e.target.value)}
                 />
@@ -454,40 +469,46 @@ export function SetupWizard({
 
             {/* Utang */}
             <PartnerSection
-              title="Hutang Usaha (per supplier)"
-              hint="Kewajiban yang masih harus dibayar ke tiap supplier."
+              title={t("setup.payablesTitle")}
+              hint={t("setup.payablesHint")}
               rows={payables}
               setRows={setPayables}
               parties={suppliers}
-              partyLabel="Supplier"
+              partyLabel={t("payables.colSupplier")}
+              addLabel={t("setup.addSupplier")}
+              pickLabel={t("setup.pickSupplier")}
+              emptyLabel={t("setup.emptySuppliers")}
               currencies={currencyOptions}
+              t={t}
               onUpdate={(k, p) => updatePartner(setPayables, k, p)}
             />
 
-            <BalancePanel totals={totals} />
+            <BalancePanel totals={totals} t={t} />
           </div>
         )}
 
         {/* Step 4 — review */}
         {step === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Tinjau &amp; Simpan</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.reviewTitle")}</h2>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="font-medium text-muted-foreground">Perusahaan</dt>
+                <dt className="font-medium text-muted-foreground">{t("setup.companyLabel")}</dt>
                 <dd className="text-foreground">{name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">Awal tahun buku</dt>
+                <dt className="font-medium text-muted-foreground">
+                  {t("setup.fiscalYearStartField")}
+                </dt>
                 <dd className="text-foreground tabular-nums">{fiscalYearStart}</dd>
               </div>
             </dl>
-            <BalancePanel totals={totals} />
+            <BalancePanel totals={totals} t={t} />
             <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                Menyimpan akan membuat <strong>satu jurnal pembuka</strong> yang seimbang dan
-                menandai perusahaan sudah disiapkan. Langkah ini tidak dapat diulang.
+                {t("setup.saveNoteBefore")} <strong>{t("setup.saveNoteStrong")}</strong>{" "}
+                {t("setup.saveNoteAfter")}
               </span>
             </p>
           </div>
@@ -510,17 +531,17 @@ export function SetupWizard({
           onClick={() => setStep((s) => Math.max(0, s - 1))}
         >
           <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Kembali
+          {t("common.back")}
         </Button>
 
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <Button
             type="button"
             className="cursor-pointer"
             disabled={!canNext}
-            onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
           >
-            Lanjut
+            {t("setup.next")}
             <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
           </Button>
         ) : (
@@ -536,7 +557,7 @@ export function SetupWizard({
                 aria-hidden="true"
               />
             )}
-            Simpan &amp; Selesai
+            {t("setup.finish")}
           </Button>
         )}
       </div>
@@ -589,7 +610,11 @@ function PartnerSection({
   setRows,
   parties,
   partyLabel,
+  addLabel,
+  pickLabel,
+  emptyLabel,
   currencies,
+  t,
   onUpdate,
 }: {
   title: string;
@@ -598,15 +623,19 @@ function PartnerSection({
   setRows: React.Dispatch<React.SetStateAction<PartnerRow[]>>;
   parties: Party[];
   partyLabel: string;
+  addLabel: string;
+  pickLabel: string;
+  emptyLabel: string;
   currencies: { value: string; label: string }[];
+  t: TranslateFn;
   onUpdate: (key: number, patch: Partial<PartnerRow>) => void;
 }) {
   return (
     <Section
       title={title}
       hint={hint}
-      addLabel={`Tambah ${partyLabel.toLowerCase()}`}
-      empty={parties.length === 0 ? `Belum ada ${partyLabel.toLowerCase()}.` : undefined}
+      addLabel={addLabel}
+      empty={parties.length === 0 ? emptyLabel : undefined}
       onAdd={() =>
         parties.length > 0 &&
         setRows((r) => [
@@ -625,14 +654,14 @@ function PartnerSection({
                 label={partyLabel}
                 value={row.partnerId}
                 onChange={(e) => onUpdate(row.key, { partnerId: e.target.value })}
-                placeholder={`Pilih ${partyLabel.toLowerCase()}`}
+                placeholder={pickLabel}
                 options={parties.map((p) => ({ value: String(p.id), label: p.name }))}
               />
             </div>
             <div className="sm:col-span-2">
               <Select
                 id={`c-${row.key}`}
-                label="Mata uang"
+                label={t("common.currencyField")}
                 value={row.currency}
                 onChange={(e) => onUpdate(row.key, { currency: e.target.value })}
                 options={currencies}
@@ -645,7 +674,7 @@ function PartnerSection({
                 step="0.01"
                 min="0"
                 className="text-right tabular-nums"
-                label="Saldo"
+                label={t("common.balance")}
                 value={row.amount}
                 onChange={(e) => onUpdate(row.key, { amount: e.target.value })}
               />
@@ -658,14 +687,17 @@ function PartnerSection({
                   step="0.000001"
                   min="0"
                   className="text-right tabular-nums"
-                  label="Kurs → IDR"
+                  label={t("setup.rateToIdr")}
                   value={row.rate}
                   onChange={(e) => onUpdate(row.key, { rate: e.target.value })}
                 />
               </div>
             )}
             <div className="sm:col-span-1 flex justify-end">
-              <RemoveButton onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))} />
+              <RemoveButton
+              onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
+              label={t("journal.removeRow")}
+            />
             </div>
           </div>
         );
@@ -674,49 +706,51 @@ function PartnerSection({
   );
 }
 
-function RemoveButton({ onClick }: { onClick: () => void }) {
+function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive-soft hover:text-destructive cursor-pointer"
-      aria-label="Hapus baris"
+      className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
+      aria-label={label}
     >
       <Trash2 className="h-4 w-4" aria-hidden="true" />
-    </button>
+    </Button>
   );
 }
 
 function BalancePanel({
   totals,
+  t,
 }: {
   totals: { assets: number; liabilities: number; equity: number; unrated: number; hasAny: boolean };
+  t: TranslateFn;
 }) {
-  const equityLabel = totals.equity >= 0 ? "Modal/Ekuitas (kredit)" : "Modal/Ekuitas (debit)";
+  const equityLabel = totals.equity >= 0 ? t("setup.equityCredit") : t("setup.equityDebit");
   return (
     <div className="rounded-lg border border-border bg-muted p-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Figure label="Total Aset (debit)" value={totals.assets} />
-        <Figure label="Total Kewajiban (kredit)" value={totals.liabilities} />
+        <Figure label={t("setup.totalAssets")} value={totals.assets} />
+        <Figure label={t("setup.totalLiabilities")} value={totals.liabilities} />
         <Figure label={equityLabel} value={Math.abs(totals.equity)} />
       </div>
       <div className="mt-3 border-t border-border pt-3 text-sm">
         {totals.unrated > 0 ? (
           <p className="flex items-center gap-2 text-warning-strong">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              {totals.unrated} saldo mata uang asing belum berkurs — isi kursnya sebelum menyimpan.
-            </span>
+            <span>{t("setup.unratedWarning", { count: totals.unrated })}</span>
           </p>
         ) : totals.hasAny ? (
           <p className="flex items-center gap-2 text-success-strong">
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="tabular-nums">
-              Seimbang: Aset = Kewajiban + Modal/Ekuitas ({formatCurrency(totals.assets, "IDR")})
+              {t("setup.balanced", { amount: formatCurrency(totals.assets, "IDR") })}
             </span>
           </p>
         ) : (
-          <p className="text-muted-foreground">Belum ada saldo awal yang diisi.</p>
+          <p className="text-muted-foreground">{t("setup.noBalancesYet")}</p>
         )}
       </div>
     </div>

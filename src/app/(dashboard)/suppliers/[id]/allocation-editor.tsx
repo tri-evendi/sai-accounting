@@ -27,6 +27,7 @@ import { TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 import { Link2, Loader2 } from "lucide-react";
 
 const BASE_CURRENCY = "IDR";
@@ -75,6 +76,7 @@ export function AllocationEditor({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
   // Arriving from the "Perkiraan" badge on /payables opens the panel straight
   // away, so the user lands on the fix rather than hunting for it. Seeded as
   // initial state rather than set from an effect — the panel is open from the
@@ -105,7 +107,7 @@ export function AllocationEditor({
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(String(body.error || "Gagal memuat daftar pembelian."));
+          throw new Error(String(body.error || t("suppliers.allocLoadFailed")));
         }
         return (await res.json()) as EditorPayload;
       })
@@ -121,7 +123,7 @@ export function AllocationEditor({
       })
       .catch((e: Error) => {
         if (!alive) return;
-        setError(e.message || "Gagal memuat daftar pembelian.");
+        setError(e.message || t("suppliers.allocLoadFailed"));
         setData(null);
         setLoading(false);
       });
@@ -129,7 +131,7 @@ export function AllocationEditor({
     return () => {
       alive = false;
     };
-  }, [open, supplierId, paymentId]);
+  }, [open, supplierId, paymentId, t]);
 
   function handleOpen() {
     setOpen(true);
@@ -159,15 +161,13 @@ export function AllocationEditor({
       const fieldMsg = body.details?.fieldErrors
         ? Object.values(body.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
-      setError(String(fieldMsg || body.error || "Gagal menyimpan alokasi"));
+      setError(String(fieldMsg || body.error || t("suppliers.allocSaveFailed")));
       setSaving(false);
       return;
     }
 
     toast(
-      next.length === 0
-        ? "Alokasi dihapus — sisa utang per dokumen kembali diperkirakan"
-        : "Alokasi tersimpan. Jurnal tidak berubah."
+      next.length === 0 ? t("suppliers.allocToastCleared") : t("suppliers.allocToastSaved")
     );
     setSaving(false);
     setOpen(false);
@@ -178,7 +178,7 @@ export function AllocationEditor({
     return (
       <Button variant="ghost" size="sm" onClick={handleOpen} className="cursor-pointer">
         <Link2 className="h-4 w-4 mr-1" aria-hidden="true" />
-        {allocatedCount > 0 ? "Ubah alokasi" : "Alokasikan"}
+        {allocatedCount > 0 ? t("suppliers.allocEdit") : t("suppliers.allocate")}
       </Button>
     );
   }
@@ -187,13 +187,13 @@ export function AllocationEditor({
     <div className="mt-2 rounded-lg border border-border bg-muted p-3 text-left">
       <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
         <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        Pembelian yang dilunasi pembayaran ini
+        {t("suppliers.allocPanelTitle")}
       </h4>
       <p className="mb-3 text-xs text-muted-foreground">
-        Mengubah alokasi hanya memperbaiki laporan sisa utang per dokumen —{" "}
-        <strong>tidak mengubah jurnal</strong> dan tidak memindahkan uang. Bila
-        dikosongkan, sisa per dokumen kembali <strong>diperkirakan</strong>{" "}
-        (pembelian terlama dilunasi lebih dulu).
+        {t("suppliers.allocPanelHintA")}{" "}
+        <strong>{t("suppliers.allocPanelHintStrong")}</strong>{" "}
+        {t("suppliers.allocPanelHintB")} <strong>{t("suppliers.allocPanelHintStrong2")}</strong>{" "}
+        {t("suppliers.allocPanelHintC")}
       </p>
 
       {error && (
@@ -205,13 +205,10 @@ export function AllocationEditor({
       {loading ? (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          Memuat daftar pembelian...
+          {t("suppliers.allocLoading")}
         </p>
       ) : !data ? null : data.purchases.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          Tidak ada pembelian dengan sisa utang untuk supplier ini, jadi tidak ada
-          yang bisa dialokasikan.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("suppliers.allocNoPurchases")}</p>
       ) : (
         <ul className="space-y-2">
           {data.purchases.map((p) => {
@@ -257,7 +254,9 @@ export function AllocationEditor({
                       <span className="font-medium text-foreground">TRX-{p.id}</span>
                       <span className="block text-xs text-muted-foreground tabular-nums">
                         {formatDateShort(p.date)}
-                        {p.dueDate && <> · j.tempo {formatDateShort(p.dueDate)}</>}
+                        {p.dueDate && (
+                          <> · {t("suppliers.dueShort", { date: formatDateShort(p.dueDate) })}</>
+                        )}
                       </span>
                       {p.note && (
                         <span className="block max-w-64 truncate text-xs text-muted-foreground">
@@ -268,20 +267,23 @@ export function AllocationEditor({
                   </label>
 
                   <div className="text-right">
-                    <span className="block text-xs text-muted-foreground">Sisa utang</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {t("suppliers.outstandingDebt")}
+                    </span>
                     <span className="block text-sm font-medium text-foreground tabular-nums">
-                      {noRate ? "Kurs belum diisi" : formatCurrency(p.remainingBase!, "IDR")}
+                      {noRate ? t("common.rateMissing") : formatCurrency(p.remainingBase!, "IDR")}
                     </span>
                     <span className="block text-xs text-muted-foreground tabular-nums">
-                      Nilai {formatCurrency(p.amount, p.currency)}
+                      {t("suppliers.lineValue", {
+                        amount: formatCurrency(p.amount, p.currency),
+                      })}
                     </span>
                   </div>
                 </div>
 
                 {noRate && (
                   <p className="mt-1.5 text-xs text-warning-strong">
-                    Pembelian valas tanpa kurs — sisa utang dalam IDR tidak diketahui,
-                    jadi belum bisa dialokasikan.
+                    {t("suppliers.noRateLine")}
                   </p>
                 )}
 
@@ -291,7 +293,7 @@ export function AllocationEditor({
                       htmlFor={`realloc-${paymentId}-${p.id}`}
                       className="whitespace-nowrap text-xs text-muted-foreground"
                     >
-                      Dibayar ({paymentCurrency})
+                      {t("suppliers.paidIn", { currency: paymentCurrency })}
                     </label>
                     <TextInput
                       id={`realloc-${paymentId}-${p.id}`}
@@ -309,7 +311,7 @@ export function AllocationEditor({
 
                 {overLine && (
                   <p className="mt-1.5 text-xs text-destructive-strong" role="alert">
-                    Melebihi sisa utang pembelian ini.
+                    {t("suppliers.allocOverLine")}
                   </p>
                 )}
               </li>
@@ -320,13 +322,13 @@ export function AllocationEditor({
 
       <div className="mt-3 space-y-1 border-t border-border pt-2 text-xs">
         <p className="flex justify-between">
-          <span className="text-muted-foreground">Jumlah pembayaran</span>
+          <span className="text-muted-foreground">{t("suppliers.paymentAmount")}</span>
           <span className="font-medium text-foreground tabular-nums">
             {formatCurrency(paymentAmount, paymentCurrency)}
           </span>
         </p>
         <p className="flex justify-between">
-          <span className="text-muted-foreground">Total dialokasikan</span>
+          <span className="text-muted-foreground">{t("suppliers.totalAllocated")}</span>
           <span
             className={`font-medium tabular-nums ${overAllocated ? "text-destructive-strong" : "text-foreground"}`}
           >
@@ -334,7 +336,7 @@ export function AllocationEditor({
           </span>
         </p>
         <p className="flex justify-between">
-          <span className="text-muted-foreground">Belum dialokasikan (diperkirakan)</span>
+          <span className="text-muted-foreground">{t("suppliers.unallocated")}</span>
           <span className="font-medium text-foreground tabular-nums">
             {formatCurrency(unallocated, paymentCurrency)}
           </span>
@@ -343,7 +345,7 @@ export function AllocationEditor({
 
       {overAllocated && (
         <p className="mt-2 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-          Total alokasi melebihi jumlah pembayaran ini.
+          {t("suppliers.allocOverTotal")}
         </p>
       )}
 
@@ -355,16 +357,16 @@ export function AllocationEditor({
           disabled={saving || loading || overAllocated}
           onClick={() => save(entries)}
         >
-          {saving ? "Menyimpan..." : "Simpan Alokasi"}
+          {saving ? t("common.saving") : t("suppliers.allocSave")}
         </Button>
         {allocatedCount > 0 && (
           /* `window.confirm` diganti ConfirmDialog (issue #6): pesan bawaan
              peramban tidak bisa menjelaskan akibatnya dengan tenang, tidak
              mengikuti bahasa app, dan tidak bisa ditata. */
           <ConfirmDialog
-            title="Hapus semua alokasi pembayaran ini?"
-            message="Sisa utang per dokumen akan kembali diperkirakan dengan metode FIFO seperti sebelum alokasi dibuat. Jurnal dan nilai pembayarannya sendiri tidak berubah."
-            confirmLabel="Hapus Alokasi"
+            title={t("suppliers.allocDeleteTitle")}
+            message={t("suppliers.allocDeleteMessage")}
+            confirmLabel={t("suppliers.allocDelete")}
             onConfirm={() => save([])}
             trigger={
               <Button
@@ -374,7 +376,7 @@ export function AllocationEditor({
                 className="cursor-pointer"
                 disabled={saving || loading}
               >
-                Hapus Alokasi
+                {t("suppliers.allocDelete")}
               </Button>
             }
           />
@@ -386,7 +388,7 @@ export function AllocationEditor({
           className="cursor-pointer"
           onClick={() => setOpen(false)}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
     </div>

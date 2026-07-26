@@ -8,7 +8,8 @@
  */
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Select } from "@/components/ui/select";
-import { MONTH_NAMES } from "@/lib/month-names";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { monthNames } from "@/lib/i18n/labels";
 
 export function PeriodPicker({
   year,
@@ -22,6 +23,8 @@ export function PeriodPicker({
   yearsBack?: number;
   className?: string;
 }) {
+  const t = useT();
+  const months = monthNames(useDictionary());
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -42,7 +45,7 @@ export function PeriodPicker({
       <div className="w-40">
         <Select
           id="period-year"
-          label="Tahun"
+          label={t("budget.yearField")}
           value={String(year)}
           onChange={(e) => push({ year: Number(e.target.value) })}
           options={years.map((y) => ({ value: String(y), label: String(y) }))}
@@ -51,12 +54,12 @@ export function PeriodPicker({
       <div className="w-48">
         <Select
           id="period-month"
-          label="Bulan"
+          label={t("budget.monthField")}
           value={String(month ?? 0)}
           onChange={(e) => push({ month: Number(e.target.value) })}
           options={[
-            { value: "0", label: "Semua bulan (setahun)" },
-            ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
+            { value: "0", label: t("budget.allMonths") },
+            ...months.map((name, i) => ({ value: String(i + 1), label: name })),
           ]}
         />
       </div>

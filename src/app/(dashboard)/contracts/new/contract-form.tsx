@@ -37,6 +37,7 @@ import {
   negativeValueIssue,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { Trash2, Plus, AlertCircle, Lock } from "lucide-react";
 
 interface ContractItem {
@@ -49,14 +50,15 @@ interface ContractItem {
 const emptyItem = (): ContractItem => ({ itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 });
 
 /** Label status kontrak dalam bahasa tugas — dipakai pilihan & ringkasan lipatan. */
-const STATUS_LABELS: Record<string, string> = {
-  pending: "menunggu",
-  signed: "sah (ditandatangani)",
-  canceled: "dibatalkan",
-};
+const statusLabels = (t: TranslateFn): Record<string, string> => ({
+  pending: t("contracts.statusPendingLower"),
+  signed: t("contracts.statusSignedLower"),
+  canceled: t("contracts.statusCanceledLower"),
+});
 
 export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<ContractItem[]>([emptyItem()]);
@@ -73,7 +75,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
   const subtotal = items.reduce((sum, i) => sum + i.bags * i.kgPerBag * i.pricePerKg, 0);
   // Periode terkunci diperlihatkan sambil mengetik, bukan hanya setelah ditolak.
-  const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal kontrak");
+  const periodIssue = closedPeriodIssue(date, closedPeriods, t("contracts.dateGuardLabel"));
 
   function addItem() {
     setItems([...items, emptyItem()]);
@@ -113,9 +115,9 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
     const negative = negativeValueIssue([
       { field: "rate", value: Number(rate) },
       ...items.flatMap((item, i) => [
-        { field: `bags-${i}`, value: item.bags, label: `Jumlah bags baris ${i + 1}` },
-        { field: `kgPerBag-${i}`, value: item.kgPerBag, label: `Kg per bag baris ${i + 1}` },
-        { field: `pricePerKg-${i}`, value: item.pricePerKg, label: `Harga per kg baris ${i + 1}` },
+        { field: `bags-${i}`, value: item.bags, label: t("contracts.bagsRowLabel", { n: i + 1 }) },
+        { field: `kgPerBag-${i}`, value: item.kgPerBag, label: t("contracts.kgPerBagRowLabel", { n: i + 1 }) },
+        { field: `pricePerKg-${i}`, value: item.pricePerKg, label: t("contracts.pricePerKgRowLabel", { n: i + 1 }) },
       ]),
     ]);
     if (negative) {
@@ -150,7 +152,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      const failure = resolveSubmitFailure("kontrak", data, "Kontrak belum bisa disimpan.");
+      const failure = resolveSubmitFailure("kontrak", data, t("contracts.saveFailed"));
       setLoading(false);
       reportFailure(failure.message, failure.field, failure.section === "lanjutan");
     } else {
@@ -161,9 +163,9 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
   /** Ringkasan isian lanjutan supaya nilainya tidak ikut hilang saat terlipat. */
   const advancedSummary = [
-    dueDate ? `Jatuh tempo ${dueDate}` : "Tanpa jatuh tempo",
-    consigneeId != null ? "Penerima barang dipilih" : null,
-    `Status ${STATUS_LABELS[status] ?? status}`,
+    dueDate ? t("contracts.advDueDate", { date: dueDate }) : t("contracts.advNoDueDate"),
+    consigneeId != null ? t("contracts.advConsignee") : null,
+    t("contracts.advStatus", { status: statusLabels(t)[status] ?? status }),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -182,21 +184,18 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Rincian Kontrak</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Isian yang wajib ada pada setiap kontrak. Sisanya ada di &ldquo;Detail
-            lengkap&rdquo; di bawah.
-          </p>
+          <CardTitle>{t("contracts.detailsTitle")}</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">{t("contracts.detailsHint")}</p>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="contractNo" name="contractNo" label="Nomor Kontrak" required />
+            <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} required />
             <div>
               <Input
                 id="date"
                 name="date"
                 type="date"
-                label="Tanggal Kontrak"
+                label={t("contracts.contractDate")}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
@@ -208,15 +207,15 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                 </p>
               )}
             </div>
-            <Input id="buyer" name="buyer" label="Pembeli (buyer)" required />
+            <Input id="buyer" name="buyer" label={t("contracts.buyerField")} required />
             <div className="hidden sm:block" aria-hidden="true" />
             <CurrencyRateFields
               currency={currency}
               rate={rate}
               onCurrencyChange={setCurrency}
               onRateChange={setRate}
-              currencyLabel="Mata Uang"
-              rateHint="Wajib diisi — kurs disimpan pada kontrak dan dipakai untuk nilai IDR di buku besar."
+              currencyLabel={t("common.currency")}
+              rateHint={t("contracts.rateHintNew")}
             />
           </div>
         </CardContent>
@@ -225,9 +224,9 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Barang yang Dikontrakkan</CardTitle>
+            <CardTitle>{t("contracts.contractedGoodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Tambah Barang
+              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.addItem")}
             </Button>
           </div>
         </CardHeader>
@@ -241,7 +240,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       htmlFor={`itemName-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Nama Barang
+                      {t("common.itemName")}
                     </label>
                     <TextInput
                       id={`itemName-${i}`}
@@ -256,7 +255,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       htmlFor={`bags-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Bags
+                      {t("common.bags")}
                     </label>
                     <TextInput
                       id={`bags-${i}`}
@@ -272,7 +271,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       htmlFor={`kgPerBag-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Kg/Bag
+                      {t("common.kgPerBag")}
                     </label>
                     <TextInput
                       id={`kgPerBag-${i}`}
@@ -289,7 +288,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       htmlFor={`pricePerKg-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Harga/Kg
+                      {t("contracts.pricePerKg")}
                     </label>
                     <TextInput
                       id={`pricePerKg-${i}`}
@@ -301,15 +300,17 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))}
                     />
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removeItem(i)}
-                    className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                     disabled={items.length === 1}
-                    aria-label={`Hapus baris barang ${i + 1}`}
+                    aria-label={t("common.removeItemRow", { n: i + 1 })}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-2 text-right text-xs tabular-nums text-foreground">
                   = {formatCurrency(item.bags * item.kgPerBag * item.pricePerKg, currency)}
@@ -323,7 +324,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
       <DisclosureSection
         className="mb-6"
-        description="Jatuh tempo, penerima barang, kemasan, pengapalan, termin pembayaran, dan status. Boleh dilewati — semuanya opsional."
+        description={t("contracts.advancedDescription")}
         summary={advancedSummary}
         open={advancedOpen}
         onOpenChange={setAdvancedOpen}
@@ -332,26 +333,23 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
         <div className="grid gap-4 sm:grid-cols-2">
           <DueDateField value={dueDate} onChange={setDueDate} />
           <ConsigneeSelect consigneeId={consigneeId} onConsigneeIdChange={setConsigneeId} />
-          <Input id="packaging" name="packaging" label="Kemasan" />
-          <Input id="shipment" name="shipment" label="Pengapalan" />
+          <Input id="packaging" name="packaging" label={t("contracts.packaging")} />
+          <Input id="shipment" name="shipment" label={t("contracts.shipment")} />
           <div>
-            <Input id="top1" name="top1" label="Termin Pembayaran 1" />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Teks bebas kesepakatan, mis. &ldquo;30% uang muka&rdquo;. Bukan tanggal — untuk
-              tanggal, pakai Jatuh Tempo di atas.
-            </p>
+            <Input id="top1" name="top1" label={t("contracts.top1")} />
+            <p className="mt-1 text-xs text-muted-foreground">{t("contracts.top1Hint")}</p>
           </div>
-          <Input id="top2" name="top2" label="Termin Pembayaran 2" />
+          <Input id="top2" name="top2" label={t("contracts.top2")} />
           <Select
             id="status"
             name="status"
-            label="Status"
+            label={t("common.status")}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             options={[
-              { value: "pending", label: "Menunggu" },
-              { value: "signed", label: "Sah (ditandatangani)" },
-              { value: "canceled", label: "Dibatalkan" },
+              { value: "pending", label: t("status.contract.pending") },
+              { value: "signed", label: t("contracts.statusSignedLong") },
+              { value: "canceled", label: t("status.contract.canceled") },
             ]}
           />
         </div>
@@ -361,18 +359,20 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
         <CardContent className="py-3">
           <dl className="space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="font-medium text-muted-foreground">Perkiraan Nilai Kontrak ({currency})</dt>
+              <dt className="font-medium text-muted-foreground">
+                {t("contracts.estimatedValue", { currency })}
+              </dt>
               <dd className="text-lg font-bold tabular-nums text-foreground">
                 {formatCurrency(subtotal, currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-muted-foreground">
-                <TermTooltip term="buku_besar">Nilai dasar buku besar (IDR)</TermTooltip>
+                <TermTooltip term="buku_besar">{t("common.ledgerBaseIdr")}</TermTooltip>
               </dt>
               <dd className="tabular-nums font-medium text-foreground">
                 {baseUnknown(currency, rate)
-                  ? "— isi kurs dulu"
+                  ? t("contracts.fillRateFirst")
                   : formatCurrency(subtotal * (Number(rate) || 1), "IDR")}
               </dd>
             </div>
@@ -382,7 +382,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
       <div className="flex gap-3">
         <Button type="submit" className="cursor-pointer" disabled={loading}>
-          {loading ? "Menyimpan…" : "Simpan Kontrak"}
+          {loading ? t("common.saving") : t("contracts.submit")}
         </Button>
         <Button
           type="button"
@@ -390,7 +390,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
           className="cursor-pointer"
           onClick={() => router.back()}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

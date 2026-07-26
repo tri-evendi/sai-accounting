@@ -136,6 +136,19 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 
 ---
 
+## Primitif Wajib: Tabel & Tombol
+
+Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen ini bocor — yang hilang justru bagian tak terlihat: pembungkus geser, ring fokus keyboard, target sentuh. Karena itu dua keluarga ini **wajib** lewat primitif, dan dijaga oleh `tests/design-system-primitives.test.ts` (lingkup `src/app/(dashboard)` + `src/components`, kecuali `src/components/ui` tempat primitifnya sendiri tinggal).
+
+- **Tabel → `Table`** (`src/components/ui/table.tsx`): `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`, bukan `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah. Primitifnya membawa pembungkus `overflow-x-auto` sendiri, jadi tabel lebar menggeser dirinya — bukan seluruh halaman di 375px.
+- **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan format angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah di dalamnya.
+- **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`).
+- **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan rakit `p-1.5` (≈28px). Antar aksi ikon yang berdampingan pakai **`gap-2`** (8px) minimum — `gap-1` membuat dua aksi bersebelahan mudah salah tekan.
+- **Pengecualian yang disahkan** (tetap `<button>` mentah, alasannya ditulis di komentar kepala file dan didaftar di `RAW_BUTTON_ALLOWLIST` penjaga): chrome aplikasi (`sidebar`, `navbar`, `accountant-mode-toggle`), dropdown rakitan tangan (`user-menu`, `help-menu`), overlay tur (`guided-tour`), penanda langkah `wizard`, dan grup chip `aria-pressed` (`glossary-browser`).
+- **Bukan tombol, jadi di luar aturan ini:** `<select>` native (`NativeSelect`, issue #50), `<input type="radio">` native, dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
+
+---
+
 ## Pre-Delivery Checklist (UI apa pun)
 - [ ] Ikon SVG konsisten (lucide-react), tanpa emoji.
 - [ ] `cursor-pointer` di semua elemen klik; hover transisi 150–250ms.
@@ -146,5 +159,6 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
 - [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>`/`<Breadcrumb>` manual); label breadcrumb = label menu samping.
 - [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
+- [ ] Tabel lewat primitif `Table` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, antar aksi `gap-2`) — penjaga `tests/design-system-primitives.test.ts` hijau.
 - [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

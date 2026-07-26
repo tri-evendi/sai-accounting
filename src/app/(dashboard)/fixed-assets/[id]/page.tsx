@@ -6,12 +6,22 @@ import { notFound } from "next/navigation";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getFixedAsset } from "@/lib/fixed-assets";
-import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { MONTH_NAMES } from "@/lib/period";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { monthNames } from "@/lib/i18n/labels";
 import { AssetActions } from "./asset-actions";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +34,8 @@ export default async function FixedAssetDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("fixed_asset.read");
+  const t = await getT();
+  const months = monthNames(await getDictionary(await getLocale()));
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
 
@@ -47,29 +59,34 @@ export default async function FixedAssetDetailPage({
       : 0;
 
   const info: [string, string][] = [
-    ["Kategori", asset.categoryName],
-    ["Metode", DEPRECIATION_METHOD_LABELS[asset.depreciationMethod as DepreciationMethod] ?? asset.depreciationMethod],
-    ["Umur manfaat", `${asset.usefulLifeMonths} bulan`],
-    ["Tanggal perolehan", formatDateShort(asset.acquisitionDate)],
-    ["Lokasi", asset.location ?? "—"],
-    ["Penyusutan / bulan", formatCurrency(asset.monthlyDepreciation, "IDR")],
+    [t("fixedAssets.colCategory"), asset.categoryName],
+    [
+      t("fixedAssets.infoMethod"),
+      asset.depreciationMethod === "straight_line"
+        ? t("depreciationMethod.straight_line")
+        : asset.depreciationMethod,
+    ],
+    [t("fixedAssets.infoUsefulLife"), t("fixedAssets.infoMonths", { count: asset.usefulLifeMonths })],
+    [t("fixedAssets.acquisitionDateField"), formatDateShort(asset.acquisitionDate)],
+    [t("fixedAssets.colLocation"), asset.location ?? "—"],
+    [t("fixedAssets.infoMonthlyDepreciation"), formatCurrency(asset.monthlyDepreciation, "IDR")],
   ];
 
   return (
     <div>
       <PageHeader
         breadcrumbs={[
-          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
+          { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
           { label: asset.assetNo },
         ]}
         title={asset.name}
         badge={
           asset.status === "disposed" ? (
-            <Badge variant="default">Dilepas</Badge>
+            <Badge variant="default">{t("fixedAssets.statusDisposed")}</Badge>
           ) : asset.isFullyDepreciated ? (
-            <Badge variant="warning">Habis susut</Badge>
+            <Badge variant="warning">{t("fixedAssets.statusFullyDepreciated")}</Badge>
           ) : (
-            <Badge variant="success">Aktif</Badge>
+            <Badge variant="success">{t("common.active")}</Badge>
           )
         }
         description={asset.assetNo}
@@ -77,18 +94,18 @@ export default async function FixedAssetDetailPage({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Nilai perolehan</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.cost")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.acquisitionCost, "IDR")}
           </p>
           {asset.residualValue > 0 && (
             <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-              Residu {formatCurrency(asset.residualValue, "IDR")}
+              {t("fixedAssets.residualLine", { amount: formatCurrency(asset.residualValue, "IDR") })}
             </p>
           )}
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Akumulasi penyusutan</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.accumulated")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.accumulatedDepreciation, "IDR")}
           </p>
@@ -97,7 +114,7 @@ export default async function FixedAssetDetailPage({
           </div>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Nilai buku</p>
+          <p className="text-sm text-muted-foreground">{t("fixedAssets.bookValue")}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatCurrency(asset.bookValue, "IDR")}
           </p>
@@ -117,22 +134,22 @@ export default async function FixedAssetDetailPage({
 
       {asset.status === "disposed" ? (
         <Card className="mb-6 p-6">
-          <h2 className="mb-3 text-lg font-semibold text-foreground">Pelepasan</h2>
+          <h2 className="mb-3 text-lg font-semibold text-foreground">{t("fixedAssets.disposalTitle")}</h2>
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-muted-foreground">Tanggal</dt>
+              <dt className="text-xs text-muted-foreground">{t("common.date")}</dt>
               <dd className="text-sm text-foreground">
                 {asset.disposalDate ? formatDateShort(asset.disposalDate) : "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Hasil pelepasan</dt>
+              <dt className="text-xs text-muted-foreground">{t("fixedAssets.disposalProceeds")}</dt>
               <dd className="text-sm text-foreground tabular-nums">
                 {formatCurrency(asset.disposalProceeds ?? 0, "IDR")}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Laba/Rugi pelepasan</dt>
+              <dt className="text-xs text-muted-foreground">{t("fixedAssets.disposalGainLoss")}</dt>
               <dd className="text-sm tabular-nums">
                 {asset.disposalGainLoss == null ? (
                   "—"
@@ -156,67 +173,63 @@ export default async function FixedAssetDetailPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">Riwayat penyusutan</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("fixedAssets.depreciationHistory")}</h2>
           </div>
           {depreciations.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada penyusutan yang diposting.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">{t("fixedAssets.noDepreciation")}</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Periode</th>
-                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Beban</th>
-                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">Akum.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {depreciations.map((d) => (
-                    <tr key={d.id} className="border-b border-border">
-                      <td className="px-4 py-2 text-foreground">
-                        {MONTH_NAMES[d.month - 1]} {d.year}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(num(d.amount), "IDR")}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(num(d.accumulatedAfter), "IDR")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>{t("fixedAssets.colPeriod")}</TableHead>
+                  <TableHead className="text-right">{t("fixedAssets.colExpense")}</TableHead>
+                  <TableHead className="text-right">{t("fixedAssets.colAccumShort")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {depreciations.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="text-foreground">
+                      {t("common.monthOfYear", { month: months[d.month - 1], year: d.year })}
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={num(d.amount)} currency="IDR" />
+                    </TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={num(d.accumulatedAfter)} currency="IDR" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </Card>
 
         <Card>
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">Riwayat lokasi</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("fixedAssets.locationHistory")}</h2>
           </div>
           {moves.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">Belum ada perpindahan lokasi.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">{t("fixedAssets.noMoves")}</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Dari</th>
-                    <th className="px-4 py-2 font-medium text-muted-foreground">Ke</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {moves.map((m) => (
-                    <tr key={m.id} className="border-b border-border">
-                      <td className="px-4 py-2 text-foreground">{formatDateShort(m.date)}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{m.fromLocation ?? "—"}</td>
-                      <td className="px-4 py-2 text-foreground">{m.toLocation ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>{t("common.date")}</TableHead>
+                  <TableHead>{t("fixedAssets.colFrom")}</TableHead>
+                  <TableHead>{t("fixedAssets.colTo")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {moves.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-foreground">{formatDateShort(m.date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.fromLocation ?? "—"}</TableCell>
+                    <TableCell className="text-foreground">{m.toLocation ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </Card>
       </div>

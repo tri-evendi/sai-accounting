@@ -2,6 +2,16 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { getCashFlow } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -12,6 +22,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { ArrowDownLeft, ArrowUpRight, AlertTriangle, Minus } from "lucide-react";
 import type { CashFlowGroup } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +31,20 @@ export const dynamic = "force-dynamic";
  * Money with an explicit direction. Colour alone never carries the meaning — an
  * arrow icon and a +/− sign say the same thing, per the design system's
  * "jangan pernah mengandalkan warna saja".
+ *
+ * Sengaja BUKAN `Money`/`MoneyCell` (issue #52): pewarnaan di sini mengikuti
+ * arah kas (masuk hijau / keluar merah, pasangan `*-strong`) dan selalu
+ * disertai ikon panah + tanda +/−, sedangkan `Money` hanya mewarnai nilai
+ * negatif. Nol pun tampil sebagai ikon "–" berlabel "Nihil", bukan "Rp 0".
  */
-function Flow({ amount }: { amount: number }) {
+type T = (key: DictionaryKey, values?: Record<string, string | number>) => string;
+
+function Flow({ amount, t }: { amount: number; t: T }) {
   if (Math.round(amount * 100) === 0) {
     return (
       <span className="inline-flex items-center justify-end gap-1 text-muted-foreground tabular-nums">
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-        <span className="sr-only">Nihil</span>
+        <span className="sr-only">{t("reports.flowNil")}</span>
       </span>
     );
   }
@@ -38,7 +57,7 @@ function Flow({ amount }: { amount: number }) {
       }`}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{inflow ? "Kas masuk" : "Kas keluar"}</span>
+      <span className="sr-only">{inflow ? t("reports.flowIn") : t("reports.flowOut")}</span>
       <span>
         {inflow ? "+" : "−"}
         {formatCurrency(Math.abs(amount), "IDR")}
@@ -47,60 +66,64 @@ function Flow({ amount }: { amount: number }) {
   );
 }
 
-function Section({ group }: { group: CashFlowGroup }) {
+function Section({ group, label, t }: { group: CashFlowGroup; label: string; t: T }) {
   const unknown = group.category === "uncategorised";
   return (
     <>
-      <tr className={unknown ? "bg-warning-soft" : "bg-muted"}>
-        <td className="px-6 py-2 font-semibold text-foreground" colSpan={3}>
+      <TableRow
+        className={unknown ? "bg-warning-soft hover:bg-warning-soft" : "bg-muted hover:bg-muted"}
+      >
+        <TableCell className="py-2 font-semibold text-foreground" colSpan={3}>
           <span className="inline-flex items-center gap-2">
-            {group.label}
+            {label}
             {unknown && (
               <Badge variant="warning">
                 <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
-                Perlu ditinjau
+                {t("reports.needsReview")}
               </Badge>
             )}
           </span>
           {unknown && (
             <p className="mt-1 text-xs font-normal text-warning-strong">
-              Kas ini bergerak lewat akun yang jenisnya belum dipetakan ke operasi, investasi
-              atau pendanaan. Angkanya tetap dihitung dalam total, tapi perlu dirapikan di
-              Daftar Akun.
+              {t("reports.uncategorisedHint")}
             </p>
           )}
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
 
       {group.lines.map((l) => (
-        <tr key={l.code} className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground">
+        <TableRow key={l.code}>
+          <TableCell className="py-2 pl-10 text-muted-foreground">
             <span className="mr-2 font-mono text-muted-foreground">{l.code}</span>
             {l.name}
-          </td>
-          <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">
-            {l.inflow > 0 ? formatCurrency(l.inflow, "IDR") : "—"}
-          </td>
-          <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">
-            {l.outflow > 0 ? formatCurrency(l.outflow, "IDR") : "—"}
-          </td>
-        </tr>
+          </TableCell>
+          {/* Nol tampil "—" (bukan "Rp 0"), jadi selnya tetap dirender sendiri
+              dengan `Money` di dalamnya. */}
+          <TableCell className="py-2 text-right tabular-nums text-muted-foreground">
+            {l.inflow > 0 ? <Money value={l.inflow} currency="IDR" /> : "—"}
+          </TableCell>
+          <TableCell className="py-2 text-right tabular-nums text-muted-foreground">
+            {l.outflow > 0 ? <Money value={l.outflow} currency="IDR" /> : "—"}
+          </TableCell>
+        </TableRow>
       ))}
 
       {group.lines.length === 0 && (
-        <tr className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground" colSpan={3}>
-            Tidak ada pergerakan kas pada periode ini.
-          </td>
-        </tr>
+        <TableRow className="hover:bg-transparent">
+          <TableCell className="py-2 pl-10 text-muted-foreground" colSpan={3}>
+            {t("reports.noCashMovement")}
+          </TableCell>
+        </TableRow>
       )}
 
-      <tr className="border-b border-border font-medium">
-        <td className="px-6 py-2 text-foreground">Jumlah {group.label}</td>
-        <td className="px-6 py-2 text-right" colSpan={2}>
-          <Flow amount={group.net} />
-        </td>
-      </tr>
+      <TableRow className="font-medium">
+        <TableCell className="py-2 text-foreground">
+          {t("reports.groupSubtotal", { group: label })}
+        </TableCell>
+        <TableCell className="py-2 text-right" colSpan={2}>
+          <Flow amount={group.net} t={t} />
+        </TableCell>
+      </TableRow>
     </>
   );
 }
@@ -111,10 +134,20 @@ export default async function CashFlowPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const cf = await getCashFlow(from, to);
+  // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
+  // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+  // Label kelompok arus kas untuk LAYAR; payload PDF tetap memakai `g.label`.
+  const groupLabels: Record<string, string> = {
+    operating: t("cashFlowCategory.operating"),
+    investing: t("cashFlowCategory.investing"),
+    financing: t("cashFlowCategory.financing"),
+    uncategorised: t("cashFlowCategory.uncategorised"),
+  };
 
   const payload: StatementPayload = {
     kind: "cash-flow",
@@ -140,14 +173,20 @@ export default async function CashFlowPage({
     reconciled: cf.reconciled,
     suspectUnrated: cf.suspectUnrated,
   };
-  const summary = cashFlowSummary(cf, periodLabel);
+  const summary = cashFlowSummary(cf, periodLabel, t);
 
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Arus Kas" }]}
-        title="Arus Kas"
-        description={<>{periodLabel} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.cashFlowTitle") },
+        ]}
+        title={t("reports.cashFlowTitle")}
+        description={t("reports.periodWithCurrency", {
+          from: formatDate(from),
+          to: formatDate(to),
+        })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -165,10 +204,10 @@ export default async function CashFlowPage({
           <div className="flex gap-3 px-6 py-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
             <p className="text-sm text-warning-strong">
-              <span className="font-medium">{cf.suspectUnrated} baris jurnal</span> bermata uang
-              asing tercatat dengan kurs 1, sehingga nilai rupiahnya kemungkinan belum
-              dikonversi. Angka di bawah tetap mengikuti buku besar — perbaiki kursnya di jurnal
-              terkait agar laporan akurat.
+              <span className="font-medium">
+                {t("reports.unratedWarningStrong", { count: cf.suspectUnrated })}
+              </span>{" "}
+              {t("reports.unratedWarningRest")}
             </p>
           </div>
         </Card>
@@ -177,7 +216,7 @@ export default async function CashFlowPage({
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Kas awal periode</p>
+            <p className="text-sm text-muted-foreground">{t("reports.openingCash")}</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.openingCash, "IDR")}
             </p>
@@ -185,15 +224,15 @@ export default async function CashFlowPage({
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Perubahan kas</p>
+            <p className="text-sm text-muted-foreground">{t("reports.cashChange")}</p>
             <p className="mt-1 text-xl font-semibold">
-              <Flow amount={cf.netChange} />
+              <Flow amount={cf.netChange} t={t} />
             </p>
           </div>
         </Card>
         <Card>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground">Kas akhir periode</p>
+            <p className="text-sm text-muted-foreground">{t("reports.closingCash")}</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
               {formatCurrency(cf.closingCash, "IDR")}
             </p>
@@ -202,96 +241,91 @@ export default async function CashFlowPage({
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Sumber / Penggunaan Kas</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kas Masuk</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kas Keluar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* An empty "Belum Terkategori" section is noise; a non-empty one is the
-                  whole point of the bucket, so it is always shown when it has rows. */}
-              {cf.groups
-                .filter((g) => g.category !== "uncategorised" || g.lines.length > 0)
-                .map((g) => (
-                  <Section key={g.category} group={g} />
-                ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border text-base font-bold">
-                <td className="px-6 py-4 text-foreground">
-                  Kenaikan / Penurunan Kas
-                  <span className="ml-2 align-middle">
-                    {cf.reconciled ? (
-                      <Badge variant="success">Cocok dengan Buku Besar</Badge>
-                    ) : (
-                      <Badge variant="danger">Tidak cocok</Badge>
-                    )}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                  {formatCurrency(cf.totalInflow, "IDR")}
-                </td>
-                <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                  {formatCurrency(cf.totalOutflow, "IDR")}
-                </td>
-              </tr>
-              <tr className="border-t border-border text-base font-bold">
-                <td className="px-6 py-3 text-foreground" colSpan={2}>
-                  Perubahan Kas Bersih
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <Flow amount={cf.netChange} />
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("reports.colSourceUse")}</TableHead>
+              <TableHead className="text-right">{t("reports.colCashIn")}</TableHead>
+              <TableHead className="text-right">{t("reports.colCashOut")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {/* An empty "Belum Terkategori" section is noise; a non-empty one is the
+                whole point of the bucket, so it is always shown when it has rows. */}
+            {cf.groups
+              .filter((g) => g.category !== "uncategorised" || g.lines.length > 0)
+              .map((g) => (
+                <Section key={g.category} group={g} label={groupLabels[g.category] ?? g.label} t={t} />
+              ))}
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="text-base font-bold hover:bg-transparent">
+              <TableCell className="py-4 text-foreground">
+                {t("reports.netCashRow")}
+                <span className="ml-2 align-middle">
+                  {cf.reconciled ? (
+                    <Badge variant="success">{t("reports.matchesLedger")}</Badge>
+                  ) : (
+                    <Badge variant="danger">{t("reports.doesNotMatch")}</Badge>
+                  )}
+                </span>
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell className="py-4 text-foreground" value={cf.totalInflow} currency="IDR" />
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell className="py-4 text-foreground" value={cf.totalOutflow} currency="IDR" />
+              </TableCell>
+            </TableRow>
+            <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
+              <TableCell className="text-foreground" colSpan={2}>
+                {t("reports.netCashChange")}
+              </TableCell>
+              <TableCell className="text-right">
+                <Flow amount={cf.netChange} t={t} />
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
 
       {cf.cashAccounts.length > 0 && (
         <Card className="mt-6">
           <div className="border-b border-border px-6 py-4">
-            <h2 className="font-semibold text-foreground">Rincian per Akun Kas &amp; Bank</h2>
+            <h2 className="font-semibold text-foreground">{t("reports.perCashAccountTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Saldo awal dan akhir tiap akun kas. Selisihnya harus sama dengan perubahan kas di
-              atas — itulah yang dicek oleh lencana &ldquo;Cocok dengan Buku Besar&rdquo;.
+              {t("reports.perCashAccountHint")}
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Saldo Awal</th>
-                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Perubahan</th>
-                  <th className="px-6 py-3 text-right font-medium text-muted-foreground">Saldo Akhir</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cf.cashAccounts.map((a) => (
-                  <tr key={a.code} className="border-b border-border">
-                    <td className="px-6 py-2.5">
-                      <span className="mr-2 font-mono text-muted-foreground">{a.code}</span>
-                      {a.name}
-                    </td>
-                    <td className="px-6 py-2.5 text-right tabular-nums">
-                      {formatCurrency(a.opening, "IDR")}
-                    </td>
-                    <td className="px-6 py-2.5 text-right">
-                      <Flow amount={a.net} />
-                    </td>
-                    <td className="px-6 py-2.5 text-right tabular-nums">
-                      {formatCurrency(a.closing, "IDR")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("common.account")}</TableHead>
+                <TableHead className="text-right">{t("reports.colOpeningBalance")}</TableHead>
+                <TableHead className="text-right">{t("reports.colChange")}</TableHead>
+                <TableHead className="text-right">{t("reports.colClosingBalance")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cf.cashAccounts.map((a) => (
+                <TableRow key={a.code}>
+                  <TableCell className="py-2.5">
+                    <span className="mr-2 font-mono text-muted-foreground">{a.code}</span>
+                    {a.name}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="py-2.5" value={a.opening} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="py-2.5 text-right">
+                    <Flow amount={a.net} t={t} />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="py-2.5" value={a.closing} currency="IDR" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

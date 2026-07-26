@@ -1,6 +1,14 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -10,7 +18,7 @@ import {
   toClientInventory,
   toLowStockAlerts,
 } from "@/lib/inventory";
-import { CASH_TYPE_LABELS, LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -41,6 +49,8 @@ import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-repo
 import { getIncomeStatement } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { cashTypeLabels, contractStatusLabels } from "@/lib/i18n/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +69,9 @@ function buildMonthlyBuckets(monthsBack: number) {
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
+
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
 
   const role = session.user.role;
   // issue #73/#75 — semua keputusan tampilan beranda membaca set izin FINAL
@@ -160,9 +173,9 @@ export default async function DashboardPage() {
   const lowStockItems = toLowStockAlerts(inventorySummary);
 
   const stockStatusData = [
-    { name: "Aman", value: stockHealth.healthy },
-    { name: "Menipis", value: stockHealth.lowStock },
-    { name: "Habis", value: stockHealth.empty },
+    { name: t("inventory.levelHealthy"), value: stockHealth.healthy },
+    { name: t("inventory.levelLow"), value: stockHealth.lowStock },
+    { name: t("inventory.levelEmpty"), value: stockHealth.empty },
   ];
 
   const stockLevelData = inventorySummary.map((i) => ({
@@ -269,17 +282,18 @@ export default async function DashboardPage() {
     invoices,
   }));
 
+  const statusLabels = contractStatusLabels(dictionary);
   const contractStatusData = [
-    { name: "Sah", value: signedContracts },
-    { name: "Menunggu", value: pendingContracts },
-    { name: "Dibatalkan", value: canceledContracts },
+    { name: statusLabels.signed, value: signedContracts },
+    { name: statusLabels.pending, value: pendingContracts },
+    { name: statusLabels.canceled, value: canceledContracts },
   ];
 
   return (
     <div className="w-full space-y-10">
       <PageHeader
-        title="Beranda"
-        description={<>Ringkasan stok, kas, dan penjualan untuk {session.user.name}</>}
+        title={t("nav.items.dashboard")}
+        description={t("dashboard.description", { name: session.user.name })}
       />
 
       {/* ─── Aksi Cepat (issue #2) ───
@@ -290,7 +304,7 @@ export default async function DashboardPage() {
       {/* ─── Alur Kerja (panduan urutan) ───
           Tepat di bawah Aksi Cepat: setelah tombol "kerjakan sekarang", tunjukkan
           URUTAN kerjanya bagi yang belum tahu mulai dari mana. */}
-      <WorkflowGuide workflows={workflows} />
+      <WorkflowGuide workflows={workflows} t={t} />
 
       <StockAlertBanner items={lowStockItems} />
 
@@ -302,54 +316,54 @@ export default async function DashboardPage() {
         // Pembungkus ini hanya penanda sasaran tur panduan (issue #21).
         <div data-tour="ringkasan">
         <DashboardSection
-          title="Ringkasan Bahasa Sehari-hari"
-          description="Angka utama tanpa istilah akuntansi. Semua nilai dalam IDR (nilai dasar buku besar) dan bisa dicek di laporan sumbernya."
+          title={t("dashboard.plainTitle")}
+          description={t("dashboard.plainDescription")}
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {incomeStatement && (
               <>
                 <SummaryCard
-                  title="Uang Masuk"
+                  title={t("finance.colMoneyIn")}
                   amount={incomeStatement.totalRevenue}
                   direction="in"
                   period={period.label}
-                  explanation="Seluruh pemasukan yang sudah dibukukan bulan ini, misalnya penjualan ke pelanggan."
+                  explanation={t("dashboard.moneyInExplanation")}
                   href={incomeStatementHref}
-                  hrefLabel="Lihat detail di Laba/Rugi"
+                  hrefLabel={t("dashboard.incomeStatementLink")}
                 />
                 <SummaryCard
-                  title="Uang Keluar"
+                  title={t("finance.colMoneyOut")}
                   amount={incomeStatement.totalExpense}
                   direction="out"
                   period={period.label}
-                  explanation="Seluruh biaya dan pengeluaran yang sudah dibukukan bulan ini."
+                  explanation={t("dashboard.moneyOutExplanation")}
                   href={incomeStatementHref}
-                  hrefLabel="Lihat detail di Laba/Rugi"
+                  hrefLabel={t("dashboard.incomeStatementLink")}
                 />
                 <SummaryCard
-                  title="Selisih (Untung / Rugi)"
+                  title={t("dashboard.profitLoss")}
                   amount={Math.abs(incomeStatement.netIncome)}
                   direction={incomeStatement.netIncome >= 0 ? "profit" : "loss"}
                   period={period.label}
-                  explanation="Uang masuk dikurangi uang keluar bulan ini — angka bertanda plus berarti untung, minus berarti rugi."
+                  explanation={t("dashboard.profitLossExplanation")}
                   href={incomeStatementHref}
-                  hrefLabel="Lihat detail di Laba/Rugi"
+                  hrefLabel={t("dashboard.incomeStatementLink")}
                 />
               </>
             )}
 
             {receivables && (
               <SummaryCard
-                title="Pelanggan Belum Bayar"
+                title={t("receivables.title")}
                 amount={receivables.aging.total}
                 direction="receivable"
-                period={`per ${formatDateShort(arAsOf)}`}
-                explanation="Sisa tagihan dari faktur dan kontrak yang belum dilunasi pelanggan."
+                period={t("dashboard.asOf", { date: formatDateShort(arAsOf) })}
+                explanation={t("dashboard.receivablesExplanation")}
                 href="/receivables"
-                hrefLabel="Lihat daftar piutang"
+                hrefLabel={t("dashboard.receivablesLink")}
                 note={
                   receivables.overdueCount > 0
-                    ? `${receivables.overdueCount} dokumen sudah lewat jatuh tempo.`
+                    ? t("common.overdueDocs", { count: receivables.overdueCount })
                     : undefined
                 }
                 unresolved={receivables.aging.unresolved}
@@ -359,16 +373,16 @@ export default async function DashboardPage() {
 
             {payables && (
               <SummaryCard
-                title="Tagihan yang Harus Dibayar"
+                title={t("payables.title")}
                 amount={payables.aging.total}
                 direction="payable"
-                period={`per ${formatDateShort(arAsOf)}`}
-                explanation="Sisa pembelian dari pemasok yang belum Anda lunasi."
+                period={t("dashboard.asOf", { date: formatDateShort(arAsOf) })}
+                explanation={t("dashboard.payablesExplanation")}
                 href="/payables"
-                hrefLabel="Lihat daftar utang"
+                hrefLabel={t("dashboard.payablesLink")}
                 note={
                   payables.overdueCount > 0
-                    ? `${payables.overdueCount} tagihan sudah lewat jatuh tempo.`
+                    ? t("dashboard.overdueBills", { count: payables.overdueCount })
                     : undefined
                 }
                 unresolved={payables.aging.unresolved}
@@ -382,28 +396,28 @@ export default async function DashboardPage() {
 
       {/* ─── Stok ─── */}
       <DashboardSection
-        title="Stok Barang"
-        description={`Stok menipis = sisa ≤ ${LOW_STOCK_THRESHOLD} satuan`}
+        title={t("nav.items.inventory")}
+        description={t("dashboard.stockDescription", { threshold: LOW_STOCK_THRESHOLD })}
         href="/inventory"
-        hrefLabel="Buka stok barang"
+        hrefLabel={t("dashboard.stockHrefLabel")}
         actions={<InventoryExportAction items={toClientInventory(inventorySummary)} />}
       >
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Jumlah Barang" value={stockHealth.totalItems} href="/inventory" />
+          <StatCard title={t("dashboard.statItems")} value={stockHealth.totalItems} href="/inventory" />
           <StatCard
-            title="Stok Aman"
+            title={t("dashboard.statHealthy")}
             value={stockHealth.healthy}
             href="/inventory"
             valueClassName="text-success"
           />
           <StatCard
-            title="Stok Menipis"
+            title={t("dashboard.statLow")}
             value={stockHealth.lowStock}
             href="/inventory/opname"
             valueClassName="text-warning"
           />
           <StatCard
-            title="Stok Habis"
+            title={t("dashboard.statEmpty")}
             value={stockHealth.empty}
             href="/inventory/opname"
             valueClassName="text-destructive"
@@ -412,14 +426,14 @@ export default async function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ChartCard
-            title="Kondisi stok"
-            description="Sebaran barang menurut sisa stoknya"
+            title={t("dashboard.chartStockConditionTitle")}
+            description={t("dashboard.chartStockConditionDesc")}
           >
             <StockStatusChart data={stockStatusData} />
           </ChartCard>
           <ChartCard
-            title="Stok terbanyak"
-            description="Sisa stok terbesar saat ini (maksimal 8 barang)"
+            title={t("dashboard.chartTopStockTitle")}
+            description={t("dashboard.chartTopStockDesc")}
             chartMinHeight={stockChartHeight}
           >
             <StockLevelChart data={stockLevelData} />
@@ -428,68 +442,66 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pergerakan stok terakhir</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.recentMovementsTitle")}</CardTitle>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left bg-muted/80">
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Jenis</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground text-right">Jumlah</th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentMovements.length === 0 ? (
-                  <tr>
-                    <td colSpan={4}>
-                      <EmptyState
-                        icon={<Package className="h-12 w-12" />}
-                        title="Belum ada pergerakan stok"
-                        description="Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama."
-                        actionLabel="Tambah / Kurangi Stok"
-                        actionHref="/inventory/update"
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  recentMovements.map((m, i) => (
-                    <tr key={i} className="border-b border-border hover:bg-muted/80">
-                      <td className="px-6 py-3 font-medium text-foreground">{m.itemName}</td>
-                      <td className="px-6 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            m.type === "in"
-                              ? "bg-success-soft text-success-strong"
-                              : "bg-destructive-soft text-destructive-strong"
-                          }`}
-                        >
-                          {m.type === "in" ? "Barang Masuk" : "Barang Keluar"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-right font-semibold tabular-nums">
-                        {m.quantity}
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {new Date(m.date).toLocaleDateString("id-ID")}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
+                <TableHead>{t("common.item")}</TableHead>
+                <TableHead>{t("suppliers.colType")}</TableHead>
+                <TableHead className="text-right">{t("common.quantity")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentMovements.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="p-0">
+                    <EmptyState
+                      icon={<Package className="h-12 w-12" />}
+                      title={t("dashboard.emptyMovementsTitle")}
+                      description={t("dashboard.emptyMovementsDescription")}
+                      actionLabel={t("common.addRemoveStock")}
+                      actionHref="/inventory/update"
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                recentMovements.map((m, i) => (
+                  <TableRow key={i} className="hover:bg-muted/80">
+                    <TableCell className="font-medium text-foreground">{m.itemName}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          m.type === "in"
+                            ? "bg-success-soft text-success-strong"
+                            : "bg-destructive-soft text-destructive-strong"
+                        }`}
+                      >
+                        {m.type === "in" ? t("dashboard.stockIn") : t("dashboard.stockOut")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {m.quantity}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(m.date).toLocaleDateString("id-ID")}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </DashboardSection>
 
       {/* ─── Finance ─── */}
       {canViewFinance && (
         <DashboardSection
-          title="Kas & Bank"
-          description="Saldo dan pergerakan uang 6 bulan terakhir per mata uang"
+          title={t("nav.groups.cash")}
+          description={t("dashboard.financeDescription")}
           href="/finance"
-          hrefLabel="Buka kas & bank"
+          hrefLabel={t("dashboard.financeHrefLabel")}
           actions={
             <FinanceExportAction
               balances={financeBalances}
@@ -502,7 +514,9 @@ export default async function DashboardPage() {
               {Array.from(balanceByCurrency.entries()).map(([cur, balance]) => (
                 <Card key={cur} className="border-l-4 border-l-blue-500">
                   <CardHeader className="pb-1">
-                    <CardTitle className="text-sm text-muted-foreground">Saldo bersih · {cur}</CardTitle>
+                    <CardTitle className="text-sm text-muted-foreground">
+                      {t("dashboard.netBalance", { currency: cur })}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p
@@ -519,9 +533,9 @@ export default async function DashboardPage() {
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
-                Belum ada catatan kas —{" "}
+                {t("dashboard.noCashBefore")}{" "}
                 <Link href="/finance/new" className="text-primary hover:underline">
-                  catat transaksi pertama
+                  {t("dashboard.noCashLink")}
                 </Link>
               </CardContent>
             </Card>
@@ -530,44 +544,45 @@ export default async function DashboardPage() {
           {financeBalances.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Saldo per akun</CardTitle>
+                <CardTitle className="text-base">{t("dashboard.balancePerAccount")}</CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left bg-muted/80">
-                      <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Masuk</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Uang Keluar</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground text-right">Saldo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {financeBalances.map((b) => (
-                      <tr key={`${b.type}_${b.currency}`} className="border-b border-border">
-                        <td className="px-6 py-3 text-foreground">
-                          {CASH_TYPE_LABELS[b.type as CashType] || b.type}
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground">{b.currency}</td>
-                        <td className="px-6 py-3 text-right text-success tabular-nums">
-                          {formatCurrency(b.debit, b.currency)}
-                        </td>
-                        <td className="px-6 py-3 text-right text-destructive tabular-nums">
-                          {formatCurrency(b.credit, b.currency)}
-                        </td>
-                        <td
-                          className={`px-6 py-3 text-right font-semibold tabular-nums ${
-                            b.balance >= 0 ? "text-success" : "text-destructive"
-                          }`}
-                        >
-                          {formatCurrency(b.balance, b.currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/80 hover:bg-muted/80">
+                    <TableHead>{t("common.account")}</TableHead>
+                    <TableHead>{t("common.currency")}</TableHead>
+                    <TableHead className="text-right">{t("finance.colMoneyIn")}</TableHead>
+                    <TableHead className="text-right">{t("finance.colMoneyOut")}</TableHead>
+                    <TableHead className="text-right">{t("common.balance")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {financeBalances.map((b) => (
+                    <TableRow key={`${b.type}_${b.currency}`}>
+                      <TableCell className="text-foreground">
+                        {cashTypeLabels(dictionary)[b.type as CashType] || b.type}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{b.currency}</TableCell>
+                      {/* Warna kolom = semantik uang masuk/keluar (hijau/merah per
+                          kolom, bukan per tanda) — tidak 1:1 dengan MoneyCell,
+                          jadi format lama dipertahankan. */}
+                      <TableCell className="text-right text-success tabular-nums">
+                        {formatCurrency(b.debit, b.currency)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive tabular-nums">
+                        {formatCurrency(b.credit, b.currency)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-semibold tabular-nums ${
+                          b.balance >= 0 ? "text-success" : "text-destructive"
+                        }`}
+                      >
+                        {formatCurrency(b.balance, b.currency)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
           )}
 
@@ -582,8 +597,8 @@ export default async function DashboardPage() {
               {currenciesInCashFlow.map((cur) => (
                 <ChartCard
                   key={cur}
-                  title={`Uang masuk & keluar · ${cur}`}
-                  description="Perbandingan per bulan (6 bulan terakhir)"
+                  title={t("dashboard.cashFlowChartTitle", { currency: cur })}
+                  description={t("dashboard.cashFlowChartDesc")}
                 >
                   <CashFlowChart data={cashFlowByCurrency[cur] || []} currency={cur} />
                 </ChartCard>
@@ -596,36 +611,39 @@ export default async function DashboardPage() {
       {/* ─── Contracts ─── */}
       {canViewContracts && (
         <DashboardSection
-          title="Penjualan & Kontrak"
-          description="Aktivitas penjualan dan kesepakatan yang sedang berjalan"
+          title={t("dashboard.contractsTitle")}
+          description={t("dashboard.contractsDescription")}
           href="/contracts"
-          hrefLabel="Buka kontrak"
+          hrefLabel={t("dashboard.contractsHrefLabel")}
         >
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard title="Kontrak" value={contractCount} href="/contracts" />
+            <StatCard title={t("nav.items.contracts")} value={contractCount} href="/contracts" />
             <StatCard
-              title="Kontrak Menunggu"
+              title={t("dashboard.statPendingContracts")}
               value={pendingContracts}
               href="/contracts?status=pending"
               valueClassName="text-warning"
             />
-            <StatCard title="Tagihan Penjualan" value={invoiceCount} href="/invoices" />
+            <StatCard title={t("nav.items.invoices")} value={invoiceCount} href="/invoices" />
             <StatCard
-              title="Tagihan Menunggu"
+              title={t("dashboard.statPendingInvoices")}
               value={pendingInvoices}
               href="/invoices?status=pending"
               valueClassName="text-warning"
             />
-            <StatCard title="Pemasok" value={supplierCount} href="/suppliers" />
+            <StatCard title={t("nav.items.suppliers")} value={supplierCount} href="/suppliers" />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Status kontrak" description="Sebaran kontrak menurut statusnya">
+            <ChartCard
+              title={t("dashboard.chartContractStatusTitle")}
+              description={t("dashboard.chartContractStatusDesc")}
+            >
               <ContractStatusChart data={contractStatusData} />
             </ChartCard>
             <ChartCard
-              title="Aktivitas bulanan"
-              description="Kontrak dan tagihan baru (6 bulan terakhir)"
+              title={t("dashboard.chartMonthlyTitle")}
+              description={t("dashboard.chartMonthlyDesc")}
             >
               <MonthlyActivityChart data={monthlyData} />
             </ChartCard>
@@ -633,57 +651,55 @@ export default async function DashboardPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Kontrak terbaru</CardTitle>
+              <CardTitle className="text-base">{t("dashboard.latestContracts")}</CardTitle>
             </CardHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left bg-muted/80">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">
-                      <TermTooltip term="kontrak">No. Kontrak</TermTooltip>
-                    </th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Pembeli</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestContracts.length === 0 ? (
-                    <tr>
-                      <td colSpan={4}>
-                        <EmptyState
-                          icon={<FileText className="h-12 w-12" />}
-                          title="Belum ada kontrak"
-                          description="Kontrak adalah awal rantai dokumen: dari sini lahir surat jalan, tagihan, dan pembayarannya."
-                          actionLabel="+ Buat Kontrak"
-                          actionHref="/contracts/new"
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    latestContracts.map((c) => (
-                      <tr key={c.id} className="border-b border-border hover:bg-muted/80">
-                        <td className="px-6 py-3">
-                          <Link
-                            href={`/contracts/${c.id}`}
-                            className="text-primary hover:underline font-medium"
-                          >
-                            {c.contractNo}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-3 text-foreground">{c.buyer}</td>
-                        <td className="px-6 py-3 text-muted-foreground">
-                          {new Date(c.date).toLocaleDateString("id-ID")}
-                        </td>
-                        <td className="px-6 py-3">
-                          <StatusBadge status={c.status} />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/80 hover:bg-muted/80">
+                  <TableHead>
+                    <TermTooltip term="kontrak">{t("contracts.colNo")}</TermTooltip>
+                  </TableHead>
+                  <TableHead>{t("contracts.colBuyer")}</TableHead>
+                  <TableHead>{t("common.date")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {latestContracts.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="p-0">
+                      <EmptyState
+                        icon={<FileText className="h-12 w-12" />}
+                        title={t("contracts.emptyTitle")}
+                        description={t("dashboard.emptyContractsDescription")}
+                        actionLabel={t("contracts.addNew")}
+                        actionHref="/contracts/new"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  latestContracts.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-muted/80">
+                      <TableCell>
+                        <Link
+                          href={`/contracts/${c.id}`}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {c.contractNo}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-foreground">{c.buyer}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(c.date).toLocaleDateString("id-ID")}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={c.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </Card>
         </DashboardSection>
       )}

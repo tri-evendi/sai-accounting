@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/client";
 
 export interface DocumentPreviewProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function DocumentPreview({
   kind,
   onDownload,
 }: DocumentPreviewProps) {
+  const t = useT();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   function handlePrint() {
@@ -60,21 +62,23 @@ export function DocumentPreview({
               {title}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Pratinjau dokumen — bisa diunduh atau dicetak.
+              {t("documentPreview.hint")}
             </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-2 pr-8">
             <Button variant="secondary" size="sm" onClick={handlePrint}>
-              <Printer className="mr-1 h-4 w-4" aria-hidden="true" /> Cetak
+              <Printer className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documentPreview.print")}
             </Button>
             {onDownload ? (
               <Button size="sm" onClick={onDownload}>
-                <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Unduh
+                <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
+                {t("documentPreview.download")}
               </Button>
             ) : (
               <a href={src} download>
                 <Button size="sm">
-                  <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Unduh
+                  <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
+                  {t("documentPreview.download")}
                 </Button>
               </a>
             )}

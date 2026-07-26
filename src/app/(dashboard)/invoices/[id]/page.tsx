@@ -8,6 +8,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Banknote } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -15,6 +25,7 @@ import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
 import { InvoiceAdvanceSection } from "./advance-section";
 import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +36,7 @@ export default async function InvoiceDetailPage({
 }) {
   const { id } = await params;
   const session = await requirePagePermission("invoice.read");
+  const t = await getT();
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: parseInt(id) },
@@ -63,8 +75,10 @@ export default async function InvoiceDetailPage({
   const taxable = invoice.taxable ?? taxAmount > 0;
   const taxRate = invoice.taxRate != null ? Number(invoice.taxRate) : null;
   const ppnLabel = taxable
-    ? `PPN${taxRate != null ? ` (${taxRate}%)` : " Keluaran"}`
-    : "PPN 0% (Ekspor)";
+    ? taxRate != null
+      ? t("invoices.vatWithRate", { rate: taxRate })
+      : t("invoices.vatOutput")
+    : t("invoices.vatExport");
 
   const subtotal = invoice.items.reduce((sum, item) => {
     return sum + Number(item.quantity) * Number(item.price);
@@ -93,8 +107,11 @@ export default async function InvoiceDetailPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: invoice.invoiceNo }]}
-        title={<>Invoice {invoice.invoiceNo}</>}
+        breadcrumbs={[
+          { label: t("invoices.breadcrumb"), href: "/invoices" },
+          { label: invoice.invoiceNo },
+        ]}
+        title={t("invoices.detailTitle", { no: invoice.invoiceNo })}
         description={formatDate(invoice.date)}
         actions={
           <>
@@ -126,26 +143,21 @@ export default async function InvoiceDetailPage({
             }}
           />
           <Link href={`/invoices/${id}/edit`}>
-            <Button variant="secondary">Edit</Button>
+            <Button variant="secondary">{t("common.edit")}</Button>
           </Link>
           {/* Cermin izin `invoice.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "invoice.delete")) && (
             <DeleteDocumentButton
               endpoint={`/api/invoices/${invoice.id}`}
-              label="Hapus Tagihan"
-              title={`Hapus tagihan ${invoice.invoiceNo}?`}
-              message={
-                `Tagihan ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
-                `dibalik di transaksi yang sama — termasuk piutang dan PPN keluarannya. ` +
-                `Tindakan ini tidak bisa dibatalkan. Kalau tagihannya batal tetapi riwayatnya ingin ` +
-                `disimpan, ubah statusnya menjadi "Dibatalkan" saja.`
-              }
+              label={t("invoices.deleteLabel")}
+              title={t("invoices.deleteTitle", { no: invoice.invoiceNo })}
+              message={t("invoices.deleteMessage")}
               confirmPhrase={invoice.invoiceNo}
               redirectTo="/invoices"
             />
           )}
           <Link href="/invoices">
-            <Button variant="ghost">Back</Button>
+            <Button variant="ghost">{t("common.back")}</Button>
           </Link>
           </>
         }
@@ -153,28 +165,28 @@ export default async function InvoiceDetailPage({
 
       {/* Invoice Info */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Invoice Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("invoices.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Invoice Number</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("invoices.invoiceNo")}</dt>
               <dd className="text-sm text-foreground">{invoice.invoiceNo}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
               <dd><StatusBadge status={invoice.status} /></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Pelanggan</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("invoices.customer")}</dt>
               <dd className="text-sm text-foreground">
                 {invoice.customer?.name ?? (
-                  <span className="text-muted-foreground">Belum ditautkan</span>
+                  <span className="text-muted-foreground">{t("invoices.customerNotLinked")}</span>
                 )}
               </dd>
             </div>
             <div>
               {/* Dokumen berantai (issue #15) — kontrak yang faktur ini tarik. */}
-              <dt className="text-sm font-medium text-muted-foreground">Kontrak Sumber</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("invoices.sourceContract")}</dt>
               <dd className="text-sm text-foreground">
                 {invoice.contract ? (
                   <Link
@@ -184,19 +196,20 @@ export default async function InvoiceDetailPage({
                     {invoice.contract.contractNo}
                   </Link>
                 ) : (
-                  <span className="text-muted-foreground">Faktur lepas (tanpa kontrak)</span>
+                  <span className="text-muted-foreground">{t("invoices.standalone")}</span>
                 )}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Mata Uang</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.currency")}</dt>
               <dd className="text-sm text-foreground tabular-nums">
                 {currency}
                 {isForeign && (
                   <span className="text-muted-foreground">
+                    {" "}
                     {rate != null
-                      ? ` · kurs ${formatNumber(rate)} ke IDR`
-                      : " · kurs belum diisi"}
+                      ? t("invoices.rateSuffix", { rate: formatNumber(rate) })
+                      : t("invoices.rateMissingSuffix")}
                   </span>
                 )}
               </dd>
@@ -204,7 +217,7 @@ export default async function InvoiceDetailPage({
             {/* Dokumen ekspor / PEB (issue #17) — only when captured. */}
             {invoice.pebNumber && (
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">Nomor PEB</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("invoices.pebNumber")}</dt>
                 <dd className="text-sm text-foreground tabular-nums">
                   {invoice.pebNumber}
                   {invoice.pebDate && (
@@ -215,7 +228,7 @@ export default async function InvoiceDetailPage({
             )}
             {invoice.exportNote && (
               <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-muted-foreground">Keterangan Ekspor</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("invoices.exportNote")}</dt>
                 <dd className="text-sm text-foreground">{invoice.exportNote}</dd>
               </div>
             )}
@@ -225,132 +238,138 @@ export default async function InvoiceDetailPage({
 
       {/* Items */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Items</CardTitle></CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Item</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Unit</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Quantity</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Price</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.items.map((item) => {
-                const itemTotal = Number(item.quantity) * Number(item.price);
-                return (
-                  <tr key={item.id} className="border-b border-border">
-                    <td className="px-6 py-3 text-foreground">{item.itemName}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{item.unit || "-"}</td>
-                    <td className="px-6 py-3 text-foreground text-right tabular-nums">
-                      {formatNumber(Number(item.quantity))}
-                    </td>
-                    <td className="px-6 py-3 text-foreground text-right tabular-nums">
-                      {formatCurrency(Number(item.price), currency)}
-                    </td>
-                    <td className="px-6 py-3 text-foreground text-right font-medium tabular-nums">
-                      {formatCurrency(itemTotal, currency)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-border">
-                <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
-                  DPP · Dasar Pengenaan Pajak
-                </td>
-                <td className="px-6 py-3 text-right text-foreground tabular-nums">
-                  {formatCurrency(subtotal, currency)}
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
-                  {ppnLabel}
-                </td>
-                <td className="px-6 py-3 text-right text-foreground tabular-nums">
-                  {formatCurrency(taxAmount, currency)}
-                </td>
-              </tr>
-              <tr className="border-t-2 border-border">
-                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-foreground">
-                  Total ({currency})
-                </td>
-                <td className="px-6 py-3 text-right font-bold text-foreground tabular-nums">
-                  {formatCurrency(totalValue, currency)}
-                </td>
-              </tr>
-              {isForeign && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
-                    Nilai dasar buku besar (IDR)
-                  </td>
-                  <td className="px-6 py-3 text-right text-foreground tabular-nums">
-                    {baseAmount != null
-                      ? formatCurrency(baseAmount, "IDR")
-                      : "Kurs belum diisi"}
-                  </td>
-                </tr>
-              )}
-            </tfoot>
-          </table>
-        </div>
+        <CardHeader><CardTitle>{t("invoices.goodsTitle")}</CardTitle></CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead>{t("common.unit")}</TableHead>
+              <TableHead className="text-right">{t("common.quantity")}</TableHead>
+              <TableHead className="text-right">{t("common.price")}</TableHead>
+              <TableHead className="text-right">{t("common.total")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invoice.items.map((item) => {
+              const itemTotal = Number(item.quantity) * Number(item.price);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="text-foreground">{item.itemName}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.unit || "-"}</TableCell>
+                  <TableCell className="text-foreground text-right tabular-nums">
+                    {formatNumber(Number(item.quantity))}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={Number(item.price)} currency={currency} />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="font-medium" value={itemTotal} currency={currency} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter className="bg-transparent font-normal">
+            <TableRow className="border-0 hover:bg-transparent">
+              <TableCell colSpan={4} className="text-right text-muted-foreground">
+                {t("invoices.dpp")}
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={subtotal} currency={currency} />
+              </TableCell>
+            </TableRow>
+            <TableRow className="border-0 hover:bg-transparent">
+              <TableCell colSpan={4} className="text-right text-muted-foreground">
+                {ppnLabel}
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={taxAmount} currency={currency} />
+              </TableCell>
+            </TableRow>
+            <TableRow className="border-0 border-t-2 border-border hover:bg-transparent">
+              <TableCell colSpan={4} className="text-right font-semibold text-foreground">
+                {t("invoices.totalCurrency", { currency })}
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell className="font-bold" value={totalValue} currency={currency} />
+              </TableCell>
+            </TableRow>
+            {isForeign && (
+              <TableRow className="border-0 hover:bg-transparent">
+                <TableCell colSpan={4} className="text-right text-muted-foreground">
+                  {t("common.ledgerBaseIdr")}
+                </TableCell>
+                <TableCell className="text-right text-foreground tabular-nums">
+                  {baseAmount != null ? (
+                    <Money value={baseAmount} currency="IDR" />
+                  ) : (
+                    t("common.rateMissing")
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableFooter>
+        </Table>
       </Card>
 
       {/* Payments */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Payments</CardTitle>
+            <CardTitle>{t("invoices.paymentsTitle")}</CardTitle>
             <div className="text-right text-sm text-muted-foreground">
               <div className="tabular-nums">
-                Terbayar (IDR): {formatCurrency(totalPaidBase, "IDR")}
-                {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
+                {baseAmount != null
+                  ? t("common.paidOf", {
+                      paid: formatCurrency(totalPaidBase, "IDR"),
+                      total: formatCurrency(baseAmount, "IDR"),
+                    })
+                  : t("common.paidOnly", { paid: formatCurrency(totalPaidBase, "IDR") })}
               </div>
               {paymentsWithoutRate > 0 && (
                 <div className="text-xs text-warning-strong">
-                  {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
+                  {t("common.paymentsUnrated", { count: paymentsWithoutRate })}
                 </div>
               )}
             </div>
           </div>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.payments.length === 0 ? (
-                <tr>
-                  <td colSpan={3}>
-                    <EmptyState
-                      icon={<Banknote className="h-12 w-12" />}
-                      title="Belum ada pembayaran"
-                      description="Seluruh nilai tagihan ini masih tercatat sebagai piutang. Catat pembayaran pertamanya lewat formulir di atas."
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead className="text-right">{t("common.amount")}</TableHead>
+              <TableHead>{t("common.notes")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invoice.payments.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={3} className="p-0">
+                  <EmptyState
+                    icon={<Banknote className="h-12 w-12" />}
+                    title={t("invoices.emptyPaymentsTitle")}
+                    description={t("invoices.emptyPaymentsDescription")}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoice.payments.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell className="text-foreground">{formatDate(payment.date)}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="font-medium"
+                      value={Number(payment.amount)}
+                      currency={payment.currency}
                     />
-                  </td>
-                </tr>
-              ) : (
-                invoice.payments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-border">
-                    <td className="px-6 py-3 text-foreground">{formatDate(payment.date)}</td>
-                    <td className="px-6 py-3 text-foreground text-right font-medium">
-                      {formatCurrency(Number(payment.amount), payment.currency)}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{payment.note || "-"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{payment.note || "-"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <div className="px-6 pb-4">
           <InvoicePaymentSection invoiceId={invoice.id} />
         </div>
@@ -359,7 +378,7 @@ export default async function InvoiceDetailPage({
       {/* Uang muka (issue #26) — the down-payment coming off this bill. */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Uang Muka</CardTitle>
+          <CardTitle>{t("invoices.advanceTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <InvoiceAdvanceSection

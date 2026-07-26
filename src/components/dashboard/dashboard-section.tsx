@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 
 interface DashboardSectionProps {
   title: string;
@@ -11,15 +12,17 @@ interface DashboardSectionProps {
   className?: string;
 }
 
-export function DashboardSection({
+export async function DashboardSection({
   title,
   description,
   href,
-  hrefLabel = "Lihat semua",
+  hrefLabel,
   actions,
   children,
   className,
 }: DashboardSectionProps) {
+  const t = await getT();
+  const linkLabel = hrefLabel ?? t("dashboard.seeAll");
   return (
     <section className={cn("space-y-5", className)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -36,7 +39,7 @@ export function DashboardSection({
               href={href}
               className="cursor-pointer text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline"
             >
-              {hrefLabel} →
+              {linkLabel} →
             </Link>
           )}
         </div>

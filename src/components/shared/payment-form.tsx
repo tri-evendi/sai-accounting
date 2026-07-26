@@ -35,6 +35,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 import { BASE_CURRENCY, CURRENCY_VALUES } from "@/lib/validations/fx";
 import { DollarSign } from "lucide-react";
@@ -47,6 +48,7 @@ interface PaymentFormProps {
 
 export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const { toast } = useToast();
 
   const form = useForm<PaymentFormInput>({
@@ -87,12 +89,12 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
         ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
         : null;
       form.setError("root", {
-        message: String(fieldMsg || data.error || "Gagal mencatat pembayaran. Coba lagi."),
+        message: String(fieldMsg || data.error || t("payments.errSave")),
       });
       return;
     }
 
-    toast("Pembayaran berhasil dicatat");
+    toast(t("payments.saved"));
     form.reset();
     setOpen(false);
     onSuccess?.();
@@ -101,14 +103,14 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <DollarSign className="mr-1 h-4 w-4" /> Tambah Pembayaran
+        <DollarSign className="mr-1 h-4 w-4" /> {t("payments.addPayment")}
       </Button>
     );
   }
 
   return (
     <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
-      <h4 className="mb-3 text-sm font-semibold text-foreground">Catat Pembayaran</h4>
+      <h4 className="mb-3 text-sm font-semibold text-foreground">{t("payments.formTitle")}</h4>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-3 sm:grid-cols-2">
@@ -117,7 +119,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal</FormLabel>
+                <FormLabel>{t("common.date")}</FormLabel>
                 <FormControl>
                   <TextInput type="date" {...field} />
                 </FormControl>
@@ -131,7 +133,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Jumlah</FormLabel>
+                <FormLabel>{t("common.amount")}</FormLabel>
                 <FormControl>
                   <MoneyInput
                     // Rupiah tanpa desimal; valas 2 desimal.
@@ -152,7 +154,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="currency"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mata Uang</FormLabel>
+                <FormLabel>{t("common.currency")}</FormLabel>
                 <FormControl>
                   <NativeSelect
                     options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
@@ -171,7 +173,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
               name="rate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kurs 1 {currency} ke IDR</FormLabel>
+                  <FormLabel>{t("fx.rateToIdr", { currency })}</FormLabel>
                   <FormControl>
                     <MoneyInput
                       decimals={2}
@@ -182,7 +184,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
                     />
                   </FormControl>
                   <FormDescription>
-                    Wajib diisi — jurnal penerimaan dicatat dalam IDR memakai kurs ini.
+                    {t("payments.rateHint")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -195,7 +197,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="note"
             render={({ field }) => (
               <FormItem className="sm:col-span-2">
-                <FormLabel>Catatan (opsional)</FormLabel>
+                <FormLabel>{t("common.notesOptional")}</FormLabel>
                 <FormControl>
                   <TextInput {...field} value={field.value ?? ""} />
                 </FormControl>
@@ -215,10 +217,10 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
 
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Menyimpan…" : "Simpan Pembayaran"}
+              {form.formState.isSubmitting ? t("common.saving") : t("payments.submit")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-              Batal
+              {t("common.cancel")}
             </Button>
           </div>
         </form>

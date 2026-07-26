@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@/lib/constants";
+import { DOCUMENT_TYPES } from "@/lib/constants";
 import { Upload } from "lucide-react";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { documentTypeLabels } from "@/lib/i18n/labels";
 
 interface ContractOption {
   id: number;
@@ -15,6 +17,8 @@ interface ContractOption {
 }
 
 export function UploadClient() {
+  const t = useT();
+  const typeLabels = documentTypeLabels(useDictionary());
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,7 +44,7 @@ export function UploadClient() {
     setError("");
 
     if (!file) {
-      setError("Pilih file terlebih dahulu");
+      setError(t("documents.errPickFile"));
       return;
     }
 
@@ -56,7 +60,7 @@ export function UploadClient() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Gagal mengunggah file");
+      setError(data.error || t("documents.errUpload"));
       setLoading(false);
     } else {
       router.push("/documents");
@@ -67,8 +71,11 @@ export function UploadClient() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Dokumen", href: "/documents" }, { label: "Unggah Dokumen" }]}
-        title="Unggah Dokumen"
+        breadcrumbs={[
+          { label: t("nav.items.documents"), href: "/documents" },
+          { label: t("documents.uploadTitle") },
+        ]}
+        title={t("documents.uploadTitle")}
       />
 
       {error && (
@@ -77,12 +84,14 @@ export function UploadClient() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Dokumen</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("documents.formTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
               {/* File Input */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">File</label>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  {t("documents.fileField")}
+                </label>
                 <div className="flex items-center justify-center w-full">
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -91,8 +100,12 @@ export function UploadClient() {
                         <p className="text-sm text-foreground font-medium">{file.name}</p>
                       ) : (
                         <>
-                          <p className="text-sm text-muted-foreground">Klik untuk memilih file</p>
-                          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, PDF (maks 10MB)</p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("documents.pickFile")}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("documents.fileHint")}
+                          </p>
                         </>
                       )}
                     </div>
@@ -109,19 +122,19 @@ export function UploadClient() {
               <Select
                 id="type"
                 name="type"
-                label="Jenis Dokumen"
-                placeholder="-- Pilih Jenis --"
+                label={t("documents.typeField")}
+                placeholder={t("documents.typePlaceholder")}
                 options={DOCUMENT_TYPES.map((value) => ({
                   value,
-                  label: DOCUMENT_TYPE_LABELS[value],
+                  label: typeLabels[value],
                 }))}
               />
 
               <Select
                 id="contractId"
                 name="contractId"
-                label="Kontrak Terkait (opsional)"
-                placeholder="-- Tanpa Kontrak --"
+                label={t("documents.contractField")}
+                placeholder={t("documents.contractPlaceholder")}
                 options={contracts.map((c) => ({
                   value: String(c.id),
                   label: c.contractNo,
@@ -133,10 +146,10 @@ export function UploadClient() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading || !file}>
-            {loading ? "Mengunggah..." : "Unggah Dokumen"}
+            {loading ? t("documents.uploading") : t("documents.uploadTitle")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/documents")}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

@@ -7,9 +7,18 @@ import { getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { DEPRECIATION_METHOD_LABELS, type DepreciationMethod } from "@/lib/depreciation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 import { Tags } from "lucide-react";
 import { CategoryForm } from "./category-form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +27,7 @@ const codeToId = (accounts: { id: number; code: string }[], code: string) =>
 
 export default async function CategoriesPage() {
   await requirePagePermission("fixed_asset.read");
+  const t = await getT();
 
   const [categories, accounts] = await Promise.all([
     getCategories(),
@@ -44,11 +54,11 @@ export default async function CategoriesPage() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Barang Milik Perusahaan", href: "/fixed-assets" },
-          { label: "Kategori" },
+          { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
+          { label: t("fixedAssets.categories") },
         ]}
-        title="Kategori Aset"
-        description="Kategori menentukan metode, umur manfaat, dan akun aset/akumulasi/beban yang dipakai aset di dalamnya. Aset baru menyalin nilai-nilai ini dan boleh menimpanya."
+        title={t("fixedAssets.categoriesTitle")}
+        description={t("fixedAssets.categoriesDescription")}
       />
 
       <div className="mb-6">
@@ -63,46 +73,45 @@ export default async function CategoriesPage() {
       {categories.length === 0 ? (
         <EmptyState
           icon={<Tags className="h-12 w-12" />}
-          title="Belum ada kategori"
-          description="Buat kategori pertama di atas — misalnya Kendaraan, Peralatan, atau Bangunan."
+          title={t("fixedAssets.emptyCategoryTitle")}
+          description={t("fixedAssets.emptyCategoryDescription")}
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Nama</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Metode</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Umur (bulan)</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun Aset</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akumulasi</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Beban</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((c) => (
-                  <tr key={c.id} className="border-b border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
-                    <td className="px-4 py-3 text-foreground">
-                      {DEPRECIATION_METHOD_LABELS[c.defaultMethod as DepreciationMethod] ??
-                        c.defaultMethod}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {c.defaultUsefulLifeMonths}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {byId.get(c.accumulatedAccountId)?.code ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {byId.get(c.expenseAccountId)?.code ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("fixedAssets.colName")}</TableHead>
+                <TableHead>{t("fixedAssets.colMethod")}</TableHead>
+                <TableHead className="text-right">{t("fixedAssets.colLifeMonths")}</TableHead>
+                <TableHead>{t("fixedAssets.colAssetAccount")}</TableHead>
+                <TableHead>{t("fixedAssets.colAccumulatedAccount")}</TableHead>
+                <TableHead>{t("fixedAssets.colExpenseAccount")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium text-foreground">{c.name}</TableCell>
+                  <TableCell className="text-foreground">
+                    {c.defaultMethod === "straight_line"
+                      ? t("depreciationMethod.straight_line")
+                      : c.defaultMethod}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {c.defaultUsefulLifeMonths}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {byId.get(c.accumulatedAccountId)?.code ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {byId.get(c.expenseAccountId)?.code ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

@@ -7,12 +7,23 @@ import { DeleteDocumentButton } from "@/components/shared/delete-document-button
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
 import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildContractChain, loadContractChain } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getT } from "@/lib/i18n/server";
 import { Banknote, Package, Receipt, Truck } from "lucide-react";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
@@ -26,6 +37,7 @@ export default async function ContractDetailPage({
 }) {
   const { id } = await params;
   const session = await requirePagePermission("contract.read");
+  const t = await getT();
 
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
@@ -83,8 +95,11 @@ export default async function ContractDetailPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: contract.contractNo }]}
-        title={<>Contract {contract.contractNo}</>}
+        breadcrumbs={[
+          { label: t("contracts.breadcrumb"), href: "/contracts" },
+          { label: contract.contractNo },
+        ]}
+        title={t("contracts.detailTitle", { no: contract.contractNo })}
         description={formatDate(contract.date)}
         actions={
           <>
@@ -118,30 +133,25 @@ export default async function ContractDetailPage({
               barisnya sudah terisi sisa yang belum difakturkan. */}
           <Link href={`/invoices/new?contractId=${contract.id}`}>
             <Button>
-              <Receipt className="mr-1 h-4 w-4" aria-hidden /> Buat Faktur
+              <Receipt className="mr-1 h-4 w-4" aria-hidden /> {t("contracts.createInvoice")}
             </Button>
           </Link>
           <Link href={`/contracts/${contract.id}/edit`}>
-            <Button variant="secondary">Edit</Button>
+            <Button variant="secondary">{t("common.edit")}</Button>
           </Link>
           {/* Cermin izin `contract.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "contract.delete")) && (
             <DeleteDocumentButton
               endpoint={`/api/contracts/${contract.id}`}
-              label="Hapus Kontrak"
-              title={`Hapus kontrak ${contract.contractNo}?`}
-              message={
-                `Kontrak ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
-                `dibalik di transaksi yang sama. Tindakan ini tidak bisa dibatalkan. ` +
-                `Kalau kontraknya batal tetapi riwayatnya ingin disimpan, ubah statusnya menjadi ` +
-                `"Dibatalkan" saja.`
-              }
+              label={t("contracts.deleteLabel")}
+              title={t("contracts.deleteTitle", { no: contract.contractNo })}
+              message={t("contracts.deleteMessage")}
               confirmPhrase={contract.contractNo}
               redirectTo="/contracts"
             />
           )}
           <Link href="/contracts">
-            <Button variant="ghost">Back</Button>
+            <Button variant="ghost">{t("common.back")}</Button>
           </Link>
           </>
         }
@@ -150,11 +160,8 @@ export default async function ContractDetailPage({
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Rantai Dokumen</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Perjalanan kontrak ini: dikirim lewat surat jalan, ditagih lewat faktur,
-            lalu dibayar. Angka pembayaran dijumlahkan dalam IDR (nilai dasar buku besar).
-          </p>
+          <CardTitle>{t("contracts.chainTitle")}</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">{t("contracts.chainDescription")}</p>
         </CardHeader>
         <CardContent>
           <DocumentChainTimeline stages={stages} />
@@ -164,112 +171,115 @@ export default async function ContractDetailPage({
       {/* Sisa per baris kontrak — dikirim & difakturkan vs sisa (issue #15) */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Sisa per Barang</CardTitle>
+          <CardTitle>{t("contracts.outstandingTitle")}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Berapa kilogram tiap barang sudah dikirim dan sudah difakturkan, dan berapa
-            sisanya. Sisa inilah yang ditarik otomatis saat membuat faktur.
+            {t("contracts.outstandingDescription")}
           </p>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Barang</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Kontrak (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Dikirim (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Difakturkan (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Sisa (kg)</th>
-                <th className="px-6 py-3 text-right font-medium text-muted-foreground">Sisa Nilai</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Status Faktur</th>
-              </tr>
-            </thead>
-            <tbody>
-              {outstandingLines.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      icon={<Package className="h-12 w-12" />}
-                      title="Kontrak ini belum punya baris barang"
-                      description="Tanpa baris barang, tidak ada sisa yang bisa dikirim atau difakturkan. Tambahkan barangnya lewat Edit."
-                      actionLabel="Edit Kontrak"
-                      actionHref={`/contracts/${contract.id}/edit`}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                outstandingLines.map((line) => (
-                  <tr key={line.key} className="border-b border-border">
-                    <td className="px-6 py-3 text-foreground">{line.itemName}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(line.contractedKg)}
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(line.deliveredKg)}
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(line.invoicedKg)}
-                    </td>
-                    <td className="px-6 py-3 text-right font-medium tabular-nums text-foreground">
-                      {formatNumber(line.remainingKg)}
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(line.remainingValue, contract.currency)}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge
-                        variant={
-                          line.invoiceStatus === "selesai"
-                            ? "success"
-                            : line.invoiceStatus === "sebagian"
-                              ? "warning"
-                              : "default"
-                        }
-                      >
-                        {line.invoiceStatus === "selesai"
-                          ? "Lunas difakturkan"
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colContractedKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colDeliveredKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colInvoicedKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colRemainingKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colRemainingValue")}</TableHead>
+              <TableHead>{t("contracts.colInvoiceStatus")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {outstandingLines.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={<Package className="h-12 w-12" />}
+                    title={t("contracts.emptyLinesTitle")}
+                    description={t("contracts.emptyLinesDescription")}
+                    actionLabel={t("contracts.emptyLinesAction")}
+                    actionHref={`/contracts/${contract.id}/edit`}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              outstandingLines.map((line) => (
+                <TableRow key={line.key}>
+                  <TableCell className="text-foreground">{line.itemName}</TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(line.contractedKg)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(line.deliveredKg)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(line.invoicedKg)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums text-foreground">
+                    {formatNumber(line.remainingKg)}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={line.remainingValue} currency={contract.currency} />
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        line.invoiceStatus === "selesai"
+                          ? "success"
                           : line.invoiceStatus === "sebagian"
-                            ? "Sebagian"
-                            : "Belum"}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            {outstandingLines.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-border font-semibold text-foreground">
-                  <td className="px-6 py-3">Total</td>
-                  <td className="px-6 py-3 text-right tabular-nums">
-                    {formatNumber(totals.contractedKg)}
-                  </td>
-                  <td className="px-6 py-3 text-right tabular-nums">
-                    {formatNumber(totals.deliveredKg)}
-                  </td>
-                  <td className="px-6 py-3 text-right tabular-nums">
-                    {formatNumber(totals.invoicedKg)}
-                  </td>
-                  <td className="px-6 py-3 text-right tabular-nums">
-                    {formatNumber(totals.remainingKg)}
-                  </td>
-                  <td className="px-6 py-3 text-right tabular-nums">
-                    {formatCurrency(totals.remainingValue, contract.currency)}
-                  </td>
-                  <td className="px-6 py-3" />
-                </tr>
-              </tfoot>
+                            ? "warning"
+                            : "default"
+                      }
+                    >
+                      {line.invoiceStatus === "selesai"
+                        ? t("contracts.invoicedFull")
+                        : line.invoiceStatus === "sebagian"
+                          ? t("contracts.invoicedPartial")
+                          : t("contracts.invoicedNone")}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-          </table>
-        </div>
+          </TableBody>
+          {outstandingLines.length > 0 && (
+            <TableFooter className="border-t-2 bg-transparent">
+              <TableRow className="font-semibold text-foreground hover:bg-transparent">
+                <TableCell>{t("common.total")}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatNumber(totals.contractedKg)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatNumber(totals.deliveredKg)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatNumber(totals.invoicedKg)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatNumber(totals.remainingKg)}
+                </TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={totals.remainingValue} currency={contract.currency} />
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
         {(totals.unmatchedDeliveredKg > 0 || totals.unmatchedInvoicedKg > 0) && (
           <CardContent className="pt-0">
             <p className="text-xs text-warning-strong">
-              Ada baris dokumen dengan nama barang di luar kontrak ini
-              {totals.unmatchedDeliveredKg > 0 &&
-                ` — surat jalan ${formatNumber(totals.unmatchedDeliveredKg)} kg`}
-              {totals.unmatchedInvoicedKg > 0 &&
-                ` — faktur ${formatNumber(totals.unmatchedInvoicedKg)} kg`}
-              . Baris tersebut tidak dihitung sebagai pemenuhan kontrak.
+              {totals.unmatchedDeliveredKg > 0 && totals.unmatchedInvoicedKg > 0
+                ? t("contracts.unmatchedBoth", {
+                    delivered: formatNumber(totals.unmatchedDeliveredKg),
+                    invoiced: formatNumber(totals.unmatchedInvoicedKg),
+                  })
+                : totals.unmatchedDeliveredKg > 0
+                  ? t("contracts.unmatchedDelivery", {
+                      delivered: formatNumber(totals.unmatchedDeliveredKg),
+                    })
+                  : t("contracts.unmatchedInvoice", {
+                      invoiced: formatNumber(totals.unmatchedInvoicedKg),
+                    })}
             </p>
           </CardContent>
         )}
@@ -280,15 +290,16 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden /> Surat Jalan
+              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+              {t("contracts.deliveryOrdersTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.deliveryOrders.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Belum ada surat jalan.{" "}
+                {t("contracts.noDeliveryOrders")}{" "}
                 <Link href="/delivery-orders/new" className="text-primary hover:underline">
-                  Buat surat jalan →
+                  {t("contracts.createDeliveryOrderLink")}
                 </Link>
               </p>
             ) : (
@@ -317,18 +328,19 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden /> Faktur
+              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+              {t("contracts.invoicesTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.invoices.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Belum ada faktur dari kontrak ini.{" "}
+                {t("contracts.noInvoices")}{" "}
                 <Link
                   href={`/invoices/new?contractId=${contract.id}`}
                   className="text-primary hover:underline"
                 >
-                  Buat faktur →
+                  {t("contracts.createInvoiceLink")}
                 </Link>
               </p>
             ) : (
@@ -343,9 +355,9 @@ export default async function ContractDetailPage({
                         {inv.invoiceNo}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(inv.date)} · Terbayar (IDR){" "}
+                        {formatDate(inv.date)} ·{" "}
                         <span className="tabular-nums">
-                          {formatCurrency(inv.paidBase, "IDR")}
+                          {t("common.paidOnly", { paid: formatCurrency(inv.paidBase, "IDR") })}
                         </span>
                       </p>
                     </div>
@@ -363,16 +375,18 @@ export default async function ContractDetailPage({
       {/* Contract Info */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Contract Information</CardTitle>
+          <CardTitle>{t("contracts.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Buyer</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.colBuyer")}</dt>
               <dd className="text-sm text-foreground">{contract.buyer}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Consignee</dt>
+              <dt className="text-sm font-medium text-muted-foreground">
+                {t("contracts.colConsignee")}
+              </dt>
               <dd className="text-sm text-foreground">
                 {contract.consigneeRef ? (
                   <Link
@@ -387,27 +401,27 @@ export default async function ContractDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
               <dd><StatusBadge status={contract.status} /></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Currency</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.currency")}</dt>
               <dd className="text-sm text-foreground">{contract.currency}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Packaging</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.packaging")}</dt>
               <dd className="text-sm text-foreground">{contract.packaging || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Shipment</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.shipment")}</dt>
               <dd className="text-sm text-foreground">{contract.shipment || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 1</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top1")}</dt>
               <dd className="text-sm text-foreground">{contract.top1 || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 2</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top2")}</dt>
               <dd className="text-sm text-foreground">{contract.top2 || "-"}</dd>
             </div>
           </dl>
@@ -417,116 +431,125 @@ export default async function ContractDetailPage({
       {/* Items */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Items</CardTitle>
+          <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Item</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Bags</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kg/Bag</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Price/Kg</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contract.items.map((item) => {
-                const itemTotal = Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
-                return (
-                  <tr key={item.id} className="border-b border-border">
-                    <td className="px-6 py-3 text-foreground">{item.itemName}</td>
-                    <td className="px-6 py-3 text-foreground text-right">{Number(item.bags)}</td>
-                    <td className="px-6 py-3 text-foreground text-right">{Number(item.kgPerBag)}</td>
-                    <td className="px-6 py-3 text-foreground text-right">{Number(item.pricePerKg)}</td>
-                    <td className="px-6 py-3 text-foreground text-right font-medium">
-                      {formatCurrency(itemTotal, contract.currency)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border">
-                <td colSpan={4} className="px-6 py-3 text-right font-semibold text-foreground">
-                  Total Value
-                </td>
-                <td className="px-6 py-3 text-right font-bold text-foreground tabular-nums">
-                  {formatCurrency(totalValue, contract.currency)}
-                </td>
-              </tr>
-              {isForeign && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-3 text-right text-muted-foreground">
-                    Nilai dasar buku besar (IDR)
-                  </td>
-                  <td className="px-6 py-3 text-right text-foreground tabular-nums">
-                    {baseAmount != null
-                      ? formatCurrency(baseAmount, "IDR")
-                      : "Kurs belum diisi"}
-                  </td>
-                </tr>
-              )}
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead className="text-right">{t("common.bags")}</TableHead>
+              <TableHead className="text-right">{t("common.kgPerBag")}</TableHead>
+              <TableHead className="text-right">{t("contracts.pricePerKg")}</TableHead>
+              <TableHead className="text-right">{t("common.total")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {contract.items.map((item) => {
+              const itemTotal = Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="text-foreground">{item.itemName}</TableCell>
+                  <TableCell className="text-foreground text-right">{Number(item.bags)}</TableCell>
+                  <TableCell className="text-foreground text-right">{Number(item.kgPerBag)}</TableCell>
+                  <TableCell className="text-foreground text-right">{Number(item.pricePerKg)}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="font-medium" value={itemTotal} currency={contract.currency} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent font-normal">
+            <TableRow className="border-0 hover:bg-transparent">
+              <TableCell colSpan={4} className="text-right font-semibold text-foreground">
+                {t("contracts.totalValue")}
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell className="font-bold" value={totalValue} currency={contract.currency} />
+              </TableCell>
+            </TableRow>
+            {isForeign && (
+              <TableRow className="border-0 hover:bg-transparent">
+                <TableCell colSpan={4} className="text-right text-muted-foreground">
+                  {t("common.ledgerBaseIdr")}
+                </TableCell>
+                <TableCell className="text-right text-foreground tabular-nums">
+                  {baseAmount != null ? (
+                    <Money value={baseAmount} currency="IDR" />
+                  ) : (
+                    t("common.rateMissing")
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableFooter>
+        </Table>
       </Card>
 
       {/* Payments */}
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Payments</CardTitle>
+            <CardTitle>{t("contracts.paymentsTitle")}</CardTitle>
             <div className="text-right text-sm text-muted-foreground">
               <div className="tabular-nums">
-                {baseAmount != null && baseAmount > 0 && (
-                  <>{Math.round((totalPaidBase / baseAmount) * 100)}% — </>
-                )}
-                Terbayar (IDR): {formatCurrency(totalPaidBase, "IDR")}
-                {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
+                {baseAmount == null
+                  ? t("common.paidOnly", { paid: formatCurrency(totalPaidBase, "IDR") })
+                  : baseAmount > 0
+                    ? t("contracts.paidWithPercent", {
+                        percent: Math.round((totalPaidBase / baseAmount) * 100),
+                        paid: formatCurrency(totalPaidBase, "IDR"),
+                        total: formatCurrency(baseAmount, "IDR"),
+                      })
+                    : t("common.paidOf", {
+                        paid: formatCurrency(totalPaidBase, "IDR"),
+                        total: formatCurrency(baseAmount, "IDR"),
+                      })}
               </div>
               {paymentsWithoutRate > 0 && (
                 <div className="text-xs text-warning-strong">
-                  {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
+                  {t("common.paymentsUnrated", { count: paymentsWithoutRate })}
                 </div>
               )}
             </div>
           </div>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Amount</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contract.payments.length === 0 ? (
-                <tr>
-                  <td colSpan={3}>
-                    <EmptyState
-                      icon={<Banknote className="h-12 w-12" />}
-                      title="Belum ada pembayaran"
-                      description="Belum ada uang muka atau pelunasan yang dicatat untuk kontrak ini. Catat yang pertama lewat formulir di atas."
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead className="text-right">{t("common.amount")}</TableHead>
+              <TableHead>{t("common.notes")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {contract.payments.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={3} className="p-0">
+                  <EmptyState
+                    icon={<Banknote className="h-12 w-12" />}
+                    title={t("contracts.emptyPaymentsTitle")}
+                    description={t("contracts.emptyPaymentsDescription")}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              contract.payments.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell className="text-foreground">{formatDate(payment.date)}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="font-medium"
+                      value={Number(payment.amount)}
+                      currency={payment.currency}
                     />
-                  </td>
-                </tr>
-              ) : (
-                contract.payments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-border">
-                    <td className="px-6 py-3 text-foreground">{formatDate(payment.date)}</td>
-                    <td className="px-6 py-3 text-foreground text-right font-medium">
-                      {formatCurrency(Number(payment.amount), payment.currency)}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{payment.note || "-"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{payment.note || "-"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         {/* Add Payment Form */}
         <div className="px-6 pb-4">
           <ContractPaymentSection contractId={contract.id} />

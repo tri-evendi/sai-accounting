@@ -5,6 +5,7 @@ import { AccountantModeToggle } from "@/components/layout/accountant-mode-toggle
 import { HelpMenu } from "@/components/layout/help-menu";
 import { ApprovalBadge } from "@/components/layout/approval-badge";
 import { UserMenu } from "@/components/layout/user-menu";
+import { useT } from "@/lib/i18n/client";
 
 interface NavbarProps {
   userName: string;
@@ -14,11 +15,13 @@ interface NavbarProps {
 }
 
 export function Navbar({ userName, role, onMenuClick, onSignOut }: NavbarProps) {
+  const t = useT();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
       <button
         onClick={onMenuClick}
-        aria-label="Buka menu"
+        aria-label={t("navbar.openMenu")}
         className="cursor-pointer text-muted-foreground transition-colors duration-150 hover:text-foreground lg:hidden"
       >
         <Menu className="h-6 w-6" aria-hidden="true" />

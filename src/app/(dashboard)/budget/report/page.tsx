@@ -12,10 +12,21 @@ import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
-import { periodLabel } from "@/lib/period";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { monthNames } from "@/lib/i18n/labels";
 import { GaugeCircle, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +54,8 @@ export default async function BudgetReportPage({
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
   await requirePagePermission("budget.manage");
+  const t = await getT();
+  const months = monthNames(await getDictionary(await getLocale()));
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();
@@ -53,19 +66,23 @@ export default async function BudgetReportPage({
     getBudgetReport(year, month),
     getSalesTargetRealization(year, month),
   ]);
-  const periodText = month === undefined ? `Tahun ${year}` : periodLabel(year, month);
+  const periodText =
+    month === undefined
+      ? t("budget.wholeYear", { year })
+      : t("common.monthOfYear", { month: months[month - 1], year });
 
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Realisasi vs Anggaran" }]}
-        title="Realisasi vs Anggaran"
-        description={
-          <>
-            {periodText} · nilai dalam IDR · realisasi dibaca dari Laba/Rugi (buku besar).
-            Peringatan di atas/di bawah memakai ambang ±{DEFAULT_VARIANCE_THRESHOLD_PCT}%.
-          </>
-        }
+        breadcrumbs={[
+          { label: t("budget.breadcrumb"), href: "/budget" },
+          { label: t("budget.surfaceReportTitle") },
+        ]}
+        title={t("budget.surfaceReportTitle")}
+        description={t("budget.reportDescription", {
+          period: periodText,
+          threshold: DEFAULT_VARIANCE_THRESHOLD_PCT,
+        })}
       />
 
       <div className="mb-6">
@@ -75,19 +92,19 @@ export default async function BudgetReportPage({
       {/* Summary — a compact strip, not a dashboard rebuild. */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Anggaran</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.totalBudget")}</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {formatCurrency(report.totals.budget, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Realisasi</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.totalActual")}</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {formatCurrency(report.totals.actual, "IDR")}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selisih</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.variance")}</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {signedCurrency(report.totals.variance)}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -96,12 +113,12 @@ export default async function BudgetReportPage({
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Peringatan</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.alerts")}</p>
           <p className="mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums text-foreground">
             {report.totals.alertCount > 0 && (
               <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
             )}
-            {report.totals.alertCount} akun
+            {t("budget.alertAccounts", { count: report.totals.alertCount })}
           </p>
         </Card>
       </div>
@@ -111,9 +128,11 @@ export default async function BudgetReportPage({
         <Card className="mb-6 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-foreground">Realisasi Target Penjualan</h2>
+              <h2 className="font-semibold text-foreground">{t("budget.salesTargetTitle")}</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Target {formatCurrency(sales.totalTarget, "IDR")} · Realisasi{" "}
+                {t("budget.salesTargetPrefix", {
+                  target: formatCurrency(sales.totalTarget, "IDR"),
+                })}{" "}
                 <span className="tabular-nums">{formatCurrency(sales.actualSales, "IDR")}</span>
               </p>
             </div>
@@ -131,70 +150,70 @@ export default async function BudgetReportPage({
       {!hasBudgets ? (
         <EmptyState
           icon={<GaugeCircle className="h-12 w-12" />}
-          title="Belum ada anggaran untuk periode ini"
-          description="Tetapkan anggaran akun terlebih dahulu di menu Anggaran Akun, lalu realisasinya akan muncul di sini."
-          actionLabel="Ke Anggaran Akun"
+          title={t("budget.emptyReportTitle")}
+          description={t("budget.emptyReportDescription")}
+          actionLabel={t("budget.emptyReportAction")}
           actionHref="/budget/accounts"
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Realisasi</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Selisih</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">%</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.rows.map((r) => (
-                  <tr key={r.code} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
-                      {r.name}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.budget, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(r.actual, "IDR")}
-                    </td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                      {signedCurrency(r.variance)}
-                    </td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                      {pctLabel(r.variancePct)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <VarianceBadge status={r.status} favorable={r.favorable} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border font-bold">
-                  <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(report.totals.budget, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatCurrency(report.totals.actual, "IDR")}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {signedCurrency(report.totals.variance)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {pctLabel(report.totals.variancePct)}
-                  </td>
-                  <td className="px-4 py-3" />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("common.account")}</TableHead>
+                <TableHead className="text-right">{t("budget.colBudget")}</TableHead>
+                <TableHead className="text-right">{t("budget.colActual")}</TableHead>
+                <TableHead className="text-right">{t("budget.variance")}</TableHead>
+                <TableHead className="text-right">%</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {report.rows.map((r) => (
+                <TableRow key={r.code}>
+                  <TableCell className="text-foreground">
+                    <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
+                    {r.name}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.budget} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={r.actual} currency="IDR" />
+                  </TableCell>
+                  {/* Selisih diwarnai menurut favorable (bukan tanda) dan membawa
+                      awalan "+" eksplisit — bukan pemetaan 1:1 ke MoneyCell. */}
+                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
+                    {signedCurrency(r.variance)}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
+                    {pctLabel(r.variancePct)}
+                  </TableCell>
+                  <TableCell>
+                    <VarianceBadge status={r.status} favorable={r.favorable} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="border-t-2 bg-transparent">
+              <TableRow className="font-bold hover:bg-transparent">
+                <TableCell className="text-foreground">{t("common.total")}</TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={report.totals.budget} currency="IDR" />
+                </TableCell>
+                <TableCell className="p-0">
+                  <MoneyCell value={report.totals.actual} currency="IDR" />
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {signedCurrency(report.totals.variance)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
+                  {pctLabel(report.totals.variancePct)}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
+          </Table>
         </Card>
       )}
     </div>

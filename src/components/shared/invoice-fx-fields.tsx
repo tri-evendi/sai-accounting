@@ -36,6 +36,7 @@ import {
 import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 import { formatCurrency } from "@/lib/utils";
 import { Info, Users, ReceiptText, Ship } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 export interface CustomerOption {
   id: number;
@@ -118,6 +119,8 @@ export function InvoiceCustomerField({
   value: InvoiceFxValues;
   onChange: Patch;
 }) {
+  const t = useT();
+
   function handleCustomerChange(id: string) {
     const picked = customers.find((c) => String(c.id) === id);
     onChange({ customerId: id, ...applyTaxDefault(value, { customerTaxExempt: picked?.taxExempt }) });
@@ -128,21 +131,20 @@ export function InvoiceCustomerField({
       <Select
         id="customerId"
         name="customerId"
-        label={<TermTooltip term="pelanggan">Pelanggan (Customer)</TermTooltip>}
-        placeholder="-- Pilih pelanggan --"
+        label={<TermTooltip term="pelanggan">{t("invoices.customerFieldFx")}</TermTooltip>}
+        placeholder={t("invoices.customerPickPlaceholder")}
         value={value.customerId}
         onChange={(e) => handleCustomerChange(e.target.value)}
         options={customers.map((c) => ({
           value: String(c.id),
-          label: c.taxExempt ? `${c.name} · bebas PPN` : c.name,
+          label: c.taxExempt
+            ? t("invoices.customerTaxExemptSuffix", { name: c.name })
+            : c.name,
         }))}
       />
       <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
         <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>
-          Menautkan faktur ke pelanggan agar Piutang Usaha bisa dirinci per pelanggan
-          (umur piutang). Boleh dikosongkan untuk faktur lama.
-        </span>
+        <span>{t("invoices.customerHint")}</span>
       </p>
     </div>
   );
@@ -165,6 +167,7 @@ export function InvoiceFxAdvancedFields({
   value: InvoiceFxValues;
   onChange: Patch;
 }) {
+  const t = useT();
   const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
 
@@ -203,7 +206,7 @@ export function InvoiceFxAdvancedFields({
           />
           <span className="flex items-center gap-1 text-sm font-medium text-foreground">
             <ReceiptText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            <TermTooltip term="ppn">Kena PPN (PPN Keluaran)</TermTooltip>
+            <TermTooltip term="ppn">{t("invoices.taxableLabel")}</TermTooltip>
           </span>
         </label>
 
@@ -217,22 +220,19 @@ export function InvoiceFxAdvancedFields({
               min="0"
               max="100"
               className="max-w-[140px] text-right tabular-nums"
-              label="Tarif PPN (%)"
+              label={t("common.taxRatePercent")}
               value={taxRate}
               onChange={(e) => onChange({ taxRate: e.target.value })}
             />
             <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>Standar PPN Indonesia 11%. Isi 0 untuk ekspor / tidak kena PPN.</span>
+              <span>{t("invoices.taxRateHint")}</span>
             </p>
           </div>
         ) : (
           <p className="mt-2 flex items-start gap-1 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>
-              Tidak kena PPN (0%) — biasa untuk ekspor / pelanggan bebas PPN. Tidak ada baris
-              PPN pada jurnal.
-            </span>
+            <span>{t("invoices.notTaxableHint")}</span>
           </p>
         )}
       </div>
@@ -242,20 +242,17 @@ export function InvoiceFxAdvancedFields({
         <div className="sm:col-span-2 rounded-md border border-border p-3">
           <p className="flex items-center gap-1 text-sm font-medium text-foreground">
             <Ship className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            Dokumen Ekspor (PEB)
+            {t("invoices.pebSectionTitle")}
           </p>
           <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>
-              Untuk penjualan ekspor (PPN 0%), nomor PEB menggantikan nomor Faktur Pajak
-              dan dipakai pada ekspor e-Faktur. Opsional.
-            </span>
+            <span>{t("invoices.pebHint")}</span>
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
               id="pebNumber"
               name="pebNumber"
-              label="Nomor PEB"
+              label={t("invoices.pebNumber")}
               value={pebNumber}
               onChange={(e) => onChange({ pebNumber: e.target.value })}
             />
@@ -263,7 +260,7 @@ export function InvoiceFxAdvancedFields({
               id="pebDate"
               name="pebDate"
               type="date"
-              label="Tanggal PEB"
+              label={t("invoices.pebDate")}
               value={pebDate}
               onChange={(e) => onChange({ pebDate: e.target.value })}
             />
@@ -271,7 +268,7 @@ export function InvoiceFxAdvancedFields({
               <Input
                 id="exportNote"
                 name="exportNote"
-                label="Keterangan ekspor"
+                label={t("invoices.exportNote")}
                 value={exportNote}
                 onChange={(e) => onChange({ exportNote: e.target.value })}
               />
@@ -297,6 +294,7 @@ export function InvoiceTotalsSummary({
   value: InvoiceFxValues;
   subtotal: number;
 }) {
+  const t = useT();
   const { currency, rate, taxable, taxRate } = value;
   const isForeign = currency !== BASE_CURRENCY;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
@@ -311,23 +309,26 @@ export function InvoiceTotalsSummary({
     <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm">
       <dl className="space-y-1">
         <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">DPP · Dasar Pengenaan Pajak ({currency})</dt>
+          <dt className="text-muted-foreground">{t("invoices.dppLine", { currency })}</dt>
           <dd className="tabular-nums text-foreground">{formatCurrency(dpp, currency)}</dd>
         </div>
         <div className="flex items-center justify-between">
           <dt className="text-muted-foreground">
-            PPN {taxable ? `(${effectiveRate}%)` : "(tidak kena)"} ({currency})
+            {t("invoices.vatLine", {
+              rate: taxable ? `(${effectiveRate}%)` : t("invoices.vatNotTaxable"),
+              currency,
+            })}
           </dt>
           <dd className="tabular-nums text-foreground">{formatCurrency(taxAmount, currency)}</dd>
         </div>
         <div className="flex items-center justify-between border-t border-border pt-1 font-medium">
-          <dt className="text-foreground">Total tagihan ({currency})</dt>
+          <dt className="text-foreground">{t("invoices.totalLine", { currency })}</dt>
           <dd className="tabular-nums text-foreground">{formatCurrency(total, currency)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">Nilai dasar buku besar (IDR)</dt>
+          <dt className="text-muted-foreground">{t("common.ledgerBaseIdr")}</dt>
           <dd className="tabular-nums font-medium text-foreground">
-            {baseUnknown ? "— isi kurs dulu" : formatCurrency(baseTotal, "IDR")}
+            {baseUnknown ? t("invoices.baseUnknown") : formatCurrency(baseTotal, "IDR")}
           </dd>
         </div>
       </dl>

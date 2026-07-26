@@ -15,8 +15,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/client";
 
 interface RoleRow {
   key: string;
@@ -26,6 +35,7 @@ interface RoleRow {
 }
 
 export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) {
+  const t = useT();
   const { toast } = useToast();
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [newKey, setNewKey] = useState("");
@@ -58,12 +68,12 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal membuat peran.", "error");
+        toast(data.error || t("permissions.errCreateRole"), "error");
         return;
       }
       setNewKey("");
       setNewLabel("");
-      toast(`Peran "${data.label}" dibuat. Atur izinnya di matriks di bawah.`);
+      toast(t("permissions.roleCreated", { label: data.label }));
       await afterChange();
     } finally {
       setBusy(false);
@@ -80,10 +90,10 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal mengubah peran.", "error");
+        toast(data.error || t("permissions.errPatchRole"), "error");
         return;
       }
-      toast("Peran diperbarui.");
+      toast(t("permissions.roleUpdated"));
       await afterChange();
     } finally {
       setBusy(false);
@@ -96,10 +106,10 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
       const res = await fetch(`/api/roles/${role.key}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal menghapus peran.", "error");
+        toast(data.error || t("permissions.errDeleteRole"), "error");
         return;
       }
-      toast(`Peran "${role.label}" dihapus.`, "info");
+      toast(t("permissions.roleDeleted", { label: role.label }), "info");
       await afterChange();
     } finally {
       setBusy(false);
@@ -109,44 +119,44 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Kelola Peran</CardTitle>
+        <CardTitle>{t("permissions.roleManagerTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Tambah peran baru sesuai kebutuhan. Peran baru lahir tanpa izin — centang izinnya di
-          matriks di bawah. Peran sistem (Pimpinan, Staf Kantor, Bagian Gudang) tak bisa
-          dinonaktifkan atau dihapus.
+          {t("permissions.roleManagerHint")}
         </p>
 
         {/* Daftar peran */}
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Nama Peran</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Kunci</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+            primitif agar sama dengan tampilan sebelum migrasi. */}
+        <div className="rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2">{t("permissions.colRoleName")}</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("permissions.colRoleKey")}</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("common.status")}</TableHead>
+                <TableHead className="h-auto px-4 py-2" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {roles.map((role) => (
-                <tr key={role.key} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2 font-medium text-foreground">
+                <TableRow key={role.key}>
+                  <TableCell className="px-4 py-2 font-medium text-foreground">
                     <span className="flex items-center gap-1.5">
                       {role.label}
                       {role.isSystem && (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Peran sistem" />
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label={t("permissions.systemRoleAria")} />
                       )}
                     </span>
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{role.key}</td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 font-mono text-xs text-muted-foreground">{role.key}</TableCell>
+                  <TableCell className="px-4 py-2">
                     <Badge variant={role.isActive ? "success" : "default"}>
-                      {role.isActive ? "Aktif" : "Nonaktif"}
+                      {role.isActive ? t("common.active") : t("common.inactive")}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell className="px-4 py-2">
                     <div className="flex items-center justify-end gap-2">
                       {!role.isSystem && (
                         <>
@@ -158,11 +168,13 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
                           >
                             {role.isActive ? (
                               <>
-                                <Ban className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Nonaktifkan
+                                <Ban className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
+                                {t("permissions.deactivateRole")}
                               </>
                             ) : (
                               <>
-                                <Check className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Aktifkan
+                                <Check className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
+                                {t("permissions.activateRole")}
                               </>
                             )}
                           </Button>
@@ -172,48 +184,49 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
                             disabled={busy}
                             onClick={() => setDeleteTarget(role)}
                           >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Hapus
+                            <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
+                            {t("common.delete")}
                           </Button>
                         </>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Tambah peran */}
         <form onSubmit={create} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <div className="space-y-1">
             <label htmlFor="new-role-label" className="block text-sm font-medium text-foreground">
-              Nama peran
+              {t("permissions.roleNameField")}
             </label>
             <TextInput
               id="new-role-label"
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="mis. Kasir"
+              placeholder={t("permissions.roleNamePlaceholder")}
               maxLength={50}
               required
             />
           </div>
           <div className="space-y-1">
             <label htmlFor="new-role-key" className="block text-sm font-medium text-foreground">
-              Kunci (huruf kecil, tanpa spasi)
+              {t("permissions.roleKeyField")}
             </label>
             <TextInput
               id="new-role-key"
               value={newKey}
               onChange={(e) => setNewKey(e.target.value.toLowerCase())}
-              placeholder="mis. kasir"
+              placeholder={t("permissions.roleKeyPlaceholder")}
               maxLength={20}
               required
             />
           </div>
           <Button type="submit" disabled={busy || !newKey || !newLabel}>
-            <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Tambah Peran
+            <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("permissions.addRole")}
           </Button>
         </form>
       </CardContent>
@@ -222,12 +235,9 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
         <ConfirmDialog
           open={deleteTarget !== null}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
-          title={`Hapus peran "${deleteTarget.label}"?`}
-          message={
-            "Peran ini dan seluruh pengaturan izinnya dihapus permanen. Hanya bisa bila tak ada " +
-            "pengguna yang memakainya. Tindakan ini tidak bisa dibatalkan."
-          }
-          confirmLabel="Hapus peran"
+          title={t("permissions.deleteRoleTitle", { label: deleteTarget.label })}
+          message={t("permissions.deleteRoleMessage")}
+          confirmLabel={t("permissions.deleteRoleLabel")}
           confirmVariant="danger"
           onConfirm={() => remove(deleteTarget)}
         />

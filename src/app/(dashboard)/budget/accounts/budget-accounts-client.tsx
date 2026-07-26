@@ -12,9 +12,18 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { MONTH_NAMES } from "@/lib/month-names";
-import { formatCurrency } from "@/lib/utils";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { monthNames } from "@/lib/i18n/labels";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, ClipboardList } from "lucide-react";
 
@@ -37,6 +46,10 @@ export function BudgetAccountsClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
+  const months = monthNames(useDictionary());
+  const period = (year: number, month: number) =>
+    t("common.monthOfYear", { month: months[month - 1], year });
 
   const [accountId, setAccountId] = useState("");
   const [year, setYear] = useState(String(defaultYear));
@@ -65,15 +78,15 @@ export function BudgetAccountsClient({
       if (!res.ok) {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan anggaran.");
+        setError(first ?? data?.error ?? t("budget.saveBudgetFailed"));
         return;
       }
-      toast("Anggaran tersimpan.", "success");
+      toast(t("budget.budgetSaved"), "success");
       setAccountId("");
       setAmount("");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("budget.networkFailed"));
     } finally {
       setSaving(false);
     }
@@ -85,13 +98,13 @@ export function BudgetAccountsClient({
       const res = await fetch(`/api/budget/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast(data?.error ?? "Gagal menghapus anggaran.", "error");
+        toast(data?.error ?? t("budget.deleteBudgetFailed"), "error");
         return;
       }
-      toast("Anggaran dihapus.", "success");
+      toast(t("budget.budgetDeleted"), "success");
       router.refresh();
     } catch {
-      toast("Tidak dapat menghubungi server.", "error");
+      toast(t("budget.networkFailedShort"), "error");
     } finally {
       setDeleting(null);
     }
@@ -100,16 +113,16 @@ export function BudgetAccountsClient({
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Tetapkan anggaran</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">{t("budget.setBudget")}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               id="budget-account"
-              label="Akun"
+              label={t("common.account")}
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               options={accounts.map((a) => ({ value: String(a.id), label: `${a.code} · ${a.name}` }))}
-              placeholder="Pilih akun pendapatan/beban"
+              placeholder={t("budget.pickAccountPlaceholder")}
               required
             />
             <Input
@@ -119,7 +132,7 @@ export function BudgetAccountsClient({
               step="0.01"
               inputMode="decimal"
               className="text-right tabular-nums"
-              label="Anggaran (IDR)"
+              label={t("budget.amountField")}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
@@ -129,7 +142,7 @@ export function BudgetAccountsClient({
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               id="budget-year"
-              label="Tahun"
+              label={t("budget.yearField")}
               value={year}
               onChange={(e) => setYear(e.target.value)}
               options={Array.from({ length: 6 }, (_, i) => defaultYear + 1 - i).map((y) => ({
@@ -140,10 +153,10 @@ export function BudgetAccountsClient({
             />
             <Select
               id="budget-month"
-              label="Bulan"
+              label={t("budget.monthField")}
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              options={MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name }))}
+              options={months.map((name, i) => ({ value: String(i + 1), label: name }))}
               required
             />
           </div>
@@ -156,7 +169,7 @@ export function BudgetAccountsClient({
             {saving && (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             )}
-            Simpan Anggaran
+            {t("budget.submitBudget")}
           </Button>
         </form>
       </Card>
@@ -164,65 +177,72 @@ export function BudgetAccountsClient({
       {budgets.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="h-12 w-12" />}
-          title="Belum ada anggaran"
-          description="Tetapkan anggaran pertama di atas untuk periode yang dipilih."
+          title={t("budget.emptyBudgetTitle")}
+          description={t("budget.emptyBudgetDescription")}
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Akun</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Anggaran</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgets.map((b) => (
-                  <tr key={b.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      {MONTH_NAMES[b.month - 1]} {b.year}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
-                      {b.accountName}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(b.amount, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("budget.monthField")}</TableHead>
+                <TableHead>{t("common.account")}</TableHead>
+                <TableHead className="text-right">{t("budget.colBudget")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {budgets.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell className="text-foreground">
+                    {period(b.year, b.month)}
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    <span className="font-mono text-muted-foreground mr-2">{b.accountCode}</span>
+                    {b.accountName}
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={b.amount} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="text-right">
                       {/* Menghapus anggaran mengubah angka "Realisasi vs Anggaran"
                           yang mungkin sudah dibaca orang lain, jadi dikonfirmasi
                           dulu (issue #6). */}
                       <ConfirmDialog
-                        title="Hapus anggaran ini?"
-                        message={`Anggaran ${b.accountCode} — ${b.accountName} untuk ${MONTH_NAMES[b.month - 1]} ${b.year} akan dihapus. Laporan Realisasi vs Anggaran bulan itu akan kehilangan pembandingnya. Jurnal dan transaksi tidak berubah.`}
-                        confirmLabel="Hapus Anggaran"
+                        title={t("budget.deleteBudgetTitle")}
+                        message={t("budget.deleteBudgetMessage", {
+                          code: b.accountCode,
+                          name: b.accountName,
+                          period: period(b.year, b.month),
+                        })}
+                        confirmLabel={t("budget.deleteBudgetConfirm")}
                         onConfirm={() => handleDelete(b.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === b.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
-                            aria-label={`Hapus anggaran ${b.accountCode} ${MONTH_NAMES[b.month - 1]} ${b.year}`}
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                            aria-label={t("budget.deleteBudgetAria", {
+                              code: b.accountCode,
+                              period: period(b.year, b.month),
+                            })}
                           >
                             {deleting === b.id ? (
                               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                             ) : (
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
-                            Hapus
-                          </button>
+                            {t("common.delete")}
+                          </Button>
                         }
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

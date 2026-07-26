@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/client";
 
 export function LedgerFilter({
   basePath,
@@ -24,6 +25,7 @@ export function LedgerFilter({
   asOf: string;
   overdueOnly: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const [d, setD] = useState(asOf);
   const [overdue, setOverdue] = useState(overdueOnly);
@@ -42,7 +44,7 @@ export function LedgerFilter({
         <Input
           id="asOf"
           type="date"
-          label="Per Tanggal"
+          label={t("ledgerFilter.asOfField")}
           value={d}
           onChange={(e) => setD(e.target.value)}
         />
@@ -51,16 +53,14 @@ export function LedgerFilter({
             checked={overdue}
             onCheckedChange={(v) => setOverdue(v === true)}
           />
-          Hanya yang sudah jatuh tempo
+          {t("ledgerFilter.overdueOnly")}
         </label>
         <Button type="submit" className="cursor-pointer">
-          Tampilkan
+          {t("common.show")}
         </Button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Filter jatuh tempo hanya mencakup dokumen yang punya tanggal jatuh tempo. Dokumen
-        tanpa tanggal jatuh tempo tidak bisa dinilai terlambat, jadi tidak pernah muncul di
-        sini — isi kolom Jatuh Tempo pada dokumen agar ikut terpantau.
+        {t("ledgerFilter.hint")}
       </p>
     </form>
   );

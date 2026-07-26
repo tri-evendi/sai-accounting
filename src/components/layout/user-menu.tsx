@@ -7,14 +7,27 @@
  * sendiri-sendiri sejajar di top bar — memenuhi bar dan mencampur "informasi"
  * (siapa saya) dengan "aksi" (keluar). Kini keduanya diringkas ke satu menu:
  * satu tombol avatar membuka daftar berisi identitas + aksi akun (ubah kata
- * sandi, keluar). Pola dropdown-nya sama dengan Menu Bantuan: `<button>`/
- * `<Link>` sungguhan, ditutup Escape & klik di luar, fokus terlihat.
+ * sandi, ganti bahasa, keluar). Pola dropdown-nya sama dengan Menu Bantuan:
+ * `<button>`/`<Link>` sungguhan, ditutup Escape & klik di luar, fokus terlihat.
+ *
+ * ── Pemilih bahasa (fondasi i18n) ──────────────────────────────────────────
+ * Bahasa adalah preferensi AKUN dalam pandangan pengguna, jadi tempatnya di
+ * menu akun — bukan ikon lepas yang menambah penghuni top bar. Tiap bahasa
+ * ditulis DALAM BAHASANYA SENDIRI (`LOCALE_LABELS`) supaya pengguna yang
+ * tersasar ke bahasa asing tetap mengenali barisnya sendiri. Barisnya
+ * `role="menuitemradio"` + `aria-checked`: satu pilihan aktif dari tiga,
+ * terbaca pembaca layar, dan tetap `<button>` sungguhan (bisa Tab & Enter).
  */
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, KeyRound, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Check, ChevronDown, Languages, LogOut, KeyRound, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { setLocale } from "@/lib/i18n/actions";
+import { useDictionary, useLocale, useT } from "@/lib/i18n/client";
+import { roleLabels } from "@/lib/i18n/labels";
+import type { SystemRole } from "@/lib/constants";
 
 /** Inisial dari nama untuk avatar (maks 2 huruf), fallback ikon bila kosong. */
 function initials(name: string): string {
@@ -36,7 +49,14 @@ export function UserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const roleLabel = ROLE_LABELS[role as Role] || role;
+  const t = useT();
+  const dictionary = useDictionary();
+  const activeLocale = useLocale();
+  const router = useRouter();
+  const [switching, startSwitching] = useTransition();
+  // Peran kustom (data, tabel `roles`) tidak punya label di kamus — nilai
+  // perannya sendiri jadi cadangan, sama seperti sebelum multibahasa.
+  const roleLabel = roleLabels(dictionary)[role as SystemRole] || role;
   const abbr = initials(userName);
 
   useEffect(() => {
@@ -57,6 +77,23 @@ export function UserMenu({
     };
   }, [open]);
 
+  /**
+   * Simpan pilihan bahasa (cookie, lewat server action) lalu minta server
+   * merender ulang: kamus dipilih di root layout, jadi `router.refresh()`
+   * adalah yang membuat seluruh chrome berganti bahasa tanpa muat ulang penuh.
+   */
+  function chooseLocale(next: Locale) {
+    if (next === activeLocale) {
+      setOpen(false);
+      return;
+    }
+    startSwitching(async () => {
+      await setLocale(next);
+      router.refresh();
+      setOpen(false);
+    });
+  }
+
   const itemClass =
     "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -67,7 +104,7 @@ export function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Akun: ${userName} (${roleLabel})`}
+        aria-label={t("userMenu.trigger", { name: userName, role: roleLabel })}
         className={cn(
           "flex h-10 cursor-pointer items-center gap-2 rounded-full border py-1 pl-1 pr-2 text-sm font-medium transition-colors duration-150 sm:pr-3",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
@@ -92,7 +129,7 @@ export function UserMenu({
       {open && (
         <div
           role="menu"
-          aria-label="Menu akun"
+          aria-label={t("userMenu.menu")}
           className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-border bg-card p-1 shadow-lg"
         >
           {/* Identitas — informasi, bukan aksi. */}
@@ -111,6 +148,45 @@ export function UserMenu({
             </span>
           </div>
 
+          {/* Bahasa — preferensi tampilan, disimpan di cookie `locale`. */}
+          <div
+            role="group"
+            aria-label={t("userMenu.languageMenu")}
+            className="border-b border-border p-1"
+          >
+            <p className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Languages className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {t("userMenu.language")}
+            </p>
+            {LOCALES.map((locale) => {
+              const active = locale === activeLocale;
+              return (
+                <button
+                  key={locale}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  lang={locale}
+                  disabled={switching}
+                  onClick={() => chooseLocale(locale)}
+                  className={cn(
+                    itemClass,
+                    "justify-between disabled:cursor-not-allowed disabled:opacity-60",
+                    active ? "font-semibold text-primary" : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <span>{LOCALE_LABELS[locale]}</span>
+                  {active && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                </button>
+              );
+            })}
+            {switching && (
+              <p className="px-3 py-1 text-xs text-muted-foreground" role="status">
+                {t("userMenu.languageSwitching")}
+              </p>
+            )}
+          </div>
+
           {/* Aksi akun */}
           <div className="p-1">
             <Link
@@ -120,7 +196,7 @@ export function UserMenu({
               className={cn(itemClass, "text-foreground hover:bg-muted")}
             >
               <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span>Ubah Kata Sandi</span>
+              <span>{t("userMenu.changePassword")}</span>
             </Link>
             <button
               type="button"
@@ -132,7 +208,7 @@ export function UserMenu({
               className={cn(itemClass, "text-destructive-strong hover:bg-destructive-soft")}
             >
               <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Keluar</span>
+              <span>{t("userMenu.signOut")}</span>
             </button>
           </div>
         </div>

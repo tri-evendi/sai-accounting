@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
@@ -13,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
+import { useT } from "@/lib/i18n/client";
 
 interface User {
   id: number;
@@ -26,6 +35,7 @@ interface User {
 }
 
 export function UsersClient({ roles }: { roles: { key: string; label: string }[] }) {
+  const t = useT();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -40,7 +50,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
     if (res.ok) {
       setUsers(await res.json());
     } else if (res.status === 403) {
-      setError("You do not have permission to manage users.");
+      setError(t("users.errNoPermission"));
     }
     setLoading(false);
   }
@@ -54,7 +64,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
       if (res.ok) {
         setUsers(await res.json());
       } else if (res.status === 403) {
-        setError("You do not have permission to manage users.");
+        setError(t("users.errNoPermission"));
       }
       setLoading(false);
     }
@@ -63,7 +73,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -86,9 +96,9 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create user");
+      setError(data.error || t("users.errCreate"));
     } else {
-      toast("User created successfully");
+      toast(t("users.created"));
       setShowCreate(false);
       await fetchUsers();
     }
@@ -98,12 +108,12 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
   async function handleDelete(userId: number) {
     const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
     if (res.ok) {
-      toast("User deleted");
+      toast(t("users.deleted"));
       if (permissionsFor === userId) setPermissionsFor(null);
       await fetchUsers();
     } else {
       const data = await res.json();
-      toast(data.error || "Failed to delete user", "error");
+      toast(data.error || t("users.errDelete"), "error");
     }
   }
 
@@ -114,14 +124,14 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
       body: JSON.stringify({ password: "changeme123" }),
     });
     if (res.ok) {
-      toast("Password reset to 'changeme123'. User must change on next login.");
+      toast(t("users.passwordReset"));
       await fetchUsers();
     } else {
-      toast("Failed to reset password", "error");
+      toast(t("users.errReset"), "error");
     }
   }
 
-  if (loading) return <PageLoader message="Loading users..." />;
+  if (loading) return <PageLoader message={t("users.loading")} />;
   if (error && users.length === 0) {
     return <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">{error}</div>;
   }
@@ -129,10 +139,11 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
   return (
     <div>
       <PageHeader
-        title="User Management"
+        title={t("users.title")}
         actions={
           <Button onClick={() => setShowCreate(!showCreate)}>
-            <UserPlus className="h-4 w-4 mr-1" /> {showCreate ? "Cancel" : "New User"}
+            <UserPlus className="h-4 w-4 mr-1" />{" "}
+            {showCreate ? t("common.cancel") : t("users.newUser")}
           </Button>
         }
       />
@@ -142,20 +153,32 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
       {/* Create User Form */}
       {showCreate && (
         <Card className="mb-6">
-          <CardHeader><CardTitle>Create New User</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("users.createTitle")}</CardTitle></CardHeader>
           <div className="px-6 pb-6">
             <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2">
-              <Input id="username" name="username" label="Username" required autoFocus />
-              <Input id="password" name="password" type="password" label="Password (min 8 chars)" required />
-              <Input id="name" name="name" label="Display Name" />
+              <Input
+                id="username"
+                name="username"
+                label={t("auth.login.username")}
+                required
+                autoFocus
+              />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                label={t("users.passwordField")}
+                required
+              />
+              <Input id="name" name="name" label={t("users.displayName")} />
               <Select
-                id="role" name="role" label="Role"
+                id="role" name="role" label={t("users.role")}
                 defaultValue={ROLES.CORE}
                 options={roles.map((r) => ({ value: r.key, label: r.label }))}
               />
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create User"}
+                  {creating ? t("users.creating") : t("users.createUser")}
                 </Button>
               </div>
             </form>
@@ -176,83 +199,99 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
 
       {/* Users Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Username</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-border hover:bg-muted">
-                  <td className="px-6 py-3 font-medium text-foreground">{user.username}</td>
-                  <td className="px-6 py-3 text-foreground">{user.name || "-"}</td>
-                  <td className="px-6 py-3">
-                    <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
-                      {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3">
-                    <Badge variant={user.status === 1 ? "warning" : "success"}>
-                      {user.status === 1 ? "Must Change Password" : "Active"}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        className="relative p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10 cursor-pointer"
-                        title="Izin khusus pengguna ini"
-                        aria-label={`Izin khusus untuk ${user.username}`}
-                        onClick={() =>
-                          setPermissionsFor(permissionsFor === user.id ? null : user.id)
-                        }
-                      >
-                        <KeyRound className="h-4 w-4" />
-                        {user.overrideCount > 0 && (
-                          <Badge
-                            variant="warning"
-                            className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
-                            title={`${user.overrideCount} izin khusus tersimpan`}
-                          >
-                            {user.overrideCount}
-                          </Badge>
-                        )}
-                      </button>
-                      <ConfirmDialog
-                        title="Reset Password"
-                        message={`Reset password for "${user.username}" to "changeme123"? They will be forced to change it on next login.`}
-                        confirmLabel="Reset"
-                        confirmVariant="primary"
-                        onConfirm={() => handleResetPassword(user.id)}
-                        trigger={
-                          <button className="p-1.5 text-muted-foreground hover:text-primary rounded hover:bg-primary/10" title="Reset password">
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                        }
-                      />
-                      <ConfirmDialog
-                        title="Delete User"
-                        message={`Are you sure you want to delete user "${user.username}"? This cannot be undone.`}
-                        confirmLabel="Delete"
-                        onConfirm={() => handleDelete(user.id)}
-                        trigger={
-                          <button className="p-1.5 text-muted-foreground hover:text-destructive rounded hover:bg-destructive-soft" title="Delete user">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        }
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("auth.login.username")}</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("users.role")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="text-right">{t("common.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium text-foreground">{user.username}</TableCell>
+                <TableCell className="text-foreground">{user.name || "-"}</TableCell>
+                <TableCell>
+                  <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
+                    {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={user.status === 1 ? "warning" : "success"}>
+                    {user.status === 1 ? t("users.mustChangePassword") : t("common.active")}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {/* `gap-2` (8px), bukan `gap-1`: tiga aksi ikon yang berdampingan
+                      butuh jarak sentuh minimum agar tidak salah tekan di layar
+                      sentuh — lihat "target sentuh" di MASTER.md. */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                      title={t("users.overridesTitle")}
+                      aria-label={t("users.overridesAria", { username: user.username })}
+                      onClick={() =>
+                        setPermissionsFor(permissionsFor === user.id ? null : user.id)
+                      }
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      {user.overrideCount > 0 && (
+                        <Badge
+                          variant="warning"
+                          className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
+                          title={t("users.overridesBadgeTitle", { count: user.overrideCount })}
+                        >
+                          {user.overrideCount}
+                        </Badge>
+                      )}
+                    </Button>
+                    <ConfirmDialog
+                      title={t("users.resetPasswordTitle")}
+                      message={t("users.resetPasswordMessage", { username: user.username })}
+                      confirmLabel={t("users.reset")}
+                      confirmVariant="primary"
+                      onConfirm={() => handleResetPassword(user.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title={t("users.resetPasswordTooltip")}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <ConfirmDialog
+                      title={t("users.deleteUserTitle")}
+                      message={t("users.deleteUserMessage", { username: user.username })}
+                      confirmLabel={t("common.delete")}
+                      onConfirm={() => handleDelete(user.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
+                          title={t("users.deleteUserTooltip")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

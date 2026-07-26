@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
+import { useT } from "@/lib/i18n/client";
 
 export function EditSupplierForm() {
   const router = useRouter();
   const params = useParams();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -19,7 +21,7 @@ export function EditSupplierForm() {
   useEffect(() => {
     fetch(`/api/suppliers/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Gagal memuat data pemasok");
+        if (!res.ok) throw new Error(t("suppliers.loadFailed"));
         return res.json();
       })
       .then((data) => {
@@ -35,7 +37,7 @@ export function EditSupplierForm() {
         setError(err.message);
         setFetching(false);
       });
-  }, [params.id]);
+  }, [params.id, t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,7 +52,7 @@ export function EditSupplierForm() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Gagal menyimpan perubahan pemasok");
+      setError(data.error || t("suppliers.updateFailed"));
       setLoading(false);
     } else {
       router.push(`/suppliers/${params.id}`);
@@ -58,33 +60,36 @@ export function EditSupplierForm() {
     }
   }
 
-  if (fetching) return <PageLoader message="Memuat data pemasok..." />;
+  if (fetching) return <PageLoader message={t("suppliers.loading")} />;
 
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Ubah Pemasok" }]}
-        title="Ubah Pemasok"
+        breadcrumbs={[
+          { label: t("suppliers.breadcrumb"), href: "/suppliers" },
+          { label: t("suppliers.editTitle") },
+        ]}
+        title={t("suppliers.editTitle")}
       />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Pemasok</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("suppliers.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" label="Nama Pemasok" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input id="address" label="Alamat" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              <Input id="phone" label="Telepon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Input id="email" type="email" label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input id="name" label={t("suppliers.nameField")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input id="address" label={t("common.address")} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Input id="phone" label={t("common.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input id="email" type="email" label={t("common.email")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
           </CardContent>
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
+          <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.save")}</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
         </div>
       </form>
     </div>

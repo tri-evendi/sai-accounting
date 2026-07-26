@@ -12,9 +12,18 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { MONTH_NAMES } from "@/lib/month-names";
-import { formatCurrency } from "@/lib/utils";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { monthNames } from "@/lib/i18n/labels";
 import type { SalesTargetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, Target } from "lucide-react";
 
@@ -38,6 +47,10 @@ export function SalesTargetClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const translate = useT();
+  const months = monthNames(useDictionary());
+  const period = (year: number, month: number) =>
+    translate("common.monthOfYear", { month: months[month - 1], year });
 
   const [year, setYear] = useState(String(defaultYear));
   const [month, setMonth] = useState(String(defaultMonth));
@@ -68,14 +81,14 @@ export function SalesTargetClient({
       if (!res.ok) {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan target.");
+        setError(first ?? data?.error ?? translate("budget.saveTargetFailed"));
         return;
       }
-      toast("Target tersimpan.", "success");
+      toast(translate("budget.targetSaved"), "success");
       setAmount("");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(translate("budget.networkFailed"));
     } finally {
       setSaving(false);
     }
@@ -87,13 +100,13 @@ export function SalesTargetClient({
       const res = await fetch(`/api/budget/targets/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast(data?.error ?? "Gagal menghapus target.", "error");
+        toast(data?.error ?? translate("budget.deleteTargetFailed"), "error");
         return;
       }
-      toast("Target dihapus.", "success");
+      toast(translate("budget.targetDeleted"), "success");
       router.refresh();
     } catch {
-      toast("Tidak dapat menghubungi server.", "error");
+      toast(translate("budget.networkFailedShort"), "error");
     } finally {
       setDeleting(null);
     }
@@ -102,12 +115,12 @@ export function SalesTargetClient({
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Tetapkan target</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">{translate("budget.setTarget")}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               id="target-year"
-              label="Tahun"
+              label={translate("budget.yearField")}
               value={year}
               onChange={(e) => setYear(e.target.value)}
               options={Array.from({ length: 6 }, (_, i) => defaultYear + 1 - i).map((y) => ({
@@ -118,33 +131,33 @@ export function SalesTargetClient({
             />
             <Select
               id="target-month"
-              label="Bulan"
+              label={translate("budget.monthField")}
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              options={MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name }))}
+              options={months.map((name, i) => ({ value: String(i + 1), label: name }))}
               required
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               id="target-customer"
-              label="Pelanggan (opsional)"
+              label={translate("budget.customerOptional")}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              placeholder="Semua pelanggan"
+              placeholder={translate("budget.allCustomers")}
               options={[
-                { value: "", label: "Semua pelanggan" },
+                { value: "", label: translate("budget.allCustomers") },
                 ...customers.map((c) => ({ value: String(c.id), label: c.name })),
               ]}
             />
             <Select
               id="target-item"
-              label="Komoditas (opsional)"
+              label={translate("budget.itemOptional")}
               value={itemId}
               onChange={(e) => setItemId(e.target.value)}
-              placeholder="Semua komoditas"
+              placeholder={translate("budget.allItems")}
               options={[
-                { value: "", label: "Semua komoditas" },
+                { value: "", label: translate("budget.allItems") },
                 ...items.map((it) => ({ value: String(it.id), label: it.name })),
               ]}
             />
@@ -157,7 +170,7 @@ export function SalesTargetClient({
               step="0.01"
               inputMode="decimal"
               className="text-right tabular-nums"
-              label="Target (IDR)"
+              label={translate("budget.targetAmountField")}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
@@ -173,7 +186,7 @@ export function SalesTargetClient({
             {saving && (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             )}
-            Simpan Target
+            {translate("budget.submitTarget")}
           </Button>
         </form>
       </Card>
@@ -181,61 +194,65 @@ export function SalesTargetClient({
       {targets.length === 0 ? (
         <EmptyState
           icon={<Target className="h-12 w-12" />}
-          title="Belum ada target"
-          description="Tetapkan target penjualan pertama di atas untuk periode yang dipilih."
+          title={translate("budget.emptyTargetTitle")}
+          description={translate("budget.emptyTargetDescription")}
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Bulan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Pelanggan</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Komoditas</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Target</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {targets.map((t) => (
-                  <tr key={t.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">
-                      {MONTH_NAMES[t.month - 1]} {t.year}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{t.customerName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-foreground">{t.itemName ?? "Semua"}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatCurrency(t.amount, "IDR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{translate("budget.monthField")}</TableHead>
+                <TableHead>{translate("common.customer")}</TableHead>
+                <TableHead>{translate("budget.colCommodity")}</TableHead>
+                <TableHead className="text-right">{translate("budget.colTarget")}</TableHead>
+                <TableHead className="text-right">{translate("common.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {targets.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-foreground">
+                    {period(t.year, t.month)}
+                  </TableCell>
+                  <TableCell className="text-foreground">{t.customerName ?? translate("common.all")}</TableCell>
+                  <TableCell className="text-foreground">{t.itemName ?? translate("common.all")}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell value={t.amount} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="text-right">
                       <ConfirmDialog
-                        title="Hapus target penjualan ini?"
-                        message={`Target ${MONTH_NAMES[t.month - 1]} ${t.year} (${t.customerName ?? "semua pelanggan"} · ${t.itemName ?? "semua barang"}) akan dihapus. Laporan pencapaian bulan itu akan kehilangan pembandingnya. Penjualan yang sudah tercatat tidak berubah.`}
-                        confirmLabel="Hapus Target"
+                        title={translate("budget.deleteTargetTitle")}
+                        message={translate("budget.deleteTargetMessage", {
+                          period: period(t.year, t.month),
+                          customer: t.customerName ?? translate("budget.allCustomersLower"),
+                          item: t.itemName ?? translate("budget.allItemsLower"),
+                        })}
+                        confirmLabel={translate("budget.deleteTargetConfirm")}
                         onConfirm={() => handleDelete(t.id)}
                         trigger={
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             disabled={deleting === t.id}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-destructive transition-colors duration-150 hover:bg-destructive-soft disabled:opacity-50"
-                            aria-label={`Hapus target ${MONTH_NAMES[t.month - 1]} ${t.year}`}
+                            className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                            aria-label={translate("budget.deleteTargetAria", { period: period(t.year, t.month) })}
                           >
                             {deleting === t.id ? (
                               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                             ) : (
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             )}
-                            Hapus
-                          </button>
+                            {translate("common.delete")}
+                          </Button>
                         }
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

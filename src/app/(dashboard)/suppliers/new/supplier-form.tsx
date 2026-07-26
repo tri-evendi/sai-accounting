@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { useT } from "@/lib/i18n/client";
 
 export function NewSupplierForm() {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,7 +35,7 @@ export function NewSupplierForm() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Gagal menyimpan pemasok");
+      setError(data.error || t("suppliers.saveFailed"));
       setLoading(false);
     } else {
       router.push("/suppliers");
@@ -44,8 +46,11 @@ export function NewSupplierForm() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Pemasok Baru" }]}
-        title="Pemasok Baru"
+        breadcrumbs={[
+          { label: t("suppliers.breadcrumb"), href: "/suppliers" },
+          { label: t("suppliers.newTitle") },
+        ]}
+        title={t("suppliers.newTitle")}
       />
 
       {error && (
@@ -54,23 +59,23 @@ export function NewSupplierForm() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Pemasok</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("suppliers.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" name="name" label="Nama Pemasok" required />
-              <Input id="address" name="address" label="Alamat" />
-              <Input id="phone" name="phone" label="Telepon" />
-              <Input id="email" name="email" type="email" label="Email" />
+              <Input id="name" name="name" label={t("suppliers.nameField")} required />
+              <Input id="address" name="address" label={t("common.address")} />
+              <Input id="phone" name="phone" label={t("common.phone")} />
+              <Input id="email" name="email" type="email" label={t("common.email")} />
             </div>
           </CardContent>
         </Card>
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan"}
+            {loading ? t("common.saving") : t("common.save")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

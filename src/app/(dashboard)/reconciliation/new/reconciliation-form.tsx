@@ -8,9 +8,11 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Info } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 export function NewReconciliationForm() {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,7 +42,7 @@ export function NewReconciliationForm() {
       const data = await res.json().catch(() => ({}));
       const detail = data.details?.fieldErrors;
       const fieldMsg = detail ? Object.values(detail).flat().filter(Boolean)[0] : null;
-      setError(String(fieldMsg || data.error || "Gagal membuat rekonsiliasi"));
+      setError(String(fieldMsg || data.error || t("reconciliation.createFailed")));
       setLoading(false);
     } else {
       const created = await res.json();
@@ -55,11 +57,11 @@ export function NewReconciliationForm() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Cocokkan Rekening Koran", href: "/reconciliation" },
-          { label: "Rekonsiliasi Baru" },
+          { label: t("reconciliation.title"), href: "/reconciliation" },
+          { label: t("reconciliation.newTitle") },
         ]}
-        title="Rekonsiliasi Baru"
-        description="Ambil saldo awal & akhir dari rekening koran bank untuk periode yang direkonsiliasi."
+        title={t("reconciliation.newTitle")}
+        description={t("reconciliation.newDescription")}
       />
 
       {error && (
@@ -71,17 +73,17 @@ export function NewReconciliationForm() {
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Rekening & Periode</CardTitle>
+            <CardTitle>{t("reconciliation.accountPeriodTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="currency"
                 name="currency"
-                label="Mata Uang Rekening"
+                label={t("reconciliation.currencyField")}
                 defaultValue="IDR"
                 options={[
-                  { value: "IDR", label: "IDR (Rupiah)" },
+                  { value: "IDR", label: t("reconciliation.currencyIdrOption") },
                   { value: "USD", label: "USD" },
                   { value: "CNY", label: "CNY" },
                 ]}
@@ -89,12 +91,12 @@ export function NewReconciliationForm() {
               <div className="flex items-end">
                 <p className="flex items-start gap-1 text-xs text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Satu rekening = satu mata uang. Rekonsiliasi hanya membandingkan dalam mata uang ini.</span>
+                  <span>{t("reconciliation.oneAccountHint")}</span>
                 </p>
               </div>
 
-              <Input id="periodStart" name="periodStart" type="date" label="Awal Periode" defaultValue={today} required />
-              <Input id="periodEnd" name="periodEnd" type="date" label="Akhir Periode" defaultValue={today} required />
+              <Input id="periodStart" name="periodStart" type="date" label={t("reconciliation.periodStart")} defaultValue={today} required />
+              <Input id="periodEnd" name="periodEnd" type="date" label={t("reconciliation.periodEnd")} defaultValue={today} required />
 
               <div>
                 <Input
@@ -103,7 +105,7 @@ export function NewReconciliationForm() {
                   type="number"
                   step="0.01"
                   className="text-right tabular-nums"
-                  label="Saldo Awal (koran)"
+                  label={t("reconciliation.openingField")}
                   defaultValue="0"
                 />
               </div>
@@ -114,13 +116,13 @@ export function NewReconciliationForm() {
                   type="number"
                   step="0.01"
                   className="text-right tabular-nums"
-                  label="Saldo Akhir (koran)"
+                  label={t("reconciliation.closingField")}
                   defaultValue="0"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <Input id="note" name="note" label="Catatan (opsional)" />
+                <Input id="note" name="note" label={t("common.notesOptional")} />
               </div>
             </div>
           </CardContent>
@@ -128,10 +130,10 @@ export function NewReconciliationForm() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan..." : "Buat & Lanjut"}
+            {loading ? t("common.saving") : t("reconciliation.submitNew")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/reconciliation")}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

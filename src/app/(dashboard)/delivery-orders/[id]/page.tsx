@@ -4,8 +4,18 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +26,7 @@ export default async function DeliveryOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("delivery_order.read");
+  const t = await getT();
   const { id } = await params;
 
   const order = await prisma.deliveryOrder.findUnique({
@@ -37,9 +48,9 @@ export default async function DeliveryOrderDetailPage({
   const buyer = order.contract?.buyer ?? order.consignee?.name ?? "-";
 
   const info: [string, React.ReactNode][] = [
-    ["Tanggal", formatDate(order.date)],
+    [t("common.date"), formatDate(order.date)],
     [
-      "Consignee",
+      t("deliveryOrders.colConsignee"),
       order.consignee
         ? [order.consignee.name, order.consignee.country, order.consignee.contact]
             .filter(Boolean)
@@ -47,7 +58,7 @@ export default async function DeliveryOrderDetailPage({
         : "—",
     ],
     [
-      "Kontrak sumber",
+      t("deliveryOrders.infoContract"),
       order.contract ? (
         <Link href={`/contracts/${order.contract.id}`} className="text-primary hover:underline">
           {order.contract.contractNo}
@@ -57,7 +68,7 @@ export default async function DeliveryOrderDetailPage({
       ),
     ],
     [
-      "Faktur sumber",
+      t("deliveryOrders.infoInvoice"),
       order.invoice ? (
         <Link href={`/invoices/${order.invoice.id}`} className="text-primary hover:underline">
           {order.invoice.invoiceNo}
@@ -66,21 +77,26 @@ export default async function DeliveryOrderDetailPage({
         "—"
       ),
     ],
-    ["No. Kendaraan", order.vehicleNo || "—"],
-    ["No. Kontainer", order.containerNo || "—"],
-    ["Catatan", order.notes || "—"],
+    [t("deliveryOrders.vehicleNo"), order.vehicleNo || "—"],
+    [t("deliveryOrders.containerNo"), order.containerNo || "—"],
+    [t("common.notes"), order.notes || "—"],
   ];
 
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: order.no }]}
-        title={<>Surat Jalan {order.no}</>}
+        breadcrumbs={[
+          { label: t("deliveryOrders.title"), href: "/delivery-orders" },
+          { label: order.no },
+        ]}
+        title={t("deliveryOrders.detailTitle", { no: order.no })}
         description={formatDate(order.date)}
         actions={
           <>
           <Badge variant={order.status === "canceled" ? "danger" : "success"}>
-            {order.status === "canceled" ? "Dibatalkan" : "Diterbitkan"}
+            {order.status === "canceled"
+              ? t("status.contract.canceled")
+              : t("deliveryOrders.statusIssued")}
           </Badge>
           <DeliveryOrderPdfButton
             order={{
@@ -103,7 +119,7 @@ export default async function DeliveryOrderDetailPage({
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Detail</CardTitle>
+          <CardTitle>{t("deliveryOrders.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -119,49 +135,47 @@ export default async function DeliveryOrderDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Barang</CardTitle>
+          <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Barang</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Bags</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Kg/Bag</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((it) => (
-                  <tr key={it.id} className="border-b border-border">
-                    <td className="px-4 py-3 text-foreground">{it.itemName}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(it.bags)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(Number(it.kgPerBag))}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      {formatNumber(Number(it.quantity))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-border font-semibold">
-                  <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatNumber(totalBags)}
-                  </td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                    {formatNumber(totalKg)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("common.item")}</TableHead>
+                <TableHead className="text-right">{t("common.bags")}</TableHead>
+                <TableHead className="text-right">{t("common.kgPerBag")}</TableHead>
+                <TableHead className="text-right">{t("deliveryOrders.colTotalKg")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {order.items.map((it) => (
+                <TableRow key={it.id}>
+                  <TableCell className="text-foreground">{it.itemName}</TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(it.bags)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(Number(it.kgPerBag))}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground">
+                    {formatNumber(Number(it.quantity))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter className="bg-transparent">
+              <TableRow className="font-semibold hover:bg-transparent">
+                <TableCell className="text-foreground">{t("common.total")}</TableCell>
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {formatNumber(totalBags)}
+                </TableCell>
+                <TableCell />
+                <TableCell className="text-right tabular-nums text-foreground">
+                  {formatNumber(totalKg)}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         </CardContent>
       </Card>
     </div>

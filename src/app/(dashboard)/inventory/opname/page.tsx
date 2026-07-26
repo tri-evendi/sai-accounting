@@ -16,12 +16,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Package } from "lucide-react";
 import { OpnameForm } from "./opname-form";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function StockOpnamePage() {
   // Sama seperti /inventory: semua peran boleh, tapi wajib login (audit RBAC fase 0).
   await requirePagePermission("inventory.write");
+  const t = await getT();
   const allItems = await prisma.item.findMany({
     include: { stock: true },
     orderBy: { name: "asc" },
@@ -43,13 +45,11 @@ export default async function StockOpnamePage() {
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="stok_opname">Hitung Ulang Stok</TermTooltip>}
-        description={
-          <>Hitungan fisik dibanding catatan sistem · stok menipis ≤ {LOW_STOCK_THRESHOLD} satuan</>
-        }
+        title={<TermTooltip term="stok_opname">{t("nav.items.inventoryOpname")}</TermTooltip>}
+        description={t("inventory.opnameDescription", { threshold: LOW_STOCK_THRESHOLD })}
         actions={
           <Link href="/inventory/update">
-            <Button>Tambah / Kurangi Stok</Button>
+            <Button>{t("common.addRemoveStock")}</Button>
           </Link>
         }
       />
@@ -62,33 +62,33 @@ export default async function StockOpnamePage() {
       {/* Summary */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">Jumlah Barang</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statItems")}</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold">{stockHealth.totalItems}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Aman</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statHealthy")}</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold text-success">{stockHealth.healthy}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Menipis</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statLow")}</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold text-warning">{stockHealth.lowStock}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stok Habis</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statEmpty")}</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold text-destructive">{stockHealth.empty}</p></CardContent>
         </Card>
       </div>
 
       {/* Formulir hitung fisik → penyesuaian (issue #57) */}
       <Card>
-        <CardHeader><CardTitle>Hitung Fisik & Sesuaikan ({totalCount})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("inventory.opnameFormTitle", { count: totalCount })}</CardTitle></CardHeader>
         <CardContent>
           {opnameItems.length === 0 ? (
             <EmptyState
               icon={<Package className="h-12 w-12" />}
-              title="Belum ada barang di stok"
-              description="Stok opname membandingkan catatan dengan hitungan fisik. Catat barang masuk pertama Anda supaya ada yang dibandingkan."
-              actionLabel="Tambah / Kurangi Stok"
+              title={t("inventory.emptyTitle")}
+              description={t("inventory.opnameEmptyDescription")}
+              actionLabel={t("common.addRemoveStock")}
               actionHref="/inventory/update"
             />
           ) : (

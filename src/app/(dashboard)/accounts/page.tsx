@@ -2,9 +2,18 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { accountTypeLabel } from "@/lib/accounting";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { accountTypeLabel } from "@/lib/i18n/labels";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListTree } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -19,35 +28,37 @@ export default async function AccountsPage({
   searchParams: Promise<{ search?: string }>;
 }) {
   await requirePagePermission("account.manage");
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
   const { search } = await searchParams;
   const q = (search ?? "").trim();
 
   const accounts = await prisma.account.findMany({ orderBy: { code: "asc" } });
 
   const rowCells = (a: (typeof accounts)[number], depth: number): ReactNode => (
-    <tr key={a.id} className="border-b border-border hover:bg-muted">
-      <td className="px-6 py-3 font-mono text-foreground tabular-nums">{a.code}</td>
-      <td className="px-6 py-3">
+    <TableRow key={a.id}>
+      <TableCell className="font-mono text-foreground tabular-nums">{a.code}</TableCell>
+      <TableCell>
         <span style={{ paddingLeft: depth * 20 }} className="inline-block">
           {depth > 0 && <span className="text-muted-foreground">└ </span>}
           <Link href={`/accounts/${a.id}/edit`} className="text-primary hover:underline font-medium">
             {a.name}
           </Link>
         </span>
-      </td>
-      <td className="px-6 py-3 text-muted-foreground">{accountTypeLabel(a.type)}</td>
-      <td className="px-6 py-3 text-muted-foreground">{a.currency}</td>
-      <td className="px-6 py-3 text-muted-foreground capitalize">
-        {a.normalBalance === "debit" ? "Debit" : "Kredit"}
-      </td>
-      <td className="px-6 py-3">
+      </TableCell>
+      <TableCell className="text-muted-foreground">{accountTypeLabel(dictionary, a.type)}</TableCell>
+      <TableCell className="text-muted-foreground">{a.currency}</TableCell>
+      <TableCell className="text-muted-foreground capitalize">
+        {a.normalBalance === "debit" ? t("common.debit") : t("common.credit")}
+      </TableCell>
+      <TableCell>
         {a.isActive ? (
-          <Badge variant="success">Aktif</Badge>
+          <Badge variant="success">{t("common.active")}</Badge>
         ) : (
-          <Badge variant="default">Nonaktif</Badge>
+          <Badge variant="default">{t("common.inactive")}</Badge>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 
   const rows: ReactNode[] = [];
@@ -80,14 +91,14 @@ export default async function AccountsPage({
   return (
     <div>
       <PageHeader
-        title={<>Akun Perkiraan ({accounts.length})</>}
+        title={t("accounts.title", { count: accounts.length })}
         actions={
           <>
             <Link href="/accounts/import" className="shrink-0">
-              <Button variant="secondary">Impor dari Excel</Button>
+              <Button variant="secondary">{t("accounts.importFromExcel")}</Button>
             </Link>
             <Link href="/accounts/new" className="shrink-0">
-              <Button>+ Akun Baru</Button>
+              <Button>{t("accounts.addNew")}</Button>
             </Link>
           </>
         }
@@ -99,59 +110,59 @@ export default async function AccountsPage({
           type="search"
           name="search"
           defaultValue={q}
-          placeholder="Cari kode atau nama akun…"
+          placeholder={t("accounts.searchPlaceholder")}
           className="w-full max-w-xs"
         />
         <Button type="submit" variant="secondary" size="sm">
-          Cari
+          {t("common.search")}
         </Button>
         {q && (
           <Link href="/accounts">
             <Button type="button" variant="ghost" size="sm">
-              Hapus
+              {t("accounts.clearSearch")}
             </Button>
           </Link>
         )}
       </form>
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Nama Akun</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Mata Uang</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Saldo Normal</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("accounts.colCode")}</TableHead>
+              <TableHead>{t("accounts.nameField")}</TableHead>
+              <TableHead>{t("accounts.colType")}</TableHead>
+              <TableHead>{t("common.currency")}</TableHead>
+              <TableHead>{t("accounts.colNormalBalance")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.length > 0 ? (
               rows
             ) : (
-              <tr>
-                <td colSpan={6}>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
                   {q ? (
                     <EmptyState
                       icon={<ListTree className="h-12 w-12" />}
-                      title="Tidak ada akun yang cocok"
-                      description={`Tidak ditemukan akun dengan kode atau nama "${q}". Coba kata kunci lain.`}
+                      title={t("accounts.emptySearchTitle")}
+                      description={t("accounts.emptySearchDescription", { query: q })}
                     />
                   ) : (
                     <EmptyState
                       icon={<ListTree className="h-12 w-12" />}
-                      title="Belum ada akun perkiraan"
-                      description="Daftar akun adalah rak tempat setiap transaksi disimpan. Buat akun satu per satu, atau impor banyak sekaligus dari Excel."
-                      actionLabel="Impor dari Excel"
+                      title={t("accounts.emptyTitle")}
+                      description={t("accounts.emptyDescription")}
+                      actionLabel={t("accounts.importFromExcel")}
                       actionHref="/accounts/import"
                     />
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

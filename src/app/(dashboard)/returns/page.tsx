@@ -12,9 +12,19 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 import { Undo2, Plus, Info } from "lucide-react";
 import { ReturnPdfButton } from "./pdf-button";
 
@@ -26,6 +36,7 @@ export default async function ReturnsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   await requirePagePermission("return.read");
+  const t = await getT();
   const sp = await searchParams;
   const tab = sp.tab === "purchase" ? "purchase" : "sales";
 
@@ -49,18 +60,13 @@ export default async function ReturnsPage({
   return (
     <div>
       <PageHeader
-        title="Retur"
-        description={
-          <>
-            Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok,
-            piutang/utang, dan PPN-nya.
-          </>
-        }
+        title={t("returns.title")}
+        description={t("returns.description")}
         actions={
           <Link href={`/returns/new?type=${tab}`}>
             <Button className="cursor-pointer">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Buat Retur
+              {t("returns.addNew")}
             </Button>
           </Link>
         }
@@ -68,8 +74,16 @@ export default async function ReturnsPage({
 
       <div className="mb-6 flex flex-wrap gap-2">
         {[
-          { label: `Retur Penjualan (${salesReturns.length})`, href: "/returns?tab=sales", active: tab === "sales" },
-          { label: `Retur Pembelian (${purchaseReturns.length})`, href: "/returns?tab=purchase", active: tab === "purchase" },
+          {
+            label: t("returns.tabSales", { count: salesReturns.length }),
+            href: "/returns?tab=sales",
+            active: tab === "sales",
+          },
+          {
+            label: t("returns.tabPurchase", { count: purchaseReturns.length }),
+            href: "/returns?tab=purchase",
+            active: tab === "purchase",
+          },
         ].map((f) => (
           <Link
             key={f.label}
@@ -88,40 +102,37 @@ export default async function ReturnsPage({
       <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          Retur dinilai dengan <strong>kurs dokumen asal</strong> dan tidak boleh melebihi
-          jumlah/nilai yang tersisa. Retur penjualan mengembalikan stok masuk; retur
-          pembelian mengeluarkan stok.
+          {t("returns.noteA")} <strong>{t("returns.noteStrong")}</strong> {t("returns.noteB")}
         </span>
       </p>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={<Undo2 className="h-12 w-12" />}
-          title={tab === "sales" ? "Belum ada retur penjualan" : "Belum ada retur pembelian"}
-          description="Catat barang yang dikembalikan dari faktur atau pembelian di sini."
-          actionLabel="Buat Retur"
+          title={tab === "sales" ? t("returns.emptySales") : t("returns.emptyPurchase")}
+          description={t("returns.emptyDescription")}
+          actionLabel={t("returns.addNew")}
           actionHref={`/returns/new?type=${tab}`}
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">No. Retur</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
-                    {tab === "sales" ? "Faktur / Pelanggan" : "Pembelian / Supplier"}
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">DPP</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">PPN</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Total (IDR)</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Nota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("returns.colNo")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>
+                  {tab === "sales" ? t("returns.colOriginSales") : t("returns.colOriginPurchase")}
+                </TableHead>
+                <TableHead className="text-right">{t("returns.colDpp")}</TableHead>
+                <TableHead className="text-right">{t("common.vat")}</TableHead>
+                <TableHead className="text-right">{t("common.total")}</TableHead>
+                <TableHead className="text-right">{t("returns.colTotalIdr")}</TableHead>
+                <TableHead className="text-right">{t("returns.colNota")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => {
                   const currency = r.currency;
                   const subtotal = Number(r.subtotal);
                   const tax = Number(r.taxAmount);
@@ -133,36 +144,40 @@ export default async function ReturnsPage({
                     ? (r as typeof salesReturns[number]).customer?.name
                     : (r as typeof purchaseReturns[number]).supplier?.name;
                   return (
-                    <tr key={`${tab}-${r.id}`} className="border-b border-border">
-                      <td className="px-4 py-3 font-medium text-foreground">{r.returnNo}</td>
-                      <td className="px-4 py-3 text-foreground">{formatDateShort(r.date)}</td>
-                      <td className="px-4 py-3 text-foreground">
+                    <TableRow key={`${tab}-${r.id}`}>
+                      <TableCell className="font-medium text-foreground">{r.returnNo}</TableCell>
+                      <TableCell className="text-foreground">{formatDateShort(r.date)}</TableCell>
+                      <TableCell className="text-foreground">
                         {originLabel}
                         {partyName && (
                           <span className="mt-0.5 block text-xs text-muted-foreground">{partyName}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatCurrency(subtotal, currency)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      </TableCell>
+                      <TableCell className="p-0">
+                        <MoneyCell className="text-foreground" value={subtotal} currency={currency} />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-foreground">
                         {tax > 0 ? (
-                          formatCurrency(tax, currency)
+                          <Money value={tax} currency={currency} />
                         ) : (
                           <Badge variant="default">0%</Badge>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
-                        {formatCurrency(subtotal + tax, currency)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      </TableCell>
+                      <TableCell className="p-0">
+                        <MoneyCell
+                          className="font-medium text-foreground"
+                          value={subtotal + tax}
+                          currency={currency}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-foreground">
                         {r.baseAmount != null ? (
-                          formatCurrency(Number(r.baseAmount), "IDR")
+                          <Money value={Number(r.baseAmount)} currency="IDR" />
                         ) : (
-                          <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                          <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <ReturnPdfButton
                           data={{
                             kind: isSales ? "sales" : "purchase",
@@ -181,13 +196,12 @@ export default async function ReturnsPage({
                             })),
                           }}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

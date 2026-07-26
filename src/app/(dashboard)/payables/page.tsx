@@ -15,6 +15,15 @@ import { getPayables } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -22,6 +31,7 @@ import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { ArrowUpFromLine, Info } from "lucide-react";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +46,7 @@ export default async function PayablesPage({
   searchParams: Promise<{ asOf?: string; overdue?: string }>;
 }) {
   await requirePagePermission("payable.read");
+  const t = await getT();
   const sp = await searchParams;
   const asOfStr = sp.asOf ?? todayISO();
   const asOf = new Date(`${asOfStr}T23:59:59.999`);
@@ -61,12 +72,12 @@ export default async function PayablesPage({
     <div>
       <PageHeader
         className="mb-2"
-        title={<TermTooltip term="utang">Tagihan yang Harus Dibayar</TermTooltip>}
+        title={<TermTooltip term="utang">{t("payables.title")}</TermTooltip>}
         description={
           <>
-            Pembelian dari pemasok yang masih punya sisa per {formatDateShort(asOf)}.
+            {t("payables.description", { date: formatDateShort(asOf) })}
             {overdueCount > 0 && !overdueOnly && (
-              <> {overdueCount} dokumen sudah lewat jatuh tempo.</>
+              <> {t("common.overdueDocs", { count: overdueCount })}</>
             )}
           </>
         }
@@ -84,7 +95,7 @@ export default async function PayablesPage({
         buckets={aging.buckets}
         total={aging.total}
         unresolved={aging.unresolved}
-        caption="Umur dihitung sejak jatuh tempo bila ada; bila tidak, sejak tanggal transaksi."
+        caption={t("payables.agingCaption")}
       />
 
       {/* Related balance: uang muka already paid to suppliers (issue #41). */}
@@ -95,27 +106,28 @@ export default async function PayablesPage({
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 {/* Direction is stated in words and by the icon — not by colour. */}
                 <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                Uang muka ke supplier (uang keluar, belum dikompensasi)
+                {t("payables.advanceLabel")}
               </p>
               <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
                 {formatCurrency(advanceSummary.outstandingBase, "IDR")}
               </p>
               <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-                Dari {advanceSummary.count} uang muka yang masih bersisa.{" "}
-                <strong>Tidak</strong> dikurangkan dari total utang di atas — uangnya
-                sudah keluar dan tercatat sebagai <em>aset</em>. Sisa utang sebuah
-                pembelian baru berkurang setelah uang mukanya{" "}
-                <strong>dikompensasi</strong> ke pembelian itu, lewat panel{" "}
-                <strong>Uang Muka Pembelian</strong> di halaman supplier.
+                {t("payables.advanceFrom", { count: advanceSummary.count })}{" "}
+                <strong>{t("payables.advanceNot")}</strong> {t("payables.advanceHintA")}{" "}
+                <em>{t("payables.advanceAsset")}</em>
+                {t("payables.advanceHintB")}{" "}
+                <strong>{t("payables.advanceCompensated")}</strong>{" "}
+                {t("payables.advanceHintC")}{" "}
+                <strong>{t("payables.advancePanel")}</strong> {t("payables.advanceHintD")}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">Belum berkurs</p>
+              <p className="text-xs text-muted-foreground">{t("payables.unratedLabel")}</p>
               <p className="text-xl font-bold tabular-nums text-foreground">
                 {advanceSummary.unresolvedCount}
               </p>
               <p className="mt-0.5 max-w-48 text-xs text-muted-foreground">
-                Uang muka valas tanpa kurs — tidak ikut dijumlahkan.
+                {t("payables.unratedHint")}
               </p>
             </div>
           </div>
@@ -124,7 +136,7 @@ export default async function PayablesPage({
               href="/advances?type=purchase"
               className="cursor-pointer text-xs text-primary transition-colors hover:underline"
             >
-              Lihat semua uang muka pembelian
+              {t("payables.viewAllAdvances")}
             </Link>
           </p>
         </Card>
@@ -134,122 +146,115 @@ export default async function PayablesPage({
         <p className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning-strong">
           <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            <strong>{estimatedCount} baris</strong> ditandai{" "}
-            <Badge variant="warning">Perkiraan</Badge> — sebagian pembayarannya belum
-            ditautkan ke pembelian tertentu, sehingga sisanya diperkirakan dengan
-            melunasi pembelian <strong>terlama lebih dulu</strong>. Baris tanpa tanda
-            itu memakai alokasi pembayaran yang benar-benar dicatat. Total per supplier
-            tepat pada kedua kasus; hanya pembagian per baris yang berbeda. Untuk
-            menghilangkan perkiraan, klik <strong>Perbaiki alokasi</strong> pada baris
-            yang ditandai lalu pilih pembelian yang dilunasi — ini hanya memperbaiki
-            laporan dan <strong>tidak mengubah jurnal</strong>.
+            <strong>{t("payables.estRows", { count: estimatedCount })}</strong>{" "}
+            {t("payables.estMarked")}{" "}
+            <Badge variant="warning">{t("payables.estimateBadge")}</Badge>{" "}
+            {t("payables.estHintA")} <strong>{t("payables.estOldestFirst")}</strong>
+            {t("payables.estHintB")} <strong>{t("payables.fixAllocation")}</strong>{" "}
+            {t("payables.estHintC")} <strong>{t("payables.estNoJournalChange")}</strong>
+            {t("common.fullStop")}
           </span>
         </p>
       ) : (
         <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            Setiap sisa utang di bawah dihitung dari alokasi pembayaran yang tercatat —
-            bukan perkiraan.
+            {t("payables.noEstimateNote")}
           </span>
         </p>
       )}
 
-      <PartyTotals rows={byParty} title="Sisa utang per supplier" />
+      <PartyTotals rows={byParty} title={t("payables.partyTotalsTitle")} />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Supplier</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Jatuh Tempo</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Umur</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Nilai Pembelian</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">Sisa (IDR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-border">
-                  <td className="px-4 py-3 text-foreground">{r.partyName}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={r.href}
-                      className="text-primary hover:underline cursor-pointer transition-colors"
-                    >
-                      {r.documentNo}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">Pembelian</span>
-                    {r.terms && (
-                      <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
-                        {r.terms}
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("payables.colSupplier")}</TableHead>
+              <TableHead>{t("common.document")}</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("common.dueDate")}</TableHead>
+              <TableHead>{t("common.age")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="text-right">{t("payables.colPurchaseValue")}</TableHead>
+              <TableHead className="text-right">{t("common.remainingIdr")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="text-foreground">{r.partyName}</TableCell>
+                <TableCell>
+                  <Link
+                    href={r.href}
+                    className="text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {r.documentNo}
+                  </Link>
+                  <span className="block text-xs text-muted-foreground">{t("payables.docTypePurchase")}</span>
+                  {r.terms && (
+                    <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
+                      {r.terms}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
+                <TableCell className="text-foreground tabular-nums">
+                  {r.dueDate ? (
+                    formatDateShort(r.dueDate)
+                  ) : (
+                    <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
+                </TableCell>
+                <TableCell>
+                  <PaymentStatusBadge status={r.status} />
+                </TableCell>
+                <TableCell className="text-right text-foreground tabular-nums">
+                  <Money value={r.total} currency={r.currency} />
+                  {r.currency !== "IDR" && (
+                    <span className="block text-xs text-muted-foreground">{r.currency}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium text-foreground tabular-nums">
+                  {r.outstandingBase == null ? (
+                    <span className="text-warning-strong">{t("common.rateMissing")}</span>
+                  ) : (
+                    <Money value={r.outstandingBase} currency="IDR" />
+                  )}
+                  {r.allocationEstimated && (
+                    <span className="mt-1 block">
+                      <span
+                        title={t("payables.estimateTitle")}
+                      >
+                        <Badge variant="warning">{t("payables.estimateBadge")}</Badge>
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">{formatDateShort(r.date)}</td>
-                  <td className="px-4 py-3 text-foreground tabular-nums">
-                    {r.dueDate ? (
-                      formatDateShort(r.dueDate)
-                    ) : (
-                      <span className="text-muted-foreground">Belum diisi</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <PaymentStatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                    {formatCurrency(r.total, r.currency)}
-                    {r.currency !== "IDR" && (
-                      <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-foreground tabular-nums">
-                    {r.outstandingBase == null ? (
-                      <span className="text-warning-strong">Kurs belum diisi</span>
-                    ) : (
-                      formatCurrency(r.outstandingBase, "IDR")
-                    )}
-                    {r.allocationEstimated && (
-                      <span className="mt-1 block">
-                        <span
-                          title="Sebagian pembayaran supplier ini belum ditautkan ke pembelian tertentu, jadi sisa baris ini diperkirakan dengan aturan pembelian terlama dilunasi lebih dulu."
-                        >
-                          <Badge variant="warning">Perkiraan</Badge>
-                        </span>
-                        {/* The fix, offered where the problem is noticed (issue
-                            #38): this opens the allocation editor on the payment
-                            responsible, so the guess can be replaced with fact
-                            without deleting and re-posting the payment. */}
-                        <Link
-                          href={`${r.href}?alokasi=1`}
-                          className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
-                        >
-                          Perbaiki alokasi
-                        </Link>
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                    {overdueOnly
-                      ? "Tidak ada utang yang lewat jatuh tempo. Perlu diingat: pembelian tanpa tanggal jatuh tempo tidak ikut terhitung di sini."
-                      : "Semua utang supplier sudah lunas. Belum ada sisa."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      {/* The fix, offered where the problem is noticed (issue
+                          #38): this opens the allocation editor on the payment
+                          responsible, so the guess can be replaced with fact
+                          without deleting and re-posting the payment. */}
+                      <Link
+                        href={`${r.href}?alokasi=1`}
+                        className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
+                      >
+                        {t("payables.fixAllocation")}
+                      </Link>
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                  {overdueOnly ? t("payables.emptyOverdue") : t("payables.emptyAll")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

@@ -3,25 +3,35 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
+import { formatDateShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-const TYPE_LABELS: Record<string, string> = {
-  general: "Umum",
-  sales: "Penjualan",
-  purchase: "Pembelian",
-  cash: "Kas/Bank",
-  adjustment: "Penyesuaian",
-  reversal: "Pembalikan",
-};
-
 export default async function JournalPage() {
   await requirePagePermission("journal.read");
+  const t = await getT();
+  const typeLabels: Record<string, string> = {
+    general: t("journal.type.general"),
+    sales: t("journal.type.sales"),
+    purchase: t("journal.type.purchase"),
+    cash: t("journal.type.cash"),
+    adjustment: t("journal.type.adjustment"),
+    reversal: t("journal.type.reversal"),
+  };
 
   const journals = await prisma.journal.findMany({
     orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -32,68 +42,70 @@ export default async function JournalPage() {
   return (
     <div>
       <PageHeader
-        title={<>Jurnal Umum ({journals.length})</>}
+        title={t("journal.title", { count: journals.length })}
         actions={
           <Link href="/journal/new">
-            <Button>+ Jurnal Baru</Button>
+            <Button>{t("journal.addNew")}</Button>
           </Link>
         }
       />
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Nomor</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tanggal</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Tipe</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Keterangan</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total (IDR)</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("journal.colNumber")}</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("journal.colType")}</TableHead>
+              <TableHead>{t("common.description")}</TableHead>
+              <TableHead className="text-right">{t("journal.colTotalIdr")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {journals.length > 0 ? (
               journals.map((j) => {
                 const total = j.lines.reduce((s, l) => s + Number(l.baseDebit), 0);
                 return (
-                  <tr key={j.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-6 py-3">
+                  <TableRow key={j.id}>
+                    <TableCell>
                       <Link href={`/journal/${j.id}`} className="font-mono text-primary hover:underline">
                         {j.number}
                       </Link>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground tabular-nums">{formatDateShort(j.date)}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{TYPE_LABELS[j.type] ?? j.type}</td>
-                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</td>
-                    <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
-                    <td className="px-6 py-3">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(j.date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{typeLabels[j.type] ?? j.type}</TableCell>
+                    <TableCell className="text-muted-foreground max-w-xs truncate">{j.note ?? "—"}</TableCell>
+                    <TableCell className="p-0">
+                      <MoneyCell value={total} currency="IDR" hideCurrency />
+                    </TableCell>
+                    <TableCell>
                       {j.isReversed ? (
-                        <Badge variant="warning">Dibalik</Badge>
+                        <Badge variant="warning">{t("journal.statusReversed")}</Badge>
                       ) : j.type === "reversal" ? (
-                        <Badge variant="default">Pembalikan</Badge>
+                        <Badge variant="default">{t("journal.statusReversal")}</Badge>
                       ) : (
-                        <Badge variant="success">Aktif</Badge>
+                        <Badge variant="success">{t("common.active")}</Badge>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             ) : (
-              <tr>
-                <td colSpan={6}>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={<BookText className="h-12 w-12" />}
-                    title="Belum ada jurnal"
-                    description="Sebagian besar jurnal dibuat otomatis dari faktur, kontrak, kas, dan stok. Jurnal manual dipakai untuk koreksi dan penyesuaian."
-                    actionLabel="+ Buat Jurnal Manual"
+                    title={t("journal.emptyTitle")}
+                    description={t("journal.emptyDescription")}
+                    actionLabel={t("journal.emptyAction")}
                     actionHref="/journal/new"
                   />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

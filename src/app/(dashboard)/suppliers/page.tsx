@@ -2,12 +2,21 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getT } from "@/lib/i18n/server";
 import { Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +27,7 @@ export default async function SuppliersPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("supplier.read");
+  const t = await getT();
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -39,59 +49,57 @@ export default async function SuppliersPage({
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>}
-        description="Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya."
+        title={<TermTooltip term="pemasok">{t("suppliers.title", { count: totalCount })}</TermTooltip>}
+        description={t("suppliers.description")}
         actions={
           <Link href="/suppliers/new" className="shrink-0">
-            <Button>+ Tambah Pemasok</Button>
+            <Button>{t("suppliers.addNew")}</Button>
           </Link>
         }
       />
-      <LearnMore term="pembelian" className="mt-1 mb-6" label="Pelajari ini: cara mencatat pembelian" />
+      <LearnMore term="pembelian" className="mt-1 mb-6" label={t("suppliers.learnMore")} />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-6 py-3 font-medium text-muted-foreground">Nama</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Alamat</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Telepon</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Surel</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground">Transaksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <EmptyState
-                      icon={<Truck className="h-12 w-12" />}
-                      title="Belum ada pemasok"
-                      description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
-                      actionLabel="+ Tambah Pemasok"
-                      actionHref="/suppliers/new"
-                    />
-                  </td>
-                </tr>
-              ) : (
-                suppliers.map((s) => (
-                  <tr key={s.id} className="border-b border-border hover:bg-muted">
-                    <td className="px-6 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
-                        {s.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.address || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.phone || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.email || "-"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{s.transactions.length}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.address")}</TableHead>
+              <TableHead>{t("common.phone")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("suppliers.colTransactions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {suppliers.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState
+                    icon={<Truck className="h-12 w-12" />}
+                    title={t("suppliers.emptyTitle")}
+                    description={t("suppliers.emptyDescription")}
+                    actionLabel={t("suppliers.addNew")}
+                    actionHref="/suppliers/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              suppliers.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
+                      {s.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{s.address || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.phone || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.email || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.transactions.length}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         <Pagination currentPage={page} totalPages={totalPages} basePath="/suppliers" searchParams={params} />
       </Card>
     </div>

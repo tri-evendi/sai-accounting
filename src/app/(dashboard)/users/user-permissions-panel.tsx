@@ -40,13 +40,15 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
+import type { SystemRole } from "@/lib/constants";
 import type { Permission } from "@/lib/authz";
 import {
   validateUserOverrides,
   type UserPermissionOverrideRow,
 } from "@/lib/authz-user-overrides";
-import { PERMISSION_LABELS, permissionGroups } from "@/lib/authz-labels";
+import { permissionGroups } from "@/lib/authz-labels";
+import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { Lock, RotateCcw, Save, X } from "lucide-react";
 
 interface UserPermissionsResponse {
@@ -78,6 +80,8 @@ export function UserPermissionsPanel({
   /** Dipanggil setelah simpan sukses — daftar pengguna me-refresh lencananya. */
   onSaved: () => void;
 }) {
+  const t = useT();
+  const dictionary = useDictionary();
   const { toast } = useToast();
   const [data, setData] = useState<UserPermissionsResponse | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -87,7 +91,15 @@ export function UserPermissionsPanel({
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const groups = useMemo(() => permissionGroups(), []);
+  // Bentuk kelompok dari `authz-labels.ts`; teksnya dari kamus, jadi baris
+  // matriks ikut bahasa tanpa kehilangan jaminan tipe penuhnya.
+  const permissionText = useMemo(() => permissionLabels(dictionary), [dictionary]);
+  const resourceText = useMemo(() => permissionResourceLabels(dictionary), [dictionary]);
+  const groups = useMemo(
+    () =>
+      permissionGroups().map((group) => ({ ...group, label: resourceText[group.resource] })),
+    [resourceText]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -96,10 +108,10 @@ export function UserPermissionsPanel({
         if (!res.ok) {
           throw new Error(
             res.status === 403
-              ? "Anda tidak punya izin mengelola hak akses."
+              ? t("users.errNoPermissionAuthz")
               : res.status === 404
-                ? "Pengguna tidak ditemukan."
-                : "Gagal memuat izin pengguna."
+                ? t("users.errUserNotFound")
+                : t("users.errLoadPermissions")
           );
         }
         return (await res.json()) as UserPermissionsResponse;
@@ -115,7 +127,7 @@ export function UserPermissionsPanel({
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, t]);
 
   const roleSet = useMemo(() => new Set(data?.roleEffective ?? []), [data]);
   const lockedSet = useMemo(() => new Set(data?.lockedPermissions ?? []), [data]);
@@ -152,7 +164,7 @@ export function UserPermissionsPanel({
     const found = validateUserOverrides(data.user.role, draftOverrides, roleSet);
     setErrors(found);
     if (found.length > 0) {
-      toast("Perubahan belum bisa disimpan — periksa pesan kesalahannya.", "error");
+      toast(t("users.errSaveBlocked"), "error");
       return;
     }
     setConfirmSave(true);
@@ -168,7 +180,7 @@ export function UserPermissionsPanel({
       });
       const json = await res.json();
       if (!res.ok) {
-        const message = (json as { error?: string }).error ?? "Gagal menyimpan izin pengguna.";
+        const message = (json as { error?: string }).error ?? t("users.errSavePermissions");
         setErrors((json as { errors?: string[] }).errors ?? [message]);
         toast(message, "error");
         return;
@@ -180,7 +192,7 @@ export function UserPermissionsPanel({
       toast(successMessage);
       onSaved();
     } catch {
-      toast("Gagal menghubungi server. Coba lagi.", "error");
+      toast(t("users.errNetwork"), "error");
     } finally {
       setSaving(false);
     }
@@ -195,7 +207,7 @@ export function UserPermissionsPanel({
           </div>
           <Button variant="outline" size="sm" onClick={onClose}>
             <X aria-hidden="true" />
-            Tutup
+            {t("common.close")}
           </Button>
         </div>
       </Card>
@@ -205,13 +217,13 @@ export function UserPermissionsPanel({
   if (!data) {
     return (
       <Card className="mb-6">
-        <PageLoader message="Memuat izin pengguna..." />
+        <PageLoader message={t("users.loadingPermissions")} />
       </Card>
     );
   }
 
   const displayName = data.user.name || data.user.username;
-  const roleLabel = ROLE_LABELS[data.user.role as Role] ?? data.user.role;
+  const roleLabel = roleLabels(dictionary)[data.user.role as SystemRole] ?? data.user.role;
 
   return (
     <Card className="mb-6">
@@ -219,17 +231,17 @@ export function UserPermissionsPanel({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle className="flex flex-wrap items-center gap-2">
-              Izin Khusus — {displayName}
+              {t("users.panelTitle", { name: displayName })}
               {savedOverrideCount > 0 ? (
-                <Badge variant="warning">{savedOverrideCount} izin khusus</Badge>
+                <Badge variant="warning">
+                  {t("users.overrideBadge", { count: savedOverrideCount })}
+                </Badge>
               ) : (
-                <Badge>Ikuti peran</Badge>
+                <Badge>{t("users.followRoleBadge")}</Badge>
               )}
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Bawaannya pengguna mengikuti perannya ({roleLabel}). Pilihan &quot;Selalu
-              boleh/tidak&quot; menang atas perannya — hanya untuk pengguna ini, berlaku
-              paling lama satu menit, dan tercatat di jejak audit.
+              {t("users.panelHint", { role: roleLabel })}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -240,15 +252,15 @@ export function UserPermissionsPanel({
               onClick={() => setConfirmReset(true)}
             >
               <RotateCcw aria-hidden="true" />
-              Ikuti peran sepenuhnya
+              {t("users.followRoleFully")}
             </Button>
             <Button size="sm" disabled={saving || !isDirty} onClick={requestSave}>
               <Save aria-hidden="true" />
-              Simpan
+              {t("common.save")}
             </Button>
             <Button variant="secondary" size="sm" disabled={saving} onClick={onClose}>
               <X aria-hidden="true" />
-              Tutup
+              {t("common.close")}
             </Button>
           </div>
         </div>
@@ -260,7 +272,7 @@ export function UserPermissionsPanel({
             role="alert"
             className="mb-4 rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong"
           >
-            <p className="font-medium">Perubahan belum bisa disimpan:</p>
+            <p className="font-medium">{t("users.errorsTitle")}</p>
             <ul className="mt-1 list-disc pl-5">
               {errors.map((message) => (
                 <li key={message}>{message}</li>
@@ -275,12 +287,13 @@ export function UserPermissionsPanel({
               aria-hidden="true"
               className="inline-block size-3 rounded-sm bg-warning-soft ring-1 ring-warning"
             />
-            Baris bertanda <span className="font-medium text-warning-strong">izin khusus</span>{" "}
-            menyimpang dari perannya
+            {t("users.legendMarkedBefore")}{" "}
+            <span className="font-medium text-warning-strong">{t("users.legendOverride")}</span>{" "}
+            {t("users.legendMarkedAfter")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Lock className="size-3" aria-hidden="true" />
-            Terkunci: Pimpinan harus selalu bisa mengelola pengguna &amp; hak akses
+            {t("users.legendLocked")}
           </span>
         </div>
 
@@ -288,8 +301,8 @@ export function UserPermissionsPanel({
           <Table className="min-w-[560px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[280px]">Izin</TableHead>
-                <TableHead className="w-64">Untuk pengguna ini</TableHead>
+                <TableHead className="min-w-[280px]">{t("users.colPermission")}</TableHead>
+                <TableHead className="w-64">{t("users.colForThisUser")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -303,6 +316,8 @@ export function UserPermissionsPanel({
                   lockedSet={lockedSet}
                   onChange={setChoice}
                   disabled={saving}
+                  permissionText={permissionText}
+                  t={t}
                 />
               ))}
             </TableBody>
@@ -313,23 +328,25 @@ export function UserPermissionsPanel({
       <ConfirmDialog
         open={confirmSave}
         onOpenChange={setConfirmSave}
-        title={`Simpan izin khusus untuk ${displayName}?`}
+        title={t("users.confirmSaveTitle", { name: displayName })}
         message={
           `${
             draftOverrides.length === 0
-              ? "Semua izin kembali mengikuti perannya — izin khusus yang tersimpan akan dihapus."
-              : `${draftOverrides.length} izin akan menyimpang dari perannya (${roleLabel}).`
-          } ` +
-          "Perubahan berlaku paling lama satu menit dan dicatat di jejak audit atas nama Anda."
+              ? t("users.confirmSaveAllRole")
+              : t("users.confirmSaveCount", {
+                  count: draftOverrides.length,
+                  role: roleLabel,
+                })
+          } ` + t("users.confirmSaveTail")
         }
-        confirmLabel="Simpan"
+        confirmLabel={t("common.save")}
         confirmVariant="primary"
         onConfirm={() =>
           submit(
             draftOverrides,
             draftOverrides.length === 0
-              ? "Pengguna kembali mengikuti perannya sepenuhnya."
-              : "Izin khusus disimpan. Berlaku paling lama satu menit."
+              ? t("users.savedFollowRole")
+              : t("users.savedOverrides")
           )
         }
       />
@@ -337,14 +354,11 @@ export function UserPermissionsPanel({
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}
-        title="Ikuti peran sepenuhnya?"
-        message={
-          `Semua izin khusus ${displayName} dihapus dan ia kembali berizin persis seperti ` +
-          `perannya (${roleLabel}). Perubahan berlaku paling lama satu menit dan dicatat di jejak audit.`
-        }
-        confirmLabel="Hapus izin khusus"
+        title={t("users.confirmResetTitle")}
+        message={t("users.confirmResetMessage", { name: displayName, role: roleLabel })}
+        confirmLabel={t("users.confirmResetLabel")}
         confirmVariant="danger"
-        onConfirm={() => submit([], "Pengguna kembali mengikuti perannya sepenuhnya.")}
+        onConfirm={() => submit([], t("users.savedFollowRole"))}
       />
     </Card>
   );
@@ -358,6 +372,8 @@ function UserPermissionGroupRows({
   lockedSet,
   onChange,
   disabled,
+  permissionText,
+  t,
 }: {
   label: string;
   permissions: Permission[];
@@ -366,6 +382,8 @@ function UserPermissionGroupRows({
   lockedSet: ReadonlySet<string>;
   onChange: (permission: Permission, choice: Choice) => void;
   disabled: boolean;
+  permissionText: Record<Permission, string>;
+  t: TranslateFn;
 }) {
   return (
     <>
@@ -385,7 +403,7 @@ function UserPermissionGroupRows({
         return (
           <TableRow key={permission} className={cn(changed && "bg-warning-soft")}>
             <TableCell>
-              <div className="text-sm text-foreground">{PERMISSION_LABELS[permission]}</div>
+              <div className="text-sm text-foreground">{permissionText[permission]}</div>
               <div className="text-xs text-muted-foreground">{permission}</div>
             </TableCell>
             <TableCell>
@@ -395,26 +413,31 @@ function UserPermissionGroupRows({
                   value={choice}
                   disabled={disabled || locked}
                   onChange={(e) => onChange(permission, e.target.value as Choice)}
-                  aria-label={`${PERMISSION_LABELS[permission]} untuk pengguna ini`}
-                  title={
-                    locked
-                      ? "Terkunci — Pimpinan harus selalu bisa mengelola pengguna & hak akses."
-                      : undefined
-                  }
+                  aria-label={t("users.selectAria", { permission: permissionText[permission] })}
+                  title={locked ? t("users.lockedTitle") : undefined}
                   options={[
-                    { value: "role", label: `Ikuti peran (${roleAllows ? "Boleh" : "Tidak"})` },
-                    { value: "allow", label: "Selalu boleh" },
-                    { value: "deny", label: "Selalu tidak" },
+                    {
+                      value: "role",
+                      label: t("users.choiceRole", {
+                        state: roleAllows
+                          ? t("users.choiceAllowed")
+                          : t("users.choiceNotAllowed"),
+                      }),
+                    },
+                    { value: "allow", label: t("users.choiceAlwaysAllow") },
+                    { value: "deny", label: t("users.choiceAlwaysDeny") },
                   ]}
                 />
                 {locked && (
                   <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
                     <Lock className="size-3" aria-hidden="true" />
-                    terkunci
+                    {t("users.lockedShort")}
                   </span>
                 )}
                 {changed && !locked && (
-                  <span className="text-xs font-medium text-warning-strong">izin khusus</span>
+                  <span className="text-xs font-medium text-warning-strong">
+                    {t("users.legendOverride")}
+                  </span>
                 )}
               </div>
             </TableCell>

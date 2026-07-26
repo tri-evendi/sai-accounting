@@ -47,6 +47,7 @@ import {
   type PurchaseLineDraft,
   type PurchaseStepId,
 } from "@/lib/wizard";
+import { useT } from "@/lib/i18n/client";
 import { CheckCircle2, PackagePlus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 
 export interface SupplierOption {
@@ -79,6 +80,7 @@ export function PurchaseWizard({
   closedPeriods: ClosedPeriodRef[];
 }) {
   const router = useRouter();
+  const t = useT();
   const { draft, setDraft, clear, ready, notice, dismissNotice } = useWizardDraft<PurchaseDraft>(
     "purchase",
     () => emptyPurchaseDraft(todayISO())
@@ -112,7 +114,7 @@ export function PurchaseWizard({
   const itemOptions: SearchableOption[] = items.map((i) => ({
     value: String(i.id),
     label: i.name,
-    description: `Stok: ${formatNumber(i.currentStock)} ${i.unit || "kg"}`,
+    description: t("common.stockOption", { qty: formatNumber(i.currentStock), unit: i.unit || "kg" }),
   }));
 
   const currency = draft.purchase.currency;
@@ -130,9 +132,7 @@ export function PurchaseWizard({
       const data = (await res.json().catch(() => null)) as
         | { error?: string; step?: PurchaseStepId }
         | null;
-      setError(
-        humanizeFieldMessage(null, data?.error ?? "Pembelian belum bisa disimpan.")
-      );
+      setError(humanizeFieldMessage(null, data?.error ?? t("purchases.saveFailed")));
       setBusy(false);
       if (data?.step) setStepId(data.step);
       return;
@@ -157,27 +157,29 @@ export function PurchaseWizard({
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-success-strong" aria-hidden="true" />
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-foreground">Pembelian tersimpan</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Semuanya dicatat sekaligus dalam satu penyimpanan.
-              </p>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t("purchases.savedTitle")}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("purchases.savedHint")}</p>
               <dl className="mt-4 divide-y divide-border">
-                <WizardSummaryRow label="Pemasok" value={result.supplierName} />
+                <WizardSummaryRow label={t("purchases.rowSupplier")} value={result.supplierName} />
                 <WizardSummaryRow
-                  label="Nilai pembelian"
+                  label={t("purchases.rowPurchaseValue")}
                   value={formatCurrency(result.purchase.amount, result.purchase.currency)}
                   strong
                 />
                 <WizardSummaryRow
-                  label="Barang masuk gudang"
+                  label={t("purchases.rowReceipt")}
                   value={
-                    result.receiptCount > 0 ? `${result.receiptCount} baris` : "Tidak dicatat"
+                    result.receiptCount > 0
+                      ? t("common.rowCount", { count: result.receiptCount })
+                      : t("common.notRecorded")
                   }
                 />
               </dl>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link href={`/suppliers/${result.supplierId}`}>
-                  <Button className="cursor-pointer">Lihat pemasok</Button>
+                  <Button className="cursor-pointer">{t("purchases.viewSupplier")}</Button>
                 </Link>
                 <Button
                   type="button"
@@ -189,7 +191,7 @@ export function PurchaseWizard({
                     setDraft(emptyPurchaseDraft(todayISO()));
                   }}
                 >
-                  Catat pembelian lagi
+                  {t("purchases.recordAnother")}
                 </Button>
               </div>
             </div>
@@ -200,7 +202,7 @@ export function PurchaseWizard({
   }
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">Menyiapkan formulir…</p>;
+    return <p className="text-sm text-muted-foreground">{t("common.preparingForm")}</p>;
   }
 
   return (
@@ -217,12 +219,12 @@ export function PurchaseWizard({
       busy={busy}
       error={error}
       notice={notice}
-      finishLabel="Selesai & Simpan"
+      finishLabel={t("common.finishAndSave")}
     >
       {/* ── 1. Pemasok ────────────────────────────────────────────────── */}
       {stepId === "pemasok" && (
         <WizardPartnerStep
-          noun="pemasok"
+          kind="supplier"
           options={supplierOptions}
           value={draft.supplier}
           manageHref="/suppliers"
@@ -237,7 +239,7 @@ export function PurchaseWizard({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Barang yang dibeli</CardTitle>
+              <CardTitle>{t("purchases.goodsBoughtTitle")}</CardTitle>
               <Button
                 type="button"
                 variant="secondary"
@@ -245,12 +247,13 @@ export function PurchaseWizard({
                 className="cursor-pointer"
                 onClick={() => patch((d) => ({ ...d, lines: [...d.lines, emptyPurchaseLine()] }))}
               >
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Tambah barang
+                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.addItemLower")}
               </Button>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Jumlah × harga beli di sini menjadi nilai pembelian yang dicatat sebagai{" "}
-              <TermTooltip term="utang">utang</TermTooltip> ke pemasok.
+              {t("purchases.goodsHintA")}{" "}
+              <TermTooltip term="utang">{t("purchases.goodsHintTerm")}</TermTooltip>{" "}
+              {t("purchases.goodsHintB")}
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -258,10 +261,10 @@ export function PurchaseWizard({
               <div key={i} className="rounded-md border border-border p-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <SearchableSelect
-                    label="Barang dari daftar stok"
-                    placeholder="Pilih barang…"
-                    searchPlaceholder="Cari barang…"
-                    emptyText="Tidak ada barang cocok"
+                    label={t("common.itemFromStockList")}
+                    placeholder={t("common.pickItem")}
+                    searchPlaceholder={t("common.searchItem")}
+                    emptyText={t("common.noItemMatch")}
                     options={itemOptions}
                     value={line.itemId != null ? String(line.itemId) : null}
                     onChange={(v) => {
@@ -275,7 +278,7 @@ export function PurchaseWizard({
                   />
                   <Input
                     id={`purchaseItemName-${i}`}
-                    label="Nama barang di dokumen"
+                    label={t("common.itemNameOnDocument")}
                     value={line.itemName}
                     onChange={(e) => updateLine(i, { itemName: e.target.value })}
                     maxLength={100}
@@ -288,7 +291,7 @@ export function PurchaseWizard({
                       htmlFor={`purchaseQty-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Jumlah ({line.unit || "kg"})
+                      {t("purchases.quantityUnit", { unit: line.unit || "kg" })}
                     </label>
                     <TextInput
                       id={`purchaseQty-${i}`}
@@ -305,7 +308,7 @@ export function PurchaseWizard({
                       htmlFor={`purchasePrice-${i}`}
                       className="mb-1 block text-xs font-medium text-muted-foreground"
                     >
-                      Harga beli per {line.unit || "kg"} ({currency})
+                      {t("purchases.purchasePriceUnit", { unit: line.unit || "kg", currency })}
                     </label>
                     <TextInput
                       id={`purchasePrice-${i}`}
@@ -318,13 +321,15 @@ export function PurchaseWizard({
                     />
                   </div>
                   <div className="ml-auto text-right">
-                    <span className="block text-xs text-muted-foreground">Nilai baris</span>
+                    <span className="block text-xs text-muted-foreground">{t("common.lineValue")}</span>
                     <span className="block text-sm font-medium tabular-nums text-foreground">
                       {formatCurrency(line.quantity * line.price, currency)}
                     </span>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() =>
                       patch((d) => ({
                         ...d,
@@ -332,16 +337,15 @@ export function PurchaseWizard({
                       }))
                     }
                     disabled={draft.lines.length === 1}
-                    aria-label={`Hapus baris barang ${i + 1}`}
-                    className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={t("common.removeItemRow", { n: i + 1 })}
+                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
                 {line.itemId == null && (
                   <p className="mt-2 text-xs text-warning-strong">
-                    Barang ini belum ada di daftar stok, jadi tidak bisa dicatat masuk gudang.
-                    Nilai pembeliannya tetap tercatat.
+                    {t("purchases.lineNotInStock")}
                   </p>
                 )}
               </div>
@@ -349,7 +353,7 @@ export function PurchaseWizard({
 
             <dl className="border-t border-border pt-3">
               <WizardSummaryRow
-                label="Nilai pembelian (sebelum PPN)"
+                label={t("purchases.valueBeforeTaxLine")}
                 value={formatCurrency(purchaseValue(draft), currency)}
                 strong
               />
@@ -377,13 +381,13 @@ export function PurchaseWizard({
               <span className="text-sm">
                 <span className="flex items-center gap-2 font-medium text-foreground">
                   <PackagePlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  Barangnya sudah sampai gudang — tambahkan ke{" "}
-                  <TermTooltip term="persediaan">stok</TermTooltip>
+                  {t("purchases.receiptCheckboxA")}{" "}
+                  <TermTooltip term="persediaan">{t("purchases.receiptTerm")}</TermTooltip>
                 </span>
                 <span className="mt-0.5 block text-muted-foreground">
-                  Stok bertambah beserta harga pokoknya, yang nanti dipakai menghitung{" "}
-                  <TermTooltip term="hpp">HPP</TermTooltip> saat barang dijual. Tidak ada
-                  jurnal tambahan — persediaan sudah masuk lewat jurnal pembeliannya.
+                  {t("purchases.receiptHintA")}{" "}
+                  <TermTooltip term="hpp">{t("purchases.receiptHintTerm")}</TermTooltip>{" "}
+                  {t("purchases.receiptHintB")}
                 </span>
               </span>
             </label>
@@ -393,7 +397,7 @@ export function PurchaseWizard({
                 <Input
                   id="receiptDate"
                   type="date"
-                  label="Tanggal barang masuk"
+                  label={t("purchases.receiptDate")}
                   value={draft.receipt.date}
                   onChange={(e) =>
                     patch((d) => ({ ...d, receipt: { ...d.receipt, date: e.target.value } }))
@@ -420,13 +424,16 @@ export function PurchaseWizard({
                             }
                           />
                           <span className="font-medium text-foreground">
-                            {line.itemName || `Baris ${i + 1}`}
+                            {line.itemName || t("common.rowN", { n: i + 1 })}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            dibeli {formatNumber(line.quantity)} {line.unit || "kg"}
+                            {t("purchases.bought", {
+                              qty: formatNumber(line.quantity),
+                              unit: line.unit || "kg",
+                            })}
                           </span>
                           {line.itemId == null && (
-                            <Badge variant="warning">Tidak ada di daftar stok</Badge>
+                            <Badge variant="warning">{t("common.notInStockList")}</Badge>
                           )}
                         </label>
 
@@ -437,7 +444,7 @@ export function PurchaseWizard({
                                 htmlFor={`receiveQty-${i}`}
                                 className="mb-1 block text-xs font-medium text-muted-foreground"
                               >
-                                Masuk ({line.unit || "kg"})
+                                {t("purchases.receiveQty", { unit: line.unit || "kg" })}
                               </label>
                               <TextInput
                                 id={`receiveQty-${i}`}
@@ -453,7 +460,7 @@ export function PurchaseWizard({
                             </div>
                             <div className="ml-auto text-right">
                               <span className="block text-xs text-muted-foreground">
-                                Stok sekarang
+                                {t("purchases.currentStock")}
                               </span>
                               <span className="block text-sm tabular-nums text-foreground">
                                 {formatNumber(master?.currentStock ?? 0)} {line.unit || "kg"}
@@ -463,7 +470,7 @@ export function PurchaseWizard({
                         )}
                         {over && (
                           <p className="mt-2 text-xs font-medium text-destructive-strong">
-                            Jumlah yang masuk melebihi jumlah yang dibeli.
+                            {t("purchases.overReceive")}
                           </p>
                         )}
                       </div>
@@ -473,9 +480,7 @@ export function PurchaseWizard({
 
                 {currency !== "IDR" && (
                   <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-                    Harga pokok stok selalu dicatat dalam rupiah, jadi harga beli{" "}
-                    {currency} dikalikan kurs yang Anda isi di langkah berikutnya. Isi kursnya
-                    lebih dulu bila belum.
+                    {t("purchases.fxCostHint", { currency })}
                   </p>
                 )}
               </>
@@ -490,13 +495,14 @@ export function PurchaseWizard({
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>
-                <TermTooltip term="pembelian">Detail pembelian</TermTooltip>
+                <TermTooltip term="pembelian">{t("purchases.detailTitle")}</TermTooltip>
               </CardTitle>
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>
-                  Menambah <TermTooltip term="utang">Hutang Usaha</TermTooltip> ke pemasok —
-                  uang keluar baru dicatat saat pembayarannya.
+                  {t("purchases.detailHintA")}{" "}
+                  <TermTooltip term="utang">{t("purchases.detailHintTerm")}</TermTooltip>{" "}
+                  {t("purchases.detailHintB")}
                 </span>
               </p>
             </CardHeader>
@@ -505,7 +511,7 @@ export function PurchaseWizard({
                 <Input
                   id="purchaseDate"
                   type="date"
-                  label="Tanggal pembelian"
+                  label={t("purchases.purchaseDate")}
                   value={draft.purchase.date}
                   onChange={(e) =>
                     patch((d) => ({ ...d, purchase: { ...d.purchase, date: e.target.value } }))
@@ -522,15 +528,15 @@ export function PurchaseWizard({
 
               <dl className="mt-4 border-t border-border pt-3">
                 <WizardSummaryRow
-                  label="Nilai sebelum PPN"
+                  label={t("purchases.valueBeforeVat")}
                   value={formatCurrency(purchaseValue(draft), currency)}
                 />
                 <WizardSummaryRow
-                  label={<TermTooltip term="ppn">PPN Masukan</TermTooltip>}
+                  label={<TermTooltip term="ppn">{t("purchases.inputVat")}</TermTooltip>}
                   value={formatCurrency(draft.purchase.taxAmount || 0, currency)}
                 />
                 <WizardSummaryRow
-                  label="Total utang ke pemasok"
+                  label={t("purchases.totalPayable")}
                   value={formatCurrency(purchaseTotal(draft), currency)}
                   strong
                 />
@@ -539,12 +545,17 @@ export function PurchaseWizard({
           </Card>
 
           <DisclosureSection
-            description="Mata uang & kurs, PPN Masukan, dan catatan pembelian."
+            description={t("purchases.advancedDescription")}
             summary={[
               currency === "IDR"
-                ? "Rupiah (IDR)"
-                : `${currency} · kurs ${draft.purchase.rate > 0 ? draft.purchase.rate : "belum diisi"}`,
-              `PPN Masukan ${formatNumber(draft.purchase.taxAmount || 0)}`,
+                ? t("common.rupiahIdr")
+                : t("invoices.advCurrencyForeign", {
+                    currency,
+                    rate: draft.purchase.rate > 0 ? draft.purchase.rate : t("common.notEntered"),
+                  }),
+              t("purchases.advSummaryVat", {
+                amount: formatNumber(draft.purchase.taxAmount || 0),
+              }),
             ].join(" · ")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -553,7 +564,7 @@ export function PurchaseWizard({
                   htmlFor="purchaseCurrency"
                   className="mb-1 block text-sm font-medium text-foreground"
                 >
-                  Mata uang
+                  {t("common.currencyField")}
                 </label>
                 <NativeSelect
                   id="purchaseCurrency"
@@ -577,7 +588,8 @@ export function PurchaseWizard({
                     htmlFor="purchaseRate"
                     className="mb-1 block text-sm font-medium text-foreground"
                   >
-                    <TermTooltip term="kurs">Kurs</TermTooltip> 1 {currency} ke IDR
+                    <TermTooltip term="kurs">{t("common.rateTerm")}</TermTooltip> 1 {currency}{" "}
+                    {t("common.rateTo")}
                   </label>
                   <TextInput
                     id="purchaseRate"
@@ -594,7 +606,7 @@ export function PurchaseWizard({
                     }
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Wajib diisi — buku besar mencatat nilai IDR.
+                    {t("common.rateRequiredHint")}
                   </p>
                 </div>
               )}
@@ -603,7 +615,7 @@ export function PurchaseWizard({
                   htmlFor="taxAmount"
                   className="mb-1 block text-sm font-medium text-foreground"
                 >
-                  PPN Masukan ({currency})
+                  {t("purchases.inputVatCurrency", { currency })}
                 </label>
                 <TextInput
                   id="taxAmount"
@@ -619,24 +631,19 @@ export function PurchaseWizard({
                     }))
                   }
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Diposting terpisah ke akun PPN Masukan. Isi 0 bila tidak ada.
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("purchases.inputVatHint")}</p>
               </div>
               <div className="sm:col-span-2">
                 <Input
                   id="purchaseNote"
-                  label="Catatan (opsional)"
+                  label={t("common.notesOptional")}
                   value={draft.purchase.note}
                   onChange={(e) =>
                     patch((d) => ({ ...d, purchase: { ...d.purchase, note: e.target.value } }))
                   }
                   maxLength={300}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Rincian barang di langkah 2 otomatis ikut ke catatan ini, karena satu
-                  pembelian tersimpan sebagai satu nilai.
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("purchases.noteHint")}</p>
               </div>
             </div>
           </DisclosureSection>
@@ -647,55 +654,59 @@ export function PurchaseWizard({
       {stepId === "ringkasan" && (
         <Card>
           <CardHeader>
-            <CardTitle>Periksa sebelum disimpan</CardTitle>
+            <CardTitle>{t("common.checkBeforeSaving")}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Semua di bawah ini akan dicatat sekaligus. Bila salah satunya gagal, tidak ada
-              satu pun yang tersimpan.
+              {t("common.checkBeforeSavingHint")}
             </p>
           </CardHeader>
           <CardContent>
             <dl className="divide-y divide-border">
               <WizardSummaryRow
-                label="Pemasok"
+                label={t("purchases.rowSupplier")}
                 value={
                   draft.supplier.mode === "new"
-                    ? `${draft.supplier.name} (baru)`
+                    ? t("purchases.summaryNew", { name: draft.supplier.name })
                     : (suppliers.find((s) => s.id === draft.supplier.id)?.name ?? "—")
                 }
               />
               <WizardSummaryRow
-                label="Barang"
-                value={`${draft.lines.filter((l) => l.itemName.trim()).length} baris`}
+                label={t("purchases.summaryGoods")}
+                value={t("common.rowCount", {
+                  count: draft.lines.filter((l) => l.itemName.trim()).length,
+                })}
                 hint={draft.lines
                   .filter((l) => l.itemName.trim())
                   .map((l) => `${l.itemName} ${formatNumber(l.quantity)} ${l.unit || "kg"}`)
                   .join(" · ")}
               />
               <WizardSummaryRow
-                label="Barang masuk gudang"
+                label={t("purchases.rowReceipt")}
                 value={
                   draft.receipt.include
-                    ? `${draft.lines.filter((l) => l.receive && l.receiveQuantity > 0).length} baris`
-                    : "Tidak dicatat"
+                    ? t("common.rowCount", {
+                        count: draft.lines.filter((l) => l.receive && l.receiveQuantity > 0)
+                          .length,
+                      })
+                    : t("common.notRecorded")
                 }
                 hint={
                   draft.receipt.include
-                    ? `Tanggal ${draft.receipt.date} — stok bertambah, tanpa jurnal tambahan.`
-                    : "Stok tidak berubah."
+                    ? t("purchases.receiptSummaryHint", { date: draft.receipt.date })
+                    : t("common.stockUnchanged")
                 }
               />
               <WizardSummaryRow
-                label="Nilai pembelian"
+                label={t("purchases.rowPurchaseValue")}
                 value={formatCurrency(purchaseValue(draft), currency)}
               />
               <WizardSummaryRow
-                label={<TermTooltip term="ppn">PPN Masukan</TermTooltip>}
+                label={<TermTooltip term="ppn">{t("purchases.inputVat")}</TermTooltip>}
                 value={formatCurrency(draft.purchase.taxAmount || 0, currency)}
               />
               <WizardSummaryRow
-                label="Total utang ke pemasok"
+                label={t("purchases.totalPayable")}
                 value={formatCurrency(purchaseTotal(draft), currency)}
-                hint={`Tanggal ${draft.purchase.date}`}
+                hint={t("purchases.purchaseDateHint", { date: draft.purchase.date })}
                 strong
               />
             </dl>

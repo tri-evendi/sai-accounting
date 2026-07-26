@@ -23,6 +23,14 @@ import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -44,6 +52,7 @@ import {
   negativeValueIssue,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
+import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
 import { Trash2, Plus, Download, Info, Loader2, AlertCircle, Lock } from "lucide-react";
 
@@ -85,6 +94,7 @@ export function NewInvoiceForm({
   closedPeriods: ClosedPeriodRef[];
 }) {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([emptyItem()]);
@@ -119,7 +129,7 @@ export function NewInvoiceForm({
   });
 
   const subtotal = invoiceSubtotal(items);
-  const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal tagihan");
+  const periodIssue = closedPeriodIssue(date, closedPeriods, t("invoices.dateGuardLabel"));
 
   /** Baris yang melebihi sisa kontrak — cermin UI dari `assertWithinContract`. */
   function overContractLines(): string[] {
@@ -129,9 +139,11 @@ export function NewInvoiceForm({
       const line = outstanding.lines.find((l) => l.key === key);
       if (!line || item.quantity <= line.remainingKg) return [];
       return [
-        `${line.itemName} (ditagihkan ${formatNumber(item.quantity)} kg, sisa kontrak ${formatNumber(
-          line.remainingKg
-        )} kg)`,
+        t("invoices.overContractLine", {
+          item: line.itemName,
+          invoiced: formatNumber(item.quantity),
+          remaining: formatNumber(line.remainingKg),
+        }),
       ];
     });
   }
@@ -157,7 +169,7 @@ export function NewInvoiceForm({
       if (cancelled) return;
       setLoadingOutstanding(false);
       if (!res.ok) {
-        setError("Gagal memuat sisa kontrak.");
+        setError(t("invoices.loadOutstandingFailed"));
         return;
       }
       const data: OutstandingResponse = await res.json();
@@ -168,7 +180,7 @@ export function NewInvoiceForm({
     return () => {
       cancelled = true;
     };
-  }, [contractId, adoptCurrency]);
+  }, [contractId, adoptCurrency, t]);
 
   /** Picking (or clearing) the source contract resets everything derived from it. */
   function chooseContract(id: number | null) {
@@ -185,8 +197,8 @@ export function NewInvoiceForm({
     if (lines.length === 0) {
       setPullNote(
         source === "delivery"
-          ? "Tidak ada barang yang sudah dikirim dan belum difakturkan."
-          : "Semua barang pada kontrak ini sudah difakturkan."
+          ? t("invoices.pullNoneDelivery")
+          : t("invoices.pullNoneContract")
       );
       return;
     }
@@ -199,9 +211,14 @@ export function NewInvoiceForm({
     const replacing = isPristine(items);
     setItems(replacing ? pulled : [...items.filter((i) => i.itemName.trim()), ...pulled]);
     setPullNote(
-      `${lines.length} baris diambil dari ${
-        source === "delivery" ? "surat jalan (sudah dikirim)" : "sisa kontrak"
-      } ${outstanding.contract.contractNo}. Jumlah boleh dikurangi, tidak boleh melebihi sisa.`
+      t("invoices.pullNote", {
+        count: lines.length,
+        source:
+          source === "delivery"
+            ? t("invoices.pullSourceDelivery")
+            : t("invoices.pullSourceContract"),
+        contractNo: outstanding.contract.contractNo,
+      })
     );
   }
 
@@ -241,8 +258,8 @@ export function NewInvoiceForm({
       { field: "rate", value: Number(fx.rate) },
       { field: "taxRate", value: Number(fx.taxRate) },
       ...items.flatMap((item, i) => [
-        { field: `quantity-${i}`, value: item.quantity, label: `Jumlah baris ${i + 1}` },
-        { field: `price-${i}`, value: item.price, label: `Harga baris ${i + 1}` },
+        { field: `quantity-${i}`, value: item.quantity, label: t("invoices.qtyRowLabel", { n: i + 1 }) },
+        { field: `price-${i}`, value: item.price, label: t("invoices.priceRowLabel", { n: i + 1 }) },
       ]),
     ]);
     if (negative) {
@@ -251,12 +268,7 @@ export function NewInvoiceForm({
     }
     const over = overContractLines();
     if (over.length > 0) {
-      reportFailure(
-        `Jumlah yang ditagihkan melebihi sisa kontrak: ${over.join("; ")}. ` +
-          `Kurangi jumlahnya sampai sama dengan sisa, atau buat kontrak baru untuk kelebihannya.`,
-        null,
-        false
-      );
+      reportFailure(t("invoices.overContractMessage", { lines: over.join("; ") }), null, false);
       return;
     }
 
@@ -280,7 +292,7 @@ export function NewInvoiceForm({
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      const failure = resolveSubmitFailure("faktur", data, "Tagihan belum bisa disimpan.");
+      const failure = resolveSubmitFailure("faktur", data, t("invoices.saveFailed"));
       setLoading(false);
       reportFailure(failure.message, failure.field, failure.section === "lanjutan");
     } else {
@@ -292,10 +304,13 @@ export function NewInvoiceForm({
   /** Ringkasan isian lanjutan supaya nilainya tidak ikut hilang saat terlipat. */
   const advancedSummary = [
     fx.currency === "IDR"
-      ? "Rupiah (IDR)"
-      : `${fx.currency} · kurs ${Number(fx.rate) > 0 ? fx.rate : "belum diisi"}`,
-    fx.taxable ? `PPN ${Number(fx.taxRate) || 0}%` : "tidak kena PPN",
-    dueDate ? `jatuh tempo ${dueDate}` : "tanpa jatuh tempo",
+      ? t("common.rupiahIdr")
+      : t("invoices.advCurrencyForeign", {
+          currency: fx.currency,
+          rate: Number(fx.rate) > 0 ? fx.rate : t("common.notEntered"),
+        }),
+    fx.taxable ? t("invoices.advTaxOn", { rate: Number(fx.taxRate) || 0 }) : t("invoices.advTaxOff"),
+    dueDate ? t("invoices.advDueDate", { date: dueDate }) : t("invoices.advNoDueDate"),
   ].join(" · ");
 
   const contractOptions: SearchableOption[] = contracts.map((c) => ({
@@ -320,21 +335,21 @@ export function NewInvoiceForm({
         {/* ── Ambil dari kontrak (issue #15) ── */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Ambil dari Kontrak</CardTitle>
+            <CardTitle>{t("invoices.pullTitle")}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pilih kontrak sumber, lalu tarik barangnya. Yang ditarik adalah{" "}
-              <strong>sisa</strong> yang belum difakturkan — jadi satu barang tidak bisa
-              tertagih dua kali.
+              {t("invoices.pullDescriptionA")}{" "}
+              <strong>{t("invoices.pullDescriptionStrong")}</strong>{" "}
+              {t("invoices.pullDescriptionB")}
             </p>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <SearchableSelect
                 id="contractId"
-                label="Kontrak sumber (opsional)"
-                placeholder="Pilih kontrak…"
-                searchPlaceholder="Cari no. kontrak / buyer…"
-                emptyText="Tidak ada kontrak cocok"
+                label={t("invoices.contractSourceOptional")}
+                placeholder={t("invoices.pickContract")}
+                searchPlaceholder={t("invoices.searchContract")}
+                emptyText={t("invoices.noContractMatch")}
                 options={contractOptions}
                 value={contractId != null ? String(contractId) : null}
                 onChange={(v) => chooseContract(v == null ? null : Number(v))}
@@ -347,7 +362,7 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.contract.length === 0}
                   onClick={() => pull("contract")}
                 >
-                  <Download className="mr-1 h-4 w-4" aria-hidden /> Ambil sisa kontrak
+                  <Download className="mr-1 h-4 w-4" aria-hidden /> {t("invoices.pullContractRemainder")}
                 </Button>
                 <Button
                   type="button"
@@ -356,78 +371,70 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.delivery.length === 0}
                   onClick={() => pull("delivery")}
                 >
-                  <Download className="mr-1 h-4 w-4" aria-hidden /> Ambil yang sudah dikirim
+                  <Download className="mr-1 h-4 w-4" aria-hidden /> {t("invoices.pullShipped")}
                 </Button>
               </div>
             </div>
 
             {loadingOutstanding && (
               <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Memuat sisa kontrak…
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t("invoices.loadingOutstanding")}
               </p>
             )}
 
             {outstanding && !loadingOutstanding && (
-              <div className="mt-4 overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted text-left">
-                      <th className="px-3 py-2 font-medium text-muted-foreground">Barang</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Kontrak (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Dikirim (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Difakturkan (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Sisa (kg)
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Siap difakturkan (kg)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="mt-4 rounded-md border border-border">
+                {/* Tabel ringkas (px-3 py-2) — padding rapat sengaja menimpa
+                    bawaan primitif agar sama dengan tampilan sebelum migrasi. */}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted hover:bg-muted">
+                      <TableHead className="h-auto px-3 py-2">{t("common.item")}</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colContractedKg")}</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colDeliveredKg")}</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colInvoicedKg")}</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colRemainingKg")}</TableHead>
+                      <TableHead className="h-auto px-3 py-2 text-right">{t("invoices.colReadyToInvoice")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {outstanding.lines.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
-                          Kontrak ini belum punya baris barang.
-                        </td>
-                      </tr>
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
+                          {t("invoices.noContractLines")}
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       outstanding.lines.map((l) => (
-                        <tr key={l.key} className="border-b border-border last:border-0">
-                          <td className="px-3 py-2 text-foreground">
+                        <TableRow key={l.key}>
+                          <TableCell className="px-3 py-2 text-foreground">
                             {l.itemName}
                             {l.remainingKg === 0 && (
                               <Badge variant="success" className="ml-2">
-                                Sudah penuh
+                                {t("invoices.fullyInvoicedBadge")}
                               </Badge>
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.contractedKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.deliveredKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.invoicedKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
                             {formatNumber(l.remainingKg)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
                             {formatNumber(l.readyToInvoiceKg)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
 
@@ -442,17 +449,17 @@ export function NewInvoiceForm({
 
         <Card className="mb-6" data-tour="faktur-identitas">
           <CardHeader>
-            <CardTitle>Identitas Tagihan</CardTitle>
+            <CardTitle>{t("invoices.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="invoiceNo" name="invoiceNo" label="Nomor Tagihan" required />
+              <Input id="invoiceNo" name="invoiceNo" label={t("invoices.invoiceNo")} required />
               <div>
                 <Input
                   id="date"
                   name="date"
                   type="date"
-                  label="Tanggal"
+                  label={t("common.date")}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
@@ -478,10 +485,10 @@ export function NewInvoiceForm({
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>
-                <TermTooltip term="faktur">Barang yang Dijual</TermTooltip>
+                <TermTooltip term="faktur">{t("invoices.goodsSoldTitle")}</TermTooltip>
               </CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden /> Tambah Barang
+                <Plus className="mr-1 h-4 w-4" aria-hidden /> {t("common.addItem")}
               </Button>
             </div>
           </CardHeader>
@@ -502,7 +509,7 @@ export function NewInvoiceForm({
                           htmlFor={`itemName-${i}`}
                           className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
-                          Nama Barang
+                          {t("common.itemName")}
                         </label>
                         <TextInput
                           id={`itemName-${i}`}
@@ -517,7 +524,7 @@ export function NewInvoiceForm({
                           htmlFor={`quantity-${i}`}
                           className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
-                          Jumlah
+                          {t("common.quantity")}
                         </label>
                         <TextInput
                           id={`quantity-${i}`}
@@ -534,7 +541,7 @@ export function NewInvoiceForm({
                           htmlFor={`price-${i}`}
                           className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
-                          Harga
+                          {t("common.price")}
                         </label>
                         <TextInput
                           id={`price-${i}`}
@@ -551,7 +558,7 @@ export function NewInvoiceForm({
                           htmlFor={`unit-${i}`}
                           className="mb-1 block text-xs font-medium text-muted-foreground"
                         >
-                          Satuan
+                          {t("common.unit")}
                         </label>
                         <TextInput
                           id={`unit-${i}`}
@@ -560,24 +567,26 @@ export function NewInvoiceForm({
                           onChange={(e) => updateItem(i, "unit", e.target.value)}
                         />
                       </div>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => removeItem(i)}
-                        className="cursor-pointer pb-2 text-destructive transition-colors duration-150 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                         disabled={items.length === 1}
-                        aria-label={`Hapus baris barang ${i + 1}`}
+                        aria-label={t("common.removeItemRow", { n: i + 1 })}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
-                      </button>
+                      </Button>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                       <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                         {line
-                          ? `Sisa kontrak ${formatNumber(line.remainingKg)} kg${
-                              over ? " — melebihi sisa, faktur akan ditolak!" : ""
-                            }`
+                          ? over
+                            ? t("invoices.lineRemainingOver", { kg: formatNumber(line.remainingKg) })
+                            : t("invoices.lineRemaining", { kg: formatNumber(line.remainingKg) })
                           : contractId != null && item.itemName.trim()
-                            ? "Di luar baris kontrak — tidak dibatasi sisa."
+                            ? t("invoices.lineOutsideContract")
                             : ""}
                       </span>
                       <span className="tabular-nums text-foreground">
@@ -594,7 +603,7 @@ export function NewInvoiceForm({
         {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
         <DisclosureSection
           className="mb-6"
-          description="Jatuh tempo, status, mata uang & kurs, PPN, dan dokumen ekspor (PEB). Faktur rupiah biasa memakai nilai standar dan tidak perlu membukanya."
+          description={t("invoices.advancedDescription")}
           summary={advancedSummary}
           open={advancedOpen}
           onOpenChange={setAdvancedOpen}
@@ -605,13 +614,13 @@ export function NewInvoiceForm({
             <Select
               id="status"
               name="status"
-              label="Status"
+              label={t("common.status")}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               options={[
-                { value: "pending", label: "Menunggu" },
-                { value: "signed", label: "Sah" },
-                { value: "canceled", label: "Dibatalkan" },
+                { value: "pending", label: t("status.contract.pending") },
+                { value: "signed", label: t("status.contract.signed") },
+                { value: "canceled", label: t("status.contract.canceled") },
               ]}
             />
             <InvoiceFxAdvancedFields
@@ -624,10 +633,10 @@ export function NewInvoiceForm({
 
         <div className="flex gap-3" data-tour="faktur-simpan">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan…" : "Simpan Tagihan"}
+            {loading ? t("common.saving") : t("invoices.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

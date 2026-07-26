@@ -20,10 +20,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { PartnerDraft } from "@/lib/wizard";
 import { cn } from "@/lib/utils";
 import { UserPlus, Users } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 interface Props {
-  /** "pelanggan" atau "pemasok" — dipakai di semua label & pesan. */
-  noun: string;
+  /**
+   * Mitra mana yang sedang diisi. Dulu berupa kata benda Indonesia mentah
+   * ("pelanggan"/"pemasok") yang dirangkai ke belasan label ("Pilih pelanggan",
+   * "Belum ada pelanggan terdaftar"). Rangkaian seperti itu tidak bisa
+   * diterjemahkan — bahasa lain menaruh kata bendanya di tempat lain — jadi
+   * yang dikirim kini KUNCI-nya, dan katanya diambil dari kamus di sini.
+   */
+  kind: "customer" | "supplier";
   options: SearchableOption[];
   value: PartnerDraft;
   onChange: (patch: Partial<PartnerDraft>) => void;
@@ -34,27 +41,31 @@ interface Props {
 }
 
 export function WizardPartnerStep({
-  noun,
+  kind,
   options,
   value,
   onChange,
   withCustomerFields = false,
   manageHref,
 }: Props) {
+  const t = useT();
   const isNew = value.mode === "new";
+  const noun =
+    kind === "customer" ? t("wizard.partner.nounCustomer") : t("wizard.partner.nounSupplier");
+  const per = <T,>(customer: T, supplier: T): T => (kind === "customer" ? customer : supplier);
 
   return (
     <Card>
       <CardContent className="space-y-4 py-4">
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-foreground">
-            {noun.charAt(0).toUpperCase() + noun.slice(1)} ini
+            {t(per("wizard.partner.thisCustomer", "wizard.partner.thisSupplier"))}
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
-                { mode: "existing", label: `Sudah terdaftar`, icon: Users },
-                { mode: "new", label: `Baru — isi datanya`, icon: UserPlus },
+                { mode: "existing", label: t("wizard.partner.modeExisting"), icon: Users },
+                { mode: "new", label: t("wizard.partner.modeNew"), icon: UserPlus },
               ] as const
             ).map(({ mode, label, icon: Icon }) => (
               <label
@@ -85,18 +96,18 @@ export function WizardPartnerStep({
           (options.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
-              title={`Belum ada ${noun} terdaftar`}
-              description={`Pilih "Baru — isi datanya" di atas untuk mencatat ${noun} pertama Anda sekalian dalam alur ini.`}
-              actionLabel={`Kelola ${noun}`}
+              title={t("wizard.partner.emptyTitle", { noun })}
+              description={t("wizard.partner.emptyDescription", { noun })}
+              actionLabel={t("wizard.partner.manageAction", { noun })}
               actionHref={manageHref}
             />
           ) : (
             <SearchableSelect
               id="partnerId"
-              label={`Pilih ${noun}`}
-              placeholder={`Pilih ${noun}…`}
-              searchPlaceholder={`Cari nama ${noun}…`}
-              emptyText={`Tidak ada ${noun} cocok`}
+              label={t("wizard.partner.pickLabel", { noun })}
+              placeholder={t("wizard.partner.pickPlaceholder", { noun })}
+              searchPlaceholder={t("wizard.partner.searchPlaceholder", { noun })}
+              emptyText={t("wizard.partner.emptyText", { noun })}
               options={options}
               value={value.id != null ? String(value.id) : null}
               onChange={(v) => onChange({ id: v == null ? null : Number(v) })}
@@ -108,7 +119,7 @@ export function WizardPartnerStep({
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="partnerName"
-                label={`Nama ${noun}`}
+                label={t(per("wizard.partner.nameCustomer", "wizard.partner.nameSupplier"))}
                 value={value.name}
                 onChange={(e) => onChange({ name: e.target.value })}
                 maxLength={100}
@@ -116,26 +127,33 @@ export function WizardPartnerStep({
               />
               <Input
                 id="partnerPhone"
-                label="Telepon (opsional)"
+                label={t("wizard.partner.phoneField")}
                 value={value.phone}
                 onChange={(e) => onChange({ phone: e.target.value })}
                 maxLength={30}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {noun.charAt(0).toUpperCase() + noun.slice(1)} baru ini <strong>belum</strong>{" "}
-              tersimpan. Datanya ikut tercatat sekali saja bersama seluruh isian wizard, di
-              langkah terakhir.
+              {t(per("wizard.partner.notSavedCustomer", "wizard.partner.notSavedSupplier"))}{" "}
+              <strong>{t("wizard.partner.notSavedStrong")}</strong>{" "}
+              {t("wizard.partner.notSavedAfter")}
             </p>
 
             <DisclosureSection
-              description={`Alamat, email${withCustomerFields ? ", NPWP, dan status PPN" : ""} — boleh diisi belakangan lewat menu ${noun}.`}
-              summary={[value.address || "tanpa alamat", value.email || "tanpa email"].join(" · ")}
+              description={
+                withCustomerFields
+                  ? t("wizard.partner.disclosureCustomer", { noun })
+                  : t("wizard.partner.disclosureSupplier", { noun })
+              }
+              summary={[
+                value.address || t("wizard.partner.summaryNoAddress"),
+                value.email || t("wizard.partner.summaryNoEmail"),
+              ].join(" · ")}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
                   id="partnerAddress"
-                  label="Alamat"
+                  label={t("common.address")}
                   value={value.address}
                   onChange={(e) => onChange({ address: e.target.value })}
                   maxLength={500}
@@ -143,7 +161,7 @@ export function WizardPartnerStep({
                 <Input
                   id="partnerEmail"
                   type="email"
-                  label="Email"
+                  label={t("wizard.partner.emailField")}
                   value={value.email}
                   onChange={(e) => onChange({ email: e.target.value })}
                   maxLength={100}
@@ -152,14 +170,14 @@ export function WizardPartnerStep({
                   <>
                     <Input
                       id="partnerPic"
-                      label="Narahubung (PIC)"
+                      label={t("wizard.partner.picField")}
                       value={value.pic}
                       onChange={(e) => onChange({ pic: e.target.value })}
                       maxLength={100}
                     />
                     <Input
                       id="partnerNpwp"
-                      label="NPWP pembeli"
+                      label={t("wizard.partner.npwpField")}
                       value={value.npwp}
                       onChange={(e) => onChange({ npwp: e.target.value })}
                       maxLength={30}
@@ -171,10 +189,9 @@ export function WizardPartnerStep({
                         onCheckedChange={(v) => onChange({ taxExempt: v === true })}
                       />
                       <span>
-                        Bebas PPN
+                        {t("wizard.partner.taxExemptLabel")}
                         <span className="block text-xs text-muted-foreground">
-                          Centang untuk pembeli ekspor atau non-PKP; tagihannya otomatis
-                          tidak dikenai PPN.
+                          {t("wizard.partner.taxExemptHint")}
                         </span>
                       </span>
                     </label>

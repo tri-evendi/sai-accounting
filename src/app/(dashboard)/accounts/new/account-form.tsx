@@ -8,6 +8,9 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { useT } from "@/lib/i18n/client";
+import { useDictionary } from "@/lib/i18n/client";
+import { accountTypeLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 
 interface AccountOption {
@@ -18,6 +21,8 @@ interface AccountOption {
 
 export function NewAccountForm() {
   const router = useRouter();
+  const t = useT();
+  const typeLabels = accountTypeLabels(useDictionary());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [parents, setParents] = useState<AccountOption[]>([]);
@@ -55,7 +60,7 @@ export function NewAccountForm() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Gagal membuat akun");
+      setError(data.error || t("accounts.createFailed"));
       setLoading(false);
     } else {
       router.push("/accounts");
@@ -66,8 +71,11 @@ export function NewAccountForm() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Daftar Akun", href: "/accounts" }, { label: "Akun Baru" }]}
-        title="Akun Baru"
+        breadcrumbs={[
+          { label: t("accounts.breadcrumbChart"), href: "/accounts" },
+          { label: t("accounts.newTitle") },
+        ]}
+        title={t("accounts.newTitle")}
       />
 
       {error && (
@@ -77,46 +85,46 @@ export function NewAccountForm() {
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Informasi Akun</CardTitle>
+            <CardTitle>{t("accounts.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="code"
-                label="Kode Perkiraan"
+                label={t("accounts.codeField")}
                 required
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                placeholder="mis. 1101"
+                placeholder={t("accounts.codePlaceholder")}
               />
               <Input
                 id="name"
-                label="Nama Akun"
+                label={t("accounts.nameField")}
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="mis. Kas & Setara Kas"
+                placeholder={t("accounts.namePlaceholder")}
               />
               <Select
                 id="type"
-                label="Tipe Akun"
+                label={t("accounts.typeField")}
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                options={ACCOUNT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                options={ACCOUNT_TYPES.map((type) => ({ value: type.value, label: typeLabels[type.value] }))}
               />
               <Select
                 id="parentId"
-                label="Induk Akun (opsional)"
+                label={t("accounts.parentField")}
                 value={form.parentId}
                 onChange={(e) => setForm({ ...form, parentId: e.target.value })}
                 options={[
-                  { value: "", label: "— Tanpa induk —" },
+                  { value: "", label: t("accounts.noParent") },
                   ...parents.map((p) => ({ value: String(p.id), label: `${p.code} — ${p.name}` })),
                 ]}
               />
               <Select
                 id="currency"
-                label="Mata Uang"
+                label={t("common.currency")}
                 value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
                 options={CURRENCIES.map((c) => ({ value: c, label: c }))}
@@ -127,10 +135,10 @@ export function NewAccountForm() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan Akun"}
+            {loading ? t("common.saving") : t("accounts.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

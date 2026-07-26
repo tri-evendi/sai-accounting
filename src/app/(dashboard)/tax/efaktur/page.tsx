@@ -15,11 +15,21 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
+import { formatDateShort } from "@/lib/utils";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AlertTriangle, Download, Info, FileText, ReceiptText } from "lucide-react";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +53,7 @@ export default async function EfakturPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requirePagePermission("tax.read");
+  const t = await getT();
   const params = await searchParams;
 
   const defaults = currentMonthRange();
@@ -59,36 +70,30 @@ export default async function EfakturPage({
   return (
     <div className="w-full">
       <PageHeader
-        title="Ekspor e-Faktur (DJP/CTAS)"
-        description={
-          <>
-            Ekspor faktur keluaran &amp; ekspor (PEB) untuk suatu masa pajak dalam format CSV
-            berorientasi DJP/CTAS.
-          </>
-        }
+        title={t("tax.title")}
+        description={t("tax.description")}
       />
 
       {/* Honesty / disclaimer */}
       <div className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning-strong">
         <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
         <span>
-          Format ini <strong>berorientasi</strong> DJP/CTAS dengan kolom standar faktur keluaran,
-          bukan salinan persis skema impor DJP terbaru. Validasi terhadap skema DJP yang berlaku
-          sebelum pelaporan resmi.
+          {t("tax.disclaimerBefore")} <strong>{t("tax.disclaimerStrong")}</strong>{" "}
+          {t("tax.disclaimerAfter")}
         </span>
       </div>
 
       {/* Seller tax identity */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Identitas Pajak Penjual</CardTitle>
+          <CardTitle>{t("tax.sellerTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {sellerNpwpMissing && (
             <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive-strong">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                NPWP penjual belum diisi. File e-Faktur tidak dapat dibuat sampai NPWP terisi.
+                {t("tax.npwpMissing")}
               </span>
             </div>
           )}
@@ -101,13 +106,13 @@ export default async function EfakturPage({
       {/* Period filter */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Masa Pajak</CardTitle>
+          <CardTitle>{t("tax.periodTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form method="get" className="flex flex-wrap items-end gap-3">
             <div>
               <label htmlFor="from" className="block text-sm font-medium text-foreground">
-                Dari tanggal
+                {t("tax.fromDate")}
               </label>
               <TextInput
                 id="from"
@@ -119,7 +124,7 @@ export default async function EfakturPage({
             </div>
             <div>
               <label htmlFor="to" className="block text-sm font-medium text-foreground">
-                Sampai tanggal
+                {t("tax.toDate")}
               </label>
               <TextInput
                 id="to"
@@ -130,7 +135,7 @@ export default async function EfakturPage({
               />
             </div>
             <Button type="submit" variant="secondary">
-              Terapkan
+              {t("tax.apply")}
             </Button>
           </form>
         </CardContent>
@@ -140,26 +145,28 @@ export default async function EfakturPage({
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
           <div className="text-sm text-muted-foreground">
-            <span className="tabular-nums font-medium text-foreground">{matched}</span> faktur cocok ·{" "}
-            <span className="tabular-nums font-medium text-success-strong">{rows.length}</span> siap ekspor
+            <span className="tabular-nums font-medium text-foreground">{matched}</span>{" "}
+            {t("tax.summaryMatched")} ·{" "}
+            <span className="tabular-nums font-medium text-success-strong">{rows.length}</span>{" "}
+            {t("tax.summaryReady")}
             {problems.length > 0 && (
               <>
                 {" "}·{" "}
                 <span className="tabular-nums font-medium text-warning-strong">{problems.length}</span>{" "}
-                perlu dilengkapi
+                {t("tax.summaryNeedsWork")}
               </>
             )}
           </div>
           {sellerNpwpMissing ? (
             <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               <Download className="h-4 w-4" aria-hidden="true" />
-              Isi NPWP penjual untuk mengunduh
+              {t("tax.npwpNeededToDownload")}
             </span>
           ) : (
             <a href={downloadHref} download>
               <Button disabled={rows.length === 0}>
                 <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Unduh CSV
+                {t("tax.downloadCsv")}
               </Button>
             </a>
           )}
@@ -172,20 +179,21 @@ export default async function EfakturPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-warning-strong">
               <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-              Perlu dilengkapi ({problems.length})
+              {t("tax.problemsTitle", { count: problems.length })}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-sm text-muted-foreground">
-              Faktur berikut tidak diikutkan karena kekurangan field yang wajib untuk e-Faktur —
-              dilengkapi dulu, bukan dikosongkan (agar tidak gagal impor DJP).
+              {t("tax.problemsDescription")}
             </p>
             <ul className="space-y-1 text-sm">
               {problems.map((p) => (
                 <li key={p.invoiceNo} className="flex items-start gap-2">
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="text-foreground">{p.invoiceNo}</span>
-                  <span className="text-warning-strong">— kurang: {p.missing.join(", ")}</span>
+                  <span className="text-warning-strong">
+                    {t("tax.missingFields", { fields: p.missing.join(", ") })}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -196,67 +204,73 @@ export default async function EfakturPage({
       {/* Preview of the exportable rows */}
       <Card>
         <CardHeader>
-          <CardTitle>Pratinjau Baris Ekspor</CardTitle>
+          <CardTitle>{t("tax.previewTitle")}</CardTitle>
         </CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Jenis</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">No. Dokumen</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Pembeli</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Mata Uang</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">DPP</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-right">PPN</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">No. PEB</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8}>
-                    <EmptyState
-                      icon={<ReceiptText className="h-12 w-12" />}
-                      title="Tidak ada baris siap ekspor pada masa ini"
-                      description="Hanya faktur ber-PPN keluaran (atau ekspor) di masa yang dipilih yang muncul di sini. Pilih masa lain, atau buat tagihan penjualannya dulu."
-                      actionLabel="+ Buat Tagihan"
-                      actionHref="/invoices/new"
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("tax.colKind")}</TableHead>
+              <TableHead>{t("tax.colDocNo")}</TableHead>
+              <TableHead>{t("tax.colBuyer")}</TableHead>
+              <TableHead>{t("common.currency")}</TableHead>
+              <TableHead className="text-right">{t("tax.colDpp")}</TableHead>
+              <TableHead className="text-right">{t("common.vat")}</TableHead>
+              <TableHead>{t("tax.colPebNo")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    icon={<ReceiptText className="h-12 w-12" />}
+                    title={t("tax.emptyTitle")}
+                    description={t("tax.emptyDescription")}
+                    actionLabel={t("tax.emptyAction")}
+                    actionHref="/invoices/new"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row, i) => (
+                <TableRow key={`${row.nomor_dokumen}-${i}`}>
+                  <TableCell className="text-muted-foreground">{formatDateShort(row.tanggal_dokumen)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        "inline-flex rounded px-2 py-0.5 text-xs font-medium " +
+                        (row.jenis === "ekspor"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-foreground")
+                      }
+                    >
+                      {row.jenis}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-foreground">{row.nomor_dokumen}</TableCell>
+                  <TableCell className="text-foreground">{row.nama_pembeli || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{row.mata_uang}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="text-foreground"
+                      value={Number(row.dpp)}
+                      currency={row.mata_uang}
                     />
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, i) => (
-                  <tr key={`${row.nomor_dokumen}-${i}`} className="border-b border-border">
-                    <td className="px-4 py-3 text-muted-foreground">{formatDateShort(row.tanggal_dokumen)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          "inline-flex rounded px-2 py-0.5 text-xs font-medium " +
-                          (row.jenis === "ekspor"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-foreground")
-                        }
-                      >
-                        {row.jenis}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{row.nomor_dokumen}</td>
-                    <td className="px-4 py-3 text-foreground">{row.nama_pembeli || "-"}</td>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.mata_uang}</td>
-                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                      {formatCurrency(Number(row.dpp), row.mata_uang)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground tabular-nums">
-                      {formatCurrency(Number(row.ppn), row.mata_uang)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{row.nomor_peb || "-"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="text-foreground"
+                      value={Number(row.ppn)}
+                      currency={row.mata_uang}
+                    />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{row.nomor_peb || "-"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

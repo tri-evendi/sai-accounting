@@ -17,14 +17,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import {
   TERM_CATEGORIES,
-  TERM_CATEGORY_LABELS,
   searchTerms,
   termAnchorId,
   termsByCategory,
   type TermCategory,
 } from "@/lib/labels";
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { termCategoryLabels } from "@/lib/i18n/labels";
 
 export function GlossaryBrowser() {
+  const t = useT();
+  const categoryLabels = termCategoryLabels(useDictionary());
   const [query, setQuery] = useState("");
   const [kategori, setKategori] = useState<TermCategory | "semua">("semua");
 
@@ -35,8 +38,8 @@ export function GlossaryBrowser() {
   const total = groups.reduce((sum, group) => sum + group.terms.length, 0);
 
   const filters: { value: TermCategory | "semua"; label: string }[] = [
-    { value: "semua", label: "Semua" },
-    ...TERM_CATEGORIES.map((c) => ({ value: c, label: TERM_CATEGORY_LABELS[c] })),
+    { value: "semua", label: t("common.all") },
+    ...TERM_CATEGORIES.map((c) => ({ value: c, label: categoryLabels[c] })),
   ];
 
   return (
@@ -51,15 +54,15 @@ export function GlossaryBrowser() {
           />
           <Input
             id="cari-istilah"
-            label="Cari istilah"
-            placeholder="mis. piutang, faktur, penyusutan"
+            label={t("glossary.searchLabel")}
+            placeholder={t("glossary.searchPlaceholder")}
             className="pl-9"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Saring per kategori">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("glossary.filterAria")}>
           {filters.map((f) => {
             const active = kategori === f.value;
             return (
@@ -83,22 +86,24 @@ export function GlossaryBrowser() {
         </div>
 
         <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
-          {total} istilah ditampilkan.
+          {t("glossary.shown", { count: total })}
         </p>
       </div>
 
       {total === 0 ? (
         <Card>
           <EmptyState
-            title="Istilah tidak ditemukan"
-            description="Coba kata lain, misalnya “tagihan”, “stok”, atau “pajak”. Semua istilah bisa dilihat dengan mengosongkan pencarian."
+            title={t("glossary.emptyTitle")}
+            description={t("glossary.emptyDescription")}
           />
         </Card>
       ) : (
         <div className="space-y-8">
           {groups.map((group) => (
             <section key={group.kategori}>
-              <h2 className="mb-3 text-lg font-semibold text-foreground">{group.label}</h2>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                {categoryLabels[group.kategori]}
+              </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {group.terms.map((entry) => (
                   // Anchor "Pelajari ini" mendarat di sini; `scroll-mt` menjaga
@@ -113,7 +118,7 @@ export function GlossaryBrowser() {
                         </p>
                         {entry.contoh && (
                           <p className="mt-3 rounded-md bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
-                            <span className="font-medium text-foreground">Contoh: </span>
+                            <span className="font-medium text-foreground">{t("term.example")} </span>
                             {entry.contoh}
                           </p>
                         )}
@@ -122,7 +127,7 @@ export function GlossaryBrowser() {
                             href={entry.href}
                             className="mt-3 inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline"
                           >
-                            Buka di aplikasi
+                            {t("glossary.openInApp")}
                             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                           </Link>
                         )}

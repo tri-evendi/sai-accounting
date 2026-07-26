@@ -23,6 +23,15 @@
  *
  *  4. **Status langkah tidak pernah warna saja.** Setiap langkah membawa teks
  *     "Selesai / Sedang diisi / Belum" dan ikon centang, sesuai MASTER.md.
+ *
+ * **Kenapa penanda langkah tetap `<button>` mentah.** Tombol aksi wizard
+ * ("Kembali"/"Lanjut"/"Selesai") memakai primitif `Button`, tetapi kartu
+ * penanda langkah TIDAK: ia adalah kembaran interaktif dari `<div>` di
+ * sebelahnya (langkah yang belum boleh dilompati) dan harus tampil identik —
+ * kartu dua baris, tinggi mengikuti isi, `rounded-lg`, `flex-1` selebar kolom.
+ * `Button` memaksa tinggi tetap 40px, `justify-center`, dan `whitespace-nowrap`
+ * yang justru merusak kesamaan itu. Dikecualikan sadar di
+ * `tests/design-system-primitives.test.ts`.
  */
 
 import { useState } from "react";
@@ -30,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 import {
   AlertCircle,
   ArrowLeft,
@@ -69,9 +79,11 @@ export function Wizard({
   busy = false,
   error = null,
   notice = null,
-  finishLabel = "Selesai & Simpan",
+  finishLabel,
   children,
 }: WizardProps) {
+  const t = useT();
+  const finishText = finishLabel ?? t("common.finishAndSave");
   // Daftar penjaga ditandai MILIK langkah tertentu, bukan sekadar on/off. Dengan
   // begitu berpindah langkah otomatis membersihkannya — tanpa efek yang memanggil
   // setState, yang akan memicu render berantai.
@@ -108,17 +120,20 @@ export function Wizard({
   return (
     <div>
       {/* ── Penanda langkah ─────────────────────────────────────────────── */}
-      <nav aria-label="Langkah pengisian" className="mb-6">
+      <nav aria-label={t("wizard.stepsAria")} className="mb-6">
         <p className="mb-2 text-sm font-medium text-muted-foreground">
-          Langkah <span className="tabular-nums">{index + 1}</span> dari{" "}
-          <span className="tabular-nums">{steps.length}</span>
+          {t("wizard.stepOf", { step: index + 1, total: steps.length })}
         </p>
         <ol className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
           {steps.map((s, i) => {
             const state = i < index ? "done" : i === index ? "current" : "todo";
             const reachable = canJumpToStep(steps, s.id, currentId) && i !== index;
             const label =
-              state === "done" ? "Selesai" : state === "current" ? "Sedang diisi" : "Belum";
+              state === "done"
+                ? t("wizard.stateDone")
+                : state === "current"
+                  ? t("wizard.stateCurrent")
+                  : t("wizard.stateTodo");
             const content = (
               <>
                 <span
@@ -144,9 +159,11 @@ export function Wizard({
                       state === "current" ? "text-foreground" : "text-foreground"
                     )}
                   >
-                    {s.title}
+                    {t(s.titleKey)}
                     {s.optional && (
-                      <span className="ml-1 font-normal text-muted-foreground">(opsional)</span>
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        {t("wizard.optionalSuffix")}
+                      </span>
                     )}
                   </span>
                   <span className="block text-xs text-muted-foreground">{label}</span>
@@ -190,8 +207,8 @@ export function Wizard({
 
       {/* ── Judul & penjelasan langkah ──────────────────────────────────── */}
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-foreground">{step.title}</h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">{step.description}</p>
+        <h2 className="text-lg font-semibold text-foreground">{t(step.titleKey)}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t(step.descriptionKey)}</p>
       </div>
 
       {notice && (
@@ -224,7 +241,7 @@ export function Wizard({
         >
           <p className="flex items-center gap-2 font-medium">
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Masih ada yang perlu dilengkapi sebelum lanjut:
+            {t("wizard.blockersTitle")}
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-8">
             {blockers.map((b) => (
@@ -243,24 +260,25 @@ export function Wizard({
           onClick={goBack}
           disabled={index === 0 || busy}
         >
-          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" /> Kembali
+          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.back")}
         </Button>
 
         {isLast ? (
           <Button type="button" className="cursor-pointer" onClick={finish} disabled={busy}>
             {busy ? (
               <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> Menyimpan…
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />{" "}
+                {t("common.saving")}
               </>
             ) : (
               <>
-                <ShieldCheck className="mr-1 h-4 w-4" aria-hidden="true" /> {finishLabel}
+                <ShieldCheck className="mr-1 h-4 w-4" aria-hidden="true" /> {finishText}
               </>
             )}
           </Button>
         ) : (
           <Button type="button" className="cursor-pointer" onClick={goNext} disabled={busy}>
-            Lanjut <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+            {t("wizard.next")} <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
           </Button>
         )}
 
@@ -271,25 +289,21 @@ export function Wizard({
           onClick={() => setConfirmCancel(true)}
           disabled={busy}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Belum ada apa pun yang tersimpan. Semua isian baru dicatat setelah tombol{" "}
-        <strong>{finishLabel}</strong> di langkah terakhir ditekan.
+        {t("wizard.nothingSavedBefore")} <strong>{finishText}</strong>{" "}
+        {t("wizard.nothingSavedAfter")}
       </p>
 
       <ConfirmDialog
-        title="Batalkan pengisian?"
-        message={
-          "Draf yang sedang diisi akan dihapus dari peramban. Tidak ada data yang " +
-          "tersimpan di sistem — tidak ada pelanggan, surat jalan, maupun tagihan " +
-          "yang tertinggal setengah jadi."
-        }
-        confirmLabel="Ya, batalkan"
+        title={t("wizard.cancelTitle")}
+        message={t("wizard.cancelMessage")}
+        confirmLabel={t("wizard.cancelConfirm")}
         confirmVariant="danger"
-        cancelLabel="Lanjutkan mengisi"
+        cancelLabel={t("wizard.cancelKeep")}
         open={confirmCancel}
         onOpenChange={setConfirmCancel}
         onConfirm={onCancel}

@@ -3,10 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { ReverseButton } from "./reverse-button";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +27,7 @@ export default async function JournalDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("journal.read");
+  const t = await getT();
   const { id } = await params;
 
   const journal = await prisma.journal.findUnique({
@@ -36,7 +48,7 @@ export default async function JournalDetailPage({
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Catatan Transaksi", href: "/journal" }, { label: journal.number }]}
+        breadcrumbs={[{ label: t("journal.breadcrumb"), href: "/journal" }, { label: journal.number }]}
         title={<span className="font-mono">{journal.number}</span>}
         description={formatDate(journal.date)}
         actions={canReverse && <ReverseButton journalId={journal.id} />}
@@ -44,49 +56,53 @@ export default async function JournalDetailPage({
 
       {journal.isReversed && (
         <div className="mb-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
-          Jurnal ini sudah dibalik
-          {journal.reversals[0] && (
+          {journal.reversals[0] ? (
             <>
-              {" "}oleh{" "}
+              {t("journal.reversedByBefore")}{" "}
               <Link href={`/journal/${journal.reversals[0].id}`} className="font-mono underline">
                 {journal.reversals[0].number}
               </Link>
+              {t("journal.reversedByAfter")}
+            </>
+          ) : (
+            <>
+              {t("journal.reversedNotice")}
+              {t("common.fullStop")}
             </>
           )}
-          .
         </div>
       )}
       {journal.reversalOf && (
         <div className="mb-4 rounded-md bg-muted p-3 text-sm text-foreground">
-          Pembalikan dari{" "}
+          {t("journal.reversalOfBefore")}{" "}
           <Link href={`/journal/${journal.reversalOf.id}`} className="font-mono underline">
             {journal.reversalOf.number}
           </Link>
-          .
+          {t("journal.reversalOfAfter")}
         </div>
       )}
 
       {journal.note && (
         <p className="mb-4 text-sm text-muted-foreground">
-          <span className="font-medium text-muted-foreground">Keterangan:</span> {journal.note}
+          <span className="font-medium text-muted-foreground">{t("journal.noteLabel")}</span> {journal.note}
         </p>
       )}
 
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-6 py-3 font-medium text-muted-foreground">Kode</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Akun</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Debit (IDR)</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Kredit (IDR)</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>{t("journal.colCode")}</TableHead>
+              <TableHead>{t("common.account")}</TableHead>
+              <TableHead className="text-right">{t("journal.colDebitIdr")}</TableHead>
+              <TableHead className="text-right">{t("journal.colCreditIdr")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {journal.lines.map((l) => (
-              <tr key={l.id} className="border-b border-border">
-                <td className="px-6 py-3 font-mono text-foreground tabular-nums">{l.account.code}</td>
-                <td className="px-6 py-3">
+              <TableRow key={l.id}>
+                <TableCell className="font-mono text-foreground tabular-nums">{l.account.code}</TableCell>
+                <TableCell>
                   {l.account.name}
                   {l.currency !== "IDR" && (
                     <span className="ml-2 text-xs text-muted-foreground">
@@ -94,31 +110,43 @@ export default async function JournalDetailPage({
                     </span>
                   )}
                   {l.memo && <span className="ml-2 text-xs text-muted-foreground">— {l.memo}</span>}
-                </td>
-                <td className="px-6 py-3 text-right tabular-nums">
-                  {Number(l.baseDebit) > 0 ? formatCurrency(Number(l.baseDebit), "IDR") : "—"}
-                </td>
-                <td className="px-6 py-3 text-right tabular-nums">
-                  {Number(l.baseCredit) > 0 ? formatCurrency(Number(l.baseCredit), "IDR") : "—"}
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {Number(l.baseDebit) > 0 ? (
+                    <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {Number(l.baseCredit) > 0 ? (
+                    <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-border font-semibold">
-              <td className="px-6 py-3" colSpan={2}>
-                Total{" "}
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="font-semibold hover:bg-transparent">
+              <TableCell colSpan={2}>
+                {t("common.total")}{" "}
                 {totalDebit === totalCredit ? (
-                  <Badge variant="success">Seimbang</Badge>
+                  <Badge variant="success">{t("journal.balanced")}</Badge>
                 ) : (
-                  <Badge variant="danger">Tidak seimbang</Badge>
+                  <Badge variant="danger">{t("journal.unbalanced")}</Badge>
                 )}
-              </td>
-              <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(totalDebit, "IDR")}</td>
-              <td className="px-6 py-3 text-right tabular-nums">{formatCurrency(totalCredit, "IDR")}</td>
-            </tr>
-          </tfoot>
-        </table>
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={totalDebit} currency="IDR" hideCurrency />
+              </TableCell>
+              <TableCell className="p-0">
+                <MoneyCell value={totalCredit} currency="IDR" hideCurrency />
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
     </div>
   );

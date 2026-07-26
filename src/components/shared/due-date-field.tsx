@@ -12,6 +12,7 @@
 
 import { Input } from "@/components/ui/input";
 import { CalendarClock } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 interface DueDateFieldProps {
   /** `YYYY-MM-DD`, or "" when unknown. Uncontrolled when omitted. */
@@ -21,24 +22,21 @@ interface DueDateFieldProps {
 }
 
 export function DueDateField({ defaultValue, value, onChange }: DueDateFieldProps) {
+  const t = useT();
   return (
     <div>
       <Input
         id="dueDate"
         name="dueDate"
         type="date"
-        label="Jatuh Tempo (opsional)"
+        label={t("dueDate.field")}
         defaultValue={defaultValue}
         value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       />
       <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
         <CalendarClock className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>
-          Tanggal pembayaran disepakati. Dipakai laporan Piutang/Utang untuk menandai
-          &quot;Jatuh Tempo&quot;. Bila dikosongkan, umur dihitung sejak tanggal dokumen dan
-          dokumen tidak pernah ditandai jatuh tempo.
-        </span>
+        <span>{t("dueDate.hint")}</span>
       </p>
     </div>
   );

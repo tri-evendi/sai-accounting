@@ -1,6 +1,14 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import { getIncomeStatement } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -10,33 +18,48 @@ import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
+function Section({
+  title,
+  lines,
+  total,
+  totalLabel,
+}: {
+  title: string;
+  lines: StatementLine[];
+  total: number;
+  totalLabel: string;
+}) {
   return (
     <>
-      <tr className="bg-muted">
-        <td className="px-6 py-2 font-semibold text-foreground" colSpan={2}>{title}</td>
-      </tr>
+      <TableRow className="bg-muted hover:bg-muted">
+        <TableCell className="py-2 font-semibold text-foreground" colSpan={2}>{title}</TableCell>
+      </TableRow>
       {lines.map((l) => (
-        <tr key={l.code} className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground">
+        <TableRow key={l.code}>
+          <TableCell className="py-2 pl-10 text-muted-foreground">
             <span className="font-mono text-muted-foreground mr-2">{l.code}</span>
             {l.name}
-          </td>
-          <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(l.amount, "IDR")}</td>
-        </tr>
+          </TableCell>
+          <TableCell className="p-0">
+            <MoneyCell className="py-2" value={l.amount} currency="IDR" />
+          </TableCell>
+        </TableRow>
       ))}
       {lines.length === 0 && (
-        <tr className="border-b border-border">
-          <td className="px-6 py-2 pl-10 text-muted-foreground" colSpan={2}>—</td>
-        </tr>
+        <TableRow className="hover:bg-transparent">
+          <TableCell className="py-2 pl-10 text-muted-foreground" colSpan={2}>—</TableCell>
+        </TableRow>
       )}
-      <tr className="border-b border-border font-medium">
-        <td className="px-6 py-2 text-foreground">Total {title}</td>
-        <td className="px-6 py-2 text-right tabular-nums">{formatCurrency(total, "IDR")}</td>
-      </tr>
+      <TableRow className="font-medium">
+        <TableCell className="py-2 text-foreground">{totalLabel}</TableCell>
+        <TableCell className="p-0">
+          <MoneyCell className="py-2" value={total} currency="IDR" />
+        </TableCell>
+      </TableRow>
     </>
   );
 }
@@ -47,10 +70,13 @@ export default async function IncomeStatementPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const is = await getIncomeStatement(from, to);
   const profit = is.netIncome >= 0;
+  // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
+  // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
 
   // One payload feeds both exports and the plain-language summary, so the PDF,
@@ -64,14 +90,20 @@ export default async function IncomeStatementPage({
     totalExpense: is.totalExpense,
     netIncome: is.netIncome,
   };
-  const summary = incomeStatementSummary(is, periodLabel);
+  const summary = incomeStatementSummary(is, periodLabel, t);
 
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Laba / Rugi" }]}
-        title="Laba / Rugi"
-        description={<>{periodLabel} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.incomeStatementTitle") },
+        ]}
+        title={t("reports.incomeStatementTitle")}
+        description={t("reports.periodWithCurrency", {
+          from: formatDate(from),
+          to: formatDate(to),
+        })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -85,27 +117,40 @@ export default async function IncomeStatementPage({
       <PlainSummary summary={summary} />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody>
-              <Section title="Pendapatan" lines={is.revenue} total={is.totalRevenue} />
-              <Section title="Beban" lines={is.expense} total={is.totalExpense} />
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border text-base font-bold">
-                <td className="px-6 py-4 text-foreground">
-                  Laba / Rugi Bersih
-                  <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
-                    ({profit ? "Laba" : "Rugi"})
-                  </span>
-                </td>
-                <td className={`px-6 py-4 text-right tabular-nums ${profit ? "text-success-strong" : "text-destructive"}`}>
-                  {formatCurrency(is.netIncome, "IDR")}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableBody>
+            <Section
+              title={t("reports.sectionRevenue")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionRevenue") })}
+              lines={is.revenue}
+              total={is.totalRevenue}
+            />
+            <Section
+              title={t("reports.sectionExpense")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionExpense") })}
+              lines={is.expense}
+              total={is.totalExpense}
+            />
+          </TableBody>
+          <TableFooter className="border-t-2 bg-transparent">
+            <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
+              <TableCell className="py-4 text-foreground">
+                {t("reports.netIncomeRow")}
+                <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
+                  ({profit ? t("reports.profit") : t("reports.loss")})
+                </span>
+              </TableCell>
+              {/* Laba/rugi diwarnai `text-success-strong`/`text-destructive`
+                  berpasangan dengan label "(Laba)"/"(Rugi)" di sebelahnya —
+                  bukan pewarnaan bawaan `Money` (hanya negatif, token
+                  `text-destructive`/`text-success`), jadi sel ini tetap
+                  dirender seperti semula demi paritas. */}
+              <TableCell className={`py-4 text-right tabular-nums ${profit ? "text-success-strong" : "text-destructive"}`}>
+                {formatCurrency(is.netIncome, "IDR")}
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
     </div>
   );

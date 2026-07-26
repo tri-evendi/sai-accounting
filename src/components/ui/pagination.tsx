@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getT } from "@/lib/i18n/server";
 
 interface PaginationProps {
   currentPage: number;
@@ -20,8 +21,15 @@ function buildUrl(basePath: string, page: number, searchParams?: Record<string, 
   return `${basePath}?${params.toString()}`;
 }
 
-export function Pagination({ currentPage, totalPages, basePath, searchParams }: PaginationProps) {
+export async function Pagination({
+  currentPage,
+  totalPages,
+  basePath,
+  searchParams,
+}: PaginationProps) {
   if (totalPages <= 1) return null;
+
+  const t = await getT();
 
   // Show max 5 page numbers
   let startPage = Math.max(1, currentPage - 2);
@@ -38,9 +46,9 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
   return (
     <div className="flex items-center justify-between border-t border-border px-6 py-3">
       <p className="text-sm text-muted-foreground">
-        Halaman {currentPage} dari {totalPages}
+        {t("table.page", { page: currentPage, pages: totalPages })}
       </p>
-      <nav className="flex items-center gap-1" aria-label="Navigasi halaman">
+      <nav className="flex items-center gap-1" aria-label={t("pagination.aria")}>
         {/* Previous */}
         {currentPage > 1 ? (
           <Link

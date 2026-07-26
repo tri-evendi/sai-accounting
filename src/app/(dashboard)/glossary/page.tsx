@@ -11,21 +11,22 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { PageHeader } from "@/components/ui/page-header";
 import { TERM_LIST } from "@/lib/labels";
 import { GlossaryBrowser } from "./glossary-browser";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function GlossaryPage() {
   await requirePagePermission("glossary.read");
+  const t = await getT();
 
   return (
     <div className="w-full">
       <PageHeader
-        title="Kamus Istilah"
+        title={t("nav.items.glossary")}
         description={
           <span className="block max-w-3xl">
-            {TERM_LIST.length} istilah akuntansi yang dipakai aplikasi ini, dijelaskan dengan bahasa
-            sehari-hari beserta contohnya. Istilah yang sama juga muncul sebagai ikon{" "}
-            <span aria-hidden="true">“?”</span> di sebelah label pada layar lain.
+            {t("glossary.descriptionBefore", { count: TERM_LIST.length })}{" "}
+            <span aria-hidden="true">“?”</span> {t("glossary.descriptionAfter")}
           </span>
         }
       />

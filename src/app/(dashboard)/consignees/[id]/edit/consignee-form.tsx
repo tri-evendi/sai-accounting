@@ -9,10 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
+import { useT } from "@/lib/i18n/client";
 
 export function EditConsigneeForm() {
   const router = useRouter();
   const params = useParams();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -28,7 +30,7 @@ export function EditConsigneeForm() {
   useEffect(() => {
     fetch(`/api/consignees/${params.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Gagal memuat data penerima barang");
+        if (!res.ok) throw new Error(t("consignees.loadFailed"));
         return res.json();
       })
       .then((data) => {
@@ -46,7 +48,7 @@ export function EditConsigneeForm() {
         setError(err.message);
         setFetching(false);
       });
-  }, [params.id]);
+  }, [params.id, t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,7 +63,7 @@ export function EditConsigneeForm() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Gagal menyimpan perubahan penerima barang");
+      setError(data.error || t("consignees.updateFailed"));
       setLoading(false);
     } else {
       router.push(`/consignees/${params.id}`);
@@ -69,30 +71,34 @@ export function EditConsigneeForm() {
     }
   }
 
-  if (fetching) return <PageLoader message="Memuat data penerima barang..." />;
+  if (fetching) return <PageLoader message={t("consignees.loading")} />;
 
   return (
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Penerima Barang", href: "/consignees" },
-          { label: "Ubah Penerima Barang" },
+          { label: t("consignees.breadcrumb"), href: "/consignees" },
+          { label: t("consignees.editTitle") },
         ]}
-        title="Ubah Penerima Barang"
+        title={t("consignees.editTitle")}
       />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>{t("consignees.dataTitle")}</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" label="Nama Penerima Barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input id="country" label="Negara" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-              <Input id="contact" label="Kontak / PIC" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+              <Input id="name" label={t("consignees.nameField")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input id="country" label={t("consignees.colCountry")} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              <Input id="contact" label={t("consignees.contactPic")} value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
               <div className="space-y-1">
-                <label htmlFor="address" className="block text-sm font-medium text-foreground">Alamat</label>
+                <label htmlFor="address" className="block text-sm font-medium text-foreground">
+                  {t("common.address")}
+                </label>
                 <Textarea
                   id="address"
                   rows={3}
@@ -101,7 +107,9 @@ export function EditConsigneeForm() {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-foreground">Catatan</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-foreground">
+                  {t("common.notes")}
+                </label>
                 <Textarea
                   id="notes"
                   rows={2}
@@ -117,9 +125,9 @@ export function EditConsigneeForm() {
                   onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
                 />
                 <span className="text-sm text-foreground">
-                  Aktif
+                  {t("common.active")}
                   <span className="block text-xs text-muted-foreground">
-                    Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut.
+                    {t("consignees.activeHint")}
                   </span>
                 </span>
               </label>
@@ -128,8 +136,12 @@ export function EditConsigneeForm() {
         </Card>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</Button>
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Batal</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? t("common.saving") : t("common.save")}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>
+            {t("common.cancel")}
+          </Button>
         </div>
       </form>
     </div>

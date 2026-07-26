@@ -234,6 +234,34 @@
     @apply font-sans;
   }
   /*
+   * Aksara Han (bahasa Mandarin) — fondasi i18n.
+   *
+   * Inter dimuat dengan subset `latin` saja, jadi tidak punya satu pun aksara
+   * Tionghoa. Aturan ini dipicu oleh `<html lang="zh">` yang dipasang root
+   * layout, dan menaruh Inter TETAP DI DEPAN: huruf & angka Latin terus dilayani
+   * Inter (sehingga `tabular-nums` untuk nominal tetap bekerja persis sama di
+   * ketiga bahasa, sesuai MASTER.md), sementara aksara Han — yang tidak ada di
+   * Inter — jatuh ke font CJK bawaan sistem pembaca.
+   *
+   * Sengaja TANPA webfont Han: alasan biaya build ada di komentar
+   * `src/app/layout.tsx` (Noto Sans SC = 101 berkas woff2 diunduh saat build).
+   * Urutan di bawah mencakup Mac/iOS, Windows, lalu Android/Linux, jadi
+   * praktis setiap perangkat nyata sudah terlayani.
+   *
+   * Spesifisitasnya (0,1,1) menang atas `html { @apply font-sans }` (0,0,1),
+   * jadi urutannya di dalam layer tidak jadi soal.
+   */
+  html:lang(zh) {
+    font-family:
+      var(--font-inter),
+      "PingFang SC",
+      "Hiragino Sans GB",
+      "Microsoft YaHei",
+      "Noto Sans CJK SC",
+      "Source Han Sans SC",
+      sans-serif;
+  }
+  /*
    * Angka keuangan sejajar (MASTER.md): semua sel tabel memakai tabular-nums
    * secara default; untuk angka di luar tabel (kartu KPI dll.) gunakan
    * utility `tabular-nums` bawaan Tailwind.

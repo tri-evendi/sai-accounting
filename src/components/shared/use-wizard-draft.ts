@@ -23,12 +23,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  draftRejectionMessage,
+  type DraftRejection,
   draftStorageKey,
   parseDraft,
   serializeDraft,
   type WizardKind,
 } from "@/lib/wizard";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
+
+/**
+ * Kalimat penjelas draf yang dibuang. Kembar berbahasa dari
+ * `draftRejectionMessage` (`lib/wizard.ts`) — modul murni itu tetap memegang
+ * versi bahasa sumbernya, yang diperiksa `tests/wizard.test.ts`.
+ */
+function rejectionText(t: TranslateFn, reason: DraftRejection): string | null {
+  switch (reason) {
+    case "expired":
+      return t("wizard.draftExpired");
+    case "version":
+    case "kind":
+    case "corrupt":
+      return t("wizard.draftUnreadable");
+    case "empty":
+      return null;
+  }
+}
 
 export interface WizardDraftState<T> {
   draft: T;
@@ -43,6 +62,7 @@ export interface WizardDraftState<T> {
 }
 
 export function useWizardDraft<T>(kind: WizardKind, initial: () => T): WizardDraftState<T> {
+  const t = useT();
   const [draft, setDraftState] = useState<T>(initial);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -70,7 +90,7 @@ export function useWizardDraft<T>(kind: WizardKind, initial: () => T): WizardDra
       if (result.draft) {
         setDraftState(result.draft);
       } else if (result.reason && result.reason !== "empty") {
-        setNotice(draftRejectionMessage(result.reason));
+        setNotice(rejectionText(t, result.reason));
         try {
           window.sessionStorage.removeItem(key);
         } catch {
@@ -80,7 +100,7 @@ export function useWizardDraft<T>(kind: WizardKind, initial: () => T): WizardDra
       setReady(true);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [kind, key]);
+  }, [kind, key, t]);
 
   // Simpan setiap perubahan, tetapi hanya setelah pemulihan selesai.
   useEffect(() => {

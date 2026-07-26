@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Eye, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentPreview } from "@/components/shared/document-preview";
+import { useT } from "@/lib/i18n/client";
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
 
@@ -26,6 +27,7 @@ export function DocumentPreviewButton({
   filename: string;
   filepath: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const kind = kindOf(filename);
 
@@ -34,7 +36,7 @@ export function DocumentPreviewButton({
     return (
       <a href={filepath} target="_blank" rel="noopener noreferrer">
         <Button variant="secondary" size="sm">
-          <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" /> Buka
+          <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.open")}
         </Button>
       </a>
     );
@@ -43,7 +45,7 @@ export function DocumentPreviewButton({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Eye className="mr-1 h-4 w-4" aria-hidden="true" /> Pratinjau
+        <Eye className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.preview")}
       </Button>
       <DocumentPreview
         open={open}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function ConsigneeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("consignee.read");
+  const t = await getT();
   const { id } = await params;
 
   const consignee = await prisma.consignee.findUnique({
@@ -28,57 +30,57 @@ export default async function ConsigneeDetailPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Penerima Barang", href: "/consignees" }, { label: consignee.name }]}
+        breadcrumbs={[{ label: t("consignees.breadcrumb"), href: "/consignees" }, { label: consignee.name }]}
         title={consignee.name}
         badge={
           consignee.isActive ? (
-            <Badge variant="success">Aktif</Badge>
+            <Badge variant="success">{t("common.active")}</Badge>
           ) : (
-            <Badge variant="default">Nonaktif</Badge>
+            <Badge variant="default">{t("common.inactive")}</Badge>
           )
         }
         actions={
           <>
             <Link href={`/consignees/${consignee.id}/edit`}>
-              <Button variant="secondary">Ubah</Button>
+              <Button variant="secondary">{t("common.edit")}</Button>
             </Link>
             <Link href="/consignees">
-              <Button variant="ghost">Kembali</Button>
+              <Button variant="ghost">{t("common.back")}</Button>
             </Link>
           </>
         }
       />
 
       <Card>
-        <CardHeader><CardTitle>Informasi Penerima Barang</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("consignees.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Nama</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.name")}</dt>
               <dd className="text-sm text-foreground">{consignee.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Negara</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("consignees.colCountry")}</dt>
               <dd className="text-sm text-foreground">{consignee.country || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Kontak / PIC</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("consignees.contactPic")}</dt>
               <dd className="text-sm text-foreground">{consignee.contact || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Kontrak Terkait</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("consignees.relatedContracts")}</dt>
               <dd className="text-sm text-foreground">{consignee._count.contracts}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-muted-foreground">Alamat</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.address")}</dt>
               <dd className="text-sm text-foreground whitespace-pre-line">{consignee.address || "-"}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-muted-foreground">Catatan</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.notes")}</dt>
               <dd className="text-sm text-foreground whitespace-pre-line">{consignee.notes || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Dibuat</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.createdAt")}</dt>
               <dd className="text-sm text-foreground">{formatDate(consignee.createdAt)}</dd>
             </div>
           </dl>

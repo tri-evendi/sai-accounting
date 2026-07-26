@@ -7,9 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { CURRENCIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 interface AccountOption {
   id: number;
@@ -37,6 +48,7 @@ const base = (amount: string, rate: string) => (Number(amount) || 0) * (Number(r
 
 export function NewJournalForm() {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
@@ -52,7 +64,7 @@ export function NewJournalForm() {
   }, []);
 
   const accountOptions = [
-    { value: "", label: "— Pilih akun —" },
+    { value: "", label: t("common.pickAccount") },
     ...accounts.map((a) => ({ value: String(a.id), label: `${a.code} — ${a.name}` })),
   ];
 
@@ -79,11 +91,11 @@ export function NewJournalForm() {
       }));
 
     if (payloadLines.length < 2) {
-      setError("Jurnal minimal 2 baris berisi.");
+      setError(t("journal.minLines"));
       return;
     }
     if (!balanced) {
-      setError("Jurnal belum seimbang (total debit harus sama dengan total kredit dalam IDR).");
+      setError(t("journal.notBalanced"));
       return;
     }
 
@@ -96,7 +108,7 @@ export function NewJournalForm() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Gagal menyimpan jurnal");
+      setError(data.error || t("journal.saveFailed"));
       setLoading(false);
     } else {
       router.push("/journal");
@@ -107,8 +119,11 @@ export function NewJournalForm() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Catatan Transaksi", href: "/journal" }, { label: "Jurnal Baru" }]}
-        title="Jurnal Baru"
+        breadcrumbs={[
+          { label: t("journal.breadcrumb"), href: "/journal" },
+          { label: t("journal.newTitle") },
+        ]}
+        title={t("journal.newTitle")}
       />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
@@ -116,117 +131,133 @@ export function NewJournalForm() {
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Informasi Jurnal</CardTitle>
+            <CardTitle>{t("journal.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="date" type="date" label="Tanggal" required value={date} onChange={(e) => setDate(e.target.value)} />
-              <Input id="note" label="Keterangan" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opsional" />
+              <Input id="date" type="date" label={t("common.date")} required value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                id="note"
+                label={t("common.description")}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("journal.notePlaceholder")}
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Rincian Jurnal</CardTitle>
+            <CardTitle>{t("journal.linesTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="py-2 pr-2 font-medium">Akun</th>
-                    <th className="py-2 px-2 font-medium text-right">Debit</th>
-                    <th className="py-2 px-2 font-medium text-right">Kredit</th>
-                    <th className="py-2 px-2 font-medium">Mata Uang</th>
-                    <th className="py-2 px-2 font-medium text-right">Kurs</th>
-                    <th className="py-2 pl-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((l, i) => (
-                    <tr key={i} className="border-b border-border">
-                      <td className="py-2 pr-2 min-w-[220px]">
-                        <Select
-                          id={`acc-${i}`}
-                          aria-label="Akun"
-                          value={l.accountId}
-                          onChange={(e) => updateLine(i, { accountId: e.target.value })}
-                          options={accountOptions}
-                        />
-                      </td>
-                      <td className="py-2 px-2">
-                        <Input
-                          aria-label="Debit"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="text-right tabular-nums"
-                          value={l.debit}
-                          onChange={(e) => updateLine(i, { debit: e.target.value, credit: "" })}
-                        />
-                      </td>
-                      <td className="py-2 px-2">
-                        <Input
-                          aria-label="Kredit"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="text-right tabular-nums"
-                          value={l.credit}
-                          onChange={(e) => updateLine(i, { credit: e.target.value, debit: "" })}
-                        />
-                      </td>
-                      <td className="py-2 px-2 w-24">
-                        <Select
-                          aria-label="Mata Uang"
-                          value={l.currency}
-                          onChange={(e) => updateLine(i, { currency: e.target.value, rate: e.target.value === "IDR" ? "1" : l.rate })}
-                          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-                        />
-                      </td>
-                      <td className="py-2 px-2 w-28">
-                        <Input
-                          aria-label="Kurs"
-                          type="number"
-                          step="0.000001"
-                          min="0"
-                          className="text-right tabular-nums"
-                          value={l.rate}
-                          disabled={l.currency === "IDR"}
-                          onChange={(e) => updateLine(i, { rate: e.target.value })}
-                        />
-                      </td>
-                      <td className="py-2 pl-2">
-                        <button
-                          type="button"
-                          aria-label="Hapus baris"
-                          className="text-muted-foreground hover:text-destructive disabled:opacity-30"
-                          disabled={lines.length <= 2}
-                          onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="font-semibold">
-                    <td className="py-3 pr-2 text-muted-foreground">Total (IDR base)</td>
-                    <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(totalDebit, "IDR")}</td>
-                    <td className="py-3 px-2 text-right tabular-nums">{formatCurrency(totalCredit, "IDR")}</td>
-                    <td colSpan={3} className="py-3 px-2">
-                      {balanced ? (
-                        <span className="text-success-strong">✓ Seimbang</span>
-                      ) : (
-                        <span className="text-destructive">Selisih {formatCurrency(Math.abs(totalDebit - totalCredit), "IDR")}</span>
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            {/* Grid baris jurnal — padding rapat (py-2, px-2) sengaja menimpa
+                bawaan primitif agar sama dengan tampilan sebelum migrasi. */}
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto py-2 pr-2 pl-0">{t("common.account")}</TableHead>
+                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.debit")}</TableHead>
+                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.credit")}</TableHead>
+                  <TableHead className="h-auto px-2 py-2">{t("common.currency")}</TableHead>
+                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.rateTerm")}</TableHead>
+                  <TableHead className="h-auto py-2 pr-0 pl-2"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lines.map((l, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    <TableCell className="min-w-[220px] py-2 pr-2 pl-0">
+                      <Select
+                        id={`acc-${i}`}
+                        aria-label={t("common.account")}
+                        value={l.accountId}
+                        onChange={(e) => updateLine(i, { accountId: e.target.value })}
+                        options={accountOptions}
+                      />
+                    </TableCell>
+                    <TableCell className="px-2 py-2">
+                      <Input
+                        aria-label={t("common.debit")}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="text-right tabular-nums"
+                        value={l.debit}
+                        onChange={(e) => updateLine(i, { debit: e.target.value, credit: "" })}
+                      />
+                    </TableCell>
+                    <TableCell className="px-2 py-2">
+                      <Input
+                        aria-label={t("common.credit")}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="text-right tabular-nums"
+                        value={l.credit}
+                        onChange={(e) => updateLine(i, { credit: e.target.value, debit: "" })}
+                      />
+                    </TableCell>
+                    <TableCell className="w-24 px-2 py-2">
+                      <Select
+                        aria-label={t("common.currency")}
+                        value={l.currency}
+                        onChange={(e) => updateLine(i, { currency: e.target.value, rate: e.target.value === "IDR" ? "1" : l.rate })}
+                        options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                      />
+                    </TableCell>
+                    <TableCell className="w-28 px-2 py-2">
+                      <Input
+                        aria-label={t("common.rateTerm")}
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        className="text-right tabular-nums"
+                        value={l.rate}
+                        disabled={l.currency === "IDR"}
+                        onChange={(e) => updateLine(i, { rate: e.target.value })}
+                      />
+                    </TableCell>
+                    <TableCell className="py-2 pr-0 pl-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("journal.removeRow")}
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={lines.length <= 2}
+                        onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter className="bg-transparent">
+                <TableRow className="font-semibold hover:bg-transparent">
+                  <TableCell className="py-3 pr-2 pl-0 text-muted-foreground">{t("journal.totalBase")}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="px-2 py-3" value={totalDebit} currency="IDR" />
+                  </TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell className="px-2 py-3" value={totalCredit} currency="IDR" />
+                  </TableCell>
+                  <TableCell colSpan={3} className="px-2 py-3">
+                    {balanced ? (
+                      <span className="text-success-strong">✓ {t("journal.balanced")}</span>
+                    ) : (
+                      <span className="text-destructive">
+                        {t("journal.difference", {
+                          amount: formatCurrency(Math.abs(totalDebit - totalCredit), "IDR"),
+                        })}
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
 
             <Button
               type="button"
@@ -235,17 +266,17 @@ export function NewJournalForm() {
               className="mt-3"
               onClick={() => setLines((prev) => [...prev, emptyLine()])}
             >
-              <Plus className="mr-1 h-4 w-4" /> Tambah Baris
+              <Plus className="mr-1 h-4 w-4" /> {t("journal.addRow")}
             </Button>
           </CardContent>
         </Card>
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading || !balanced}>
-            {loading ? "Menyimpan..." : "Simpan Jurnal"}
+            {loading ? t("common.saving") : t("journal.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

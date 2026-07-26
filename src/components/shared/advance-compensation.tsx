@@ -27,7 +27,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/client";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Loader2, HandCoins, Info, Trash2 } from "lucide-react";
 
@@ -55,10 +66,22 @@ export interface AppliedAdvance {
  * `targetKind === "invoice" ? … : …` scattered through the JSX, so adding a
  * third kind of target is a table entry and not an audit of the whole file.
  */
+/**
+ * Kata benda sasaran/mitra — KUNCI kamus, bukan katanya. Sebelum multibahasa
+ * kata Indonesianya dirangkai langsung ke belasan kalimat ("Kompensasi ke
+ * faktur ini"); rangkaian seperti itu tak bisa diterjemahkan, jadi katanya kini
+ * diambil dari kamus dan disisipkan lewat `{target}`/`{party}`.
+ */
 const COPY = {
-  invoice: { target: "faktur", party: "pelanggan" },
-  purchase: { target: "pembelian", party: "supplier" },
-} as const;
+  invoice: {
+    target: "advances.compTargetInvoice",
+    party: "advances.compPartyInvoice",
+  },
+  purchase: {
+    target: "advances.compTargetPurchase",
+    party: "advances.compPartySupplier",
+  },
+} as const satisfies Record<string, { target: DictionaryKey; party: DictionaryKey }>;
 
 export function AdvanceCompensationSection({
   targetKind,
@@ -77,8 +100,10 @@ export function AdvanceCompensationSection({
   applied: AppliedAdvance[];
 }) {
   const router = useRouter();
+  const t = useT();
   const { toast } = useToast();
-  const noun = COPY[targetKind];
+  const nounKeys = COPY[targetKind];
+  const noun = { target: t(nounKeys.target), party: t(nounKeys.party) };
 
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -105,7 +130,7 @@ export function AdvanceCompensationSection({
     e.preventDefault();
     setError(null);
     if (lines.length === 0) {
-      setError("Isi jumlah kompensasi pada minimal satu uang muka.");
+      setError(t("advances.compErrNoAmount"));
       return;
     }
     setSaving(true);
@@ -134,11 +159,11 @@ export function AdvanceCompensationSection({
         return;
       }
 
-      toast(`Uang muka dikompensasi. Tagihan ${noun.target} berkurang.`, "success");
+      toast(t("advances.compApplied", { target: noun.target }), "success");
       setAmounts({});
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("advances.compErrNetwork"));
     } finally {
       setSaving(false);
     }
@@ -154,13 +179,13 @@ export function AdvanceCompensationSection({
       );
       const data = await response.json();
       if (!response.ok) {
-        setError(data?.error ?? "Gagal membatalkan kompensasi.");
+        setError(data?.error ?? t("advances.compErrRemove"));
         return;
       }
-      toast("Kompensasi dibatalkan. Jurnalnya dibalik, bukan dihapus.", "success");
+      toast(t("advances.compRemoved"), "success");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("advances.compErrNetwork"));
     } finally {
       setBusyId(null);
     }
@@ -170,39 +195,47 @@ export function AdvanceCompensationSection({
     <div className="space-y-4">
       {/* Already compensated */}
       {applied.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">Tanggal</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Jumlah</th>
-                <th className="px-4 py-2 text-right font-medium text-muted-foreground">IDR</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        // Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+        // primitif agar sama dengan tampilan sebelum migrasi.
+        <div className="rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2">{t("advances.compColAdvance")}</TableHead>
+                <TableHead className="h-auto px-4 py-2">{t("common.date")}</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">{t("common.amount")}</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-right">IDR</TableHead>
+                <TableHead className="h-auto px-4 py-2" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {applied.map((a) => (
-                <tr key={a.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                    {formatCurrency(a.amount, a.currency)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-foreground">
+                <TableRow key={a.id}>
+                  <TableCell className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</TableCell>
+                  <TableCell className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</TableCell>
+                  <TableCell className="p-0">
+                    <MoneyCell
+                      className="px-4 py-2 text-foreground"
+                      value={a.amount}
+                      currency={a.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
                     {a.baseAmount != null ? (
-                      formatCurrency(a.baseAmount, "IDR")
+                      <Money value={a.baseAmount} currency="IDR" />
                     ) : (
-                      <span className="text-xs text-warning-strong">Kurs belum diisi</span>
+                      <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
                     )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-right">
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleRemove(a.id)}
                       disabled={busyId === a.id}
                       aria-label={`Batalkan kompensasi ${a.advanceNo}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive-strong transition-colors duration-200 hover:bg-destructive-soft disabled:cursor-not-allowed disabled:opacity-50"
+                      className="gap-1 px-2 text-xs text-destructive-strong hover:bg-destructive-soft hover:text-destructive-strong"
                     >
                       {busyId === a.id ? (
                         <Loader2
@@ -213,12 +246,12 @@ export function AdvanceCompensationSection({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       )}
                       Batalkan
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -227,51 +260,59 @@ export function AdvanceCompensationSection({
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {applied.length > 0
-              ? `Tidak ada sisa uang muka lain untuk ${noun.party} ini.`
-              : `Belum ada uang muka yang bisa dikompensasi ke ${noun.target} ini.`}
+              ? t("advances.compNoneLeft", { party: noun.party })
+              : t("advances.compNoneAtAll", { target: noun.target })}
           </span>
         </p>
       ) : (
         <form onSubmit={handleApply} className="space-y-3">
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-2 font-medium text-muted-foreground">Uang Muka</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Sisa</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">
-                    Kompensasi ke {noun.target} ini
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+          {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
+              primitif agar sama dengan tampilan sebelum migrasi. */}
+          <div className="rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto px-4 py-2">{t("advances.compColAdvance")}</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-right">
+                    {t("advances.compColRemaining")}
+                  </TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-right">
+                    {t("advances.compColApply", { target: noun.target })}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {advances.map((a) => {
                   const value = Number(amounts[a.id]) || 0;
                   const overLine = value > a.remaining + 0.005;
                   const crossCurrency = a.currency !== targetCurrency;
                   return (
-                    <tr key={a.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2">
+                    <TableRow key={a.id} className="hover:bg-transparent">
+                      <TableCell className="px-4 py-2">
                         <span className="font-medium text-foreground">{a.advanceNo}</span>
                         <span className="block text-xs text-muted-foreground">
                           {a.partyName} · {formatDateShort(new Date(a.date))}
                         </span>
                         {crossCurrency && (
                           <span className="mt-0.5 block text-xs text-warning-strong">
-                            Mata uang berbeda dari {noun.target} ({targetCurrency}) — isi
-                            jumlahnya sendiri.
+                            {t("advances.compCrossCurrency", {
+                              target: noun.target,
+                              currency: targetCurrency,
+                            })}
                           </span>
                         )}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-foreground">
-                        {formatCurrency(a.remaining, a.currency)}
+                      </TableCell>
+                      <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
+                        <Money value={a.remaining} currency={a.currency} />
                         <span className="block text-xs text-muted-foreground">
-                          {a.remainingBase != null
-                            ? formatCurrency(a.remainingBase, "IDR")
-                            : "Kurs belum diisi"}
+                          {a.remainingBase != null ? (
+                            <Money value={a.remainingBase} currency="IDR" />
+                          ) : (
+                            t("common.rateMissing")
+                          )}
                         </span>
-                      </td>
-                      <td className="px-4 py-2">
+                      </TableCell>
+                      <TableCell className="px-4 py-2">
                         <Input
                           id={`adv-${targetKind}-${targetId}-${a.id}`}
                           type="number"
@@ -291,12 +332,12 @@ export function AdvanceCompensationSection({
                             Melebihi sisa uang muka.
                           </p>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -304,7 +345,7 @@ export function AdvanceCompensationSection({
               <Input
                 id={`apply-date-${targetKind}-${targetId}`}
                 type="date"
-                label="Tanggal kompensasi"
+                label={t("advances.compDateField")}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
@@ -312,15 +353,17 @@ export function AdvanceCompensationSection({
             </div>
             <div className="text-right text-xs">
               <p className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Sisa tagihan {noun.target}</span>
+                <span className="text-muted-foreground">
+                  {t("advances.compOutstanding", { target: noun.target })}
+                </span>
                 <span className="font-medium tabular-nums text-foreground">
                   {outstandingBase != null
                     ? formatCurrency(outstandingBase, "IDR")
-                    : "Kurs belum diisi"}
+                    : t("common.rateMissing")}
                 </span>
               </p>
               <p className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Total dikompensasi</span>
+                <span className="text-muted-foreground">{t("advances.compTotal")}</span>
                 <span
                   className={`font-medium tabular-nums ${
                     overTarget ? "text-destructive-strong" : "text-foreground"
@@ -334,7 +377,7 @@ export function AdvanceCompensationSection({
 
           {overTarget && (
             <p className="rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-              Total kompensasi melebihi sisa tagihan {noun.target} ini.
+              {t("advances.compOverTarget", { target: noun.target })}
             </p>
           )}
 

@@ -40,8 +40,23 @@ ENV DATABASE_URL="mysql://build:build@localhost:3306/build" \
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Generate the Prisma client into src/generated/prisma, then build standalone.
-RUN npx prisma generate \
-    && npm run build
+#
+# `--max-old-space-size=768` WAJIB, bukan penyetelan halus. Mesin ini punya RAM
+# ~1,9 GB yang sebagian besar sudah dipakai container yang sedang melayani, jadi
+# hanya ~600 MB benar-benar bebas. Tanpa batas heap, fase "Running TypeScript"
+# milik `next build` tumbuh sampai kernel membunuhnya — build berhenti dengan
+# **exit code 137** (OOM), bukan galat yang menjelaskan dirinya sendiri.
+#
+# Dengan batas ini Node memilih GC agresif ketimbang membesar; nilai 768 MB
+# diverifikasi langsung di mesin ini lewat `NODE_OPTIONS=--max-old-space-size=768
+# npx tsc --noEmit` yang lolos, sementara tanpa batas justru dibunuh.
+#
+# Beban tipe naik tajam sejak fondasi i18n: kunci kamus adalah dot-path bertipe,
+# jadi TypeScript mengevaluasi union berisi ~2.400 literal string. Itu memang
+# mahal di memori — jangan heran kalau batas ini perlu ditinjau lagi saat kamus
+# bertambah besar.
+RUN NODE_OPTIONS="--max-old-space-size=768" npx prisma generate \
+    && NODE_OPTIONS="--max-old-space-size=768" npm run build
 
 
 # ─── Migrator (used by the `migrate` compose service) ────────

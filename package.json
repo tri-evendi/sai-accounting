@@ -12,6 +12,8 @@
     "start:prod": "bash scripts/start-production.sh",
     "start:low-mem": "bash scripts/start-low-memory.sh",
     "lint": "eslint",
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=768 tsc --noEmit",
+    "verify": "npm run typecheck && npm run lint && npm test",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "npx prisma generate",

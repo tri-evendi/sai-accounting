@@ -16,6 +16,7 @@ import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getT } from "@/lib/i18n/server";
 import { Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function SuppliersPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("supplier.read");
+  const t = await getT();
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -47,25 +49,25 @@ export default async function SuppliersPage({
     <div>
       <PageHeader
         className="mb-1"
-        title={<TermTooltip term="pemasok">Pemasok ({totalCount})</TermTooltip>}
-        description="Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya."
+        title={<TermTooltip term="pemasok">{t("suppliers.title", { count: totalCount })}</TermTooltip>}
+        description={t("suppliers.description")}
         actions={
           <Link href="/suppliers/new" className="shrink-0">
-            <Button>+ Tambah Pemasok</Button>
+            <Button>{t("suppliers.addNew")}</Button>
           </Link>
         }
       />
-      <LearnMore term="pembelian" className="mt-1 mb-6" label="Pelajari ini: cara mencatat pembelian" />
+      <LearnMore term="pembelian" className="mt-1 mb-6" label={t("suppliers.learnMore")} />
 
       <Card>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nama</TableHead>
-              <TableHead>Alamat</TableHead>
-              <TableHead>Telepon</TableHead>
-              <TableHead>Surel</TableHead>
-              <TableHead>Transaksi</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.address")}</TableHead>
+              <TableHead>{t("common.phone")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("suppliers.colTransactions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -74,9 +76,9 @@ export default async function SuppliersPage({
                 <TableCell colSpan={5} className="p-0">
                   <EmptyState
                     icon={<Truck className="h-12 w-12" />}
-                    title="Belum ada pemasok"
-                    description="Pemasok adalah pihak tempat Anda membeli barang. Catat pemasok pertama agar pembelian dan utangnya bisa dilacak."
-                    actionLabel="+ Tambah Pemasok"
+                    title={t("suppliers.emptyTitle")}
+                    description={t("suppliers.emptyDescription")}
+                    actionLabel={t("suppliers.addNew")}
                     actionHref="/suppliers/new"
                   />
                 </TableCell>

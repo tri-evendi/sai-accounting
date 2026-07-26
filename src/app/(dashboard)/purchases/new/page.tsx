@@ -4,6 +4,7 @@ import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
+import { getT } from "@/lib/i18n/server";
 import { PurchaseWizard } from "./purchase-wizard";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function NewPurchaseWizardPage() {
   await requirePagePermission("purchase.write");
+  const t = await getT();
 
   const [suppliers, items, closedPeriods] = await Promise.all([
     prisma.supplier.findMany({
@@ -39,21 +41,19 @@ export default async function NewPurchaseWizardPage() {
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: "Catat Pembelian" }]}
-        title="Catat Pembelian"
+        breadcrumbs={[
+          { label: t("suppliers.breadcrumb"), href: "/suppliers" },
+          { label: t("purchases.title") },
+        ]}
+        title={t("purchases.title")}
         description={
           <>
-            Dipandu langkah demi langkah: pemasok, barang, barang masuk gudang, lalu pencatatan
-            utangnya. Anda bisa mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong>{" "}
-            sampai tombol &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
+            {t("purchases.descriptionA")} <strong>{t("purchases.descriptionStrong")}</strong>{" "}
+            {t("purchases.descriptionB")}
           </>
         }
       />
-      <LearnMore
-        term="pembelian"
-        className="mt-1 mb-6"
-        label="Pelajari ini: apa itu pembelian"
-      />
+      <LearnMore term="pembelian" className="mt-1 mb-6" label={t("purchases.learnMore")} />
 
       <PurchaseWizard
         suppliers={suppliers}

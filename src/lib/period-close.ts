@@ -8,12 +8,29 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getBalanceSheet, getTrialBalance } from "@/lib/reports";
-import {
-  MONTH_NAMES,
-  type PeriodStatus,
-  periodBounds,
-  periodLabel,
-} from "@/lib/period";
+import { type PeriodStatus, periodBounds } from "@/lib/period";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { monthNames } from "@/lib/i18n/labels";
+import { translate, type Dictionary } from "@/lib/i18n/dictionary";
+
+/*
+ * ── Bahasa: dibaca DI SINI, bukan diserahkan ke pemanggil ──────────────────
+ *
+ * Modul ini sudah server-only (Prisma) dan hanya dijangkau dari route handler
+ * `/api/periods*` serta halaman server `/periods` — ketiganya berjalan di dalam
+ * satu permintaan, jadi `getT()` boleh membaca cookie bahasa persis seperti
+ * halaman server. Efeknya: `PeriodCheck.label`/`.detail` dan label bulan sampai
+ * ke layar dalam bahasa pengguna TANPA mengubah bentuk `PeriodSummary` —
+ * ketiganya tetap string biasa.
+ */
+
+/** "Maret 2026" dalam bahasa aktif — kembaran `periodLabel` (@/lib/period). */
+function localePeriodLabel(dictionary: Dictionary, year: number, month: number): string {
+  return translate(dictionary, "common.monthOfYear", {
+    month: monthNames(dictionary)[month - 1] ?? month,
+    year,
+  });
+}
 
 export type CheckStatus = "ok" | "warning" | "blocker";
 
@@ -55,6 +72,9 @@ const eq = (a: number, b: number) => cents(a) === cents(b);
  */
 export async function getPeriodSummary(year: number, month: number): Promise<PeriodSummary> {
   const { start, end } = periodBounds(year, month);
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
+  const label = (y: number, m: number) => localePeriodLabel(dictionary, y, m);
 
   const [existing, journals, lineGroups] = await Promise.all([
     prisma.period.findUnique({
@@ -101,18 +121,19 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
     unbalanced.length === 0
       ? {
           id: "journals_balanced",
-          label: "Jurnal seimbang",
+          label: t("periodClose.checkJournalsBalanced"),
           status: "ok",
-          detail: `${journals.length} jurnal di periode ini seimbang (debit = kredit).`,
+          detail: t("periodClose.checkJournalsBalancedOk", { count: journals.length }),
         }
       : {
           id: "journals_balanced",
-          label: "Jurnal seimbang",
+          label: t("periodClose.checkJournalsBalanced"),
           status: "blocker",
-          detail:
-            `${unbalanced.length} jurnal tidak seimbang: ${unbalanced.slice(0, 5).join(", ")}` +
-            `${unbalanced.length > 5 ? ", dan lainnya" : ""}. ` +
-            `Perbaiki jurnal tersebut lebih dulu — menutup periode akan mengunci selisih ini.`,
+          detail: t("periodClose.checkJournalsBalancedFail", {
+            count: unbalanced.length,
+            list: unbalanced.slice(0, 5).join(", "),
+            more: unbalanced.length > 5 ? t("periodClose.andOthers") : "",
+          }),
         }
   );
 
@@ -120,19 +141,18 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
     trialBalance.balanced
       ? {
           id: "trial_balance",
-          label: "Neraca Saldo seimbang",
+          label: t("periodClose.checkTrialBalance"),
           status: "ok",
-          detail: "Total debit dan kredit seluruh akun sama s/d akhir periode.",
+          detail: t("periodClose.checkTrialBalanceOk"),
         }
       : {
           id: "trial_balance",
-          label: "Neraca Saldo seimbang",
+          label: t("periodClose.checkTrialBalance"),
           status: "blocker",
-          detail:
-            `Neraca Saldo s/d akhir periode tidak seimbang ` +
-            `(debit ${trialBalance.totalDebit.toLocaleString("id-ID")} vs kredit ` +
-            `${trialBalance.totalCredit.toLocaleString("id-ID")}). ` +
-            `Periksa halaman Laporan sebelum menutup.`,
+          detail: t("periodClose.checkTrialBalanceFail", {
+            debit: trialBalance.totalDebit.toLocaleString("id-ID"),
+            credit: trialBalance.totalCredit.toLocaleString("id-ID"),
+          }),
         }
   );
 
@@ -142,19 +162,22 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
     negativeAssets.length === 0
       ? {
           id: "negative_balances",
-          label: "Saldo aset wajar",
+          label: t("periodClose.checkNegativeAssets"),
           status: "ok",
-          detail: "Tidak ada akun aset bersaldo negatif di akhir periode.",
+          detail: t("periodClose.checkNegativeAssetsOk"),
         }
       : {
           id: "negative_balances",
-          label: "Saldo aset wajar",
+          label: t("periodClose.checkNegativeAssets"),
           status: "warning",
-          detail:
-            `${negativeAssets.length} akun aset bersaldo negatif: ` +
-            `${negativeAssets.slice(0, 5).map((a) => `${a.code} ${a.name}`).join(", ")}` +
-            `${negativeAssets.length > 5 ? ", dan lainnya" : ""}. ` +
-            `Kas/persediaan negatif biasanya berarti ada transaksi yang belum dicatat.`,
+          detail: t("periodClose.checkNegativeAssetsWarn", {
+            count: negativeAssets.length,
+            list: negativeAssets
+              .slice(0, 5)
+              .map((a) => `${a.code} ${a.name}`)
+              .join(", "),
+            more: negativeAssets.length > 5 ? t("periodClose.andOthers") : "",
+          }),
         }
   );
 
@@ -172,37 +195,36 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
     prevOpen
       ? {
           id: "previous_period",
-          label: "Periode sebelumnya",
+          label: t("periodClose.checkPrevPeriod"),
           status: "warning",
-          detail:
-            `${periodLabel(prev.year, prev.month)} masih terbuka padahal sudah ada ` +
-            `${prevJournalCount} jurnal. Umumnya periode ditutup berurutan.`,
+          detail: t("periodClose.checkPrevPeriodWarn", {
+            period: label(prev.year, prev.month),
+            count: prevJournalCount,
+          }),
         }
       : {
           id: "previous_period",
-          label: "Periode sebelumnya",
+          label: t("periodClose.checkPrevPeriod"),
           status: "ok",
-          detail: `${periodLabel(prev.year, prev.month)} sudah ditutup atau belum ada transaksi.`,
+          detail: t("periodClose.checkPrevPeriodOk", { period: label(prev.year, prev.month) }),
         }
   );
 
   if (journals.length === 0) {
     checks.push({
       id: "has_transactions",
-      label: "Ada transaksi",
+      label: t("periodClose.checkHasTransactions"),
       status: "warning",
-      detail: "Belum ada jurnal di periode ini. Pastikan memang tidak ada transaksi.",
+      detail: t("periodClose.checkHasTransactionsWarn"),
     });
   }
 
   if (end.getTime() > Date.now()) {
     checks.push({
       id: "period_ended",
-      label: "Periode sudah berakhir",
+      label: t("periodClose.checkPeriodEnded"),
       status: "warning",
-      detail:
-        `${periodLabel(year, month)} belum berakhir. Menutupnya sekarang akan menolak ` +
-        `transaksi baru bertanggal di sisa bulan ini.`,
+      detail: t("periodClose.checkPeriodEndedWarn", { period: label(year, month) }),
     });
   }
 
@@ -213,7 +235,7 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
   return {
     year,
     month,
-    label: periodLabel(year, month),
+    label: label(year, month),
     status,
     closedAt: existing?.closedAt?.toISOString() ?? null,
     closedByName: existing?.closedBy?.name ?? existing?.closedBy?.username ?? null,
@@ -280,6 +302,7 @@ export async function reopenPeriod(params: {
  * month with a `periods` row, newest first.
  */
 export async function listPeriods(limit = 24) {
+  const dictionary = await getDictionary(await getLocale());
   const [rows, bounds] = await Promise.all([
     prisma.period.findMany({
       include: { closedBy: { select: { name: true, username: true } } },
@@ -312,7 +335,7 @@ export async function listPeriods(limit = 24) {
     return {
       year: m.year,
       month: m.month,
-      label: `${MONTH_NAMES[m.month - 1]} ${m.year}`,
+      label: localePeriodLabel(dictionary, m.year, m.month),
       status: (row?.status as PeriodStatus | undefined) ?? "open",
       closedAt: row?.closedAt?.toISOString() ?? null,
       closedByName: row?.closedBy?.name ?? row?.closedBy?.username ?? null,

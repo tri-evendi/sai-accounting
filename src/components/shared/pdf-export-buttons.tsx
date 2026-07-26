@@ -8,6 +8,7 @@ import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-repo
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
+import { useT } from "@/lib/i18n/client";
 
 interface ContractPDFData {
   contractNo: string;
@@ -38,9 +39,10 @@ export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
 }
 
 export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
+  const t = useT();
   return (
     <PdfDocumentButton
-      label="Surat Jalan"
+      label={t("nav.items.deliveryOrders")}
       title={`Surat Jalan ${contract.contractNo}`}
       filename={`SuratJalan_${contract.contractNo}.pdf`}
       generate={async () => {
@@ -79,9 +81,10 @@ interface InvoicePDFData {
 }
 
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
+  const t = useT();
   return (
     <PdfDocumentButton
-      label="Pratinjau Stok"
+      label={t("pdf.previewStock")}
       title="Laporan Stok"
       filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       disabled={items.length === 0}
@@ -100,9 +103,10 @@ export function FinanceReportPDFButton({
   balances: FinanceBalanceRow[];
   transactions: FinanceReportRow[];
 }) {
+  const t = useT();
   return (
     <PdfDocumentButton
-      label="Pratinjau Kas & Bank"
+      label={t("pdf.previewFinance")}
       title="Laporan Kas & Bank"
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       generate={async () => {
@@ -120,10 +124,11 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
+  const t = useT();
   const dateSlug = new Date().toISOString().slice(0, 10);
   return (
     <PdfDocumentButton
-      label="Pratinjau & Cetak"
+      label={t("pdf.previewAndPrint")}
       title="Laporan Keuangan"
       filename={`Laporan_${dateSlug}.pdf`}
       generate={async () => {
@@ -142,6 +147,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
  * (summable, exact) number cells rather than pre-formatted strings.
  */
 export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -168,10 +174,10 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Excel berhasil diunduh");
+      toast(t("excel.downloaded"));
     } catch (err) {
       console.error(err);
-      toast("Gagal membuat Excel", "error");
+      toast(t("excel.failed"), "error");
     }
     setLoading(false);
   }
@@ -179,7 +185,7 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
   return (
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
       <FileSpreadsheet className="h-4 w-4 mr-1" />
-      {loading ? "Menyiapkan..." : "Unduh Excel"}
+      {loading ? t("pdf.preparing") : t("excel.download")}
     </Button>
   );
 }

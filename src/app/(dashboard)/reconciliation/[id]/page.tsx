@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { getReconciliation } from "@/lib/bank-statements";
 import { movementSigned } from "@/lib/reconciliation";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function ReconciliationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requirePagePermission("reconciliation.read");
+  const t = await getT();
 
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
@@ -47,7 +49,7 @@ export default async function ReconciliationDetailPage({
     <div>
       <div className="mb-4">
         <Link href="/reconciliation" className="text-sm text-primary hover:underline">
-          ← Kembali ke daftar rekonsiliasi
+          {t("reconciliation.backToList")}
         </Link>
       </div>
 

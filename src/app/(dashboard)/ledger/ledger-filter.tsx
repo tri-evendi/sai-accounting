@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/client";
 
 interface Props {
   accountOptions: { value: string; label: string }[];
@@ -15,6 +16,7 @@ interface Props {
 
 export function LedgerFilter({ accountOptions, accountId, from, to }: Props) {
   const router = useRouter();
+  const translate = useT();
   const [acc, setAcc] = useState(accountId);
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
@@ -33,20 +35,20 @@ export function LedgerFilter({ accountOptions, accountId, from, to }: Props) {
       <div className="min-w-[260px]">
         <Select
           id="accountId"
-          label="Akun"
+          label={translate("common.account")}
           value={acc}
           onChange={(e) => setAcc(e.target.value)}
           options={accountOptions}
         />
       </div>
       <div>
-        <Input id="from" type="date" label="Dari" value={f} onChange={(e) => setF(e.target.value)} />
+        <Input id="from" type="date" label={translate("common.from")} value={f} onChange={(e) => setF(e.target.value)} />
       </div>
       <div>
-        <Input id="to" type="date" label="Sampai" value={t} onChange={(e) => setT(e.target.value)} />
+        <Input id="to" type="date" label={translate("common.to")} value={t} onChange={(e) => setT(e.target.value)} />
       </div>
       <Button type="submit" disabled={!acc}>
-        Tampilkan
+        {translate("common.show")}
       </Button>
     </form>
   );

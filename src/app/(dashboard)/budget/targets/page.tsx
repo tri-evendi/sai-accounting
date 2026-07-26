@@ -10,6 +10,7 @@ import { listSalesTargets } from "@/lib/budget-report";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { SalesTargetClient } from "./sales-target-client";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function SalesTargetsPage({
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
   await requirePagePermission("budget.manage");
+  const t = await getT();
   const sp = await searchParams;
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();
@@ -34,9 +36,12 @@ export default async function SalesTargetsPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Rencana & Target", href: "/budget" }, { label: "Target Penjualan" }]}
-        title="Target Penjualan"
-        description="Target penjualan per bulan, dalam IDR. Pelanggan dan komoditas bersifat opsional — kosongkan untuk target umum periode itu."
+        breadcrumbs={[
+          { label: t("budget.breadcrumb"), href: "/budget" },
+          { label: t("budget.surfaceTargetsTitle") },
+        ]}
+        title={t("budget.surfaceTargetsTitle")}
+        description={t("budget.targetsDescription")}
       />
 
       <div className="mb-6">

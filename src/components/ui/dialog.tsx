@@ -12,6 +12,7 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -25,6 +26,8 @@ function DialogContent({
   showClose = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & { showClose?: boolean }) {
+  const t = useT();
+
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -47,7 +50,7 @@ function DialogContent({
         {children}
         {showClose && (
           <DialogPrimitive.Close
-            aria-label="Tutup"
+            aria-label={t("common.close")}
             className="absolute right-3 top-3 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-5 w-5" aria-hidden="true" />

@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { useT } from "@/lib/i18n/client";
 
 export function NewConsigneeForm() {
   const router = useRouter();
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +37,7 @@ export function NewConsigneeForm() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Gagal menyimpan penerima barang");
+      setError(data.error || t("consignees.saveFailed"));
       setLoading(false);
     } else {
       router.push("/consignees");
@@ -47,10 +49,10 @@ export function NewConsigneeForm() {
     <div className="w-full">
       <PageHeader
         breadcrumbs={[
-          { label: "Penerima Barang", href: "/consignees" },
-          { label: "Penerima Barang Baru" },
+          { label: t("consignees.breadcrumb"), href: "/consignees" },
+          { label: t("consignees.newTitle") },
         ]}
-        title="Penerima Barang Baru"
+        title={t("consignees.newTitle")}
       />
 
       {error && (
@@ -59,21 +61,21 @@ export function NewConsigneeForm() {
 
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
-          <CardHeader><CardTitle>Data Penerima Barang</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("consignees.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" name="name" label="Nama Penerima Barang" required />
-              <Input id="country" name="country" label="Negara" />
-              <Input id="contact" name="contact" label="Kontak / PIC" />
+              <Input id="name" name="name" label={t("consignees.nameField")} required />
+              <Input id="country" name="country" label={t("consignees.colCountry")} />
+              <Input id="contact" name="contact" label={t("consignees.contactPic")} />
               <div className="space-y-1">
                 <label htmlFor="address" className="block text-sm font-medium text-foreground">
-                  Alamat
+                  {t("common.address")}
                 </label>
                 <Textarea id="address" name="address" rows={3} />
               </div>
               <div className="space-y-1">
                 <label htmlFor="notes" className="block text-sm font-medium text-foreground">
-                  Catatan
+                  {t("common.notes")}
                 </label>
                 <Textarea id="notes" name="notes" rows={2} />
               </div>
@@ -83,10 +85,10 @@ export function NewConsigneeForm() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan"}
+            {loading ? t("common.saving") : t("common.save")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
-            Batal
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

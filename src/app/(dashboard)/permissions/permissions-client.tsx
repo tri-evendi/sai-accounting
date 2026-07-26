@@ -42,7 +42,9 @@ import {
   validateOverrides,
   type PermissionOverride,
 } from "@/lib/authz-overrides";
-import { PERMISSION_LABELS, permissionGroups } from "@/lib/authz-labels";
+import { permissionGroups } from "@/lib/authz-labels";
+import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
 import { Lock, RotateCcw, Save } from "lucide-react";
 
 interface OverridesResponse {
@@ -70,6 +72,8 @@ function toDraft(matrix: Record<string, string[]>, roleKeys: string[]): Record<s
 }
 
 export function PermissionsClient() {
+  const t = useT();
+  const dictionary = useDictionary();
   const { toast } = useToast();
   const [data, setData] = useState<OverridesResponse | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -79,7 +83,14 @@ export function PermissionsClient() {
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const groups = useMemo(() => permissionGroups(), []);
+  // Bentuk kelompok tetap dari `authz-labels.ts`; teksnya dari kamus.
+  const permissionText = useMemo(() => permissionLabels(dictionary), [dictionary]);
+  const resourceText = useMemo(() => permissionResourceLabels(dictionary), [dictionary]);
+  const groups = useMemo(
+    () =>
+      permissionGroups().map((group) => ({ ...group, label: resourceText[group.resource] })),
+    [resourceText]
+  );
   // Kolom matriks berasal dari DB (peran, termasuk kustom), bukan enum kode.
   const roleKeys = useMemo(() => (data?.roles ?? []).map((r) => r.key), [data]);
   const labelOf = (key: string) =>
@@ -90,7 +101,7 @@ export function PermissionsClient() {
       const res = await fetch("/api/authz/overrides");
       if (!res.ok) {
         throw new Error(
-          res.status === 403 ? "Anda tidak punya izin mengelola hak akses." : "Gagal memuat hak akses."
+          res.status === 403 ? t("permissions.errNoPermission") : t("permissions.errLoad")
         );
       }
       const json = (await res.json()) as OverridesResponse;
@@ -99,7 +110,7 @@ export function PermissionsClient() {
     } catch (err) {
       setLoadError((err as Error).message);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadOverrides();
@@ -143,7 +154,7 @@ export function PermissionsClient() {
     const found = validateOverrides(draftOverrides);
     setErrors(found);
     if (found.length > 0) {
-      toast("Perubahan belum bisa disimpan — periksa pesan kesalahannya.", "error");
+      toast(t("permissions.errSaveBlocked"), "error");
       return;
     }
     setConfirmSave(true);
@@ -159,7 +170,7 @@ export function PermissionsClient() {
       });
       const json = await res.json();
       if (!res.ok) {
-        const message = (json as { error?: string }).error ?? "Gagal menyimpan hak akses.";
+        const message = (json as { error?: string }).error ?? t("permissions.errSave");
         setErrors((json as { errors?: string[] }).errors ?? [message]);
         toast(message, "error");
         return;
@@ -170,7 +181,7 @@ export function PermissionsClient() {
       setErrors([]);
       toast(successMessage);
     } catch {
-      toast("Gagal menghubungi server. Coba lagi.", "error");
+      toast(t("permissions.errNetwork"), "error");
     } finally {
       setSaving(false);
     }
@@ -179,7 +190,7 @@ export function PermissionsClient() {
   if (loadError) {
     return (
       <div>
-        <PageHeader title="Hak Akses" />
+        <PageHeader title={t("nav.items.permissions")} />
         <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">
           {loadError}
         </div>
@@ -187,21 +198,20 @@ export function PermissionsClient() {
     );
   }
 
-  if (!data) return <PageLoader message="Memuat hak akses..." />;
+  if (!data) return <PageLoader message={t("permissions.loading")} />;
 
   return (
     <div>
       <PageHeader
-        title="Hak Akses"
-        description={
-          "Atur apa yang boleh dilakukan tiap peran. Perubahan berlaku untuk semua pengguna " +
-          "peran itu paling lama satu menit setelah disimpan, dan tercatat di jejak audit."
-        }
+        title={t("nav.items.permissions")}
+        description={t("permissions.description")}
         badge={
           savedOverrideCount > 0 ? (
-            <Badge variant="warning">{savedOverrideCount} penyimpangan dari bawaan</Badge>
+            <Badge variant="warning">
+              {t("permissions.overrideBadge", { count: savedOverrideCount })}
+            </Badge>
           ) : (
-            <Badge>Sesuai bawaan</Badge>
+            <Badge>{t("permissions.defaultBadge")}</Badge>
           )
         }
         actions={
@@ -212,11 +222,11 @@ export function PermissionsClient() {
               onClick={() => setConfirmReset(true)}
             >
               <RotateCcw aria-hidden="true" />
-              Reset ke bawaan
+              {t("permissions.resetToDefault")}
             </Button>
             <Button disabled={saving || !isDirty} onClick={requestSave}>
               <Save aria-hidden="true" />
-              Simpan Perubahan
+              {t("common.saveChanges")}
             </Button>
           </>
         }
@@ -230,7 +240,7 @@ export function PermissionsClient() {
           role="alert"
           className="mb-4 rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong"
         >
-          <p className="font-medium">Perubahan belum bisa disimpan:</p>
+          <p className="font-medium">{t("permissions.errorsTitle")}</p>
           <ul className="mt-1 list-disc pl-5">
             {errors.map((message) => (
               <li key={message}>{message}</li>
@@ -242,11 +252,15 @@ export function PermissionsClient() {
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-block size-3 rounded-sm bg-warning-soft ring-1 ring-warning" />
-          Sel bertanda <span className="font-medium text-warning-strong">diubah</span> menyimpang dari bawaan
+          {t("permissions.legendMarkedBefore")}{" "}
+          <span className="font-medium text-warning-strong">
+            {t("permissions.legendChanged")}
+          </span>{" "}
+          {t("permissions.legendMarkedAfter")}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <Lock className="size-3" aria-hidden="true" />
-          Terkunci: Pimpinan harus selalu bisa mengelola pengguna & hak akses
+          {t("permissions.legendLocked")}
         </span>
       </div>
 
@@ -254,7 +268,7 @@ export function PermissionsClient() {
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[280px]">Izin</TableHead>
+              <TableHead className="min-w-[280px]">{t("users.colPermission")}</TableHead>
               {(data?.roles ?? []).map((r) => (
                 <TableHead key={r.key} className="w-32 text-center">
                   {r.label}
@@ -274,6 +288,8 @@ export function PermissionsClient() {
                 isBaselineAllowed={isBaselineAllowed}
                 onToggle={toggleCell}
                 disabled={saving}
+                permissionText={permissionText}
+                t={t}
               />
             ))}
           </TableBody>
@@ -283,21 +299,21 @@ export function PermissionsClient() {
       <ConfirmDialog
         open={confirmSave}
         onOpenChange={setConfirmSave}
-        title="Simpan perubahan hak akses?"
+        title={t("permissions.confirmSaveTitle")}
         message={
-          `${draftOverrides.length === 0
-            ? "Semua sel kembali sesuai bawaan — penyimpangan yang tersimpan akan dihapus."
-            : `${draftOverrides.length} sel akan menyimpang dari bawaan.`} ` +
-          "Perubahan berlaku untuk semua pengguna peran terkait paling lama satu menit, " +
-          "dan dicatat di jejak audit atas nama Anda."
+          `${
+            draftOverrides.length === 0
+              ? t("permissions.confirmSaveAllDefault")
+              : t("permissions.confirmSaveCount", { count: draftOverrides.length })
+          } ` + t("permissions.confirmSaveTail")
         }
-        confirmLabel="Simpan"
+        confirmLabel={t("common.save")}
         onConfirm={() =>
           submit(
             draftOverrides,
             draftOverrides.length === 0
-              ? "Hak akses kembali sesuai bawaan."
-              : "Hak akses disimpan. Berlaku paling lama satu menit."
+              ? t("permissions.savedDefault")
+              : t("permissions.saved")
           )
         }
       />
@@ -305,14 +321,11 @@ export function PermissionsClient() {
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}
-        title="Reset ke bawaan?"
-        message={
-          "Semua penyimpangan dihapus dan setiap peran kembali ke hak akses bawaan " +
-          "aplikasi. Perubahan berlaku paling lama satu menit dan dicatat di jejak audit."
-        }
-        confirmLabel="Reset ke bawaan"
+        title={t("permissions.confirmResetTitle")}
+        message={t("permissions.confirmResetMessage")}
+        confirmLabel={t("permissions.resetToDefault")}
         confirmVariant="danger"
-        onConfirm={() => submit([], "Hak akses kembali sesuai bawaan.")}
+        onConfirm={() => submit([], t("permissions.savedDefault"))}
       />
     </div>
   );
@@ -327,6 +340,8 @@ function PermissionGroupRows({
   isBaselineAllowed,
   onToggle,
   disabled,
+  permissionText,
+  t,
 }: {
   label: string;
   permissions: Permission[];
@@ -336,6 +351,8 @@ function PermissionGroupRows({
   isBaselineAllowed: (permission: Permission, role: Role) => boolean;
   onToggle: (permission: Permission, role: Role, next: boolean) => void;
   disabled: boolean;
+  permissionText: Record<Permission, string>;
+  t: TranslateFn;
 }) {
   return (
     <>
@@ -347,7 +364,7 @@ function PermissionGroupRows({
       {permissions.map((permission) => (
         <TableRow key={permission}>
           <TableCell>
-            <div className="text-sm text-foreground">{PERMISSION_LABELS[permission]}</div>
+            <div className="text-sm text-foreground">{permissionText[permission]}</div>
             <div className="text-xs text-muted-foreground">{permission}</div>
           </TableCell>
           {roleKeys.map((role) => {
@@ -365,21 +382,22 @@ function PermissionGroupRows({
                     checked={allowed}
                     disabled={disabled || locked}
                     onCheckedChange={(state) => onToggle(permission, role, state === true)}
-                    aria-label={`${labelOf(role)}: ${PERMISSION_LABELS[permission]}`}
-                    title={
-                      locked
-                        ? "Terkunci — Pimpinan harus selalu bisa mengelola pengguna & hak akses."
-                        : undefined
-                    }
+                    aria-label={t("permissions.cellAria", {
+                      role: labelOf(role),
+                      permission: permissionText[permission],
+                    })}
+                    title={locked ? t("permissions.lockedTitle") : undefined}
                   />
                   {locked && (
                     <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
                       <Lock className="size-3" aria-hidden="true" />
-                      terkunci
+                      {t("permissions.lockedShort")}
                     </span>
                   )}
                   {changed && !locked && (
-                    <span className="text-xs font-medium text-warning-strong">diubah</span>
+                    <span className="text-xs font-medium text-warning-strong">
+                      {t("permissions.legendChanged")}
+                    </span>
                   )}
                 </div>
               </TableCell>

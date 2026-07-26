@@ -16,12 +16,13 @@ import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { DocumentPreview } from "@/components/shared/document-preview";
+import { useT } from "@/lib/i18n/client";
 
 export function PdfDocumentButton({
   title,
   filename,
   generate,
-  label = "Pratinjau & Cetak",
+  label,
   variant = "secondary",
   disabled = false,
 }: {
@@ -32,6 +33,7 @@ export function PdfDocumentButton({
   variant?: "primary" | "secondary";
   disabled?: boolean;
 }) {
+  const t = useT();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -48,7 +50,7 @@ export function PdfDocumentButton({
       setOpen(true);
     } catch (err) {
       console.error(err);
-      toast("Gagal membuat dokumen.", "error");
+      toast(t("pdf.generateFailed"), "error");
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export function PdfDocumentButton({
     <>
       <Button variant={variant} size="sm" onClick={openPreview} disabled={loading || disabled}>
         <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
-        {loading ? "Menyiapkan…" : label}
+        {loading ? t("pdf.preparing") : (label ?? t("pdf.previewAndPrint"))}
       </Button>
       {src && (
         <DocumentPreview

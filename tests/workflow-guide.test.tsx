@@ -8,6 +8,16 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WorkflowGuide } from "@/components/dashboard/workflow-guide";
 import { visibleWorkflows } from "@/lib/workflows";
+import { translate } from "@/lib/i18n/dictionary";
+import id from "@/lib/i18n/dictionaries/id.json";
+
+/**
+ * Penerjemah bahasa sumber. Panel menerima `t` sebagai prop (lihat catatan di
+ * komponennya), jadi tes memberinya kamus `id` yang SUNGGUHAN — teks yang
+ * diperiksa di bawah tetap teks yang dilihat pengguna Indonesia.
+ */
+const t = (key: string, values?: Record<string, string | number>) =>
+  translate(id, key, values);
 
 const ALL = new Set(
   visibleWorkflows("bos", undefined).flatMap((w) => w.steps.map((s) => s.permission as string))
@@ -15,10 +25,10 @@ const ALL = new Set(
 
 describe("WorkflowGuide", () => {
   const workflows = visibleWorkflows("bos", ALL);
-  const html = renderToStaticMarkup(<WorkflowGuide workflows={workflows} />);
+  const html = renderToStaticMarkup(<WorkflowGuide workflows={workflows} t={t} />);
 
   it("tidak merender apa pun bila tak ada alur", () => {
-    expect(renderToStaticMarkup(<WorkflowGuide workflows={[]} />)).toBe("");
+    expect(renderToStaticMarkup(<WorkflowGuide workflows={[]} t={t} />)).toBe("");
   });
 
   it("menampilkan judul tiap alur", () => {
@@ -46,7 +56,7 @@ describe("WorkflowGuide", () => {
     // Penjualan' kini jadi langkah 1, bukan 2, dan tag opsional ikut hilang.
     const noContract = new Set([...ALL].filter((p) => p !== "contract.write"));
     const wf = visibleWorkflows("bos", noContract);
-    const h = renderToStaticMarkup(<WorkflowGuide workflows={wf} />);
+    const h = renderToStaticMarkup(<WorkflowGuide workflows={wf} t={t} />);
     expect(h).not.toContain('href="/contracts/new"');
     expect(h).toContain('href="/sales/new"');
     expect(h).toMatch(/>1<\/span>/);

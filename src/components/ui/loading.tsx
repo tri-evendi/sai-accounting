@@ -1,4 +1,14 @@
+"use client";
+
+/**
+ * Indikator muat. Sejak fondasi i18n berkas ini komponen CLIENT: pesan bawaan
+ * `PageLoader` mengikuti bahasa aktif, dan itu butuh konteks kamus. Ia tetap
+ * boleh dirender dari server component (mis. `app/(dashboard)/loading.tsx`) —
+ * hanya jadi batas client kecil tanpa state.
+ */
+
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 export function Spinner({ className }: { className?: string }) {
   return (
@@ -14,14 +24,16 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-export function PageLoader({ message = "Memuat..." }: { message?: string }) {
+export function PageLoader({ message }: { message?: string }) {
+  const t = useT();
+
   return (
     // Berpusat vertikal di ruang yang tersedia (bukan menempel di atas). 60vh
     // aman untuk dua konteksnya: layar penuh saat sesi dimuat, dan di dalam area
     // konten pada form/halaman yang menunggu data — tanpa memicu gulir.
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
       <Spinner className="h-8 w-8" />
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">{message ?? t("common.loading")}</p>
     </div>
   );
 }

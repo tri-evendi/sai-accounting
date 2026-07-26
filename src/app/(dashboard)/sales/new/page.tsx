@@ -4,6 +4,7 @@ import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
+import { getT } from "@/lib/i18n/server";
 import { SalesWizard } from "./sales-wizard";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function NewSaleWizardPage() {
   await requirePagePermission("invoice.write");
+  const t = await getT();
 
   const [customers, contracts, consignees, items, closedPeriods] = await Promise.all([
     prisma.customer.findMany({
@@ -54,21 +56,19 @@ export default async function NewSaleWizardPage() {
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Tagihan Penjualan", href: "/invoices" }, { label: "Catat Penjualan" }]}
-        title="Catat Penjualan"
+        breadcrumbs={[
+          { label: t("invoices.breadcrumb"), href: "/invoices" },
+          { label: t("sales.title") },
+        ]}
+        title={t("sales.title")}
         description={
           <>
-            Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa
-            mundur-maju sesuka hati — <strong>tidak ada yang tersimpan</strong>{" "}
-            sampai tombol &ldquo;Selesai &amp; Simpan&rdquo; di langkah terakhir ditekan.
+            {t("sales.descriptionA")} <strong>{t("sales.descriptionStrong")}</strong>{" "}
+            {t("sales.descriptionB")}
           </>
         }
       />
-      <LearnMore
-        term="faktur"
-        className="mt-1 mb-6"
-        label="Pelajari ini: apa itu tagihan penjualan"
-      />
+      <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
 
       <SalesWizard
         customers={customers.map((c) => ({

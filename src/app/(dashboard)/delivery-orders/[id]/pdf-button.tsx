@@ -1,6 +1,7 @@
 "use client";
 
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
+import { useT } from "@/lib/i18n/client";
 
 interface DeliveryOrderPdf {
   no: string;
@@ -19,10 +20,11 @@ interface DeliveryOrderPdf {
  * baris `shipment`.
  */
 export function DeliveryOrderPdfButton({ order }: { order: DeliveryOrderPdf }) {
+  const t = useT();
   return (
     <PdfDocumentButton
-      label="Surat Jalan"
-      title={`Surat Jalan ${order.no}`}
+      label={t("deliveryOrders.title")}
+      title={t("deliveryOrders.detailTitle", { no: order.no })}
       filename={`SuratJalan_${order.no}.pdf`}
       generate={async () => {
         const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");

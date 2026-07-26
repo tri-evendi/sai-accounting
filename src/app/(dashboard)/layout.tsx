@@ -8,13 +8,15 @@ import { Navbar } from "@/components/layout/navbar";
 import { ToastProvider } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { GuidedTour } from "@/components/help/guided-tour";
+import { useT } from "@/lib/i18n/client";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const t = useT();
 
   if (status === "loading") {
-    return <PageLoader message="Memuat sesi..." />;
+    return <PageLoader message={t("common.loadingSession")} />;
   }
 
   if (!session) return null;

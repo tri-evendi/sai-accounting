@@ -19,6 +19,7 @@
 
 import { can, type Permission } from "@/lib/authz";
 import type { TermKey } from "@/lib/labels";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 /**
  * Arah uang untuk aksi tersebut — dipakai untuk ikon + LABEL teks
@@ -28,10 +29,18 @@ export type QuickActionTone = "in" | "out" | "stock" | "neutral";
 
 export interface QuickAction {
   key: string;
-  /** Kalimat perintah dalam bahasa tugas, mis. "Catat Penjualan". */
+  /**
+   * Kalimat perintah dalam bahasa tugas (bahasa SUMBER), mis. "Catat Penjualan".
+   * Panelnya menggambar `labelKey`; teks ini tetap ada karena modul ini murni &
+   * teruji — penjaga di `tests/quick-actions.test.ts` memeriksa teksnya.
+   */
   label: string;
-  /** Satu baris penjelas: kapan tombol ini dipakai. */
+  /** Satu baris penjelas dalam bahasa sumber: kapan tombol ini dipakai. */
   description: string;
+  /** Kunci kamus untuk `label` (`quickActions.items.*.label`). */
+  labelKey: DictionaryKey;
+  /** Kunci kamus untuk `description` (`quickActions.items.*.description`). */
+  descriptionKey: DictionaryKey;
   href: string;
   /** Nama ikon lucide-react; dipetakan ke komponen di panelnya. */
   icon: string;
@@ -52,6 +61,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "catat_penjualan",
     label: "Catat Penjualan",
     description: "Dipandu: pilih pelanggan, isi barang, lalu buat tagihannya.",
+    labelKey: "quickActions.items.catat_penjualan.label",
+    descriptionKey: "quickActions.items.catat_penjualan.description",
     href: "/sales/new",
     icon: "Receipt",
     permission: "invoice.write",
@@ -62,6 +73,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "catat_pembelian",
     label: "Catat Pembelian",
     description: "Dipandu: pilih pemasok, isi barang yang dibeli, lalu catat utangnya.",
+    labelKey: "quickActions.items.catat_pembelian.label",
+    descriptionKey: "quickActions.items.catat_pembelian.description",
     href: "/purchases/new",
     icon: "ShoppingCart",
     permission: "purchase.write",
@@ -72,6 +85,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "terima_uang",
     label: "Terima Uang",
     description: "Catat uang yang masuk ke kas atau rekening bank.",
+    labelKey: "quickActions.items.terima_uang.label",
+    descriptionKey: "quickActions.items.terima_uang.description",
     href: "/finance/new?arah=masuk",
     icon: "ArrowDownLeft",
     permission: "cash.write",
@@ -82,6 +97,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "bayar",
     label: "Bayar",
     description: "Catat uang yang keluar dari kas atau rekening bank.",
+    labelKey: "quickActions.items.bayar.label",
+    descriptionKey: "quickActions.items.bayar.description",
     href: "/finance/new?arah=keluar",
     icon: "ArrowUpRight",
     permission: "cash.write",
@@ -92,6 +109,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "tambah_stok",
     label: "Tambah Stok",
     description: "Catat barang masuk atau keluar gudang.",
+    labelKey: "quickActions.items.tambah_stok.label",
+    descriptionKey: "quickActions.items.tambah_stok.description",
     href: "/inventory/update",
     icon: "PackagePlus",
     permission: "inventory.write",
@@ -102,6 +121,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     key: "buat_kontrak",
     label: "Buat Kontrak",
     description: "Catat kesepakatan penjualan sebelum barang dikirim.",
+    labelKey: "quickActions.items.buat_kontrak.label",
+    descriptionKey: "quickActions.items.buat_kontrak.description",
     href: "/contracts/new",
     icon: "FileText",
     permission: "contract.write",

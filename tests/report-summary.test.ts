@@ -10,17 +10,27 @@
  * a lay owner actually reads.
  */
 import { describe, it, expect } from "vitest";
+import { translate } from "@/lib/i18n/dictionary";
+import id from "@/lib/i18n/dictionaries/id.json";
 import {
   incomeStatementSummary,
   balanceSheetSummary,
   cashFlowSummary,
 } from "@/lib/report-summary";
 
+/**
+ * Penerjemah bahasa SUMBER. Ketiga fungsi kini menerima `t` (lihat catatan di
+ * `lib/report-summary.ts`); tes memberinya kamus `id.json` yang sungguhan, jadi
+ * kalimat yang dikunci di bawah tetap kalimat yang dibaca pengguna Indonesia.
+ */
+const t = (key: string, values?: Record<string, string | number>) =>
+  translate(id, key, values);
+
 describe("incomeStatementSummary — derived from the P&L totals", () => {
   const is = { totalRevenue: 1_734_568, totalExpense: 400_000, netIncome: 1_334_568 };
 
   it("uses the exact revenue, expense and net figures from the report", () => {
-    const s = incomeStatementSummary(is, "Juli 2026");
+    const s = incomeStatementSummary(is, "Juli 2026", t);
     const byTitle = Object.fromEntries(s.cards.map((c) => [c.title, c]));
     expect(byTitle["Uang Masuk"].amount).toBe(is.totalRevenue);
     expect(byTitle["Uang Keluar"].amount).toBe(is.totalExpense);
@@ -28,7 +38,7 @@ describe("incomeStatementSummary — derived from the P&L totals", () => {
   });
 
   it("reads a positive net as untung, green/profit direction", () => {
-    const s = incomeStatementSummary(is, "Juli 2026");
+    const s = incomeStatementSummary(is, "Juli 2026", t);
     expect(s.narrative).toContain("untung");
     expect(s.cards.find((c) => c.title.startsWith("Selisih"))!.direction).toBe("profit");
   });
@@ -36,7 +46,8 @@ describe("incomeStatementSummary — derived from the P&L totals", () => {
   it("reads a negative net as rugi and reports the absolute amount", () => {
     const s = incomeStatementSummary(
       { totalRevenue: 100_000, totalExpense: 250_000, netIncome: -150_000 },
-      "Juli 2026"
+      "Juli 2026",
+      t
     );
     expect(s.narrative).toContain("rugi");
     const selisih = s.cards.find((c) => c.title.startsWith("Selisih"))!;
@@ -47,7 +58,8 @@ describe("incomeStatementSummary — derived from the P&L totals", () => {
   it("reads a zero net as impas, not a misleading Rp 0 profit", () => {
     const s = incomeStatementSummary(
       { totalRevenue: 500_000, totalExpense: 500_000, netIncome: 0 },
-      "Juli 2026"
+      "Juli 2026",
+      t
     );
     expect(s.narrative).toContain("impas");
   });
@@ -55,7 +67,8 @@ describe("incomeStatementSummary — derived from the P&L totals", () => {
   it("treats a sub-cent residue as impas", () => {
     const s = incomeStatementSummary(
       { totalRevenue: 500_000.004, totalExpense: 500_000, netIncome: 0.004 },
-      "Juli 2026"
+      "Juli 2026",
+      t
     );
     expect(s.narrative).toContain("impas");
   });
@@ -71,7 +84,7 @@ describe("balanceSheetSummary — derived from the balance-sheet totals", () => 
   };
 
   it("uses assets, liabilities and equity-incl-earnings verbatim", () => {
-    const s = balanceSheetSummary(bs, "Per 31 Jul 2026");
+    const s = balanceSheetSummary(bs, "Per 31 Jul 2026", t);
     const byTitle = Object.fromEntries(s.cards.map((c) => [c.title, c]));
     expect(byTitle["Harta (Aset)"].amount).toBe(bs.totalAssets);
     expect(byTitle["Utang (Liabilitas)"].amount).toBe(bs.totalLiabilities);
@@ -79,11 +92,11 @@ describe("balanceSheetSummary — derived from the balance-sheet totals", () => 
   });
 
   it("says the book is balanced when it is", () => {
-    expect(balanceSheetSummary(bs, "Per 31 Jul 2026").narrative).toContain("seimbang");
+    expect(balanceSheetSummary(bs, "Per 31 Jul 2026", t).narrative).toContain("seimbang");
   });
 
   it("warns when the sheet does not balance", () => {
-    const s = balanceSheetSummary({ ...bs, balanced: false }, "Per 31 Jul 2026");
+    const s = balanceSheetSummary({ ...bs, balanced: false }, "Per 31 Jul 2026", t);
     expect(s.narrative).toContain("periksa jurnal");
   });
 });
@@ -92,7 +105,7 @@ describe("cashFlowSummary — derived from the cash-flow totals", () => {
   const cf = { openingCash: 1_000_000, closingCash: 1_250_000, netChange: 250_000, reconciled: true };
 
   it("uses opening, closing and net change verbatim", () => {
-    const s = cashFlowSummary(cf, "Juli 2026");
+    const s = cashFlowSummary(cf, "Juli 2026", t);
     const byTitle = Object.fromEntries(s.cards.map((c) => [c.title, c]));
     expect(byTitle["Kas Awal"].amount).toBe(cf.openingCash);
     expect(byTitle["Kas Akhir"].amount).toBe(cf.closingCash);
@@ -100,7 +113,7 @@ describe("cashFlowSummary — derived from the cash-flow totals", () => {
   });
 
   it("says kas bertambah when cash rose", () => {
-    const s = cashFlowSummary(cf, "Juli 2026");
+    const s = cashFlowSummary(cf, "Juli 2026", t);
     expect(s.narrative).toContain("bertambah");
     expect(s.cards.find((c) => c.title === "Perubahan Kas")!.direction).toBe("profit");
   });
@@ -108,7 +121,8 @@ describe("cashFlowSummary — derived from the cash-flow totals", () => {
   it("says kas berkurang when cash fell", () => {
     const s = cashFlowSummary(
       { openingCash: 1_000_000, closingCash: 700_000, netChange: -300_000, reconciled: true },
-      "Juli 2026"
+      "Juli 2026",
+      t
     );
     expect(s.narrative).toContain("berkurang");
     expect(s.cards.find((c) => c.title === "Perubahan Kas")!.direction).toBe("loss");

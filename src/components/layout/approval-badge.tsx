@@ -18,6 +18,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BellRing } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 interface Counts {
   pending: number;
@@ -25,6 +26,7 @@ interface Counts {
 }
 
 export function ApprovalBadge() {
+  const t = useT();
   const [counts, setCounts] = useState<Counts>({ pending: 0, unread: 0 });
 
   useEffect(() => {
@@ -58,8 +60,8 @@ export function ApprovalBadge() {
 
   const urgent = counts.pending > 0;
   const label = urgent
-    ? `${counts.pending} dokumen menunggu persetujuan Anda`
-    : `${counts.unread} kabar baru atas pengajuan Anda`;
+    ? t("approvalBadge.pending", { count: counts.pending })
+    : t("approvalBadge.unread", { count: counts.unread });
 
   return (
     <Link

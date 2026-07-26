@@ -26,6 +26,7 @@ import {
 import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 import { Loader2, Info, Trash2, Plus } from "lucide-react";
 
 interface InvoiceOption {
@@ -95,6 +96,7 @@ export function ReturnForm({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   const [type, setType] = useState<"sales" | "purchase">(initialType);
   const [date, setDate] = useState(todayISO());
@@ -172,7 +174,7 @@ export function ReturnForm({
     let payload: Record<string, unknown>;
 
     if (type === "sales") {
-      if (!invoiceId) return setError("Pilih faktur asal terlebih dulu.");
+      if (!invoiceId) return setError(t("returns.pickInvoiceFirst"));
       const lineItems = Object.entries(salesLines)
         .map(([id, v]) => ({
           invoiceItemId: Number(id),
@@ -180,11 +182,11 @@ export function ReturnForm({
           itemId: v.itemId ? Number(v.itemId) : undefined,
         }))
         .filter((l) => l.quantity > 0);
-      if (lineItems.length === 0) return setError("Isi jumlah retur pada minimal satu baris.");
+      if (lineItems.length === 0) return setError(t("returns.fillOneLine"));
       url = "/api/returns/sales";
       payload = { invoiceId: Number(invoiceId), date, reason: reason || undefined, items: lineItems };
     } else {
-      if (!purchaseId) return setError("Pilih pembelian asal terlebih dulu.");
+      if (!purchaseId) return setError(t("returns.pickPurchaseFirst"));
       const lineItems = purchaseLines
         .map((l) => ({
           itemName: l.itemName.trim(),
@@ -193,7 +195,7 @@ export function ReturnForm({
           itemId: l.itemId ? Number(l.itemId) : undefined,
         }))
         .filter((l) => l.itemName && l.quantity > 0);
-      if (lineItems.length === 0) return setError("Isi minimal satu baris barang yang diretur.");
+      if (lineItems.length === 0) return setError(t("returns.fillOneItem"));
       url = "/api/returns/purchase";
       payload = { purchaseId: Number(purchaseId), date, reason: reason || undefined, items: lineItems };
     }
@@ -209,21 +211,21 @@ export function ReturnForm({
       if (!res.ok) {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan retur.");
+        setError(first ?? data?.error ?? t("returns.saveFailed"));
         return;
       }
-      toast("Retur tersimpan dan sudah dijurnal.", "success");
+      toast(t("returns.saved"), "success");
       router.push(`/returns?tab=${type}`);
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("returns.networkFailed"));
     } finally {
       setSaving(false);
     }
   }
 
   const itemOptions = [
-    { value: "", label: "— Tidak lacak stok —" },
+    { value: "", label: t("returns.noStockTrack") },
     ...items.map((it) => ({ value: String(it.id), label: it.name })),
   ];
 
@@ -233,21 +235,21 @@ export function ReturnForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Select
             id="type"
-            label="Jenis retur"
+            label={t("returns.typeLabel")}
             value={type}
             onChange={(e) => {
               setType(e.target.value as "sales" | "purchase");
               setError(null);
             }}
             options={[
-              { value: "sales", label: "Retur Penjualan (barang kembali dari pelanggan)" },
-              { value: "purchase", label: "Retur Pembelian (barang dikembalikan ke supplier)" },
+              { value: "sales", label: t("returns.typeSales") },
+              { value: "purchase", label: t("returns.typePurchase") },
             ]}
           />
           <Input
             id="date"
             type="date"
-            label="Tanggal"
+            label={t("common.date")}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required
@@ -257,10 +259,10 @@ export function ReturnForm({
             <div className="sm:col-span-2">
               <Select
                 id="invoiceId"
-                label="Faktur asal"
+                label={t("returns.originInvoice")}
                 value={invoiceId}
                 onChange={(e) => setInvoiceId(e.target.value)}
-                placeholder="Pilih faktur"
+                placeholder={t("returns.pickInvoice")}
                 options={invoices.map((i) => ({
                   value: String(i.id),
                   label: `${i.invoiceNo} · ${i.currency} · ${i.customerName ?? "—"}`,
@@ -272,10 +274,10 @@ export function ReturnForm({
             <div className="sm:col-span-2">
               <Select
                 id="purchaseId"
-                label="Pembelian asal"
+                label={t("returns.originPurchase")}
                 value={purchaseId}
                 onChange={(e) => setPurchaseId(e.target.value)}
-                placeholder="Pilih pembelian"
+                placeholder={t("returns.pickPurchase")}
                 options={purchases.map((p) => ({
                   value: String(p.id),
                   label: `TRX-${p.id} · ${p.currency} ${formatCurrency(p.amount, p.currency)} · ${
@@ -295,11 +297,11 @@ export function ReturnForm({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Barang</TableHead>
-                <TableHead className="text-right">Harga</TableHead>
-                <TableHead className="text-right">Sisa dpt diretur</TableHead>
-                <TableHead className="text-right">Jumlah retur</TableHead>
-                <TableHead>Stok item</TableHead>
+                <TableHead>{t("common.item")}</TableHead>
+                <TableHead className="text-right">{t("common.price")}</TableHead>
+                <TableHead className="text-right">{t("returns.colReturnable")}</TableHead>
+                <TableHead className="text-right">{t("returns.colReturnQty")}</TableHead>
+                <TableHead>{t("returns.colStockItem")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -323,7 +325,7 @@ export function ReturnForm({
                     <TableCell className="text-right tabular-nums text-foreground">
                       {round3(ln.returnable)}
                       <span className="block text-xs text-muted-foreground">
-                        dari {round3(ln.quantity)}
+                        {t("returns.fromQty", { qty: round3(ln.quantity) })}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -339,7 +341,7 @@ export function ReturnForm({
                         disabled={ln.returnable <= 0}
                       />
                       {over && (
-                        <span className="mt-0.5 block text-xs text-destructive">Melebihi sisa</span>
+                        <span className="mt-0.5 block text-xs text-destructive">{t("returns.overReturnable")}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -362,11 +364,13 @@ export function ReturnForm({
       {type === "purchase" && purchaseDetail && (
         <Card className="p-6">
           <p className="mb-4 text-sm text-muted-foreground tabular-nums">
-            Sisa nilai yang dapat diretur:{" "}
+            {t("returns.remainingReturnableLabel")}{" "}
             <strong className="text-foreground">
               {formatCurrency(purchaseDetail.returnable, purchaseDetail.currency)}
             </strong>{" "}
-            dari {formatCurrency(purchaseDetail.amount, purchaseDetail.currency)}
+            {t("returns.remainingReturnableOf", {
+              amount: formatCurrency(purchaseDetail.amount, purchaseDetail.currency),
+            })}
           </p>
           <div className="space-y-3">
             {purchaseLines.map((l, i) => (
@@ -374,7 +378,7 @@ export function ReturnForm({
                 <div className="sm:col-span-4">
                   <Input
                     id={`pname-${i}`}
-                    label={i === 0 ? "Barang" : undefined}
+                    label={i === 0 ? t("common.item") : undefined}
                     value={l.itemName}
                     onChange={(e) => updatePurchaseLine(i, { itemName: e.target.value })}
                     maxLength={100}
@@ -383,7 +387,7 @@ export function ReturnForm({
                 <div className="sm:col-span-2">
                   <Input
                     id={`pqty-${i}`}
-                    label={i === 0 ? "Qty" : undefined}
+                    label={i === 0 ? t("common.quantity") : undefined}
                     type="number"
                     step="0.001"
                     min="0"
@@ -395,7 +399,7 @@ export function ReturnForm({
                 <div className="sm:col-span-2">
                   <Input
                     id={`pprice-${i}`}
-                    label={i === 0 ? "Harga" : undefined}
+                    label={i === 0 ? t("common.price") : undefined}
                     type="number"
                     step="0.01"
                     min="0"
@@ -407,7 +411,7 @@ export function ReturnForm({
                 <div className="sm:col-span-3">
                   <Select
                     id={`pitem-${i}`}
-                    label={i === 0 ? "Stok item" : undefined}
+                    label={i === 0 ? t("returns.colStockItem") : undefined}
                     value={l.itemId}
                     onChange={(e) => updatePurchaseLine(i, { itemId: e.target.value })}
                     options={itemOptions}
@@ -424,7 +428,7 @@ export function ReturnForm({
                       )
                     }
                     className="text-muted-foreground"
-                    aria-label="Hapus baris"
+                    aria-label={t("returns.removeRow")}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
@@ -442,7 +446,7 @@ export function ReturnForm({
             }
           >
             <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
-            Tambah baris
+            {t("returns.addRow")}
           </Button>
         </Card>
       )}
@@ -450,7 +454,7 @@ export function ReturnForm({
       <Card className="p-6">
         <Input
           id="reason"
-          label="Alasan retur (opsional)"
+          label={t("returns.reason")}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={1000}
@@ -458,7 +462,7 @@ export function ReturnForm({
 
         {(salesSubtotal > 0 || purchaseSubtotal > 0) && (
           <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            Nilai retur (DPP):{" "}
+            {t("returns.returnValueLabel")}{" "}
             <strong className="text-foreground">
               {formatCurrency(type === "sales" ? salesSubtotal : purchaseSubtotal, currency)}
             </strong>
@@ -470,18 +474,22 @@ export function ReturnForm({
           <span>
             {type === "sales" ? (
               <>
-                Mengurangi <strong>Piutang Usaha</strong> dan <strong>Penjualan</strong>, membalik{" "}
-                <strong>PPN Keluaran</strong> secara proporsional, dan mengembalikan stok{" "}
-                <strong>masuk</strong>.
+                {t("returns.reduces")} <strong>{t("returns.accountsReceivable")}</strong>{" "}
+                {t("returns.and")} <strong>{t("returns.salesAccount")}</strong>
+                {t("returns.reverses")} <strong>{t("returns.outputVat")}</strong>{" "}
+                {t("returns.effectSalesTail")} <strong>{t("returns.stockIn")}</strong>
+                {t("common.fullStop")}
               </>
             ) : (
               <>
-                Mengurangi <strong>Hutang Usaha</strong> dan <strong>Persediaan</strong>, membalik{" "}
-                <strong>PPN Masukan</strong> secara proporsional, dan mengeluarkan stok{" "}
-                <strong>keluar</strong>.
+                {t("returns.reduces")} <strong>{t("returns.accountsPayable")}</strong>{" "}
+                {t("returns.and")} <strong>{t("returns.inventoryAccount")}</strong>
+                {t("returns.reverses")} <strong>{t("returns.inputVat")}</strong>{" "}
+                {t("returns.effectPurchaseTail")} <strong>{t("returns.stockOut")}</strong>
+                {t("common.fullStop")}
               </>
             )}{" "}
-            Dinilai dengan kurs dokumen asal.
+            {t("returns.effectSuffix")}
           </span>
         </p>
 
@@ -497,7 +505,7 @@ export function ReturnForm({
           {saving && (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           )}
-          Simpan Retur
+          {t("returns.submit")}
         </Button>
         <Button
           type="button"
@@ -505,7 +513,7 @@ export function ReturnForm({
           className="cursor-pointer"
           onClick={() => router.push(`/returns?tab=${type}`)}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

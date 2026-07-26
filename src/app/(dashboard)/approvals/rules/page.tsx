@@ -7,11 +7,13 @@ import { listApprovalRules } from "@/lib/approval-queue";
 import { getActiveRoles } from "@/lib/roles";
 import { ApprovalRules } from "./approval-rules-client";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalRulesPage() {
   await requirePagePermission("approval_rule.manage");
+  const t = await getT();
   const [rules, roles] = await Promise.all([
     listApprovalRules({ includeInactive: true }),
     getActiveRoles(),
@@ -20,15 +22,16 @@ export default async function ApprovalRulesPage() {
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Perlu Persetujuan", href: "/approvals" }, { label: "Aturan Persetujuan" }]}
-        title="Aturan Persetujuan"
+        breadcrumbs={[
+          { label: t("nav.items.approvals"), href: "/approvals" },
+          { label: t("nav.items.approvalRules") },
+        ]}
+        title={t("nav.items.approvalRules")}
         description={
           <span className="block max-w-3xl">
-            Tentukan mulai nilai berapa sebuah kontrak, faktur, atau pembayaran wajib disetujui,
-            dan siapa yang menyetujuinya. Ambang dibandingkan dengan nilai <strong>rupiah</strong>{" "}
-            dokumen (dokumen valas dikonversi lebih dulu dengan kursnya sendiri) dan bersifat{" "}
-            <strong>inklusif</strong> — nilai yang persis sama dengan ambang tetap perlu
-            persetujuan. Aturan baru hanya berlaku untuk dokumen yang dibuat setelahnya.
+            {t("approvals.rulesDescA")} <strong>{t("approvals.rulesDescStrong1")}</strong>{" "}
+            {t("approvals.rulesDescB")} <strong>{t("approvals.rulesDescStrong2")}</strong>{" "}
+            {t("approvals.rulesDescC")}
           </span>
         }
       />

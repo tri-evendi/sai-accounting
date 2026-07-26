@@ -25,11 +25,13 @@ import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { SetupWizard } from "./setup-wizard";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
   await requirePagePermission("setup.manage");
+  const t = await getT();
 
   const settings = await getCompanySettings();
 
@@ -44,36 +46,37 @@ export default async function SetupPage() {
 
     return (
       <div className="w-full">
-        <PageHeader className="mb-0" title="Setup Perusahaan" />
+        <PageHeader className="mb-0" title={t("setup.title")} />
 
         <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-          <span>
-            Perusahaan sudah selesai disiapkan. Wizard hanya dijalankan sekali — di bawah
-            ini ringkasan saldo awal yang tercatat.
-          </span>
+          <span>{t("setup.doneNote")}</span>
         </div>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Identitas Perusahaan</CardTitle>
+            <CardTitle>{t("setup.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="font-medium text-muted-foreground">Nama</dt>
+                <dt className="font-medium text-muted-foreground">{t("common.name")}</dt>
                 <dd className="text-foreground">{settings.name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">Alamat</dt>
+                <dt className="font-medium text-muted-foreground">{t("common.address")}</dt>
                 <dd className="text-foreground">{settings.address || "—"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">Mata Uang Dasar</dt>
+                <dt className="font-medium text-muted-foreground">
+                  {t("setup.baseCurrencyLabel")}
+                </dt>
                 <dd className="text-foreground">{settings.baseCurrency}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">Awal Tahun Buku</dt>
+                <dt className="font-medium text-muted-foreground">
+                  {t("setup.fiscalYearStartLabel")}
+                </dt>
                 <dd className="text-foreground">{formatDate(settings.fiscalYearStart)}</dd>
               </div>
             </dl>
@@ -83,7 +86,7 @@ export default async function SetupPage() {
         {journal && (
           <Card>
             <CardHeader>
-              <CardTitle>Jurnal Pembuka · {journal.number}</CardTitle>
+              <CardTitle>{t("setup.openingJournalTitle", { number: journal.number })}</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat
@@ -92,9 +95,13 @@ export default async function SetupPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-auto py-2 pr-4 pl-0">Akun</TableHead>
-                    <TableHead className="h-auto py-2 pr-4 pl-0 text-right">Debit (IDR)</TableHead>
-                    <TableHead className="h-auto px-0 py-2 text-right">Kredit (IDR)</TableHead>
+                    <TableHead className="h-auto py-2 pr-4 pl-0">{t("common.account")}</TableHead>
+                    <TableHead className="h-auto py-2 pr-4 pl-0 text-right">
+                      {t("journal.colDebitIdr")}
+                    </TableHead>
+                    <TableHead className="h-auto px-0 py-2 text-right">
+                      {t("journal.colCreditIdr")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -125,11 +132,11 @@ export default async function SetupPage() {
                 </TableBody>
               </Table>
               <p className="mt-4 text-sm text-muted-foreground">
-                Saldo awal ini sudah tercermin di{" "}
+                {t("setup.reflectedBefore")}{" "}
                 <Link href="/reports" className="text-primary underline">
-                  Neraca
+                  {t("reports.balanceSheetTitle")}
                 </Link>{" "}
-                per {formatDate(settings.fiscalYearStart)}.
+                {t("setup.reflectedAfter", { date: formatDate(settings.fiscalYearStart) })}
               </p>
             </CardContent>
           </Card>
@@ -153,8 +160,8 @@ export default async function SetupPage() {
   return (
     <div className="w-full">
       <PageHeader
-        title={<>Setup Perusahaan &amp; Saldo Awal</>}
-        description="Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali."
+        title={t("setup.wizardTitle")}
+        description={t("setup.wizardDescription")}
       />
       <SetupWizard
         defaults={{ name: COMPANY_NAME, address: COMPANY_ADDRESS, baseCurrency: "IDR" }}

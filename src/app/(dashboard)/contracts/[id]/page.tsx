@@ -23,6 +23,7 @@ import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildContractChain, loadContractChain } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getT } from "@/lib/i18n/server";
 import { Banknote, Package, Receipt, Truck } from "lucide-react";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
@@ -36,6 +37,7 @@ export default async function ContractDetailPage({
 }) {
   const { id } = await params;
   const session = await requirePagePermission("contract.read");
+  const t = await getT();
 
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
@@ -93,8 +95,11 @@ export default async function ContractDetailPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Kontrak", href: "/contracts" }, { label: contract.contractNo }]}
-        title={<>Contract {contract.contractNo}</>}
+        breadcrumbs={[
+          { label: t("contracts.breadcrumb"), href: "/contracts" },
+          { label: contract.contractNo },
+        ]}
+        title={t("contracts.detailTitle", { no: contract.contractNo })}
         description={formatDate(contract.date)}
         actions={
           <>
@@ -128,30 +133,25 @@ export default async function ContractDetailPage({
               barisnya sudah terisi sisa yang belum difakturkan. */}
           <Link href={`/invoices/new?contractId=${contract.id}`}>
             <Button>
-              <Receipt className="mr-1 h-4 w-4" aria-hidden /> Buat Faktur
+              <Receipt className="mr-1 h-4 w-4" aria-hidden /> {t("contracts.createInvoice")}
             </Button>
           </Link>
           <Link href={`/contracts/${contract.id}/edit`}>
-            <Button variant="secondary">Edit</Button>
+            <Button variant="secondary">{t("common.edit")}</Button>
           </Link>
           {/* Cermin izin `contract.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "contract.delete")) && (
             <DeleteDocumentButton
               endpoint={`/api/contracts/${contract.id}`}
-              label="Hapus Kontrak"
-              title={`Hapus kontrak ${contract.contractNo}?`}
-              message={
-                `Kontrak ini beserta pembayarannya akan dihapus, dan jurnal yang terbentuk darinya ` +
-                `dibalik di transaksi yang sama. Tindakan ini tidak bisa dibatalkan. ` +
-                `Kalau kontraknya batal tetapi riwayatnya ingin disimpan, ubah statusnya menjadi ` +
-                `"Dibatalkan" saja.`
-              }
+              label={t("contracts.deleteLabel")}
+              title={t("contracts.deleteTitle", { no: contract.contractNo })}
+              message={t("contracts.deleteMessage")}
               confirmPhrase={contract.contractNo}
               redirectTo="/contracts"
             />
           )}
           <Link href="/contracts">
-            <Button variant="ghost">Back</Button>
+            <Button variant="ghost">{t("common.back")}</Button>
           </Link>
           </>
         }
@@ -160,11 +160,8 @@ export default async function ContractDetailPage({
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Rantai Dokumen</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Perjalanan kontrak ini: dikirim lewat surat jalan, ditagih lewat faktur,
-            lalu dibayar. Angka pembayaran dijumlahkan dalam IDR (nilai dasar buku besar).
-          </p>
+          <CardTitle>{t("contracts.chainTitle")}</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">{t("contracts.chainDescription")}</p>
         </CardHeader>
         <CardContent>
           <DocumentChainTimeline stages={stages} />
@@ -174,22 +171,21 @@ export default async function ContractDetailPage({
       {/* Sisa per baris kontrak — dikirim & difakturkan vs sisa (issue #15) */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Sisa per Barang</CardTitle>
+          <CardTitle>{t("contracts.outstandingTitle")}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Berapa kilogram tiap barang sudah dikirim dan sudah difakturkan, dan berapa
-            sisanya. Sisa inilah yang ditarik otomatis saat membuat faktur.
+            {t("contracts.outstandingDescription")}
           </p>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Barang</TableHead>
-              <TableHead className="text-right">Kontrak (kg)</TableHead>
-              <TableHead className="text-right">Dikirim (kg)</TableHead>
-              <TableHead className="text-right">Difakturkan (kg)</TableHead>
-              <TableHead className="text-right">Sisa (kg)</TableHead>
-              <TableHead className="text-right">Sisa Nilai</TableHead>
-              <TableHead>Status Faktur</TableHead>
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colContractedKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colDeliveredKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colInvoicedKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colRemainingKg")}</TableHead>
+              <TableHead className="text-right">{t("contracts.colRemainingValue")}</TableHead>
+              <TableHead>{t("contracts.colInvoiceStatus")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -198,9 +194,9 @@ export default async function ContractDetailPage({
                 <TableCell colSpan={7} className="p-0">
                   <EmptyState
                     icon={<Package className="h-12 w-12" />}
-                    title="Kontrak ini belum punya baris barang"
-                    description="Tanpa baris barang, tidak ada sisa yang bisa dikirim atau difakturkan. Tambahkan barangnya lewat Edit."
-                    actionLabel="Edit Kontrak"
+                    title={t("contracts.emptyLinesTitle")}
+                    description={t("contracts.emptyLinesDescription")}
+                    actionLabel={t("contracts.emptyLinesAction")}
                     actionHref={`/contracts/${contract.id}/edit`}
                   />
                 </TableCell>
@@ -235,10 +231,10 @@ export default async function ContractDetailPage({
                       }
                     >
                       {line.invoiceStatus === "selesai"
-                        ? "Lunas difakturkan"
+                        ? t("contracts.invoicedFull")
                         : line.invoiceStatus === "sebagian"
-                          ? "Sebagian"
-                          : "Belum"}
+                          ? t("contracts.invoicedPartial")
+                          : t("contracts.invoicedNone")}
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -248,7 +244,7 @@ export default async function ContractDetailPage({
           {outstandingLines.length > 0 && (
             <TableFooter className="border-t-2 bg-transparent">
               <TableRow className="font-semibold text-foreground hover:bg-transparent">
-                <TableCell>Total</TableCell>
+                <TableCell>{t("common.total")}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatNumber(totals.contractedKg)}
                 </TableCell>
@@ -272,12 +268,18 @@ export default async function ContractDetailPage({
         {(totals.unmatchedDeliveredKg > 0 || totals.unmatchedInvoicedKg > 0) && (
           <CardContent className="pt-0">
             <p className="text-xs text-warning-strong">
-              Ada baris dokumen dengan nama barang di luar kontrak ini
-              {totals.unmatchedDeliveredKg > 0 &&
-                ` — surat jalan ${formatNumber(totals.unmatchedDeliveredKg)} kg`}
-              {totals.unmatchedInvoicedKg > 0 &&
-                ` — faktur ${formatNumber(totals.unmatchedInvoicedKg)} kg`}
-              . Baris tersebut tidak dihitung sebagai pemenuhan kontrak.
+              {totals.unmatchedDeliveredKg > 0 && totals.unmatchedInvoicedKg > 0
+                ? t("contracts.unmatchedBoth", {
+                    delivered: formatNumber(totals.unmatchedDeliveredKg),
+                    invoiced: formatNumber(totals.unmatchedInvoicedKg),
+                  })
+                : totals.unmatchedDeliveredKg > 0
+                  ? t("contracts.unmatchedDelivery", {
+                      delivered: formatNumber(totals.unmatchedDeliveredKg),
+                    })
+                  : t("contracts.unmatchedInvoice", {
+                      invoiced: formatNumber(totals.unmatchedInvoicedKg),
+                    })}
             </p>
           </CardContent>
         )}
@@ -288,15 +290,16 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden /> Surat Jalan
+              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+              {t("contracts.deliveryOrdersTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.deliveryOrders.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Belum ada surat jalan.{" "}
+                {t("contracts.noDeliveryOrders")}{" "}
                 <Link href="/delivery-orders/new" className="text-primary hover:underline">
-                  Buat surat jalan →
+                  {t("contracts.createDeliveryOrderLink")}
                 </Link>
               </p>
             ) : (
@@ -325,18 +328,19 @@ export default async function ContractDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden /> Faktur
+              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+              {t("contracts.invoicesTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.invoices.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Belum ada faktur dari kontrak ini.{" "}
+                {t("contracts.noInvoices")}{" "}
                 <Link
                   href={`/invoices/new?contractId=${contract.id}`}
                   className="text-primary hover:underline"
                 >
-                  Buat faktur →
+                  {t("contracts.createInvoiceLink")}
                 </Link>
               </p>
             ) : (
@@ -351,9 +355,9 @@ export default async function ContractDetailPage({
                         {inv.invoiceNo}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(inv.date)} · Terbayar (IDR){" "}
+                        {formatDate(inv.date)} ·{" "}
                         <span className="tabular-nums">
-                          {formatCurrency(inv.paidBase, "IDR")}
+                          {t("common.paidOnly", { paid: formatCurrency(inv.paidBase, "IDR") })}
                         </span>
                       </p>
                     </div>
@@ -371,16 +375,18 @@ export default async function ContractDetailPage({
       {/* Contract Info */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Contract Information</CardTitle>
+          <CardTitle>{t("contracts.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Buyer</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.colBuyer")}</dt>
               <dd className="text-sm text-foreground">{contract.buyer}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Consignee</dt>
+              <dt className="text-sm font-medium text-muted-foreground">
+                {t("contracts.colConsignee")}
+              </dt>
               <dd className="text-sm text-foreground">
                 {contract.consigneeRef ? (
                   <Link
@@ -395,27 +401,27 @@ export default async function ContractDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Status</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
               <dd><StatusBadge status={contract.status} /></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Currency</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.currency")}</dt>
               <dd className="text-sm text-foreground">{contract.currency}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Packaging</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.packaging")}</dt>
               <dd className="text-sm text-foreground">{contract.packaging || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Shipment</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.shipment")}</dt>
               <dd className="text-sm text-foreground">{contract.shipment || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 1</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top1")}</dt>
               <dd className="text-sm text-foreground">{contract.top1 || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Terms of Payment 2</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top2")}</dt>
               <dd className="text-sm text-foreground">{contract.top2 || "-"}</dd>
             </div>
           </dl>
@@ -425,16 +431,16 @@ export default async function ContractDetailPage({
       {/* Items */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Items</CardTitle>
+          <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Item</TableHead>
-              <TableHead className="text-right">Bags</TableHead>
-              <TableHead className="text-right">Kg/Bag</TableHead>
-              <TableHead className="text-right">Price/Kg</TableHead>
-              <TableHead className="text-right">Total</TableHead>
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead className="text-right">{t("common.bags")}</TableHead>
+              <TableHead className="text-right">{t("common.kgPerBag")}</TableHead>
+              <TableHead className="text-right">{t("contracts.pricePerKg")}</TableHead>
+              <TableHead className="text-right">{t("common.total")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -456,7 +462,7 @@ export default async function ContractDetailPage({
           <TableFooter className="border-t-2 bg-transparent font-normal">
             <TableRow className="border-0 hover:bg-transparent">
               <TableCell colSpan={4} className="text-right font-semibold text-foreground">
-                Total Value
+                {t("contracts.totalValue")}
               </TableCell>
               <TableCell className="p-0">
                 <MoneyCell className="font-bold" value={totalValue} currency={contract.currency} />
@@ -465,13 +471,13 @@ export default async function ContractDetailPage({
             {isForeign && (
               <TableRow className="border-0 hover:bg-transparent">
                 <TableCell colSpan={4} className="text-right text-muted-foreground">
-                  Nilai dasar buku besar (IDR)
+                  {t("common.ledgerBaseIdr")}
                 </TableCell>
                 <TableCell className="text-right text-foreground tabular-nums">
                   {baseAmount != null ? (
                     <Money value={baseAmount} currency="IDR" />
                   ) : (
-                    "Kurs belum diisi"
+                    t("common.rateMissing")
                   )}
                 </TableCell>
               </TableRow>
@@ -484,18 +490,25 @@ export default async function ContractDetailPage({
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Payments</CardTitle>
+            <CardTitle>{t("contracts.paymentsTitle")}</CardTitle>
             <div className="text-right text-sm text-muted-foreground">
               <div className="tabular-nums">
-                {baseAmount != null && baseAmount > 0 && (
-                  <>{Math.round((totalPaidBase / baseAmount) * 100)}% — </>
-                )}
-                Terbayar (IDR): {formatCurrency(totalPaidBase, "IDR")}
-                {baseAmount != null && <> / {formatCurrency(baseAmount, "IDR")}</>}
+                {baseAmount == null
+                  ? t("common.paidOnly", { paid: formatCurrency(totalPaidBase, "IDR") })
+                  : baseAmount > 0
+                    ? t("contracts.paidWithPercent", {
+                        percent: Math.round((totalPaidBase / baseAmount) * 100),
+                        paid: formatCurrency(totalPaidBase, "IDR"),
+                        total: formatCurrency(baseAmount, "IDR"),
+                      })
+                    : t("common.paidOf", {
+                        paid: formatCurrency(totalPaidBase, "IDR"),
+                        total: formatCurrency(baseAmount, "IDR"),
+                      })}
               </div>
               {paymentsWithoutRate > 0 && (
                 <div className="text-xs text-warning-strong">
-                  {paymentsWithoutRate} pembayaran valas belum berkurs — belum dihitung.
+                  {t("common.paymentsUnrated", { count: paymentsWithoutRate })}
                 </div>
               )}
             </div>
@@ -504,9 +517,9 @@ export default async function ContractDetailPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead>Note</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead className="text-right">{t("common.amount")}</TableHead>
+              <TableHead>{t("common.notes")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -515,8 +528,8 @@ export default async function ContractDetailPage({
                 <TableCell colSpan={3} className="p-0">
                   <EmptyState
                     icon={<Banknote className="h-12 w-12" />}
-                    title="Belum ada pembayaran"
-                    description="Belum ada uang muka atau pelunasan yang dicatat untuk kontrak ini. Catat yang pertama lewat formulir di atas."
+                    title={t("contracts.emptyPaymentsTitle")}
+                    description={t("contracts.emptyPaymentsDescription")}
                   />
                 </TableCell>
               </TableRow>

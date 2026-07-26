@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 export interface OpnameItem {
   id: number;
@@ -33,6 +34,7 @@ export interface OpnameItem {
 }
 
 export function OpnameForm({ items }: { items: OpnameItem[] }) {
+  const t = useT();
   const router = useRouter();
   const { toast } = useToast();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -70,11 +72,11 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
         const fieldMsg = data.details?.fieldErrors
           ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
           : null;
-        toast(String(fieldMsg || data.error || "Gagal menyimpan opname. Coba lagi."), "error");
+        toast(String(fieldMsg || data.error || t("inventory.opnameFailed")), "error");
         return;
       }
       const data = await res.json();
-      toast(`Opname tersimpan — ${data.adjustedCount} barang disesuaikan.`);
+      toast(t("inventory.opnameSaved", { count: data.adjustedCount }));
       setCounts({});
       router.refresh();
     } finally {
@@ -86,7 +88,9 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          <span className="mb-1 block font-medium text-foreground">Tanggal opname</span>
+          <span className="mb-1 block font-medium text-foreground">
+            {t("inventory.opnameDateField")}
+          </span>
           <TextInput
             type="date"
             value={date}
@@ -94,7 +98,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
           />
         </label>
         <p className="text-sm text-muted-foreground">
-          Isi jumlah fisik yang dihitung. Barang yang dikosongkan tidak diubah.
+          {t("inventory.opnameHint")}
         </p>
       </div>
 
@@ -102,11 +106,11 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Barang</TableHead>
-              <TableHead>Satuan</TableHead>
-              <TableHead className="text-right">Stok Sistem</TableHead>
-              <TableHead className="text-right">Hitung Fisik</TableHead>
-              <TableHead className="text-right">Selisih</TableHead>
+              <TableHead>{t("common.item")}</TableHead>
+              <TableHead>{t("common.unit")}</TableHead>
+              <TableHead className="text-right">{t("inventory.colSystemStock")}</TableHead>
+              <TableHead className="text-right">{t("inventory.colPhysicalCount")}</TableHead>
+              <TableHead className="text-right">{t("inventory.colVariance")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,7 +134,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
                         setCounts((c) => ({ ...c, [it.id]: e.target.value }))
                       }
                       placeholder={String(it.currentStock)}
-                      aria-label={`Hitung fisik ${it.name}`}
+                      aria-label={t("inventory.physicalCountAria", { name: it.name })}
                       className="w-28 text-right tabular-nums"
                     />
                   </TableCell>
@@ -138,7 +142,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
                     {variance === null ? (
                       <span className="text-muted-foreground">—</span>
                     ) : variance === 0 ? (
-                      <span className="text-muted-foreground">cocok</span>
+                      <span className="text-muted-foreground">{t("inventory.varianceMatch")}</span>
                     ) : (
                       <span className={variance > 0 ? "text-success" : "text-destructive"}>
                         {variance > 0 ? "+" : ""}
@@ -156,18 +160,18 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {changed.length === 0
-            ? "Belum ada selisih."
-            : `${changed.length} barang berselisih akan disesuaikan (jurnal ke Selisih Persediaan).`}
+            ? t("inventory.noVariance")
+            : t("inventory.varianceCount", { count: changed.length })}
         </p>
         <ConfirmDialog
-          title="Simpan penyesuaian opname?"
-          message={`${changed.length} barang akan disesuaikan pada ${date}. Tiap selisih membuat gerakan stok dan jurnal ke akun Selisih Persediaan, dinilai pada biaya rata-rata. Tindakan ini tidak bisa dibatalkan otomatis — koreksi lewat opname berikutnya bila salah.`}
-          confirmLabel="Ya, simpan penyesuaian"
+          title={t("inventory.opnameConfirmTitle")}
+          message={t("inventory.opnameConfirmMessage", { count: changed.length, date })}
+          confirmLabel={t("inventory.opnameConfirmLabel")}
           confirmVariant="primary"
           onConfirm={submit}
           trigger={
             <Button disabled={changed.length === 0 || submitting}>
-              {submitting ? "Menyimpan…" : "Simpan Penyesuaian"}
+              {submitting ? t("common.saving") : t("inventory.opnameSubmit")}
             </Button>
           }
         />

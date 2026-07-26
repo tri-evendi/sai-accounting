@@ -18,10 +18,21 @@ import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
+function Section({
+  title,
+  lines,
+  total,
+  totalLabel,
+}: {
+  title: string;
+  lines: StatementLine[];
+  total: number;
+  totalLabel: string;
+}) {
   return (
     <>
       <TableRow className="bg-muted hover:bg-muted">
@@ -44,7 +55,7 @@ function Section({ title, lines, total }: { title: string; lines: StatementLine[
         </TableRow>
       )}
       <TableRow className="font-medium">
-        <TableCell className="py-2 text-foreground">Total {title}</TableCell>
+        <TableCell className="py-2 text-foreground">{totalLabel}</TableCell>
         <TableCell className="p-0">
           <MoneyCell className="py-2" value={total} currency="IDR" />
         </TableCell>
@@ -59,10 +70,13 @@ export default async function IncomeStatementPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const is = await getIncomeStatement(from, to);
   const profit = is.netIncome >= 0;
+  // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
+  // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
 
   // One payload feeds both exports and the plain-language summary, so the PDF,
@@ -76,14 +90,20 @@ export default async function IncomeStatementPage({
     totalExpense: is.totalExpense,
     netIncome: is.netIncome,
   };
-  const summary = incomeStatementSummary(is, periodLabel);
+  const summary = incomeStatementSummary(is, periodLabel, t);
 
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Laba / Rugi" }]}
-        title="Laba / Rugi"
-        description={<>{periodLabel} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.incomeStatementTitle") },
+        ]}
+        title={t("reports.incomeStatementTitle")}
+        description={t("reports.periodWithCurrency", {
+          from: formatDate(from),
+          to: formatDate(to),
+        })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -99,15 +119,25 @@ export default async function IncomeStatementPage({
       <Card>
         <Table>
           <TableBody>
-            <Section title="Pendapatan" lines={is.revenue} total={is.totalRevenue} />
-            <Section title="Beban" lines={is.expense} total={is.totalExpense} />
+            <Section
+              title={t("reports.sectionRevenue")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionRevenue") })}
+              lines={is.revenue}
+              total={is.totalRevenue}
+            />
+            <Section
+              title={t("reports.sectionExpense")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionExpense") })}
+              lines={is.expense}
+              total={is.totalExpense}
+            />
           </TableBody>
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
               <TableCell className="py-4 text-foreground">
-                Laba / Rugi Bersih
+                {t("reports.netIncomeRow")}
                 <span className={`ml-2 text-sm font-medium ${profit ? "text-success-strong" : "text-destructive"}`}>
-                  ({profit ? "Laba" : "Rugi"})
+                  ({profit ? t("reports.profit") : t("reports.loss")})
                 </span>
               </TableCell>
               {/* Laba/rugi diwarnai `text-success-strong`/`text-destructive`

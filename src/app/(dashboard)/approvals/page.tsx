@@ -16,6 +16,7 @@ import {
 } from "@/lib/approval-queue";
 import { ApprovalQueue } from "./approval-queue-client";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function ApprovalsPage() {
   const session = await requirePagePermission("approval.view");
   const userId = parseInt(session.user.id, 10);
   const role = session.user.role;
+  const t = await getT();
 
   const [inbox, mine, decided] = await Promise.all([
     listPendingApprovals(role),
@@ -33,13 +35,12 @@ export default async function ApprovalsPage() {
   return (
     <div>
       <PageHeader
-        title="Perlu Persetujuan"
+        title={t("nav.items.approvals")}
         description={
           <span className="block max-w-3xl">
-            Transaksi yang nilainya mencapai ambang persetujuan disimpan lebih dulu, tetapi{" "}
-            <strong>belum masuk jurnal</strong>. Setelah disetujui, jurnalnya langsung terbit;
-            bila ditolak, dokumen tetap tersimpan tanpa jurnal dan bisa diperbaiki lalu
-            diajukan ulang.
+            {t("approvals.descriptionBefore")}{" "}
+            <strong>{t("approvals.descriptionStrong")}</strong>
+            {t("approvals.descriptionAfter")}
           </span>
         }
       />

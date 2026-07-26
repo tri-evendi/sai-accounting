@@ -30,10 +30,12 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { customerSchema, type CustomerInput } from "@/lib/validations/finance";
+import { useT } from "@/lib/i18n/client";
 
 export function NewCustomerForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   const form = useForm<CustomerInput>({
     // `customerSchema` punya `taxExempt: z.boolean().default(false)`, jadi tipe
@@ -67,12 +69,12 @@ export function NewCustomerForm() {
       // (mis. nama sudah dipakai), tampilkan pesannya di field atau sebagai
       // error form.
       form.setError("root", {
-        message: data.error || "Gagal menyimpan pelanggan. Coba lagi.",
+        message: data.error || t("customers.saveFailed"),
       });
       return;
     }
 
-    toast("Pelanggan berhasil disimpan");
+    toast(t("customers.saved"));
     router.push("/customers");
     router.refresh();
   }
@@ -80,15 +82,18 @@ export function NewCustomerForm() {
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Pelanggan", href: "/customers" }, { label: "Pelanggan Baru" }]}
-        title="Pelanggan Baru"
+        breadcrumbs={[
+          { label: t("customers.breadcrumb"), href: "/customers" },
+          { label: t("customers.newTitle") },
+        ]}
+        title={t("customers.newTitle")}
       />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Data Pelanggan</CardTitle>
+              <CardTitle>{t("customers.dataTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Grid responsif: 1 kolom di ponsel, 2 kolom di layar lebar —
@@ -100,7 +105,7 @@ export function NewCustomerForm() {
                   name="name"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel required>Nama Pelanggan</FormLabel>
+                      <FormLabel required>{t("customers.nameField")}</FormLabel>
                       <FormControl>
                         <TextInput autoFocus {...field} />
                       </FormControl>
@@ -113,7 +118,7 @@ export function NewCustomerForm() {
                   name="address"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>Alamat</FormLabel>
+                      <FormLabel>{t("common.address")}</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -126,7 +131,7 @@ export function NewCustomerForm() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Telepon</FormLabel>
+                      <FormLabel>{t("common.phone")}</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -139,7 +144,7 @@ export function NewCustomerForm() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("common.email")}</FormLabel>
                       <FormControl>
                         <TextInput type="email" {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -152,7 +157,7 @@ export function NewCustomerForm() {
                   name="pic"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Narahubung (PIC)</FormLabel>
+                      <FormLabel>{t("customers.pic")}</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -165,7 +170,7 @@ export function NewCustomerForm() {
                   name="npwp"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>NPWP (untuk e-Faktur)</FormLabel>
+                      <FormLabel>{t("customers.npwp")}</FormLabel>
                       <FormControl>
                         <TextInput {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -192,9 +197,9 @@ export function NewCustomerForm() {
                           />
                         </FormControl>
                         <span className="text-sm text-foreground">
-                          Bebas PPN (ekspor / non-PKP)
+                          {t("customers.taxExemptLabel")}
                           <span className="block text-xs text-muted-foreground">
-                            Faktur untuk pelanggan ini otomatis default tanpa PPN (0%) — tetap bisa diubah.
+                            {t("customers.taxExemptHint")}
                           </span>
                         </span>
                       </label>
@@ -213,10 +218,10 @@ export function NewCustomerForm() {
 
           <div className="flex gap-3">
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Menyimpan…" : "Simpan Pelanggan"}
+              {form.formState.isSubmitting ? t("common.saving") : t("customers.submit")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => router.back()}>
-              Batal
+              {t("common.cancel")}
             </Button>
           </div>
         </form>

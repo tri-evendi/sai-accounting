@@ -11,6 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useT, type TranslateFn } from "@/lib/i18n/client";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 interface AuditEntry {
   id: number;
@@ -23,27 +25,34 @@ interface AuditEntry {
   createdAt: string;
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  "finance.create": "Finance transaction",
-  "stock.in": "Stock in",
-  "stock.out": "Stock out",
-  "item.create": "New item",
-  "auth.password_change": "Password changed",
+const ACTION_KEYS: Record<string, DictionaryKey> = {
+  "finance.create": "auditAction.finance_create",
+  "stock.in": "auditAction.stock_in",
+  "stock.out": "auditAction.stock_out",
+  "item.create": "auditAction.item_create",
+  "auth.password_change": "auditAction.auth_password_change",
   // issue #25 — approval trail. `approval.approve` is the one that releases a
   // withheld journal, so it is worth naming rather than showing raw.
-  "approval.request": "Approval requested",
-  "approval.approve": "Approval granted",
-  "approval.reject": "Approval rejected",
-  "approval.rule.create": "Approval rule created",
-  "approval.rule.update": "Approval rule updated",
-  "approval.rule.deactivate": "Approval rule deactivated",
+  "approval.request": "auditAction.approval_request",
+  "approval.approve": "auditAction.approval_approve",
+  "approval.reject": "auditAction.approval_reject",
+  "approval.rule.create": "auditAction.approval_rule_create",
+  "approval.rule.update": "auditAction.approval_rule_update",
+  "approval.rule.deactivate": "auditAction.approval_rule_deactivate",
   // issue #73 — perubahan hak akses adalah mutasi paling ber-privilege setelah
   // manajemen pengguna; layak bernama, bukan tampil mentah.
-  "authz.override.update": "Hak akses diubah",
-  "authz.override.reset": "Hak akses direset ke bawaan",
+  "authz.override.update": "auditAction.authz_override_update",
+  "authz.override.reset": "auditAction.authz_override_reset",
 };
 
+/** Nama tindakan; kode yang belum punya nama tampil apa adanya. */
+function actionLabel(t: TranslateFn, action: string): string {
+  const key = ACTION_KEYS[action];
+  return key ? t(key) : action;
+}
+
 export function AuditLogPanel() {
+  const t = useT();
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -59,7 +68,7 @@ export function AuditLogPanel() {
       const res = await fetch(`/api/audit?page=${page}&perPage=15`);
       if (cancelled) return;
       if (!res.ok) {
-        setError(res.status === 403 ? "Access denied" : "Failed to load audit log");
+        setError(res.status === 403 ? t("audit.accessDenied") : t("audit.loadFailed"));
         setLoading(false);
         return;
       }
@@ -73,14 +82,14 @@ export function AuditLogPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, t]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Security audit log</CardTitle>
+        <CardTitle>{t("audit.title")}</CardTitle>
         <p className="text-xs text-muted-foreground font-normal mt-1">
-          Finance, stock, and account changes (manager only)
+          {t("audit.description")}
         </p>
       </CardHeader>
       <CardContent>
@@ -88,20 +97,20 @@ export function AuditLogPanel() {
           <p className="text-sm text-destructive mb-4">{error}</p>
         )}
         {loading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">{t("common.loading")}</p>
         ) : logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No audit entries yet</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">{t("audit.empty")}</p>
         ) : (
           /* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat sengaja
              menimpa bawaan primitif agar sama dengan tampilan sebelum migrasi. */
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto py-2 pr-4 pl-0">Time</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">User</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">Action</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">Details</TableHead>
-                <TableHead className="h-auto px-0 py-2">IP</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colTime")}</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colUser")}</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colAction")}</TableHead>
+                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colDetails")}</TableHead>
+                <TableHead className="h-auto px-0 py-2">{t("audit.colIp")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -112,7 +121,7 @@ export function AuditLogPanel() {
                   </TableCell>
                   <TableCell className="py-2 pr-4 pl-0 font-medium">{log.username}</TableCell>
                   <TableCell className="py-2 pr-4 pl-0">
-                    {ACTION_LABELS[log.action] || log.action}
+                    {actionLabel(t, log.action)}
                   </TableCell>
                   <TableCell className="py-2 pr-4 pl-0 text-muted-foreground max-w-xs truncate">
                     {formatDetails(log)}
@@ -132,10 +141,10 @@ export function AuditLogPanel() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Previous
+              {t("common.previous")}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Page {page} of {totalPages}
+              {t("table.page", { page, pages: totalPages })}
             </span>
             <Button
               type="button"
@@ -144,7 +153,7 @@ export function AuditLogPanel() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {t("common.next")}
             </Button>
           </div>
         )}

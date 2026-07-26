@@ -28,6 +28,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 export interface SearchableOption {
   value: string;
@@ -56,12 +57,13 @@ export function SearchableSelect({
   onChange,
   id,
   label,
-  placeholder = "Select…",
-  searchPlaceholder = "Search…",
-  emptyText = "No matches",
+  placeholder,
+  searchPlaceholder,
+  emptyText,
   clearable = true,
   disabled = false,
 }: SearchableSelectProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   /**
    * `aria-controls` wajib menyertai role="combobox": pembaca layar perlu tahu
@@ -97,14 +99,14 @@ export function SearchableSelect({
             )}
           >
             <span className={cn("truncate", !selected && "text-muted-foreground")}>
-              {selected ? selected.label : placeholder}
+              {selected ? selected.label : (placeholder ?? t("searchableSelect.placeholder"))}
             </span>
             <span className="flex items-center gap-1 text-muted-foreground">
               {clearable && selected && !disabled && (
                 <span
                   role="button"
                   tabIndex={-1}
-                  aria-label="Clear selection"
+                  aria-label={t("searchableSelect.clear")}
                   onClick={(e) => {
                     e.stopPropagation();
                     onChange(null);
@@ -124,9 +126,9 @@ export function SearchableSelect({
           className="w-(--radix-popover-trigger-width) p-0"
         >
           <Command>
-            <CommandInput placeholder={searchPlaceholder} />
+            <CommandInput placeholder={searchPlaceholder ?? t("searchableSelect.searchPlaceholder")} />
             <CommandList id={listboxId}>
-              <CommandEmpty>{emptyText}</CommandEmpty>
+              <CommandEmpty>{emptyText ?? t("searchableSelect.empty")}</CommandEmpty>
               {options.map((opt) => {
                 const isSelected = opt.value === value;
                 return (

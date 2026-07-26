@@ -1,6 +1,9 @@
+"use client";
+
 import { AlertCircle, MapPin } from "lucide-react";
 import { APP_NAME, COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 interface AuthShellProps {
   children: React.ReactNode;
@@ -12,6 +15,8 @@ interface AuthShellProps {
 }
 
 function BrandPanel({ className }: { className?: string }) {
+  const t = useT();
+
   return (
     <div
       className={cn(
@@ -33,7 +38,7 @@ function BrandPanel({ className }: { className?: string }) {
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
         <p className="mt-2 text-sm font-medium text-sidebar-foreground/80">{COMPANY_NAME}</p>
         <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
-          Contract &amp; inventory management for internal teams.
+          {t("auth.brandTagline")}
         </p>
       </div>
       <div className="relative flex items-start gap-2 text-sm text-sidebar-foreground/70">

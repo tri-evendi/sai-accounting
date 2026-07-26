@@ -44,8 +44,10 @@ import { MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
+import type { SystemRole } from "@/lib/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
+import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { roleLabels } from "@/lib/i18n/labels";
 import type { ColumnDef } from "@tanstack/react-table";
 
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
@@ -95,7 +97,7 @@ function DocumentTitle({ row }: { row: ApprovalRequestView }) {
   );
 }
 
-function ValueCell({ row }: { row: ApprovalRequestView }) {
+function ValueCell({ row, t }: { row: ApprovalRequestView; t: TranslateFn }) {
   return (
     <div className="text-right">
       <p className="font-semibold text-foreground">
@@ -103,12 +105,14 @@ function ValueCell({ row }: { row: ApprovalRequestView }) {
       </p>
       {row.currency !== "IDR" && (
         <p className="text-xs text-muted-foreground">
-          setara <Money value={row.baseAmount} currency="IDR" />
-          {row.rate ? ` · kurs ${row.rate.toLocaleString("id-ID")}` : ""}
+          {t("approvals.valueEquivalent")} <Money value={row.baseAmount} currency="IDR" />
+          {row.rate
+            ? ` ${t("approvals.valueRate", { rate: row.rate.toLocaleString("id-ID") })}`
+            : ""}
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        ambang <Money value={row.thresholdAmount} currency="IDR" />
+        {t("approvals.valueThreshold")} <Money value={row.thresholdAmount} currency="IDR" />
       </p>
     </div>
   );
@@ -122,6 +126,8 @@ interface Props {
 }
 
 export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
+  const t = useT();
+  const dictionary = useDictionary();
   const router = useRouter();
   const { toast } = useToast();
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -137,33 +143,36 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
     () => [
       {
         accessorKey: "documentNo",
-        header: "Dokumen",
+        header: t("common.document"),
         cell: ({ row }) => (
           <>
             <DocumentTitle row={row.original} />
             <p className="text-xs text-muted-foreground">
-              Penyetuju:{" "}
-              {ROLE_LABELS[row.original.approverRole as Role] ?? row.original.approverRole}
+              {t("approvals.approverPrefix", {
+                role:
+                  roleLabels(dictionary)[row.original.approverRole as SystemRole] ??
+                  row.original.approverRole,
+              })}
             </p>
           </>
         ),
       },
-      { accessorKey: "requestedByName", header: "Pemohon" },
+      { accessorKey: "requestedByName", header: t("approvals.colRequester") },
       moneyColumn<ApprovalRequestView>({
         accessorKey: "baseAmount",
-        header: "Nilai (IDR)",
+        header: t("approvals.colValueIdr"),
         hideCurrency: true,
       }),
       {
         accessorKey: "status",
-        header: "Status",
+        header: t("common.status"),
         cell: ({ row }) => (
           <StatusBadge status={row.original.status} label={row.original.statusLabel} />
         ),
       },
       {
         accessorKey: "decidedAt",
-        header: "Diputus",
+        header: t("approvals.colDecidedAt"),
         cell: ({ row }) => (
           <div className="text-muted-foreground">
             <span className="block whitespace-nowrap tabular-nums">
@@ -178,7 +187,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         ),
       },
     ],
-    []
+    [t, dictionary]
   );
 
   async function decide(row: ApprovalRequestView, decision: "approve" | "reject") {
@@ -191,21 +200,21 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal menyimpan keputusan.", "error");
+        toast(data.error || t("approvals.errDecision"), "error");
         return;
       }
       toast(
         decision === "approve"
           ? data.journalId
-            ? "Disetujui — jurnalnya sudah terbit."
-            : "Disetujui. Dokumen ini tidak menghasilkan jurnal (nilai nol/dibatalkan)."
-          : "Ditolak. Dokumen tetap tersimpan tanpa jurnal.",
+            ? t("approvals.approvedWithJournal")
+            : t("approvals.approvedNoJournal")
+          : t("approvals.rejectedToast"),
         decision === "approve" ? "success" : "info"
       );
       setNotes((prev) => ({ ...prev, [row.id]: "" }));
       router.refresh();
     } catch {
-      toast("Gagal menyimpan keputusan.", "error");
+      toast(t("approvals.errDecision"), "error");
     } finally {
       setBusyId(null);
     }
@@ -222,14 +231,14 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(data.error || "Gagal mengajukan ulang.", "error");
+        toast(data.error || t("approvals.errResubmit"), "error");
         return;
       }
-      toast(data.message || "Pengajuan dikirim ulang.", "success");
+      toast(data.message || t("approvals.resubmitted"), "success");
       setNotes((prev) => ({ ...prev, [row.id]: "" }));
       router.refresh();
     } catch {
-      toast("Gagal mengajukan ulang.", "error");
+      toast(t("approvals.errResubmit"), "error");
     } finally {
       setBusyId(null);
     }
@@ -240,12 +249,12 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
     try {
       const res = await fetch(`/api/approvals/${row.id}`, { method: "PATCH" });
       if (!res.ok) {
-        toast("Gagal menandai sudah dibaca.", "error");
+        toast(t("approvals.errMarkRead"), "error");
         return;
       }
       router.refresh();
     } catch {
-      toast("Gagal menandai sudah dibaca.", "error");
+      toast(t("approvals.errMarkRead"), "error");
     } finally {
       setBusyId(null);
     }
@@ -260,27 +269,25 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       {/* ── Antrean penyetuju ── */}
       <Card data-tour="persetujuan-antrean">
         <CardHeader className="flex items-center justify-between">
-          <CardTitle>Menunggu Keputusan Anda</CardTitle>
+          <CardTitle>{t("approvals.inboxTitle")}</CardTitle>
           <Badge variant={inbox.length > 0 ? "warning" : "default"}>
-            {inbox.length} dokumen
+            {t("approvals.docCount", { count: inbox.length })}
           </Badge>
         </CardHeader>
         <CardContent className="px-0 py-0">
           {inbox.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
               <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">
-                Tidak ada dokumen yang menunggu persetujuan Anda.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("approvals.inboxEmpty")}</p>
               <p className="text-xs text-muted-foreground">
-                Ambang dan peran penyetuju diatur di{" "}
+                {t("approvals.inboxEmptyHint")}{" "}
                 <Link
                   href="/approvals/rules"
                   className="cursor-pointer text-primary underline transition-colors duration-150 hover:text-primary"
                 >
-                  Aturan Persetujuan
+                  {t("nav.items.approvalRules")}
                 </Link>
-                .
+                {t("common.fullStop")}
               </p>
             </div>
           ) : (
@@ -291,11 +298,14 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                     <div className="min-w-0">
                       <DocumentTitle row={row} />
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Diajukan {row.requestedByName} · {formatDate(row.createdAt)}
+                        {t("approvals.submittedBy", {
+                          name: row.requestedByName,
+                          date: formatDate(row.createdAt),
+                        })}
                       </p>
                       {row.requestNote && (
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Catatan pemohon: {row.requestNote}
+                          {t("approvals.requestNote", { note: row.requestNote })}
                         </p>
                       )}
                       {/* issue #44 — pengajuan ULANG: penyetuju harus tahu bahwa
@@ -309,15 +319,28 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                             aria-hidden="true"
                           />
                           <span>
-                            <span className="font-medium">Diajukan ulang.</span> Sebelumnya
-                            ditolak {row.decidedByName ? `oleh ${row.decidedByName}` : ""}
-                            {row.decidedAt ? ` pada ${formatDate(row.decidedAt)}` : ""}
-                            {row.decisionNote ? `: “${row.decisionNote}”` : "."}
+                            <span className="font-medium">{t("approvals.resubmittedBadge")}</span>{" "}
+                            {[
+                              t("approvals.resubmittedPrev"),
+                              row.decidedByName
+                                ? t("approvals.resubmittedBy", { name: row.decidedByName })
+                                : "",
+                              row.decidedAt
+                                ? t("approvals.resubmittedOn", {
+                                    date: formatDate(row.decidedAt),
+                                  })
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            {row.decisionNote
+                              ? t("approvals.resubmittedNote", { note: row.decisionNote })
+                              : t("common.fullStop")}
                           </span>
                         </p>
                       )}
                     </div>
-                    <ValueCell row={row} />
+                    <ValueCell row={row} t={t} />
                   </div>
 
                   <div className="mt-3">
@@ -325,7 +348,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       htmlFor={`note-${row.id}`}
                       className="mb-1 block text-sm font-medium text-foreground"
                     >
-                      Catatan keputusan
+                      {t("approvals.decisionNoteLabel")}
                     </label>
                     <Textarea
                       id={`note-${row.id}`}
@@ -334,38 +357,31 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       onChange={(e) =>
                         setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
                       }
-                      placeholder="Contoh: harga sudah sesuai kontrak induk"
+                      placeholder={t("approvals.decisionNotePlaceholder")}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Wajib diisi (minimal 5 karakter) bila menolak. Semua keputusan dicatat di
-                      log audit.
+                      {t("approvals.decisionNoteHint")}
                     </p>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     <ConfirmDialog
-                      title="Setujui dokumen ini?"
-                      message={
-                        "Setelah disetujui, jurnalnya langsung terbit dan tercatat di buku besar. " +
-                        "Membatalkannya kemudian harus lewat jurnal balik, bukan hapus."
-                      }
-                      confirmLabel="Setujui"
+                      title={t("approvals.approveTitle")}
+                      message={t("approvals.approveMessage")}
+                      confirmLabel={t("approvals.approve")}
                       confirmVariant="primary"
                       onConfirm={() => decide(row, "approve")}
                       trigger={
                         <Button size="sm" disabled={busyId === row.id} className="cursor-pointer">
                           <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                          Setujui
+                          {t("approvals.approve")}
                         </Button>
                       }
                     />
                     <ConfirmDialog
-                      title="Tolak dokumen ini?"
-                      message={
-                        "Dokumen tetap tersimpan tetapi tidak masuk jurnal. Pemohon melihat alasan " +
-                        "Anda dan bisa memperbaiki lalu mengajukan ulang."
-                      }
-                      confirmLabel="Tolak"
+                      title={t("approvals.rejectTitle")}
+                      message={t("approvals.rejectMessage")}
+                      confirmLabel={t("approvals.reject")}
                       confirmVariant="danger"
                       onConfirm={() => decide(row, "reject")}
                       trigger={
@@ -376,7 +392,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                           className="cursor-pointer"
                         >
                           <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                          Tolak
+                          {t("approvals.reject")}
                         </Button>
                       }
                     />
@@ -391,25 +407,27 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       {/* ── Pengajuan saya (notifikasi in-app) ── */}
       <Card data-tour="persetujuan-pengajuan">
         <CardHeader className="flex items-center justify-between">
-          <CardTitle>Pengajuan Saya</CardTitle>
+          <CardTitle>{t("approvals.mineTitle")}</CardTitle>
           {unread.length > 0 && (
-            <Badge variant="warning">{unread.length} kabar baru</Badge>
+            <Badge variant="warning">
+              {t("approvals.unreadBadge", { count: unread.length })}
+            </Badge>
           )}
         </CardHeader>
         <CardContent className="px-0 py-0">
           {mine.length === 0 ? (
             <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-              Belum ada dokumen Anda yang butuh persetujuan.
+              {t("approvals.mineEmpty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Dokumen</TableHead>
-                  <TableHead>Diajukan</TableHead>
-                  <TableHead className="text-right">Nilai</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Keputusan</TableHead>
+                  <TableHead>{t("common.document")}</TableHead>
+                  <TableHead>{t("approvals.colSubmitted")}</TableHead>
+                  <TableHead className="text-right">{t("approvals.colValue")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead>{t("approvals.colDecision")}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -443,7 +461,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                               {formatDate(row.decidedAt)}
                             </span>
                             <span className="block text-xs text-muted-foreground">
-                              oleh {row.decidedByName}
+                              {t("approvals.resubmittedBy", { name: row.decidedByName ?? "" })}
                             </span>
                             {row.decisionNote && (
                               <span className="block text-xs text-muted-foreground">
@@ -466,7 +484,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                               className="cursor-pointer"
                             >
                               <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                              Tandai dibaca
+                              {t("approvals.markRead")}
                             </Button>
                           )}
                           {/* issue #44 — dokumen yang ditolak tidak lagi buntu:
@@ -475,8 +493,8 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                             <>
                               <Input
                                 id={`resubmit-note-${row.id}`}
-                                label="Catatan (opsional)"
-                                placeholder="Apa yang sudah diperbaiki?"
+                                label={t("common.notesOptional")}
+                                placeholder={t("approvals.resubmitNotePlaceholder")}
                                 value={notes[row.id] ?? ""}
                                 onChange={(e) =>
                                   setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
@@ -490,7 +508,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                                 className="cursor-pointer"
                               >
                                 <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                Ajukan Ulang
+                                {t("approvals.resubmit")}
                               </Button>
                             </>
                           )}
@@ -512,7 +530,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
             <CardTitle>
               <span className="inline-flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                Riwayat Keputusan
+                {t("approvals.historyTitle")}
               </span>
             </CardTitle>
           </CardHeader>

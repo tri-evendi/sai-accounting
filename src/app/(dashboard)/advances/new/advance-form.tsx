@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2, Info } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 export interface PartyOption {
   id: number;
@@ -84,6 +85,7 @@ export function AdvanceForm({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   const [type, setType] = useState<"sales" | "purchase">(locked?.type ?? "sales");
   const [date, setDate] = useState(todayISO());
@@ -137,11 +139,11 @@ export function AdvanceForm({
         const first = fieldErrors
           ? Object.values(fieldErrors).flat().find(Boolean)
           : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan uang muka.");
+        setError(first ?? data?.error ?? t("advances.saveFailed"));
         return;
       }
 
-      toast("Uang muka tersimpan dan sudah dijurnal.", "success");
+      toast(t("advances.saved"), "success");
       if (onSaved) {
         // Embedded: the user is mid-task on another screen, so stay put and let
         // the server component re-read the balances that just changed.
@@ -154,7 +156,7 @@ export function AdvanceForm({
       }
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("advances.networkFailed"));
     } finally {
       setSaving(false);
     }
@@ -176,14 +178,14 @@ export function AdvanceForm({
                they are about to record without leaving the page. */
             <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               <span className="font-medium text-foreground">
-                {isSales ? "Diterima dari pelanggan" : "Dibayar ke supplier"}
+                {isSales ? t("advances.lockedSales") : t("advances.lockedPurchase")}
               </span>{" "}
               · {locked.party.name}
             </div>
           ) : (
             <Select
               id="type"
-              label="Jenis uang muka"
+              label={t("advances.typeField")}
               value={type}
               onChange={(e) => {
                 setType(e.target.value as "sales" | "purchase");
@@ -191,8 +193,8 @@ export function AdvanceForm({
                 setContractId("");
               }}
               options={[
-                { value: "sales", label: "Diterima dari pelanggan" },
-                { value: "purchase", label: "Dibayar ke supplier" },
+                { value: "sales", label: t("advances.lockedSales") },
+                { value: "purchase", label: t("advances.lockedPurchase") },
               ]}
             />
           )}
@@ -200,7 +202,7 @@ export function AdvanceForm({
           <Input
             id="date"
             type="date"
-            label="Tanggal"
+            label={t("common.date")}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required
@@ -209,10 +211,10 @@ export function AdvanceForm({
           {!locked && (
             <Select
               id="partyId"
-              label={isSales ? "Pelanggan" : "Supplier"}
+              label={isSales ? t("common.customer") : t("advances.partySupplier")}
               value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
-              placeholder={isSales ? "Pilih pelanggan" : "Pilih supplier"}
+              placeholder={isSales ? t("advances.pickCustomer") : t("advances.pickSupplier")}
               options={parties.map((p) => ({ value: String(p.id), label: p.name }))}
               required
             />
@@ -221,11 +223,11 @@ export function AdvanceForm({
           <div>
             <Select
               id="contractId"
-              label="Kontrak (opsional)"
+              label={t("advances.contractField")}
               value={contractId}
               onChange={(e) => setContractId(e.target.value)}
               options={[
-                { value: "", label: "— Tidak ditautkan —" },
+                { value: "", label: t("advances.noContract") },
                 ...contracts.map((c) => ({
                   value: String(c.id),
                   label: `${c.contractNo} · ${c.buyer}`,
@@ -233,8 +235,9 @@ export function AdvanceForm({
               ]}
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Menautkan uang muka ke kontrak hanya untuk penelusuran. Kompensasi tetap
-              dilakukan ke {isSales ? "faktur saat faktur terbit" : "pembelian saat barang diterima"}.
+              {t("advances.contractHintBefore")}{" "}
+              {isSales ? t("advances.contractHintSales") : t("advances.contractHintPurchase")}
+              {t("common.fullStop")}
             </p>
           </div>
 
@@ -244,7 +247,7 @@ export function AdvanceForm({
             step="0.01"
             min="0"
             className="text-right tabular-nums"
-            label="Jumlah"
+            label={t("common.amount")}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
@@ -257,13 +260,13 @@ export function AdvanceForm({
             rate={rate}
             onCurrencyChange={setCurrency}
             onRateChange={setRate}
-            rateHint="Wajib untuk mata uang asing. Uang muka dicatat di buku besar dengan kurs ini, dan selisihnya terhadap kurs faktur nanti menjadi laba/rugi selisih kurs."
+            rateHint={t("advances.rateHint")}
           />
 
           <div className="sm:col-span-2">
             <Input
               id="note"
-              label="Catatan (opsional)"
+              label={t("common.notesOptional")}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
@@ -273,7 +276,7 @@ export function AdvanceForm({
 
         {baseValue != null && currency !== "IDR" && (
           <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            Nilai di buku besar:{" "}
+            {t("advances.ledgerValue")}{" "}
             <strong className="text-foreground">{formatCurrency(baseValue, "IDR")}</strong>
           </p>
         )}
@@ -283,16 +286,19 @@ export function AdvanceForm({
           <span>
             {isSales ? (
               <>
-                Uang masuk ke kas/bank dan dicatat sebagai{" "}
-                <strong>Uang Muka Penjualan</strong> — sebuah <em>kewajiban</em>, karena
-                barangnya belum dikirim. <strong>Belum</strong> dihitung sebagai
-                penjualan.
+                {t("advances.hintSalesBefore")}{" "}
+                <strong>{t("advances.hintSalesAccount")}</strong>{" "}
+                {t("advances.hintSalesMiddle")} <em>{t("advances.hintSalesTerm")}</em>
+                {t("advances.hintSalesAfter")} <strong>{t("advances.hintNot")}</strong>{" "}
+                {t("advances.hintSalesTail")}
               </>
             ) : (
               <>
-                Uang keluar dari kas/bank dan dicatat sebagai{" "}
-                <strong>Uang Muka Pembelian</strong> — sebuah <em>aset</em>, karena
-                barangnya belum diterima. <strong>Belum</strong> dihitung sebagai beban.
+                {t("advances.hintPurchaseBefore")}{" "}
+                <strong>{t("advances.hintPurchaseAccount")}</strong>{" "}
+                {t("advances.hintSalesMiddle")} <em>{t("advances.hintPurchaseTerm")}</em>
+                {t("advances.hintPurchaseAfter")} <strong>{t("advances.hintNot")}</strong>{" "}
+                {t("advances.hintPurchaseTail")}
               </>
             )}
           </span>
@@ -318,7 +324,7 @@ export function AdvanceForm({
               aria-hidden="true"
             />
           )}
-          Simpan Uang Muka
+          {t("advances.submit")}
         </Button>
         <Button
           type="button"
@@ -327,7 +333,7 @@ export function AdvanceForm({
           className="cursor-pointer"
           onClick={() => (onCancel ? onCancel() : router.push("/advances"))}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

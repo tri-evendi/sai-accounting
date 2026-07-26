@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { DEPRECIATION_METHOD_LABELS, straightLineMonthly } from "@/lib/depreciation";
+import { straightLineMonthly } from "@/lib/depreciation";
+import { useT } from "@/lib/i18n/client";
 import { Info, Loader2 } from "lucide-react";
 
 export interface AccountOption {
@@ -55,6 +56,7 @@ export function AssetForm({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
 
   const first = categories[0];
   const [categoryId, setCategoryId] = useState(first ? String(first.id) : "");
@@ -126,14 +128,14 @@ export function AssetForm({
       if (!res.ok) {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? "Gagal menyimpan aset.");
+        setError(first ?? data?.error ?? t("fixedAssets.saveAssetFailed"));
         return;
       }
-      toast("Aset tersimpan.", "success");
+      toast(t("fixedAssets.assetSaved"), "success");
       router.push("/fixed-assets");
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("fixedAssets.networkFailed"));
     } finally {
       setSaving(false);
     }
@@ -145,7 +147,7 @@ export function AssetForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Select
             id="categoryId"
-            label="Kategori"
+            label={t("fixedAssets.colCategory")}
             value={categoryId}
             onChange={(e) => applyCategory(e.target.value)}
             options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
@@ -153,27 +155,27 @@ export function AssetForm({
           />
           <Input
             id="name"
-            label="Nama aset"
+            label={t("fixedAssets.assetNameField")}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="mis. Truk Colt Diesel B 1234 XY"
+            placeholder={t("fixedAssets.assetNamePlaceholder")}
             required
           />
 
           <Input
             id="acquisitionDate"
             type="date"
-            label="Tanggal perolehan"
+            label={t("fixedAssets.acquisitionDateField")}
             value={acquisitionDate}
             onChange={(e) => setAcquisitionDate(e.target.value)}
             required
           />
           <Input
             id="location"
-            label="Lokasi (opsional)"
+            label={t("fixedAssets.locationField")}
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="mis. Gudang Utama"
+            placeholder={t("fixedAssets.locationPlaceholder")}
           />
 
           <Input
@@ -182,7 +184,7 @@ export function AssetForm({
             step="0.01"
             min="0"
             className="text-right tabular-nums"
-            label="Nilai perolehan (IDR)"
+            label={t("fixedAssets.costField")}
             value={acquisitionCost}
             onChange={(e) => setAcquisitionCost(e.target.value)}
             required
@@ -193,7 +195,7 @@ export function AssetForm({
             step="0.01"
             min="0"
             className="text-right tabular-nums"
-            label="Nilai residu (IDR)"
+            label={t("fixedAssets.residualField")}
             value={residualValue}
             onChange={(e) => setResidualValue(e.target.value)}
           />
@@ -204,25 +206,27 @@ export function AssetForm({
             min="1"
             step="1"
             className="text-right tabular-nums"
-            label="Umur manfaat (bulan)"
+            label={t("fixedAssets.lifeMonthsField")}
             value={usefulLifeMonths}
             onChange={(e) => setUsefulLifeMonths(e.target.value)}
             required
           />
           <Select
             id="method"
-            label="Metode penyusutan"
+            label={t("fixedAssets.methodField")}
             value="straight_line"
             disabled
             onChange={() => {}}
-            options={Object.entries(DEPRECIATION_METHOD_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+            options={[
+              { value: "straight_line", label: t("depreciationMethod.straight_line") },
+            ]}
           />
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Select
             id="assetAccountId"
-            label="Akun aset"
+            label={t("fixedAssets.assetAccountField")}
             value={assetAccountId}
             onChange={(e) => setAssetAccountId(e.target.value)}
             options={acctOptions(assetAccounts)}
@@ -230,7 +234,7 @@ export function AssetForm({
           />
           <Select
             id="accumulatedAccountId"
-            label="Akun akumulasi penyusutan"
+            label={t("fixedAssets.accumulatedAccountField")}
             value={accumulatedAccountId}
             onChange={(e) => setAccumulatedAccountId(e.target.value)}
             options={acctOptions(accumulatedAccounts)}
@@ -238,7 +242,7 @@ export function AssetForm({
           />
           <Select
             id="expenseAccountId"
-            label="Akun beban penyusutan"
+            label={t("fixedAssets.expenseAccountField")}
             value={expenseAccountId}
             onChange={(e) => setExpenseAccountId(e.target.value)}
             options={acctOptions(expenseAccounts)}
@@ -248,7 +252,7 @@ export function AssetForm({
 
         {monthly != null && (
           <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            Penyusutan per bulan (garis lurus):{" "}
+            {t("fixedAssets.monthlyPreview")}{" "}
             <strong className="text-foreground">{formatCurrency(monthly, "IDR")}</strong>
           </p>
         )}
@@ -256,9 +260,10 @@ export function AssetForm({
         <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            Mendaftarkan aset <strong>tidak</strong> membuat jurnal — biaya perolehan biasanya
-            sudah tercatat lewat pembelian/kas. Yang menjurnal adalah{" "}
-            <strong>penyusutan bulanan</strong> dan <strong>pelepasan</strong> aset.
+            {t("fixedAssets.noJournalBefore")} <strong>{t("fixedAssets.noJournalNot")}</strong>{" "}
+            {t("fixedAssets.noJournalMiddle")}{" "}
+            <strong>{t("fixedAssets.noJournalDepreciation")}</strong> {t("fixedAssets.noJournalAnd")}{" "}
+            <strong>{t("fixedAssets.noJournalDisposal")}</strong> {t("fixedAssets.noJournalTail")}
           </span>
         </p>
 
@@ -272,7 +277,7 @@ export function AssetForm({
       <div className="flex gap-2">
         <Button type="submit" disabled={saving} className="cursor-pointer">
           {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          Simpan Aset
+          {t("fixedAssets.saveAsset")}
         </Button>
         <Button
           type="button"
@@ -280,7 +285,7 @@ export function AssetForm({
           className="cursor-pointer"
           onClick={() => router.push("/fixed-assets")}
         >
-          Batal
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

@@ -5,12 +5,14 @@ import { calculateStockTotals } from "@/lib/inventory";
 import { listClosedPeriods } from "@/lib/period";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
+import { getT } from "@/lib/i18n/server";
 import { DeliveryOrderForm } from "./delivery-order-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryOrderPage() {
   await requirePagePermission("delivery_order.write");
+  const t = await getT();
 
   const [contracts, invoices, consignees, items, closedPeriods] = await Promise.all([
     prisma.contract.findMany({
@@ -46,20 +48,14 @@ export default async function NewDeliveryOrderPage() {
     <div className="w-full">
       <PageHeader
         className="mb-1"
-        breadcrumbs={[{ label: "Surat Jalan", href: "/delivery-orders" }, { label: "Buat" }]}
-        title={<TermTooltip term="surat_jalan">Buat Surat Jalan</TermTooltip>}
-        description={
-          <>
-            Pilih consignee dan (opsional) dokumen sumber, lalu tentukan barang dan jumlah
-            (bags × kg/bag). Menerbitkan surat jalan mengurangi stok dalam kilogram.
-          </>
-        }
+        breadcrumbs={[
+          { label: t("deliveryOrders.title"), href: "/delivery-orders" },
+          { label: t("deliveryOrders.breadcrumbCreate") },
+        ]}
+        title={<TermTooltip term="surat_jalan">{t("deliveryOrders.createTitle")}</TermTooltip>}
+        description={t("deliveryOrders.createDescription")}
       />
-      <LearnMore
-        term="surat_jalan"
-        className="mt-1 mb-6"
-        label="Pelajari ini: apa itu surat jalan"
-      />
+      <LearnMore term="surat_jalan" className="mt-1 mb-6" label={t("deliveryOrders.learnMore")} />
       <DeliveryOrderForm
         contracts={contracts.map((c) => ({
           id: c.id,

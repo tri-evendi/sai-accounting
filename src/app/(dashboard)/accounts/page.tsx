@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/table";
 import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { accountTypeLabel } from "@/lib/accounting";
+import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { accountTypeLabel } from "@/lib/i18n/labels";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListTree } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,6 +28,8 @@ export default async function AccountsPage({
   searchParams: Promise<{ search?: string }>;
 }) {
   await requirePagePermission("account.manage");
+  const t = await getT();
+  const dictionary = await getDictionary(await getLocale());
   const { search } = await searchParams;
   const q = (search ?? "").trim();
 
@@ -43,16 +46,16 @@ export default async function AccountsPage({
           </Link>
         </span>
       </TableCell>
-      <TableCell className="text-muted-foreground">{accountTypeLabel(a.type)}</TableCell>
+      <TableCell className="text-muted-foreground">{accountTypeLabel(dictionary, a.type)}</TableCell>
       <TableCell className="text-muted-foreground">{a.currency}</TableCell>
       <TableCell className="text-muted-foreground capitalize">
-        {a.normalBalance === "debit" ? "Debit" : "Kredit"}
+        {a.normalBalance === "debit" ? t("common.debit") : t("common.credit")}
       </TableCell>
       <TableCell>
         {a.isActive ? (
-          <Badge variant="success">Aktif</Badge>
+          <Badge variant="success">{t("common.active")}</Badge>
         ) : (
-          <Badge variant="default">Nonaktif</Badge>
+          <Badge variant="default">{t("common.inactive")}</Badge>
         )}
       </TableCell>
     </TableRow>
@@ -88,14 +91,14 @@ export default async function AccountsPage({
   return (
     <div>
       <PageHeader
-        title={<>Akun Perkiraan ({accounts.length})</>}
+        title={t("accounts.title", { count: accounts.length })}
         actions={
           <>
             <Link href="/accounts/import" className="shrink-0">
-              <Button variant="secondary">Impor dari Excel</Button>
+              <Button variant="secondary">{t("accounts.importFromExcel")}</Button>
             </Link>
             <Link href="/accounts/new" className="shrink-0">
-              <Button>+ Akun Baru</Button>
+              <Button>{t("accounts.addNew")}</Button>
             </Link>
           </>
         }
@@ -107,16 +110,16 @@ export default async function AccountsPage({
           type="search"
           name="search"
           defaultValue={q}
-          placeholder="Cari kode atau nama akun…"
+          placeholder={t("accounts.searchPlaceholder")}
           className="w-full max-w-xs"
         />
         <Button type="submit" variant="secondary" size="sm">
-          Cari
+          {t("common.search")}
         </Button>
         {q && (
           <Link href="/accounts">
             <Button type="button" variant="ghost" size="sm">
-              Hapus
+              {t("accounts.clearSearch")}
             </Button>
           </Link>
         )}
@@ -126,12 +129,12 @@ export default async function AccountsPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Kode</TableHead>
-              <TableHead>Nama Akun</TableHead>
-              <TableHead>Tipe</TableHead>
-              <TableHead>Mata Uang</TableHead>
-              <TableHead>Saldo Normal</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("accounts.colCode")}</TableHead>
+              <TableHead>{t("accounts.nameField")}</TableHead>
+              <TableHead>{t("accounts.colType")}</TableHead>
+              <TableHead>{t("common.currency")}</TableHead>
+              <TableHead>{t("accounts.colNormalBalance")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -143,15 +146,15 @@ export default async function AccountsPage({
                   {q ? (
                     <EmptyState
                       icon={<ListTree className="h-12 w-12" />}
-                      title="Tidak ada akun yang cocok"
-                      description={`Tidak ditemukan akun dengan kode atau nama "${q}". Coba kata kunci lain.`}
+                      title={t("accounts.emptySearchTitle")}
+                      description={t("accounts.emptySearchDescription", { query: q })}
                     />
                   ) : (
                     <EmptyState
                       icon={<ListTree className="h-12 w-12" />}
-                      title="Belum ada akun perkiraan"
-                      description="Daftar akun adalah rak tempat setiap transaksi disimpan. Buat akun satu per satu, atau impor banyak sekaligus dari Excel."
-                      actionLabel="Impor dari Excel"
+                      title={t("accounts.emptyTitle")}
+                      description={t("accounts.emptyDescription")}
+                      actionLabel={t("accounts.importFromExcel")}
                       actionHref="/accounts/import"
                     />
                   )}

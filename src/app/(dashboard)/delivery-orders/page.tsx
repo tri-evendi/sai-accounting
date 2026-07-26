@@ -22,12 +22,14 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort } from "@/lib/utils";
+import { getT } from "@/lib/i18n/server";
 import { Truck, Plus, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeliveryOrdersPage() {
   await requirePagePermission("delivery_order.read");
+  const t = await getT();
 
   const orders = await prisma.deliveryOrder.findMany({
     orderBy: { date: "desc" },
@@ -42,18 +44,13 @@ export default async function DeliveryOrdersPage() {
   return (
     <div>
       <PageHeader
-        title="Surat Jalan"
-        description={
-          <>
-            Dokumen pengiriman barang. Menerbitkan surat jalan mengurangi stok dan
-            mengakui HPP atas barang yang keluar.
-          </>
-        }
+        title={t("deliveryOrders.title")}
+        description={t("deliveryOrders.description")}
         actions={
           <Link href="/delivery-orders/new">
             <Button className="cursor-pointer">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Buat Surat Jalan
+              {t("deliveryOrders.addNew")}
             </Button>
           </Link>
         }
@@ -62,17 +59,17 @@ export default async function DeliveryOrdersPage() {
       <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          Stok berkurang dalam <strong>kilogram</strong> (bags × kg/bag) saat surat jalan
-          diterbitkan. Penerbitan ditolak bila stok tidak mencukupi.
+          {t("deliveryOrders.stockNoteA")} <strong>{t("deliveryOrders.stockNoteStrong")}</strong>{" "}
+          {t("deliveryOrders.stockNoteB")}
         </span>
       </p>
 
       {orders.length === 0 ? (
         <EmptyState
           icon={<Truck className="h-12 w-12" />}
-          title="Belum ada surat jalan"
-          description="Buat surat jalan untuk mengirim barang dan mengurangi stok."
-          actionLabel="Buat Surat Jalan"
+          title={t("deliveryOrders.emptyTitle")}
+          description={t("deliveryOrders.emptyDescription")}
+          actionLabel={t("deliveryOrders.addNew")}
           actionHref="/delivery-orders/new"
         />
       ) : (
@@ -80,13 +77,13 @@ export default async function DeliveryOrdersPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>No. Surat Jalan</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Consignee</TableHead>
-                <TableHead>Dokumen Sumber</TableHead>
-                <TableHead className="text-right">Bags</TableHead>
-                <TableHead className="text-right">Total (kg)</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("deliveryOrders.colNo")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>{t("deliveryOrders.colConsignee")}</TableHead>
+                <TableHead>{t("deliveryOrders.colSource")}</TableHead>
+                <TableHead className="text-right">{t("common.bags")}</TableHead>
+                <TableHead className="text-right">{t("deliveryOrders.colTotalKg")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -116,7 +113,9 @@ export default async function DeliveryOrdersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={o.status === "canceled" ? "danger" : "success"}>
-                        {o.status === "canceled" ? "Dibatalkan" : "Diterbitkan"}
+                        {o.status === "canceled"
+                          ? t("status.contract.canceled")
+                          : t("deliveryOrders.statusIssued")}
                       </Badge>
                     </TableCell>
                   </TableRow>

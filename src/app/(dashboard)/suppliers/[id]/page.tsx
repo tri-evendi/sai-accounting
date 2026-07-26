@@ -27,14 +27,15 @@ import {
   isCompensationTarget,
 } from "@/lib/advances";
 import type { AppliedAdvance } from "@/components/shared/advance-compensation";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 /** Label tampilan untuk `SupplierTransaction.type` — nilai DB tidak berubah. */
-const TRANSACTION_TYPE_LABELS: Record<string, string> = {
-  purchase: "Pembelian",
-  payment: "Pembayaran",
-};
+const transactionTypeLabels = (t: Awaited<ReturnType<typeof getT>>): Record<string, string> => ({
+  purchase: t("suppliers.typePurchase"),
+  payment: t("suppliers.typePayment"),
+});
 
 export default async function SupplierDetailPage({
   params,
@@ -47,6 +48,8 @@ export default async function SupplierDetailPage({
   // Sejajar dengan halaman daftarnya — tanpa ini, ptg bisa membaca detail
   // pemasok + uang mukanya lewat URL langsung (temuan audit RBAC fase 0).
   await requirePagePermission("supplier.read");
+  const t = await getT();
+  const typeLabels = transactionTypeLabels(t);
   const { id } = await params;
   const { alokasi } = await searchParams;
 
@@ -122,15 +125,18 @@ export default async function SupplierDetailPage({
   return (
     <div className="w-full">
       <PageHeader
-        breadcrumbs={[{ label: "Pemasok", href: "/suppliers" }, { label: supplier.name }]}
+        breadcrumbs={[
+          { label: t("suppliers.breadcrumb"), href: "/suppliers" },
+          { label: supplier.name },
+        ]}
         title={supplier.name}
         actions={
           <>
             <Link href={`/suppliers/${id}/edit`}>
-              <Button variant="secondary">Ubah</Button>
+              <Button variant="secondary">{t("common.edit")}</Button>
             </Link>
             <Link href="/suppliers">
-              <Button variant="ghost">Kembali</Button>
+              <Button variant="ghost">{t("common.back")}</Button>
             </Link>
           </>
         }
@@ -138,23 +144,23 @@ export default async function SupplierDetailPage({
 
       {/* Supplier Info */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Informasi Pemasok</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("suppliers.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Nama</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.name")}</dt>
               <dd className="text-sm text-foreground">{supplier.name}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Alamat</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.address")}</dt>
               <dd className="text-sm text-foreground">{supplier.address || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Telepon</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.phone")}</dt>
               <dd className="text-sm text-foreground">{supplier.phone || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Email</dt>
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.email")}</dt>
               <dd className="text-sm text-foreground">{supplier.email || "-"}</dd>
             </div>
           </dl>
@@ -165,7 +171,7 @@ export default async function SupplierDetailPage({
           their goods/invoice arrived, and the flow that takes it off a purchase. */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Uang Muka Pembelian</CardTitle>
+          <CardTitle>{t("suppliers.advanceTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <SupplierAdvancePanel
@@ -203,19 +209,19 @@ export default async function SupplierDetailPage({
 
       {/* Transactions */}
       <Card>
-        <CardHeader><CardTitle>Riwayat Transaksi</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("suppliers.historyTitle")}</CardTitle></CardHeader>
         <div className="px-6 pb-2">
           <SupplierTransactionForm supplierId={supplier.id} />
         </div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead className="text-right">Jumlah</TableHead>
-              <TableHead>Mata Uang</TableHead>
-              <TableHead>Catatan</TableHead>
-              <TableHead>Alokasi</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead>{t("suppliers.colType")}</TableHead>
+              <TableHead className="text-right">{t("common.amount")}</TableHead>
+              <TableHead>{t("common.currency")}</TableHead>
+              <TableHead>{t("common.notes")}</TableHead>
+              <TableHead>{t("suppliers.colAllocation")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -224,42 +230,42 @@ export default async function SupplierDetailPage({
                 <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={<Receipt className="h-12 w-12" />}
-                    title="Belum ada transaksi dengan pemasok ini"
-                    description="Catat pembelian atau pembayaran pertamanya lewat formulir di atas; utang dan jurnalnya terbentuk otomatis."
+                    title={t("suppliers.emptyTxTitle")}
+                    description={t("suppliers.emptyTxDescription")}
                   />
                 </TableCell>
               </TableRow>
             ) : (
-              supplier.transactions.map((t) => (
+              supplier.transactions.map((tx) => (
                 // Baris pembayaran bisa membawa daftar alokasi bertingkat, jadi
                 // seluruh selnya rata atas — `TableCell` bawaan rata tengah.
-                <TableRow key={t.id} className="[&>td]:align-top">
-                  <TableCell className="text-foreground">{formatDate(t.date)}</TableCell>
-                  <TableCell className="text-foreground">{TRANSACTION_TYPE_LABELS[t.type] ?? t.type}</TableCell>
+                <TableRow key={tx.id} className="[&>td]:align-top">
+                  <TableCell className="text-foreground">{formatDate(tx.date)}</TableCell>
+                  <TableCell className="text-foreground">{typeLabels[tx.type] ?? tx.type}</TableCell>
                   <TableCell className="p-0">
                     <MoneyCell
                       className="font-medium text-foreground"
-                      value={Number(t.amount)}
-                      currency={t.currency}
+                      value={Number(tx.amount)}
+                      currency={tx.currency}
                     />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{t.currency}</TableCell>
-                  <TableCell className="text-muted-foreground">{t.note || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{tx.currency}</TableCell>
+                  <TableCell className="text-muted-foreground">{tx.note || "-"}</TableCell>
                   <TableCell>
-                    {t.type !== "payment" ? (
+                    {tx.type !== "payment" ? (
                       <span className="text-muted-foreground">-</span>
                     ) : (
                       <div>
-                        {t.allocationsMade.length === 0 ? (
+                        {tx.allocationsMade.length === 0 ? (
                           <span
                             className="block"
-                            title="Pembayaran ini belum ditautkan ke pembelian tertentu, jadi sisa utang per dokumen hanya diperkirakan (pembelian terlama dilunasi lebih dulu)."
+                            title={t("suppliers.estimateTitle")}
                           >
-                            <Badge variant="warning">Perkiraan</Badge>
+                            <Badge variant="warning">{t("suppliers.estimateBadge")}</Badge>
                           </span>
                         ) : (
                           <ul className="space-y-0.5">
-                            {t.allocationsMade.map((a) => (
+                            {tx.allocationsMade.map((a) => (
                               <li key={a.id} className="text-xs text-foreground tabular-nums">
                                 TRX-{a.purchaseId} ·{" "}
                                 <Money value={Number(a.amount)} currency={a.currency} />
@@ -269,11 +275,11 @@ export default async function SupplierDetailPage({
                         )}
                         <AllocationEditor
                           supplierId={supplier.id}
-                          paymentId={t.id}
-                          paymentAmount={Number(t.amount)}
-                          paymentCurrency={t.currency}
-                          allocatedCount={t.allocationsMade.length}
-                          autoOpen={autoOpenPaymentId === t.id}
+                          paymentId={tx.id}
+                          paymentAmount={Number(tx.amount)}
+                          paymentCurrency={tx.currency}
+                          allocatedCount={tx.allocationsMade.length}
+                          autoOpen={autoOpenPaymentId === tx.id}
                         />
                       </div>
                     )}

@@ -20,6 +20,7 @@ import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Scale } from "lucide-react";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,14 @@ export default async function TrialBalancePage({
   searchParams: Promise<{ asOf?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { asOf, asOfISO } = resolveAsOf(sp.asOf);
   const tb = await getTrialBalance(asOf);
 
   const payload: StatementPayload = {
     kind: "trial-balance",
+    // Isi dokumen cetak tetap bahasa Indonesia (lihat lib/pdf/statement-pdf).
     period: `Per ${formatDate(asOf)}`,
     rows: tb.rows,
     totalDebit: tb.totalDebit,
@@ -45,9 +48,12 @@ export default async function TrialBalancePage({
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Neraca Saldo" }]}
-        title="Neraca Saldo"
-        description={<>Per {formatDate(asOf)} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.trialBalanceTitle") },
+        ]}
+        title={t("reports.trialBalanceTitle")}
+        description={t("reports.asOfWithCurrency", { date: formatDate(asOf) })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -62,10 +68,10 @@ export default async function TrialBalancePage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Kode</TableHead>
-              <TableHead>Nama Akun</TableHead>
-              <TableHead className="text-right">Debit</TableHead>
-              <TableHead className="text-right">Kredit</TableHead>
+              <TableHead>{t("accounts.colCode")}</TableHead>
+              <TableHead>{t("accounts.nameField")}</TableHead>
+              <TableHead className="text-right">{t("common.debit")}</TableHead>
+              <TableHead className="text-right">{t("common.credit")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,9 +94,9 @@ export default async function TrialBalancePage({
                 <TableCell colSpan={4} className="p-0">
                   <EmptyState
                     icon={<Scale className="h-12 w-12" />}
-                    title="Belum ada saldo sampai tanggal ini"
-                    description="Neraca saldo dibangun dari jurnal. Catat transaksi pertama Anda, atau pilih tanggal yang lebih akhir."
-                    actionLabel="+ Catat Transaksi"
+                    title={t("reports.trialBalanceEmptyTitle")}
+                    description={t("reports.trialBalanceEmptyDescription")}
+                    actionLabel={t("reports.recordTransaction")}
                     actionHref="/finance/new"
                   />
                 </TableCell>
@@ -100,7 +106,12 @@ export default async function TrialBalancePage({
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="font-semibold hover:bg-transparent">
               <TableCell colSpan={2}>
-                Total {tb.balanced ? <Badge variant="success">Seimbang</Badge> : <Badge variant="danger">Tidak seimbang</Badge>}
+                {t("common.total")}{" "}
+                {tb.balanced ? (
+                  <Badge variant="success">{t("reports.balanced")}</Badge>
+                ) : (
+                  <Badge variant="danger">{t("reports.unbalanced")}</Badge>
+                )}
               </TableCell>
               <TableCell className="p-0">
                 <MoneyCell value={tb.totalDebit} currency="IDR" />

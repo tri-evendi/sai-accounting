@@ -18,6 +18,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -50,6 +51,7 @@ export function DeleteDocumentButton({
   redirectTo,
   confirmPhrase,
 }: DeleteDocumentButtonProps) {
+  const t = useT();
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -61,16 +63,16 @@ export function DeleteDocumentButton({
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         toast(
-          humanizeFieldMessage(null, data?.error ?? "Dokumen ini belum bisa dihapus."),
+          humanizeFieldMessage(null, data?.error ?? t("documentDelete.errDelete")),
           "error"
         );
         return;
       }
-      toast("Dokumen dihapus. Jurnalnya ikut dibalik.", "success");
+      toast(t("documentDelete.deleted"), "success");
       router.push(redirectTo);
       router.refresh();
     } catch {
-      toast("Tidak dapat menghubungi server. Coba lagi.", "error");
+      toast(t("documentDelete.errNetwork"), "error");
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export function DeleteDocumentButton({
       confirmLabel={label}
       confirmVariant="danger"
       confirmPhrase={confirmPhrase}
-      confirmPhraseLabel="Ketik ulang nomor dokumennya untuk memastikan:"
+      confirmPhraseLabel={t("documentDelete.retypePrompt")}
       onConfirm={onConfirm}
       trigger={
         <Button variant="danger" className="cursor-pointer" disabled={busy}>

@@ -15,6 +15,7 @@ import Link from "next/link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { getT } from "@/lib/i18n/server";
 import { Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function CustomersPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("customer.read");
+  const t = await getT();
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -42,10 +44,10 @@ export default async function CustomersPage({
   return (
     <div>
       <PageHeader
-        title={<TermTooltip term="pelanggan">Pelanggan ({totalCount})</TermTooltip>}
+        title={<TermTooltip term="pelanggan">{t("customers.title", { count: totalCount })}</TermTooltip>}
         actions={
           <Link href="/customers/new" className="shrink-0">
-            <Button>+ Tambah Pelanggan</Button>
+            <Button>{t("customers.addNew")}</Button>
           </Link>
         }
       />
@@ -54,11 +56,11 @@ export default async function CustomersPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nama</TableHead>
-              <TableHead>Alamat</TableHead>
-              <TableHead>Telepon</TableHead>
-              <TableHead>Surel</TableHead>
-              <TableHead>Penanggung Jawab</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.address")}</TableHead>
+              <TableHead>{t("common.phone")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("customers.colPic")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,9 +69,9 @@ export default async function CustomersPage({
                 <TableCell colSpan={5} className="p-0">
                   <EmptyState
                     icon={<Users className="h-12 w-12" />}
-                    title="Belum ada pelanggan"
-                    description="Pelanggan adalah pihak yang Anda tagih. Catat pelanggan pertama agar tagihan dan piutangnya bisa dirinci per pelanggan."
-                    actionLabel="+ Tambah Pelanggan"
+                    title={t("customers.emptyTitle")}
+                    description={t("customers.emptyDescription")}
+                    actionLabel={t("customers.addNew")}
                     actionHref="/customers/new"
                   />
                 </TableCell>

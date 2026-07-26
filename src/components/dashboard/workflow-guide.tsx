@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Workflow, WorkflowTone } from "@/lib/workflows";
+import type { TranslateFn } from "@/lib/i18n/client";
 
 const ICONS: Record<string, LucideIcon> = {
   FileText,
@@ -48,7 +49,23 @@ const TONE_BADGE: Record<WorkflowTone, string> = {
   neutral: "bg-primary/10 text-primary",
 };
 
-export function WorkflowGuide({ workflows }: { workflows: Workflow[] }) {
+/*
+ * `t` datang sebagai PROP, bukan dari `getT()` di dalam komponen.
+ *
+ * Panel ini dirender-uji tanpa peramban (`tests/workflow-guide.test.tsx`,
+ * `renderToStaticMarkup`), dan `getT()` menyeret `server-only` + `cookies()`
+ * yang tak ada di lingkungan tes. Menerima penerjemahnya membuat komponen ini
+ * tetap sinkron & murni-tampilan: halaman server meneruskan `await getT()`,
+ * tesnya meneruskan penerjemah dari `id.json` — jadi teks yang diperiksa tes
+ * tetap teks yang sesungguhnya, bukan tiruan.
+ */
+export function WorkflowGuide({
+  workflows,
+  t,
+}: {
+  workflows: Workflow[];
+  t: TranslateFn;
+}) {
   if (workflows.length === 0) return null;
 
   return (
@@ -56,18 +73,18 @@ export function WorkflowGuide({ workflows }: { workflows: Workflow[] }) {
       <div className="mb-3 flex items-center gap-2">
         <Route className="h-5 w-5 text-primary" aria-hidden="true" />
         <h2 id="alur-judul" className="text-lg font-semibold text-foreground">
-          Alur Kerja
+          {t("dashboard.workflowTitle")}
         </h2>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Belum tahu mulai dari mana? Ikuti urutan langkah berikut — tiap langkah membuka halamannya.
+        {t("dashboard.workflowHint")}
       </p>
 
       <div className="space-y-4">
         {workflows.map((wf) => (
           <div key={wf.id} className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-            <h3 className="text-base font-semibold text-foreground">{wf.label}</h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">{wf.description}</p>
+            <h3 className="text-base font-semibold text-foreground">{t(wf.labelKey)}</h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t(wf.descriptionKey)}</p>
 
             <ol className="mt-4 flex flex-col gap-2 md:flex-row md:items-stretch">
               {wf.steps.map((step, i) => {
@@ -94,15 +111,17 @@ export function WorkflowGuide({ workflows }: { workflows: Workflow[] }) {
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5">
                           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                          <span className="text-sm font-semibold text-foreground">{step.label}</span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {t(step.labelKey)}
+                          </span>
                           {step.optional && (
                             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                              opsional
+                              {t("dashboard.workflowOptional")}
                             </span>
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-snug text-muted-foreground">
-                          {step.description}
+                          {t(step.descriptionKey)}
                         </span>
                       </span>
                     </Link>

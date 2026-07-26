@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
+import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 /**
  * Timeline dokumen berantai (issue #15): Kontrak → Surat Jalan → Faktur →
@@ -20,12 +22,27 @@ const stageIcons = {
   payment: Wallet,
 } as const;
 
-const statusBadge: Record<ChainStatus, { variant: "success" | "warning" | "default"; label: string }> =
-  {
-    selesai: { variant: "success", label: "Selesai" },
-    sebagian: { variant: "warning", label: "Sebagian" },
-    belum: { variant: "default", label: "Belum" },
-  };
+const statusBadge: Record<
+  ChainStatus,
+  { variant: "success" | "warning" | "default"; labelKey: DictionaryKey }
+> = {
+  selesai: { variant: "success", labelKey: "chainStatus.selesai" },
+  sebagian: { variant: "warning", labelKey: "chainStatus.sebagian" },
+  belum: { variant: "default", labelKey: "chainStatus.belum" },
+};
+
+/**
+ * Nama tahap diambil dari KUNCI tahap, bukan dari `stage.label`: labelnya
+ * disusun `lib/document-chain.ts` yang menarik Prisma, jadi teksnya tidak bisa
+ * ikut ke kamus di sana. Nilai literal di modul itu tetap ada sebagai bahasa
+ * sumber, persis seperti `label` di `WORKFLOWS`.
+ */
+const stageLabelKeys: Record<ContractChainStage["key"], DictionaryKey> = {
+  contract: "chainStage.contract",
+  delivery: "chainStage.delivery",
+  invoice: "chainStage.invoice",
+  payment: "chainStage.payment",
+};
 
 const statusMark = {
   selesai: Check,
@@ -47,7 +64,7 @@ function stageAmount(stage: ContractChainStage, currency: string): string {
   return `${formatNumber(stage.done)} / ${formatNumber(stage.target)} kg`;
 }
 
-export function DocumentChainTimeline({
+export async function DocumentChainTimeline({
   stages,
   currency = "IDR",
 }: {
@@ -55,6 +72,7 @@ export function DocumentChainTimeline({
   /** Currency of the money-denominated stage (payments are summed in IDR base). */
   currency?: string;
 }) {
+  const t = await getT();
   return (
     <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stages.map((stage, i) => {
@@ -83,17 +101,17 @@ export function DocumentChainTimeline({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">
                     <span className="text-muted-foreground">{i + 1}. </span>
-                    {stage.label}
+                    {t(stageLabelKeys[stage.key])}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {stage.count} dokumen
+                    {t("aging.docCount", { count: stage.count })}
                   </p>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <Badge variant={badge.variant}>
                   <Mark className="mr-1 h-3 w-3" aria-hidden />
-                  {badge.label}
+                  {t(badge.labelKey)}
                 </Badge>
                 <span className="truncate text-right text-xs tabular-nums text-foreground">
                   {stageAmount(stage, currency)}

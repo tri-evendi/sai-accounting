@@ -19,10 +19,21 @@ import { balanceSheetSummary } from "@/lib/report-summary";
 import { formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-function Section({ title, lines, total }: { title: string; lines: StatementLine[]; total: number }) {
+function Section({
+  title,
+  lines,
+  total,
+  totalLabel,
+}: {
+  title: string;
+  lines: StatementLine[];
+  total: number;
+  totalLabel: string;
+}) {
   return (
     <>
       <TableRow className="bg-muted hover:bg-muted">
@@ -45,7 +56,7 @@ function Section({ title, lines, total }: { title: string; lines: StatementLine[
         </TableRow>
       )}
       <TableRow className="font-medium">
-        <TableCell className="py-2 text-foreground">Total {title}</TableCell>
+        <TableCell className="py-2 text-foreground">{totalLabel}</TableCell>
         <TableCell className="p-0">
           <MoneyCell className="py-2" value={total} currency="IDR" />
         </TableCell>
@@ -60,9 +71,12 @@ export default async function BalanceSheetPage({
   searchParams: Promise<{ asOf?: string }>;
 }) {
   await requirePagePermission("report.read");
+  const t = await getT();
   const sp = await searchParams;
   const { asOf, asOfISO } = resolveAsOf(sp.asOf);
   const bs = await getBalanceSheet(asOf);
+  // Judul periode untuk dokumen cetak & ringkasan bahasa awam — keduanya
+  // masih berbahasa Indonesia (lib/pdf, lib/report-summary).
   const asOfLabel = `Per ${formatDate(asOf)}`;
 
   const payload: StatementPayload = {
@@ -78,14 +92,17 @@ export default async function BalanceSheetPage({
     totalLiabilitiesEquity: bs.totalLiabilitiesEquity,
     balanced: bs.balanced,
   };
-  const summary = balanceSheetSummary(bs, asOfLabel);
+  const summary = balanceSheetSummary(bs, asOfLabel, t);
 
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: "Pusat Laporan", href: "/reports" }, { label: "Neraca" }]}
-        title="Neraca"
-        description={<>{asOfLabel} · nilai dalam IDR</>}
+        breadcrumbs={[
+          { label: t("reports.breadcrumb"), href: "/reports" },
+          { label: t("reports.balanceSheetTitle") },
+        ]}
+        title={t("reports.balanceSheetTitle")}
+        description={t("reports.asOfWithCurrency", { date: formatDate(asOf) })}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -100,20 +117,37 @@ export default async function BalanceSheetPage({
 
       <div className="mb-4">
         {bs.balanced ? (
-          <Badge variant="success">Seimbang: Aset = Liabilitas + Ekuitas</Badge>
+          <Badge variant="success">{t("reports.balanceSheetBalanced")}</Badge>
         ) : (
-          <Badge variant="danger">Tidak seimbang — periksa jurnal</Badge>
+          <Badge variant="danger">{t("reports.balanceSheetUnbalanced")}</Badge>
         )}
       </div>
 
       <Card>
         <Table>
           <TableBody>
-            <Section title="Aset" lines={bs.assets} total={bs.totalAssets} />
-            <Section title="Liabilitas" lines={bs.liabilities} total={bs.totalLiabilities} />
-            <Section title="Ekuitas" lines={bs.equity} total={bs.totalEquity} />
+            <Section
+              title={t("reports.sectionAssets")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionAssets") })}
+              lines={bs.assets}
+              total={bs.totalAssets}
+            />
+            <Section
+              title={t("reports.sectionLiabilities")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionLiabilities") })}
+              lines={bs.liabilities}
+              total={bs.totalLiabilities}
+            />
+            <Section
+              title={t("reports.sectionEquity")}
+              totalLabel={t("reports.sectionTotal", { section: t("reports.sectionEquity") })}
+              lines={bs.equity}
+              total={bs.totalEquity}
+            />
             <TableRow>
-              <TableCell className="py-2 pl-10 text-muted-foreground">Laba/Rugi Berjalan</TableCell>
+              <TableCell className="py-2 pl-10 text-muted-foreground">
+                {t("reports.currentNetIncome")}
+              </TableCell>
               <TableCell className="p-0">
                 <MoneyCell className="py-2" value={bs.netIncome} currency="IDR" />
               </TableCell>
@@ -121,13 +155,13 @@ export default async function BalanceSheetPage({
           </TableBody>
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="border-b-0 font-bold hover:bg-transparent">
-              <TableCell className="text-foreground">Total Aset</TableCell>
+              <TableCell className="text-foreground">{t("reports.totalAssets")}</TableCell>
               <TableCell className="p-0">
                 <MoneyCell value={bs.totalAssets} currency="IDR" />
               </TableCell>
             </TableRow>
             <TableRow className="border-b-0 font-bold hover:bg-transparent">
-              <TableCell className="text-foreground">Total Liabilitas + Ekuitas</TableCell>
+              <TableCell className="text-foreground">{t("reports.totalLiabilitiesEquity")}</TableCell>
               <TableCell className="p-0">
                 <MoneyCell value={bs.totalLiabilitiesEquity} currency="IDR" />
               </TableCell>

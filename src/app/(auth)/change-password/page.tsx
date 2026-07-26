@@ -6,11 +6,13 @@ import { KeyRound } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useT } from "@/lib/i18n/client";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,13 +24,13 @@ export default function ChangePasswordPage() {
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+      setError(t("auth.changePassword.mismatch"));
       setLoading(false);
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("auth.changePassword.tooShort"));
       setLoading(false);
       return;
     }
@@ -44,7 +46,7 @@ export default function ChangePasswordPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to change password. Please try again.");
+      setError(data.error || t("auth.changePassword.failed"));
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -54,8 +56,8 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthShell
-      heading="Change your password"
-      description="Your account requires a new password before you can continue."
+      heading={t("auth.changePassword.heading")}
+      description={t("auth.changePassword.description")}
       error={error}
       icon={<KeyRound className="h-5 w-5" aria-hidden />}
     >
@@ -63,7 +65,7 @@ export default function ChangePasswordPage() {
         <PasswordInput
           id="currentPassword"
           name="currentPassword"
-          label="Current password"
+          label={t("auth.changePassword.current")}
           autoComplete="current-password"
           required
           autoFocus
@@ -72,7 +74,7 @@ export default function ChangePasswordPage() {
         <PasswordInput
           id="newPassword"
           name="newPassword"
-          label="New password"
+          label={t("auth.changePassword.new")}
           autoComplete="new-password"
           required
           disabled={loading}
@@ -80,16 +82,14 @@ export default function ChangePasswordPage() {
         <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          label="Confirm new password"
+          label={t("auth.changePassword.confirm")}
           autoComplete="new-password"
           required
           disabled={loading}
         />
-        <p className="text-xs text-muted-foreground">
-          Use at least 8 characters. Avoid reusing passwords from other systems.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("auth.changePassword.hint")}</p>
         <Button type="submit" className="w-full" size="lg" disabled={loading}>
-          {loading ? "Updating…" : "Update password"}
+          {loading ? t("auth.changePassword.submitting") : t("auth.changePassword.submit")}
         </Button>
       </form>
     </AuthShell>

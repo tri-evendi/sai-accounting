@@ -15,15 +15,14 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { CalendarClock, Loader2 } from "lucide-react";
-
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
+import { useDictionary, useT } from "@/lib/i18n/client";
+import { monthNames } from "@/lib/i18n/labels";
 
 export function RunDepreciation() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
+  const months = monthNames(useDictionary());
   const now = new Date();
 
   const [year, setYear] = useState(String(now.getFullYear()));
@@ -44,18 +43,21 @@ export function RunDepreciation() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? "Gagal menjalankan penyusutan.");
+        setError(data?.error ?? t("fixedAssets.runFailed"));
         return;
       }
       toast(
         data.postedCount > 0
-          ? `Penyusutan diposting untuk ${data.postedCount} aset (${formatCurrency(data.totalAmount, "IDR")}).`
-          : "Tidak ada aset yang perlu disusutkan untuk periode ini.",
+          ? t("fixedAssets.runPosted", {
+              count: data.postedCount,
+              amount: formatCurrency(data.totalAmount, "IDR"),
+            })
+          : t("fixedAssets.runNothing"),
         "success"
       );
       router.refresh();
     } catch {
-      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setError(t("fixedAssets.networkFailed"));
     } finally {
       setRunning(false);
     }
@@ -66,21 +68,21 @@ export function RunDepreciation() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <CalendarClock className="h-5 w-5 text-primary" aria-hidden="true" />
-          Jalankan penyusutan bulanan
+          {t("fixedAssets.runTitle")}
         </div>
         <div className="w-36">
           <Select
             id="dep-month"
-            label="Bulan"
+            label={t("fixedAssets.monthField")}
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+            options={months.map((m, i) => ({ value: String(i + 1), label: m }))}
           />
         </div>
         <div className="w-28">
           <Select
             id="dep-year"
-            label="Tahun"
+            label={t("fixedAssets.yearField")}
             value={year}
             onChange={(e) => setYear(e.target.value)}
             options={years.map((y) => ({ value: String(y), label: String(y) }))}
@@ -88,7 +90,7 @@ export function RunDepreciation() {
         </div>
         <Button onClick={run} disabled={running} className="cursor-pointer">
           {running && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          Jalankan
+          {t("fixedAssets.runAction")}
         </Button>
       </div>
       {error && (

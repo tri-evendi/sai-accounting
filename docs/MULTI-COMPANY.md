@@ -129,8 +129,12 @@ langkah 3.
 # 0. CADANGKAN dulu.
 mysqldump sai_production > backup-sebelum-104.sql
 
-# 1. Basis data kendali
+# 1. Basis data kendali — BESERTA HAK AKSESNYA
 mysql -e "CREATE DATABASE sai_control DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+#    Pengguna aplikasi hanya berhak atas basis data yang sekarang; tanpa baris
+#    berikut, migration kendali berhenti dengan `P1010: User was denied access`
+#    — pesan yang terdengar seperti kredensial salah padahal bukan.
+mysql -e "GRANT ALL PRIVILEGES ON \`sai_control\`.* TO 'sai'@'%'; FLUSH PRIVILEGES"
 #    tambahkan CONTROL_DATABASE_URL ke .env
 npm run db:migrate:control
 
@@ -145,8 +149,10 @@ npm run db:migrate:companies
 docker compose up --build -d
 ```
 
-Skrip adopsi **menolak berjalan** bila tabel `users` sudah hilang, jadi urutan
-yang salah gagal berisik. Tapi kalau langkah 3 terlanjur jalan lebih dulu, akun
+Skrip adopsi membaca skema LAMA (kolomnya masih `users.status`, bukan
+`must_change_password`) — ia mendeteksi mana yang ada, jadi urutan di atas benar
+apa adanya. Ia juga **menolak berjalan** bila tabel `users` sudah hilang, jadi
+urutan yang salah gagal berisik. Tapi kalau langkah 3 terlanjur jalan lebih dulu, akun
 lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
 
 ### Perusahaan berikutnya
@@ -154,6 +160,10 @@ lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
 ```bash
 npm run create-company -- --slug pt-b --name "PT Bumi Baru" [--admin budi]
 ```
+
+Pengguna basis datanya harus berhak `CREATE DATABASE`; bila tidak (dan di banyak
+hosting memang tidak), buat basis datanya manual **beserta GRANT-nya**, lalu
+jalankan dengan `--database <nama>`.
 
 Membuat basis data → menerapkan migration → **baru** mendaftarkan (registry
 ditulis terakhir supaya kegagalan di tengah tidak meninggalkan perusahaan yang
@@ -191,6 +201,21 @@ dan justru berbahaya: orang akan mengira ia melihat PT yang biasa dibukanya,
 lalu mencatat transaksi ke buku yang salah.
 
 ---
+
+### Gladi resik sebelum menyentuh produksi
+
+Seluruh urutan di atas layak dijalankan dulu pada SALINAN. Sekali dijalankan
+begitu, ia sudah menemukan dua hal yang tidak terlihat dari membaca kode: hak
+akses yang kurang (`P1010`) dan skrip adopsi yang menyebut kolom yang belum ada.
+
+```bash
+mysqldump --single-transaction sai_production > /tmp/full.sql
+mysql -e "CREATE DATABASE sai_gladi; CREATE DATABASE sai_gladi_control"
+mysql sai_gladi < /tmp/full.sql
+# arahkan DATABASE_URL & CONTROL_DATABASE_URL ke kedua salinan itu, lalu
+# jalankan langkah 1-3. Bandingkan jumlah baris & Σ debit dengan produksi.
+# Setelah yakin: DROP kedua basis data salinan dan hapus dump-nya.
+```
 
 ## 5. Yang berubah bagi pengembang
 

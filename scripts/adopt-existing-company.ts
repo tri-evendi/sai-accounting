@@ -39,7 +39,12 @@ interface LegacyUser {
   password: string;
   name: string | null;
   role: string;
-  must_change_password: number | boolean;
+  /**
+   * Dua nama untuk satu fakta, dan keduanya harus bisa dibaca — lihat
+   * `mustChangePasswordColumn()`.
+   */
+  must_change_password?: number | boolean;
+  status?: number;
   pass_date: Date | null;
   accountant_mode: number | boolean | null;
   session_version: number;
@@ -127,8 +132,29 @@ async function main() {
   });
   const companyName = name || settings?.name?.trim() || slug;
 
+  /*
+   * ══ SKRIP INI BERJALAN SEBELUM MIGRATION PERUSAHAAN ════════════════════════
+   * Urutan rilisnya: migrate:control → adopsi → migrate:companies. Artinya saat
+   * skrip ini jalan, basis data perusahaan MASIH memakai skema lama: kolomnya
+   * bernama `status` (Int, 1 = wajib ganti sandi), bukan `must_change_password`
+   * (Boolean) yang baru lahir di migration 0041.
+   *
+   * Menyebut satu nama saja akan menggagalkan langkah kedua dengan "Unknown
+   * column" — dan yang membaca pesan itu akan menyangka basis datanya rusak,
+   * padahal semuanya normal. Jadi kolomnya dideteksi, bukan diasumsikan. Ini
+   * juga membuat skrip tetap benar bila dijalankan pada basis data yang
+   * kebetulan sudah dimigrasikan.
+   */
+  const columns = await company.$queryRawUnsafe<{ column_name: string }[]>(
+    "SELECT column_name FROM information_schema.columns " +
+      "WHERE table_schema = DATABASE() AND table_name = 'users' " +
+      "AND column_name IN ('status','must_change_password')"
+  );
+  const names = new Set(columns.map((c) => String(c.column_name).toLowerCase()));
+  const mustChangeColumn = names.has("must_change_password") ? "must_change_password" : "status";
+
   const users = await company.$queryRawUnsafe<LegacyUser[]>(
-    "SELECT id, username, password, name, role, must_change_password, pass_date, accountant_mode, session_version FROM users ORDER BY id"
+    `SELECT id, username, password, name, role, ${mustChangeColumn}, pass_date, accountant_mode, session_version FROM users ORDER BY id`
   );
 
   console.log(`Mengadopsi ${databaseName} sebagai "${companyName}" (${slug})`);
@@ -147,7 +173,12 @@ async function main() {
           username: u.username,
           password: u.password,
           name: u.name,
-          mustChangePassword: bool(u.must_change_password),
+          // `status` lama: 1 = wajib ganti sandi, selain itu tidak — pemetaan
+          // yang sama persis dengan migration 0041.
+          mustChangePassword:
+            mustChangeColumn === "must_change_password"
+              ? bool(u.must_change_password ?? false)
+              : Number(u.status) === 1,
           passDate: u.pass_date,
           sessionVersion: u.session_version,
         },

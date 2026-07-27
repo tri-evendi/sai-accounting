@@ -144,11 +144,19 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Selalu diakhiri tanda baca supaya terbaca sebagai kalimat, bukan potongan. */
+/**
+ * Selalu diakhiri tanda baca supaya terbaca sebagai kalimat, bukan potongan.
+ *
+ * Tanda baca penuh-lebar (。！？) ikut dikenali dan ikut dipakai: sejak pesan
+ * validasi berbahasa (fase A), teks yang masuk ke sini bisa beraksara Han — dan
+ * menempelkan titik ASCII di belakang "请填写日期" menghasilkan "请填写日期."
+ * yang salah di mata pembaca Mandarin.
+ */
 function asSentence(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return trimmed;
-  return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+  if (/[.!?…。！？]$/.test(trimmed)) return trimmed;
+  return /\p{Script=Han}/u.test(trimmed) ? `${trimmed}。` : `${trimmed}.`;
 }
 
 /**

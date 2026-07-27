@@ -29,6 +29,8 @@
     "setup": "bash scripts/setup.sh",
     "setup:prod": "bash scripts/setup-production.sh",
     "create-admin": "npx tsx scripts/create-admin.ts",
+    "create-company": "npx tsx scripts/create-company.ts",
+    "adopt-company": "npx tsx scripts/adopt-existing-company.ts",
     "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {

@@ -1,0 +1,173 @@
+/**
+ * Buat PERUSAHAAN BARU: basis datanya, skemanya, lalu daftarkan (issue #104).
+ *
+ *   npx tsx scripts/create-company.ts --slug pt-b --name "PT Bumi Baru" \
+ *        [--database sai_pt_b] [--admin budi]
+ *
+ * Setelah ini, buka aplikasi dan jalankan WIZARD PENYIAPAN untuk perusahaan itu
+ * (identitas, bagan akun, saldo awal, pemilihan modul). Wizard sengaja tidak
+ * dijalankan dari skrip: isinya keputusan akuntansi — tahun buku, saldo awal,
+ * kategori usaha — yang harus dibuat orang yang bertanggung jawab atas bukunya,
+ * bukan ditebak dari argumen baris perintah.
+ *
+ * ══ URUTAN: BUAT → MIGRASI → DAFTARKAN ═════════════════════════════════════
+ * Registry ditulis PALING AKHIR, dan itu disengaja. Kalau perusahaan didaftarkan
+ * lebih dulu lalu migrationnya gagal, aplikasi punya baris `companies` yang
+ * menunjuk basis data setengah jadi: pengguna bisa memilihnya, membukanya, dan
+ * bertemu galat yang tidak menjelaskan apa pun. Dengan urutan ini, kegagalan di
+ * tengah meninggalkan basis data yatim yang tidak terlihat siapa pun — jauh
+ * lebih aman, dan tinggal dihapus lalu diulang.
+ *
+ * ══ HAK AKSES ══════════════════════════════════════════════════════════════
+ * Pengguna basis data di `CONTROL_DATABASE_URL` harus boleh `CREATE DATABASE`.
+ * Kalau tidak boleh (dan di banyak hosting memang tidak), buat basis datanya
+ * manual lalu jalankan skrip ini dengan `--database <nama>`: ia akan melewati
+ * pembuatan dan langsung memigrasi + mendaftarkan.
+ */
+
+import "dotenv/config";
+import { spawnSync } from "node:child_process";
+import { PrismaClient } from "../src/generated/control/client.js";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+
+function parseArgs(argv: string[]) {
+  const args: Record<string, string> = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i]?.startsWith("--") && argv[i + 1]) {
+      args[argv[i].slice(2)] = argv[i + 1];
+      i++;
+    }
+  }
+  return args;
+}
+
+const SLUG = /^[a-z0-9][a-z0-9-]{0,49}$/;
+const DB_NAME = /^[A-Za-z0-9_]{1,64}$/;
+
+function controlClient(raw: string) {
+  const url = new URL(raw);
+  return new PrismaClient({
+    adapter: new PrismaMariaDb({
+      host: url.hostname,
+      port: Number(url.port) || 3306,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.slice(1),
+      connectionLimit: 2,
+    }),
+  });
+}
+
+function companyUrl(databaseName: string): string {
+  const raw =
+    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
+    process.env.DATABASE_URL ??
+    process.env.CONTROL_DATABASE_URL!;
+  const url = new URL(raw);
+  url.pathname = `/${databaseName}`;
+  return url.toString();
+}
+
+async function main() {
+  const { slug, name, database, admin } = parseArgs(process.argv.slice(2));
+  const controlUrl = process.env.CONTROL_DATABASE_URL;
+
+  if (!controlUrl) {
+    console.error("ERROR: CONTROL_DATABASE_URL belum diset di .env");
+    process.exit(1);
+  }
+  if (!slug || !SLUG.test(slug) || !name) {
+    console.error(
+      'Usage: npx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>]\n' +
+        "  slug: huruf kecil, angka, tanda hubung (mis. pt-b)"
+    );
+    process.exit(1);
+  }
+
+  // Nama basis data diturunkan dari slug bila tidak disebut: tanda hubung tidak
+  // sah di identifier MySQL tanpa backtick, jadi diganti garis bawah.
+  const databaseName = database ?? `sai_${slug.replace(/-/g, "_")}`;
+  if (!DB_NAME.test(databaseName)) {
+    console.error(`ERROR: nama basis data tidak sah: ${databaseName}`);
+    process.exit(1);
+  }
+
+  const control = controlClient(controlUrl);
+
+  const clash = await control.company.findFirst({
+    where: { OR: [{ slug }, { databaseName }] },
+  });
+  if (clash) {
+    console.error(
+      `ERROR: sudah ada perusahaan dengan slug "${clash.slug}" / basis data "${clash.databaseName}".`
+    );
+    process.exit(1);
+  }
+
+  // ── 1. Basis data ────────────────────────────────────────────────────────
+  if (database) {
+    console.log(`1/3  memakai basis data yang sudah ada: ${databaseName}`);
+  } else {
+    console.log(`1/3  membuat basis data ${databaseName}`);
+    try {
+      await control.$executeRawUnsafe(
+        `CREATE DATABASE \`${databaseName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+      );
+    } catch (error) {
+      console.error(
+        `GAGAL membuat basis data: ${(error as Error).message}\n` +
+          "Kalau pengguna basis datanya memang tidak boleh CREATE DATABASE, buat\n" +
+          "manual lalu ulangi dengan --database " +
+          databaseName
+      );
+      process.exit(1);
+    }
+  }
+
+  // ── 2. Skema ─────────────────────────────────────────────────────────────
+  console.log(`2/3  menerapkan migration ke ${databaseName}`);
+  const migrate = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+    stdio: "inherit",
+    env: { ...process.env, DATABASE_URL: companyUrl(databaseName) },
+  });
+  if (migrate.status !== 0) {
+    console.error(
+      "GAGAL menerapkan migration. Perusahaan TIDAK didaftarkan — basis datanya\n" +
+        `masih ada dan bisa dihapus (DROP DATABASE \`${databaseName}\`) sebelum mencoba lagi.`
+    );
+    process.exit(1);
+  }
+
+  // ── 3. Registry (paling akhir — lihat komentar kepala berkas) ────────────
+  const company = await control.company.create({
+    data: { slug, name, databaseName },
+  });
+  console.log(`3/3  terdaftar sebagai perusahaan #${company.id}`);
+
+  if (admin) {
+    const user = await control.user.findUnique({ where: { username: admin } });
+    if (!user) {
+      console.warn(
+        `\nCatatan: pengguna "${admin}" belum ada, jadi keanggotaan tidak dibuat.\n` +
+          "Buat akunnya sekaligus dengan:\n" +
+          `  npm run create-admin -- --username ${admin} --password '…' --company ${slug}`
+      );
+    } else {
+      await control.membership.create({
+        data: { userId: user.id, companyId: company.id, role: "managing_director" },
+      });
+      console.log(`     "${admin}" ditambahkan sebagai Direktur Utama di ${name}`);
+    }
+  }
+
+  console.log("\nSelesai. Langkah berikutnya:");
+  console.log(`  1. Masuk ke aplikasi, pilih "${name}" di pemilih perusahaan.`);
+  console.log("  2. Jalankan wizard penyiapan: identitas, bagan akun, saldo awal, modul.");
+
+  await control.$disconnect();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

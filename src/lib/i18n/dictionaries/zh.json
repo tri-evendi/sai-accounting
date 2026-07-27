@@ -3000,6 +3000,8 @@
     "coreLocked": "始终启用",
     "categoryLabel": "业务类别",
     "categoryHint": "类别只是填入初始值；每个模块之后仍可逐个调整。",
+    "categoryTurnsOn": "开启",
+    "categoryTurnsOff": "关闭",
     "modulesLabel": "已启用的模块",
     "ledgerNote": "关闭模块不会删除任何数据。既有的凭证、余额与报表完全保留；停止的只是菜单和新交易的录入。",
     "saved": "业务模块已保存。",
@@ -3042,6 +3044,18 @@
       "approvals": "审批队列及其金额门槛规则。",
       "tax_id": "用于印尼税务申报的 e-Faktur 导出。",
       "documents": "提单、原产地证、熏蒸证等出口单证归档。"
+    },
+    "task": {
+      "core_accounting": "日记账、总账、报表、用户",
+      "sales": "销售发票与客户",
+      "purchasing": "采购账单、供应商与预付款",
+      "trading": "远期合同、送货单、收货人、退货",
+      "inventory": "库存",
+      "cash_bank": "现金与银行账簿",
+      "fixed_assets": "固定资产与折旧",
+      "approvals": "审批队列",
+      "tax_id": "e-Faktur 导出",
+      "documents": "出口单证档案（提单、原产地证）"
     },
     "category": {
       "commodity_trading": "大宗商品贸易 / 出口",

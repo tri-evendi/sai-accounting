@@ -3000,6 +3000,8 @@
     "coreLocked": "Always on",
     "categoryLabel": "Business category",
     "categoryHint": "The category only fills in the starting values; every module can still be changed one by one.",
+    "categoryTurnsOn": "Turns on",
+    "categoryTurnsOff": "Turns off",
     "modulesLabel": "Active modules",
     "ledgerNote": "Turning a module off deletes nothing. Existing journals, balances, and reports stay intact; only the menu and new transactions stop.",
     "saved": "Business modules saved.",
@@ -3042,6 +3044,18 @@
       "approvals": "The approval queue and its threshold rules.",
       "tax_id": "The e-Faktur export for Indonesian tax reporting.",
       "documents": "The archive of export documents such as B/L, COO, and fumigation."
+    },
+    "task": {
+      "core_accounting": "journals, ledger, reports, users",
+      "sales": "sales invoices & customers",
+      "purchasing": "purchase bills, suppliers & advances",
+      "trading": "forward contracts, delivery orders, consignees, returns",
+      "inventory": "stock levels",
+      "cash_bank": "cash & bank book",
+      "fixed_assets": "fixed assets & depreciation",
+      "approvals": "approval queue",
+      "tax_id": "e-Faktur export",
+      "documents": "export document archive (B/L, COO)"
     },
     "category": {
       "commodity_trading": "Commodity Trading / Export",

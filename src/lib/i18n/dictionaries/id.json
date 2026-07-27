@@ -3000,6 +3000,8 @@
     "coreLocked": "Selalu aktif",
     "categoryLabel": "Kategori usaha",
     "categoryHint": "Kategori hanya mengisi nilai awal; tiap modul tetap bisa diubah satu per satu.",
+    "categoryTurnsOn": "Menyalakan",
+    "categoryTurnsOff": "Mematikan",
     "modulesLabel": "Modul yang aktif",
     "ledgerNote": "Mematikan modul tidak menghapus data apa pun. Jurnal, saldo, dan laporan lama tetap utuh; yang berhenti hanyalah menu dan pembuatan transaksi baru.",
     "saved": "Modul usaha disimpan.",
@@ -3042,6 +3044,18 @@
       "approvals": "Antrean persetujuan dan aturan ambangnya.",
       "tax_id": "Ekspor e-Faktur untuk pelaporan pajak.",
       "documents": "Arsip dokumen ekspor seperti B/L, COO, dan fumigasi."
+    },
+    "task": {
+      "core_accounting": "jurnal, buku besar, laporan, pengguna",
+      "sales": "tagihan penjualan & pelanggan",
+      "purchasing": "tagihan pembelian, pemasok & uang muka",
+      "trading": "kontrak berjangka, surat jalan, penerima barang, retur",
+      "inventory": "stok barang",
+      "cash_bank": "buku kas & bank",
+      "fixed_assets": "aset tetap & penyusutan",
+      "approvals": "antrean persetujuan",
+      "tax_id": "ekspor e-Faktur",
+      "documents": "arsip dokumen ekspor (B/L, COO)"
     },
     "category": {
       "commodity_trading": "Perdagangan Komoditas / Ekspor",

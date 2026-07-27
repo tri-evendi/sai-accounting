@@ -27,11 +27,22 @@ import {
   CATEGORY_META,
   MODULE_META,
   isCoreModule,
+  modulesForCategory,
   type BusinessCategory,
   type BusinessModule,
 } from "@/lib/business-modules";
 import { useT } from "@/lib/i18n/client";
-import { Info, Lock } from "lucide-react";
+import { Check, Info, Lock, X } from "lucide-react";
+
+/** Modul non-inti yang DINYALAKAN sebuah preset (inti tak pernah disebut). */
+const presetOn = (category: BusinessCategory): BusinessModule[] =>
+  modulesForCategory(category).filter((module) => !isCoreModule(module));
+
+/** Kebalikannya: modul yang preset itu MATIKAN. */
+const presetOff = (category: BusinessCategory): BusinessModule[] => {
+  const on = new Set(presetOn(category));
+  return BUSINESS_MODULES.filter((module) => !isCoreModule(module) && !on.has(module));
+};
 
 export function ModulePicker({
   category,
@@ -76,13 +87,57 @@ export function ModulePicker({
                 disabled={disabled}
                 onChange={() => onCategoryChange(value)}
               />
-              <span>
+              <span className="min-w-0">
                 <span className="block font-medium text-foreground">
                   {t(CATEGORY_META[value].labelKey)}
                 </span>
                 <span className="block text-xs text-muted-foreground">
                   {t(CATEGORY_META[value].descriptionKey)}
                 </span>
+                {/*
+                 * Akibat pilihan ini, SEBELUM dipilih (issue #103).
+                 *
+                 * Dulu kartu preset hanya menjanjikan; yang hilang baru ketahuan
+                 * sesudahnya lewat ketiadaan — orang memilih "Jasa", lalu suatu
+                 * hari mencari Surat Jalan dan menyimpulkan aplikasinya tidak
+                 * bisa.
+                 *
+                 * Isinya DITURUNKAN dari `CATEGORY_MODULES`, bukan diketik:
+                 * daftar tulisan tangan pasti menyimpang begitu satu modul
+                 * berpindah kategori — dan itu sudah terjadi sekali (uang muka,
+                 * `trading` → `purchasing`). Yang ditulis tangan hanya frasa
+                 * TUGAS per modul (`taskKey`): "kontrak berjangka, surat jalan"
+                 * alih-alih "Perdagangan Barang", sesuai prinsip bahasa-tugas
+                 * MASTER.md. Modul inti tak pernah disebut — ia tidak bisa mati,
+                 * jadi menyebutnya menambah bacaan tanpa menambah keputusan.
+                 */}
+                {(["on", "off"] as const).map((side) => {
+                  const list = side === "on" ? presetOn(value) : presetOff(value);
+                  if (list.length === 0) return null;
+                  return (
+                    <span key={side} className="mt-1 flex items-start gap-1.5 text-xs">
+                      {side === "on" ? (
+                        <Check className="mt-0.5 size-3 shrink-0 text-success" aria-hidden="true" />
+                      ) : (
+                        <X
+                          className="mt-0.5 size-3 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="min-w-0 text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {t(
+                            side === "on"
+                              ? "modules.categoryTurnsOn"
+                              : "modules.categoryTurnsOff"
+                          )}
+                          :
+                        </span>{" "}
+                        {list.map((module) => t(MODULE_META[module].taskKey)).join("; ")}
+                      </span>
+                    </span>
+                  );
+                })}
               </span>
             </label>
           ))}

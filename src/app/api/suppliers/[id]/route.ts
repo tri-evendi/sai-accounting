@@ -4,6 +4,8 @@ import { supplierSchema } from "@/lib/validations/finance";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(
   _request: Request,
@@ -19,7 +21,8 @@ export async function GET(
   });
 
   if (!supplier) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.supplierNotFound") }, { status: 404 });
   }
 
   return NextResponse.json(supplier);
@@ -37,8 +40,17 @@ export async function PUT(
   const parsed = supplierSchema.safeParse(body);
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }

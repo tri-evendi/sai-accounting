@@ -26,6 +26,8 @@ import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { createDeliveryOrderInTx, loadItemNames } from "@/lib/document-writes";
 import { OverIssueError } from "@/lib/delivery-orders";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
@@ -52,8 +54,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = deliveryOrderSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -65,8 +76,9 @@ export async function POST(request: Request) {
     items.map((i) => i.itemId)
   );
   if (!nameById) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Salah satu barang tidak ditemukan di master stok." },
+      { error: t("errors.stockItemNotFound") },
       { status: 400 }
     );
   }
@@ -74,16 +86,19 @@ export async function POST(request: Request) {
   // Friendly checks for the source documents (an FK violation would otherwise be
   // an opaque 500). Nullable — a surat jalan may reference none.
   if (contractId != null && !(await prisma.contract.findUnique({ where: { id: contractId } }))) {
-    return NextResponse.json({ error: "Kontrak sumber tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sourceContractNotFound") }, { status: 400 });
   }
   if (invoiceId != null && !(await prisma.invoice.findUnique({ where: { id: invoiceId } }))) {
-    return NextResponse.json({ error: "Faktur sumber tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sourceInvoiceNotFound") }, { status: 400 });
   }
   if (
     consigneeId != null &&
     !(await prisma.consignee.findUnique({ where: { id: consigneeId } }))
   ) {
-    return NextResponse.json({ error: "Consignee tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.consigneeNotFound") }, { status: 400 });
   }
 
   let created;

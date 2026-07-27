@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { budgetSchema } from "@/lib/validations/budget";
 import { accountCategoryFor } from "@/lib/accounting";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("budget.manage");
@@ -18,8 +20,17 @@ export async function POST(request: Request) {
 
   const parsed = budgetSchema.safeParse(await request.json());
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Input tidak valid.", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -33,12 +44,14 @@ export async function POST(request: Request) {
     select: { type: true },
   });
   if (!account) {
-    return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.accountNotFound") }, { status: 400 });
   }
   const category = accountCategoryFor(account.type);
   if (category !== "revenue" && category !== "expense") {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Anggaran hanya untuk akun pendapatan atau beban (Laba/Rugi)." },
+      { error: t("errors.budgetAccountTypeInvalid") },
       { status: 400 }
     );
   }

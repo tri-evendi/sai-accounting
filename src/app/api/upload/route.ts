@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -35,13 +36,15 @@ export async function POST(request: Request) {
   const docType = formData.get("type") as string | null;
 
   if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.noFileSelected") }, { status: 400 });
   }
 
   // Validate file size
   if (file.size > MAX_SIZE) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "File too large. Maximum size is 10MB" },
+      { error: t("errors.fileTooLarge", { max: "10 MB" }) },
       { status: 400 }
     );
   }
@@ -49,8 +52,9 @@ export async function POST(request: Request) {
   // Validate extension
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED_FILES[ext]) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "File type not allowed. Accepted: JPG, PNG, GIF, PDF" },
+      { error: t("errors.fileTypeNotAllowed") },
       { status: 400 }
     );
   }
@@ -60,8 +64,9 @@ export async function POST(request: Request) {
   const buffer = Buffer.from(bytes);
 
   if (!validateFileContent(buffer, ext)) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "File content does not match its extension" },
+      { error: t("errors.fileContentMismatch") },
       { status: 400 }
     );
   }
@@ -72,8 +77,9 @@ export async function POST(request: Request) {
       where: { id: parseInt(contractId) },
     });
     if (!contract) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: "Referenced contract does not exist" },
+        { error: t("errors.contractNotFound") },
         { status: 400 }
       );
     }
@@ -90,7 +96,8 @@ export async function POST(request: Request) {
 
   // Prevent path traversal
   if (!filepath.startsWith(UPLOAD_DIR)) {
-    return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidFilePath") }, { status: 400 });
   }
 
   await writeFile(filepath, buffer);

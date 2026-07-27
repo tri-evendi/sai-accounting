@@ -11,6 +11,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { salesTargetSchema } from "@/lib/validations/budget";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("budget.manage");
@@ -18,8 +20,17 @@ export async function POST(request: Request) {
 
   const parsed = salesTargetSchema.safeParse(await request.json());
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Input tidak valid.", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -31,11 +42,17 @@ export async function POST(request: Request) {
   // beats a raw constraint error).
   if (customerId !== null) {
     const c = await prisma.customer.count({ where: { id: customerId } });
-    if (c === 0) return NextResponse.json({ error: "Pelanggan tidak ditemukan." }, { status: 400 });
+    if (c === 0) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.customerNotFound") }, { status: 400 });
+    }
   }
   if (itemId !== null) {
     const i = await prisma.item.count({ where: { id: itemId } });
-    if (i === 0) return NextResponse.json({ error: "Komoditas tidak ditemukan." }, { status: 400 });
+    if (i === 0) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.commodityNotFound") }, { status: 400 });
+    }
   }
 
   const existing = await prisma.salesTarget.findFirst({

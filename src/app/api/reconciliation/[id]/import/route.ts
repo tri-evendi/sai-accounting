@@ -14,6 +14,7 @@ import {
   assertStatementUnlocked,
   ReconciliationLockedError,
 } from "@/lib/reconciliation";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("reconciliation.write");
@@ -21,18 +22,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const body = await request.json();
   const csv = typeof body?.csv === "string" ? body.csv : "";
   if (!csv.trim()) {
-    return NextResponse.json({ error: "Isi CSV kosong." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.csvEmpty") }, { status: 400 });
   }
 
   const statement = await prisma.bankStatement.findUnique({ where: { id } });
   if (!statement) {
-    return NextResponse.json({ error: "Rekonsiliasi tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationNotFound") }, { status: 404 });
   }
   try {
     assertStatementUnlocked(statement);
@@ -45,8 +49,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const parsed = parseStatementCsv(csv);
   if (!parsed.ok) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.", rowErrors: parsed.errors },
+      { error: t("errors.csvInvalidRows"), rowErrors: parsed.errors },
       { status: 400 }
     );
   }

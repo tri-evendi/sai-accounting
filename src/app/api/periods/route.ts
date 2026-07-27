@@ -3,6 +3,8 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { closePeriod, getPeriodSummary, listPeriods } from "@/lib/period-close";
 import { periodCloseSchema } from "@/lib/validations/period";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 /** Months the Manager can act on, newest first. */
 export async function GET() {
@@ -20,8 +22,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = periodCloseSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -34,9 +45,10 @@ export async function POST(request: Request) {
   const summary = await getPeriodSummary(year, month);
 
   if (summary.status === "closed") {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error: `Periode ${summary.label} memang sudah ditutup.`,
+        error: t("errors.periodAlreadyClosed", { period: summary.label }),
         code: "period_already_closed",
       },
       { status: 409 }
@@ -44,11 +56,13 @@ export async function POST(request: Request) {
   }
 
   if (!summary.canClose) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error:
-          `Periode ${summary.label} belum bisa ditutup karena masih ada ` +
-          `${summary.blockerCount} masalah yang harus diperbaiki lebih dulu.`,
+        error: t("errors.periodCloseBlocked", {
+          period: summary.label,
+          count: summary.blockerCount,
+        }),
         code: "period_close_blocked",
         checks: summary.checks.filter((c) => c.status === "blocker"),
       },

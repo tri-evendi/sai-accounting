@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { accountSchema } from "@/lib/validations/account";
 import { normalBalanceFor } from "@/lib/accounting";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(
   _request: Request,
@@ -18,7 +20,8 @@ export async function GET(
   });
 
   if (!account) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.accountNotFound") }, { status: 404 });
   }
 
   return NextResponse.json(account);
@@ -37,8 +40,17 @@ export async function PUT(
   const parsed = accountSchema.safeParse(body);
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -47,7 +59,8 @@ export async function PUT(
 
   // An account cannot be its own parent.
   if (parentId === accountId) {
-    return NextResponse.json({ error: "Akun tidak boleh menjadi induk dirinya sendiri" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.accountOwnParent") }, { status: 400 });
   }
 
   try {
@@ -66,7 +79,8 @@ export async function PUT(
     return NextResponse.json(account);
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
-      return NextResponse.json({ error: "Kode perkiraan sudah dipakai" }, { status: 409 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.accountCodeTaken") }, { status: 409 });
     }
     throw e;
   }

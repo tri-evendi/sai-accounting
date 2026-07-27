@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { efakturToCsv } from "@/lib/efaktur";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 function parseDate(value: string | null): Date | null {
   if (!value) return null;
@@ -31,14 +32,16 @@ export async function GET(request: Request) {
   const from = parseDate(searchParams.get("from"));
   const to = parseDate(searchParams.get("to"));
   if (!from || !to) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Rentang tanggal tidak valid. Sertakan `from` dan `to` (YYYY-MM-DD)." },
+      { error: t("errors.dateRangeIncomplete") },
       { status: 400 }
     );
   }
   if (from > to) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Tanggal awal tidak boleh setelah tanggal akhir." },
+      { error: t("errors.dateRangeReversed") },
       { status: 400 }
     );
   }
@@ -46,13 +49,8 @@ export async function GET(request: Request) {
   const { result: built, sellerNpwpMissing } = await getEfakturExport(from, to);
 
   if (sellerNpwpMissing) {
-    return NextResponse.json(
-      {
-        error:
-          "NPWP penjual belum diisi. Isi Identitas Pajak Penjual dulu — file e-Faktur tidak dibuat agar tidak gagal impor DJP.",
-      },
-      { status: 422 }
-    );
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sellerTaxIdMissing") }, { status: 422 });
   }
 
   const csv = efakturToCsv(built.rows);

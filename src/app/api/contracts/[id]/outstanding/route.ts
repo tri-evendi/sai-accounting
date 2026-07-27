@@ -18,6 +18,7 @@ import {
   loadContractChain,
   pullInvoiceLines,
 } from "@/lib/document-chain";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function GET(
   _request: Request,
@@ -29,7 +30,8 @@ export async function GET(
   const { id } = await params;
   const contractId = parseInt(id);
   if (Number.isNaN(contractId)) {
-    return NextResponse.json({ error: "Kontrak tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.contractNotFound") }, { status: 404 });
   }
 
   const contract = await prisma.contract.findUnique({
@@ -37,7 +39,8 @@ export async function GET(
     include: { payments: true },
   });
   if (!contract) {
-    return NextResponse.json({ error: "Kontrak tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.contractNotFound") }, { status: 404 });
   }
 
   const chain = await loadContractChain(prisma, contractId);

@@ -69,7 +69,8 @@ export async function POST(request: Request) {
   // Friendly check for the source document (an FK violation would otherwise be an
   // opaque 500). Nullable — a faktur need not come from a contract.
   if (contractId != null && !(await prisma.contract.findUnique({ where: { id: contractId } }))) {
-    return NextResponse.json({ error: "Kontrak sumber tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sourceContractNotFound") }, { status: 400 });
   }
 
   let invoice;

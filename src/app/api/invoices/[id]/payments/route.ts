@@ -22,7 +22,8 @@ export async function POST(
 
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
   if (!invoice) {
-    return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invoiceNotFound") }, { status: 404 });
   }
 
   const body = await request.json();

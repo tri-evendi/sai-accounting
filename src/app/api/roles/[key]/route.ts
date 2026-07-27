@@ -10,6 +10,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { canDeactivateRole, roleDeletionBlock, validateRoleLabel } from "@/lib/roles-admin";
 import { invalidateEffectiveMatrix } from "@/lib/authz-effective";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function PATCH(
   request: Request,
@@ -20,13 +21,17 @@ export async function PATCH(
 
   const { key } = await params;
   const role = await prisma.role.findUnique({ where: { key } });
-  if (!role) return NextResponse.json({ error: "Peran tidak ditemukan." }, { status: 404 });
+  if (!role) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.roleNotFound") }, { status: 404 });
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Payload bukan JSON yang sah." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidJson") }, { status: 400 });
   }
   const b = (body ?? {}) as { label?: unknown; isActive?: unknown };
 
@@ -40,13 +45,15 @@ export async function PATCH(
 
   if (typeof b.isActive === "boolean") {
     if (!b.isActive && !canDeactivateRole(role)) {
-      return NextResponse.json({ error: "Peran sistem tak bisa dinonaktifkan." }, { status: 403 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.systemRoleCannotDeactivate") }, { status: 403 });
     }
     data.isActive = b.isActive;
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "Tidak ada yang diubah." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.nothingChanged") }, { status: 400 });
   }
 
   const updated = await prisma.role.update({ where: { key }, data });
@@ -73,7 +80,10 @@ export async function DELETE(
 
   const { key } = await params;
   const role = await prisma.role.findUnique({ where: { key } });
-  if (!role) return NextResponse.json({ error: "Peran tidak ditemukan." }, { status: 404 });
+  if (!role) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.roleNotFound") }, { status: 404 });
+  }
 
   const usersWithRole = await prisma.user.count({ where: { role: role.key } });
   const block = roleDeletionBlock(role, usersWithRole);

@@ -38,7 +38,7 @@ export interface JournalEntryInput {
   /**
    * Default cost centre for every line that does not name its own (issue #91).
    * Auto-posting sets this once, from the source document, in a single place
-   * (`stampCostCenter` in @/lib/posting) — never per rule, never per document
+   * (`buildStampedEntry` in @/lib/posting) — never per rule, never per document
    * type. `prepareLines` is what actually pushes it down onto the lines, so no
    * builder in `posting/rules.ts` had to learn about the dimension at all.
    */

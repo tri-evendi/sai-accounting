@@ -13,7 +13,7 @@
 -- dua cabang adalah contoh yang pasti muncul — dan dimensi di kepala membuat
 -- kasus itu mustahil dinyatakan. Kolom di kepala dokumen tetap ada, tetapi
 -- perannya hanya NILAI BAWAAN yang distempel mesin posting ke setiap baris
--- (lihat `stampCostCenter` di src/lib/posting/index.ts); jurnal manual boleh
+-- (lihat `buildStampedEntry` di src/lib/posting/index.ts); jurnal manual boleh
 -- menimpanya per baris.
 --
 -- ══ NULL ADALAH NILAI YANG BERMAKNA — TIDAK ADA BACKFILL ═══════════════════

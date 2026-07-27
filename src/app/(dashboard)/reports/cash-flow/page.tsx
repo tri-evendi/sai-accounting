@@ -1,5 +1,10 @@
 import { requirePagePermission } from "@/lib/page-auth";
+import { canEffective } from "@/lib/authz-effective";
+import { prisma } from "@/lib/prisma";
 import { getCashFlow } from "@/lib/reports";
+import { cashFlowSeriesByCurrency, chartPeriodStart } from "@/lib/chart-data";
+import { ChartCard } from "@/components/dashboard/chart-card";
+import { CashFlowChart } from "@/components/shared/dashboard-charts";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -133,11 +138,44 @@ export default async function CashFlowPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requirePagePermission("report.read");
+  const session = await requirePagePermission("report.read");
   const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
-  const cf = await getCashFlow(from, to);
+
+  /*
+   * Grafik tren kas (dipindah dari Beranda).
+   *
+   * DUA hal yang sengaja berbeda dari laporan di atasnya, dan keduanya
+   * tertulis di judul/keterangan kartunya sendiri:
+   *
+   *  • Jendelanya TETAP 6 bulan terakhir ("6 bulan terakhir"), bukan periode
+   *    saringan. Laporannya menjawab "periode ini berapa"; grafiknya memberi
+   *    latar tren yang tidak ikut berubah tiap kali periodenya digeser.
+   *  • Angkanya PER MATA UANG apa adanya dari buku kas (`cash_accounts`),
+   *    tanpa konversi — sedangkan laporan arus kas berbasis jurnal selalu
+   *    IDR dasar. Menjumlahkan rupiah dengan dolar adalah bug mata-uang
+   *    campur; satu mata uang = satu grafik.
+   *
+   * RBAC: buku kas adalah `cash.read`, izin yang BERBEDA dari `report.read`
+   * penjaga halaman ini. Bawaannya bos memegang keduanya, tapi matriksnya
+   * bisa di-override dari /permissions, jadi izinnya ditanyakan — kalau
+   * tidak dipegang, barisnya tidak diambil sama sekali.
+   */
+  const canViewCashBook = await canEffective(session.user, "cash.read");
+  // Satu `now` untuk batas kueri DAN pelabelan ember bulanan.
+  const now = new Date();
+
+  const [cf, cashBookRows] = await Promise.all([
+    getCashFlow(from, to),
+    canViewCashBook
+      ? prisma.cashAccount.findMany({
+          where: { date: { gte: chartPeriodStart(now) } },
+          select: { date: true, debit: true, credit: true, currency: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const cashTrend = cashFlowSeriesByCurrency(cashBookRows, now);
   // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
   // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
@@ -327,6 +365,24 @@ export default async function CashFlowPage({
             </TableBody>
           </Table>
         </Card>
+      )}
+
+      {/* Tren buku kas per mata uang — latar 6 bulan di bawah laporannya,
+          bukan menggantikan angka periode di atas. */}
+      {cashTrend.length > 0 && (
+        <div
+          className={`mt-6 grid gap-6 ${cashTrend.length === 1 ? "grid-cols-1" : "lg:grid-cols-2"}`}
+        >
+          {cashTrend.map((series) => (
+            <ChartCard
+              key={series.currency}
+              title={t("dashboard.cashFlowChartTitle", { currency: series.currency })}
+              description={t("dashboard.cashFlowChartDesc")}
+            >
+              <CashFlowChart data={series.points} currency={series.currency} />
+            </ChartCard>
+          ))}
+        </div>
       )}
     </div>
   );

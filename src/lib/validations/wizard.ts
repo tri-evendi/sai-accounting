@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { customerSchema, supplierSchema } from "./finance";
+import { vmsg } from "@/lib/i18n/validation";
 
 /**
  * Zod untuk wizard terpandu (issue #5) — HANYA bagian yang belum punya skema.
@@ -50,14 +51,14 @@ export const wizardPartnerSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["id"],
-        message: "Pilih mitra dari daftar, atau isi data mitra baru.",
+        message: vmsg("validation.partnerPickOrCreate"),
       });
     }
     if (data.mode === "new" && !data.name) {
       ctx.addIssue({
         code: "custom",
         path: ["name"],
-        message: "Nama wajib diisi untuk mitra baru.",
+        message: vmsg("validation.partnerNameRequired"),
       });
     }
   });
@@ -111,21 +112,21 @@ export const purchaseWizardSchema = z.object({
 
 /** Satu baris barang masuk pada wizard pembelian. */
 export const wizardReceiptItemSchema = z.object({
-  itemId: z.coerce.number().int().positive("Pilih barang dari master stok."),
+  itemId: z.coerce.number().int().positive(vmsg("validation.pickStockItem")),
   itemName: z.string().trim().max(100).optional(),
-  quantity: z.coerce.number().positive("Jumlah barang masuk harus lebih besar dari 0"),
+  quantity: z.coerce.number().positive(vmsg("validation.receiptQuantityPositive")),
   /** IDR per unit — satu-satunya masukan HPP rata-rata (lihat `stockUpdateSchema`). */
   unitCost: z.coerce
     .number()
-    .positive("Harga pokok per unit harus lebih besar dari 0"),
+    .positive(vmsg("validation.unitCostPositive")),
 });
 
 export const wizardReceiptSchema = z.object({
-  date: z.string().min(1, "Tanggal barang masuk wajib diisi"),
+  date: z.string().min(1, vmsg("validation.receiptDateRequired")),
   items: z
     .array(wizardReceiptItemSchema)
-    .min(1, "Minimal satu barang")
-    .max(50, "Maksimal 50 barang"),
+    .min(1, vmsg("validation.minOneItem"))
+    .max(50, vmsg("validation.maxFiftyItems")),
 });
 
 export type SalesWizardInput = z.infer<typeof salesWizardSchema>;

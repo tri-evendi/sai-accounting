@@ -1,4 +1,23 @@
+/** Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI. */
 export const APP_NAME = "SAI Management";
+
+/**
+ * ⚠️ NILAI CADANGAN — JANGAN dipakai langsung untuk menampilkan/mencetak.
+ *
+ * Identitas perusahaan yang benar tinggal di tabel `CompanySetting` (diisi
+ * wizard setup, issue #20). Dua konstanta di bawah hanya dipakai saat:
+ *   • wizard belum dijalankan (baris `CompanySetting` belum ada), atau
+ *   • basis data tak terjangkau, atau
+ *   • sebagai nilai awal yang mengisi form wizard.
+ *
+ * Untuk menampilkan atau mencetak, ambil dari:
+ *   • server  → `getCompanyIdentity()`  (`@/lib/company-identity`)
+ *   • client  → `useCompanyIdentity()`  (`@/lib/company-identity-client`)
+ *
+ * Memakainya langsung berarti dokumen yang dikirim ke pelanggan mencetak nama
+ * pemasang pertama, bukan nama perusahaan pemakainya. Penjaga
+ * `tests/company-identity.test.ts` menolak impor baru di luar daftar yang sah.
+ */
 export const COMPANY_NAME = "PT Subur Anugerah Indonesia";
 export const COMPANY_ADDRESS = "Komplek Pergudangan Kapuk Ecopark, Jakarta";
 

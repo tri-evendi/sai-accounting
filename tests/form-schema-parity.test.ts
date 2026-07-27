@@ -8,6 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { translateMessage } from "@/lib/i18n/validation";
+import id from "@/lib/i18n/dictionaries/id.json";
 import { paymentFormSchema } from "@/lib/validations/payment";
 import { invoicePaymentSchema } from "@/lib/validations/invoice";
 import { contractPaymentSchema } from "@/lib/validations/contract";
@@ -64,11 +66,22 @@ describe("field form = field server (bukan salinan)", () => {
     expect(contractPaymentSchema.safeParse({ ...valid, contractId: 7 }).success).toBe(true);
   });
 
+  /**
+   * Sejak fase A pesan skema adalah KUNCI kamus, bukan kalimat: zod memanggang
+   * pesannya saat modul dimuat, jadi kalimatnya baru disusun di batas tampilan
+   * (lihat `lib/i18n/validation.ts`). Janji issue #53 tidak berubah — pengguna
+   * tetap membaca kalimat Indonesia yang ramah awam — hanya tempat kalimat itu
+   * disusun yang berpindah, jadi tesnya ikut menyusunnya sebelum memeriksa.
+   *
+   * Sekaligus lebih ketat dari sebelumnya: `translateMessage` mengembalikan
+   * teksnya HANYA bila kuncinya benar-benar ada di `id.json`, sehingga kunci
+   * yang salah ketik gagal di sini juga, bukan cuma di `tsc`.
+   */
   it("pesan error berbahasa Indonesia (ramah awam, prinsip MASTER.md)", () => {
     const r = paymentFormSchema.safeParse({ date: "", amount: 100, currency: "IDR" });
     expect(r.success).toBe(false);
     if (!r.success) {
-      expect(r.error.issues[0].message).toMatch(/wajib|harus|diisi/i);
+      expect(translateMessage(id, r.error.issues[0].message)).toMatch(/wajib|harus|diisi/i);
     }
   });
 });

@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { CURRENCIES } from "@/lib/constants";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const journalLineSchema = z
   .object({
-    accountId: z.coerce.number().int().positive("Akun wajib dipilih"),
+    accountId: z.coerce.number().int().positive(vmsg("validation.accountRequired")),
     debit: z.coerce.number().min(0).default(0),
     credit: z.coerce.number().min(0).default(0),
     currency: z.enum(CURRENCIES).default("IDR"),
@@ -11,17 +12,17 @@ export const journalLineSchema = z
     memo: z.string().max(255).trim().optional(),
   })
   .refine((l) => !(l.debit > 0 && l.credit > 0), {
-    message: "Baris tidak boleh berisi debit dan kredit sekaligus",
+    message: vmsg("validation.journalLineNotBoth"),
   })
   .refine((l) => l.debit > 0 || l.credit > 0, {
-    message: "Baris harus punya nilai debit atau kredit",
+    message: vmsg("validation.journalLineNeedsValue"),
   });
 
 export const journalSchema = z.object({
   date: z.coerce.date(),
   type: z.string().max(20).optional(),
   note: z.string().max(1000).trim().nullable().optional(),
-  lines: z.array(journalLineSchema).min(2, "Jurnal minimal 2 baris"),
+  lines: z.array(journalLineSchema).min(2, vmsg("validation.journalMinTwoLines")),
 });
 
 export type JournalInput = z.infer<typeof journalSchema>;

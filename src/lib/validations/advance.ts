@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { vissue, vmsg } from "@/lib/i18n/validation";
 
 /** Direction of an advance. Mirrors `advance_payments.type` (enum-like VarChar). */
 export const advanceTypeEnum = z.enum(["sales", "purchase"]);
@@ -28,12 +29,12 @@ const MONEY_EPSILON = 0.005;
 export const advancePaymentSchema = z
   .object({
     type: advanceTypeEnum,
-    date: z.string().min(1, "Tanggal wajib diisi"),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     customerId: z.coerce.number().int().positive().optional(),
     supplierId: z.coerce.number().int().positive().optional(),
     /** Optional link to the contract the advance was received against. */
     contractId: z.coerce.number().int().positive().optional(),
-    amount: z.coerce.number().positive("Jumlah uang muka harus lebih besar dari 0"),
+    amount: z.coerce.number().positive(vmsg("validation.advanceAmountPositive")),
     currency: currencyEnum.default("IDR"),
     rate: rateField,
     note: z.string().max(500).trim().optional(),
@@ -46,14 +47,14 @@ export const advancePaymentSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["customerId"],
-          message: "Pelanggan wajib dipilih untuk uang muka penjualan.",
+          message: vmsg("validation.advanceCustomerRequired"),
         });
       }
       if (data.supplierId) {
         ctx.addIssue({
           code: "custom",
           path: ["supplierId"],
-          message: "Uang muka penjualan tidak boleh menunjuk supplier.",
+          message: vmsg("validation.advanceSalesNoSupplier"),
         });
       }
       return;
@@ -63,14 +64,14 @@ export const advancePaymentSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["supplierId"],
-        message: "Supplier wajib dipilih untuk uang muka pembelian.",
+        message: vmsg("validation.advanceSupplierRequired"),
       });
     }
     if (data.customerId) {
       ctx.addIssue({
         code: "custom",
         path: ["customerId"],
-        message: "Uang muka pembelian tidak boleh menunjuk pelanggan.",
+        message: vmsg("validation.advancePurchaseNoCustomer"),
       });
     }
   });
@@ -88,7 +89,7 @@ export type AdvancePaymentInput = z.infer<typeof advancePaymentSchema>;
  */
 export const advanceApplicationLineSchema = z.object({
   advanceId: z.coerce.number().int().positive(),
-  amount: z.coerce.number().positive("Jumlah kompensasi harus lebih besar dari 0"),
+  amount: z.coerce.number().positive(vmsg("validation.compensationAmountPositive")),
 });
 
 /**
@@ -115,7 +116,7 @@ export function checkApplicationSet(
       ctx.addIssue({
         code: "custom",
         path: [...path, i, "advanceId"],
-        message: "Uang muka yang sama dikompensasi lebih dari sekali.",
+        message: vmsg("validation.advanceUsedTwice"),
       });
     }
     seen.add(line.advanceId);
@@ -127,7 +128,7 @@ export const advanceApplicationsSchema = z
   .object({
     targetKind: z.enum(["invoice", "purchase"]),
     targetId: z.coerce.number().int().positive(),
-    date: z.string().min(1, "Tanggal wajib diisi"),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     lines: z.array(advanceApplicationLineSchema).max(100),
     note: z.string().max(500).trim().optional(),
   })
@@ -148,9 +149,11 @@ export function singleApplicationSchema(advanceRemaining: number, currency: stri
       ctx.addIssue({
         code: "custom",
         path: ["amount"],
-        message:
-          `Kompensasi (${data.amount.toLocaleString("id-ID")} ${currency}) melebihi ` +
-          `sisa uang muka (${advanceRemaining.toLocaleString("id-ID")} ${currency}).`,
+        ...vissue("validation.compensationExceedsAdvance", {
+          amount: data.amount.toLocaleString("id-ID"),
+          remaining: advanceRemaining.toLocaleString("id-ID"),
+          currency,
+        }),
       });
     }
   });

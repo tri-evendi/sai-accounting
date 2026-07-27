@@ -2,6 +2,7 @@
 
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@/lib/i18n/client";
+import { useCompanyIdentity } from "@/lib/company-identity-client";
 
 interface DeliveryOrderPdf {
   no: string;
@@ -20,6 +21,7 @@ interface DeliveryOrderPdf {
  * baris `shipment`.
  */
 export function DeliveryOrderPdfButton({ order }: { order: DeliveryOrderPdf }) {
+  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -41,7 +43,7 @@ export function DeliveryOrderPdfButton({ order }: { order: DeliveryOrderPdf }) {
           consignee: order.consignee,
           shipment: shipment || null,
           items: order.items,
-        });
+        }, company);
       }}
     />
   );

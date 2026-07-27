@@ -11,6 +11,9 @@ import {
   type StockLevel,
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
+import { ChartCard } from "@/components/dashboard/chart-card";
+import { StockStatusChart, StockLevelChart } from "@/components/shared/dashboard-charts";
+import { stockLevelChartHeight, stockLevelSeries } from "@/lib/chart-data";
 import { InventoryPageActions } from "./inventory-actions";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,6 +80,25 @@ export default async function InventoryPage({
     healthy: t("inventory.levelHealthy"),
   };
 
+  /*
+   * Grafik stok (dipindah dari Beranda).
+   *
+   * Keduanya membaca `allInventory` — kueri yang halaman ini SUDAH jalankan
+   * untuk kartu ringkasan dan tabel; tidak ada kueri tambahan. Grafiknya
+   * tinggal di sini karena ini halaman tempat angkanya bisa langsung dicek
+   * barisnya, sementara Beranda dipakai untuk mengerjakan, bukan melihat.
+   *
+   * Urutan `stockStatusData` (aman → menipis → habis) MENENTUKAN warnanya:
+   * `StockStatusChart` memasangkan hijau/kuning/merah per POSISI, bukan per
+   * teks label — jangan diurutkan ulang.
+   */
+  const stockStatusData = [
+    { name: levelLabels.healthy, value: stockHealth.healthy },
+    { name: levelLabels.low, value: stockHealth.lowStock },
+    { name: levelLabels.empty, value: stockHealth.empty },
+  ];
+  const stockLevelData = stockLevelSeries(allInventory);
+
   return (
     <div>
       <PageHeader
@@ -131,6 +153,23 @@ export default async function InventoryPage({
           <Money value={totalStockValue} currency="IDR" className="text-2xl font-bold" />
         </CardContent>
       </Card>
+
+      {/* Grafik: sebaran kondisi + stok terbanyak, tepat di atas tabelnya */}
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <ChartCard
+          title={t("dashboard.chartStockConditionTitle")}
+          description={t("dashboard.chartStockConditionDesc")}
+        >
+          <StockStatusChart data={stockStatusData} />
+        </ChartCard>
+        <ChartCard
+          title={t("dashboard.chartTopStockTitle")}
+          description={t("dashboard.chartTopStockDesc")}
+          chartMinHeight={stockLevelChartHeight(stockLevelData)}
+        >
+          <StockLevelChart data={stockLevelData} />
+        </ChartCard>
+      </div>
 
       {/* Stock Table */}
       <Card>

@@ -13,6 +13,7 @@
 import { z } from "zod";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import { ROLE_VALUES } from "@/lib/constants";
+import { vmsg } from "@/lib/i18n/validation";
 
 
 /**
@@ -44,7 +45,7 @@ export const approvalDecisionSchema = z
   })
   .refine((v) => v.decision !== "reject" || (v.note != null && v.note.length >= 5), {
     path: ["note"],
-    message: "Alasan penolakan wajib diisi (minimal 5 karakter).",
+    message: vmsg("validation.rejectionNoteRequired"),
   });
 export type ApprovalDecisionInput = z.infer<typeof approvalDecisionSchema>;
 

@@ -29,14 +29,6 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileText, Package } from "lucide-react";
-import {
-  ContractStatusChart,
-  MonthlyActivityChart,
-  CashFlowChart,
-  StockStatusChart,
-  StockLevelChart,
-} from "@/components/shared/dashboard-charts";
-import { ChartCard } from "@/components/dashboard/chart-card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -50,22 +42,32 @@ import { getIncomeStatement } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
-import { cashTypeLabels, contractStatusLabels } from "@/lib/i18n/labels";
+import { cashTypeLabels } from "@/lib/i18n/labels";
 
 export const dynamic = "force-dynamic";
 
-function buildMonthlyBuckets(monthsBack: number) {
-  const map = new Map<string, { key: string; label: string }>();
-  for (let i = monthsBack - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("id-ID", { month: "short" });
-    map.set(key, { key, label });
-  }
-  return map;
-}
-
+/*
+ * Beranda = permukaan MENGERJAKAN, bukan melihat.
+ *
+ * Grafik pernah tinggal di sini dan sudah pindah ke halaman yang angkanya
+ * dijelaskan: kondisi stok & stok terbanyak → /inventory, uang masuk/keluar
+ * per mata uang → /reports/cash-flow, status kontrak & aktivitas bulanan →
+ * /contracts. Dua alasan, keduanya masih berlaku kalau nanti ada yang
+ * tergoda mengembalikannya:
+ *
+ *  • Beranda adalah titik BERANGKAT pekerjaan — Aksi Cepat paling atas,
+ *    lalu urutan alur kerja. Grafik adalah permukaan melihat, dan di
+ *    halaman tujuannya ia berdiri tepat di sebelah baris yang bisa dicek.
+ *  • `components/shared/dashboard-charts.tsx` adalah SATU-SATUNYA pemakai
+ *    recharts. Selama ia diimpor dari sini, seluruh pustaka grafik ikut
+ *    termuat di halaman pertama yang dibuka SETIAP pengguna — termasuk
+ *    yang datang cuma untuk menekan satu tombol Aksi Cepat.
+ *
+ * Konsekuensinya beranda tidak lagi MENGHITUNG apa pun untuk grafik: kueri
+ * 6 bulan (kas, kontrak, tagihan) dan hitungan status sah/dibatalkan ikut
+ * hilang, bukan sekadar tidak dirender. Lihat
+ * design-system/sai-accounting/pages/dashboard.md.
+ */
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
@@ -89,22 +91,14 @@ export default async function DashboardPage() {
   const canViewFinance = allowed.has("cash.read");
   const canViewContracts = canViewFinance;
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
   const [
     contractCount,
     invoiceCount,
     supplierCount,
     itemsWithStock,
     pendingContracts,
-    signedContracts,
-    canceledContracts,
     pendingInvoices,
     cashAccounts,
-    recentCash,
-    recentContracts,
-    recentInvoices,
     latestContracts,
   ] = await Promise.all([
     canViewContracts ? prisma.contract.count() : Promise.resolve(0),
@@ -112,28 +106,8 @@ export default async function DashboardPage() {
     canViewContracts ? prisma.supplier.count() : Promise.resolve(0),
     prisma.item.findMany({ include: { stock: true }, orderBy: { name: "asc" } }),
     canViewContracts ? prisma.contract.count({ where: { status: "pending" } }) : Promise.resolve(0),
-    canViewContracts ? prisma.contract.count({ where: { status: "signed" } }) : Promise.resolve(0),
-    canViewContracts ? prisma.contract.count({ where: { status: "canceled" } }) : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewFinance ? prisma.cashAccount.findMany({ orderBy: { date: "desc" } }) : Promise.resolve([]),
-    canViewFinance
-      ? prisma.cashAccount.findMany({
-          where: { date: { gte: sixMonthsAgo } },
-          select: { date: true, debit: true, credit: true, currency: true },
-        })
-      : Promise.resolve([]),
-    canViewContracts
-      ? prisma.contract.findMany({
-          where: { createdAt: { gte: sixMonthsAgo } },
-          select: { createdAt: true },
-        })
-      : Promise.resolve([]),
-    canViewContracts
-      ? prisma.invoice.findMany({
-          where: { createdAt: { gte: sixMonthsAgo } },
-          select: { createdAt: true },
-        })
-      : Promise.resolve([]),
     canViewContracts
       ? prisma.contract.findMany({ orderBy: { createdAt: "desc" }, take: 5 })
       : Promise.resolve([]),
@@ -171,20 +145,6 @@ export default async function DashboardPage() {
   const inventorySummary = summarizeInventory(itemsWithStock);
   const stockHealth = countStockHealth(inventorySummary);
   const lowStockItems = toLowStockAlerts(inventorySummary);
-
-  const stockStatusData = [
-    { name: t("inventory.levelHealthy"), value: stockHealth.healthy },
-    { name: t("inventory.levelLow"), value: stockHealth.lowStock },
-    { name: t("inventory.levelEmpty"), value: stockHealth.empty },
-  ];
-
-  const stockLevelData = inventorySummary.map((i) => ({
-    name: i.name.length > 22 ? `${i.name.slice(0, 20)}…` : i.name,
-    stock: i.currentStock,
-    unit: i.unit,
-  }));
-
-  const stockChartHeight = Math.max(300, Math.min(8, stockLevelData.filter((d) => d.stock > 0).length) * 36 + 80);
 
   const recentMovements = itemsWithStock
     .flatMap((item) =>
@@ -229,65 +189,6 @@ export default async function DashboardPage() {
     debit: Number(t.debit),
     credit: Number(t.credit),
   }));
-
-  const cashByCurrency = new Map<string, Map<string, { debit: number; credit: number }>>();
-  const currenciesInCashFlow = [...new Set(recentCash.map((c) => c.currency))];
-
-  for (const cur of currenciesInCashFlow) {
-    const monthMap = new Map<string, { debit: number; credit: number }>();
-    for (const [, meta] of buildMonthlyBuckets(6)) {
-      monthMap.set(meta.key, { debit: 0, credit: 0 });
-    }
-    cashByCurrency.set(cur, monthMap);
-  }
-
-  for (const c of recentCash) {
-    const key = `${c.date.getFullYear()}-${String(c.date.getMonth() + 1).padStart(2, "0")}`;
-    const monthMap = cashByCurrency.get(c.currency);
-    const entry = monthMap?.get(key);
-    if (entry) {
-      entry.debit += Number(c.debit);
-      entry.credit += Number(c.credit);
-    }
-  }
-
-  const cashFlowByCurrency: Record<string, { month: string; debit: number; credit: number }[]> = {};
-  for (const [cur, monthMap] of cashByCurrency) {
-    cashFlowByCurrency[cur] = Array.from(monthMap.entries()).map(([key, val]) => {
-      const [y, m] = key.split("-");
-      const d = new Date(Number(y), Number(m) - 1);
-      return { month: d.toLocaleDateString("id-ID", { month: "short" }), ...val };
-    });
-  }
-
-  const monthlyMap = new Map<string, { contracts: number; invoices: number; label: string }>();
-  for (const [, meta] of buildMonthlyBuckets(6)) {
-    monthlyMap.set(meta.key, { contracts: 0, invoices: 0, label: meta.label });
-  }
-
-  for (const c of recentContracts) {
-    const key = `${c.createdAt.getFullYear()}-${String(c.createdAt.getMonth() + 1).padStart(2, "0")}`;
-    const entry = monthlyMap.get(key);
-    if (entry) entry.contracts++;
-  }
-  for (const inv of recentInvoices) {
-    const key = `${inv.createdAt.getFullYear()}-${String(inv.createdAt.getMonth() + 1).padStart(2, "0")}`;
-    const entry = monthlyMap.get(key);
-    if (entry) entry.invoices++;
-  }
-
-  const monthlyData = Array.from(monthlyMap.values()).map(({ label, contracts, invoices }) => ({
-    month: label,
-    contracts,
-    invoices,
-  }));
-
-  const statusLabels = contractStatusLabels(dictionary);
-  const contractStatusData = [
-    { name: statusLabels.signed, value: signedContracts },
-    { name: statusLabels.pending, value: pendingContracts },
-    { name: statusLabels.canceled, value: canceledContracts },
-  ];
 
   return (
     <div className="w-full space-y-10">
@@ -422,22 +323,6 @@ export default async function DashboardPage() {
             href="/inventory/opname"
             valueClassName="text-destructive"
           />
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ChartCard
-            title={t("dashboard.chartStockConditionTitle")}
-            description={t("dashboard.chartStockConditionDesc")}
-          >
-            <StockStatusChart data={stockStatusData} />
-          </ChartCard>
-          <ChartCard
-            title={t("dashboard.chartTopStockTitle")}
-            description={t("dashboard.chartTopStockDesc")}
-            chartMinHeight={stockChartHeight}
-          >
-            <StockLevelChart data={stockLevelData} />
-          </ChartCard>
         </div>
 
         <Card>
@@ -586,25 +471,6 @@ export default async function DashboardPage() {
             </Card>
           )}
 
-          {currenciesInCashFlow.length > 0 && (
-            <div
-              className={`grid gap-6 ${
-                currenciesInCashFlow.length === 1
-                  ? "grid-cols-1"
-                  : "lg:grid-cols-2"
-              }`}
-            >
-              {currenciesInCashFlow.map((cur) => (
-                <ChartCard
-                  key={cur}
-                  title={t("dashboard.cashFlowChartTitle", { currency: cur })}
-                  description={t("dashboard.cashFlowChartDesc")}
-                >
-                  <CashFlowChart data={cashFlowByCurrency[cur] || []} currency={cur} />
-                </ChartCard>
-              ))}
-            </div>
-          )}
         </DashboardSection>
       )}
 
@@ -632,21 +498,6 @@ export default async function DashboardPage() {
               valueClassName="text-warning"
             />
             <StatCard title={t("nav.items.suppliers")} value={supplierCount} href="/suppliers" />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ChartCard
-              title={t("dashboard.chartContractStatusTitle")}
-              description={t("dashboard.chartContractStatusDesc")}
-            >
-              <ContractStatusChart data={contractStatusData} />
-            </ChartCard>
-            <ChartCard
-              title={t("dashboard.chartMonthlyTitle")}
-              description={t("dashboard.chartMonthlyDesc")}
-            >
-              <MonthlyActivityChart data={monthlyData} />
-            </ChartCard>
           </div>
 
           <Card>

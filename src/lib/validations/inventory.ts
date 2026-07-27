@@ -1,18 +1,19 @@
 import { z } from "zod";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const stockUpdateSchema = z
   .object({
     itemId: z.coerce.number().int(),
-    quantity: z.coerce.number().positive("Quantity must be positive"),
+    quantity: z.coerce.number().positive(vmsg("validation.quantityPositive")),
     type: z.enum(["in", "out"]),
-    date: z.string().min(1, "Date is required"),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     /**
      * IDR cost per unit. Required on `in` movements: it is the only input to the
      * weighted-average COGS the engine posts when stock later goes `out`.
      * Without it the outgoing movement books no COGS at all and profit is
      * silently overstated. Ignored on `out` (cost is derived, never re-entered).
      */
-    unitCost: z.coerce.number().positive("Harga pokok per unit harus lebih besar dari 0").optional(),
+    unitCost: z.coerce.number().positive(vmsg("validation.unitCostPositive")).optional(),
     note: z.string().max(500).trim().optional(),
   })
   .superRefine((data, ctx) => {
@@ -20,15 +21,13 @@ export const stockUpdateSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["unitCost"],
-        message:
-          "Harga pokok per unit (IDR) wajib diisi untuk barang masuk, " +
-          "agar HPP saat barang keluar dapat dihitung.",
+        message: vmsg("validation.unitCostRequiredForStockIn"),
       });
     }
   });
 
 export const itemSchema = z.object({
-  name: z.string().min(1, "Item name is required").max(100).trim(),
+  name: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   unit: z.string().max(20).trim().optional(),
 });
 
@@ -38,15 +37,15 @@ export const itemSchema = z.object({
  * berselisih. `physicalQty` boleh 0 (barang habis saat dihitung).
  */
 export const opnameSchema = z.object({
-  date: z.string().min(1, "Tanggal wajib diisi"),
+  date: z.string().min(1, vmsg("validation.dateRequired")),
   counts: z
     .array(
       z.object({
         itemId: z.coerce.number().int(),
-        physicalQty: z.coerce.number().min(0, "Jumlah fisik tidak boleh negatif"),
+        physicalQty: z.coerce.number().min(0, vmsg("validation.physicalQtyNotNegative")),
       })
     )
-    .min(1, "Isi minimal satu barang untuk dihitung"),
+    .min(1, vmsg("validation.opnameMinOneItem")),
 });
 
 export type StockUpdateInput = z.infer<typeof stockUpdateSchema>;

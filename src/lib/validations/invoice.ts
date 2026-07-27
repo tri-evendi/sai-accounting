@@ -3,9 +3,10 @@ import { round2 } from "@/lib/posting/rules";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { paymentFormFields } from "./payment";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const invoiceItemSchema = z.object({
-  itemName: z.string().min(1, "Item name is required").max(100).trim(),
+  itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   quantity: z.coerce.number().min(0),
   price: z.coerce.number().min(0),
   unit: z.string().max(20).trim().optional(),
@@ -13,8 +14,8 @@ export const invoiceItemSchema = z.object({
 
 export const invoiceSchema = z
   .object({
-    invoiceNo: z.string().min(1, "Invoice number is required").max(50).trim(),
-    date: z.string().min(1, "Date is required"),
+    invoiceNo: z.string().min(1, vmsg("validation.invoiceNoRequired")).max(50).trim(),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     // Optional: drives the "Jatuh Tempo" status and the overdue filter in
     // /receivables. Blank leaves the invoice aged from its issue date.
     dueDate: dueDateField,
@@ -43,13 +44,13 @@ export const invoiceSchema = z
     // Per-invoice PPN rate override, in percent. Blank → DEFAULT_TAX_RATE (11).
     taxRate: z.coerce
       .number()
-      .min(0, "Tarif PPN tidak boleh negatif")
-      .max(100, "Tarif PPN tidak masuk akal")
+      .min(0, vmsg("validation.taxRateNotNegative"))
+      .max(100, vmsg("validation.taxRateUnreasonable"))
       .optional(),
     // PPN Keluaran amount, in `currency`. Retained for the amount-only API that
     // predates `taxable`/`taxRate`; the route recomputes it authoritatively from
     // the rate when `taxable`. Posted to Hutang PPN Keluaran (2103).
-    taxAmount: z.coerce.number().min(0, "Pajak tidak boleh negatif").default(0),
+    taxAmount: z.coerce.number().min(0, vmsg("validation.taxAmountNotNegative")).default(0),
     // ── Dokumen ekspor / PEB (issue #17) ──
     // Relevant on an export/0% invoice: the PEB number+date stand in for the
     // Faktur Pajak, and feed the e-Faktur export. All optional and normalised to
@@ -57,7 +58,7 @@ export const invoiceSchema = z
     pebNumber: z.string().trim().max(50).optional().nullable().transform((v) => v || null),
     pebDate: dueDateField,
     exportNote: z.string().trim().max(1000).optional().nullable().transform((v) => v || null),
-    items: z.array(invoiceItemSchema).min(1, "At least one item is required").max(50),
+    items: z.array(invoiceItemSchema).min(1, vmsg("validation.atLeastOneItem")).max(50),
   })
   .superRefine(requireRateForForeign);
 

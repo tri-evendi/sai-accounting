@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { vmsg } from "@/lib/i18n/validation";
 
 /**
  * Field yang muncul di FORM pembayaran — sama persis untuk pembayaran kontrak
@@ -13,8 +14,8 @@ import { currencyEnum, rateField, requireRateForForeign } from "./fx";
  * kini menampilkannya langsung ke pengguna, bukan lagi hanya dipakai server.
  */
 export const paymentFormFields = {
-  date: z.string().min(1, "Tanggal wajib diisi"),
-  amount: z.coerce.number().positive("Jumlah harus lebih besar dari 0"),
+  date: z.string().min(1, vmsg("validation.dateRequired")),
+  amount: z.coerce.number().positive(vmsg("validation.amountPositive")),
   currency: currencyEnum.default("USD"),
   // Wajib untuk valas; `requireRateForForeign` yang menegakkannya di refine.
   rate: rateField,

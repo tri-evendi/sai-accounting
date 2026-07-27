@@ -16,6 +16,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
+import { getCompanyIdentity } from "@/lib/company-identity";
 import { STATEMENT_TITLES, type StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export async function POST(request: Request) {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const payload: StatementPayload = parsed.data;
 
   const sheet = buildReportSheet(payload);
-  const buffer = await buildWorkbookBuffer([sheet]);
+  const buffer = await buildWorkbookBuffer([sheet], await getCompanyIdentity());
 
   const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");
   const filename = `${slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;

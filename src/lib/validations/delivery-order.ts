@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { lineStockKg } from "@/lib/delivery-orders";
+import { vmsg } from "@/lib/i18n/validation";
 
 /**
  * Zod for Surat Jalan / Delivery Order (issue #14).
@@ -20,17 +21,17 @@ const nullableId = z
 
 export const deliveryOrderItemSchema = z.object({
   /** FK to the stock Item — a surat jalan reduces a real inventory item. */
-  itemId: z.coerce.number().int().positive("Pilih barang dari master stok."),
+  itemId: z.coerce.number().int().positive(vmsg("validation.pickStockItem")),
   /** Snapshot of the item name for the printed document. */
-  itemName: z.string().min(1, "Nama barang wajib diisi").max(100).trim(),
+  itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   /** Bags/kg shape follows ContractItem exactly. */
-  bags: z.coerce.number().int().min(0, "Bags harus 0 atau lebih"),
-  kgPerBag: z.coerce.number().min(0, "Kg per bag harus 0 atau lebih"),
+  bags: z.coerce.number().int().min(0, vmsg("validation.bagsMin0")),
+  kgPerBag: z.coerce.number().min(0, vmsg("validation.kgPerBagMin0")),
 });
 
 export const deliveryOrderSchema = z
   .object({
-    date: z.string().min(1, "Tanggal wajib diisi"),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     /** Dokumen sumber (dokumen berantai #16) — keduanya opsional. */
     contractId: nullableId,
     invoiceId: nullableId,
@@ -41,8 +42,8 @@ export const deliveryOrderSchema = z
     notes: z.string().max(2000).trim().optional(),
     items: z
       .array(deliveryOrderItemSchema)
-      .min(1, "Minimal satu barang")
-      .max(50, "Maksimal 50 barang"),
+      .min(1, vmsg("validation.minOneItem"))
+      .max(50, vmsg("validation.maxFiftyItems")),
   })
   .superRefine((data, ctx) => {
     // Every line must ship a positive quantity of stock: a 0-kg line would post a
@@ -52,7 +53,7 @@ export const deliveryOrderSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["items", i],
-          message: "Kuantitas (bags × kg/bag) harus lebih besar dari nol.",
+          message: vmsg("validation.lineQuantityPositive"),
         });
       }
     });

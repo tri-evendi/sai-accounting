@@ -10,13 +10,14 @@
  */
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { vmsg } from "@/lib/i18n/validation";
 
 /** One opening cash/bank balance — the user picks a concrete cash_bank account. */
 export const openingCashSchema = z
   .object({
     accountId: z.coerce.number().int().positive(),
     currency: currencyEnum.default("IDR"),
-    amount: z.coerce.number().positive("Saldo harus lebih besar dari 0"),
+    amount: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
     rate: rateField,
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
@@ -26,7 +27,7 @@ export const openingPartnerSchema = z
   .object({
     partnerId: z.coerce.number().int().positive(),
     currency: currencyEnum.default("IDR"),
-    amount: z.coerce.number().positive("Saldo harus lebih besar dari 0"),
+    amount: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
     rate: rateField,
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
@@ -44,11 +45,11 @@ export const companyTaxIdentitySchema = z.object({
 
 export const companyIdentitySchema = z
   .object({
-    name: z.string().min(1, "Nama perusahaan wajib diisi").max(150).trim(),
+    name: z.string().min(1, vmsg("validation.companyNameRequired")).max(150).trim(),
     address: z.string().max(1000).trim().optional(),
     baseCurrency: currencyEnum.default("IDR"),
     /** Awal tahun buku (YYYY-MM-DD). The opening journal is dated here. */
-    fiscalYearStart: z.string().min(1, "Awal tahun buku wajib diisi"),
+    fiscalYearStart: z.string().min(1, vmsg("validation.fiscalYearStartRequired")),
   })
   .merge(companyTaxIdentitySchema);
 
@@ -78,8 +79,7 @@ export const setupSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["cash"],
-        message:
-          "Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).",
+        message: vmsg("validation.atLeastOneOpeningBalance"),
       });
     }
 
@@ -92,7 +92,7 @@ export const setupSchema = z
           ctx.addIssue({
             code: "custom",
             path: [side, i, "partnerId"],
-            message: "Partner yang sama muncul lebih dari sekali.",
+            message: vmsg("validation.partnerTwice"),
           });
         }
         seen.add(row.partnerId);

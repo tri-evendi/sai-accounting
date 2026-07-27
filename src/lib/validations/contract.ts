@@ -3,25 +3,26 @@ import { round2 } from "@/lib/posting/rules";
 import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { paymentFormFields } from "./payment";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const contractItemSchema = z.object({
-  itemName: z.string().min(1, "Item name is required").max(100).trim(),
-  bags: z.coerce.number().int().min(0, "Bags must be 0 or more"),
-  kgPerBag: z.coerce.number().min(0, "Kg per bag must be 0 or more"),
-  pricePerKg: z.coerce.number().min(0, "Price must be 0 or more"),
+  itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
+  bags: z.coerce.number().int().min(0, vmsg("validation.bagsMin0")),
+  kgPerBag: z.coerce.number().min(0, vmsg("validation.kgPerBagMin0")),
+  pricePerKg: z.coerce.number().min(0, vmsg("validation.priceMin0")),
 });
 
 export const contractSchema = z
   .object({
-    contractNo: z.string().min(1, "Contract number is required").max(50).trim(),
-    date: z.string().min(1, "Date is required"),
+    contractNo: z.string().min(1, vmsg("validation.contractNoRequired")).max(50).trim(),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     /**
      * Explicit due date for AR aging (issue #12). Deliberately separate from
      * `top1`/`top2`: those stay free-text commercial terms and are shown as-is,
      * because "30% advance, 70% on B/L" is not a date and must not be guessed at.
      */
     dueDate: dueDateField,
-    buyer: z.string().min(1, "Buyer is required").max(100).trim(),
+    buyer: z.string().min(1, vmsg("validation.buyerRequired")).max(100).trim(),
     /**
      * Legacy free-text consignee, kept as a FALLBACK for un-migrated rows
      * (issue #22). When `consigneeId` points at a master row the text is
@@ -52,7 +53,7 @@ export const contractSchema = z
      */
     rate: rateField,
     status: z.enum(["signed", "pending", "canceled"]).default("pending"),
-    items: z.array(contractItemSchema).min(1, "At least one item is required").max(50),
+    items: z.array(contractItemSchema).min(1, vmsg("validation.atLeastOneItem")).max(50),
   })
   .superRefine((data, ctx) => {
     // A cancelled or zero-value contract produces no journal, so it needs no rate.

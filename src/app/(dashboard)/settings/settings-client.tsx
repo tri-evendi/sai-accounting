@@ -4,7 +4,8 @@ import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { APP_NAME, COMPANY_NAME, type SystemRole } from "@/lib/constants";
+import { APP_NAME, type SystemRole } from "@/lib/constants";
+import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
@@ -21,6 +22,7 @@ interface SettingsClientProps {
 
 export function SettingsClient({ canReadAudit }: SettingsClientProps) {
   const t = useT();
+  const company = useCompanyIdentity();
   const dictionary = useDictionary();
   const { data: session } = useSession();
 
@@ -96,7 +98,7 @@ export function SettingsClient({ canReadAudit }: SettingsClientProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-foreground">{APP_NAME}</p>
-          <p className="text-sm text-muted-foreground mt-1">{COMPANY_NAME}</p>
+          <p className="text-sm text-muted-foreground mt-1">{company.name}</p>
           <p className="text-sm text-muted-foreground mt-2">
             {t("settings.aboutTagline")}
           </p>

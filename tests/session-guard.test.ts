@@ -15,7 +15,7 @@ import {
 } from "@/lib/session-guard";
 
 const dbUser = {
-  role: "core",
+  role: "finance_manager",
   status: 0,
   sessionVersion: 3,
   accountantMode: null,

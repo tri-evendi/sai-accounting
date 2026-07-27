@@ -32,25 +32,25 @@ describe("applyOverrides — merakit matriks efektif", () => {
   });
 
   it("override MENGHADIAHKAN izin yang bawaannya tidak ada", () => {
-    const matrix = applyOverrides([{ role: "core", permission: "report.read", allowed: true }]);
-    expect(matrix["report.read"]).toContain("core");
-    expect(canWithMatrix(matrix, { role: "core" }, "report.read")).toBe(true);
+    const matrix = applyOverrides([{ role: "finance_manager", permission: "report.read", allowed: true }]);
+    expect(matrix["report.read"]).toContain("finance_manager");
+    expect(canWithMatrix(matrix, { role: "finance_manager" }, "report.read")).toBe(true);
     // Sel lain tidak tersentuh.
-    expect(canWithMatrix(matrix, { role: "ptg" }, "report.read")).toBe(false);
-    expect(can({ role: "core" }, "report.read"), "bawaan di kode tidak berubah").toBe(false);
+    expect(canWithMatrix(matrix, { role: "warehouse_head" }, "report.read")).toBe(false);
+    expect(can({ role: "finance_manager" }, "report.read"), "bawaan di kode tidak berubah").toBe(false);
   });
 
   it("override MENCABUT izin yang bawaannya ada", () => {
-    const matrix = applyOverrides([{ role: "core", permission: "contract.write", allowed: false }]);
-    expect(matrix["contract.write"]).not.toContain("core");
-    expect(canWithMatrix(matrix, { role: "core" }, "contract.write")).toBe(false);
-    expect(canWithMatrix(matrix, { role: "bos" }, "contract.write")).toBe(true);
+    const matrix = applyOverrides([{ role: "finance_manager", permission: "contract.write", allowed: false }]);
+    expect(matrix["contract.write"]).not.toContain("finance_manager");
+    expect(canWithMatrix(matrix, { role: "finance_manager" }, "contract.write")).toBe(false);
+    expect(canWithMatrix(matrix, { role: "managing_director" }, "contract.write")).toBe(true);
   });
 
   it("baris yatim diabaikan — izin/peran yang tak dikenal kode tak pernah hidup", () => {
     const matrix = applyOverrides([
       // Izin yang sudah dihapus dari kode (sisa data lama).
-      { role: "core", permission: "ghost.read", allowed: true },
+      { role: "finance_manager", permission: "ghost.read", allowed: true },
       // Peran yang tidak ada.
       { role: "admin", permission: "report.read", allowed: true },
     ]);
@@ -71,52 +71,52 @@ describe("validateOverrides — anti-lockout & invarian", () => {
     expect(validateOverrides([])).toEqual([]);
     expect(
       validateOverrides([
-        { role: "core", permission: "report.read", allowed: true },
-        { role: "ptg", permission: "inventory.write", allowed: false },
+        { role: "finance_manager", permission: "report.read", allowed: true },
+        { role: "warehouse_head", permission: "inventory.write", allowed: false },
       ])
     ).toEqual([]);
   });
 
-  it("menolak pencabutan sel anti-lockout: bos × authz.manage / user.manage", () => {
+  it("menolak pencabutan sel anti-lockout: Direktur Utama & Administrator × authz.manage / user.manage", () => {
     for (const cell of PROTECTED_CELLS) {
       const errors = validateOverrides([{ ...cell, allowed: false }]);
       expect(errors.length, cell.permission).toBeGreaterThan(0);
       expect(errors.join(" ")).toContain(cell.permission);
       expect(isProtectedCell(cell.role, cell.permission)).toBe(true);
     }
-    // Sel bos lain TIDAK terkunci (bos boleh melepas izin non-kritis).
-    expect(isProtectedCell("bos", "report.read")).toBe(false);
-    expect(validateOverrides([{ role: "bos", permission: "report.read", allowed: false }])).toEqual([]);
+    // Sel akses-penuh lain TIDAK terkunci (boleh melepas izin non-kritis).
+    expect(isProtectedCell("managing_director", "report.read")).toBe(false);
+    expect(validateOverrides([{ role: "managing_director", permission: "report.read", allowed: false }])).toEqual([]);
   });
 
   it("menolak write tanpa read pada matriks EFEKTIF (write ⊆ read)", () => {
-    // ptg diberi contract.write tetapi tidak contract.read → lebih longgar
+    // Kepala Gudang diberi contract.write tetapi tidak contract.read → lebih longgar
     // menulis daripada membaca; harus ditolak dengan pesan Indonesia.
-    const errors = validateOverrides([{ role: "ptg", permission: "contract.write", allowed: true }]);
+    const errors = validateOverrides([{ role: "warehouse_head", permission: "contract.write", allowed: true }]);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.join(" ")).toContain("contract");
     // Diberikan BERSAMA read-nya → sah.
     expect(
       validateOverrides([
-        { role: "ptg", permission: "contract.write", allowed: true },
-        { role: "ptg", permission: "contract.read", allowed: true },
+        { role: "warehouse_head", permission: "contract.write", allowed: true },
+        { role: "warehouse_head", permission: "contract.read", allowed: true },
       ])
     ).toEqual([]);
   });
 
   it("menolak delete yang lolos dari write (delete ⊆ write)", () => {
-    // Mencabut invoice.write bos sambil membiarkan invoice.delete-nya.
-    const errors = validateOverrides([{ role: "bos", permission: "invoice.write", allowed: false }]);
+    // Mencabut invoice.write Direktur Utama sambil membiarkan invoice.delete-nya.
+    const errors = validateOverrides([{ role: "managing_director", permission: "invoice.write", allowed: false }]);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.join(" ")).toContain("invoice");
   });
 
   it("menolak peran/izin asing dan sel kembar", () => {
     expect(validateOverrides([{ role: "admin", permission: "report.read", allowed: true }]).join(" ")).toContain("admin");
-    expect(validateOverrides([{ role: "core", permission: "ghost.read", allowed: true }]).join(" ")).toContain("ghost.read");
+    expect(validateOverrides([{ role: "finance_manager", permission: "ghost.read", allowed: true }]).join(" ")).toContain("ghost.read");
     const dup = validateOverrides([
-      { role: "core", permission: "report.read", allowed: true },
-      { role: "core", permission: "report.read", allowed: false },
+      { role: "finance_manager", permission: "report.read", allowed: true },
+      { role: "finance_manager", permission: "report.read", allowed: false },
     ]);
     expect(dup.length).toBeGreaterThan(0);
   });
@@ -126,21 +126,21 @@ describe("normalizeOverrides — baris redundan dibuang", () => {
   it("baris yang sama dengan bawaan tidak disimpan; penyimpangan disimpan", () => {
     const rows = normalizeOverrides([
       // Redundan: bawaan memang begitu.
-      { role: "bos", permission: "report.read", allowed: true },
-      { role: "ptg", permission: "report.read", allowed: false },
+      { role: "managing_director", permission: "report.read", allowed: true },
+      { role: "warehouse_head", permission: "report.read", allowed: false },
       // Penyimpangan sungguhan.
-      { role: "core", permission: "report.read", allowed: true },
-      { role: "core", permission: "contract.write", allowed: false },
+      { role: "finance_manager", permission: "report.read", allowed: true },
+      { role: "finance_manager", permission: "contract.write", allowed: false },
     ]);
     expect(rows).toEqual([
-      { role: "core", permission: "report.read", allowed: true },
-      { role: "core", permission: "contract.write", allowed: false },
+      { role: "finance_manager", permission: "report.read", allowed: true },
+      { role: "finance_manager", permission: "contract.write", allowed: false },
     ]);
   });
 });
 
 describe("createEffectiveMatrixLoader — cache TTL + invalidasi", () => {
-  const grantRow = [{ role: "core", permission: "report.read" as Permission, allowed: true }];
+  const grantRow = [{ role: "finance_manager", permission: "report.read" as Permission, allowed: true }];
 
   it("membaca sumber sekali lalu memakai cache selama TTL", async () => {
     let reads = 0;
@@ -152,7 +152,7 @@ describe("createEffectiveMatrixLoader — cache TTL + invalidasi", () => {
       },
       () => clock
     );
-    expect((await loader.get())["report.read"]).toContain("core");
+    expect((await loader.get())["report.read"]).toContain("finance_manager");
     clock += EFFECTIVE_MATRIX_TTL_MS - 1;
     await loader.get();
     expect(reads).toBe(1);
@@ -172,14 +172,14 @@ describe("createEffectiveMatrixLoader — cache TTL + invalidasi", () => {
       },
       () => 42 // waktu beku: tanpa invalidasi, cache tak pernah kedaluwarsa
     );
-    expect((await loader.get())["report.read"]).not.toContain("core");
+    expect((await loader.get())["report.read"]).not.toContain("finance_manager");
 
     // "PUT /api/authz/overrides" menulis lalu menginvalidasi:
-    rows.push({ role: "core", permission: "report.read", allowed: true });
+    rows.push({ role: "finance_manager", permission: "report.read", allowed: true });
     await loader.get();
     expect(reads, "sebelum invalidasi masih dari cache").toBe(1);
     loader.invalidate();
-    expect((await loader.get())["report.read"]).toContain("core");
+    expect((await loader.get())["report.read"]).toContain("finance_manager");
     expect(reads).toBe(2);
   });
 
@@ -193,7 +193,7 @@ describe("createEffectiveMatrixLoader — cache TTL + invalidasi", () => {
     expect(fallback["report.read"]).toEqual(PERMISSION_ROLES["report.read"]);
     // Sumber pulih → pembacaan berikutnya melihat override (kegagalan tak di-cache).
     fail = false;
-    expect((await loader.get())["report.read"]).toContain("core");
+    expect((await loader.get())["report.read"]).toContain("finance_manager");
   });
 });
 

@@ -251,7 +251,7 @@ export function createFakeClient(seed: FakeSeed = {}) {
       }) => {
         const { sourceType, documentId } = where.sourceType_documentId;
         const row = (seed.approvalRequests ?? {})[`${sourceType}:${documentId}`];
-        return row ? { id: 1, approverRole: "bos", ...row } : null;
+        return row ? { id: 1, approverRole: "managing_director", ...row } : null;
       },
     },
 

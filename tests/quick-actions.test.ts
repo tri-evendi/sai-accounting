@@ -18,7 +18,7 @@ import {
 
 describe("quickActionsForRole", () => {
   it("bos mendapat keenam aksi yang diminta issue #2", () => {
-    const keys = quickActionsForRole("bos").map((a) => a.key);
+    const keys = quickActionsForRole("managing_director").map((a) => a.key);
     expect(keys).toEqual([
       "catat_penjualan",
       "catat_pembelian",
@@ -30,19 +30,19 @@ describe("quickActionsForRole", () => {
   });
 
   it("core (staf kantor) mendapat aksi yang sama dengan bos", () => {
-    expect(quickActionsForRole("core").map((a) => a.key)).toEqual(
-      quickActionsForRole("bos").map((a) => a.key)
+    expect(quickActionsForRole("finance_manager").map((a) => a.key)).toEqual(
+      quickActionsForRole("managing_director").map((a) => a.key)
     );
   });
 
   it("ptg HANYA mendapat aksi stok", () => {
-    const actions = quickActionsForRole("ptg");
+    const actions = quickActionsForRole("warehouse_head");
     expect(actions.map((a) => a.key)).toEqual(["tambah_stok"]);
     expect(actions.every((a) => a.tone === "stock")).toBe(true);
   });
 
   it("ptg tidak pernah mendapat aksi uang atau dokumen penjualan", () => {
-    const hrefs = quickActionsForRole("ptg").map((a) => a.href);
+    const hrefs = quickActionsForRole("warehouse_head").map((a) => a.href);
     expect(hrefs.some((h) => h.startsWith("/finance"))).toBe(false);
     expect(hrefs.some((h) => h.startsWith("/invoices"))).toBe(false);
     expect(hrefs.some((h) => h.startsWith("/contracts"))).toBe(false);
@@ -58,7 +58,7 @@ describe("quickActionsForRole", () => {
 
   it("urutan aslinya dipertahankan dan hasilnya tidak mengubah daftar induk", () => {
     const before = QUICK_ACTIONS.map((a) => a.key);
-    quickActionsForRole("bos").reverse();
+    quickActionsForRole("managing_director").reverse();
     expect(QUICK_ACTIONS.map((a) => a.key)).toEqual(before);
   });
 
@@ -76,10 +76,10 @@ describe("quickActionsForRole", () => {
   it("set izin efektif (issue #73) menang atas matriks bawaan", () => {
     // ptg yang lewat override diberi cash.write mendapat aksi kas juga.
     const allowed = new Set(["inventory.write", "cash.write"]);
-    const keys = quickActionsForRole("ptg", allowed).map((a) => a.key);
+    const keys = quickActionsForRole("warehouse_head", allowed).map((a) => a.key);
     expect(keys).toEqual(["terima_uang", "bayar", "tambah_stok"]);
     // Sebaliknya, set yang mencabut inventory.write menghilangkan aksi stoknya.
-    expect(quickActionsForRole("ptg", new Set())).toHaveLength(0);
+    expect(quickActionsForRole("warehouse_head", new Set())).toHaveLength(0);
   });
 
   it("kunci aksi unik", () => {
@@ -115,9 +115,9 @@ describe("kelompok menu berbasis tugas", () => {
     expect(penjualan?.items[0]?.href).toBe("/sales/new");
     expect(pembelian?.items[0]?.href).toBe("/purchases/new");
     // ptg tidak mendapat pintu wizard — konsisten dengan Aksi Cepat.
-    expect(visibleNavHrefs({ role: "ptg" })).not.toContain("/sales/new");
-    expect(visibleNavHrefs({ role: "core" })).toContain("/sales/new");
-    expect(visibleNavHrefs({ role: "core" })).toContain("/purchases/new");
+    expect(visibleNavHrefs({ role: "warehouse_head" })).not.toContain("/sales/new");
+    expect(visibleNavHrefs({ role: "finance_manager" })).toContain("/sales/new");
+    expect(visibleNavHrefs({ role: "finance_manager" })).toContain("/purchases/new");
   });
 
   it("Surat Jalan masuk kelompok Penjualan, Pusat Laporan masuk Laporan", () => {
@@ -143,7 +143,7 @@ describe("kelompok menu berbasis tugas", () => {
   });
 
   it("ptg hanya melihat persetujuan, stok, beranda, kamus, dan pengaturan", () => {
-    const groups = visibleNavGroups({ role: "ptg" });
+    const groups = visibleNavGroups({ role: "warehouse_head" });
     // Antrean persetujuan terbuka untuk semua peran — ptg memakainya untuk
     // melihat kabar pengajuannya sendiri — tetapi ATURANNYA tetap bos-only.
     expect(groups.map((g) => g.id)).toEqual(["persetujuan", "stok", "pengaturan"]);
@@ -152,32 +152,32 @@ describe("kelompok menu berbasis tugas", () => {
   });
 
   it("core tidak melihat menu khusus bos (Pusat Laporan, Pengguna)", () => {
-    const hrefs = visibleNavHrefs({ role: "core" });
+    const hrefs = visibleNavHrefs({ role: "finance_manager" });
     expect(hrefs).not.toContain("/reports");
     expect(hrefs).not.toContain("/users");
     expect(hrefs).toContain("/invoices");
   });
 
   it("permukaan akuntansi hanya muncul saat Mode Akuntan efektif ON", () => {
-    const on = visibleNavHrefs({ role: "bos", accountantMode: true });
-    const off = visibleNavHrefs({ role: "bos", accountantMode: false });
+    const on = visibleNavHrefs({ role: "managing_director", accountantMode: true });
+    const off = visibleNavHrefs({ role: "managing_director", accountantMode: false });
     for (const href of ["/journal", "/ledger", "/accounts"]) {
       expect(on).toContain(href);
       expect(off).not.toContain(href);
     }
     // Bos tanpa preferensi eksplisit → default peran (ON).
-    expect(visibleNavHrefs({ role: "bos" })).toContain("/journal");
+    expect(visibleNavHrefs({ role: "managing_director" })).toContain("/journal");
   });
 
   it("kelompok yang seluruh isinya tersembunyi ikut hilang", () => {
-    const groups = visibleNavGroups({ role: "ptg" });
+    const groups = visibleNavGroups({ role: "warehouse_head" });
     expect(groups.some((g) => g.id === "laporan")).toBe(false);
   });
 
   it("penyaringan nav mengikuti set izin efektif bila diberikan (issue #73)", () => {
     // Override yang MENGHADIAHKAN report.read pada core memunculkan menunya...
     const granted = new Set(["report.read", "invoice.read"]);
-    const hrefs = visibleNavHrefs({ role: "core" }, granted);
+    const hrefs = visibleNavHrefs({ role: "finance_manager" }, granted);
     expect(hrefs).toContain("/reports");
     expect(hrefs).toContain("/invoices");
     // ...dan izin yang tidak ada di set-nya ikut hilang, walau bawaan memberi.
@@ -190,8 +190,8 @@ describe("kelompok menu berbasis tugas", () => {
     // Dicari lewat href, bukan posisi: menyisipkan kelompok baru di atas (mis.
     // Persetujuan #25) tidak boleh diam-diam mengubah item yang diuji.
     const item = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === "/contracts")!;
-    expect(isNavItemVisible(item, { role: "ptg" })).toBe(false);
-    expect(isNavItemVisible(item, { role: "core" })).toBe(true);
+    expect(isNavItemVisible(item, { role: "warehouse_head" })).toBe(false);
+    expect(isNavItemVisible(item, { role: "finance_manager" })).toBe(true);
   });
 });
 

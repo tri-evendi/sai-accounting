@@ -11,6 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { assertPeriodOpen } from "@/lib/period";
+import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 
 export interface JournalLineInput {
   accountId: number;
@@ -19,6 +20,13 @@ export interface JournalLineInput {
   currency?: string;
   rate?: number; // conversion to IDR base (1 for IDR)
   memo?: string | null;
+  /**
+   * Cost centre for THIS line (issue #91) — overrides the entry's default.
+   * Only hand-written journals set it: one journal legitimately spans several
+   * branches (a shared electricity bill split two ways), which is precisely why
+   * the dimension lives on the line and not on the header.
+   */
+  costCenterId?: number | null;
 }
 
 export interface JournalEntryInput {
@@ -27,6 +35,14 @@ export interface JournalEntryInput {
   note?: string | null;
   sourceType?: string | null;
   sourceId?: number | null;
+  /**
+   * Default cost centre for every line that does not name its own (issue #91).
+   * Auto-posting sets this once, from the source document, in a single place
+   * (`buildStampedEntry` in @/lib/posting) — never per rule, never per document
+   * type. `prepareLines` is what actually pushes it down onto the lines, so no
+   * builder in `posting/rules.ts` had to learn about the dimension at all.
+   */
+  costCenterId?: number | null;
   lines: JournalLineInput[];
 }
 
@@ -40,8 +56,17 @@ export class UnbalancedJournalError extends Error {
 const toCents = (n: number) => Math.round(n * 100);
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Compute IDR base amounts for each line. */
-export function prepareLines(lines: JournalLineInput[]) {
+/**
+ * Compute IDR base amounts for each line, and stamp the cost centre onto it.
+ *
+ * THE ONE PLACE THE DIMENSION REACHES A LINE (issue #91). Every journal in this
+ * app — auto-posted or hand-written — is created by `postJournal` below, which
+ * calls this. So `line.costCenterId ?? entryCostCenterId ?? null` is the whole
+ * rule: the line's own choice wins, the document's default fills in, and NULL
+ * ("unassigned / company-wide") is a legitimate answer rather than a gap.
+ * Nothing in `posting/rules.ts` needed to change for this.
+ */
+export function prepareLines(lines: JournalLineInput[], entryCostCenterId?: number | null) {
   return lines.map((l) => {
     const debit = l.debit ?? 0;
     const credit = l.credit ?? 0;
@@ -55,6 +80,7 @@ export function prepareLines(lines: JournalLineInput[]) {
       baseDebit: round2(debit * rate),
       baseCredit: round2(credit * rate),
       memo: l.memo ?? null,
+      costCenterId: l.costCenterId ?? entryCostCenterId ?? null,
     };
   });
 }
@@ -107,7 +133,7 @@ async function nextNumber(tx: Prisma.TransactionClient, date: Date): Promise<str
 
 /** Create a balanced journal (header + lines) atomically. */
 export async function postJournal(entry: JournalEntryInput, client: LedgerClient = prisma) {
-  const prepared = prepareLines(entry.lines);
+  const prepared = prepareLines(entry.lines, entry.costCenterId);
   assertBalanced(prepared);
 
   return runInTx(client, async (tx) => {
@@ -124,6 +150,7 @@ export async function postJournal(entry: JournalEntryInput, client: LedgerClient
         note: entry.note ?? null,
         sourceType: entry.sourceType ?? null,
         sourceId: entry.sourceId ?? null,
+        costCenterId: entry.costCenterId ?? null,
         lines: { create: prepared },
       },
       include: { lines: { include: { account: true } } },
@@ -163,6 +190,7 @@ export async function reverseJournal(journalId: number, client: LedgerClient = p
         type: "reversal",
         note: `Pembalikan ${original.number}`,
         reversalOfId: original.id,
+        costCenterId: original.costCenterId,
         lines: {
           create: original.lines.map((l) => ({
             accountId: l.accountId,
@@ -173,6 +201,11 @@ export async function reverseJournal(journalId: number, client: LedgerClient = p
             baseDebit: l.baseCredit,
             baseCredit: l.baseDebit,
             memo: l.memo,
+            // The reversal carries the ORIGINAL line's cost centre, per line
+            // (issue #91). Anything else would leave the branch that was
+            // charged still charged: a shared bill split Jakarta/Surabaya must
+            // be un-split the same way, not dropped into "unassigned".
+            costCenterId: l.costCenterId,
           })),
         },
       },
@@ -207,27 +240,36 @@ export interface AccountLedger {
 }
 
 /**
- * Mutations + running balance for one account over an optional date range.
+ * Mutations + running balance for one account over an optional date range, and
+ * — since issue #91 — optionally for a single cost centre.
  * Running balance follows the account's normal balance:
  *   debit-normal  → balance += (debit - credit)
  *   credit-normal → balance += (credit - debit)
  * Efficient: 1 aggregate (opening) + 1 findMany (range).
+ *
+ * THE OPENING BALANCE TAKES THE SAME FILTER, and that is not a detail: an
+ * opening computed over every cost centre while the rows beneath it were
+ * computed over one would make each slice's closing balance wrong AND stop the
+ * slices summing to the whole — the one failure this dimension must never have.
+ * Both reads therefore share `cc`.
  */
 export async function getAccountLedger(
   accountId: number,
   from?: Date,
   to?: Date,
-  client = prisma
+  client = prisma,
+  costCenter?: CostCenterFilter
 ): Promise<AccountLedger | null> {
   const account = await client.account.findUnique({ where: { id: accountId } });
   if (!account) return null;
 
   const sign = account.normalBalance === "credit" ? -1 : 1;
+  const cc = costCenterLineWhere(costCenter);
 
   const opening = from
     ? await client.journalLine.aggregate({
         _sum: { baseDebit: true, baseCredit: true },
-        where: { accountId, journal: { date: { lt: from } } },
+        where: { accountId, ...cc, journal: { date: { lt: from } } },
       })
     : null;
   let balance =
@@ -241,6 +283,7 @@ export async function getAccountLedger(
   const lines = await client.journalLine.findMany({
     where: {
       accountId,
+      ...cc,
       ...(from || to ? { journal: { date: dateFilter } } : {}),
     },
     include: { journal: true },

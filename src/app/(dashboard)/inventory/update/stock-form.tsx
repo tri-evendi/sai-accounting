@@ -24,6 +24,11 @@ import { AlertCircle, Info, Lock, Package } from "lucide-react";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  CostCenterField,
+  costCenterPayload,
+  useCostCenters,
+} from "@/components/shared/cost-center-field";
 import { formatNumber } from "@/lib/utils";
 import {
   closedPeriodIssue,
@@ -51,6 +56,8 @@ interface StockPayload {
   date: string;
   unitCost?: number;
   note: string;
+  /** issue #98 — dimensi HPP gerakan ini. `null` = belum ditetapkan. */
+  costCenterId: number | null;
 }
 
 export function StockUpdateForm({
@@ -73,6 +80,10 @@ export function StockUpdateForm({
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [pending, setPending] = useState<StockPayload | null>(null);
+  // issue #98 — pengeluaran stok MANUAL adalah satu-satunya jalur HPP tanpa
+  // dokumen sumber untuk diwarisi, jadi dimensinya hanya bisa datang dari sini.
+  const costCenters = useCostCenters();
+  const [costCenterId, setCostCenterId] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
   // New item form
@@ -211,6 +222,7 @@ export function StockUpdateForm({
       date: String(formData.get("date") ?? ""),
       unitCost: movementType === "in" ? unitCost || undefined : undefined,
       note: String(formData.get("note") ?? ""),
+      costCenterId: costCenterPayload(costCenterId),
     };
 
     if (movementType === "out" && item && isLargeStockOut(qtyValue, item.currentStock)) {
@@ -387,6 +399,13 @@ export function StockUpdateForm({
                 )}
               </div>
               <Input id="note" name="note" label={t("common.notesOptional")} />
+
+              <CostCenterField
+                costCenters={costCenters}
+                value={costCenterId}
+                onChange={setCostCenterId}
+                hint={t("costCenters.stockPickerHint")}
+              />
 
               <div className="flex gap-3">
                 <Button type="submit" className="cursor-pointer" disabled={loading}>

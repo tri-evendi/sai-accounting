@@ -12,6 +12,8 @@ import {
   revocationNotice,
   type ReevaluateResult,
 } from "@/lib/approval-requests";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(
   _request: Request,
@@ -27,7 +29,8 @@ export async function GET(
   });
 
   if (!contract) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.contractNotFound") }, { status: 404 });
   }
 
   return NextResponse.json(contract);
@@ -45,8 +48,17 @@ export async function PUT(
   const parsed = contractSchema.safeParse(body);
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -148,19 +160,20 @@ export async function DELETE(
     prisma.deliveryOrder.count({ where: { contractId } }),
   ]);
   if (invoiceCount > 0 || deliveryOrderCount > 0) {
-    const parts = [
-      invoiceCount > 0 ? `${invoiceCount} faktur` : null,
-      deliveryOrderCount > 0 ? `${deliveryOrderCount} surat jalan` : null,
-    ].filter(Boolean);
-    return NextResponse.json(
-      {
-        error:
-          `Kontrak ini sudah dipakai oleh ${parts.join(" dan ")}, jadi tidak bisa dihapus. ` +
-          `Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontrak ` +
-          `(status "canceled") agar rantai dokumennya tetap utuh.`,
-      },
-      { status: 400 }
-    );
+    const { t } = await getRequestI18n();
+    // Tiga cabang, bukan satu daftar yang disambung `" dan "`: kata sambung itu
+    // sendiri berbeda antarbahasa (dan hilang sama sekali dalam bahasa
+    // Mandarin), jadi tiap bahasa menulis frasa pencacahannya sendiri.
+    const used =
+      invoiceCount > 0 && deliveryOrderCount > 0
+        ? t("errors.contractUsedBoth", {
+            invoices: invoiceCount,
+            deliveryOrders: deliveryOrderCount,
+          })
+        : invoiceCount > 0
+          ? t("errors.contractUsedInvoices", { count: invoiceCount })
+          : t("errors.contractUsedDeliveryOrders", { count: deliveryOrderCount });
+    return NextResponse.json({ error: t("errors.contractInUse", { used }) }, { status: 400 });
   }
 
   try {

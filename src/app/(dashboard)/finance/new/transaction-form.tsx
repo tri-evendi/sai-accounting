@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
+import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
 import { cn } from "@/lib/utils";
 import type { CashType } from "@/lib/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
@@ -85,6 +86,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  // issue #91/#98 — pemilih bersama dengan faktur, pembelian dan gerakan stok.
+  const costCenters = useCostCenters();
+  const [costCenterId, setCostCenterId] = useState("");
   // Drives which extra fields the accounting engine needs from the user.
   const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [type, setType] = useState<CashType>("bank");
@@ -218,6 +222,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       counterAccountId: counterAccountIdVal,
       rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
       note: formData.get("note") || undefined,
+      // Tak dipilih = null = "belum ditetapkan / seluruh perusahaan" — nilai
+      // yang SAH, bukan isian yang terlewat (issue #91).
+      costCenterId: costCenterId ? Number(costCenterId) : null,
     };
 
     const res = await fetch("/api/finance", {
@@ -386,6 +393,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   </span>
                 </p>
               </div>
+
+              <CostCenterField
+                className="sm:col-span-2"
+                costCenters={costCenters}
+                value={costCenterId}
+                onChange={setCostCenterId}
+              />
             </div>
 
             {value > 0 && (

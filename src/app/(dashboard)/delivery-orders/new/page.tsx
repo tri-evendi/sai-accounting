@@ -1,4 +1,4 @@
-import { requirePagePermission } from "@/lib/page-auth";
+import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -11,7 +11,15 @@ import { DeliveryOrderForm } from "./delivery-order-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryOrderPage() {
-  await requirePagePermission("delivery_order.write");
+  const session = await requirePagePermission("delivery_order.write");
+  /*
+   * issue #103 — empty state stok mengajak ke /inventory/update, milik modul
+   * `inventory`. Halaman ini milik modul lain, dan preset "Jasa" (sales tanpa
+   * stok) memang mematikan `inventory` — ajakannya jadi tautan yang memantul.
+   * Komponen kliennya tidak bisa memeriksa modul sendiri (tidak ada konteks
+   * modul di sisi client), jadi jawabannya dihitung di server dan dioper.
+   */
+  const canUpdateStock = await canOpenPage(session.user, "inventory.write");
   const t = await getT();
 
   const [contracts, invoices, consignees, items, closedPeriods] = await Promise.all([
@@ -38,7 +46,7 @@ export default async function NewDeliveryOrderPage() {
         id: true,
         name: true,
         unit: true,
-        stock: { select: { quantity: true, type: true, date: true } },
+        stockMovements: { select: { quantity: true, type: true, date: true } },
       },
     }),
     listClosedPeriods(),
@@ -57,6 +65,7 @@ export default async function NewDeliveryOrderPage() {
       />
       <LearnMore term="surat_jalan" className="mt-1 mb-6" label={t("deliveryOrders.learnMore")} />
       <DeliveryOrderForm
+        canUpdateStock={canUpdateStock}
         contracts={contracts.map((c) => ({
           id: c.id,
           contractNo: c.contractNo,
@@ -78,7 +87,7 @@ export default async function NewDeliveryOrderPage() {
           id: it.id,
           name: it.name,
           unit: it.unit,
-          currentStock: calculateStockTotals(it.stock).currentStock,
+          currentStock: calculateStockTotals(it.stockMovements).currentStock,
         }))}
         closedPeriods={closedPeriods}
       />

@@ -27,6 +27,8 @@ import { postForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { resolveApplicationLines, getAdvanceTargetState } from "@/lib/advances";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 /** Remaining balance of a compensation target, for the form that fills it in. */
 export async function GET(request: Request) {
@@ -37,11 +39,15 @@ export async function GET(request: Request) {
   const kind = url.searchParams.get("targetKind");
   const id = Number(url.searchParams.get("targetId"));
   if ((kind !== "invoice" && kind !== "purchase") || !Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "targetKind/targetId tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const target = await getAdvanceTargetState(kind, id);
-  if (!target) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+  if (!target) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.documentNotFound") }, { status: 404 });
+  }
   return NextResponse.json(target);
 }
 
@@ -52,15 +58,25 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = advanceApplicationsSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
 
   const { targetKind, targetId, date, lines, note } = parsed.data;
   if (lines.length === 0) {
-    return NextResponse.json({ error: "Tidak ada uang muka yang dipilih." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.noAdvanceSelected") }, { status: 400 });
   }
 
   // Everything the payload cannot prove: the advances exist, point the right
@@ -138,12 +154,14 @@ export async function DELETE(request: Request) {
 
   const id = Number(new URL(request.url).searchParams.get("id"));
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const existing = await prisma.advanceApplication.findUnique({ where: { id } });
   if (!existing) {
-    return NextResponse.json({ error: "Kompensasi tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.advanceApplicationNotFound") }, { status: 404 });
   }
 
   try {

@@ -2,7 +2,7 @@ import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { round2 } from "@/lib/posting/rules";
 
-/** Stock movement row shape (Prisma Stock or API payload). */
+/** Stock movement row shape (Prisma `StockMovement` or API payload). */
 export type StockMovement = {
   quantity: number | string | { toString(): string };
   type: string;
@@ -24,7 +24,7 @@ export type ItemWithStock = {
   id: number;
   name: string;
   unit: string | null;
-  stock: StockMovement[];
+  stockMovements: StockMovement[];
 };
 
 export type InventorySummary = {
@@ -134,19 +134,19 @@ export function calculateStockTotals(movements: StockMovement[]) {
 }
 
 export function summarizeInventoryItem(item: ItemWithStock): InventorySummary {
-  const sorted = [...item.stock].sort((a, b) => {
+  const sorted = [...item.stockMovements].sort((a, b) => {
     const da = new Date(a.date).getTime();
     const db = new Date(b.date).getTime();
     return db - da;
   });
-  const totals = calculateStockTotals(item.stock);
+  const totals = calculateStockTotals(item.stockMovements);
 
   // Nilai persediaan (issue #58): rata-rata tertimbang dari gerakan `in`
   // bercosting — pola & fungsi yang SAMA dengan mesin COGS, jadi nilai neraca
   // dan HPP tidak bisa memakai biaya berbeda. `unitCost` 0 berarti tak ada
   // dasar biaya (item legacy tanpa unit_cost) → nilai dilaporkan `null`, bukan
   // Rp 0 yang menyesatkan.
-  const unitCost = weightedAverageUnitCost(item.stock);
+  const unitCost = weightedAverageUnitCost(item.stockMovements);
   const hasCostBasis = unitCost > 0;
 
   return {
@@ -154,7 +154,7 @@ export function summarizeInventoryItem(item: ItemWithStock): InventorySummary {
     name: item.name,
     unit: item.unit,
     ...totals,
-    movementCount: item.stock.length,
+    movementCount: item.stockMovements.length,
     unitCost: hasCostBasis ? unitCost : null,
     stockValue: hasCostBasis ? round2(totals.currentStock * unitCost) : null,
     lastMovement: sorted[0] ? serializeMovement(sorted[0]) : null,

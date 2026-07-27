@@ -8,6 +8,28 @@
  * itu tidak ditemukan (mis. panel disembunyikan untuk peran tertentu), langkahnya
  * tetap tampil sebagai kartu di tengah layar — tur tidak boleh macet hanya karena
  * satu sasaran tidak ada.
+ *
+ * ── Tur vs modul usaha (issue #103) ────────────────────────────────────────
+ * Turnya sendiri TIDAK rusak oleh modul: `tourForPath` mencocokkan path persis,
+ * jadi halaman yang tak terjangkau tak pernah memicu turnya, dan sasaran
+ * `data-tour` yang hilang jatuh ke kartu di tengah (lihat paragraf di atas).
+ *
+ * Yang sempat menyesatkan adalah ISI-nya: dua langkah tur Beranda MENYEBUT SATU
+ * PER SATU pekerjaan dan kelompok menu yang belum tentu ada — "tambah stok, buat
+ * kontrak" pada perusahaan jasa menjanjikan tombol yang memang tidak dirender.
+ * Perbaikannya di kalimat, bukan di mesin: kedua langkah itu kini menjelaskan
+ * ATURANNYA ("yang tampil hanya yang boleh Anda kerjakan dan yang dipakai
+ * perusahaan ini") alih-alih membacakan daftar isinya.
+ *
+ * SENGAJA belum ada `permission` per langkah. Rancangan awal #103 mengusulkannya,
+ * tapi setelah ditelusuri tak satu pun langkah yang ada berpasangan satu-lawan-
+ * satu dengan sebuah modul: keempat sasaran tur Beranda (Aksi Cepat, Ringkasan,
+ * menu samping, menu Bantuan) selalu dirender, dan tur lain hidup di halaman yang
+ * seluruhnya milik satu modul — mati modulnya, halamannya pun tak terbuka.
+ * Menambah medan izin yang tak dipakai siapa pun berarti menambah mesin (plus
+ * pembacaan izin di sisi client) untuk penyaringan yang tak pernah terjadi. Saat
+ * kelak ada langkah yang memang milik satu modul, medan itu ditambahkan
+ * bersamanya.
  */
 
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -54,7 +76,7 @@ export const TOURS: TourDef[] = [
         title: "Aksi Cepat",
         titleKey: "tours.beranda.s2.title",
         body:
-          "Enam pekerjaan tersering ada di sini — catat penjualan, catat pembelian, terima uang, bayar, tambah stok, buat kontrak. Satu klik langsung ke formulirnya.",
+          "Pekerjaan yang paling sering Anda lakukan ada di sini — mencatat penjualan, menerima uang, dan seterusnya. Yang tampil hanya yang boleh Anda kerjakan dan yang dipakai perusahaan ini, jadi daftarnya bisa berbeda antar pengguna. Satu klik langsung ke formulirnya.",
         bodyKey: "tours.beranda.s2.body",
         target: "aksi-cepat",
       },
@@ -70,7 +92,7 @@ export const TOURS: TourDef[] = [
         title: "Menu per jenis pekerjaan",
         titleKey: "tours.beranda.s4.title",
         body:
-          "Menu kiri dikelompokkan menurut pekerjaan: Penjualan, Pembelian, Kas & Bank, Stok & Aset, Laporan, Bantuan & Pengaturan.",
+          "Menu kiri dikelompokkan menurut pekerjaan — penjualan, pembelian, kas & bank, laporan, dan seterusnya. Kelompok untuk fitur yang tidak dipakai perusahaan ini tidak ditampilkan, jadi menu Anda mungkin lebih pendek daripada milik orang lain.",
         bodyKey: "tours.beranda.s4.body",
         target: "menu-tugas",
       },

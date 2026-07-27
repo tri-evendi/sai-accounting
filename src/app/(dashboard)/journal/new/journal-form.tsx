@@ -29,15 +29,31 @@ interface AccountOption {
   isActive: boolean;
 }
 
+/** Pusat biaya aktif, untuk pemilih di kepala & per baris (issue #91). */
+interface CostCenterOption {
+  id: number;
+  code: string;
+  name: string;
+}
+
 interface LineRow {
   accountId: string;
   debit: string;
   credit: string;
   currency: string;
   rate: string;
+  /** Kosong = ikut pilihan di kepala jurnal (issue #91). */
+  costCenterId: string;
 }
 
-const emptyLine = (): LineRow => ({ accountId: "", debit: "", credit: "", currency: "IDR", rate: "1" });
+const emptyLine = (): LineRow => ({
+  accountId: "",
+  debit: "",
+  credit: "",
+  currency: "IDR",
+  rate: "1",
+  costCenterId: "",
+});
 
 const todayISO = () => {
   const d = new Date();
@@ -52,8 +68,10 @@ export function NewJournalForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenterOption[]>([]);
   const [date, setDate] = useState(todayISO());
   const [note, setNote] = useState("");
+  const [costCenterId, setCostCenterId] = useState("");
   const [lines, setLines] = useState<LineRow[]>([emptyLine(), emptyLine()]);
 
   useEffect(() => {
@@ -61,11 +79,31 @@ export function NewJournalForm() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: AccountOption[]) => setAccounts(data.filter((a) => a.isActive)))
       .catch(() => setAccounts([]));
+    // Hanya yang aktif: yang sudah dinonaktifkan tak boleh bisa DIPILIH lagi,
+    // walau namanya tetap terbaca pada jurnal lama yang menyebutnya.
+    fetch("/api/cost-centers?activeOnly=1")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: CostCenterOption[]) => setCostCenters(data))
+      .catch(() => setCostCenters([]));
   }, []);
 
   const accountOptions = [
     { value: "", label: t("common.pickAccount") },
     ...accounts.map((a) => ({ value: String(a.id), label: `${a.code} — ${a.name}` })),
+  ];
+  const costCenterChoices = costCenters.map((c) => ({
+    value: String(c.id),
+    label: `${c.code} — ${c.name}`,
+  }));
+  /** Kepala: kosong = seluruh perusahaan. */
+  const headerCostCenterOptions = [
+    { value: "", label: t("costCenters.filterUnassigned") },
+    ...costCenterChoices,
+  ];
+  /** Baris: kosong = IKUT KEPALA, yang tidak sama artinya dengan di kepala. */
+  const lineCostCenterOptions = [
+    { value: "", label: t("journal.costCenterFollowHeader") },
+    ...costCenterChoices,
   ];
 
   const totalDebit = lines.reduce((s, l) => s + base(l.debit, l.rate), 0);
@@ -88,6 +126,7 @@ export function NewJournalForm() {
         credit: Number(l.credit) || 0,
         currency: l.currency,
         rate: Number(l.rate) || 1,
+        costCenterId: l.costCenterId ? Number(l.costCenterId) : null,
       }));
 
     if (payloadLines.length < 2) {
@@ -103,7 +142,12 @@ export function NewJournalForm() {
     const res = await fetch("/api/journals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, note: note || null, lines: payloadLines }),
+      body: JSON.stringify({
+        date,
+        note: note || null,
+        costCenterId: costCenterId ? Number(costCenterId) : null,
+        lines: payloadLines,
+      }),
     });
 
     if (!res.ok) {
@@ -143,6 +187,21 @@ export function NewJournalForm() {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={t("journal.notePlaceholder")}
               />
+              {/* issue #91 — pusat biaya BAWAAN. Baris boleh menimpanya, dan
+                  memang harus bisa: satu jurnal yang sah dapat mencakup lebih
+                  dari satu cabang. */}
+              <div className="sm:col-span-2">
+                <Select
+                  id="costCenterId"
+                  label={t("journal.costCenterField")}
+                  value={costCenterId}
+                  onChange={(e) => setCostCenterId(e.target.value)}
+                  options={headerCostCenterOptions}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("journal.costCenterHint")}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -162,6 +221,7 @@ export function NewJournalForm() {
                   <TableHead className="h-auto px-2 py-2 text-right">{t("common.credit")}</TableHead>
                   <TableHead className="h-auto px-2 py-2">{t("common.currency")}</TableHead>
                   <TableHead className="h-auto px-2 py-2 text-right">{t("common.rateTerm")}</TableHead>
+                  <TableHead className="h-auto px-2 py-2">{t("journal.colCostCenter")}</TableHead>
                   <TableHead className="h-auto py-2 pr-0 pl-2"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -219,6 +279,14 @@ export function NewJournalForm() {
                         onChange={(e) => updateLine(i, { rate: e.target.value })}
                       />
                     </TableCell>
+                    <TableCell className="min-w-[180px] px-2 py-2">
+                      <Select
+                        aria-label={t("journal.colCostCenter")}
+                        value={l.costCenterId}
+                        onChange={(e) => updateLine(i, { costCenterId: e.target.value })}
+                        options={lineCostCenterOptions}
+                      />
+                    </TableCell>
                     <TableCell className="py-2 pr-0 pl-2">
                       <Button
                         type="button"
@@ -244,7 +312,7 @@ export function NewJournalForm() {
                   <TableCell className="p-0">
                     <MoneyCell className="px-2 py-3" value={totalCredit} currency="IDR" />
                   </TableCell>
-                  <TableCell colSpan={3} className="px-2 py-3">
+                  <TableCell colSpan={4} className="px-2 py-3">
                     {balanced ? (
                       <span className="text-success-strong">✓ {t("journal.balanced")}</span>
                     ) : (

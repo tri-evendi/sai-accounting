@@ -16,7 +16,7 @@
  *   3. `in` rows with a NULL unit_cost are excluded from both numerator and
  *      denominator: costing what we know beats averaging in a fake zero.
  *   4. Costs are IDR only. Foreign-currency purchases must be converted before
- *      being stored in stock.unit_cost.
+ *      being stored in `stock_movements.unit_cost`.
  */
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { round2 } from "./rules";
@@ -74,7 +74,7 @@ export async function averageUnitCostForItem(
   asOf: Date,
   client: Client
 ): Promise<number> {
-  const movements = await client.stock.findMany({
+  const movements = await client.stockMovement.findMany({
     where: { itemId, type: "in", date: { lte: asOf } },
     select: { quantity: true, type: true, unitCost: true },
   });

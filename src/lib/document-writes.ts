@@ -164,6 +164,14 @@ export type CreatedDeliveryOrder = Prisma.DeliveryOrderGetPayload<{ include: { i
  * HPP tidak dihitung di sini: setiap baris menghasilkan satu pergerakan stok
  * `out` yang diposting lewat mesin yang sudah ada (`stock_movement`) — jalur yang
  * sama persis dengan pengeluaran stok manual. Tidak ada aturan HPP kedua.
+ *
+ * PUSAT BIAYA HPP (issue #98): gerakan yang dilahirkan di sini MEWARISI pusat
+ * biaya dari FAKTUR yang disebut surat jalannya. Inilah satu-satunya titik di
+ * mana dokumen sumber HPP masih terlihat — sesudah baris gerakannya tertulis,
+ * yang tersisa hanyalah teks `note`, jadi warisannya harus distempel sekarang
+ * atau tidak sama sekali. Surat jalan tanpa faktur (mis. hanya menyebut
+ * kontrak) tetap NULL: menebak cabangnya dari kontrak akan membebani cabang
+ * yang belum tentu benar, dan "belum ditetapkan" adalah kegagalan yang jujur.
  */
 export async function createDeliveryOrderInTx(
   tx: Tx,
@@ -176,7 +184,7 @@ export async function createDeliveryOrderInTx(
 
   // Penjaga stok, di dalam transaksi supaya membaca stok yang konsisten dan ikut
   // ter-rollback bila menyala.
-  const stockRows = await tx.stock.findMany({
+  const stockRows = await tx.stockMovement.findMany({
     where: { itemId: { in: itemIds } },
     select: { itemId: true, quantity: true, type: true },
   });
@@ -220,8 +228,21 @@ export async function createDeliveryOrderInTx(
     include: { items: true },
   });
 
+  // Dimensi HPP diwarisi dari faktur yang disebut surat jalan ini (issue #98).
+  // Dibaca sekali, di dalam transaksi yang sama, jadi nilainya adalah nilai yang
+  // benar-benar tersimpan saat surat jalan terbit.
+  const costCenterId =
+    invoiceId == null
+      ? null
+      : (
+          await tx.invoice.findUnique({
+            where: { id: invoiceId },
+            select: { costCenterId: true },
+          })
+        )?.costCenterId ?? null;
+
   for (const line of order.items) {
-    const movement = await tx.stock.create({
+    const movement = await tx.stockMovement.create({
       data: {
         itemId: line.itemId,
         quantity: line.quantity,
@@ -229,6 +250,7 @@ export async function createDeliveryOrderInTx(
         date: doDate,
         unitCost: null,
         note: `Surat jalan ${no} — ${line.itemName}`,
+        costCenterId,
       },
     });
     await postForSource({ sourceType: "stock_movement", sourceId: movement.id, tx });
@@ -263,7 +285,7 @@ export async function createStockInMovementsInTx(
 ): Promise<{ id: number; itemId: number; quantity: number }[]> {
   const created: { id: number; itemId: number; quantity: number }[] = [];
   for (const line of lines) {
-    const movement = await tx.stock.create({
+    const movement = await tx.stockMovement.create({
       data: {
         itemId: line.itemId,
         quantity: line.quantity,

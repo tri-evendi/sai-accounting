@@ -22,6 +22,8 @@ export interface FakeLine {
   baseDebit: number;
   baseCredit: number;
   memo: string | null;
+  /** Dimensi pusat biaya yang distempel `prepareLines` (issue #91). */
+  costCenterId: number | null;
 }
 
 export interface FakeJournal {
@@ -34,6 +36,8 @@ export interface FakeJournal {
   sourceId: number | null;
   isReversed: boolean;
   reversalOfId: number | null;
+  /** Pusat biaya BAWAAN kepala jurnal (issue #91). */
+  costCenterId: number | null;
   lines: FakeLine[];
 }
 
@@ -76,7 +80,12 @@ export interface FakeSeed {
   contractPayments?: Record<number, unknown>;
   supplierTransactions?: Record<number, unknown>;
   cashAccounts?: Record<number, unknown>;
-  stocks?: Record<number, unknown>;
+  /**
+   * Pergerakan stok (issue #92 — dulu `stock`). `…ById` melayani `findUnique`
+   * (dokumen sumber HPP / penyesuaian opname); larik `stockMovements` melayani
+   * `findMany` (riwayat yang dipakai rata-rata tertimbang).
+   */
+  stockMovementsById?: Record<number, unknown>;
   stockMovements?: unknown[];
   /** Uang muka (issue #26). Seed the nested advance/invoice/purchase inline. */
   advancePayments?: Record<number, unknown>;
@@ -162,6 +171,7 @@ export function createFakeClient(seed: FakeSeed = {}) {
           sourceId: (data.sourceId as number) ?? null,
           isReversed: false,
           reversalOfId: (data.reversalOfId as number) ?? null,
+          costCenterId: (data.costCenterId as number) ?? null,
           lines: rawLines.map((l) => {
             lineId += 1;
             return { ...l, id: lineId, journalId } as FakeLine;
@@ -218,8 +228,9 @@ export function createFakeClient(seed: FakeSeed = {}) {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.advanceApplications, where.id),
     },
-    stock: {
-      findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.stocks, where.id),
+    stockMovement: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.stockMovementsById, where.id),
       findMany: async ({ where }: { where: Where }) =>
         (seed.stockMovements ?? []).filter((m) =>
           matches(m as Record<string, unknown>, where)
@@ -291,6 +302,12 @@ export interface FakeSeedLine {
   currency?: string;
   rate?: number;
   memo?: string | null;
+  /**
+   * Dimensi pusat biaya (issue #91). Dibiarkan kosong ⇒ `null` = "belum
+   * ditetapkan" — keadaan SELURUH data lama, jadi seed yang sudah ada tetap
+   * berperilaku persis seperti sebelumnya.
+   */
+  costCenterId?: number | null;
 }
 
 export interface FakeSeedJournal {
@@ -312,6 +329,7 @@ interface ResolvedLine {
   baseDebit: number;
   baseCredit: number;
   memo: string | null;
+  costCenterId: number | null;
   journal: { id: number; number: string; date: Date; note: string | null };
 }
 
@@ -329,6 +347,13 @@ function dateMatches(date: Date, filter: { gte?: Date; lte?: Date; lt?: Date } |
 
 type LineWhere = {
   accountId?: number;
+  /**
+   * Issue #91. Tiga keadaan, dan bedanya penting: kunci TIDAK ADA = tanpa
+   * penyaring, `null` = hanya baris yang belum ditetapkan, angka = satu pusat
+   * biaya. Menyamakan `null` dengan "tanpa penyaring" akan membuat penjaga
+   * rekonsiliasi lulus padahal salah.
+   */
+  costCenterId?: number | null;
   journal?: { date?: { gte?: Date; lte?: Date; lt?: Date } };
 };
 
@@ -368,6 +393,7 @@ export function createFakeReportClient(seed: {
         baseDebit: round2(debit * rate),
         baseCredit: round2(credit * rate),
         memo: l.memo ?? null,
+        costCenterId: l.costCenterId ?? null,
         journal,
       });
     }
@@ -377,6 +403,9 @@ export function createFakeReportClient(seed: {
     lines.filter(
       (l) =>
         (where?.accountId === undefined || l.accountId === where.accountId) &&
+        // `in` (bukan `!== undefined`): `costCenterId: null` adalah penyaring
+        // yang SAH ("belum ditetapkan"), bukan ketiadaan penyaring.
+        (!where || !("costCenterId" in where) || l.costCenterId === where.costCenterId) &&
         dateMatches(l.journal.date, where?.journal?.date)
     );
 

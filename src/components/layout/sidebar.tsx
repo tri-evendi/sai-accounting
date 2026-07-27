@@ -37,11 +37,13 @@ import {
   ShieldCheck,
   ShoppingCart,
   SquarePen,
+  Split,
   ChevronRight,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { APP_NAME } from "@/lib/constants";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import {
@@ -101,37 +103,8 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   ShoppingCart,
   SquarePen,
+  Split,
 };
-
-/**
- * Set izin EFEKTIF milik pengguna (issue #73): matriks bawaan + override DB,
- * dibaca sekali per pemuatan sidebar dari `/api/user/permissions`. Sebelum
- * jawabannya tiba (atau bila permintaannya gagal) nilainya `undefined` dan
- * penyaringan nav jatuh ke `can()` matriks bawaan — perilaku lama. TAMPILAN
- * SAJA: halaman tujuan tetap dijaga `requirePagePermission` server-side.
- */
-function useEffectivePermissions(role: string): ReadonlySet<string> | undefined {
-  const [allowed, setAllowed] = useState<ReadonlySet<string> | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/user/permissions")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { permissions?: string[] } | null) => {
-        if (!cancelled && Array.isArray(data?.permissions)) {
-          setAllowed(new Set(data.permissions));
-        }
-      })
-      .catch(() => {
-        // Biarkan undefined — fallback matriks bawaan.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [role]);
-
-  return allowed;
-}
 
 function NavLink({
   item,

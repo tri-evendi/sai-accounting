@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  CostCenterField,
+  costCenterPayload,
+  useCostCenters,
+} from "@/components/shared/cost-center-field";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
@@ -50,6 +55,10 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   const [purchases, setPurchases] = useState<OutstandingPurchase[]>([]);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
   const [alloc, setAlloc] = useState<Record<number, string>>({});
+  // issue #98 — cabang/unit yang menanggung pembelian (atau membayarnya). Retur
+  // pembeliannya mewarisi dimensi ini.
+  const costCenters = useCostCenters();
+  const [costCenterId, setCostCenterId] = useState("");
 
   const isForeign = currency !== BASE_CURRENCY;
   const isPurchase = type === "purchase";
@@ -116,6 +125,8 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
       // Omitted entirely on a purchase, and when a payment settles nothing in
       // particular — an unallocated payment is valid and falls back to FIFO.
       allocations: !isPurchase && allocEntries.length > 0 ? allocEntries : undefined,
+      // Tak dipilih = null = "belum ditetapkan / seluruh perusahaan" (issue #98).
+      costCenterId: costCenterPayload(costCenterId),
     };
 
     const res = await fetch(`/api/suppliers/${supplierId}/transactions`, {
@@ -251,6 +262,13 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
             <p className="mt-1 text-xs text-muted-foreground">{t("suppliers.txInputVatHint")}</p>
           </div>
         )}
+
+        <CostCenterField
+          className="sm:col-span-2"
+          costCenters={costCenters}
+          value={costCenterId}
+          onChange={setCostCenterId}
+        />
 
         {!isPurchase && (
           <fieldset className="sm:col-span-2 rounded-lg border border-border bg-card p-3">

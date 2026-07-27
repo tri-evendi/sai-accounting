@@ -21,8 +21,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { Loader2, Info, Plus, Trash2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Info,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  RotateCcw,
+} from "lucide-react";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { ModulePicker } from "@/components/settings/module-picker";
+import {
+  BUSINESS_MODULES,
+  modulesForCategory,
+  normalizeEnabledModules,
+  type BusinessCategory,
+  type BusinessModule,
+} from "@/lib/business-modules";
 
 interface CashAccount {
   id: number;
@@ -74,15 +91,30 @@ export function SetupWizard({
   const router = useRouter();
   const { toast } = useToast();
 
+  /**
+   * Langkah dirujuk lewat NAMA, bukan angka (issue #99 menyisipkan satu langkah
+   * baru di tengah). Angka yang tersebar di JSX membuat penyisipan berikutnya
+   * jadi latihan menggeser indeks — dan satu indeks yang lupa digeser adalah
+   * langkah yang hilang tanpa galat.
+   *
+   * Kunci kamusnya ikut bernama, bukan bernomor (issue #103). `setup.step1`–
+   * `step5` sudah bohong sejak langkah modul disisipkan di posisi kedua:
+   * "step2" adalah langkah KETIGA di layar. Nomor pada nama kunci hanya benar
+   * selama tak ada yang menyisipkan langkah — dan itu sudah terjadi sekali.
+   * Jumlah langkah kini dihitung dari `steps.length`, bukan diketik ulang.
+   */
+  const STEP_KEYS = ["identity", "modules", "settings", "coa", "balances", "review"] as const;
   const steps = [
-    t("setup.step1"),
-    t("setup.step2"),
-    t("setup.step3"),
-    t("setup.step4"),
-    t("setup.step5"),
+    t("setup.stepIdentity"),
+    t("modules.stepTitle"),
+    t("setup.stepCurrency"),
+    t("setup.stepCoa"),
+    t("setup.stepBalances"),
+    t("setup.stepReview"),
   ];
 
   const [step, setStep] = useState(0);
+  const current = STEP_KEYS[step];
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +125,12 @@ export function SetupWizard({
   const [npwp, setNpwp] = useState("");
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
+
+  // Langkah modul (issue #99). Nilai awalnya SEMUA modul menyala: wizard yang
+  // diklik lewat begitu saja meninggalkan aplikasi persis seperti sebelum fitur
+  // ini ada — kolomnya tersimpan NULL (lihat `serializeEnabledModules`).
+  const [category, setCategory] = useState<BusinessCategory | "">("");
+  const [modules, setModules] = useState<ReadonlySet<BusinessModule>>(new Set(BUSINESS_MODULES));
 
   // Step 4: opening balances
   const [cash, setCash] = useState<CashRow[]>([]);
@@ -182,6 +220,11 @@ export function SetupWizard({
         baseCurrency,
         fiscalYearStart,
         npwp: npwp || undefined,
+        // Modul usaha (issue #99). Kategori hanya dicatat; yang berlaku adalah
+        // himpunan modulnya, dan server menormalkan + memvalidasinya lagi
+        // (modul inti tak bisa dimatikan, bahkan dari sini).
+        businessCategory: category || undefined,
+        modules: normalizeEnabledModules(modules),
       },
       cash: cash
         .filter((r) => r.accountId && (Number(r.amount) || 0) > 0)
@@ -239,20 +282,39 @@ export function SetupWizard({
   }
 
   const canNext =
-    (step === 0 && name.trim().length > 0) ||
-    (step === 1 && !!baseCurrency && !!fiscalYearStart) ||
-    step === 2 ||
-    step === 3;
+    (current === "identity" && name.trim().length > 0) ||
+    // Langkah modul tak pernah menghalangi: melewatinya berarti "semua aktif".
+    current === "modules" ||
+    (current === "settings" && !!baseCurrency && !!fiscalYearStart) ||
+    current === "coa" ||
+    current === "balances";
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
 
   return (
     <div className="space-y-6">
-      {/* Stepper */}
+      {/*
+       * Stepper + hitungan "Langkah X dari Y" (issue #103 · Progress
+       * Indicators). Hitungannya DITURUNKAN dari `steps`, tidak pernah diketik:
+       * langkah modul yang disisipkan #99 membuat wizard ini enam langkah
+       * sementara kamusnya masih bernomor sampai lima, dan angka yang diketik
+       * ulang cepat atau lambat akan berbohong lagi.
+       *
+       * Kalimatnya berdiri sendiri di atas deretan pil, bukan mengandalkan
+       * pil-pilnya saja: pada layar sempit deretan itu membungkus jadi dua-tiga
+       * baris, dan "seberapa jauh lagi" — satu-satunya pertanyaan pengguna di
+       * layar wajib — jadi harus dihitung sendiri dengan mata.
+       */}
+      <p className="text-sm font-medium text-muted-foreground">
+        <span className="tabular-nums">
+          {t("setup.stepCounter", { current: step + 1, total: steps.length })}
+        </span>
+      </p>
       <ol className="flex flex-wrap gap-2 text-sm" aria-label={t("setup.stepsAria")}>
         {steps.map((label, i) => (
           <li
             key={label}
+            aria-current={i === step ? "step" : undefined}
             className={
               "flex items-center gap-2 rounded-md px-3 py-1.5 " +
               (i === step
@@ -274,7 +336,7 @@ export function SetupWizard({
 
       <Card className="p-6">
         {/* Step 0 — identity */}
-        {step === 0 && (
+        {current === "identity" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.identityTitle")}</h2>
             <Input
@@ -309,10 +371,55 @@ export function SetupWizard({
           </div>
         )}
 
-        {/* Step 1 — base currency + fiscal year */}
-        {step === 1 && (
+        {/* Modul usaha (issue #99) — kategori sebagai preset, modul tetap
+            bisa diubah satu per satu. Melewatinya = semua modul aktif. */}
+        {current === "modules" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.step2")}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("modules.stepHeading")}</h2>
+            <p className="text-sm text-muted-foreground">{t("modules.stepHint")}</p>
+            {/*
+             * "Ini bisa diubah lagi" — kalimat terpenting di seluruh langkah ini
+             * (issue #103 · UX Onboarding · User Freedom).
+             *
+             * Wizard ini WAJIB dan tidak bisa dilewati, jadi langkah modul mudah
+             * terbaca sebagai pintu satu arah. Pengguna yang mengira begitu akan
+             * menyalakan semuanya untuk berjaga-jaga — dan seluruh guna fitur ini
+             * (menyusutkan permukaan aplikasi) hilang tepat pada satu-satunya
+             * kesempatan ia dipakai.
+             *
+             * Sengaja kotak bertanda, bukan tambahan kalimat pada `stepHint` yang
+             * abu-abu kecil di atasnya: yang perlu diyakinkan justru orang yang
+             * sedang ragu-ragu memandangi daftar centang, dan teks samar tidak
+             * meyakinkan siapa pun.
+             */}
+            <p className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
+              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>{t("modules.stepReversible")}</span>
+            </p>
+            <ModulePicker
+              category={category}
+              modules={modules}
+              onCategoryChange={(next) => {
+                setCategory(next);
+                setModules(new Set(modulesForCategory(next)));
+              }}
+              onToggleModule={(module, next) =>
+                setModules((prev) => {
+                  const draft = new Set(prev);
+                  if (next) draft.add(module);
+                  else draft.delete(module);
+                  return draft;
+                })
+              }
+              disabled={saving}
+            />
+          </div>
+        )}
+
+        {/* Step 1 — base currency + fiscal year */}
+        {current === "settings" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepCurrency")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="baseCurrency"
@@ -340,7 +447,7 @@ export function SetupWizard({
         )}
 
         {/* Step 2 — confirm COA */}
-        {step === 2 && (
+        {current === "coa" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.coaTitle")}</h2>
             <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
@@ -357,9 +464,9 @@ export function SetupWizard({
         )}
 
         {/* Step 3 — opening balances */}
-        {step === 3 && (
+        {current === "balances" && (
           <div className="space-y-8">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.step4")}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepBalances")}</h2>
 
             {/* Kas / Bank */}
             <Section
@@ -488,7 +595,7 @@ export function SetupWizard({
         )}
 
         {/* Step 4 — review */}
-        {step === 4 && (
+        {current === "review" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.reviewTitle")}</h2>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -501,6 +608,18 @@ export function SetupWizard({
                   {t("setup.fiscalYearStartField")}
                 </dt>
                 <dd className="text-foreground tabular-nums">{fiscalYearStart}</dd>
+              </div>
+              {/* issue #99 — apa yang akan tampil di menu setelah wizard selesai. */}
+              <div>
+                <dt className="font-medium text-muted-foreground">
+                  {t("modules.sectionTitle")}
+                </dt>
+                <dd className="text-foreground">
+                  {t("modules.activeCount", {
+                    count: normalizeEnabledModules(modules).length,
+                    total: BUSINESS_MODULES.length,
+                  })}
+                </dd>
               </div>
             </dl>
             <BalancePanel totals={totals} t={t} />

@@ -5,21 +5,23 @@ import { prisma } from "@/lib/prisma";
 import { changePasswordApiSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sessionExpired") }, { status: 401 });
   }
 
   const rateKey = `change-password:${session.user.id}`;
   const rateCheck = checkRateLimit(rateKey, RATE_LIMITS.changePassword);
   if (!rateCheck.allowed) {
     const minutes = Math.ceil((rateCheck.retryAfterMs ?? 0) / 60_000);
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      {
-        error: `Too many attempts. Try again in ${minutes || 1} minute(s).`,
-      },
+      { error: t("errors.tooManyAttempts", { minutes: minutes || 1 }) },
       { status: 429 }
     );
   }
@@ -28,13 +30,23 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidJson") }, { status: 400 });
   }
 
   const parsed = changePasswordApiSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -46,12 +58,14 @@ export async function POST(request: Request) {
   });
 
   if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
   }
 
   const valid = await bcrypt.compare(currentPassword, user.password);
   if (!valid) {
-    return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.currentPasswordWrong") }, { status: 400 });
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);

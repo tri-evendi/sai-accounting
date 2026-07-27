@@ -24,6 +24,15 @@ import {
   type OpeningBalancesInput,
 } from "@/lib/opening-balance";
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
+import {
+  normalizeEnabledModules,
+  serializeEnabledModules,
+  validateEnabledModules,
+  type BusinessModule,
+} from "@/lib/business-modules";
+import { invalidateEnabledModules } from "@/lib/authz-effective";
 
 export async function GET() {
   const result = await requireApiPermission("setup.manage");
@@ -75,13 +84,42 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = setupSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
 
   const { company, cash, receivables, payables, inventory } = parsed.data;
+
+  /*
+   * Modul per kategori usaha (issue #99). Wizard boleh menyertakan himpunan
+   * modul; penjaga terakhirnya tetap di server — modul inti tidak bisa dimatikan
+   * bahkan pada permintaan pertama seumur pemasangan, kalau tidak wizard yang
+   * dipanggil langsung bisa menutup /permissions & /users sejak menit nol.
+   * Tidak menyebut modul sama sekali = kolomnya NULL = semua modul aktif.
+   */
+  if (company.modules) {
+    const moduleErrors = validateEnabledModules(company.modules);
+    if (moduleErrors.length > 0) {
+      return NextResponse.json(
+        { error: moduleErrors.join(" "), errors: moduleErrors },
+        { status: 400 }
+      );
+    }
+  }
+  const enabledModules = company.modules
+    ? serializeEnabledModules(normalizeEnabledModules(company.modules as BusinessModule[]))
+    : null;
 
   // Partner names for the AR/AP line memos come from the DB, not the client.
   const [customers, suppliers] = await Promise.all([
@@ -93,16 +131,18 @@ export async function POST(request: Request) {
 
   for (const r of receivables) {
     if (!customerName.has(r.partnerId)) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: `Pelanggan #${r.partnerId} tidak ditemukan.` },
+        { error: t("errors.setupCustomerNotFound", { id: r.partnerId }) },
         { status: 400 }
       );
     }
   }
   for (const p of payables) {
     if (!supplierName.has(p.partnerId)) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: `Supplier #${p.partnerId} tidak ditemukan.` },
+        { error: t("errors.setupSupplierNotFound", { id: p.partnerId }) },
         { status: 400 }
       );
     }
@@ -117,6 +157,8 @@ export async function POST(request: Request) {
       npwp: company.npwp ?? null,
       taxName: company.taxName ?? null,
       taxAddress: company.taxAddress ?? null,
+      businessCategory: company.businessCategory ?? null,
+      enabledModules,
     },
     cash: cash.map((c) => ({
       accountId: c.accountId,
@@ -144,6 +186,11 @@ export async function POST(request: Request) {
   try {
     const applied = await applyOpeningBalances(input);
 
+    // Sebelum ini pemuat modul mungkin sempat mengingat "belum ada baris
+    // perusahaan" (= semua modul aktif). Pilihan wizard harus berlaku pada
+    // permintaan berikutnya, bukan setelah satu TTL.
+    invalidateEnabledModules();
+
     await writeAuditLog({
       userId: result.session.user.id,
       username: result.session.user.name,
@@ -154,6 +201,9 @@ export async function POST(request: Request) {
         journalNumber: applied.journalNumber,
         equityPlug: applied.equityPlug,
         fiscalYearStart: company.fiscalYearStart,
+        businessCategory: company.businessCategory ?? null,
+        // NULL di sini berarti "semua modul aktif" — jejaknya sengaja jujur.
+        enabledModules,
       },
       request,
     });

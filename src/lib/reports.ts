@@ -19,6 +19,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
+import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -28,12 +29,27 @@ interface DateRange {
   lt?: Date;
 }
 
-/** Sum base debit/credit per account for an optional journal-date filter (1 groupBy query). */
-async function accountNets(range: DateRange | undefined, client = prisma) {
+/**
+ * Sum base debit/credit per account for an optional journal-date filter, and —
+ * since issue #91 — an optional cost centre (1 groupBy query either way).
+ *
+ * The cost-centre clause sits on the journal LINE, not the journal, because
+ * that is where the dimension lives: one journal may legitimately span two
+ * branches. Adding it here rather than in each report is what makes "sum of
+ * every cost centre + unassigned = the unfiltered total" a property of one
+ * query instead of a coincidence repeated per report.
+ */
+async function accountNets(
+  range: DateRange | undefined,
+  client = prisma,
+  costCenter?: CostCenterFilter
+) {
+  const cc = costCenterLineWhere(costCenter);
+  const where = { ...(range ? { journal: { date: range } } : {}), ...cc };
   const grouped = await client.journalLine.groupBy({
     by: ["accountId"],
     _sum: { baseDebit: true, baseCredit: true },
-    where: range ? { journal: { date: range } } : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
   });
   const map: Nets = new Map();
   for (const g of grouped) {
@@ -82,11 +98,25 @@ export interface StatementLine {
   amount: number;
 }
 
-export async function getIncomeStatement(from?: Date, to?: Date, client = prisma) {
+/**
+ * Laba/Rugi, optionally for a single cost centre (issue #91).
+ *
+ * `costCenter` is the ONLY thing the dimension changes here: the same accounts,
+ * the same normalisation, the same arithmetic — a narrower set of journal lines.
+ * Deliberately NOT offered on `getBalanceSheet`: filtering a balance sheet by
+ * cost centre leaves debits and credits unequal unless inter-unit due-to/due-from
+ * accounts exist to bridge them, which is a deeper design (see issue #91).
+ */
+export async function getIncomeStatement(
+  from?: Date,
+  to?: Date,
+  client = prisma,
+  costCenter?: CostCenterFilter
+) {
   const range: DateRange = {};
   if (from) range.gte = from;
   if (to) range.lte = to;
-  const nets = await accountNets(from || to ? range : undefined, client);
+  const nets = await accountNets(from || to ? range : undefined, client, costCenter);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
 
   const revenue: StatementLine[] = [];

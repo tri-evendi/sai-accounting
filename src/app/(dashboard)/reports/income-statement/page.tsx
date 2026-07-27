@@ -14,11 +14,14 @@ import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
 import { resolvePeriod } from "@/lib/report-catalog";
+import { parseCostCenterFilter } from "@/lib/cost-centers";
+import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
+import { Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -67,17 +70,28 @@ function Section({
 export default async function IncomeStatementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; costCenter?: string }>;
 }) {
   await requirePagePermission("report.read");
   const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
-  const is = await getIncomeStatement(from, to);
+  // issue #91 — pilahan per pusat biaya. Laba/Rugi SAJA (bukan Neraca): tanpa
+  // akun antar-unit, neraca yang disaring tak lagi seimbang.
+  const costCenter = parseCostCenterFilter(sp.costCenter);
+  const [costCenterOptions, costCenterName] = await Promise.all([
+    costCenterFilterOptions(),
+    costCenterFilterLabel(sp.costCenter),
+  ]);
+  const is = await getIncomeStatement(from, to, undefined, costCenter);
   const profit = is.netIncome >= 0;
   // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
-  // Indonesia (lib/pdf, lib/report-summary).
-  const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+  // Indonesia (lib/pdf, lib/report-summary). Pusat biaya yang sedang dipilih
+  // ikut TERCETAK: satu laporan yang hanya memuat sebagian angka tanpa
+  // mengatakannya adalah cara termudah salah dibaca setelah dicetak.
+  const periodLabel =
+    `Periode ${formatDate(from)} – ${formatDate(to)}` +
+    (costCenterName ? ` · Pusat Biaya: ${costCenterName}` : "");
 
   // One payload feeds both exports and the plain-language summary, so the PDF,
   // the Excel file, the sentence and the table below can never disagree.
@@ -112,7 +126,31 @@ export default async function IncomeStatementPage({
         }
       />
 
-      <PeriodFilter basePath="/reports/income-statement" from={fromISO} to={toISO} />
+      <PeriodFilter
+        basePath="/reports/income-statement"
+        from={fromISO}
+        to={toISO}
+        costCenterOptions={costCenterOptions}
+        costCenter={sp.costCenter ?? ""}
+      />
+
+      {/* Dua kalimat, dan keduanya perlu (issue #98). Yang pertama menjanjikan
+          rekonsiliasi: apa pun pilahannya, jumlahnya tetap total. Yang kedua
+          menyebutkan APA yang belum ikut berdimensi — HPP tanpa tanda,
+          penyusutan, kontrak, uang muka. Tanpa kalimat kedua, laporan cabang
+          yang berisi pendapatan tanpa sebagian harga pokoknya terlihat persis
+          seperti laporan yang lengkap, dan itulah pola kegagalan yang paling
+          berbahaya: bukan angka yang salah, melainkan angka yang benar untuk
+          pertanyaan yang berbeda dari yang dikira pembacanya. */}
+      {costCenterName && (
+        <div className="mb-4 space-y-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          <p>{t("costCenters.filterNote")}</p>
+          <p className="flex items-start gap-1.5">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{t("costCenters.filterScopeNote")}</span>
+          </p>
+        </div>
+      )}
 
       <PlainSummary summary={summary} />
 

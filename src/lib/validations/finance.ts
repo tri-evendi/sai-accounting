@@ -26,6 +26,13 @@ export const cashTransactionSchema = z
       .int()
       .positive(vmsg("validation.counterAccountRequired")),
     note: z.string().max(500).trim().optional(),
+    /**
+     * Pusat biaya transaksi ini (issue #91) — cabang/unit yang uangnya bergerak.
+     * Mesin posting menstempelkannya ke setiap baris jurnal yang dihasilkan.
+     * Nullish: tak dipilih = "belum ditetapkan / seluruh perusahaan", yang
+     * merupakan nilai yang SAH, bukan isian yang terlewat.
+     */
+    costCenterId: z.coerce.number().int().positive().nullish(),
   })
   .refine((data) => data.debit > 0 || data.credit > 0, {
     message: vmsg("validation.debitOrCredit"),
@@ -151,6 +158,13 @@ export const supplierTransactionSchema = z
      * exactly as every legacy row does. Empty is never the same as wrong.
      */
     allocations: z.array(supplierPaymentAllocationSchema).max(100).optional(),
+    /**
+     * Pusat biaya pembelian / pembayaran ini (issue #98; kolomnya dari #91).
+     * Mesin posting menstempelkannya ke setiap baris jurnal, dan retur
+     * pembeliannya mewarisi dari sini. Nullish: tak dipilih = "belum ditetapkan
+     * / seluruh perusahaan", nilai yang SAH — bukan isian yang terlewat.
+     */
+    costCenterId: z.coerce.number().int().positive().nullish(),
   })
   .superRefine((data, ctx) => {
     requireRateForForeign(data, ctx);

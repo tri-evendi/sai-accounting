@@ -6,6 +6,8 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET() {
   const result = await requireApiPermission("inventory.read"); // all roles can view inventory
@@ -13,18 +15,18 @@ export async function GET() {
 
   const items = await prisma.item.findMany({
     include: {
-      stock: { orderBy: { date: "desc" } },
+      stockMovements: { orderBy: { date: "desc" } },
     },
   });
 
   const inventory = items.map((item) => {
-    const totals = calculateStockTotals(item.stock);
+    const totals = calculateStockTotals(item.stockMovements);
     return {
       id: item.id,
       name: item.name,
       unit: item.unit,
       ...totals,
-      lastMovement: item.stock[0]?.date || null,
+      lastMovement: item.stockMovements[0]?.date || null,
     };
   });
 
@@ -41,8 +43,17 @@ export async function POST(request: Request) {
   if (body.action === "create_item") {
     const parsed = itemSchema.safeParse({ name: body.name, unit: body.unit });
     if (!parsed.success) {
+      // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+      // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+      // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+      // Route handler boleh membaca cookie bahasa persis seperti server component,
+      // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+      const { dictionary, t } = await getRequestI18n();
       return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
+        {
+          error: t("validation.invalidInput"),
+          details: translateFieldErrors(parsed.error, dictionary),
+        },
         { status: 400 }
       );
     }
@@ -64,8 +75,17 @@ export async function POST(request: Request) {
   // Stock update
   const parsed = stockUpdateSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -75,16 +95,21 @@ export async function POST(request: Request) {
   if (stockData.type === "out") {
     const item = await prisma.item.findUnique({
       where: { id: stockData.itemId },
-      include: { stock: true },
+      include: { stockMovements: true },
     });
     if (!item) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.inventoryItemNotFound") }, { status: 404 });
     }
-    const { currentStock } = calculateStockTotals(item.stock);
+    const { currentStock } = calculateStockTotals(item.stockMovements);
     if (currentStock < stockData.quantity) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
         {
-          error: `Insufficient stock. Available: ${currentStock}, requested: ${stockData.quantity}`,
+          error: t("errors.insufficientStock", {
+            available: currentStock,
+            requested: stockData.quantity,
+          }),
         },
         { status: 400 }
       );
@@ -94,7 +119,7 @@ export async function POST(request: Request) {
   let stock;
   try {
     stock = await prisma.$transaction(async (tx) => {
-      const created = await tx.stock.create({
+      const created = await tx.stockMovement.create({
         data: {
           ...stockData,
           date: new Date(date),

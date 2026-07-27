@@ -31,7 +31,7 @@ export default async function NewPurchaseWizardPage() {
         id: true,
         name: true,
         unit: true,
-        stock: { select: { quantity: true, type: true, date: true } },
+        stockMovements: { select: { quantity: true, type: true, date: true } },
       },
     }),
     listClosedPeriods(),
@@ -61,7 +61,7 @@ export default async function NewPurchaseWizardPage() {
           id: i.id,
           name: i.name,
           unit: i.unit,
-          currentStock: calculateStockTotals(i.stock).currentStock,
+          currentStock: calculateStockTotals(i.stockMovements).currentStock,
         }))}
         closedPeriods={closedPeriods}
       />

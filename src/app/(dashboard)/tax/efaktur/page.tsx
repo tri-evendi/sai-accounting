@@ -10,7 +10,7 @@
  * columns, not a byte-exact DJP import file. Validate against the current DJP
  * schema before production filing (see `@/lib/efaktur`).
  */
-import { requirePagePermission } from "@/lib/page-auth";
+import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,11 @@ export default async function EfakturPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  await requirePagePermission("tax.read");
+  const session = await requirePagePermission("tax.read");
+  // issue #103 — "Buat tagihan pertama" menunjuk ke /invoices/new, milik modul
+  // `sales`. Pajak (`tax_id`) dan penjualan dua sakelar terpisah: perusahaan
+  // yang mematikan salah satunya tidak boleh diajak ke halaman yang memantul.
+  const canCreateInvoice = await canOpenPage(session.user, "invoice.write");
   const t = await getT();
   const params = await searchParams;
 
@@ -227,8 +231,8 @@ export default async function EfakturPage({
                     icon={<ReceiptText className="h-12 w-12" />}
                     title={t("tax.emptyTitle")}
                     description={t("tax.emptyDescription")}
-                    actionLabel={t("tax.emptyAction")}
-                    actionHref="/invoices/new"
+                    actionLabel={canCreateInvoice ? t("tax.emptyAction") : undefined}
+                    actionHref={canCreateInvoice ? "/invoices/new" : undefined}
                   />
                 </TableCell>
               </TableRow>

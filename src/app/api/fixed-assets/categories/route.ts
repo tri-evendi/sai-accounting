@@ -10,6 +10,8 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { fixedAssetCategorySchema } from "@/lib/validations/fixed-asset";
 import { getCategories } from "@/lib/fixed-assets";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("fixed_asset.read");
@@ -25,8 +27,17 @@ export async function POST(request: Request) {
 
   const parsed = fixedAssetCategorySchema.safeParse(await request.json());
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -36,14 +47,16 @@ export async function POST(request: Request) {
   const ids = [parsed.data.assetAccountId, parsed.data.accumulatedAccountId, parsed.data.expenseAccountId];
   const found = await prisma.account.count({ where: { id: { in: [...new Set(ids)] } } });
   if (found !== new Set(ids).size) {
-    return NextResponse.json({ error: "Akun yang dipetakan tidak ditemukan." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.mappedAccountNotFound") }, { status: 400 });
   }
 
   const existing = await prisma.fixedAssetCategory.findUnique({
     where: { name: parsed.data.name },
   });
   if (existing) {
-    return NextResponse.json({ error: "Nama kategori sudah dipakai." }, { status: 409 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.assetCategoryNameTaken") }, { status: 409 });
   }
 
   const category = await prisma.fixedAssetCategory.create({ data: parsed.data });

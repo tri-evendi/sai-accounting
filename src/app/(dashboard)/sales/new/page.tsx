@@ -1,4 +1,4 @@
-import { requirePagePermission } from "@/lib/page-auth";
+import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -19,7 +19,15 @@ export const dynamic = "force-dynamic";
  * terakhir.
  */
 export default async function NewSaleWizardPage() {
-  await requirePagePermission("invoice.write");
+  const session = await requirePagePermission("invoice.write");
+  /*
+   * issue #103 — empty state stok mengajak ke /inventory/update, milik modul
+   * `inventory`. Halaman ini milik modul lain, dan preset "Jasa" (sales tanpa
+   * stok) memang mematikan `inventory` — ajakannya jadi tautan yang memantul.
+   * Komponen kliennya tidak bisa memeriksa modul sendiri (tidak ada konteks
+   * modul di sisi client), jadi jawabannya dihitung di server dan dioper.
+   */
+  const canUpdateStock = await canOpenPage(session.user, "inventory.write");
   const t = await getT();
 
   const [customers, contracts, consignees, items, closedPeriods] = await Promise.all([
@@ -46,7 +54,7 @@ export default async function NewSaleWizardPage() {
         id: true,
         name: true,
         unit: true,
-        stock: { select: { quantity: true, type: true, date: true } },
+        stockMovements: { select: { quantity: true, type: true, date: true } },
       },
     }),
     listClosedPeriods(),
@@ -71,6 +79,7 @@ export default async function NewSaleWizardPage() {
       <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
 
       <SalesWizard
+        canUpdateStock={canUpdateStock}
         customers={customers.map((c) => ({
           id: c.id,
           name: c.name,
@@ -87,7 +96,7 @@ export default async function NewSaleWizardPage() {
           id: i.id,
           name: i.name,
           unit: i.unit,
-          currentStock: calculateStockTotals(i.stock).currentStock,
+          currentStock: calculateStockTotals(i.stockMovements).currentStock,
         }))}
         closedPeriods={closedPeriods}
       />

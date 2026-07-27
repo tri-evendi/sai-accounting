@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 async function loadRule(id: string) {
   const ruleId = parseInt(id, 10);
@@ -28,13 +30,23 @@ export async function PUT(
   const { id } = await params;
   const existing = await loadRule(id);
   if (!existing) {
-    return NextResponse.json({ error: "Aturan tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.approvalRuleNotFound") }, { status: 404 });
   }
 
   const parsed = approvalRuleSchema.safeParse(await request.json());
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Input tidak valid.", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -44,8 +56,9 @@ export async function PUT(
     where: { documentType, minAmount, isActive: true, id: { not: existing.id } },
   });
   if (duplicate) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Sudah ada aturan aktif dengan jenis dokumen dan ambang yang sama." },
+      { error: t("errors.approvalRuleDuplicate") },
       { status: 400 }
     );
   }
@@ -97,7 +110,8 @@ export async function DELETE(
   const { id } = await params;
   const existing = await loadRule(id);
   if (!existing) {
-    return NextResponse.json({ error: "Aturan tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.approvalRuleNotFound") }, { status: 404 });
   }
 
   const rule = await prisma.approvalRule.update({

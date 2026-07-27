@@ -5,6 +5,17 @@
  * currency + fiscal year, confirming the seeded COA, and entering opening
  * balances — producing one balanced opening journal. After that (`is_setup`), it
  * shows a read-only summary instead, and the API refuses a second run.
+ *
+ * Berada di grup rute `(setup)`, bukan `(dashboard)` (issue #103): grup rute
+ * tidak mengubah URL — halamannya tetap `/setup` — tapi kerangkanya jadi kepala
+ * ramping tanpa sidebar, supaya layar wajib pertama tidak menawarkan ~40 menu
+ * yang semuanya memantul kembali ke sini lewat gerbang setup.
+ *
+ * Konsekuensinya untuk ringkasan (setelah setup selesai): halaman ini masih
+ * dibuka dari menu samping, dan di kerangka ramping tidak ada menu itu untuk
+ * kembali. Karena itu HANYA cabang ringkasan yang membawa tautan kembali ke
+ * Beranda — cabang wizard sengaja tidak: di sana gerbang setup memang belum
+ * mengizinkan halaman lain, dan tautan yang memantul justru jebakan yang sama.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
@@ -22,8 +33,9 @@ import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
-import { CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { SetupWizard } from "./setup-wizard";
 import { getT } from "@/lib/i18n/server";
 
@@ -46,7 +58,18 @@ export default async function SetupPage() {
 
     return (
       <div className="w-full">
-        <PageHeader className="mb-0" title={t("setup.title")} />
+        <PageHeader
+          className="mb-0"
+          title={t("setup.title")}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard">
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                {t("setup.backToApp")}
+              </Link>
+            </Button>
+          }
+        />
 
         <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />

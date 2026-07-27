@@ -60,6 +60,9 @@ interface Props {
   consignees: ConsigneeOption[];
   items: ItemOption[];
   closedPeriods: ClosedPeriodRef[];
+  /** Modul `inventory` aktif DAN pengguna boleh menulisnya (issue #103) —
+   *  dihitung di server; tanpa itu ajakan "Tambah/Kurangi Stok" memantul. */
+  canUpdateStock: boolean;
 }
 
 /** Muatan POST /api/delivery-orders — dibangun sekali, dikirim setelah lolos. */
@@ -82,6 +85,7 @@ export function DeliveryOrderForm({
   consignees,
   items,
   closedPeriods,
+  canUpdateStock,
 }: Props) {
   const router = useRouter();
   const t = useT();
@@ -361,8 +365,8 @@ export function DeliveryOrderForm({
               icon={<Package className="h-12 w-12" />}
               title={t("common.emptyStockTitle")}
               description={t("deliveryOrders.emptyStockDescription")}
-              actionLabel={t("common.addRemoveStock")}
-              actionHref="/inventory/update"
+              actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
+              actionHref={canUpdateStock ? "/inventory/update" : undefined}
             />
           ) : (
           <div className="space-y-4">

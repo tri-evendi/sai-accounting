@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function GET(
   _request: Request,
@@ -20,7 +21,8 @@ export async function GET(
   });
 
   if (!journal) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.journalNotFound") }, { status: 404 });
   }
 
   return NextResponse.json(journal);

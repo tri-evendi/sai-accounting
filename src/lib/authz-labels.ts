@@ -43,6 +43,7 @@ export const RESOURCE_LABELS: Record<PermissionResource, string> = {
   budget: "Rencana & Target (Anggaran)",
   tax: "Ekspor e-Faktur",
   account: "Daftar Akun",
+  cost_center: "Pusat Biaya",
   journal: "Catatan Transaksi (Jurnal)",
   ledger: "Rincian per Akun (Buku Besar)",
   period: "Kunci Bulan",
@@ -108,6 +109,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 
   "account.read": "Melihat daftar akun (pemilih akun di form kas)",
   "account.manage": "Mengelola daftar akun",
+  "cost_center.read": "Melihat daftar pusat biaya (pemilih di form & laporan)",
+  "cost_center.manage": "Mengelola daftar pusat biaya",
   "journal.read": "Melihat catatan transaksi",
   "journal.write": "Menulis jurnal manual",
   "ledger.read": "Melihat rincian per akun",

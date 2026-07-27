@@ -7,6 +7,8 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 /**
  * Stok opname (issue #57) — penyesuaian hitung-fisik.
@@ -28,8 +30,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = opnameSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -52,11 +63,11 @@ export async function POST(request: Request) {
       for (const count of counts) {
         const item = await tx.item.findUnique({
           where: { id: count.itemId },
-          include: { stock: true },
+          include: { stockMovements: true },
         });
         if (!item) continue; // barang terhapus di tengah — lewati diam-diam
 
-        const { currentStock } = calculateStockTotals(item.stock);
+        const { currentStock } = calculateStockTotals(item.stockMovements);
         const variance = count.physicalQty - currentStock;
         if (variance === 0) continue; // cocok — tak perlu penyesuaian
 
@@ -64,9 +75,9 @@ export async function POST(request: Request) {
         const quantity = Math.abs(variance);
         // Lebih (in) dinilai pada rata-rata pra-penyesuaian agar rata-rata tak
         // bergeser; susut (out) dinilai oleh engine dari rata-rata baris `in`.
-        const avgCost = weightedAverageUnitCost(item.stock);
+        const avgCost = weightedAverageUnitCost(item.stockMovements);
 
-        const created = await tx.stock.create({
+        const created = await tx.stockMovement.create({
           data: {
             itemId: item.id,
             quantity,

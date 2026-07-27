@@ -8,6 +8,7 @@ import { unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getAdvances } from "@/lib/advances";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("advance.read");
@@ -15,13 +16,17 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   // Reuse the list query so the detail page and the list agree on the balance
   // by construction, rather than through two copies of the same arithmetic.
   const [row] = await getAdvances({}).then((rows) => rows.filter((r) => r.id === id));
-  if (!row) return NextResponse.json({ error: "Uang muka tidak ditemukan." }, { status: 404 });
+  if (!row) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.advanceNotFound") }, { status: 404 });
+  }
   return NextResponse.json(row);
 }
 
@@ -40,7 +45,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const advance = await prisma.advancePayment.findUnique({
@@ -48,14 +54,17 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     include: { applications: true },
   });
   if (!advance) {
-    return NextResponse.json({ error: "Uang muka tidak ditemukan." }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.advanceNotFound") }, { status: 404 });
   }
   if (advance.applications.length > 0) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error:
-          `Uang muka ${advance.advanceNo} sudah dikompensasi ke ` +
-          `${advance.applications.length} dokumen. Batalkan kompensasinya lebih dulu.`,
+        error: t("errors.advanceAlreadyApplied", {
+          advanceNo: advance.advanceNo,
+          count: advance.applications.length,
+        }),
       },
       { status: 409 }
     );

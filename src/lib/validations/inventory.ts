@@ -15,6 +15,14 @@ export const stockUpdateSchema = z
      */
     unitCost: z.coerce.number().positive(vmsg("validation.unitCostPositive")).optional(),
     note: z.string().max(500).trim().optional(),
+    /**
+     * Pusat biaya gerakan ini (issue #98). Pengeluaran stok MANUAL adalah satu-
+     * satunya jalur HPP yang tak punya dokumen sumber untuk diwarisi — kalau
+     * tidak bisa dipilih di sini, HPP-nya selamanya "belum ditetapkan" dan
+     * Laba/Rugi cabang kehilangan harga pokoknya tanpa satu pun tanda.
+     * Nullish: tak dipilih = "belum ditetapkan / seluruh perusahaan".
+     */
+    costCenterId: z.coerce.number().int().positive().nullish(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "in" && !data.unitCost) {

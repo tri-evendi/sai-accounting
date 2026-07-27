@@ -1,25 +1,44 @@
 /**
  * Cakupan penjaga otorisasi (audit RBAC fase 2).
  *
- * Aturan yang dijaga: TIDAK ADA halaman dashboard atau API route yang lolos
+ * Aturan yang dijaga: TIDAK ADA halaman aplikasi atau API route yang lolos
  * tanpa deklarasi izin — inilah "deny-by-default yang bisa dibuktikan".
  * Halaman memakai `requirePagePermission`, route memakai `requireApiPermission`;
  * penjaga generasi lama (daftar peran) tidak boleh muncul lagi di titik pakai.
  * Pengecualian didaftar EKSPLISIT di bawah beserta alasannya.
+ *
+ * ── Kenapa lebih dari satu grup rute (issue #103) ──────────────────────────
+ * Penjaga ini dulu hanya menelusuri `(dashboard)`, karena di situlah semua
+ * halaman berizin tinggal. Sejak wizard penyiapan pindah ke grup `(setup)`
+ * demi kerangkanya sendiri, asumsi itu tidak lagi benar — dan grup rute TIDAK
+ * mengubah URL, jadi halaman yang "pindah keluar" dari penjaga ini tidak
+ * meninggalkan jejak apa pun di URL yang bisa memperingatkan siapa pun.
+ * Karena itu daftarnya eksplisit di `GUARDED_PAGE_DIRS`: menambah grup rute
+ * baru yang berisi halaman berizin berarti menambahkannya DI SINI juga.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 const APP_DIR = join(__dirname, "..", "src", "app");
-const DASHBOARD_DIR = join(APP_DIR, "(dashboard)");
 const API_DIR = join(APP_DIR, "api");
+
+/**
+ * Grup rute yang halamannya WAJIB mendeklarasikan izin. Jalurnya relatif
+ * terhadap `src/app`, dan itu pula bentuk kunci `PAGE_EXCEPTIONS` di bawah.
+ *
+ * `(auth)` sengaja TIDAK di sini: halaman di grup itu (masuk, ganti kata sandi,
+ * "belum disiapkan", "fitur belum aktif") adalah keadaan PRA-aplikasi yang
+ * justru tidak boleh memanggil `requirePagePermission()` — penjaga yang sama
+ * akan memantulkannya ke dirinya sendiri tanpa henti.
+ */
+const GUARDED_PAGE_GROUPS = ["(dashboard)", "(setup)"];
 
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
   // Beranda terbuka untuk semua peran; menjaga sendiri dengan auth() dan
   // menyusun isinya per peran di server.
-  "dashboard/page.tsx",
+  "(dashboard)/dashboard/page.tsx",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */
@@ -46,28 +65,42 @@ function filesNamed(dir: string, filename: string): string[] {
   });
 }
 
-describe("cakupan penjaga halaman dashboard", () => {
-  const pages = filesNamed(DASHBOARD_DIR, "page.tsx");
+describe("cakupan penjaga halaman aplikasi", () => {
+  const pages = GUARDED_PAGE_GROUPS.flatMap((group) =>
+    filesNamed(join(APP_DIR, group), "page.tsx")
+  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
 
   it("menemukan halaman untuk diperiksa", () => {
     expect(pages.length).toBeGreaterThan(50);
   });
 
+  it("setiap grup rute yang didaftar benar-benar ada dan berisi halaman", () => {
+    // Penjaga bagi penjaga: grup yang salah tulis (atau grup yang dihapus)
+    // membuat telusurnya kosong, dan tes di bawah akan lulus tanpa memeriksa
+    // apa pun. Wizard penyiapan disebut namanya karena justru dialah alasan
+    // daftar ini ada (issue #103).
+    for (const group of GUARDED_PAGE_GROUPS) {
+      expect(existsSync(join(APP_DIR, group)), `grup rute ${group} tidak ada`).toBe(true);
+      expect(
+        pages.some((rel) => rel.startsWith(`${group}/`)),
+        `grup rute ${group} tidak berisi satu pun page.tsx`
+      ).toBe(true);
+    }
+    expect(pages).toContain("(setup)/setup/page.tsx");
+  });
+
   it("setiap halaman mendeklarasikan izinnya (requirePagePermission)", () => {
     const offenders = pages
-      .map((f) => relative(DASHBOARD_DIR, f))
       .filter((rel) => !PAGE_EXCEPTIONS.has(rel))
-      .filter((rel) => !readFileSync(join(DASHBOARD_DIR, rel), "utf8").includes("requirePagePermission("));
+      .filter((rel) => !readFileSync(join(APP_DIR, rel), "utf8").includes("requirePagePermission("));
     expect(offenders).toEqual([]);
   });
 
   it("penjaga daftar-peran generasi lama tidak muncul lagi di halaman", () => {
-    const offenders = pages
-      .map((f) => relative(DASHBOARD_DIR, f))
-      .filter((rel) => {
-        const src = readFileSync(join(DASHBOARD_DIR, rel), "utf8");
-        return src.includes("requirePageSession(") || src.includes("requireAccountantPage(");
-      });
+    const offenders = pages.filter((rel) => {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      return src.includes("requirePageSession(") || src.includes("requireAccountantPage(");
+    });
     expect(offenders).toEqual([]);
   });
 });

@@ -123,6 +123,14 @@ export const PERMISSION_ROLES = {
   // daftar akun untuk pemilih akun lawan (didokumentasikan di route-nya).
   "account.read": OFFICE,
   "account.manage": FULL,
+  // issue #91 — dimensi pusat biaya. READ lebih longgar dan itu disengaja,
+  // dengan alasan yang sama dengan `account.read`: pemilih pusat biaya muncul
+  // di form dokumen milik Manajer Keuangan (faktur, kas, pembelian), jadi
+  // daftarnya harus terbaca oleh peran yang mengisi dokumennya. MENGELOLA
+  // daftarnya tetap akses penuh — pusat biaya adalah master data akuntansi
+  // yang mengubah arti setiap laporan yang dipilah dengannya.
+  "cost_center.read": OFFICE,
+  "cost_center.manage": FULL,
   "journal.read": FULL,
   "journal.write": FULL,
   "ledger.read": FULL,

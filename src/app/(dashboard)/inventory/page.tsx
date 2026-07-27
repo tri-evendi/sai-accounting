@@ -53,7 +53,7 @@ export default async function InventoryPage({
 
   // Get all items for summary cards
   const allItems = await prisma.item.findMany({
-    include: { stock: true },
+    include: { stockMovements: true },
     orderBy: { name: "asc" },
   });
 

@@ -30,6 +30,8 @@ import {
   priorReturnedPurchaseSubtotal,
   nextPurchaseReturnNo,
 } from "@/lib/returns-data";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("return.read");
@@ -43,14 +45,16 @@ export async function GET(request: Request) {
   if (purchaseIdParam) {
     const purchaseId = parseInt(purchaseIdParam);
     if (!Number.isInteger(purchaseId)) {
-      return NextResponse.json({ error: "purchaseId tidak valid" }, { status: 400 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
     }
     const purchase = await prisma.supplierTransaction.findFirst({
       where: { id: purchaseId, type: "purchase" },
       include: { supplier: { select: { id: true, name: true } } },
     });
     if (!purchase) {
-      return NextResponse.json({ error: "Pembelian tidak ditemukan" }, { status: 404 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.purchaseNotFound") }, { status: 404 });
     }
     const returned = await priorReturnedPurchaseSubtotal(purchaseId);
     const amount = Number(purchase.amount);
@@ -81,8 +85,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = purchaseReturnSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -92,8 +105,9 @@ export async function POST(request: Request) {
     where: { id: purchaseId, type: "purchase" },
   });
   if (!purchase) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Pembelian tidak ditemukan (harus transaksi bertipe pembelian)." },
+      { error: t("errors.purchaseTransactionNotFound") },
       { status: 404 }
     );
   }
@@ -101,10 +115,9 @@ export async function POST(request: Request) {
   const currency = purchase.currency || "IDR";
   const purchaseRate = purchase.rate == null ? null : Number(purchase.rate);
   if (currency !== BASE_CURRENCY && !purchaseRate) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      {
-        error: `Pembelian ini bermata uang ${currency} tanpa kurs, sehingga retur tidak dapat dinilai dalam rupiah. Isi kurs pada pembelian lalu ulangi.`,
-      },
+      { error: t("errors.purchaseRateMissing", { currency }) },
       { status: 400 }
     );
   }
@@ -171,7 +184,7 @@ export async function POST(request: Request) {
       // carry no unit cost, exactly as the inventory route records them.
       for (const it of items) {
         if (it.itemId == null) continue;
-        await tx.stock.create({
+        await tx.stockMovement.create({
           data: {
             itemId: it.itemId,
             quantity: it.quantity,

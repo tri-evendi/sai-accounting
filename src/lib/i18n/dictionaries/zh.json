@@ -452,7 +452,13 @@
     "wizardInvoiceInvalid": "发票尚无法保存。",
     "wizardDeliveryOrderInvalid": "送货单尚无法开具。",
     "wizardPurchaseInvalid": "采购单尚无法保存。",
-    "wizardReceiptInvalid": "入库记录尚无法保存。"
+    "wizardReceiptInvalid": "入库记录尚无法保存。",
+    "statementLineNotFound": "该银行对账单行不属于此次对账。",
+    "statementLineAlreadyMatched": "该对账单行已完成匹配。请先解除匹配，再重新匹配。",
+    "bookMovementNotFound": "未找到该账簿交易。",
+    "bookMovementWrongAccount": "该账簿交易所属的账户或币种与此次对账不符。",
+    "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
+    "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。"
   },
   "contracts": {
     "title": "合同（{count}）",

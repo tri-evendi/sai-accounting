@@ -452,7 +452,13 @@
     "wizardInvoiceInvalid": "The invoice cannot be saved yet.",
     "wizardDeliveryOrderInvalid": "The delivery order cannot be issued yet.",
     "wizardPurchaseInvalid": "The purchase cannot be saved yet.",
-    "wizardReceiptInvalid": "The goods receipt cannot be recorded yet."
+    "wizardReceiptInvalid": "The goods receipt cannot be recorded yet.",
+    "statementLineNotFound": "That statement line is not part of this reconciliation.",
+    "statementLineAlreadyMatched": "This statement line is already matched. Unmatch it before matching again.",
+    "bookMovementNotFound": "The book transaction was not found.",
+    "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
+    "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
+    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
   },
   "contracts": {
     "title": "Contracts ({count})",

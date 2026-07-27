@@ -452,7 +452,13 @@
     "wizardInvoiceInvalid": "Tagihan belum bisa disimpan.",
     "wizardDeliveryOrderInvalid": "Surat jalan belum bisa diterbitkan.",
     "wizardPurchaseInvalid": "Pembelian belum bisa disimpan.",
-    "wizardReceiptInvalid": "Barang masuk belum bisa dicatat."
+    "wizardReceiptInvalid": "Barang masuk belum bisa dicatat.",
+    "statementLineNotFound": "Baris koran tidak ditemukan pada rekonsiliasi ini.",
+    "statementLineAlreadyMatched": "Baris koran ini sudah dicocokkan. Lepas dulu sebelum mencocokkan ulang.",
+    "bookMovementNotFound": "Transaksi buku tidak ditemukan.",
+    "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
+    "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
+    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
   },
   "contracts": {
     "title": "Kontrak ({count})",

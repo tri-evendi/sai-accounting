@@ -21,16 +21,25 @@ import {
 } from "@/lib/reconciliation";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
+/**
+ * Penolakan pencocokan yang membawa KUNCI kamus, bukan kalimat.
+ *
+ * Pesannya memang sampai ke pengguna (`catch` di bawah menjadikannya `error`
+ * pada jawaban), jadi ia harus ikut berganti bahasa — dan `throw` tidak bisa
+ * `await getRequestI18n()` dari dalam transaksi. Kuncinya diterjemahkan di
+ * `catch`, yaitu batas tampilan yang sama seperti route lain.
+ */
 class MatchError extends Error {
-  constructor(message: string, readonly status = 409) {
-    super(message);
+  constructor(readonly key: DictionaryKey, readonly status = 409) {
+    super(key);
   }
 }
 
 async function loadUnlockedStatement(id: number) {
   const statement = await prisma.bankStatement.findUnique({ where: { id } });
-  if (!statement) throw new MatchError("Rekonsiliasi tidak ditemukan.", 404);
+  if (!statement) throw new MatchError("errors.reconciliationNotFound", 404);
   assertStatementUnlocked(statement);
   return statement;
 }
@@ -66,31 +75,27 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     await prisma.$transaction(async (tx) => {
       const statement = await tx.bankStatement.findUnique({ where: { id } });
-      if (!statement) throw new MatchError("Rekonsiliasi tidak ditemukan.", 404);
+      if (!statement) throw new MatchError("errors.reconciliationNotFound", 404);
       assertStatementUnlocked(statement);
 
       const line = await tx.bankStatementLine.findUnique({ where: { id: lineId } });
       if (!line || line.statementId !== id) {
-        throw new MatchError("Baris koran tidak ditemukan pada rekonsiliasi ini.", 404);
+        throw new MatchError("errors.statementLineNotFound", 404);
       }
       if (line.matched) {
-        throw new MatchError("Baris koran ini sudah dicocokkan. Lepas dulu sebelum mencocokkan ulang.");
+        throw new MatchError("errors.statementLineAlreadyMatched");
       }
 
       const movement = await tx.cashAccount.findUnique({ where: { id: cashAccountId } });
-      if (!movement) throw new MatchError("Transaksi buku tidak ditemukan.", 404);
+      if (!movement) throw new MatchError("errors.bookMovementNotFound", 404);
       if (movement.type !== statement.cashType || movement.currency !== statement.currency) {
-        throw new MatchError(
-          "Transaksi buku bukan milik rekening/mata uang rekonsiliasi ini."
-        );
+        throw new MatchError("errors.bookMovementWrongAccount");
       }
       if (movement.reconciled) {
-        throw new MatchError("Transaksi buku ini sudah direkonsiliasi.");
+        throw new MatchError("errors.bookMovementAlreadyReconciled");
       }
       if (!canMatch({ amount: movementSigned(movement) }, { amount: Number(line.amount) })) {
-        throw new MatchError(
-          "Nominal transaksi buku dan baris koran tidak sama, tidak bisa dicocokkan."
-        );
+        throw new MatchError("errors.matchAmountMismatch");
       }
 
       await tx.bankStatementLine.update({
@@ -107,7 +112,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ error: e.message }, { status: 409 });
     }
     if (e instanceof MatchError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t(e.key) }, { status: e.status });
     }
     throw e;
   }
@@ -159,7 +165,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       const statement = await loadUnlockedStatement(id);
       const line = await tx.bankStatementLine.findUnique({ where: { id: lineId } });
       if (!line || line.statementId !== statement.id) {
-        throw new MatchError("Baris koran tidak ditemukan pada rekonsiliasi ini.", 404);
+        throw new MatchError("errors.statementLineNotFound", 404);
       }
       cashAccountId = line.cashAccountId;
 
@@ -179,7 +185,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       return NextResponse.json({ error: e.message }, { status: 409 });
     }
     if (e instanceof MatchError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t(e.key) }, { status: e.status });
     }
     throw e;
   }

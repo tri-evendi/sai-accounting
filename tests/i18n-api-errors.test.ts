@@ -139,6 +139,25 @@ function rawErrorLiterals(code: string): string[] {
   return found;
 }
 
+/**
+ * Argumen PERTAMA setiap `new …Error(` di dalam route, bila berupa literal.
+ *
+ * Route boleh punya kelas galatnya sendiri (`MatchError`) yang pesannya
+ * ditangkap lalu dijadikan `error` pada jawaban — persis kalimat untuk
+ * pengguna, hanya lewat jalan memutar yang tak terlihat oleh penjaga `error:`.
+ */
+function thrownErrorMessages(code: string): string[] {
+  const found: string[] = [];
+  const re = /\bnew \w*Error\(\s*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    const at = m.index + m[0].length;
+    const c = code[at];
+    if (c === '"' || c === "'" || c === "`") found.push(readLiteral(code, at));
+  }
+  return found;
+}
+
 /** Argumen KEDUA setiap panggilan `stepError(` yang berupa literal teks. */
 function stepErrorMessages(code: string): string[] {
   const found: string[] = [];
@@ -200,6 +219,25 @@ describe("route API tidak boleh memuat kalimat galat mentah", () => {
       "Pesan wizard berikut masih kalimat. Pakai kunci kamus " +
         '(`stepError(step, "errors.…")`); untuk prosa dari modul lain pakai ' +
         "`{ text: … }`, yang bukan literal dan karena itu tidak terlihat di sini."
+    ).toEqual([]);
+  });
+
+  it("galat yang dilempar route juga membawa kunci, bukan kalimat", () => {
+    const offenders = ROUTES.flatMap(({ name, code }) =>
+      thrownErrorMessages(code)
+        // Sebuah kalimat SELALU punya spasi; kunci kamus dan token enum
+        // (`new ApprovalTransitionError("hilang", …)`) TIDAK PERNAH punya.
+        // Definisi operasional yang sama dengan tests/i18n-validation.test.tsx,
+        // jadi tak perlu daftar putih yang gampang basi.
+        .filter((text) => /\s/.test(text))
+        .map((text) => `${name}: ${text}`)
+    );
+    expect(
+      offenders,
+      "Galat berikut dilempar dengan kalimat sebagai pesannya. Bila pesannya " +
+        "sampai ke pengguna (ditangkap lalu menjadi `error` pada jawaban), " +
+        "simpan KUNCI kamus di kelas galatnya dan terjemahkan di `catch` — " +
+        "lihat `MatchError` di reconciliation/[id]/match/route.ts."
     ).toEqual([]);
   });
 });

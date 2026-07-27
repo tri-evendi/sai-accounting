@@ -15,6 +15,7 @@
  * the fixed-asset tables (#28), so no back-relation hangs off `User`.
  */
 import { prisma } from "@/lib/prisma";
+import { userNamesByIds } from "@/lib/users-directory";
 import type { Role } from "@/lib/constants";
 import {
   countUnreadDecisions,
@@ -117,13 +118,9 @@ async function withUserNames(rows: RawRequest[]): Promise<ApprovalRequestView[]>
   const ids = [
     ...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter((v): v is number => v != null)),
   ];
-  const users = ids.length
-    ? await prisma.user.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, name: true, username: true },
-      })
-    : [];
-  const nameById = new Map(users.map((u) => [u.id, u.name || u.username]));
+  // Nama pemohon & pemutus tinggal di basis data KENDALI sejak issue #104 —
+  // `approval_requests` hanya menyimpan id-nya, tanpa foreign key.
+  const nameById = await userNamesByIds(ids);
 
   return rows.map((r) => ({
     id: r.id,

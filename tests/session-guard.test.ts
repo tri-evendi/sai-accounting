@@ -15,11 +15,12 @@ import {
 } from "@/lib/session-guard";
 
 const dbUser = {
-  role: "finance_manager",
   mustChangePassword: false,
   sessionVersion: 3,
-  accountantMode: null,
 };
+
+/** Keanggotaan di perusahaan yang sedang dibuka (issue #104). */
+const membership = { role: "finance_manager", accountantMode: null };
 
 describe("evaluateSession", () => {
   it("mencabut saat baris pengguna hilang (akun dihapus)", () => {
@@ -40,6 +41,42 @@ describe("evaluateSession", () => {
 
   it("menyegarkan token yang versinya cocok", () => {
     expect(evaluateSession({ sessionVersion: 3 }, dbUser)).toBe("refresh");
+  });
+});
+
+/**
+ * issue #104 — keanggotaan ikut menentukan nasib token.
+ *
+ * Yang dijaga di sini adalah pembedaan yang mudah salah: kehilangan akses ke
+ * SATU perusahaan bukan alasan mengusir orang dari aplikasi. Ia mungkin masih
+ * memegang PT lain, dan melempar seluruh sesinya berarti menghukumnya untuk
+ * perubahan yang tidak ada hubungannya dengan perusahaan lain itu.
+ */
+describe("evaluateSession — keanggotaan perusahaan", () => {
+  it("token tanpa perusahaan aktif tetap sah (pengguna belum memilih)", () => {
+    expect(evaluateSession({ sessionVersion: 3, companyId: null }, dbUser, null)).toBe("refresh");
+    expect(evaluateSession({ sessionVersion: 3 }, dbUser, null)).toBe("refresh");
+  });
+
+  it("melepas perusahaan saat keanggotaannya dicabut — BUKAN mencabut sesi", () => {
+    expect(evaluateSession({ sessionVersion: 3, companyId: 7 }, dbUser, null)).toBe("clearCompany");
+  });
+
+  it("menyegarkan saat keanggotaannya masih ada", () => {
+    expect(evaluateSession({ sessionVersion: 3, companyId: 7 }, dbUser, membership)).toBe(
+      "refresh"
+    );
+  });
+
+  it("pengguna dihapus tetap MENCABUT, sekalipun keanggotaannya masih terbaca", () => {
+    // Urutan pemeriksaan penting: identitas dulu, baru keanggotaan. Kalau
+    // dibalik, akun yang sudah dihapus masih bisa membuka satu perusahaan
+    // sampai keanggotaannya ikut dibersihkan.
+    expect(evaluateSession({ sessionVersion: 3, companyId: 7 }, null, membership)).toBe("revoke");
+  });
+
+  it("versi sesi yang tidak cocok tetap MENCABUT, bukan sekadar melepas perusahaan", () => {
+    expect(evaluateSession({ sessionVersion: 2, companyId: 7 }, dbUser, membership)).toBe("revoke");
   });
 });
 

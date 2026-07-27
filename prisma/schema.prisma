@@ -8,51 +8,19 @@ datasource db {
 }
 
 // ─── Users & Auth ────────────────────────────────────────
-
-model User {
-  id       Int      @id @default(autoincrement())
-  username String   @unique @db.VarChar(50)
-  password String   @db.VarChar(255)
-  name     String?  @db.VarChar(100)
-  /// enum-like (migration 0032): managing_director | finance_manager |
-  /// warehouse_head | administrator — plus peran kustom apa pun yang dibuat
-  /// dari /permissions (peran adalah DATA, lihat model Role).
-  role     String   @default("finance_manager") @db.VarChar(20)
-  /// Wajib mengganti kata sandi sebelum boleh membuka apa pun (proxy melempar
-  /// ke /change-password). TRUE untuk akun baru dan setelah admin me-reset
-  /// sandi. Dulu `status Int` dengan 1 = wajib — boolean yang menyamar jadi
-  /// angka, diluruskan di migration 0041.
-  mustChangePassword Boolean @default(true) @map("must_change_password")
-  passDate DateTime? @map("pass_date")
-
-  // ─── issue #11 — Mode Akuntan (accountant mode) ────────────
-  /// Per-user DISPLAY preference for "Mode Akuntan". Nullable on purpose:
-  ///   NULL  = follow the role default (managing_director & administrator → ON,
-  ///           finance_manager/warehouse_head → OFF),
-  ///   true  = explicitly show accounting surfaces (Jurnal/Buku Besar/COA + debit/kredit terms),
-  ///   false = explicitly hide them.
-  /// An explicit value overrides the role default; a user who never toggles
-  /// stays NULL and tracks their role's default even if their role changes.
-  /// Display-only — it NEVER changes authorisation (role still gates every
-  /// accounting page) nor what is posted. See src/lib/accountant-mode.ts.
-  accountantMode Boolean? @map("accountant_mode")
-  // ───────────────────────────────────────────────────────────
-
-  /// Pencabutan sesi (audit RBAC fase 3). JWT menyimpan angka ini saat login;
-  /// revalidasi berkala membandingkannya dengan DB — beda = sesi mati. Dinaikkan
-  /// oleh mutasi admin yang harus memutus sesi berjalan (ganti peran, reset
-  /// kata sandi); penghapusan pengguna otomatis mencabut (barisnya hilang).
-  sessionVersion Int @default(1) @map("session_version")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  closedPeriods Period[]
-  /// Izin khusus per pengguna (issue #75) — lihat UserPermissionOverride.
-  permissionOverrides UserPermissionOverride[]
-
-  @@map("users")
-}
+//
+// TIDAK ADA MODEL `User` DI SINI, dan itu inti issue #104.
+//
+// Identitas orang hidup di BASIS DATA KENDALI (`prisma/control/schema.prisma`)
+// bersama daftar perusahaan dan keanggotaannya. Kalau `users` ada di dalam buku
+// tiap perusahaan, satu orang yang memegang tiga PT punya tiga akun dengan tiga
+// kata sandi — dan "satu login mencakup semua perusahaan" jadi mustahil.
+//
+// Dua tabel di basis data ini tetap MENYEBUT pengguna lewat id global:
+// `periods.closed_by_id` dan `user_permission_overrides.user_id`. Keduanya
+// angka biasa tanpa foreign key — FK tidak bisa menyeberangi basis data.
+// Namanya dicari ke basis data kendali saat ditampilkan, dan id yang pemiliknya
+// sudah dihapus tampil sebagai "—", bukan sebagai galat.
 
 // ─── Peran dinamis (dikelola dari UI) ────────────────────
 /// Peran sebagai DATA, bukan enum kode. `key` = nilai yang disimpan di
@@ -120,6 +88,9 @@ model RolePermissionOverride {
 /// izin khusus.
 model UserPermissionOverride {
   id     Int @id @default(autoincrement())
+  /// Id pengguna GLOBAL (basis data kendali, issue #104) — tanpa FK. Baris yang
+  /// pemiliknya sudah dihapus tidak berbahaya: ia hanya tidak pernah cocok
+  /// dengan siapa pun lagi. Pembersihannya urusan penghapusan pengguna.
   userId Int @map("user_id")
   /// Kunci izin "resource.action" — harus ada di PERMISSION_ROLES.
   permission String  @db.VarChar(50)
@@ -127,8 +98,6 @@ model UserPermissionOverride {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// Satu keputusan per (pengguna × izin).
   @@unique([userId, permission])
@@ -1188,15 +1157,15 @@ model Period {
   month    Int // 1-12
   status   String    @default("open") @db.VarChar(20) // open, closed
   closedAt DateTime? @map("closed_at")
-  /// Who performed the last close. Kept as a FK so the name stays correct if the
-  /// user is renamed; the full close/reopen history lives in the audit log.
+  /// Siapa melakukan penutupan terakhir — id pengguna GLOBAL di basis data
+  /// kendali (issue #104), tanpa foreign key: FK tidak bisa menyeberangi basis
+  /// data. Namanya dicari saat ditampilkan; pengguna yang sudah dihapus tampil
+  /// sebagai "—". Riwayat tutup/buka selengkapnya ada di log audit.
   closedById Int?    @map("closed_by_id")
   note       String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  closedBy User? @relation(fields: [closedById], references: [id], onDelete: Restrict)
 
   @@unique([year, month])
   @@index([status])

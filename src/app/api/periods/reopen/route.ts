@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { userDisplayName } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -42,7 +43,6 @@ export async function POST(request: Request) {
 
   const existing = await prisma.period.findUnique({
     where: { year_month: { year, month } },
-    include: { closedBy: { select: { name: true, username: true } } },
   });
 
   if (!existing || existing.status !== "closed") {
@@ -68,7 +68,9 @@ export async function POST(request: Request) {
       reason,
       // Preserve the lock we just removed — after the update these are cleared.
       previouslyClosedAt: existing.closedAt?.toISOString() ?? null,
-      previouslyClosedBy: existing.closedBy?.name ?? existing.closedBy?.username ?? null,
+      // Pengguna hidup di basis data kendali (issue #104) — namanya dicari,
+      // tidak lagi ikut lewat relasi.
+      previouslyClosedBy: await userDisplayName(existing.closedById),
     },
     request,
   });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { controlDb } from "@/lib/control-db";
 import { changePasswordApiSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { writeAuditLog } from "@/lib/audit";
@@ -53,7 +53,9 @@ export async function POST(request: Request) {
 
   const { currentPassword, newPassword } = parsed.data;
 
-  const user = await prisma.user.findUnique({
+  // Kata sandi milik IDENTITAS, bukan salah satu perusahaan (issue #104):
+  // satu sandi berlaku untuk semua PT yang dipegang orang ini.
+  const user = await controlDb.user.findUnique({
     where: { id: parseInt(session.user.id) },
   });
 
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  await prisma.user.update({
+  await controlDb.user.update({
     where: { id: user.id },
     data: {
       password: hashedPassword,

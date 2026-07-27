@@ -16,6 +16,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCompanyClient = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/company-clients", () => ({ getCompanyClient }));
+// Tanpa konteks, proxy jatuh ke SESI sebagai sumber kedua (lihat lib/prisma.ts).
+// Di sini sesinya kosong, jadi yang diuji adalah jalur "tidak ada keduanya".
+vi.mock("@/lib/auth", () => ({ auth: async () => null }));
 
 import {
   CompanyContext,
@@ -125,9 +128,11 @@ describe("proxy prisma", () => {
     expect(getCompanyClient).toHaveBeenNthCalledWith(2, "sai_pt_b");
   });
 
-  it("MELEMPAR saat dipakai tanpa konteks — bukan memilih basis data mana pun", () => {
-    runWithoutCompany(() => {
-      expect(() => prisma.invoice).toThrow(MissingCompanyContextError);
+  it("MELEMPAR saat dipakai tanpa konteks — bukan memilih basis data mana pun", async () => {
+    // Penyelesaian terjadi saat query DIPANGGIL (lihat lib/prisma.ts), jadi
+    // yang menolak adalah pemanggilannya, bukan akses propertinya.
+    await runWithoutCompany(async () => {
+      await expect(prisma.invoice.findMany()).rejects.toThrow(MissingCompanyContextError);
       expect(getCompanyClient).not.toHaveBeenCalled();
     });
   });
@@ -141,9 +146,8 @@ describe("proxy prisma", () => {
 
   it("currentCompanyClient memberi klien yang sama dengan yang dipakai proxy", async () => {
     await runWithCompany(PT_B, async () => {
-      expect((currentCompanyClient() as unknown as { databaseName: string }).databaseName).toBe(
-        "sai_pt_b"
-      );
+      const client = (await currentCompanyClient()) as unknown as { databaseName: string };
+      expect(client.databaseName).toBe("sai_pt_b");
     });
   });
 });

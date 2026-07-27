@@ -1,9 +1,11 @@
 import { auth } from "@/lib/auth";
+import type { Session } from "next-auth";
 import { ACCOUNTING_PERMISSIONS, type Permission } from "@/lib/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
+import { enterCompanyFromSession } from "@/lib/company-session";
 import { redirect } from "next/navigation";
 
 /**
@@ -19,11 +21,30 @@ import { redirect } from "next/navigation";
  * `requirePageSession`/`requireAccountantPage` berbasis daftar peran,
  * dihapus di fase 4.)
  */
-export async function requirePagePermission(permission: Permission) {
+/** Sesi yang sudah melewati penjaga: perusahaan aktif, dan peran DI perusahaan itu. */
+export type PageSession = Omit<Session, "user"> & {
+  user: NonNullable<Session["user"]> & { role: string };
+};
+
+export async function requirePagePermission(permission: Permission): Promise<PageSession> {
   const session = await auth();
 
   if (!session?.user) {
     redirect("/login");
+  }
+
+  /*
+   * Konteks perusahaan (issue #104) — DI SINI, sebelum gerbang mana pun.
+   *
+   * Tanpa ini setiap query di halaman akan melempar: sejak buku besar menjadi
+   * satu basis data per PT, `prisma` menolak menebak perusahaan mana yang
+   * dimaksud. Ketiga kegagalannya dibedakan dengan sengaja — orang yang belum
+   * MEMILIH perusahaan tidak sedang punya masalah kredensial, jadi ia tidak
+   * dilempar ke halaman masuk untuk mengetik ulang kata sandinya.
+   */
+  const company = await enterCompanyFromSession(session);
+  if (!company.ok) {
+    redirect(company.reason === "no-session" ? "/login" : "/select-company");
   }
 
   /*
@@ -69,7 +90,13 @@ export async function requirePagePermission(permission: Permission) {
     redirect("/dashboard");
   }
 
-  return session;
+  /*
+   * `role` dipersempit menjadi `string` (bukan `string | null`) di sini, dan
+   * itu bukan penghalusan tipe belaka: begitu konteks perusahaan berhasil
+   * ditanam, peran PASTI ada — ia datang dari keanggotaan di perusahaan itu.
+   * Sesi tanpa peran sudah dipantulkan ke /select-company di atas.
+   */
+  return session as PageSession;
 }
 
 /**

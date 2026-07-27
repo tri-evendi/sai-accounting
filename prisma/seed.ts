@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient as ControlClient } from "../src/generated/control/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
 
@@ -12,6 +13,35 @@ const adapter = new PrismaMariaDb({
   database: url.pathname.slice(1),
 });
 const prisma = new PrismaClient({ adapter });
+
+/**
+ * Klien basis data KENDALI (issue #104). Pengguna demo hidup di sana bersama
+ * daftar perusahaan dan keanggotaannya — bukan di dalam buku perusahaan ini.
+ */
+const controlUrl = new URL(process.env.CONTROL_DATABASE_URL!);
+const controlDb = new ControlClient({
+  adapter: new PrismaMariaDb({
+    host: controlUrl.hostname,
+    port: Number(controlUrl.port) || 3306,
+    user: decodeURIComponent(controlUrl.username),
+    password: decodeURIComponent(controlUrl.password),
+    database: controlUrl.pathname.slice(1),
+  }),
+});
+
+/** Perusahaan yang basis datanya sedang di-seed, menurut registry kendali. */
+async function seedCompany() {
+  const databaseName = url.pathname.slice(1);
+  const company = await controlDb.company.findUnique({ where: { databaseName } });
+  if (!company) {
+    throw new Error(
+      `Basis data "${databaseName}" belum terdaftar sebagai perusahaan di basis data kendali.\n` +
+        "Daftarkan dulu (scripts/adopt-existing-company.ts) — seed menulis pengguna demo\n" +
+        "sebagai ANGGOTA sebuah perusahaan, dan keanggotaan tanpa perusahaan tidak ada artinya."
+    );
+  }
+  return company;
+}
 
 // Helper: random date in last N months
 function randomDate(monthsBack: number): Date {
@@ -54,15 +84,28 @@ async function main() {
     { username: "sari", password: "sari1234", name: "Sari Dewi", role: "finance_manager", mustChangePassword: false },
   ];
 
+  // Pengguna + keanggotaannya di perusahaan ini (issue #104): identitas di
+  // basis data kendali, peran menempel pada keanggotaan.
+  const company = await seedCompany();
   for (const user of users) {
     const hashed = await bcrypt.hash(user.password, 12);
-    await prisma.user.upsert({
+    const created = await controlDb.user.upsert({
       where: { username: user.username },
       update: {},
-      create: { username: user.username, password: hashed, name: user.name, role: user.role, mustChangePassword: user.mustChangePassword },
+      create: {
+        username: user.username,
+        password: hashed,
+        name: user.name,
+        mustChangePassword: user.mustChangePassword,
+      },
+    });
+    await controlDb.membership.upsert({
+      where: { userId_companyId: { userId: created.id, companyId: company.id } },
+      create: { userId: created.id, companyId: company.id, role: user.role },
+      update: { role: user.role, isActive: true },
     });
   }
-  console.log("  ✓ 5 users created");
+  console.log(`  ✓ 5 users created (anggota ${company.name})`);
 
   // ═══════════════════════════════════════════════
   // ITEMS (Inventory master)
@@ -540,4 +583,7 @@ main()
     console.error("Seed failed:", e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    await controlDb.$disconnect();
+  });

@@ -22,6 +22,8 @@ export interface FakeLine {
   baseDebit: number;
   baseCredit: number;
   memo: string | null;
+  /** Dimensi pusat biaya yang distempel `prepareLines` (issue #91). */
+  costCenterId: number | null;
 }
 
 export interface FakeJournal {
@@ -34,6 +36,8 @@ export interface FakeJournal {
   sourceId: number | null;
   isReversed: boolean;
   reversalOfId: number | null;
+  /** Pusat biaya BAWAAN kepala jurnal (issue #91). */
+  costCenterId: number | null;
   lines: FakeLine[];
 }
 
@@ -162,6 +166,7 @@ export function createFakeClient(seed: FakeSeed = {}) {
           sourceId: (data.sourceId as number) ?? null,
           isReversed: false,
           reversalOfId: (data.reversalOfId as number) ?? null,
+          costCenterId: (data.costCenterId as number) ?? null,
           lines: rawLines.map((l) => {
             lineId += 1;
             return { ...l, id: lineId, journalId } as FakeLine;

@@ -1236,6 +1236,124 @@ async function buildEntry(
   }
 }
 
+// ─── Dimensi pusat biaya (issue #91) ─────────────────────
+
+/**
+ * Where each source type's cost centre comes from — the ONE place the dimension
+ * is read, for every document type there is.
+ *
+ * A `Record` over `PostingSourceType`, so `tsc` refuses a new source type that
+ * has not answered the question. That is the point: the alternative is a lookup
+ * scattered across fourteen `buildXEntry` functions, where the fourteenth quietly
+ * forgets and one document type starts posting unassigned lines for no stated
+ * reason. Every entry here is either a column read or an explicit `null` with
+ * the reason next to it.
+ *
+ * Derived documents inherit from the document they derive FROM. A sales return
+ * is a partial reversal of an invoice and debits Penjualan; leaving it
+ * unassigned while the invoice it reverses is tagged to Jakarta would overstate
+ * Jakarta's profit by exactly the returned amount — the dimension quietly
+ * corrupting a number rather than segmenting it.
+ */
+type CostCenterLookup = (client: Client, sourceId: number) => Promise<number | null>;
+
+/** Read one nullable `cost_center_id` column, via a `findUnique` on that table. */
+const own =
+  (
+    table: (client: Client) => {
+      findUnique: (args: {
+        where: { id: number };
+        select: { costCenterId: true };
+      }) => Promise<{ costCenterId: number | null } | null>;
+    }
+  ): CostCenterLookup =>
+  async (client, sourceId) =>
+    (await table(client).findUnique({ where: { id: sourceId }, select: { costCenterId: true } }))
+      ?.costCenterId ?? null;
+
+/** No dimension for this source in phase 1 — always company-wide (NULL). */
+const none: CostCenterLookup = async () => null;
+
+const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
+  // ── Dokumen sumber fase 1: kolomnya ada di kepala dokumen itu sendiri.
+  invoice: own((c) => c.invoice),
+  supplier_transaction: own((c) => c.supplierTransaction),
+  cash_account: own((c) => c.cashAccount),
+
+  // ── Turunan: mewarisi dari dokumen asalnya.
+  /** Penerimaan faktur → pusat biaya fakturnya. */
+  invoice_payment: async (client, sourceId) =>
+    (
+      await client.invoicePayment.findUnique({
+        where: { id: sourceId },
+        select: { invoice: { select: { costCenterId: true } } },
+      })
+    )?.invoice?.costCenterId ?? null,
+  /** Retur penjualan → pusat biaya faktur asalnya (membalik sebagian jurnalnya). */
+  sales_return: async (client, sourceId) =>
+    (
+      await client.salesReturn.findUnique({
+        where: { id: sourceId },
+        select: { invoice: { select: { costCenterId: true } } },
+      })
+    )?.invoice?.costCenterId ?? null,
+  /** Retur pembelian → pusat biaya pembelian asalnya. */
+  purchase_return: async (client, sourceId) =>
+    (
+      await client.purchaseReturn.findUnique({
+        where: { id: sourceId },
+        select: { purchase: { select: { costCenterId: true } } },
+      })
+    )?.purchase?.costCenterId ?? null,
+
+  // ── Tanpa dimensi di fase 1. Bukan kelalaian — masing-masing punya alasan,
+  //    dan semuanya AMAN untuk Laba/Rugi kecuali di mana disebutkan:
+  /** Kontrak & pelunasannya belum termasuk dokumen sumber fase 1 (issue #91). */
+  contract: none,
+  contract_payment: none,
+  /** Uang muka murni neraca (Kas ↔ Uang Muka) — tak menyentuh Laba/Rugi. */
+  advance_payment: none,
+  /** Kompensasi uang muka: reklasifikasi antar-akun neraca (+ selisih kurs). */
+  advance_application: none,
+  /**
+   * HPP dari gerakan stok. Stok TIDAK berdimensi di fase 1, jadi HPP-nya belum
+   * bisa dipilah. Konsekuensinya jujur dan harus diketahui pembaca laporan:
+   * Laba/Rugi satu cabang menampilkan pendapatannya tanpa HPP-nya. Memberi
+   * dimensi pada persediaan adalah pekerjaan tersendiri (nilai persediaan per
+   * lokasi), bukan sesuatu yang boleh diselundupkan lewat sini.
+   */
+  stock_movement: none,
+  /** Selisih stok opname — sama seperti di atas: stok belum berdimensi. */
+  stock_adjustment: none,
+  /** Penyusutan: asetnya belum berdimensi (lokasi aset ≠ pusat biaya). */
+  depreciation: none,
+  /** Pelepasan aset: idem. */
+  fixed_asset_disposal: none,
+  /** Saldo awal tak pernah lewat sini — `buildEntry` menolaknya lebih dulu. */
+  opening_balance: none,
+};
+
+/**
+ * Build the entry, then stamp the source document's cost centre on it — the
+ * single seam between "which journal" and "whose journal".
+ *
+ * Both `postForSource` and `repostForSource` go through here, so a repost can
+ * never lose the dimension a first post had (or keep a stale one after the
+ * document was retagged: the lookup re-reads the document every time).
+ *
+ * The stamp lands on the ENTRY, and `prepareLines` pushes it down to every line.
+ * That is why not one of the pure `buildXLines()` rules mentions cost centres.
+ */
+async function buildStampedEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const entry = await buildEntry(client, ctx);
+  if (!entry) return null;
+  const costCenterId = await COST_CENTER_OF[ctx.sourceType](client, ctx.sourceId);
+  return costCenterId == null ? entry : { ...entry, costCenterId };
+}
+
 // ─── Approval gate (issue #25) ───────────────────────────
 /**
  * Withhold the journal of a document that is waiting for — or was refused —
@@ -1290,7 +1408,7 @@ export async function postForSource(ctx: PostingContext): Promise<Journal | null
     // of a journal, it never retroactively hides one.
     if (await approvalGate(client, ctx)) return null;
 
-    const entry = await buildEntry(client, ctx);
+    const entry = await buildStampedEntry(client, ctx);
     if (!entry) return null;
     return postJournal(entry, client);
   });
@@ -1312,7 +1430,7 @@ export async function repostForSource(ctx: PostingContext): Promise<Journal | nu
     // back out, and nothing replaces it until the document is approved.
     if (await approvalGate(client, ctx)) return null;
 
-    const entry = await buildEntry(client, ctx);
+    const entry = await buildStampedEntry(client, ctx);
     if (!entry) return null;
     return postJournal(entry, client);
   });

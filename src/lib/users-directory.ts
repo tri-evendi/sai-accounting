@@ -23,7 +23,7 @@
 import "server-only";
 
 import { controlDb } from "@/lib/control-db";
-import { requireCompanyContext } from "@/lib/company-context";
+import { currentCompanyId } from "@/lib/current-company";
 
 export interface CompanyUser {
   id: number;
@@ -37,14 +37,14 @@ export interface CompanyUser {
   createdAt: Date;
 }
 
-function activeCompanyId(): number {
-  return requireCompanyContext("direktori pengguna").companyId;
+function activeCompanyId(): Promise<number> {
+  return currentCompanyId();
 }
 
 /** Anggota perusahaan yang sedang dibuka, terbaru dulu. */
 export async function listCompanyUsers(): Promise<CompanyUser[]> {
   const memberships = await controlDb.membership.findMany({
-    where: { companyId: activeCompanyId(), isActive: true },
+    where: { companyId: await activeCompanyId(), isActive: true },
     select: {
       role: true,
       accountantMode: true,
@@ -68,7 +68,7 @@ export async function listCompanyUsers(): Promise<CompanyUser[]> {
 /** Satu anggota perusahaan ini, atau `null` bila ia bukan anggota. */
 export async function findCompanyUser(userId: number): Promise<CompanyUser | null> {
   const membership = await controlDb.membership.findUnique({
-    where: { userId_companyId: { userId, companyId: activeCompanyId() } },
+    where: { userId_companyId: { userId, companyId: await activeCompanyId() } },
     select: {
       role: true,
       accountantMode: true,
@@ -120,14 +120,14 @@ export async function userDisplayName(id: number | null | undefined): Promise<st
 /** Berapa anggota perusahaan ini yang memegang sebuah peran. */
 export async function countUsersWithRole(role: string): Promise<number> {
   return controlDb.membership.count({
-    where: { companyId: activeCompanyId(), role, isActive: true },
+    where: { companyId: await activeCompanyId(), role, isActive: true },
   });
 }
 
 /** Pindahkan semua anggota perusahaan ini dari satu peran ke peran lain. */
 export async function reassignRole(from: string, to: string): Promise<number> {
   const result = await controlDb.membership.updateMany({
-    where: { companyId: activeCompanyId(), role: from },
+    where: { companyId: await activeCompanyId(), role: from },
     data: { role: to },
   });
   return result.count;
@@ -155,7 +155,7 @@ export async function createCompanyUser(input: {
   name?: string | null;
   role: string;
 }): Promise<CompanyUser> {
-  const companyId = activeCompanyId();
+  const companyId = await activeCompanyId();
 
   const created = await controlDb.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -196,7 +196,7 @@ export async function addExistingUserToCompany(
   userId: number,
   role: string
 ): Promise<CompanyUser | null> {
-  const companyId = activeCompanyId();
+  const companyId = await activeCompanyId();
   await controlDb.membership.upsert({
     where: { userId_companyId: { userId, companyId } },
     create: { userId, companyId, role },
@@ -217,7 +217,7 @@ export async function updateCompanyUser(
   userId: number,
   changes: { name?: string | null; passwordHash?: string; role?: string }
 ): Promise<CompanyUser | null> {
-  const companyId = activeCompanyId();
+  const companyId = await activeCompanyId();
   const membership = await controlDb.membership.findUnique({
     where: { userId_companyId: { userId, companyId } },
     select: { role: true },
@@ -263,7 +263,7 @@ export async function updateCompanyUser(
 export async function removeCompanyUser(
   userId: number
 ): Promise<{ username: string; role: string } | null> {
-  const companyId = activeCompanyId();
+  const companyId = await activeCompanyId();
   const membership = await controlDb.membership.findUnique({
     where: { userId_companyId: { userId, companyId } },
     select: { role: true, user: { select: { username: true } } },
@@ -283,7 +283,7 @@ export async function setAccountantMode(
   accountantMode: boolean | null
 ): Promise<void> {
   await controlDb.membership.update({
-    where: { userId_companyId: { userId, companyId: activeCompanyId() } },
+    where: { userId_companyId: { userId, companyId: await activeCompanyId() } },
     data: { accountantMode },
   });
 }

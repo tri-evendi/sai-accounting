@@ -47,12 +47,11 @@ describe("enterCompanyFromSession", () => {
     expect(result).toEqual({ ok: true, companyId: 7, slug: "pt-a", role: "finance_manager" });
 
     /*
-     * Yang TIDAK diperiksa di sini, dan alasannya: konteks yang ditanam
-     * `enterWith` di dalam fungsi async tidak merambat ke KELANJUTAN
-     * pemanggilnya (badan tes ini), hanya ke keturunan di dalam fungsi itu
-     * sendiri. Karena itulah `lib/prisma.ts` menyelesaikan kliennya saat query
-     * DIPANGGIL — dengan sesi sebagai sumber kedua — bukan mengandalkan
-     * rambatan yang memang tidak terjadi. Rambatan ke dalam diuji terpisah di
+     * Konteks yang ditanam TIDAK diperiksa di sini, dan alasannya bukan bahwa
+     * `enterWith` tak pernah merambat — ia merambat, ASAL belum ada store.
+     * Berkas tes ini sudah punya store bawaan (tests/setup-company-context.ts),
+     * dan dalam keadaan itu `enterWith` di fungsi yang di-`await` tidak
+     * menimpanya untuk pemanggil. Kedua sifat itu diukur dan dikunci di
      * tests/company-context.test.ts.
      */
   });

@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile } from "fs/promises";
 import path from "path";
-import { requireCompanyContext } from "@/lib/company-context";
+import { currentCompany } from "@/lib/current-company";
 
 export type AuditAction =
   | "finance.create"
@@ -189,10 +189,10 @@ export type AuditLogEntry = {
  */
 const AUDIT_ROOT = path.join(process.cwd(), "data", "audit");
 
-function auditPaths(): { dir: string; file: string } {
-  const { slug } = requireCompanyContext("jejak audit");
+async function auditPaths(): Promise<{ dir: string; file: string; companyId: number }> {
+  const { slug, companyId } = await currentCompany();
   const dir = path.join(AUDIT_ROOT, slug);
-  return { dir, file: path.join(dir, "audit.jsonl") };
+  return { dir, file: path.join(dir, "audit.jsonl"), companyId };
 }
 
 export function getClientIp(request?: Request): string | null {
@@ -215,7 +215,8 @@ export async function writeAuditLog(params: {
   details?: Record<string, unknown>;
   request?: Request;
 }) {
-  const { companyId, slug } = requireCompanyContext("jejak audit");
+  const { dir, file, companyId } = await auditPaths();
+  const slug = path.basename(dir);
   const entry: AuditLogEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     companyId,
@@ -232,7 +233,6 @@ export async function writeAuditLog(params: {
   };
 
   try {
-    const { dir, file } = auditPaths();
     await mkdir(dir, { recursive: true });
     await appendFile(file, `${JSON.stringify(entry)}\n`, "utf8");
   } catch (err) {
@@ -289,7 +289,7 @@ export async function readAuditLogs(options: {
 }): Promise<AuditPage> {
   let lines: string[] = [];
   try {
-    const raw = await readFile(auditPaths().file, "utf8");
+    const raw = await readFile((await auditPaths()).file, "utf8");
     lines = raw.trim().split("\n").filter(Boolean);
   } catch {
     const page = Math.max(1, options.page ?? 1);

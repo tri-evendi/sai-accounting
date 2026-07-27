@@ -12,21 +12,12 @@
  * sebuah **Proxy** yang mencari kliennya SAAT QUERY DIPANGGIL.
  *
  * ══ KENAPA SAAT DIPANGGIL, BUKAN SAAT AKSES PROPERTI ═══════════════════════
- * Rancangan pertama menanam konteks di penjaga (`AsyncLocalStorage.enterWith`)
- * lalu membacanya secara SINKRON di sini. Itu tidak bekerja, dan tesnya yang
- * membuktikan: `enterWith` yang dipanggil di dalam fungsi async tidak merambat
- * ke KELANJUTAN pemanggilnya — kode halaman sesudah
- * `await requirePagePermission()` berjalan di konteks async yang sudah dibuat
- * sebelum penjaga menanam apa pun. Kalau kekeliruan itu dibiarkan, gejalanya
- * bukan galat melainkan halaman yang membaca basis data yang salah. Karena itu
- * penyelesaiannya dipindah ke saat pemanggilan, di mana ia boleh async.
- *
- * Urutan sumbernya:
- *   1. Konteks `AsyncLocalStorage` — dipakai skrip, cron, seed, dan tes yang
- *      membungkus pekerjaannya dengan `runWithCompany()`.
- *   2. SESI permintaan — perusahaan aktif milik pengguna yang sedang masuk.
- *      Inilah jalur normal setiap halaman dan setiap route.
- *   3. Tidak keduanya → MELEMPAR.
+ * Penyelesaiannya butuh SESI sebagai sumber kedua (lihat `current-company.ts`),
+ * dan membaca sesi itu async. Akses properti tidak bisa menunggu; pemanggilan
+ * bisa. Sumber kedua itu bukan kemewahan: route self-scoped seperti
+ * `/api/user/permissions` dan `/api/user/companies` sengaja tidak melewati
+ * penjaga — merekalah yang menyusun menu dan pemilih perusahaan — jadi tanpa
+ * sesi sebagai sumber, keduanya gagal persis saat paling dibutuhkan.
  *
  * ══ SATU BENTUK YANG TIDAK DIDUKUNG ════════════════════════════════════════
  * `$transaction` bentuk ARRAY (`prisma.$transaction([a, b])`) tidak bisa lewat
@@ -48,38 +39,12 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { getCompanyClient } from "@/lib/company-clients";
-import { MissingCompanyContextError, getCompanyContext } from "@/lib/company-context";
-
-/**
- * Perusahaan menurut SESI permintaan yang sedang berjalan.
- *
- * `auth` diimpor secara dinamis, bukan di puncak berkas: modul ini dipakai
- * hampir setiap berkas lib, dan menarik NextAuth ke dalam graf impor mereka
- * membuat skrip biasa (seed, migrasi, tes) ikut memuat seluruh mesin
- * autentikasi yang tidak pernah mereka butuhkan.
- */
-async function companyFromSession() {
-  const { auth } = await import("@/lib/auth");
-  const session = await auth();
-  const companyId = session?.user?.companyId ?? null;
-  if (companyId == null) return null;
-
-  const { getCompany } = await import("@/lib/company-registry");
-  const company = await getCompany(companyId);
-  if (!company || !company.isActive) return null;
-
-  return company;
-}
+import { currentCompany } from "@/lib/current-company";
 
 /** Klien milik perusahaan yang sedang dibuka — atau melempar. */
 export async function currentCompanyClient(): Promise<PrismaClient> {
-  const context = getCompanyContext();
-  if (context) return getCompanyClient(context.databaseName);
-
-  const fromSession = await companyFromSession();
-  if (fromSession) return getCompanyClient(fromSession.databaseName);
-
-  throw new MissingCompanyContextError();
+  const { databaseName } = await currentCompany();
+  return getCompanyClient(databaseName);
 }
 
 /** Properti klien yang BUKAN model — dipanggil langsung pada objek `prisma`. */

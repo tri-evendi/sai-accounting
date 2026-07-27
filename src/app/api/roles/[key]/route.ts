@@ -100,7 +100,7 @@ export async function DELETE(
   });
 
   // Baris override peran ini lenyap → matriks efektif dirakit ulang.
-  invalidateEffectiveMatrix();
+  await invalidateEffectiveMatrix();
 
   await writeAuditLog({
     userId: result.session.user.id,

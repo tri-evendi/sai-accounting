@@ -153,7 +153,7 @@ export async function PUT(
   });
 
   // Pembaca berikutnya untuk PENGGUNA ini membaca DB lagi; pengguna lain utuh.
-  invalidateUserOverrides(user.id);
+  await invalidateUserOverrides(user.id);
 
   await writeAuditLog({
     userId: result.session.user.id,

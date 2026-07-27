@@ -64,18 +64,42 @@ pernah menjadi jawaban.
 
 ### Bagaimana klien diselesaikan
 
-`prisma` adalah **Proxy** yang mencari kliennya **saat query dipanggil**:
+Semua kode server bertanya lewat `currentCompany()` (`lib/current-company.ts`),
+dan `prisma` memakainya **saat query dipanggil**:
 
-1. konteks `AsyncLocalStorage` (dipasang `runWithCompany`), lalu
+1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / penjaga), lalu
 2. sesi permintaan (`companyId` di JWT → registry → nama basis data), lalu
 3. **melempar**.
 
-Kenapa saat dipanggil, bukan saat akses properti: rancangan pertama memakai
-`AsyncLocalStorage.enterWith()` di penjaga lalu membacanya sinkron. Itu tidak
-bekerja — `enterWith` di dalam fungsi async **tidak merambat ke kelanjutan
-pemanggilnya**, jadi kode halaman sesudah `await requirePagePermission()` tidak
-melihatnya. Gejalanya bukan galat, melainkan halaman yang membaca basis data
-yang salah.
+**Kenapa sesi perlu jadi sumber kedua.** Tidak semua jalur melewati penjaga, dan
+yang tidak melewatinya bukan kasus pinggiran: `/api/user/permissions` (penyusun
+menu) dan `/api/user/companies` (pemilih perusahaan) sengaja self-scoped —
+`auth()` saja, tanpa `requireApiPermission`. Tanpa sumber kedua, sidebar setiap
+pengguna kosong dan pemilih perusahaannya gagal persis saat paling dibutuhkan.
+
+**Kenapa penyelesaiannya saat dipanggil, bukan saat akses properti.** Membaca
+sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
+
+### Kenapa `enterWith` tidak boleh diandalkan
+
+Rambatan `AsyncLocalStorage.enterWith()` dari fungsi yang di-`await` ke
+**kelanjutan pemanggilnya** tergantung lingkungan. Diprobe langsung: di Node
+polos ia merambat; di dalam vitest, dengan API yang sama persis, tidak — bedanya
+pada rantai async resource yang sudah dibuat pemanggilnya lebih dulu.
+
+Kesimpulannya: `enterCompanyContext()` di penjaga adalah **jalan pintas**, bukan
+jaminan. Yang dijamin:
+
+- `runWithCompany()` memakai `run()` — selalu bisa diandalkan, termasuk melewati
+  batas async. Inilah cara skrip/cron/tes menyebut perusahaannya.
+- Untuk permintaan HTTP, kebenarannya bertumpu pada **sesi**, bukan pada
+  rambatan ALS.
+
+Dan satu sifat yang tetap penting: konteks yang sedang berjalan **tidak**
+tertimpa dari dalam — pekerjaan latar yang membungkus dirinya dengan
+`runWithCompany(PT_A)` tetap menulis ke PT A sekalipun sesuatu di dalamnya
+menanam PT B. Yang eksplisit menang. Keduanya dikunci di
+`tests/company-context.test.ts`.
 
 ### Satu bentuk yang tidak didukung
 

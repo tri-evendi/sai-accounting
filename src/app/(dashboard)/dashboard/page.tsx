@@ -72,6 +72,15 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
+  /*
+   * Beranda menjaga dirinya sendiri dengan `auth()` (terdaftar di
+   * tests/authz-coverage.test.ts), jadi ia juga harus memeriksa PERUSAHAAN
+   * sendiri — penjaga izin yang biasanya melakukannya tidak lewat sini.
+   * Tanpa perusahaan aktif setiap query di bawah akan melempar; pengguna
+   * dikirim memilih perusahaannya dulu (issue #104).
+   */
+  if (session.user.companyId == null) redirect("/select-company");
+
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());
 

@@ -26,13 +26,17 @@
  * memang tidak punya permintaan (skrip, cron, migration) WAJIB menyebut
  * perusahaannya sendiri lewat `runWithCompany()`.
  *
- * ══ `enterWith` vs `run` ═══════════════════════════════════════════════════
+ * ══ `enterWith` vs `run` — DAN MANA YANG BOLEH DIANDALKAN ══════════════════
  * `runWithCompany()` (memakai `als.run`) dipakai bila seluruh pekerjaan muat di
- * dalam satu callback — skrip, cron, tes. `enterCompanyContext()` (memakai
- * `als.enterWith`) dipakai oleh gerbang halaman/API: sebuah penjaga tidak bisa
- * "membungkus" render yang terjadi SETELAH ia selesai, jadi ia menanam konteks
- * ke dalam eksekusi berjalan dan konteks itu bertahan sampai permintaannya
- * usai. Ini justru pemakaian yang dirancang untuk `enterWith`.
+ * dalam satu callback — skrip, cron, seed, tes. **Ia selalu bisa diandalkan.**
+ *
+ * `enterCompanyContext()` (memakai `als.enterWith`) dipakai gerbang
+ * halaman/API, sebab sebuah penjaga tidak bisa "membungkus" render yang terjadi
+ * SETELAH ia selesai. Tapi rambatannya ke kelanjutan PEMANGGIL tergantung
+ * lingkungan — diprobe langsung: di Node polos ia merambat, di dalam vitest
+ * dengan API yang sama persis tidak. Karena itu ia diperlakukan sebagai JALAN
+ * PINTAS, bukan jaminan: untuk permintaan HTTP, kebenaran ditopang oleh SESI
+ * (lihat `current-company.ts`), bukan oleh rambatan ALS.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";

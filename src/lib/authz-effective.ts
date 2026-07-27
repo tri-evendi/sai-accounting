@@ -30,7 +30,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { requireCompanyContext } from "@/lib/company-context";
+import { currentCompanyId } from "@/lib/current-company";
 import type { Permission } from "@/lib/authz";
 import {
   canWithMatrix,
@@ -110,9 +110,15 @@ function createLoaders(): CompanyAuthzLoaders {
   };
 }
 
-/** Loader milik perusahaan yang konteksnya aktif. Tanpa konteks: melempar. */
-function loaders(): CompanyAuthzLoaders {
-  const { companyId } = requireCompanyContext("otorisasi efektif");
+/**
+ * Loader milik perusahaan yang sedang dibuka. Tanpa perusahaan: melempar.
+ *
+ * Async karena perusahaan boleh berasal dari SESI, bukan hanya dari konteks
+ * `AsyncLocalStorage` — dan route self-scoped (`/api/user/permissions`, yang
+ * menyusun menu) memang tidak melewati penjaga mana pun.
+ */
+async function loaders(): Promise<CompanyAuthzLoaders> {
+  const companyId = await currentCompanyId();
   let entry = perCompany.get(companyId);
   if (!entry) {
     entry = createLoaders();
@@ -128,13 +134,13 @@ export function resetAuthzCachesForCompany(companyId: number): void {
 }
 
 /** Modul yang aktif untuk perusahaan ini, dari cache bila masih segar. */
-export function getEnabledModules(): Promise<ReadonlySet<BusinessModule>> {
-  return loaders().modules.get();
+export async function getEnabledModules(): Promise<ReadonlySet<BusinessModule>> {
+  return (await loaders()).modules.get();
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `company_settings.enabled_modules`. */
-export function invalidateEnabledModules(): void {
-  loaders().modules.invalidate();
+export async function invalidateEnabledModules(): Promise<void> {
+  (await loaders()).modules.invalidate();
 }
 
 /**
@@ -145,7 +151,7 @@ export function invalidateEnabledModules(): void {
  * salah untuk memperbaikinya.
  */
 export async function isModuleActiveFor(permission: Permission): Promise<boolean> {
-  return isPermissionEnabled(permission, await loaders().modules.get());
+  return isPermissionEnabled(permission, await (await loaders()).modules.get());
 }
 
 /** `session.user.id` hidup sebagai string di JWT; baris override memakai Int.
@@ -157,24 +163,24 @@ function parseUserId(id: unknown): number | null {
 }
 
 /** Matriks efektif (bawaan + override), dari cache bila masih segar. */
-export function getEffectiveMatrix(): Promise<EffectiveMatrix> {
-  return loaders().matrix.get();
+export async function getEffectiveMatrix(): Promise<EffectiveMatrix> {
+  return (await loaders()).matrix.get();
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `role_permission_overrides`. */
-export function invalidateEffectiveMatrix(): void {
-  loaders().matrix.invalidate();
+export async function invalidateEffectiveMatrix(): Promise<void> {
+  (await loaders()).matrix.invalidate();
 }
 
 /** Peran yang efektif memegang sebuah izin. */
 export async function effectiveRolesFor(permission: Permission): Promise<readonly Role[]> {
-  return (await loaders().matrix.get())[permission];
+  return (await (await loaders()).matrix.get())[permission];
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `user_permission_overrides`
  *  untuk pengguna itu (issue #75). Cache pengguna lain tidak tersentuh. */
-export function invalidateUserOverrides(userId: number): void {
-  loaders().users.invalidate(userId);
+export async function invalidateUserOverrides(userId: number): Promise<void> {
+  (await loaders()).users.invalidate(userId);
 }
 
 /**
@@ -193,7 +199,7 @@ export async function canEffective(
   // Fitur yang tidak dipakai perusahaan ini tidak terjangkau siapa pun, sekalipun
   // perannya berakses penuh. Ini satu-satunya perubahan yang merambat ke ~50
   // halaman, seluruh menu, dan semua route API — persis seperti #73 dulu.
-  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = loaders();
+  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = await loaders();
   if (!isPermissionEnabled(permission, await modulesLoader.get())) return false;
 
   const matrix = await matrixLoader.get();
@@ -217,7 +223,7 @@ export async function effectivePermissionsFor(user: {
   id?: string | number | null;
   role?: string | null;
 }): Promise<Permission[]> {
-  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = loaders();
+  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = await loaders();
   const matrix = await matrixLoader.get();
   const roleSet = rolePermissionSet(matrix, user.role);
   const userId = parseUserId(user.id);

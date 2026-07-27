@@ -96,6 +96,49 @@ describe("konteks perusahaan", () => {
     });
   });
 
+  /*
+   * ══ KENAPA `enterWith` TIDAK BOLEH DIANDALKAN, DAN INI DIUKUR ═════════════
+   *
+   * Rambatan `enterWith` dari fungsi yang di-`await` ke KELANJUTAN pemanggilnya
+   * TERGANTUNG LINGKUNGAN. Diprobe langsung: di Node polos ia merambat; di
+   * dalam vitest, dengan AsyncLocalStorage yang sama persis, TIDAK. Bedanya ada
+   * pada rantai async resource yang sudah dibuat pemanggilnya lebih dulu.
+   *
+   * Karena itu `lib/current-company.ts` tidak pernah bergantung padanya:
+   * konteks yang dipasang `runWithCompany()` (memakai `run`, bukan `enterWith`)
+   * SELALU bisa diandalkan, dan bila konteks itu tidak ada, perusahaan diambil
+   * dari SESI. `enterCompanyContext()` di penjaga tinggal jalan pintas yang
+   * menyenangkan — bukan sesuatu yang kebenarannya bertumpu padanya.
+   *
+   * Tes di bawah mengunci yang memang dijamin.
+   */
+  it("run() selalu bisa diandalkan, termasuk melewati batas async", async () => {
+    async function jauhDiDalam() {
+      await new Promise((r) => setTimeout(r, 1));
+      return getCompanyContext()?.slug;
+    }
+    await runWithCompany(PT_A, async () => {
+      await expect(jauhDiDalam()).resolves.toBe("pt-a");
+    });
+  });
+
+  it("konteks eksplisit yang sedang berjalan tidak tertimpa dari dalam", async () => {
+    async function menanamPtB() {
+      await new Promise((r) => setTimeout(r, 1));
+      enterCompanyContext(PT_B);
+    }
+    await runWithCompany(PT_A, async () => {
+      await menanamPtB();
+      /*
+       * Pekerjaan latar yang membungkus dirinya dengan runWithCompany(PT_A)
+       * tetap menulis ke PT A sekalipun sesuatu di dalamnya menanam PT B — yang
+       * eksplisit menang. Itulah kenapa urutan sumber di current-company.ts
+       * ditulis eksplisit: ALS dulu, sesi belakangan.
+       */
+      expect(getCompanyContext()?.slug).toBe("pt-a");
+    });
+  });
+
   it("MELEMPAR tanpa konteks — tidak ada perusahaan bawaan", () => {
     runWithoutCompany(() => {
       expect(() => requireCompanyContext()).toThrow(MissingCompanyContextError);

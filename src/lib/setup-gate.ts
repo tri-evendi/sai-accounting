@@ -26,7 +26,7 @@
 import "server-only";
 
 import { isSetupComplete } from "@/lib/opening-balance";
-import { requireCompanyContext } from "@/lib/company-context";
+import { currentCompanyId } from "@/lib/current-company";
 
 /**
  * Latch: `isSetup` adalah bendera sekali-jalan (skema menyebutnya "run-once
@@ -64,7 +64,7 @@ export function resetSetupLatchForTests() {
  * jauh lebih jujur.
  */
 export async function isSetupDone(): Promise<boolean> {
-  const { companyId } = requireCompanyContext("gerbang penyiapan");
+  const companyId = await currentCompanyId();
   if (completedCompanies.has(companyId)) return true;
 
   try {

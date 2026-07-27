@@ -5,11 +5,19 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
-export async function GET() {
+/**
+ * Daftar pelanggan. `?active=1` hanya mengembalikan yang aktif — dipakai pemilih
+ * di formulir faktur supaya pelanggan yang sudah dinonaktifkan tidak bisa
+ * dipilih untuk dokumen BARU, sementara faktur lama tetap menampilkannya.
+ */
+export async function GET(request: Request) {
   const result = await requireApiPermission("customer.read");
   if (!result.authorized) return result.response;
 
+  const activeOnly = new URL(request.url).searchParams.get("active") === "1";
+
   const customers = await prisma.customer.findMany({
+    where: activeOnly ? { isActive: true } : undefined,
     orderBy: { name: "asc" },
   });
 

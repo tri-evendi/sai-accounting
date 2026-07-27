@@ -5,11 +5,21 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
-export async function GET() {
+/**
+ * Daftar pemasok. `?active=1` hanya mengembalikan yang aktif — dipakai pemilih
+ * di formulir supaya master yang sudah dinonaktifkan tidak pernah muncul sebagai
+ * pilihan baru. Halaman daftar pemasok tetap menampilkan semuanya, sebab di
+ * sanalah yang nonaktif harus terlihat untuk bisa diaktifkan lagi. Pola yang
+ * sama dengan `/api/consignees`.
+ */
+export async function GET(request: Request) {
   const result = await requireApiPermission("supplier.read");
   if (!result.authorized) return result.response;
 
+  const activeOnly = new URL(request.url).searchParams.get("active") === "1";
+
   const suppliers = await prisma.supplier.findMany({
+    where: activeOnly ? { isActive: true } : undefined,
     orderBy: { name: "asc" },
     include: { transactions: { orderBy: { date: "desc" }, take: 5 } },
   });

@@ -140,7 +140,7 @@ async function main() {
     (await prisma.contract.count()) +
     (await prisma.customer.count()) +
     (await prisma.supplier.count()) +
-    (await prisma.cashAccount.count());
+    (await prisma.cashMovement.count());
   if (existing > 0 && !FORCE) {
     throw new Error(
       `Target already has ${existing} migrated rows. Re-run with --force to wipe & reload.`
@@ -157,7 +157,7 @@ async function main() {
     await prisma.invoice.deleteMany();
     await prisma.supplierTransaction.deleteMany();
     await prisma.stockMovement.deleteMany();
-    await prisma.cashAccount.deleteMany();
+    await prisma.cashMovement.deleteMany();
     await prisma.currencyConversion.deleteMany();
     await prisma.supplier.deleteMany();
     await prisma.item.deleteMany();
@@ -240,8 +240,8 @@ async function main() {
     await prisma.currencyConversion.create({
       data: {
         date,
-        fromCur: mapCurrency(r.currency_awal),
-        toCur: mapCurrency(r.currency_akhir),
+        fromCurrency: mapCurrency(r.currency_awal),
+        toCurrency: mapCurrency(r.currency_akhir),
         amount: parseNum(r.amount),
         rate: parseNum(r.kurs),
         result: parseNum(r.total),
@@ -381,13 +381,13 @@ async function main() {
     bump("supplier_tx");
   }
 
-  // ── cash_accounts (tb_penjualan → petty/other cash; tb_kasbesar → big cash) ──
+  // ── cash_movements (tb_penjualan → petty/other cash; tb_kasbesar → big cash) ──
   for (const r of await q("SELECT * FROM tb_penjualan")) {
     const date = parseDate(r.tgl_transaksi);
     if (!date) { bump("cash_kecil_skipped"); continue; }
     const amt = parseNum(r.total) || parseNum(r.nilai);
     const isOut = (clean(r.kategori) || "").toLowerCase().startsWith("pengeluaran");
-    await prisma.cashAccount.create({
+    await prisma.cashMovement.create({
       data: {
         type: (clean(r.sumber) || "Kas Kecil").slice(0, 20),
         date,
@@ -406,7 +406,7 @@ async function main() {
     const amt = parseNum(r.total);
     const st = (clean(r.status) || "").toLowerCase();
     const isCredit = st.startsWith("kredit") || st.startsWith("credit");
-    await prisma.cashAccount.create({
+    await prisma.cashMovement.create({
       data: {
         type: "Kas Besar",
         date,

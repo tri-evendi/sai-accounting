@@ -47,11 +47,11 @@ async function main() {
   // USERS
   // ═══════════════════════════════════════════════
   const users = [
-    { username: "admin", password: "admin123", name: "Administrator Sistem", role: "administrator", status: 0 },
-    { username: "staff", password: "staff123", name: "Staff User", role: "finance_manager", status: 0 },
-    { username: "ptg", password: "ptg123", name: "PTG User", role: "warehouse_head", status: 0 },
-    { username: "erwin", password: "erwin123", name: "Erwin Saputra", role: "managing_director", status: 0 },
-    { username: "sari", password: "sari1234", name: "Sari Dewi", role: "finance_manager", status: 0 },
+    { username: "admin", password: "admin123", name: "Administrator Sistem", role: "administrator", mustChangePassword: false },
+    { username: "staff", password: "staff123", name: "Staff User", role: "finance_manager", mustChangePassword: false },
+    { username: "ptg", password: "ptg123", name: "PTG User", role: "warehouse_head", mustChangePassword: false },
+    { username: "erwin", password: "erwin123", name: "Erwin Saputra", role: "managing_director", mustChangePassword: false },
+    { username: "sari", password: "sari1234", name: "Sari Dewi", role: "finance_manager", mustChangePassword: false },
   ];
 
   for (const user of users) {
@@ -59,7 +59,7 @@ async function main() {
     await prisma.user.upsert({
       where: { username: user.username },
       update: {},
-      create: { username: user.username, password: hashed, name: user.name, role: user.role, status: user.status },
+      create: { username: user.username, password: hashed, name: user.name, role: user.role, mustChangePassword: user.mustChangePassword },
     });
   }
   console.log("  ✓ 5 users created");
@@ -418,7 +418,7 @@ async function main() {
             ? Math.floor(Math.random() * 500000) + 50000
             : Math.floor(Math.random() * 100000000) + 5000000 / (cur === "IDR" ? 1 : multiplier);
 
-        await prisma.cashAccount.create({
+        await prisma.cashMovement.create({
           data: {
             type,
             date,
@@ -443,7 +443,7 @@ async function main() {
             ? Math.floor(Math.random() * 300000) + 20000
             : Math.floor(Math.random() * 80000000) + 2000000 / (cur === "IDR" ? 1 : multiplier);
 
-        await prisma.cashAccount.create({
+        await prisma.cashMovement.create({
           data: {
             type,
             date,

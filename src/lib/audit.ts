@@ -125,7 +125,7 @@ export type AuditAction =
   | "company_setting.modules.update";
 
 export type AuditEntity =
-  | "cash_account"
+  | "cash_movement"
   | "stock"
   | "item"
   | "supplier_transaction"

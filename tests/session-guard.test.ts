@@ -16,7 +16,7 @@ import {
 
 const dbUser = {
   role: "finance_manager",
-  status: 0,
+  mustChangePassword: false,
   sessionVersion: 3,
   accountantMode: null,
 };

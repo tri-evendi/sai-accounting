@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
-import { stockUpdateSchema, itemSchema } from "@/lib/validations/inventory";
+import { stockUpdateSchema, itemSchema, itemActiveSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
@@ -9,11 +9,25 @@ import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
-export async function GET() {
+/**
+ * Ringkasan stok per barang. `?active=1` membuang barang yang dinonaktifkan —
+ * dipakai PEMILIH di formulir pergerakan stok, supaya barang yang sudah tidak
+ * dipakai lagi tak bisa dipilih untuk gerakan BARU.
+ *
+ * Tanpa parameter itu jawabannya tetap SEMUA barang, termasuk yang nonaktif.
+ * Sengaja: laporan stok harus menyebut setiap barang yang masih menyimpan
+ * saldo. Menonaktifkan barang berarti "jangan tawarkan lagi", bukan "anggap
+ * stoknya nol" — menyembunyikannya dari laporan justru akan menghilangkan
+ * persediaan yang secara fisik masih ada di gudang.
+ */
+export async function GET(request: Request) {
   const result = await requireApiPermission("inventory.read"); // all roles can view inventory
   if (!result.authorized) return result.response;
 
+  const activeOnly = new URL(request.url).searchParams.get("active") === "1";
+
   const items = await prisma.item.findMany({
+    where: activeOnly ? { isActive: true } : undefined,
     include: {
       stockMovements: { orderBy: { date: "desc" } },
     },
@@ -25,6 +39,7 @@ export async function GET() {
       id: item.id,
       name: item.name,
       unit: item.unit,
+      isActive: item.isActive,
       ...totals,
       lastMovement: item.stockMovements[0]?.date || null,
     };
@@ -70,6 +85,44 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(item, { status: 201 });
+  }
+
+  // Aktifkan / nonaktifkan barang (docs/DATABASE.md §1.3).
+  //
+  // Barang TIDAK punya route DELETE, dan itu disengaja: begitu sebuah barang
+  // pernah bergerak, menghapusnya akan menghapus gerakannya (FK CASCADE) —
+  // artinya menghapus dasar dari HPP dan penilaian persediaan yang sudah masuk
+  // ke laporan. Menonaktifkan adalah SATU-SATUNYA cara menyingkirkan barang
+  // dari pemilih, dan itu cukup: saldo, riwayat, dan jurnalnya tetap utuh.
+  if (body.action === "set_item_active") {
+    const parsed = itemActiveSchema.safeParse({ id: body.id, isActive: body.isActive });
+    if (!parsed.success) {
+      const { dictionary, t } = await getRequestI18n();
+      return NextResponse.json(
+        {
+          error: t("validation.invalidInput"),
+          details: translateFieldErrors(parsed.error, dictionary),
+        },
+        { status: 400 }
+      );
+    }
+
+    const item = await prisma.item.update({
+      where: { id: parsed.data.id },
+      data: { isActive: parsed.data.isActive },
+    });
+
+    await writeAuditLog({
+      userId: result.session.user.id,
+      username: result.session.user.email,
+      action: parsed.data.isActive ? "item.activate" : "item.deactivate",
+      entity: "item",
+      entityId: item.id,
+      details: { name: item.name, isActive: item.isActive },
+      request,
+    });
+
+    return NextResponse.json(item);
   }
 
   // Stock update

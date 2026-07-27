@@ -12,7 +12,7 @@ import {
   type ReconItem,
   type ReconciliationSummary,
 } from "@/lib/reconciliation";
-import type { BankStatement, BankStatementLine, CashAccount } from "@/generated/prisma/client";
+import type { BankStatement, BankStatementLine, CashMovement } from "@/generated/prisma/client";
 
 type Client = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -25,8 +25,8 @@ function endOfDay(d: Date): Date {
 
 export interface ReconciliationView {
   statement: BankStatement & { lines: BankStatementLine[] };
-  /** Book movements (`cash_accounts`) in scope for this statement. */
-  movements: CashAccount[];
+  /** Book movements (`cash_movements`) in scope for this statement. */
+  movements: CashMovement[];
   summary: ReconciliationSummary;
 }
 
@@ -37,8 +37,8 @@ export interface ReconciliationView {
 export async function scopedMovements(
   statement: Pick<BankStatement, "cashType" | "currency" | "periodStart" | "periodEnd">,
   client: Client = prisma
-): Promise<CashAccount[]> {
-  return client.cashAccount.findMany({
+): Promise<CashMovement[]> {
+  return client.cashMovement.findMany({
     where: {
       type: statement.cashType,
       currency: statement.currency,
@@ -63,7 +63,7 @@ export async function getReconciliation(
 
   // A book movement is matched iff a line of THIS statement points at it.
   const matchedCashIds = new Set(
-    statement.lines.map((l) => l.cashAccountId).filter((v): v is number => v != null)
+    statement.lines.map((l) => l.cashMovementId).filter((v): v is number => v != null)
   );
 
   const book: ReconItem[] = movements.map((m) => ({
@@ -103,7 +103,7 @@ export interface BankReconStatus {
 export async function bankReconciliationStatus(
   client: Client = prisma
 ): Promise<BankReconStatus[]> {
-  const movements = await client.cashAccount.findMany({
+  const movements = await client.cashMovement.findMany({
     where: { type: "bank" },
     select: { currency: true, reconciled: true },
   });

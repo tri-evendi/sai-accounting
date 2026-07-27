@@ -60,6 +60,17 @@ export async function PUT(
   return NextResponse.json(customer);
 }
 
+/**
+ * Master data TIDAK dihapus begitu direferensikan (docs/DATABASE.md §1.3) —
+ * pelanggan yang masih punya faktur, uang muka, atau retur DINONAKTIFKAN
+ * (`is_active = false`): ia hilang dari pemilih, tapi piutang, faktur pajak, dan
+ * jurnalnya tetap bisa menyebut namanya. Hanya pelanggan yang belum pernah
+ * dipakai yang benar-benar dihapus.
+ *
+ * Sebelumnya baris ini dihapus tanpa syarat. FK dari `invoices` memang RESTRICT,
+ * jadi DB menolak — tapi penolakannya muncul sebagai galat Prisma mentah, bukan
+ * sebagai keputusan yang bisa dijelaskan. Sekarang jawabannya jelas: dinonaktifkan.
+ */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -68,7 +79,22 @@ export async function DELETE(
   if (!result.authorized) return result.response;
 
   const { id } = await params;
-  await prisma.customer.delete({ where: { id: parseInt(id) } });
+  const customerId = parseInt(id);
 
-  return NextResponse.json({ success: true });
+  const [invoices, advances, returns] = await Promise.all([
+    prisma.invoice.count({ where: { customerId } }),
+    prisma.advancePayment.count({ where: { customerId } }),
+    prisma.salesReturn.count({ where: { customerId } }),
+  ]);
+
+  if (invoices > 0 || advances > 0 || returns > 0) {
+    const customer = await prisma.customer.update({
+      where: { id: customerId },
+      data: { isActive: false },
+    });
+    return NextResponse.json({ success: true, deactivated: true, customer });
+  }
+
+  await prisma.customer.delete({ where: { id: customerId } });
+  return NextResponse.json({ success: true, deactivated: false });
 }

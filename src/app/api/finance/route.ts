@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   if (type) where.type = type;
   if (currency) where.currency = currency;
 
-  const transactions = await prisma.cashAccount.findMany({
+  const transactions = await prisma.cashMovement.findMany({
     where,
     orderBy: { date: "desc" },
   });
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         throw new CounterAccountError();
       }
 
-      const created = await tx.cashAccount.create({
+      const created = await tx.cashMovement.create({
         data: {
           ...transactionData,
           date: new Date(date),
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       });
 
       await postForSource({
-        sourceType: "cash_account",
+        sourceType: "cash_movement",
         sourceId: created.id,
         tx,
         counterAccountId,
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     userId: result.session.user.id,
     username: result.session.user.email,
     action: "finance.create",
-    entity: "cash_account",
+    entity: "cash_movement",
     entityId: transaction.id,
     details: {
       type: transaction.type,

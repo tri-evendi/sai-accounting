@@ -179,6 +179,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/journal", label: "Catatan Transaksi", labelKey: "nav.items.journal", icon: "BookText", permission: "journal.read", accountingOnly: true, termKey: "jurnal" },
       { href: "/ledger", label: "Rincian per Akun", labelKey: "nav.items.ledger", icon: "Library", permission: "ledger.read", accountingOnly: true, termKey: "buku_besar" },
       { href: "/accounts", label: "Daftar Akun", labelKey: "nav.items.accounts", icon: "BookOpen", permission: "account.manage", accountingOnly: true, termKey: "akun_perkiraan" },
+      // issue #91 — master dimensi pusat biaya. SENGAJA tanpa `accountingOnly`:
+      // pusat biaya ditetapkan pada dokumen sehari-hari (faktur, kas,
+      // pembelian), bukan hanya dibaca akuntan, jadi menyembunyikannya saat
+      // Mode Akuntan mati berarti menyembunyikan satu-satunya pintu untuk
+      // menyusun daftar yang dipakai form-form itu.
+      { href: "/cost-centers", label: "Pusat Biaya", labelKey: "nav.items.costCenters", icon: "Split", permission: "cost_center.manage" },
     ],
   },
   // Label grup ≠ label item mana pun di dalamnya ("Pengaturan" berisi

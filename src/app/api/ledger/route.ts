@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAccountLedger } from "@/lib/ledger";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { parseCostCenterFilter } from "@/lib/cost-centers";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("ledger.read");
@@ -17,7 +18,11 @@ export async function GET(request: Request) {
   const from = fromStr ? new Date(`${fromStr}T00:00:00`) : undefined;
   const to = toStr ? new Date(`${toStr}T23:59:59.999`) : undefined;
 
-  const ledger = await getAccountLedger(accountId, from, to);
+  // issue #91 — pilahan per pusat biaya, sama seperti halaman /ledger.
+  // "" / tak dikirim = semua; "unassigned" = yang belum ditetapkan.
+  const costCenter = parseCostCenterFilter(searchParams.get("costCenter"));
+
+  const ledger = await getAccountLedger(accountId, from, to, undefined, costCenter);
   if (!ledger) {
     return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 404 });
   }

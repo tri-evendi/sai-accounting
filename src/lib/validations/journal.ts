@@ -10,6 +10,13 @@ export const journalLineSchema = z
     currency: z.enum(CURRENCIES).default("IDR"),
     rate: z.coerce.number().positive().default(1),
     memo: z.string().max(255).trim().optional(),
+    /**
+     * Penimpaan pusat biaya untuk BARIS ini (issue #91). Kosong = ikut pilihan
+     * di kepala jurnal. Inilah kasus yang membuat dimensinya diletakkan di
+     * baris: satu tagihan listrik bersama dibagi ke dua cabang dalam satu
+     * jurnal, dan itu mustahil dinyatakan kalau dimensinya hanya di kepala.
+     */
+    costCenterId: z.coerce.number().int().positive().nullable().optional(),
   })
   .refine((l) => !(l.debit > 0 && l.credit > 0), {
     message: vmsg("validation.journalLineNotBoth"),
@@ -22,6 +29,8 @@ export const journalSchema = z.object({
   date: z.coerce.date(),
   type: z.string().max(20).optional(),
   note: z.string().max(1000).trim().nullable().optional(),
+  /** Pusat biaya BAWAAN untuk setiap baris yang tak memilih sendiri (#91). */
+  costCenterId: z.coerce.number().int().positive().nullable().optional(),
   lines: z.array(journalLineSchema).min(2, vmsg("validation.journalMinTwoLines")),
 });
 

@@ -36,6 +36,9 @@ export async function POST(request: Request) {
       date: parsed.data.date,
       type: "general",
       note: parsed.data.note ?? null,
+      // issue #91 — pusat biaya bawaan kepala jurnal; `prepareLines` yang
+      // menurunkannya ke baris yang tidak memilih sendiri.
+      costCenterId: parsed.data.costCenterId ?? null,
       lines: parsed.data.lines,
     });
     return NextResponse.json(journal, { status: 201 });

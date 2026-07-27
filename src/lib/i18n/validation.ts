@@ -204,6 +204,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.rateRequiredForeign": "Kurs ke IDR wajib diisi untuk mata uang asing.",
   "validation.accountCodeRequired": "Kode perkiraan wajib diisi",
   "validation.accountNameRequired": "Nama akun wajib diisi",
+  "validation.costCenterCodeRequired": "Kode pusat biaya wajib diisi",
+  "validation.costCenterNameRequired": "Nama pusat biaya wajib diisi",
   "validation.accountRequired": "Akun wajib dipilih",
   "validation.counterAccountRequired": "Akun lawan wajib dipilih",
   "validation.journalLineNotBoth": "Baris tidak boleh berisi debit dan kredit sekaligus",

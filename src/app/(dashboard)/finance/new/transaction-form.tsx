@@ -48,6 +48,13 @@ interface AccountOption {
   isActive: boolean;
 }
 
+/** Pusat biaya aktif (issue #91) — cabang/unit yang uangnya bergerak. */
+interface CostCenterOption {
+  id: number;
+  code: string;
+  name: string;
+}
+
 const BASE_CURRENCY = "IDR";
 
 /**
@@ -85,6 +92,8 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenterOption[]>([]);
+  const [costCenterId, setCostCenterId] = useState("");
   // Drives which extra fields the accounting engine needs from the user.
   const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [type, setType] = useState<CashType>("bank");
@@ -131,7 +140,17 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       setAccounts(data.filter((a) => a.isActive));
     }
 
+    // issue #91 — hanya yang aktif. Perusahaan yang belum memakai pusat biaya
+    // mendapat daftar kosong, dan pemilihnya tidak dirender sama sekali: form
+    // ini tak berubah sedikit pun bagi mereka.
+    async function loadCostCenters() {
+      const res = await fetch("/api/cost-centers?activeOnly=1");
+      if (!res.ok || cancelled) return;
+      setCostCenters((await res.json()) as CostCenterOption[]);
+    }
+
     void loadAccounts();
+    void loadCostCenters();
     return () => {
       cancelled = true;
     };
@@ -218,6 +237,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       counterAccountId: counterAccountIdVal,
       rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
       note: formData.get("note") || undefined,
+      // Tak dipilih = null = "belum ditetapkan / seluruh perusahaan" — nilai
+      // yang SAH, bukan isian yang terlewat (issue #91).
+      costCenterId: costCenterId ? Number(costCenterId) : null,
     };
 
     const res = await fetch("/api/finance", {
@@ -386,6 +408,29 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   </span>
                 </p>
               </div>
+
+              {costCenters.length > 0 && (
+                <div className="sm:col-span-2">
+                  <Select
+                    id="costCenterId"
+                    name="costCenterId"
+                    label={t("costCenters.filterLabel")}
+                    value={costCenterId}
+                    onChange={(e) => setCostCenterId(e.target.value)}
+                    options={[
+                      { value: "", label: t("costCenters.filterUnassigned") },
+                      ...costCenters.map((c) => ({
+                        value: String(c.id),
+                        label: `${c.code} — ${c.name}`,
+                      })),
+                    ]}
+                  />
+                  <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{t("costCenters.pickerHint")}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             {value > 0 && (

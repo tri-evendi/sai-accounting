@@ -37,6 +37,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SquarePen,
+  Split,
   ChevronRight,
   X,
   type LucideIcon,
@@ -101,6 +102,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   ShoppingCart,
   SquarePen,
+  Split,
 };
 
 /**

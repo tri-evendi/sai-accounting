@@ -1,4 +1,4 @@
-import { requirePagePermission } from "@/lib/page-auth";
+import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import { getTrialBalance } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,9 @@ export default async function TrialBalancePage({
 }: {
   searchParams: Promise<{ asOf?: string }>;
 }) {
-  await requirePagePermission("report.read");
+  const session = await requirePagePermission("report.read");
+  // issue #103 — laporan adalah modul INTI, /finance/new milik `cash_bank`.
+  const canRecordCash = await canOpenPage(session.user, "cash.write");
   const t = await getT();
   const sp = await searchParams;
   const { asOf, asOfISO } = resolveAsOf(sp.asOf);
@@ -96,8 +98,8 @@ export default async function TrialBalancePage({
                     icon={<Scale className="h-12 w-12" />}
                     title={t("reports.trialBalanceEmptyTitle")}
                     description={t("reports.trialBalanceEmptyDescription")}
-                    actionLabel={t("reports.recordTransaction")}
-                    actionHref="/finance/new"
+                    actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}
+                    actionHref={canRecordCash ? "/finance/new" : undefined}
                   />
                 </TableCell>
               </TableRow>

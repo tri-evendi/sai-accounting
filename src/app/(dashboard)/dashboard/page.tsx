@@ -90,6 +90,23 @@ export default async function DashboardPage() {
   // bukan membandingkan string peran.
   const canViewFinance = allowed.has("cash.read");
   const canViewContracts = canViewFinance;
+  /*
+   * issue #103 — permukaan STOK milik modul `inventory`, dan modul itu mati di
+   * preset "Jasa" maupun "Distribusi tanpa gudang". Sampai sekarang seksinya
+   * tetap dirender tanpa syarat: perusahaan jasa melihat kartu stok berisi nol,
+   * empty state yang mengajak "Tambah/Kurangi Stok", dan spanduk stok menipis —
+   * yang semuanya bermuara ke /inventory dan memantul ke "fitur belum aktif".
+   *
+   * `allowed` sudah disaring modul (`effectivePermissionsFor`), jadi satu cek
+   * izin menutup keduanya: modul mati ATAU peran memang tak boleh melihat stok.
+   */
+  const canViewInventory = allowed.has("inventory.read");
+  const canUpdateInventory = allowed.has("inventory.write");
+  // Ajakan "buat kontrak" di empty state kontrak: seksinya masih dibuka izin
+  // KAS (lihat `canViewContracts` di atas — warisan, bukan keputusan baru),
+  // jadi tombolnya perlu izinnya sendiri agar tidak mengajak ke modul `trading`
+  // yang mungkin mati.
+  const canCreateContract = allowed.has("contract.write");
 
   const [
     contractCount,
@@ -207,7 +224,7 @@ export default async function DashboardPage() {
           URUTAN kerjanya bagi yang belum tahu mulai dari mana. */}
       <WorkflowGuide workflows={workflows} t={t} />
 
-      <StockAlertBanner items={lowStockItems} />
+      {canViewInventory && <StockAlertBanner items={lowStockItems} />}
 
       {/* ─── Ringkasan bahasa awam (issue #3) ───
           Sits above the standard reports on purpose: an owner should get the
@@ -296,6 +313,7 @@ export default async function DashboardPage() {
       )}
 
       {/* ─── Stok ─── */}
+      {canViewInventory && (
       <DashboardSection
         title={t("nav.items.inventory")}
         description={t("dashboard.stockDescription", { threshold: LOW_STOCK_THRESHOLD })}
@@ -346,8 +364,8 @@ export default async function DashboardPage() {
                       icon={<Package className="h-12 w-12" />}
                       title={t("dashboard.emptyMovementsTitle")}
                       description={t("dashboard.emptyMovementsDescription")}
-                      actionLabel={t("common.addRemoveStock")}
-                      actionHref="/inventory/update"
+                      actionLabel={canUpdateInventory ? t("common.addRemoveStock") : undefined}
+                      actionHref={canUpdateInventory ? "/inventory/update" : undefined}
                     />
                   </TableCell>
                 </TableRow>
@@ -379,6 +397,7 @@ export default async function DashboardPage() {
           </Table>
         </Card>
       </DashboardSection>
+      )}
 
       {/* ─── Finance ─── */}
       {canViewFinance && (
@@ -523,8 +542,8 @@ export default async function DashboardPage() {
                         icon={<FileText className="h-12 w-12" />}
                         title={t("contracts.emptyTitle")}
                         description={t("dashboard.emptyContractsDescription")}
-                        actionLabel={t("contracts.addNew")}
-                        actionHref="/contracts/new"
+                        actionLabel={canCreateContract ? t("contracts.addNew") : undefined}
+                        actionHref={canCreateContract ? "/contracts/new" : undefined}
                       />
                     </TableCell>
                   </TableRow>

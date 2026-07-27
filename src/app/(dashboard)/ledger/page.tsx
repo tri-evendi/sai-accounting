@@ -1,4 +1,4 @@
-import { requirePagePermission } from "@/lib/page-auth";
+import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getAccountLedger } from "@/lib/ledger";
 import { Card } from "@/components/ui/card";
@@ -30,7 +30,11 @@ export default async function LedgerPage({
 }: {
   searchParams: Promise<{ accountId?: string; from?: string; to?: string; costCenter?: string }>;
 }) {
-  await requirePagePermission("ledger.read");
+  const session = await requirePagePermission("ledger.read");
+  // issue #103 — "Catat transaksi" menunjuk ke /finance/new, milik modul
+  // `cash_bank`. Buku besar sendiri modul INTI, jadi halaman ini tetap ada
+  // saat kas/bank dimatikan; ajakannya yang tidak boleh ikut bertahan.
+  const canRecordCash = await canOpenPage(session.user, "cash.write");
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());
   const sp = await searchParams;
@@ -141,8 +145,8 @@ export default async function LedgerPage({
                         icon={<BookOpen className="h-12 w-12" />}
                         title={t("ledger.emptyTitle")}
                         description={t("ledger.emptyDescription")}
-                        actionLabel={t("ledger.emptyAction")}
-                        actionHref="/finance/new"
+                        actionLabel={canRecordCash ? t("ledger.emptyAction") : undefined}
+                        actionHref={canRecordCash ? "/finance/new" : undefined}
                       />
                     </TableCell>
                   </TableRow>

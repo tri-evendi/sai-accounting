@@ -14,13 +14,17 @@ model User {
   username String   @unique @db.VarChar(50)
   password String   @db.VarChar(255)
   name     String?  @db.VarChar(100)
-  role     String   @default("core") @db.VarChar(20) // bos, core, ptg
+  /// enum-like (migration 0032): managing_director | finance_manager |
+  /// warehouse_head | administrator — plus peran kustom apa pun yang dibuat
+  /// dari /permissions (peran adalah DATA, lihat model Role).
+  role     String   @default("finance_manager") @db.VarChar(20)
   status   Int      @default(1) // 1 = must change password
   passDate DateTime? @map("pass_date")
 
   // ─── issue #11 — Mode Akuntan (accountant mode) ────────────
   /// Per-user DISPLAY preference for "Mode Akuntan". Nullable on purpose:
-  ///   NULL  = follow the role default (bos → ON, core/ptg → OFF),
+  ///   NULL  = follow the role default (managing_director & administrator → ON,
+  ///           finance_manager/warehouse_head → OFF),
   ///   true  = explicitly show accounting surfaces (Jurnal/Buku Besar/COA + debit/kredit terms),
   ///   false = explicitly hide them.
   /// An explicit value overrides the role default; a user who never toggles
@@ -49,7 +53,8 @@ model User {
 // ─── Peran dinamis (dikelola dari UI) ────────────────────
 /// Peran sebagai DATA, bukan enum kode. `key` = nilai yang disimpan di
 /// `users.role` & `role_permission_overrides.role` (string, tak berubah).
-/// Peran SISTEM (bos/core/ptg) di-seed migration 0031 dengan is_system=true
+/// Peran SISTEM (managing_director/finance_manager/warehouse_head) di-seed
+/// migration 0031 dan `administrator` migration 0032, semuanya is_system=true
 /// dan tak boleh dihapus/dinonaktifkan (dijaga di aplikasi). Peran kustom lahir
 /// tanpa izin bawaan — izinnya sepenuhnya dari `role_permission_overrides`
 /// (allowed:true), diatur di /permissions. Label untuk tampilan; `ROLE_LABELS`
@@ -77,7 +82,8 @@ model Role {
 /// divalidasi SEBELUM baris disimpan (src/lib/authz-overrides.ts).
 model RolePermissionOverride {
   id         Int     @id @default(autoincrement())
-  /// enum-like: bos | core | ptg (ROLE_VALUES di src/lib/constants.ts).
+  /// enum-like: managing_director | finance_manager | warehouse_head |
+  /// administrator (ROLE_VALUES di src/lib/constants.ts).
   role       String  @db.VarChar(20)
   /// Kunci izin "resource.action" — harus ada di PERMISSION_ROLES; baris
   /// yatim (izin yang sudah dihapus dari kode) diabaikan saat merakit.
@@ -1504,7 +1510,8 @@ model ApprovalRule {
   /// Ambang nilai dalam IDR base, INKLUSIF (nilai = ambang → tetap perlu
   /// persetujuan). Decimal(15,2) — uang, bukan Float.
   minAmount    Decimal  @map("min_amount") @db.Decimal(15, 2)
-  /// enum-like peran penyetuju: `bos` | `core` | `ptg` (lihat ROLES di constants.ts).
+  /// enum-like peran penyetuju: `managing_director` | `finance_manager` |
+  /// `warehouse_head` | `administrator` (lihat ROLES di constants.ts).
   approverRole String   @map("approver_role") @db.VarChar(20)
   note         String?  @db.Text
   isActive     Boolean  @default(true) @map("is_active")

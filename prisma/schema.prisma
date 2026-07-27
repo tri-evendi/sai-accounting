@@ -281,10 +281,18 @@ model Invoice {
   /// penelusuran dokumen, bukan masukan akuntansi.
   contractId Int?      @map("contract_id")
 
+  /// Pusat biaya penjualan ini (issue #91) — cabang/unit yang penjualannya
+  /// diakui. Mesin posting menstempelkannya ke setiap baris jurnal faktur ini.
+  /// Nullable & tanpa backfill: NULL = belum ditetapkan / seluruh perusahaan.
+  costCenterId Int?    @map("cost_center_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   customer Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  /// issue #91 — dimensi pusat biaya. RESTRICT: pusat biaya yang sudah dipakai
+  /// dokumen tak boleh dihapus (nonaktifkan saja).
+  costCenter CostCenter?    @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
   items    InvoiceItem[]
   payments InvoicePayment[]
   /// issue #15 — kontrak sumber faktur ini (pola "Ambil"). RESTRICT.
@@ -302,6 +310,7 @@ model Invoice {
   @@index([contractId])
   @@index([dueDate])
   @@index([date])
+  @@index([costCenterId])
   @@map("invoices")
 }
 
@@ -401,8 +410,14 @@ model SupplierTransaction {
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2) // PPN Masukan portion
   note       String?  @db.Text
+  /// Pusat biaya pembelian/pembayaran ini (issue #91) — cabang/unit yang
+  /// menanggung biayanya. Distempel ke setiap baris jurnal yang dihasilkan.
+  /// Nullable & tanpa backfill: NULL = belum ditetapkan / seluruh perusahaan.
+  costCenterId Int?   @map("cost_center_id")
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// issue #91 — dimensi pusat biaya. RESTRICT (nonaktifkan, jangan hapus).
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
   /// Allocations where THIS row is the payment (issue #37). Empty on a purchase,
   /// and empty on a legacy payment that predates allocation — see `paidBase`
@@ -419,6 +434,7 @@ model SupplierTransaction {
 
   @@index([supplierId, type])
   @@index([dueDate])
+  @@index([costCenterId])
   @@map("supplier_transactions")
 }
 
@@ -837,13 +853,21 @@ model CashAccount {
   /// The reconciliation (bank_statements row) this movement was matched under.
   statementId  Int?      @map("statement_id")
 
+  /// Pusat biaya transaksi kas ini (issue #91) — cabang/unit yang uangnya
+  /// masuk/keluar. Distempel ke setiap baris jurnal yang dihasilkan. Nullable &
+  /// tanpa backfill: NULL = belum ditetapkan / seluruh perusahaan.
+  costCenterId Int?      @map("cost_center_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   statement     BankStatement?     @relation("StatementMovements", fields: [statementId], references: [id], onDelete: SetNull)
   statementLine BankStatementLine? @relation("LineMatch")
+  /// issue #91 — dimensi pusat biaya. RESTRICT (nonaktifkan, jangan hapus).
+  costCenter    CostCenter?        @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
   @@index([statementId])
   @@index([reconciled])
+  @@index([costCenterId])
   @@map("cash_accounts")
 }
 
@@ -957,6 +981,47 @@ model AccountMapping {
   @@map("account_mappings")
 }
 
+// ─── Accounting: Cost centres (dimensi pusat biaya) ──────
+
+/// Pusat biaya — the branch / unit / project a figure belongs to (issue #91).
+///
+/// A DIMENSION, not an account: it never changes what is debited or credited,
+/// only which slice of the business the amount is attributed to. That is why it
+/// hangs off `journal_lines` (below) rather than off the chart of accounts —
+/// one shared electricity bill legitimately splits across two branches, and a
+/// header-only dimension could not express that at all.
+///
+/// `parent_id` is here from day one even though roll-up reporting is phase 2:
+/// adding a self-relation later would mean a modifying migration on a table the
+/// ledger already references, and the column costs nothing while unused.
+///
+/// Master data, so `is_active` rather than deletion: a cost centre named by a
+/// posted journal line must stay resolvable forever, or historical reports stop
+/// being able to say which branch a number came from.
+model CostCenter {
+  id       Int     @id @default(autoincrement())
+  code     String  @unique @db.VarChar(20)
+  name     String  @db.VarChar(150)
+  parentId Int?    @map("parent_id")
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   CostCenter?  @relation("CostCenterHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children CostCenter[] @relation("CostCenterHierarchy")
+
+  journalLines         JournalLine[]
+  journals             Journal[]
+  invoices             Invoice[]
+  supplierTransactions SupplierTransaction[]
+  cashAccounts         CashAccount[]
+
+  @@index([parentId])
+  @@index([isActive])
+  @@map("cost_centers")
+}
+
 // ─── Accounting: Journals (double-entry) ─────────────────
 
 model Journal {
@@ -969,6 +1034,13 @@ model Journal {
   note         String?  @db.Text
   isReversed   Boolean  @default(false) @map("is_reversed")
   reversalOfId Int?     @map("reversal_of_id")
+  /// Pusat biaya BAWAAN untuk baris-baris jurnal ini (issue #91). Untuk jurnal
+  /// otomatis ini salinan dari dokumen sumbernya; untuk jurnal manual inilah
+  /// pilihan di kepala form. NULL = belum ditetapkan / seluruh perusahaan.
+  /// Yang dilaporkan tetap `journal_lines.cost_center_id` — kolom ini hanya
+  /// nilai bawaan yang distempel ke baris saat posting, dan tetap tersimpan
+  /// supaya form ubah/pratinjau bisa menampilkan pilihan aslinya.
+  costCenterId Int?     @map("cost_center_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -976,10 +1048,12 @@ model Journal {
   lines      JournalLine[]
   reversalOf Journal?      @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
   reversals  Journal[]     @relation("JournalReversal")
+  costCenter CostCenter?   @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
   @@index([date])
   @@index([type])
   @@index([sourceType, sourceId])
+  @@index([costCenterId])
   @@map("journals")
 }
 
@@ -994,12 +1068,19 @@ model JournalLine {
   baseDebit  Decimal @default(0) @map("base_debit") @db.Decimal(15, 2) // IDR base
   baseCredit Decimal @default(0) @map("base_credit") @db.Decimal(15, 2)
   memo       String? @db.VarChar(255)
+  /// Dimensi pusat biaya baris ini (issue #91). NULLABLE dan itu bermakna:
+  /// NULL = "belum ditetapkan / seluruh perusahaan", bukan data hilang. Karena
+  /// itu tak ada backfill — setiap baris jurnal yang sudah ada tetap sah, dan
+  /// laporan tak berubah satu rupiah pun di hari pertama.
+  costCenterId Int?  @map("cost_center_id")
 
-  journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
-  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  journal    Journal     @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
   @@index([journalId])
   @@index([accountId])
+  @@index([costCenterId])
   @@map("journal_lines")
 }
 

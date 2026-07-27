@@ -2831,7 +2831,7 @@
       },
       "s2": {
         "title": "Quick Actions",
-        "body": "The six most frequent jobs live here — record a sale, record a purchase, receive money, pay, add stock, create a contract. One click straight to the form."
+        "body": "The jobs you do most often live here — record a sale, receive money, and so on. Only what you are allowed to do and what this company actually uses is shown, so the list differs between users. One click straight to the form."
       },
       "s3": {
         "title": "Plain-language summary",
@@ -2839,7 +2839,7 @@
       },
       "s4": {
         "title": "A menu per kind of work",
-        "body": "The left-hand menu is grouped by job: Sales, Purchasing, Cash & Bank, Stock & Assets, Reports, Help & Settings."
+        "body": "The left-hand menu is grouped by job — sales, purchasing, cash & bank, reports, and so on. Groups for features this company does not use are simply not shown, so your menu may be shorter than someone else's."
       },
       "s5": {
         "title": "Help & Glossary",

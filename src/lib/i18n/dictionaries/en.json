@@ -278,9 +278,10 @@
     "other": "Other"
   },
   "role": {
-    "bos": "Management",
-    "core": "Office Staff",
-    "ptg": "Warehouse Staff (PTG)"
+    "managing_director": "Managing Director",
+    "finance_manager": "Finance Manager",
+    "warehouse_head": "Warehouse Head",
+    "administrator": "System Administrator"
   },
   "cashType": {
     "bank": "Bank",
@@ -2195,7 +2196,7 @@
     "legendMarkedBefore": "Rows marked",
     "legendOverride": "special permission",
     "legendMarkedAfter": "differ from the role",
-    "legendLocked": "Locked: Management must always be able to manage users & access rights",
+    "legendLocked": "Locked: Managing Director & System Administrator must always be able to manage users & access rights",
     "colPermission": "Permission",
     "colForThisUser": "For this user",
     "confirmSaveTitle": "Save the special permissions for {name}?",
@@ -2208,7 +2209,7 @@
     "savedFollowRole": "The user follows their role entirely again.",
     "savedOverrides": "Special permissions saved. They take effect within a minute.",
     "selectAria": "{permission} for this user",
-    "lockedTitle": "Locked — Management must always be able to manage users & access rights.",
+    "lockedTitle": "Locked — Managing Director & System Administrator must always be able to manage users & access rights.",
     "choiceRole": "Follow the role ({state})",
     "choiceAllowed": "Allowed",
     "choiceNotAllowed": "Not allowed",
@@ -2231,7 +2232,7 @@
     "legendMarkedBefore": "Cells marked",
     "legendChanged": "changed",
     "legendMarkedAfter": "deviate from the defaults",
-    "legendLocked": "Locked: Management must always be able to manage users & access rights",
+    "legendLocked": "Locked: Managing Director & System Administrator must always be able to manage users & access rights",
     "confirmSaveTitle": "Save the access-rights changes?",
     "confirmSaveAllDefault": "Every cell goes back to the defaults — the saved deviations will be removed.",
     "confirmSaveCount": "{count} cells will deviate from the defaults.",
@@ -2241,10 +2242,10 @@
     "savedDefault": "Access rights are back to the defaults.",
     "saved": "Access rights saved. They take effect within a minute.",
     "cellAria": "{role}: {permission}",
-    "lockedTitle": "Locked — Management must always be able to manage users & access rights.",
+    "lockedTitle": "Locked — Managing Director & System Administrator must always be able to manage users & access rights.",
     "lockedShort": "locked",
     "roleManagerTitle": "Manage Roles",
-    "roleManagerHint": "Add new roles as you need them. A new role starts with no permissions — tick them in the matrix below. System roles (Management, Office Staff, Warehouse Staff) cannot be deactivated or deleted.",
+    "roleManagerHint": "Add new roles as you need them. A new role starts with no permissions — tick them in the matrix below. System roles (Managing Director, Finance Manager, Warehouse Head, System Administrator) cannot be deactivated or deleted.",
     "colRoleName": "Role Name",
     "colRoleKey": "Key",
     "systemRoleAria": "System role",
@@ -2555,7 +2556,7 @@
   },
   "audit": {
     "title": "Security audit log",
-    "description": "Cash, stock, and account changes (management only)",
+    "description": "Cash, stock, and account changes (Managing Director & System Administrator only)",
     "accessDenied": "Access denied",
     "loadFailed": "Failed to load the audit log",
     "empty": "No audit entries yet",

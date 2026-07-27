@@ -70,3 +70,42 @@ export async function getT(): Promise<
   const dictionary = await getDictionary(await getLocale());
   return (key, values) => translate(dictionary, key, values);
 }
+
+/**
+ * Kamus + penerjemah untuk permintaan ini, sekali muat — bentuk yang dipakai
+ * ROUTE HANDLER saat menjawab 400 dari zod.
+ *
+ * Route handler boleh membaca cookie persis seperti server component (preseden:
+ * `lib/period-close.ts`), jadi bahasa pengguna memang tersedia di sini — dan
+ * DI SINILAH pesan validasi diterjemahkan, karena kunci di dalam skema tidak
+ * bisa (lihat `lib/i18n/validation.ts`).
+ *
+ * Pola bakunya — inilah yang disalin fase B ke seluruh route:
+ *
+ * ```ts
+ * const parsed = invoiceSchema.safeParse(body);
+ * if (!parsed.success) {
+ *   const { dictionary, t } = await getRequestI18n();
+ *   return NextResponse.json(
+ *     {
+ *       error: t("validation.invalidInput"),
+ *       details: translateFieldErrors(parsed.error, dictionary),
+ *     },
+ *     { status: 400 }
+ *   );
+ * }
+ * ```
+ *
+ * `dictionary` dikembalikan bersama `t` karena `translateFieldErrors` menerima
+ * string apa pun (kunci ATAU prosa), sedangkan `t` sengaja hanya menerima
+ * `DictionaryKey` supaya salah ketik kunci tetap ditolak `tsc`.
+ */
+export async function getRequestI18n(): Promise<{
+  locale: Locale;
+  dictionary: Dictionary;
+  t: (key: DictionaryKey, values?: TranslationValues) => string;
+}> {
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
+  return { locale, dictionary, t: (key, values) => translate(dictionary, key, values) };
+}

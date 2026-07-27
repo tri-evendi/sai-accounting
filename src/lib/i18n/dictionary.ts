@@ -61,6 +61,25 @@ export function translate(
   return interpolate(raw, values);
 }
 
+/**
+ * Seperti `translate`, tetapi MEMBEDAKAN "tidak ada" dari "kebetulan sama
+ * dengan kuncinya": null berarti `key` bukan kunci kamus ini.
+ *
+ * Inilah yang dipakai batas tampilan pesan validasi (`lib/i18n/validation.ts`):
+ * di sana yang lewat bukan hanya kunci, melainkan juga prosa dari server dan
+ * teks yang sudah dimanusiakan — dan keduanya harus ditampilkan apa adanya,
+ * bukan diperlakukan sebagai kunci yang hilang. Karena itu ia juga TIDAK
+ * berteriak ke console: pesan bukan-kunci adalah hal yang normal di sini.
+ */
+export function lookupMessage(
+  dictionary: Dictionary | null | undefined,
+  key: string,
+  values?: TranslationValues
+): string | null {
+  const raw = resolve(dictionary, key);
+  return typeof raw === "string" ? interpolate(raw, values) : null;
+}
+
 /** Telusuri jalur-titik. Apa pun yang bukan string di ujungnya = tidak ketemu. */
 function resolve(dictionary: unknown, key: string): unknown {
   let node: unknown = dictionary;

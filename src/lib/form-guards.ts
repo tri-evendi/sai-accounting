@@ -23,6 +23,8 @@
 
 import { MONTH_NAMES } from "@/lib/month-names";
 import type { StockShortfall } from "@/lib/delivery-orders";
+import type { Dictionary } from "@/lib/i18n/dictionary";
+import { isValidationKey, translateMessage } from "@/lib/i18n/validation";
 
 // ───────────────────────────── Label lapangan ─────────────────────────────
 
@@ -154,15 +156,34 @@ function asSentence(text: string): string {
  *
  * Pesan yang sudah manusiawi dikembalikan apa adanya (hanya dirapikan tanda
  * bacanya); hanya pesan yang terbaca sebagai keluaran teknis yang ditulis ulang.
+ *
+ * ── `dictionary`: batas tampilan untuk pesan yang datang sebagai KUNCI ──────
+ * Sejak fase A, `src/lib/validations/*` mengirim kunci kamus
+ * (`validation.dateRequired`), bukan kalimat. Kunci seperti itu diterjemahkan
+ * di sini lebih dulu, lalu LANGSUNG dikembalikan tanpa lewat `RULES`: kalimatnya
+ * memang sudah ditulis manusia di ketiga bahasa, jadi tidak ada yang perlu
+ * ditebak ulang — dan tanpa jalan pintas itu terjemahan bahasa Inggris seperti
+ * "Date is required" justru akan ditulis ulang menjadi bahasa Indonesia oleh
+ * `RULES`.
+ *
+ * `dictionary` boleh kosong (dan memang masih kosong di semua pemanggil): tanpa
+ * kamus, kunci jatuh ke kalimat bahasa Indonesia yang sama persis seperti
+ * sebelum penyapuan. **Fase C** tinggal mengoper `useDictionary()` dari komponen
+ * pemanggil — dan memindahkan `FIELD_LABELS` + kalimat `RULES` di bawah ini ke
+ * kamus lewat parameter yang sama — supaya seluruh fungsi ini ikut berbahasa.
  */
 export function humanizeFieldMessage(
   field: string | null | undefined,
-  raw: string | null | undefined
+  raw: string | null | undefined,
+  dictionary?: Dictionary | null
 ): string {
   const label = fieldLabel(field);
   const text = (raw ?? "").trim();
 
   if (!text) return `${label} belum benar. Periksa lagi isiannya.`;
+
+  // Pesan yang datang sebagai kunci kamus sudah manusiawi di ketiga bahasa.
+  if (isValidationKey(text)) return asSentence(translateMessage(dictionary, text));
 
   for (const rule of RULES) {
     if (rule.match.test(text)) return rule.say(label);

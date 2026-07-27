@@ -1049,6 +1049,7 @@
     "parentHint": "Grouping for roll-up reports. May be left empty.",
     "activeField": "Active",
     "activeHint": "Deactivated ones disappear from the pickers, but existing records stay intact and their name still reads correctly in reports.",
+    "pickerHint": "The branch, unit or project this transaction belongs to. May be left empty, which means the company as a whole.",
     "colChildren": "Sub cost centres",
     "submit": "Save Cost Centre",
     "saved": "Cost centre saved",

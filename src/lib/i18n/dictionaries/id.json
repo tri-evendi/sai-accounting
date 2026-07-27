@@ -1049,6 +1049,7 @@
     "parentHint": "Pengelompokan untuk laporan berjenjang. Boleh dikosongkan.",
     "activeField": "Aktif",
     "activeHint": "Yang dinonaktifkan hilang dari pilihan, tetapi catatan lama tetap utuh dan namanya tetap terbaca di laporan.",
+    "pickerHint": "Cabang, unit, atau proyek yang menanggung transaksi ini. Boleh dikosongkan — artinya seluruh perusahaan.",
     "colChildren": "Sub-pusat biaya",
     "submit": "Simpan Pusat Biaya",
     "saved": "Pusat biaya tersimpan",

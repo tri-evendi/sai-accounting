@@ -2982,5 +2982,64 @@
     "partnerNameRequired": "Nama wajib diisi untuk mitra baru.",
     "receiptQuantityPositive": "Jumlah barang masuk harus lebih besar dari 0",
     "receiptDateRequired": "Tanggal barang masuk wajib diisi"
+  },
+  "modules": {
+    "sectionTitle": "Modul Usaha",
+    "sectionDescription": "Nyalakan hanya fitur yang dipakai perusahaan Anda. Modul yang dimatikan hilang dari menu dan tidak bisa dipakai membuat transaksi baru.",
+    "activeCount": "{count} dari {total} modul aktif",
+    "coreLocked": "Selalu aktif",
+    "categoryLabel": "Kategori usaha",
+    "categoryHint": "Kategori hanya mengisi nilai awal; tiap modul tetap bisa diubah satu per satu.",
+    "modulesLabel": "Modul yang aktif",
+    "ledgerNote": "Mematikan modul tidak menghapus data apa pun. Jurnal, saldo, dan laporan lama tetap utuh; yang berhenti hanyalah menu dan pembuatan transaksi baru.",
+    "saved": "Modul usaha disimpan.",
+    "errLoad": "Modul usaha gagal dimuat.",
+    "errSave": "Modul usaha gagal disimpan.",
+    "errNetwork": "Jaringan bermasalah. Coba lagi.",
+    "confirmTitle": "Simpan modul usaha?",
+    "confirmMessage": "Menu dan halaman modul yang dimatikan akan hilang untuk semua pengguna. Data lama tetap utuh dan muncul lagi begitu modulnya dinyalakan kembali.",
+    "permissionsNotice": "{count} baris izin disembunyikan karena modulnya tidak aktif untuk perusahaan ini. Modul diatur di halaman Pengaturan.",
+    "inactiveTitle": "Fitur ini belum aktif",
+    "inactiveBody": "Halaman ini milik modul {module}, dan modul itu belum aktif untuk perusahaan Anda. Tidak ada data yang hilang: Direktur Utama atau Administrator bisa menyalakannya lagi di halaman Pengaturan.",
+    "inactiveBack": "Kembali ke Beranda",
+    "stepTitle": "Modul Usaha",
+    "stepHeading": "Pilih kategori usaha",
+    "stepHint": "Kategori hanya mengisi nilai awal. Tiap modul tetap bisa dinyalakan atau dimatikan satu per satu, sekarang maupun nanti di Pengaturan.",
+    "name": {
+      "core_accounting": "Akuntansi Inti",
+      "sales": "Penjualan",
+      "purchasing": "Pembelian",
+      "trading": "Perdagangan Barang",
+      "inventory": "Stok Barang",
+      "cash_bank": "Kas & Bank",
+      "fixed_assets": "Aset Tetap",
+      "approvals": "Persetujuan",
+      "tax_id": "Pajak (e-Faktur)",
+      "documents": "Dokumen Ekspor"
+    },
+    "description": {
+      "core_accounting": "Daftar akun, jurnal, buku besar, laporan, anggaran, pengguna, dan hak akses. Selalu aktif.",
+      "sales": "Tagihan penjualan, pelanggan, dan daftar pelanggan yang belum bayar.",
+      "purchasing": "Pemasok, pencatatan pembelian, dan tagihan yang harus dibayar.",
+      "trading": "Kontrak, surat jalan, penerima barang, retur, dan uang muka — lapisan khas perdagangan barang.",
+      "inventory": "Stok barang: menambah, mengurangi, menghitung ulang, dan nilai persediaannya.",
+      "cash_bank": "Buku kas & bank serta pencocokan rekening koran.",
+      "fixed_assets": "Barang milik perusahaan dan penyusutannya.",
+      "approvals": "Antrean persetujuan dan aturan ambangnya.",
+      "tax_id": "Ekspor e-Faktur untuk pelaporan pajak.",
+      "documents": "Arsip dokumen ekspor seperti B/L, COO, dan fumigasi."
+    },
+    "category": {
+      "commodity_trading": "Perdagangan Komoditas / Ekspor",
+      "distribution": "Distribusi / Grosir",
+      "services": "Jasa / Agensi",
+      "custom": "Pilih Sendiri"
+    },
+    "categoryDesc": {
+      "commodity_trading": "Jual beli barang dengan kontrak, surat jalan, dan dokumen ekspor. Semua modul menyala.",
+      "distribution": "Jual beli barang bergudang, tanpa kontrak berjangka maupun dokumen ekspor.",
+      "services": "Tanpa barang sama sekali: tanpa stok dan tanpa lapisan perdagangan.",
+      "custom": "Mulai dari semua modul menyala, lalu matikan yang tidak dipakai."
+    }
   }
 }

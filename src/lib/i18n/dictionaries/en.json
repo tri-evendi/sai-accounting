@@ -2982,5 +2982,64 @@
     "partnerNameRequired": "A new partner needs a name.",
     "receiptQuantityPositive": "The incoming quantity must be greater than 0",
     "receiptDateRequired": "The goods-received date is required"
+  },
+  "modules": {
+    "sectionTitle": "Business Modules",
+    "sectionDescription": "Turn on only the features your company uses. A module that is off disappears from the menu and can no longer be used to record new transactions.",
+    "activeCount": "{count} of {total} modules active",
+    "coreLocked": "Always on",
+    "categoryLabel": "Business category",
+    "categoryHint": "The category only fills in the starting values; every module can still be changed one by one.",
+    "modulesLabel": "Active modules",
+    "ledgerNote": "Turning a module off deletes nothing. Existing journals, balances, and reports stay intact; only the menu and new transactions stop.",
+    "saved": "Business modules saved.",
+    "errLoad": "Could not load the business modules.",
+    "errSave": "Could not save the business modules.",
+    "errNetwork": "Network problem. Please try again.",
+    "confirmTitle": "Save business modules?",
+    "confirmMessage": "Menus and pages of the modules you switched off will disappear for everyone. Existing data stays intact and comes back as soon as the module is switched on again.",
+    "permissionsNotice": "{count} permission rows are hidden because their module is not active for this company. Modules are managed on the Settings page.",
+    "inactiveTitle": "This feature is not active yet",
+    "inactiveBody": "This page belongs to the {module} module, which is not active for your company. Nothing is lost: a Managing Director or Administrator can switch it back on from the Settings page.",
+    "inactiveBack": "Back to Home",
+    "stepTitle": "Business Modules",
+    "stepHeading": "Choose your business category",
+    "stepHint": "The category only fills in the starting values. Every module can still be switched on or off one by one, now or later under Settings.",
+    "name": {
+      "core_accounting": "Core Accounting",
+      "sales": "Sales",
+      "purchasing": "Purchasing",
+      "trading": "Goods Trading",
+      "inventory": "Inventory",
+      "cash_bank": "Cash & Bank",
+      "fixed_assets": "Fixed Assets",
+      "approvals": "Approvals",
+      "tax_id": "Tax (e-Faktur)",
+      "documents": "Export Documents"
+    },
+    "description": {
+      "core_accounting": "Chart of accounts, journals, ledger, reports, budgets, users, and permissions. Always on.",
+      "sales": "Sales invoices, customers, and the list of customers who have not paid.",
+      "purchasing": "Suppliers, recorded purchases, and the bills you have to pay.",
+      "trading": "Contracts, delivery orders, consignees, returns, and advances — the goods-trading layer.",
+      "inventory": "Stock on hand: additions, deductions, stock counts, and inventory value.",
+      "cash_bank": "The cash & bank book plus bank statement reconciliation.",
+      "fixed_assets": "Company-owned assets and their depreciation.",
+      "approvals": "The approval queue and its threshold rules.",
+      "tax_id": "The e-Faktur export for Indonesian tax reporting.",
+      "documents": "The archive of export documents such as B/L, COO, and fumigation."
+    },
+    "category": {
+      "commodity_trading": "Commodity Trading / Export",
+      "distribution": "Distribution / Wholesale",
+      "services": "Services / Agency",
+      "custom": "Choose Yourself"
+    },
+    "categoryDesc": {
+      "commodity_trading": "Trading goods with contracts, delivery orders, and export documents. Every module on.",
+      "distribution": "Trading warehoused goods, without forward contracts or export documents.",
+      "services": "No goods at all: no stock and no trading layer.",
+      "custom": "Start with every module on, then switch off whatever you do not use."
+    }
   }
 }

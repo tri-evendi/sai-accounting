@@ -37,7 +37,7 @@ export default async function DocumentsPage({
 
   const [documents, totalCount] = await Promise.all([
     prisma.document.findMany({
-      orderBy: { uploadedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       include: { contract: true },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -94,7 +94,7 @@ export default async function DocumentsPage({
                   <TableCell className="text-muted-foreground">
                     {doc.contract ? doc.contract.contractNo : "-"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(doc.uploadedAt)}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(doc.createdAt)}</TableCell>
                   <TableCell className="text-right">
                     <DocumentPreviewButton filename={doc.filename} filepath={doc.filepath} />
                   </TableCell>

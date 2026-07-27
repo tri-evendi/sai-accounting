@@ -6,6 +6,9 @@ export type AuditAction =
   | "stock.in"
   | "stock.out"
   | "item.create"
+  /// Barang dinonaktifkan/diaktifkan lagi — bukan dihapus (docs/DATABASE.md §1.3).
+  | "item.activate"
+  | "item.deactivate"
   | "supplier_transaction.purchase"
   | "supplier_transaction.payment"
   /** Re-allocating an existing payment across purchases (issue #38). No journal. */

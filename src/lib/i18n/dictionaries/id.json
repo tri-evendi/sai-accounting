@@ -2051,6 +2051,8 @@
     "reflectedAfter": "per {date}.",
     "wizardTitle": "Setup Perusahaan & Saldo Awal",
     "wizardDescription": "Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali.",
+    "shellSubtitle": "Penyiapan awal perusahaan",
+    "backToApp": "Kembali ke Beranda",
     "stepsAria": "Langkah setup",
     "step1": "Identitas",
     "step2": "Mata Uang & Tahun Buku",

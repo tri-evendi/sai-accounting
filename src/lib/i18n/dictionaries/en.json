@@ -2051,6 +2051,8 @@
     "reflectedAfter": "as of {date}.",
     "wizardTitle": "Company Setup & Opening Balances",
     "wizardDescription": "Start the books from the right position. This step runs only once.",
+    "shellSubtitle": "First-time company setup",
+    "backToApp": "Back to Home",
     "stepsAria": "Setup steps",
     "step1": "Identity",
     "step2": "Currency & Fiscal Year",

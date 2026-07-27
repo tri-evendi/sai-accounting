@@ -2051,6 +2051,8 @@
     "reflectedAfter": "（截至 {date}）。",
     "wizardTitle": "公司初始设置与期初余额",
     "wizardDescription": "从正确的起点建立账簿。此步骤只执行一次。",
+    "shellSubtitle": "公司首次设置",
+    "backToApp": "返回首页",
     "stepsAria": "设置步骤",
     "step1": "公司信息",
     "step2": "币种与会计年度",

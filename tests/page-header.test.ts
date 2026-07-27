@@ -11,7 +11,14 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const DASHBOARD_DIR = join(__dirname, "..", "src", "app", "(dashboard)");
+const APP_DIR = join(__dirname, "..", "src", "app");
+
+/**
+ * Grup rute yang halamannya tunduk pada konvensi ini. `(setup)` ikut sejak
+ * issue #103 — wizard penyiapan pindah ke grup rutenya sendiri demi kerangka
+ * fokus, dan kepala halamannya tetap harus `PageHeader` seperti yang lain.
+ */
+const PAGE_GROUPS = ["(dashboard)", "(setup)"];
 
 /**
  * File cadangan Next.js (`error`/`loading`/`not-found`/`global-error`) BUKAN
@@ -30,20 +37,25 @@ function tsxFiles(dir: string): string[] {
   });
 }
 
-describe("konvensi PageHeader di halaman dashboard", () => {
-  const files = tsxFiles(DASHBOARD_DIR);
+describe("konvensi PageHeader di halaman aplikasi", () => {
+  const files = PAGE_GROUPS.flatMap((group) => tsxFiles(join(APP_DIR, group)));
+  const label = (f: string) => f.slice(APP_DIR.length + 1);
 
-  it("menemukan halaman dashboard untuk diperiksa", () => {
+  it("menemukan halaman untuk diperiksa", () => {
     expect(files.length).toBeGreaterThan(50);
+    // Penjaga bagi penjaga: grup yang salah tulis membuat telusurnya kosong.
+    for (const group of PAGE_GROUPS) {
+      expect(files.some((f) => label(f).startsWith(`${group}/`)), group).toBe(true);
+    }
   });
 
   it("tidak ada <h1> manual — judul halaman lewat PageHeader", () => {
     const offenders = files.filter((f) => /<h1[\s>]/.test(readFileSync(f, "utf8")));
-    expect(offenders.map((f) => f.slice(DASHBOARD_DIR.length + 1))).toEqual([]);
+    expect(offenders.map(label)).toEqual([]);
   });
 
   it("tidak ada <Breadcrumb> manual — jejak lokasi lewat prop breadcrumbs", () => {
     const offenders = files.filter((f) => /<Breadcrumb[\s/>]/.test(readFileSync(f, "utf8")));
-    expect(offenders.map((f) => f.slice(DASHBOARD_DIR.length + 1))).toEqual([]);
+    expect(offenders.map(label)).toEqual([]);
   });
 });

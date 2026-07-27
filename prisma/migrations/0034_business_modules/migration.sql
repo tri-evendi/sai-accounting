@@ -1,0 +1,57 @@
+-- Modul per kategori usaha (issue #99).
+--
+-- KENAPA: aplikasi ini punya 33 sumber daya izin, dan sebagian besar hanya
+-- masuk akal untuk perdagangan komoditas (kontrak, surat jalan, penerima
+-- barang, dokumen ekspor). Perusahaan jasa atau agensi melihat separuh menu
+-- yang tak pernah mereka pakai, dan tiap menu yang tak terpakai adalah beban
+-- belajar bagi pengguna yang memang bukan akuntan. Dua kolom di bawah menyimpan
+-- jawaban atas satu pertanyaan yang ditanyakan sekali saat penyiapan: modul apa
+-- yang dipakai perusahaan ini.
+--
+-- ══ KOSONG ADALAH NILAI YANG BERMAKNA — TIDAK ADA BACKFILL ═════════════════
+-- `enabled_modules` NULL (atau kosong) berarti **SEMUA modul aktif**, bukan
+-- "tidak ada modul". Karena itu tidak ada satu baris pun yang di-UPDATE di
+-- sini: pemasangan yang sudah berjalan bangun keesokan harinya dengan menu yang
+-- persis sama, dan fitur ini baru terasa setelah seseorang benar-benar memilih.
+-- Modul yang ditambahkan ke KODE di kemudian hari juga ikut menyala sendiri
+-- untuk perusahaan yang tidak pernah mematikan apa pun — sifat yang hilang
+-- kalau nilai bawaannya ditulis sebagai daftar lengkap.
+--
+-- ══ SATU KOLOM, BUKAN TABEL BARU ══════════════════════════════════════════
+-- Yang disimpan paling banyak sepuluh token enum-like milik SATU baris
+-- singleton (`company_settings` hanya pernah punya satu baris), tak pernah
+-- disaring di SQL — seluruh barisnya dimuat lalu diuraikan di kode
+-- (`parseEnabledModules`, src/lib/business-modules.ts). Tabel satu-baris-per-
+-- modul akan menambah tabel + FK untuk sepuluh boolean, dan membuat "tidak ada
+-- baris" jadi ambigu antara "semua aktif" dan "wizard belum jalan" — persis
+-- ambiguitas yang tidak boleh ada di sini.
+--
+-- ══ MODUL TIDAK PERNAH MENGGERBANGI BUKU BESAR ════════════════════════════
+-- Kolom ini hanya dibaca oleh perakit izin efektif (`canEffective`), yaitu
+-- ANTARMUKA dan pembuatan transaksi baru. Tak satu pun query laporan, buku
+-- besar, atau mesin posting menyentuhnya: perusahaan yang mematikan modul
+-- `trading` tetap memiliki setiap jurnal yang pernah lahir dari kontrak, dan
+-- tiap laporan tetap rekonsiliasi. Penjaganya
+-- `tests/business-modules-ledger.test.ts`.
+--
+-- ══ HANYA MENAMBAH ════════════════════════════════════════════════════════
+-- Dua kolom nullable pada satu tabel. Tidak ada kolom yang diubah tipenya,
+-- tidak ada index/kunci unik yang digeser, tidak ada baris yang disentuh.
+-- (Tanpa index: tabelnya berisi satu baris, dan selalu dibaca utuh.)
+--
+-- Gaya DDL mengikuti 0033/0021 (utf8mb4 sudah di level tabel, ALTER TABLE).
+
+-- AlterTable: company_settings — kategori usaha yang dipilih di wizard.
+-- PRESET SAJA: nilainya hanya mengisi `enabled_modules` sekali saat penyiapan
+-- dan TIDAK PERNAH dibaca saat menegakkan apa pun, supaya perusahaan yang
+-- belakangan menyalakan/mematikan modul satu per satu tidak dibantah oleh
+-- kategorinya sendiri. Disimpan sebagai VARCHAR enum-like `snake_case`
+-- (docs/DATABASE.md), bukan enum DB: nilainya dimiliki kode + zod.
+ALTER TABLE `company_settings` ADD COLUMN `business_category` VARCHAR(30) NULL;
+
+-- AlterTable: company_settings — himpunan modul yang aktif, dipisah koma dan
+-- urut deklarasi (mis. "core_accounting,sales,cash_bank"). NULL/kosong = SEMUA
+-- modul aktif. 255 karakter jauh lebih dari cukup: sepuluh token terpanjang
+-- sekalipun hanya ~120 karakter, dan modul selalu ditambahkan di kode — bukan
+-- oleh pengguna.
+ALTER TABLE `company_settings` ADD COLUMN `enabled_modules` VARCHAR(255) NULL;

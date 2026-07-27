@@ -376,6 +376,7 @@
     "accountNotFound": "Account not found.",
     "mappedAccountNotFound": "The mapped account was not found.",
     "customerNotFound": "Customer not found.",
+    "costCenterNotFound": "Cost centre not found.",
     "supplierNotFound": "Supplier not found.",
     "consigneeNotFound": "Consignee not found.",
     "commodityNotFound": "Commodity not found.",

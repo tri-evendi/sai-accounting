@@ -24,7 +24,10 @@ export async function GET(
 
   const { id } = await params;
   const costCenter = await prisma.costCenter.findUnique({ where: { id: parseInt(id) } });
-  if (!costCenter) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!costCenter) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.costCenterNotFound") }, { status: 404 });
+  }
   return NextResponse.json(costCenter);
 }
 

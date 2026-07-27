@@ -376,6 +376,7 @@
     "accountNotFound": "未找到该会计科目。",
     "mappedAccountNotFound": "未找到所映射的会计科目。",
     "customerNotFound": "未找到该客户。",
+    "costCenterNotFound": "未找到成本中心。",
     "supplierNotFound": "未找到该供应商。",
     "consigneeNotFound": "未找到该收货人。",
     "commodityNotFound": "未找到该商品。",

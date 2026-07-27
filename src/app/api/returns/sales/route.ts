@@ -238,7 +238,7 @@ export async function POST(request: Request) {
       for (const l of lines) {
         if (l.itemId == null) continue;
         const unitCost = await averageUnitCostForItem(l.itemId, returnDate, tx);
-        await tx.stock.create({
+        await tx.stockMovement.create({
           data: {
             itemId: l.itemId,
             quantity: l.quantity,

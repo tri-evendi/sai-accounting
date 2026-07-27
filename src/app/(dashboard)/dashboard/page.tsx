@@ -121,7 +121,7 @@ export default async function DashboardPage() {
     canViewContracts ? prisma.contract.count() : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count() : Promise.resolve(0),
     canViewContracts ? prisma.supplier.count() : Promise.resolve(0),
-    prisma.item.findMany({ include: { stock: true }, orderBy: { name: "asc" } }),
+    prisma.item.findMany({ include: { stockMovements: true }, orderBy: { name: "asc" } }),
     canViewContracts ? prisma.contract.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewFinance ? prisma.cashAccount.findMany({ orderBy: { date: "desc" } }) : Promise.resolve([]),
@@ -165,7 +165,7 @@ export default async function DashboardPage() {
 
   const recentMovements = itemsWithStock
     .flatMap((item) =>
-      item.stock.map((s) => ({
+      item.stockMovements.map((s) => ({
         itemName: item.name,
         type: s.type,
         quantity: Number(s.quantity),

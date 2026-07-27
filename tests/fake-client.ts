@@ -80,7 +80,12 @@ export interface FakeSeed {
   contractPayments?: Record<number, unknown>;
   supplierTransactions?: Record<number, unknown>;
   cashAccounts?: Record<number, unknown>;
-  stocks?: Record<number, unknown>;
+  /**
+   * Pergerakan stok (issue #92 — dulu `stock`). `…ById` melayani `findUnique`
+   * (dokumen sumber HPP / penyesuaian opname); larik `stockMovements` melayani
+   * `findMany` (riwayat yang dipakai rata-rata tertimbang).
+   */
+  stockMovementsById?: Record<number, unknown>;
   stockMovements?: unknown[];
   /** Uang muka (issue #26). Seed the nested advance/invoice/purchase inline. */
   advancePayments?: Record<number, unknown>;
@@ -223,8 +228,9 @@ export function createFakeClient(seed: FakeSeed = {}) {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.advanceApplications, where.id),
     },
-    stock: {
-      findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.stocks, where.id),
+    stockMovement: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.stockMovementsById, where.id),
       findMany: async ({ where }: { where: Where }) =>
         (seed.stockMovements ?? []).filter((m) =>
           matches(m as Record<string, unknown>, where)

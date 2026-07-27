@@ -25,7 +25,7 @@ export default async function StockOpnamePage() {
   await requirePagePermission("inventory.write");
   const t = await getT();
   const allItems = await prisma.item.findMany({
-    include: { stock: true },
+    include: { stockMovements: true },
     orderBy: { name: "asc" },
   });
 

@@ -604,7 +604,7 @@ describe("INVARIANT: endpoint wizard memakai jalur yang sama dengan route biasa"
       expect(route).not.toContain("tx.invoice.create");
       expect(route).not.toContain("tx.deliveryOrder.create");
       expect(route).not.toContain("tx.supplierTransaction.create");
-      expect(route).not.toContain("tx.stock.create");
+      expect(route).not.toContain("tx.stockMovement.create");
     }
   });
 

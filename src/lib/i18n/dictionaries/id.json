@@ -1160,6 +1160,7 @@
     "activeField": "Aktif",
     "activeHint": "Yang dinonaktifkan hilang dari pilihan, tetapi catatan lama tetap utuh dan namanya tetap terbaca di laporan.",
     "pickerHint": "Cabang, unit, atau proyek yang menanggung transaksi ini. Boleh dikosongkan — artinya seluruh perusahaan.",
+    "stockPickerHint": "Cabang, unit, atau proyek yang menanggung HPP gerakan ini. Boleh dikosongkan — artinya seluruh perusahaan.",
     "colChildren": "Sub-pusat biaya",
     "submit": "Simpan Pusat Biaya",
     "saved": "Pusat biaya tersimpan",
@@ -1171,7 +1172,8 @@
     "filterLabel": "Pusat Biaya",
     "filterAll": "Semua pusat biaya",
     "filterUnassigned": "Belum ditetapkan",
-    "filterNote": "Penyaring ini hanya mengubah tampilan. Angka yang ditampilkan seluruh pusat biaya ditambah yang belum ditetapkan selalu sama persis dengan angka tanpa penyaring."
+    "filterNote": "Penyaring ini hanya mengubah tampilan. Angka yang ditampilkan seluruh pusat biaya ditambah yang belum ditetapkan selalu sama persis dengan angka tanpa penyaring.",
+    "filterScopeNote": "Yang BELUM ikut tersaring: HPP dari gerakan stok yang tak bertanda pusat biaya (seluruh gerakan sebelum fitur ini, surat jalan tanpa faktur, dan pengeluaran manual yang dibiarkan kosong), penyusutan & pelepasan aset tetap, serta kontrak dan uang muka. Semuanya tetap terhitung di “Belum ditetapkan”, jadi totalnya tak pernah berkurang — tetapi Laba/Rugi satu cabang bisa memuat pendapatan tanpa sebagian harga pokoknya."
   },
   "journal": {
     "title": "Jurnal Umum ({count})",

@@ -63,11 +63,11 @@ export async function POST(request: Request) {
       for (const count of counts) {
         const item = await tx.item.findUnique({
           where: { id: count.itemId },
-          include: { stock: true },
+          include: { stockMovements: true },
         });
         if (!item) continue; // barang terhapus di tengah — lewati diam-diam
 
-        const { currentStock } = calculateStockTotals(item.stock);
+        const { currentStock } = calculateStockTotals(item.stockMovements);
         const variance = count.physicalQty - currentStock;
         if (variance === 0) continue; // cocok — tak perlu penyesuaian
 
@@ -75,9 +75,9 @@ export async function POST(request: Request) {
         const quantity = Math.abs(variance);
         // Lebih (in) dinilai pada rata-rata pra-penyesuaian agar rata-rata tak
         // bergeser; susut (out) dinilai oleh engine dari rata-rata baris `in`.
-        const avgCost = weightedAverageUnitCost(item.stock);
+        const avgCost = weightedAverageUnitCost(item.stockMovements);
 
-        const created = await tx.stock.create({
+        const created = await tx.stockMovement.create({
           data: {
             itemId: item.id,
             quantity,

@@ -21,6 +21,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
+import { Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -133,10 +134,22 @@ export default async function IncomeStatementPage({
         costCenter={sp.costCenter ?? ""}
       />
 
+      {/* Dua kalimat, dan keduanya perlu (issue #98). Yang pertama menjanjikan
+          rekonsiliasi: apa pun pilahannya, jumlahnya tetap total. Yang kedua
+          menyebutkan APA yang belum ikut berdimensi — HPP tanpa tanda,
+          penyusutan, kontrak, uang muka. Tanpa kalimat kedua, laporan cabang
+          yang berisi pendapatan tanpa sebagian harga pokoknya terlihat persis
+          seperti laporan yang lengkap, dan itulah pola kegagalan yang paling
+          berbahaya: bukan angka yang salah, melainkan angka yang benar untuk
+          pertanyaan yang berbeda dari yang dikira pembacanya. */}
       {costCenterName && (
-        <p className="mb-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-          {t("costCenters.filterNote")}
-        </p>
+        <div className="mb-4 space-y-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          <p>{t("costCenters.filterNote")}</p>
+          <p className="flex items-start gap-1.5">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{t("costCenters.filterScopeNote")}</span>
+          </p>
+        </div>
       )}
 
       <PlainSummary summary={summary} />

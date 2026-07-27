@@ -1160,6 +1160,7 @@
     "activeField": "Active",
     "activeHint": "Deactivated ones disappear from the pickers, but existing records stay intact and their name still reads correctly in reports.",
     "pickerHint": "The branch, unit or project this transaction belongs to. May be left empty, which means the company as a whole.",
+    "stockPickerHint": "The branch, unit or project that carries this movement’s cost of goods. May be left empty, which means the company as a whole.",
     "colChildren": "Sub cost centres",
     "submit": "Save Cost Centre",
     "saved": "Cost centre saved",
@@ -1171,7 +1172,8 @@
     "filterLabel": "Cost Centre",
     "filterAll": "All cost centres",
     "filterUnassigned": "Unassigned",
-    "filterNote": "This filter only changes what is shown. Every cost centre plus the unassigned figures always add up to exactly the unfiltered total."
+    "filterNote": "This filter only changes what is shown. Every cost centre plus the unassigned figures always add up to exactly the unfiltered total.",
+    "filterScopeNote": "NOT yet covered by this filter: cost of goods from stock movements that carry no cost centre (every movement made before this feature, delivery orders with no invoice, and manual issues left blank), fixed-asset depreciation and disposal, and contracts and advances. All of it still counts under “Unassigned”, so no total ever shrinks — but one branch’s income statement may show revenue without part of its cost of goods."
   },
   "journal": {
     "title": "General Journal ({count})",

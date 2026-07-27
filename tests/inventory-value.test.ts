@@ -2,7 +2,7 @@
  * Nilai persediaan (issue #58).
  *
  * "Nilai Persediaan" dulu hanya kuantitas — model Item tak punya kolom biaya.
- * Ternyata biaya ADA di gerakan stok (`Stock.unit_cost` pada baris `in`), jadi
+ * Ternyata biaya ADA di gerakan stok (`StockMovement.unit_cost` pada baris `in`), jadi
  * nilai bisa dihitung memakai rata-rata tertimbang yang SAMA dengan mesin HPP.
  * Test ini mengunci: nilai = sisa stok × biaya rata-rata, dan item tanpa dasar
  * biaya dilaporkan `null` (bukan Rp 0 yang menyesatkan).
@@ -11,8 +11,8 @@
 import { describe, it, expect } from "vitest";
 import { summarizeInventoryItem, type ItemWithStock } from "@/lib/inventory";
 
-function item(stock: ItemWithStock["stock"]): ItemWithStock {
-  return { id: 1, name: "Kopi", unit: "kg", stock };
+function item(stockMovements: ItemWithStock["stockMovements"]): ItemWithStock {
+  return { id: 1, name: "Kopi", unit: "kg", stockMovements };
 }
 
 describe("summarizeInventoryItem — nilai persediaan", () => {

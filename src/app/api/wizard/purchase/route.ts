@@ -19,7 +19,7 @@
  * pendebetan ganda; yang ditambahkan pergerakan itu hanyalah kuantitas dan
  * harga pokok per unit — satu-satunya masukan HPP rata-rata saat barang keluar.
  *
- * `stock.unit_cost` selalu IDR, jadi harga beli valas sudah dikalikan kursnya
+ * `stock_movements.unit_cost` selalu IDR, jadi harga beli valas sudah dikalikan kursnya
  * oleh `buildPurchasePayload` di sisi peramban dan diperiksa ulang di sini
  * lewat `wizardReceiptSchema`.
  */

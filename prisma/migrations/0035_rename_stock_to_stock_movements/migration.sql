@@ -1,0 +1,34 @@
+-- Ganti nama tabel `stock` → `stock_movements` (issue #92).
+--
+-- KENAPA: nama `stock` menyiratkan SALDO stok, padahal isinya CATATAN
+-- PERGERAKAN — satu baris = satu masuk (`in`) atau keluar (`out`). Saldo stok
+-- adalah hasil penjumlahan baris-baris ini dan tidak tersimpan di mana pun.
+-- Kodenya sendiri sudah lama menyebutnya `movement`/`movements`/`stockRows`;
+-- hanya nama tabelnya yang tertinggal. Ini juga satu-satunya tabel bernama
+-- TUNGGAL di antara 45 tabel — jamak adalah aturan di docs/DATABASE.md.
+--
+-- ══ MURNI GANTI NAMA — TIDAK ADA PERUBAHAN PERILAKU ════════════════════════
+-- Tidak ada kolom yang ditambah, dihapus, atau diubah tipenya. Tidak ada satu
+-- baris pun yang di-UPDATE. Nilai `type` tetap `in`/`out`. Perhitungan HPP
+-- (rata-rata tertimbang) dan penilaian persediaan menghasilkan angka yang sama
+-- persis sebelum dan sesudah migration ini.
+--
+-- ══ INDEX & FOREIGN KEY IKUT TERBAWA ═══════════════════════════════════════
+-- `RENAME TABLE` pada MariaDB/MySQL memindahkan tabel beserta SELURUH index,
+-- kunci primer, dan foreign key-nya; referensi dari tabel lain ikut diperbarui
+-- otomatis. Tabel ini punya:
+--   • PRIMARY KEY (`id`)
+--   • FK `stock_item_id_fkey` (`item_id`) → `items`(`id`) ON DELETE CASCADE
+--     (0001_init), beserta index penunjangnya yang dibuat otomatis MySQL.
+-- Tidak ada tabel lain yang menunjuk ke tabel ini, jadi tak ada FK masuk yang
+-- perlu diperiksa.
+--
+-- Nama CONSTRAINT-nya sendiri TETAP `stock_item_id_fkey` — MariaDB tidak
+-- mengganti nama constraint saat RENAME TABLE, dan Prisma mencocokkan FK
+-- berdasarkan KOLOM, bukan nama. Membiarkannya lebih aman daripada DROP + ADD
+-- (DDL MySQL tidak transaksional, jadi drop-lalu-add sempat meninggalkan tabel
+-- tanpa FK). Shadow database mereplay migration yang sama, sehingga nama itu
+-- konsisten di kedua sisi dan tidak memicu drift.
+
+-- RenameTable
+RENAME TABLE `stock` TO `stock_movements`;

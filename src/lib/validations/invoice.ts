@@ -58,6 +58,16 @@ export const invoiceSchema = z
     pebNumber: z.string().trim().max(50).optional().nullable().transform((v) => v || null),
     pebDate: dueDateField,
     exportNote: z.string().trim().max(1000).optional().nullable().transform((v) => v || null),
+    /**
+     * Pusat biaya faktur ini (issue #98; kolomnya sudah ada sejak #91, yang
+     * kurang justru pemilihnya). Mesin posting menstempelkannya ke setiap baris
+     * jurnal penjualan, dan surat jalan yang menyebut faktur ini MEWARISINYA
+     * untuk HPP — jadi inilah satu isian yang membuat Laba/Rugi cabang memuat
+     * pendapatan DAN harga pokoknya sekaligus.
+     * Nullish: tak dipilih = "belum ditetapkan / seluruh perusahaan" — nilai
+     * yang SAH, bukan isian yang terlewat.
+     */
+    costCenterId: z.coerce.number().int().positive().nullish(),
     items: z.array(invoiceItemSchema).min(1, vmsg("validation.atLeastOneItem")).max(50),
   })
   .superRefine(requireRateForForeign);

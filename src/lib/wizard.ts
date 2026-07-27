@@ -933,7 +933,7 @@ export function buildPurchasePayload(draft: PurchaseDraft): PurchaseWizardPayloa
   const received = draft.lines.filter(
     (l) => l.receive && l.itemId != null && l.receiveQuantity > 0
   );
-  // Harga pokok stok SELALU dalam IDR (`stock.unit_cost` adalah masukan HPP
+  // Harga pokok stok SELALU dalam IDR (`stock_movements.unit_cost` adalah masukan HPP
   // rata-rata), jadi harga beli valas dikalikan kursnya lebih dulu.
   const toIdr = draft.purchase.currency === "IDR" ? 1 : draft.purchase.rate || 0;
 

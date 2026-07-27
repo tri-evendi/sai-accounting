@@ -4,7 +4,8 @@
  * Yang dijaga: urutan evaluasi bawaan → override peran → override PENGGUNA
  * (baris pengguna menang atas keputusan perannya); tanpa baris = mengikuti
  * peran sepenuhnya; deny-by-default tak bisa dibobol lewat baris yatim;
- * validasi menolak anti-lockout bos, sel kembar, dan pelanggaran invarian
+ * validasi menolak anti-lockout peran berakses penuh, sel kembar, dan
+ * pelanggaran invarian
  * delete ⊆ write ⊆ read pada set izin FINAL pengguna; cache per-pengguna
  * menghormati TTL + invalidasi TERARAH per id; kegagalan DB jatuh ke izin
  * level peran. Tanpa DB — sumber override di-inject.
@@ -31,10 +32,10 @@ const baseline = applyOverrides([]);
 
 describe("rolePermissionSet — izin sebuah peran menurut matriks efektif", () => {
   it("memuat persis izin peran itu; peran kosong/asing = set kosong", () => {
-    const core = rolePermissionSet(baseline, "core");
+    const core = rolePermissionSet(baseline, "finance_manager");
     for (const permission of PERMISSIONS) {
       expect(core.has(permission), permission).toBe(
-        (PERMISSION_ROLES[permission] as readonly string[]).includes("core")
+        (PERMISSION_ROLES[permission] as readonly string[]).includes("finance_manager")
       );
     }
     expect(rolePermissionSet(baseline, null).size).toBe(0);
@@ -44,14 +45,14 @@ describe("rolePermissionSet — izin sebuah peran menurut matriks efektif", () =
 
 describe("applyUserOverrides — set izin FINAL pengguna", () => {
   it("tanpa override = persis izin perannya (perilaku hari ini)", () => {
-    const roleSet = rolePermissionSet(baseline, "core");
+    const roleSet = rolePermissionSet(baseline, "finance_manager");
     expect(applyUserOverrides(roleSet, [])).toEqual(
       PERMISSIONS.filter((p) => roleSet.has(p))
     );
   });
 
   it("override MENGHADIAHKAN izin yang perannya tidak punya", () => {
-    const final = applyUserOverrides(rolePermissionSet(baseline, "core"), [
+    const final = applyUserOverrides(rolePermissionSet(baseline, "finance_manager"), [
       { permission: "report.read", allowed: true },
     ]);
     expect(final).toContain("report.read");
@@ -61,7 +62,7 @@ describe("applyUserOverrides — set izin FINAL pengguna", () => {
   });
 
   it("override MENCABUT izin yang perannya punya", () => {
-    const final = applyUserOverrides(rolePermissionSet(baseline, "core"), [
+    const final = applyUserOverrides(rolePermissionSet(baseline, "finance_manager"), [
       { permission: "contract.write", allowed: false },
     ]);
     expect(final).not.toContain("contract.write");
@@ -69,7 +70,7 @@ describe("applyUserOverrides — set izin FINAL pengguna", () => {
   });
 
   it("baris yatim diabaikan — izin yang tak dikenal kode tak pernah hidup", () => {
-    const roleSet = rolePermissionSet(baseline, "ptg");
+    const roleSet = rolePermissionSet(baseline, "warehouse_head");
     const final = applyUserOverrides(roleSet, [
       { permission: "ghost.read", allowed: true },
       { permission: "ghost.write", allowed: false },
@@ -78,12 +79,12 @@ describe("applyUserOverrides — set izin FINAL pengguna", () => {
   });
 
   it("tersusun di atas override PERAN (#73): urutan bawaan → peran → pengguna", () => {
-    // Override peran mencabut contract.write dari core; override pengguna
+    // Override peran mencabut contract.write dari Manajer Keuangan; override pengguna
     // menghadiahkannya kembali untuk SATU orang.
     const matrix = applyOverrides([
-      { role: "core", permission: "contract.write", allowed: false },
+      { role: "finance_manager", permission: "contract.write", allowed: false },
     ]);
-    const roleSet = rolePermissionSet(matrix, "core");
+    const roleSet = rolePermissionSet(matrix, "finance_manager");
     expect(roleSet.has("contract.write")).toBe(false);
     expect(
       applyUserOverrides(roleSet, [{ permission: "contract.write", allowed: true }])
@@ -93,11 +94,11 @@ describe("applyUserOverrides — set izin FINAL pengguna", () => {
 
 describe("canWithUserOverrides — keputusan per pengguna", () => {
   it("baris pengguna menang; tanpa baris keputusan perannya berlaku", () => {
-    expect(canWithUserOverrides(baseline, { role: "core" }, [], "report.read")).toBe(false);
+    expect(canWithUserOverrides(baseline, { role: "finance_manager" }, [], "report.read")).toBe(false);
     expect(
       canWithUserOverrides(
         baseline,
-        { role: "core" },
+        { role: "finance_manager" },
         [{ permission: "report.read", allowed: true }],
         "report.read"
       )
@@ -105,7 +106,7 @@ describe("canWithUserOverrides — keputusan per pengguna", () => {
     expect(
       canWithUserOverrides(
         baseline,
-        { role: "core" },
+        { role: "finance_manager" },
         [{ permission: "contract.write", allowed: false }],
         "contract.write"
       )
@@ -114,7 +115,7 @@ describe("canWithUserOverrides — keputusan per pengguna", () => {
     expect(
       canWithUserOverrides(
         baseline,
-        { role: "core" },
+        { role: "finance_manager" },
         [{ permission: "report.read", allowed: true }],
         "contract.write"
       )
@@ -129,15 +130,15 @@ describe("canWithUserOverrides — keputusan per pengguna", () => {
 });
 
 describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () => {
-  const coreSet = rolePermissionSet(baseline, "core");
-  const bosSet = rolePermissionSet(baseline, "bos");
-  const ptgSet = rolePermissionSet(baseline, "ptg");
+  const coreSet = rolePermissionSet(baseline, "finance_manager");
+  const bosSet = rolePermissionSet(baseline, "managing_director");
+  const ptgSet = rolePermissionSet(baseline, "warehouse_head");
 
   it("set kosong dan override wajar diterima", () => {
-    expect(validateUserOverrides("core", [], coreSet)).toEqual([]);
+    expect(validateUserOverrides("finance_manager", [], coreSet)).toEqual([]);
     expect(
       validateUserOverrides(
-        "core",
+        "finance_manager",
         [
           { permission: "report.read", allowed: true },
           { permission: "inventory.write", allowed: false },
@@ -147,30 +148,34 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
     ).toEqual([]);
   });
 
-  it("menolak pencabutan izin anti-lockout dari pengguna ber-peran bos", () => {
+  it("menolak pencabutan izin anti-lockout dari pengguna ber-peran akses penuh", () => {
+    // Setiap sel terlindung diuji dengan PERANNYA SENDIRI — sejak migration
+    // 0032 ada dua peran terkunci (Direktur Utama & Administrator), dan
+    // memakai satu peran untuk semua sel akan membuat separuhnya lolos diam-diam.
     for (const cell of PROTECTED_CELLS) {
       const errors = validateUserOverrides(
-        "bos",
+        cell.role,
         [{ permission: cell.permission, allowed: false }],
-        bosSet
+        rolePermissionSet(baseline, cell.role)
       );
-      expect(errors.length, cell.permission).toBeGreaterThan(0);
+      expect(errors.length, `${cell.role} × ${cell.permission}`).toBeGreaterThan(0);
       expect(errors.join(" ")).toContain(cell.permission);
     }
-    // Izin bos lain TIDAK terkunci (bos boleh dilepas izin non-kritis).
+    // Izin akses-penuh lain TIDAK terkunci (boleh dilepas izin non-kritis).
     expect(
-      validateUserOverrides("bos", [{ permission: "report.read", allowed: false }], bosSet)
+      validateUserOverrides("managing_director", [{ permission: "report.read", allowed: false }], bosSet)
     ).toEqual([]);
-    // Peran non-bos tidak tersentuh kuncinya: core toh tidak memegangnya —
+    // Peran tanpa akses penuh tak tersentuh kuncinya: Manajer Keuangan toh
+    // tidak memegangnya —
     // barisnya sekadar redundan, bukan pelanggaran.
     expect(
-      validateUserOverrides("core", [{ permission: "user.manage", allowed: false }], coreSet)
+      validateUserOverrides("finance_manager", [{ permission: "user.manage", allowed: false }], coreSet)
     ).toEqual([]);
   });
 
   it("menolak write tanpa read pada set FINAL (write ⊆ read)", () => {
     const errors = validateUserOverrides(
-      "ptg",
+      "warehouse_head",
       [{ permission: "contract.write", allowed: true }],
       ptgSet
     );
@@ -179,7 +184,7 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
     // Diberikan BERSAMA read-nya → sah.
     expect(
       validateUserOverrides(
-        "ptg",
+        "warehouse_head",
         [
           { permission: "contract.write", allowed: true },
           { permission: "contract.read", allowed: true },
@@ -189,7 +194,7 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
     ).toEqual([]);
     // Mencabut read sambil menyisakan write juga ditolak.
     const revokeRead = validateUserOverrides(
-      "core",
+      "finance_manager",
       [{ permission: "contract.read", allowed: false }],
       coreSet
     );
@@ -198,7 +203,7 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
 
   it("menolak delete yang lolos dari write (delete ⊆ write)", () => {
     const errors = validateUserOverrides(
-      "bos",
+      "managing_director",
       [{ permission: "invoice.write", allowed: false }],
       bosSet
     );
@@ -207,7 +212,7 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
     // Dicabut BERSAMA delete-nya → sah.
     expect(
       validateUserOverrides(
-        "bos",
+        "managing_director",
         [
           { permission: "invoice.write", allowed: false },
           { permission: "invoice.delete", allowed: false },
@@ -219,10 +224,10 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
 
   it("menolak izin asing dan baris kembar", () => {
     expect(
-      validateUserOverrides("core", [{ permission: "ghost.read", allowed: true }], coreSet).join(" ")
+      validateUserOverrides("finance_manager", [{ permission: "ghost.read", allowed: true }], coreSet).join(" ")
     ).toContain("ghost.read");
     const dup = validateUserOverrides(
-      "core",
+      "finance_manager",
       [
         { permission: "report.read", allowed: true },
         { permission: "report.read", allowed: false },
@@ -235,7 +240,7 @@ describe("validateUserOverrides — anti-lockout & invarian pada set FINAL", () 
 
 describe("normalizeUserOverrides — baris redundan dibuang", () => {
   it("baris yang sama dengan nilai efektif perannya tidak disimpan", () => {
-    const coreSet = rolePermissionSet(baseline, "core");
+    const coreSet = rolePermissionSet(baseline, "finance_manager");
     const rows = normalizeUserOverrides(coreSet, [
       // Redundan: perannya memang begitu.
       { permission: "contract.write", allowed: true },

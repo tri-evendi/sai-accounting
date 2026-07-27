@@ -85,7 +85,7 @@ export const NAV_GROUPS: NavGroup[] = [
   // antrean ini menahan pekerjaan orang lain: menunda keputusan berarti jurnal
   // dokumen tertahan. Antreannya terbuka untuk semua peran (penyetuju melihat
   // yang harus ia putuskan, pemohon melihat kabar pengajuannya); aturan ambang
-  // & peran bos-only, permukaan kebijakan seperti Kunci Bulan.
+  // & peran khusus akses penuh, permukaan kebijakan seperti Kunci Bulan.
   {
     id: "persetujuan",
     label: "Persetujuan",
@@ -182,7 +182,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   // Label grup ≠ label item mana pun di dalamnya ("Pengaturan" berisi
-  // "Pengaturan" membingungkan); "Bantuan & Pengaturan" juga jujur untuk ptg
+  // "Pengaturan" membingungkan); "Bantuan & Pengaturan" juga jujur untuk
+  // Kepala Gudang
   // yang di sini hanya melihat Kamus Istilah + Pengaturan.
   {
     id: "pengaturan",
@@ -194,7 +195,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/setup", label: "Setup & Saldo Awal", labelKey: "nav.items.setup", icon: "Wand2", permission: "setup.manage", termKey: "saldo_awal" },
       { href: "/users", label: "Pengguna", labelKey: "nav.items.users", icon: "UserCog", permission: "user.manage" },
       // issue #73 — matriks izin dikonfigurasi dari sini; anti-lockout menjamin
-      // bos tidak pernah kehilangan pintunya sendiri.
+      // peran berakses penuh tidak pernah kehilangan pintunya sendiri.
       { href: "/permissions", label: "Hak Akses", labelKey: "nav.items.permissions", icon: "KeyRound", permission: "authz.manage" },
       { href: "/settings", label: "Pengaturan", labelKey: "nav.items.settings", icon: "Settings", permission: "settings.view" },
     ],

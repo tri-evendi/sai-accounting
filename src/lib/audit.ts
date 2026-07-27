@@ -84,7 +84,8 @@ export type AuditAction =
   | "wizard.purchase"
   /**
    * Manajemen pengguna (audit RBAC fase 3). Mutasi paling ber-privilege di
-   * app ini (termasuk pemberian peran bos) dulunya justru TIDAK diaudit.
+   * app ini (termasuk pemberian peran berakses penuh) dulunya justru TIDAK
+   * diaudit.
    * `user.update` mencatat field yang berubah (roleFrom→roleTo, resetPassword)
    * — tidak pernah nilai kata sandinya.
    */

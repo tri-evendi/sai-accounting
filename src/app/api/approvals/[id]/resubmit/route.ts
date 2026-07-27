@@ -26,6 +26,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalResubmitSchema } from "@/lib/validations/approval";
 import { ApprovalTransitionError, assertTransition, canResubmit } from "@/lib/approvals";
+import { isFullAccessRole } from "@/lib/constants";
 
 export async function POST(
   request: Request,
@@ -54,15 +55,20 @@ export async function POST(
     return NextResponse.json({ error: "Pengajuan tidak ditemukan." }, { status: 404 });
   }
 
-  // Yang boleh mengajukan ulang: pemohonnya sendiri, atau bos. Bukan penyetuju
-  // mana pun — mengajukan dan memutuskan adalah dua peran yang sengaja dipisah,
-  // dan bos disertakan agar dokumen tidak ikut buntu saat pemohonnya sudah tak
-  // ada (resign, akun nonaktif).
+  // Yang boleh mengajukan ulang: pemohonnya sendiri, atau peran berakses penuh
+  // (Direktur Utama / Administrator). Bukan penyetuju mana pun — mengajukan dan
+  // memutuskan adalah dua peran yang sengaja dipisah — dan peran berakses penuh
+  // disertakan agar dokumen tidak ikut buntu saat pemohonnya sudah tak ada
+  // (resign, akun nonaktif).
   const userId = parseInt(result.session.user.id, 10);
   const isRequester = existing.requestedById === userId;
-  if (!isRequester && result.session.user.role !== "bos") {
+  if (!isRequester && !isFullAccessRole(result.session.user.role)) {
     return NextResponse.json(
-      { error: "Hanya pemohon atau Manager yang bisa mengajukan ulang pengajuan ini." },
+      {
+        error:
+          "Hanya pemohon, Direktur Utama, atau Administrator yang bisa mengajukan " +
+          "ulang pengajuan ini.",
+      },
       { status: 403 }
     );
   }

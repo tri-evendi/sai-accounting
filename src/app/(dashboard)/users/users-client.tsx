@@ -19,7 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
-import { ROLES, ROLE_LABELS } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
 
@@ -173,7 +173,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
               <Input id="name" name="name" label={t("users.displayName")} />
               <Select
                 id="role" name="role" label={t("users.role")}
-                defaultValue={ROLES.CORE}
+                defaultValue={ROLES.FINANCE_MANAGER}
                 options={roles.map((r) => ({ value: r.key, label: r.label }))}
               />
               <div className="sm:col-span-2">
@@ -215,7 +215,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                 <TableCell className="font-medium text-foreground">{user.username}</TableCell>
                 <TableCell className="text-foreground">{user.name || "-"}</TableCell>
                 <TableCell>
-                  <Badge variant={user.role === ROLES.BOS ? "success" : "default"}>
+                  <Badge variant={isFullAccessRole(user.role) ? "success" : "default"}>
                     {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
                   </Badge>
                 </TableCell>

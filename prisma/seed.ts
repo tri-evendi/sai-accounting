@@ -47,11 +47,11 @@ async function main() {
   // USERS
   // ═══════════════════════════════════════════════
   const users = [
-    { username: "admin", password: "admin123", name: "Administrator", role: "bos", status: 0 },
-    { username: "staff", password: "staff123", name: "Staff User", role: "core", status: 0 },
-    { username: "ptg", password: "ptg123", name: "PTG User", role: "ptg", status: 0 },
-    { username: "erwin", password: "erwin123", name: "Erwin Saputra", role: "bos", status: 0 },
-    { username: "sari", password: "sari1234", name: "Sari Dewi", role: "core", status: 0 },
+    { username: "admin", password: "admin123", name: "Administrator Sistem", role: "administrator", status: 0 },
+    { username: "staff", password: "staff123", name: "Staff User", role: "finance_manager", status: 0 },
+    { username: "ptg", password: "ptg123", name: "PTG User", role: "warehouse_head", status: 0 },
+    { username: "erwin", password: "erwin123", name: "Erwin Saputra", role: "managing_director", status: 0 },
+    { username: "sari", password: "sari1234", name: "Sari Dewi", role: "finance_manager", status: 0 },
   ];
 
   for (const user of users) {
@@ -514,17 +514,17 @@ async function main() {
   console.log("  Demo seed completed successfully!");
   console.log("══════════════════════════════════════════\n");
   console.log("Login credentials:");
-  console.log("┌──────────┬──────────┬────────────────┐");
-  console.log("│ Username │ Password │ Role           │");
-  console.log("├──────────┼──────────┼────────────────┤");
-  console.log("│ admin    │ admin123 │ Manager (bos)  │");
-  console.log("│ staff    │ staff123 │ Staff (core)   │");
-  console.log("│ ptg      │ ptg123   │ PTG Department │");
-  console.log("│ erwin    │ erwin123 │ Manager (bos)  │");
-  console.log("│ sari     │ sari1234 │ Staff (core)   │");
-  console.log("└──────────┴──────────┴────────────────┘");
+  console.log("┌──────────┬──────────┬─────────────────────────────────┐");
+  console.log("│ Username │ Password │ Role                            │");
+  console.log("├──────────┼──────────┼─────────────────────────────────┤");
+  console.log("│ admin    │ admin123 │ Administrator (administrator)   │");
+  console.log("│ staff    │ staff123 │ Manajer Keuangan (finance_mgr)  │");
+  console.log("│ ptg      │ ptg123   │ Kepala Gudang (warehouse_head)  │");
+  console.log("│ erwin    │ erwin123 │ Direktur Utama (managing_dir.)  │");
+  console.log("│ sari     │ sari1234 │ Manajer Keuangan (finance_mgr)  │");
+  console.log("└──────────┴──────────┴─────────────────────────────────┘");
   console.log("\nDemo data summary:");
-  console.log("  • 5 users (3 roles)");
+  console.log("  • 5 users (4 roles)");
   console.log("  • 10 inventory items with stock movements");
   console.log("  • 6 suppliers with transactions");
   console.log("  • 8 customers (international)");

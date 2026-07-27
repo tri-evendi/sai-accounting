@@ -15,7 +15,7 @@ describe("visibleWorkflows", () => {
   });
 
   it("dengan semua izin → semua alur, semua langkah utuh", () => {
-    const wf = visibleWorkflows("bos", ALL);
+    const wf = visibleWorkflows("managing_director", ALL);
     expect(wf.map((w) => w.id)).toEqual(["penjualan", "pembelian", "tutup_buku"]);
     for (const w of wf) {
       const original = WORKFLOWS.find((x) => x.id === w.id)!;
@@ -28,7 +28,7 @@ describe("visibleWorkflows", () => {
     // Pemasok' hilang. Alur Penjualan masih ≥2 langkah (kontrak, faktur,
     // piutang) → tetap tampil; Alur Pembelian tinggal 2 (beli, pantau utang).
     const allowed = new Set([...ALL].filter((p) => p !== "cash.write"));
-    const wf = visibleWorkflows("bos", allowed);
+    const wf = visibleWorkflows("managing_director", allowed);
     const penjualan = wf.find((w) => w.id === "penjualan")!;
     expect(penjualan.steps.some((s) => s.href.includes("finance/new"))).toBe(false);
     expect(penjualan.steps.length).toBeGreaterThanOrEqual(2);
@@ -36,12 +36,12 @@ describe("visibleWorkflows", () => {
 
   it("membuang alur yang tersisa < 2 langkah", () => {
     // Hanya izin membuat kontrak → Alur Penjualan tinggal 1 langkah → dibuang.
-    const wf = visibleWorkflows("bos", new Set(["contract.write"]));
+    const wf = visibleWorkflows("managing_director", new Set(["contract.write"]));
     expect(wf).toEqual([]);
   });
 
   it("langkah opsional ditandai (Kontrak)", () => {
-    const wf = visibleWorkflows("bos", ALL);
+    const wf = visibleWorkflows("managing_director", ALL);
     const kontrak = wf
       .find((w) => w.id === "penjualan")!
       .steps.find((s) => s.href === "/contracts/new");

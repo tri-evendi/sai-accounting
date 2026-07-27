@@ -1,7 +1,8 @@
 # RBAC — Otorisasi Berbasis Izin (WAJIB untuk halaman/route baru)
 
 > Hasil refactor audit RBAC 2026-07 (PR #70, #71, dst). Satu sumber kebenaran:
-> **`src/lib/authz.ts`**. Kode tidak pernah bertanya "perannya bos atau core?" —
+> **`src/lib/authz.ts`**. Kode tidak pernah bertanya "perannya Direktur Utama
+> atau Manajer Keuangan?" —
 > kode bertanya **"punya izin `resource.action`?"**
 > Sejak issue #73 matriks di kode adalah **BAWAAN (baseline)**; matriks
 > **EFEKTIF** = bawaan + override DB yang dikelola dari halaman `/permissions`;
@@ -10,24 +11,38 @@
 
 ## Peran
 
-Tiga peran statis di kode (`src/lib/constants.ts` — `ROLES`, `ROLE_VALUES`, `roleEnum`
-di `validations/common.ts` untuk zod):
+Empat peran SISTEM di kode (`src/lib/constants.ts` — `ROLES`, `ROLE_VALUES`, `roleEnum`
+di `validations/common.ts` untuk zod). Kuncinya nama jabatan baku Bahasa Inggris
+`snake_case` sejak **migration 0032** (konvensi docs/DATABASE.md); singkatan lama
+`bos`/`core`/`ptg` sudah tidak ada lagi, baik di DB maupun di kode.
 
-| Peran | Label | Ringkas |
-|-------|-------|---------|
-| `bos` | Pimpinan | Memegang SEMUA izin |
-| `core` | Staf Kantor | Dokumen harian baca+tulis; TANPA hapus master, laporan, akuntansi, administrasi |
-| `ptg` | Bagian Gudang | Stok saja + halaman bersama (persetujuan, kamus, pengaturan) |
+| Peran | Label (id) | Ringkas |
+|-------|-----------|---------|
+| `managing_director` | Direktur Utama | Memegang SEMUA izin |
+| `administrator` | Administrator Sistem | Memegang SEMUA izin — **kembar** dengan Direktur Utama |
+| `finance_manager` | Manajer Keuangan | Dokumen harian baca+tulis; TANPA hapus master, laporan, akuntansi, administrasi |
+| `warehouse_head` | Kepala Gudang | Stok saja + halaman bersama (persetujuan, kamus, pengaturan) |
+
+**Kenapa `administrator` kembar dengan `managing_director`** (bukan admin teknis
+dengan izin terbatas): harus selalu ada DUA jalan masuk yang berdiri sendiri untuk
+mengelola pengguna & hak akses, supaya satu akun yang hilang tak pernah mengunci
+seluruh perusahaan. Pemisahan tugas ditukar dengan ketahanan secara sadar; jejaknya
+tetap terbaca karena catatan audit menyimpan peran aktor. Keduanya berada di
+`FULL_ACCESS_ROLES` (`src/lib/constants.ts`) — SATU sumber untuk matriks izin,
+bawaan Mode Akuntan, dan sel anti-lockout.
 
 Menambah peran = tambah di `ROLES`, lalu `tsc` memandu ke semua `Record` yang wajib diisi.
+Peran KUSTOM (di luar empat peran sistem) dibuat dari /permissions dan hidup sebagai
+data di tabel `roles` (migration 0031).
 
 ## Matriks izin
 
 `PERMISSION_ROLES` di `src/lib/authz.ts`: `"<resource>.<action>"` → daftar peran.
 Aksi baku: `read` · `write` · `delete` · `manage` · view/decide/export untuk kasus khusus.
-Invarian dijaga `tests/authz.test.ts`: bos memegang semua; hapus master = bos-only
-(kecuali `advance.delete`, terdokumentasi); **`delete ⊆ write ⊆ read`** — aksi lebih
-berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal ditolak).
+Invarian dijaga `tests/authz.test.ts`: kedua peran berakses penuh memegang semua;
+hapus master = akses-penuh-saja (kecuali `advance.delete`, terdokumentasi);
+**`delete ⊆ write ⊆ read`** — aksi lebih berbahaya tak pernah lebih longgar;
+`can()` deny-by-default (peran tak dikenal ditolak).
 
 ## Konfigurasi runtime (issue #73) — bawaan + override
 
@@ -46,11 +61,12 @@ berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal d
   memanggil `canEffective()`. `can()`/`rolesFor()` bawaan tinggal untuk tes dan
   fallback tampilan.
 - **Anti-lockout & invarian saat MENULIS** (`validateOverrides`, pesan
-  Indonesia): bos tidak pernah bisa kehilangan `authz.manage` & `user.manage`
-  (`PROTECTED_CELLS`); `delete ⊆ write ⊆ read` wajib tetap berlaku pada matriks
+  Indonesia): Direktur Utama MAUPUN Administrator tidak pernah bisa kehilangan
+  `authz.manage` & `user.manage` (`PROTECTED_CELLS` — empat sel, dua peran ×
+  dua izin); `delete ⊆ write ⊆ read` wajib tetap berlaku pada matriks
   EFEKTIF hasil usulan; sel kembar/peran asing ditolak.
 - **UI**: halaman `/permissions` ("Hak Akses", grup Bantuan & Pengaturan),
-  penjaga `authz.manage` (bawaan: bos). API `GET/PUT /api/authz/overrides`
+  penjaga `authz.manage` (bawaan: peran berakses penuh). API `GET/PUT /api/authz/overrides`
   (PUT = GANTI seluruh set; daftar kosong = reset). Setiap simpan **diaudit**
   (`authz.override.update`/`.reset`) beserta aktor + perannya.
 - **Tampilan ikut efektif**: sidebar memuat set izin efektif dari
@@ -81,8 +97,8 @@ berbahaya tak pernah lebih longgar; `can()` deny-by-default (peran tak dikenal d
   sama dengan revalidasi sesi, jadi menaikkan versi hanya memaksa login
   ulang tanpa mempercepat propagasi.
 - **Anti-lockout & invarian saat MENULIS** (`validateUserOverrides`, pesan
-  Indonesia): pengguna ber-peran bos tidak bisa dicabut `authz.manage` /
-  `user.manage`-nya (sel `PROTECTED_CELLS` yang sama dengan #73);
+  Indonesia): pengguna ber-peran berakses penuh tidak bisa dicabut
+  `authz.manage` / `user.manage`-nya (sel `PROTECTED_CELLS` yang sama dengan #73);
   `delete ⊆ write ⊆ read` wajib tetap berlaku pada set izin **FINAL**
   pengguna hasil usulan; izin asing/kembar ditolak. Baris yang sama dengan
   nilai efektif perannya dinormalkan (dibuang) — yang tersimpan selalu
@@ -138,7 +154,9 @@ versi; hapus pengguna mencabut otomatis.
 
 `writeAuditLog` mencatat aktor **beserta perannya saat beraksi**. Mutasi manajemen
 pengguna (`user.create/update/delete`) wajib diaudit — detail `roleFrom→roleTo` /
-`resetPassword`; nilai kata sandi tidak pernah dicatat.
+`resetPassword`; nilai kata sandi tidak pernah dicatat. Catatan audit LAMA menyimpan
+nama peran yang berlaku saat aksi itu terjadi (`bos`/`core`/`ptg`) dan sengaja TIDAK
+ditulis ulang oleh migration 0032 — jejak sejarah tidak dipalsukan.
 
 ## Checklist fitur baru
 

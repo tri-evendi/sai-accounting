@@ -278,9 +278,10 @@
     "other": "其他"
   },
   "role": {
-    "bos": "管理层",
-    "core": "办公室职员",
-    "ptg": "仓库人员（PTG）"
+    "managing_director": "总经理",
+    "finance_manager": "财务经理",
+    "warehouse_head": "仓库主管",
+    "administrator": "系统管理员"
   },
   "cashType": {
     "bank": "银行",
@@ -2195,7 +2196,7 @@
     "legendMarkedBefore": "标有",
     "legendOverride": "专属权限",
     "legendMarkedAfter": "的行与其角色不同",
-    "legendLocked": "已锁定：管理层必须始终能够管理用户与访问权限",
+    "legendLocked": "已锁定：总经理与系统管理员必须始终能够管理用户与访问权限",
     "colPermission": "权限",
     "colForThisUser": "对该用户",
     "confirmSaveTitle": "保存 {name} 的专属权限？",
@@ -2208,7 +2209,7 @@
     "savedFollowRole": "该用户已完全恢复为随角色。",
     "savedOverrides": "专属权限已保存。最长一分钟内生效。",
     "selectAria": "{permission}（对该用户）",
-    "lockedTitle": "已锁定——管理层必须始终能够管理用户与访问权限。",
+    "lockedTitle": "已锁定——总经理与系统管理员必须始终能够管理用户与访问权限。",
     "choiceRole": "随角色（{state}）",
     "choiceAllowed": "允许",
     "choiceNotAllowed": "禁止",
@@ -2231,7 +2232,7 @@
     "legendMarkedBefore": "标有",
     "legendChanged": "已修改",
     "legendMarkedAfter": "的单元格偏离默认设置",
-    "legendLocked": "已锁定：管理层必须始终能够管理用户与访问权限",
+    "legendLocked": "已锁定：总经理与系统管理员必须始终能够管理用户与访问权限",
     "confirmSaveTitle": "保存访问权限的更改？",
     "confirmSaveAllDefault": "所有单元格恢复为默认——已保存的偏离项将被删除。",
     "confirmSaveCount": "将有 {count} 个单元格偏离默认设置。",
@@ -2241,10 +2242,10 @@
     "savedDefault": "访问权限已恢复为默认。",
     "saved": "访问权限已保存。最长一分钟内生效。",
     "cellAria": "{role}：{permission}",
-    "lockedTitle": "已锁定——管理层必须始终能够管理用户与访问权限。",
+    "lockedTitle": "已锁定——总经理与系统管理员必须始终能够管理用户与访问权限。",
     "lockedShort": "已锁定",
     "roleManagerTitle": "管理角色",
-    "roleManagerHint": "可按需新增角色。新角色初始没有任何权限——请在下方矩阵中勾选。系统角色（管理层、办公室职员、仓库人员）不可停用或删除。",
+    "roleManagerHint": "可按需新增角色。新角色初始没有任何权限——请在下方矩阵中勾选。系统角色（总经理、财务经理、仓库主管、系统管理员）不可停用或删除。",
     "colRoleName": "角色名称",
     "colRoleKey": "标识",
     "systemRoleAria": "系统角色",
@@ -2555,7 +2556,7 @@
   },
   "audit": {
     "title": "安全审计日志",
-    "description": "资金、库存与账户变更（仅管理层可见）",
+    "description": "资金、库存与账户变更（仅总经理与系统管理员可见）",
     "accessDenied": "访问被拒绝",
     "loadFailed": "加载审计日志失败",
     "empty": "暂无审计记录",

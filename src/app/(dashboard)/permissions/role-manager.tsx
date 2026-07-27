@@ -4,7 +4,8 @@
  * Kelola Peran (peran dinamis) — panel di atas matriks /permissions.
  *
  * Buat peran baru (key + label), ubah nama, aktif/nonaktifkan, hapus. Peran
- * SISTEM (bos/core/ptg) terkunci dari nonaktif/hapus. Setelah perubahan apa pun
+ * SISTEM (managing_director/finance_manager/warehouse_head/administrator)
+ * terkunci dari nonaktif/hapus. Setelah perubahan apa pun
  * memanggil `onRolesChanged` agar kolom matriks izin ikut termuat ulang.
  *
  * Semua aksi lewat /api/roles (di-gate authz.manage) — sumber kebenaran DB.

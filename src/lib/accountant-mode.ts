@@ -1,4 +1,4 @@
-import { ROLES, type Role } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, isFullAccessRole, type Role } from "@/lib/constants";
 
 /**
  * "Mode Akuntan" (issue #11) — display-only preference deciding whether a user
@@ -15,10 +15,19 @@ import { ROLES, type Role } from "@/lib/constants";
 
 /**
  * The default mode for a role when the user has no explicit preference:
- * bos (Manager/akuntan) → ON; core (Staff) and ptg → OFF.
+ * the FULL-ACCESS roles (managing_director, administrator) → ON;
+ * finance_manager and warehouse_head → OFF.
+ *
+ * `administrator` is included deliberately. Mode Akuntan is the second gate in
+ * front of every accounting page (`requirePagePermission` demands it on top of
+ * the permission check), so a role that holds every permission but defaults to
+ * mode OFF would be bounced off Jurnal / Buku Besar / COA — "full access" would
+ * be a lie on exactly the surfaces an administrator is most likely to need.
+ * It stays a DISPLAY preference: an administrator who does not want the
+ * accounting vocabulary can still switch it off from the navbar.
  */
 export function roleDefaultAccountantMode(role: string | null | undefined): boolean {
-  return role === ROLES.BOS;
+  return isFullAccessRole(role);
 }
 
 /** The minimal shape the decision needs — a role plus the stored preference. */
@@ -41,4 +50,4 @@ export function effectiveAccountantMode(user: AccountantModeUser): boolean {
 }
 
 /** Roles allowed to hold accountant mode at all (defence-in-depth labelling). */
-export const ACCOUNTANT_ROLES: Role[] = [ROLES.BOS];
+export const ACCOUNTANT_ROLES: Role[] = [...FULL_ACCESS_ROLES];

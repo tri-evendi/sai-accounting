@@ -14,16 +14,17 @@
  * - Deny-by-default dipertahankan: baris yatim (izin/peran yang tak dikenal
  *   kode) DIABAIKAN saat merakit — override tidak pernah bisa menciptakan
  *   izin atau peran baru.
- * - Anti-lockout: bos tidak pernah bisa kehilangan `authz.manage` (pintu
- *   halaman ini sendiri) dan `user.manage` — tanpa keduanya tak ada lagi
- *   yang bisa memperbaiki kesalahan konfigurasi.
+ * - Anti-lockout: KEDUA peran berakses penuh (Direktur Utama & Administrator)
+ *   tidak pernah bisa kehilangan `authz.manage` (pintu halaman ini sendiri)
+ *   maupun `user.manage` — tanpa keduanya tak ada lagi yang bisa memperbaiki
+ *   kesalahan konfigurasi.
  * - Invarian `delete ⊆ write ⊆ read` (tests/authz.test.ts) harus tetap
  *   berlaku pada matriks EFEKTIF: aksi lebih berbahaya tak pernah lebih
  *   longgar, juga setelah dikonfigurasi.
  */
 
 import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@/lib/authz";
-import { ROLE_LABELS, ROLE_VALUES, type Role } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, ROLE_VALUES, type Role } from "@/lib/constants";
 
 /** Satu baris override — bentuk yang sama dengan tabelnya. */
 export interface PermissionOverride {
@@ -38,10 +39,17 @@ export type EffectiveMatrix = Record<Permission, readonly Role[]>;
 /**
  * Sel yang dikunci anti-lockout: mencabutnya = tidak ada lagi yang bisa
  * membuka /permissions atau /users untuk memperbaiki keadaan.
+ *
+ * DUA peran dikunci, bukan satu: Direktur Utama DAN Administrator. Keduanya
+ * berakses penuh (`FULL_ACCESS_ROLES`), dan menguncinya masing-masing berarti
+ * kehilangan satu akun tak pernah bisa menutup pintu — selalu tersisa jalan
+ * kedua yang berdiri sendiri untuk mengelola pengguna & hak akses.
  */
 export const PROTECTED_CELLS: ReadonlyArray<{ role: Role; permission: Permission }> = [
-  { role: "bos", permission: "authz.manage" },
-  { role: "bos", permission: "user.manage" },
+  { role: ROLES.MANAGING_DIRECTOR, permission: "authz.manage" },
+  { role: ROLES.MANAGING_DIRECTOR, permission: "user.manage" },
+  { role: ROLES.ADMINISTRATOR, permission: "authz.manage" },
+  { role: ROLES.ADMINISTRATOR, permission: "user.manage" },
 ];
 
 export function isProtectedCell(role: string, permission: string): boolean {

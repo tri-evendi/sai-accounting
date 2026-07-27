@@ -378,7 +378,8 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
     expect(contractStatusLabels(null)).toEqual(CONTRACT_STATUS_LABELS);
     expect(documentTypeLabels(undefined).bl).toBe(DOCUMENT_TYPE_LABELS.bl);
     expect(cashTypeLabels(null).kas_kecil).toBe(CASH_TYPE_LABELS.kas_kecil);
-    expect(roleLabels(null).bos).toBe(ROLE_LABELS.bos);
+    expect(roleLabels(null).managing_director).toBe(ROLE_LABELS.managing_director);
+    expect(roleLabels(null).administrator).toBe(ROLE_LABELS.administrator);
     expect(accountTypeLabels(null).cash_bank).toBe(ACCOUNT_TYPES[0].label);
   });
 
@@ -541,8 +542,8 @@ describe("translate: jalur-titik, interpolasi, dan cadangan", () => {
     expect(translate(id, "table.page", { page: 2, pages: 7 })).toBe("Halaman 2 dari 7");
     expect(translate(en, "table.page", { page: 2, pages: 7 })).toBe("Page 2 of 7");
     expect(
-      translate(id, "userMenu.trigger", { name: "Budi", role: "Pimpinan" })
-    ).toBe("Akun: Budi (Pimpinan)");
+      translate(id, "userMenu.trigger", { name: "Budi", role: "Direktur Utama" })
+    ).toBe("Akun: Budi (Direktur Utama)");
   });
 
   it("placeholder tanpa nilai dibiarkan apa adanya (bocor terlihat, bukan lubang senyap)", () => {

@@ -137,10 +137,10 @@ describe("absoluteDecimal", () => {
 // ─── Rule matching ──────────────────────────────────────────────────────────
 
 const RULES: ApprovalRuleLike[] = [
-  { id: 1, documentType: "invoice", minAmount: "100000000", approverRole: "core" },
-  { id: 2, documentType: "invoice", minAmount: "1000000000", approverRole: "bos" },
-  { id: 3, documentType: "payment", minAmount: "50000000.00", approverRole: "bos" },
-  { id: 4, documentType: "contract", minAmount: "0", approverRole: "bos", isActive: false },
+  { id: 1, documentType: "invoice", minAmount: "100000000", approverRole: "finance_manager" },
+  { id: 2, documentType: "invoice", minAmount: "1000000000", approverRole: "managing_director" },
+  { id: 3, documentType: "payment", minAmount: "50000000.00", approverRole: "managing_director" },
+  { id: 4, documentType: "contract", minAmount: "0", approverRole: "managing_director", isActive: false },
 ];
 
 describe("matchApprovalRule", () => {
@@ -157,7 +157,7 @@ describe("matchApprovalRule", () => {
       baseAmount: decimal("100000000.00"),
     });
     expect(rule?.id).toBe(1);
-    expect(rule?.approverRole).toBe("core");
+    expect(rule?.approverRole).toBe("finance_manager");
   });
 
   it("picks the STRICTEST band when several rules match", () => {
@@ -168,13 +168,13 @@ describe("matchApprovalRule", () => {
       baseAmount: "2000000000",
     });
     expect(rule?.id).toBe(2);
-    expect(rule?.approverRole).toBe("bos");
+    expect(rule?.approverRole).toBe("managing_director");
   });
 
   it("breaks a tie on the lowest rule id, deterministically", () => {
     const tied: ApprovalRuleLike[] = [
-      { id: 9, documentType: "payment", minAmount: "10", approverRole: "core" },
-      { id: 4, documentType: "payment", minAmount: "10.00", approverRole: "bos" },
+      { id: 9, documentType: "payment", minAmount: "10", approverRole: "finance_manager" },
+      { id: 4, documentType: "payment", minAmount: "10.00", approverRole: "managing_director" },
     ];
     expect(matchApprovalRule(tied, { documentType: "payment", baseAmount: "10" })?.id).toBe(4);
     // Order of the input array must not change the answer.
@@ -198,7 +198,7 @@ describe("matchApprovalRule", () => {
 
   it("treats a zero-value document as reaching a zero ambang, and nothing higher", () => {
     const zeroRule: ApprovalRuleLike[] = [
-      { id: 1, documentType: "invoice", minAmount: "0", approverRole: "bos" },
+      { id: 1, documentType: "invoice", minAmount: "0", approverRole: "managing_director" },
     ];
     expect(matchApprovalRule(zeroRule, { documentType: "invoice", baseAmount: 0 })?.id).toBe(1);
     expect(
@@ -416,7 +416,7 @@ describe("unread decisions are the notification", () => {
 // ─── Zod payloads ───────────────────────────────────────────────────────────
 
 describe("approval rule schema mirrors the DB constraints", () => {
-  const base = { documentType: "invoice", minAmount: 500_000_000, approverRole: "bos" };
+  const base = { documentType: "invoice", minAmount: 500_000_000, approverRole: "managing_director" };
 
   it("accepts a well-formed rule", () => {
     const result = approvalRuleSchema.safeParse(base);
@@ -488,8 +488,8 @@ describe("decisionMessage names the document and the ledger consequence", () => 
 
 // ─── Penilaian ulang saat dokumen diedit (issue #45) ────────────────────────
 
-const RULE_CORE = { id: 1, documentType: "invoice", minAmount: "100000000", approverRole: "core" };
-const RULE_BOS = { id: 2, documentType: "invoice", minAmount: "500000000", approverRole: "bos" };
+const RULE_CORE = { id: 1, documentType: "invoice", minAmount: "100000000", approverRole: "finance_manager" };
+const RULE_BOS = { id: 2, documentType: "invoice", minAmount: "500000000", approverRole: "managing_director" };
 
 const approved = (approvedBase: string | null, threshold = "100000000") => ({
   status: "approved",

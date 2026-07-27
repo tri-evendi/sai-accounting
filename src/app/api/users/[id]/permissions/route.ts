@@ -21,7 +21,8 @@ import { writeAuditLog } from "@/lib/audit";
  *        pengguna + izin yang terkunci anti-lockout.
  * PUT  → GANTI seluruh set override pengguna itu (bukan patch): payload
  *        adalah keadaan akhir yang diinginkan, divalidasi zod (bentuk) +
- *        `validateUserOverrides` (anti-lockout bos & delete ⊆ write ⊆ read
+ *        `validateUserOverrides` (anti-lockout peran berakses penuh &
+ *        delete ⊆ write ⊆ read
  *        pada set FINAL pengguna), lalu dinormalkan (baris yang sama dengan
  *        nilai efektif perannya dibuang — tanpa baris = ikuti peran).
  *        Daftar kosong = "Ikuti peran sepenuhnya".

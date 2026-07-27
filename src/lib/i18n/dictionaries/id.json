@@ -278,9 +278,10 @@
     "other": "Lainnya"
   },
   "role": {
-    "bos": "Pimpinan",
-    "core": "Staf Kantor",
-    "ptg": "Bagian Gudang (PTG)"
+    "managing_director": "Direktur Utama",
+    "finance_manager": "Manajer Keuangan",
+    "warehouse_head": "Kepala Gudang",
+    "administrator": "Administrator Sistem"
   },
   "cashType": {
     "bank": "Bank",
@@ -2195,7 +2196,7 @@
     "legendMarkedBefore": "Baris bertanda",
     "legendOverride": "izin khusus",
     "legendMarkedAfter": "menyimpang dari perannya",
-    "legendLocked": "Terkunci: Pimpinan harus selalu bisa mengelola pengguna & hak akses",
+    "legendLocked": "Terkunci: Direktur Utama & Administrator harus selalu bisa mengelola pengguna & hak akses",
     "colPermission": "Izin",
     "colForThisUser": "Untuk pengguna ini",
     "confirmSaveTitle": "Simpan izin khusus untuk {name}?",
@@ -2208,7 +2209,7 @@
     "savedFollowRole": "Pengguna kembali mengikuti perannya sepenuhnya.",
     "savedOverrides": "Izin khusus disimpan. Berlaku paling lama satu menit.",
     "selectAria": "{permission} untuk pengguna ini",
-    "lockedTitle": "Terkunci — Pimpinan harus selalu bisa mengelola pengguna & hak akses.",
+    "lockedTitle": "Terkunci — Direktur Utama & Administrator harus selalu bisa mengelola pengguna & hak akses.",
     "choiceRole": "Ikuti peran ({state})",
     "choiceAllowed": "Boleh",
     "choiceNotAllowed": "Tidak",
@@ -2231,7 +2232,7 @@
     "legendMarkedBefore": "Sel bertanda",
     "legendChanged": "diubah",
     "legendMarkedAfter": "menyimpang dari bawaan",
-    "legendLocked": "Terkunci: Pimpinan harus selalu bisa mengelola pengguna & hak akses",
+    "legendLocked": "Terkunci: Direktur Utama & Administrator harus selalu bisa mengelola pengguna & hak akses",
     "confirmSaveTitle": "Simpan perubahan hak akses?",
     "confirmSaveAllDefault": "Semua sel kembali sesuai bawaan — penyimpangan yang tersimpan akan dihapus.",
     "confirmSaveCount": "{count} sel akan menyimpang dari bawaan.",
@@ -2241,10 +2242,10 @@
     "savedDefault": "Hak akses kembali sesuai bawaan.",
     "saved": "Hak akses disimpan. Berlaku paling lama satu menit.",
     "cellAria": "{role}: {permission}",
-    "lockedTitle": "Terkunci — Pimpinan harus selalu bisa mengelola pengguna & hak akses.",
+    "lockedTitle": "Terkunci — Direktur Utama & Administrator harus selalu bisa mengelola pengguna & hak akses.",
     "lockedShort": "terkunci",
     "roleManagerTitle": "Kelola Peran",
-    "roleManagerHint": "Tambah peran baru sesuai kebutuhan. Peran baru lahir tanpa izin — centang izinnya di matriks di bawah. Peran sistem (Pimpinan, Staf Kantor, Bagian Gudang) tak bisa dinonaktifkan atau dihapus.",
+    "roleManagerHint": "Tambah peran baru sesuai kebutuhan. Peran baru lahir tanpa izin — centang izinnya di matriks di bawah. Peran sistem (Direktur Utama, Manajer Keuangan, Kepala Gudang, Administrator Sistem) tak bisa dinonaktifkan atau dihapus.",
     "colRoleName": "Nama Peran",
     "colRoleKey": "Kunci",
     "systemRoleAria": "Peran sistem",
@@ -2555,7 +2556,7 @@
   },
   "audit": {
     "title": "Catatan Audit Keamanan",
-    "description": "Perubahan kas, stok, dan akun (khusus Pimpinan)",
+    "description": "Perubahan kas, stok, dan akun (khusus Direktur Utama & Administrator)",
     "accessDenied": "Akses ditolak",
     "loadFailed": "Gagal memuat catatan audit",
     "empty": "Belum ada catatan audit",

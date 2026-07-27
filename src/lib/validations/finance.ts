@@ -2,12 +2,13 @@ import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { normalizeConsigneeName } from "@/lib/consignee";
+import { vissue, vmsg } from "@/lib/i18n/validation";
 
 export const cashTransactionSchema = z
   .object({
     type: z.enum(["bank", "kas_besar", "kas_kecil"]),
-    date: z.string().min(1, "Date is required"),
-    description: z.string().min(1, "Description is required").max(255).trim(),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
+    description: z.string().min(1, vmsg("validation.descriptionRequired")).max(255).trim(),
     currency: currencyEnum.default("IDR"),
     debit: z.coerce.number().min(0).default(0),
     credit: z.coerce.number().min(0).default(0),
@@ -23,11 +24,11 @@ export const cashTransactionSchema = z
     counterAccountId: z.coerce
       .number()
       .int()
-      .positive("Akun lawan wajib dipilih"),
+      .positive(vmsg("validation.counterAccountRequired")),
     note: z.string().max(500).trim().optional(),
   })
   .refine((data) => data.debit > 0 || data.credit > 0, {
-    message: "Either debit or credit must be greater than 0",
+    message: vmsg("validation.debitOrCredit"),
     path: ["debit"],
   })
   .superRefine(requireRateForForeign);
@@ -45,7 +46,7 @@ export const cashTransactionSchema = z
  */
 export const supplierPaymentAllocationSchema = z.object({
   purchaseId: z.coerce.number().int().positive(),
-  amount: z.coerce.number().positive("Jumlah alokasi harus lebih besar dari 0"),
+  amount: z.coerce.number().positive(vmsg("validation.allocationAmountPositive")),
 });
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
@@ -78,7 +79,7 @@ export function checkAllocationSet(
       ctx.addIssue({
         code: "custom",
         path: [...path, i, "purchaseId"],
-        message: "Pembelian yang sama dialokasikan lebih dari sekali.",
+        message: vmsg("validation.purchaseAllocatedTwice"),
       });
     }
     seen.add(a.purchaseId);
@@ -91,7 +92,10 @@ export function checkAllocationSet(
     ctx.addIssue({
       code: "custom",
       path,
-      message: `Total alokasi (${total.toLocaleString("id-ID")}) melebihi jumlah pembayaran (${paymentAmount.toLocaleString("id-ID")}).`,
+      ...vissue("validation.allocationExceedsPayment", {
+        total: total.toLocaleString("id-ID"),
+        payment: paymentAmount.toLocaleString("id-ID"),
+      }),
     });
   }
 }
@@ -129,12 +133,12 @@ export function supplierPaymentAllocationsSchema(paymentAmount: number) {
 export const supplierTransactionSchema = z
   .object({
     supplierId: z.coerce.number().int().positive(),
-    date: z.string().min(1, "Date is required"),
+    date: z.string().min(1, vmsg("validation.dateRequired")),
     /** Only meaningful on a purchase — a payment has nothing to fall due. */
     dueDate: dueDateField,
     type: z.enum(["purchase", "payment"]),
     /** Net value, excluding tax — taxAmount is carried separately. */
-    amount: z.coerce.number().positive("Amount must be positive"),
+    amount: z.coerce.number().positive(vmsg("validation.amountPositive")),
     currency: currencyEnum.default("IDR"),
     rate: rateField,
     /** PPN Masukan portion. Only meaningful on a purchase. */
@@ -154,7 +158,7 @@ export const supplierTransactionSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["taxAmount"],
-        message: "PPN hanya berlaku untuk transaksi pembelian, bukan pembayaran.",
+        message: vmsg("validation.taxOnPurchaseOnly"),
       });
     }
 
@@ -166,7 +170,7 @@ export const supplierTransactionSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["allocations"],
-        message: "Alokasi hanya berlaku untuk transaksi pembayaran, bukan pembelian.",
+        message: vmsg("validation.allocationOnPaymentOnly"),
       });
       return;
     }
@@ -179,17 +183,17 @@ export const supplierTransactionSchema = z
 export const supplierSchema = z.object({
   // Pesan bahasa Indonesia — kini ditampilkan langsung ke pengguna oleh form
   // client (issue #53), bukan lagi hanya dipakai server.
-  name: z.string().min(1, "Nama pemasok wajib diisi").max(100).trim(),
+  name: z.string().min(1, vmsg("validation.supplierNameRequired")).max(100).trim(),
   address: z.string().max(500).trim().optional(),
   phone: z.string().max(30).trim().optional(),
-  email: z.string().email("Format email tidak valid").max(100).optional().or(z.literal("")),
+  email: z.string().email(vmsg("validation.emailInvalid")).max(100).optional().or(z.literal("")),
 });
 
 export const customerSchema = z.object({
-  name: z.string().min(1, "Nama pelanggan wajib diisi").max(100).trim(),
+  name: z.string().min(1, vmsg("validation.customerNameRequired")).max(100).trim(),
   address: z.string().max(500).trim().optional(),
   phone: z.string().max(30).trim().optional(),
-  email: z.string().email("Format email tidak valid").max(100).optional().or(z.literal("")),
+  email: z.string().email(vmsg("validation.emailInvalid")).max(100).optional().or(z.literal("")),
   pic: z.string().max(100).trim().optional(),
   /**
    * Bebas PPN (issue #16) — a customer never charged PPN Keluaran (export buyer
@@ -214,7 +218,7 @@ export const consigneeSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Consignee name is required")
+    .min(1, vmsg("validation.consigneeNameRequired"))
     .max(100)
     .transform(normalizeConsigneeName),
   address: z.string().max(500).trim().optional(),

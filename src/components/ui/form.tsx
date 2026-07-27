@@ -28,6 +28,8 @@ import {
   type FieldValues,
 } from "react-hook-form";
 import { Label } from "@/components/ui/label";
+import { useDictionary } from "@/lib/i18n/client";
+import { translateMessage } from "@/lib/i18n/validation";
 import { cn } from "@/lib/utils";
 
 const Form = FormProvider;
@@ -145,9 +147,23 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
+/**
+ * Pesan galat satu field — dan BATAS TAMPILAN sisi client untuk pesan validasi.
+ *
+ * Skema zod membawa KUNCI kamus (`vmsg("validation.dateRequired")`), bukan
+ * kalimat jadi, karena pesan zod dipanggang saat modul dimuat dan tidak bisa
+ * ikut berganti bahasa — lihat `lib/i18n/validation.ts`. Di sinilah kunci itu
+ * kembali menjadi kalimat, dalam bahasa yang sedang aktif.
+ *
+ * `translateMessage` sengaja menerima string apa pun: pesan yang BUKAN kunci
+ * (prosa dari server lewat `form.setError`, atau pesan bawaan zod) tetap
+ * ditampilkan apa adanya, dan kunci `validation.*` yang kamusnya belum termuat
+ * jatuh ke kalimat bahasa Indonesia — tidak pernah ke kunci mentah di layar.
+ */
 function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message ?? "") : props.children;
+  const dictionary = useDictionary();
+  const body = error ? translateMessage(dictionary, String(error?.message ?? "")) : props.children;
 
   if (!body) return null;
 

@@ -23,6 +23,8 @@
 
 import { MONTH_NAMES } from "@/lib/month-names";
 import type { StockShortfall } from "@/lib/delivery-orders";
+import type { Dictionary } from "@/lib/i18n/dictionary";
+import { isValidationKey, translateMessage } from "@/lib/i18n/validation";
 
 // ───────────────────────────── Label lapangan ─────────────────────────────
 
@@ -142,11 +144,19 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Selalu diakhiri tanda baca supaya terbaca sebagai kalimat, bukan potongan. */
+/**
+ * Selalu diakhiri tanda baca supaya terbaca sebagai kalimat, bukan potongan.
+ *
+ * Tanda baca penuh-lebar (。！？) ikut dikenali dan ikut dipakai: sejak pesan
+ * validasi berbahasa (fase A), teks yang masuk ke sini bisa beraksara Han — dan
+ * menempelkan titik ASCII di belakang "请填写日期" menghasilkan "请填写日期."
+ * yang salah di mata pembaca Mandarin.
+ */
 function asSentence(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return trimmed;
-  return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+  if (/[.!?…。！？]$/.test(trimmed)) return trimmed;
+  return /\p{Script=Han}/u.test(trimmed) ? `${trimmed}。` : `${trimmed}.`;
 }
 
 /**
@@ -154,15 +164,34 @@ function asSentence(text: string): string {
  *
  * Pesan yang sudah manusiawi dikembalikan apa adanya (hanya dirapikan tanda
  * bacanya); hanya pesan yang terbaca sebagai keluaran teknis yang ditulis ulang.
+ *
+ * ── `dictionary`: batas tampilan untuk pesan yang datang sebagai KUNCI ──────
+ * Sejak fase A, `src/lib/validations/*` mengirim kunci kamus
+ * (`validation.dateRequired`), bukan kalimat. Kunci seperti itu diterjemahkan
+ * di sini lebih dulu, lalu LANGSUNG dikembalikan tanpa lewat `RULES`: kalimatnya
+ * memang sudah ditulis manusia di ketiga bahasa, jadi tidak ada yang perlu
+ * ditebak ulang — dan tanpa jalan pintas itu terjemahan bahasa Inggris seperti
+ * "Date is required" justru akan ditulis ulang menjadi bahasa Indonesia oleh
+ * `RULES`.
+ *
+ * `dictionary` boleh kosong (dan memang masih kosong di semua pemanggil): tanpa
+ * kamus, kunci jatuh ke kalimat bahasa Indonesia yang sama persis seperti
+ * sebelum penyapuan. **Fase C** tinggal mengoper `useDictionary()` dari komponen
+ * pemanggil — dan memindahkan `FIELD_LABELS` + kalimat `RULES` di bawah ini ke
+ * kamus lewat parameter yang sama — supaya seluruh fungsi ini ikut berbahasa.
  */
 export function humanizeFieldMessage(
   field: string | null | undefined,
-  raw: string | null | undefined
+  raw: string | null | undefined,
+  dictionary?: Dictionary | null
 ): string {
   const label = fieldLabel(field);
   const text = (raw ?? "").trim();
 
   if (!text) return `${label} belum benar. Periksa lagi isiannya.`;
+
+  // Pesan yang datang sebagai kunci kamus sudah manusiawi di ketiga bahasa.
+  if (isValidationKey(text)) return asSentence(translateMessage(dictionary, text));
 
   for (const rule of RULES) {
     if (rule.match.test(text)) return rule.say(label);

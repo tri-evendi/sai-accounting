@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { invoicePaymentSchema } from "@/lib/validations/invoice";
 import { fxAmounts } from "@/lib/validations/fx";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -27,8 +29,18 @@ export async function POST(
   const parsed = invoicePaymentSchema.safeParse({ ...body, invoiceId });
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; fase B menyalin ini ke seluruh route) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component
+    // (preseden: lib/period-close.ts), jadi DI SINILAH kunci itu kembali menjadi
+    // kalimat, dalam bahasa pengguna. Pesan yang BUKAN kunci diteruskan apa adanya.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }

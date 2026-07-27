@@ -2,6 +2,7 @@ import { z } from "zod";
 // Pure module (no Prisma singleton) — safe to pull into schemas that client
 // components import.
 import { round2 } from "@/lib/posting/rules";
+import { vmsg, type ValidationKey } from "@/lib/i18n/validation";
 
 /** Currencies the app transacts in. IDR is the reporting/base currency. */
 export const CURRENCY_VALUES = ["USD", "CNY", "IDR"] as const;
@@ -18,8 +19,24 @@ export const BASE_CURRENCY: CurrencyCode = "IDR";
  */
 export const rateField = z.coerce
   .number()
-  .positive("Kurs harus lebih besar dari 0")
+  .positive(vmsg("validation.ratePositive"))
   .optional();
+
+/**
+ * "Kurs wajib" per mata uang asing — SATU KUNCI PER MATA UANG, bukan satu kunci
+ * berpenampung `{currency}`.
+ *
+ * Alasannya jalur client: pesan ini muncul inline di form pembayaran, dan
+ * `zodResolver` hanya meneruskan `message` ke react-hook-form — nilai penampung
+ * tidak ikut, jadi `{currency}` akan tampil mentah di layar. Mata uangnya
+ * berjumlah tiga dan berasal dari enum tertutup, jadi kunci terpisah adalah
+ * ongkos yang murah dan jujur. `Exclude<…, "IDR">` membuat `tsc` menuntut kunci
+ * baru begitu ada mata uang asing baru di `CURRENCY_VALUES`.
+ */
+const RATE_REQUIRED_KEY: Record<Exclude<CurrencyCode, "IDR">, ValidationKey> = {
+  USD: "validation.rateRequiredUsd",
+  CNY: "validation.rateRequiredCny",
+};
 
 /**
  * Reject a foreign-currency amount that carries no rate, at validation time
@@ -31,10 +48,13 @@ export function requireRateForForeign(
   path: (string | number)[] = ["rate"]
 ) {
   if (data.currency && data.currency !== BASE_CURRENCY && !data.rate) {
+    // `currency` diketik longgar (`string`) supaya fungsi ini bisa dipanggil
+    // dari mana saja; mata uang di luar enum jatuh ke kalimat umum.
+    const key = RATE_REQUIRED_KEY[data.currency as Exclude<CurrencyCode, "IDR">];
     ctx.addIssue({
       code: "custom",
       path,
-      message: `Kurs ke ${BASE_CURRENCY} wajib diisi untuk mata uang ${data.currency}.`,
+      message: vmsg(key ?? "validation.rateRequiredForeign"),
     });
   }
 }

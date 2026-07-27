@@ -32,6 +32,8 @@ import { invalidateEnabledModules } from "@/lib/authz-effective";
 import { businessModulesPayloadSchema } from "@/lib/validations/modules";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 async function currentState() {
   const settings = await getCompanySettings();
@@ -52,17 +54,19 @@ export async function PUT(request: Request) {
   const result = await requireApiPermission("company_setting.manage");
   if (!result.authorized) return result.response;
 
+  const { dictionary, t } = await getRequestI18n();
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Payload bukan JSON yang sah." }, { status: 400 });
+    return NextResponse.json({ error: t("errors.invalidJson") }, { status: 400 });
   }
 
   const parsed = businessModulesPayloadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Isian tidak sah.", details: parsed.error.flatten() },
+      { error: t("validation.invalidInput"), details: translateFieldErrors(parsed.error, dictionary) },
       { status: 400 }
     );
   }
@@ -80,7 +84,7 @@ export async function PUT(request: Request) {
     // Belum ada baris perusahaan — wizard penyiapan yang membuatnya (dan di
     // sanalah modul pertama kali dipilih).
     return NextResponse.json(
-      { error: "Perusahaan belum disiapkan. Jalankan Setup & Saldo Awal terlebih dahulu." },
+      { error: t("errors.companyNotSetUp") },
       { status: 409 }
     );
   }

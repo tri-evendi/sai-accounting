@@ -16,6 +16,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import { parseCoaRows, ACCURATE_TYPE_LEGEND, MAX_IMPORT_ROWS } from "@/lib/coa-import";
 import { getCompanyIdentity } from "@/lib/company-identity";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("account.manage");
@@ -27,13 +28,16 @@ export async function POST(request: Request) {
     const f = form.get("file");
     if (f instanceof File) file = f;
   } catch {
-    return NextResponse.json({ error: "Unggahan tidak valid" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.noFileSelected") }, { status: 400 });
   }
   if (!file) {
-    return NextResponse.json({ error: "File belum dipilih" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.noFileSelected") }, { status: 400 });
   }
   if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "File terlalu besar (maksimal 5 MB)" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.fileTooLarge", { max: "5 MB" }) }, { status: 400 });
   }
 
   let rows: unknown[][];
@@ -41,8 +45,9 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     rows = await readFirstSheetRows(buffer);
   } catch {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "File tidak dapat dibaca. Pastikan berformat Excel (.xlsx)." },
+      { error: t("errors.excelUnreadable") },
       { status: 400 }
     );
   }
@@ -51,14 +56,16 @@ export async function POST(request: Request) {
 
   if (errors.length > 0) {
     // Tolak seutuhnya — tak ada penulisan sebagian.
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Ada baris yang perlu diperbaiki", rowErrors: errors, valid: accounts.length },
+      { error: t("errors.rowsNeedFixing"), rowErrors: errors, valid: accounts.length },
       { status: 422 }
     );
   }
   if (accounts.length === 0) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Tidak ada baris akun untuk diimpor." },
+      { error: t("errors.noAccountRows") },
       { status: 422 }
     );
   }

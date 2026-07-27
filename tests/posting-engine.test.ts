@@ -710,7 +710,7 @@ describe("postForSource per transaction type", () => {
     // 100 @ 10,000 + 100 @ 12,000 → average 11,000; 50 out → 550,000
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: {
+      stockMovementsById: {
         51: {
           id: 51,
           itemId: 9,
@@ -740,7 +740,7 @@ describe("postForSource per transaction type", () => {
   it("does not post incoming stock (capitalised by the purchase instead)", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: {
+      stockMovementsById: {
         52: { id: 52, itemId: 9, quantity: 100, type: "in", date: DATE, item: { name: "Kopi" } },
       },
       stockMovements: [],
@@ -753,7 +753,7 @@ describe("postForSource per transaction type", () => {
   it("skips an outgoing movement with no costed purchase history", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: {
+      stockMovementsById: {
         53: { id: 53, itemId: 9, quantity: 10, type: "out", date: DATE, item: { name: "Kopi" } },
       },
       stockMovements: [
@@ -997,7 +997,7 @@ describe("approval gate withholds the journal until a document is approved", () 
     // even query for it — proved here by the absence of any seeded request.
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: { 1: { id: 1, itemId: 5, quantity: 10, type: "out", date: DATE, item: { name: "Kopi" } } },
+      stockMovementsById: { 1: { id: 1, itemId: 5, quantity: 10, type: "out", date: DATE, item: { name: "Kopi" } } },
       stockMovements: [
         { id: 2, itemId: 5, type: "in", quantity: 100, unitCost: 25_000, date: new Date("2026-01-01") },
       ],

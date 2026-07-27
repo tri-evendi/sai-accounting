@@ -15,18 +15,18 @@ export async function GET() {
 
   const items = await prisma.item.findMany({
     include: {
-      stock: { orderBy: { date: "desc" } },
+      stockMovements: { orderBy: { date: "desc" } },
     },
   });
 
   const inventory = items.map((item) => {
-    const totals = calculateStockTotals(item.stock);
+    const totals = calculateStockTotals(item.stockMovements);
     return {
       id: item.id,
       name: item.name,
       unit: item.unit,
       ...totals,
-      lastMovement: item.stock[0]?.date || null,
+      lastMovement: item.stockMovements[0]?.date || null,
     };
   });
 
@@ -95,13 +95,13 @@ export async function POST(request: Request) {
   if (stockData.type === "out") {
     const item = await prisma.item.findUnique({
       where: { id: stockData.itemId },
-      include: { stock: true },
+      include: { stockMovements: true },
     });
     if (!item) {
       const { t } = await getRequestI18n();
       return NextResponse.json({ error: t("errors.inventoryItemNotFound") }, { status: 404 });
     }
-    const { currentStock } = calculateStockTotals(item.stock);
+    const { currentStock } = calculateStockTotals(item.stockMovements);
     if (currentStock < stockData.quantity) {
       const { t } = await getRequestI18n();
       return NextResponse.json(
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
   let stock;
   try {
     stock = await prisma.$transaction(async (tx) => {
-      const created = await tx.stock.create({
+      const created = await tx.stockMovement.create({
         data: {
           ...stockData,
           date: new Date(date),

@@ -229,7 +229,7 @@ describe("dokumen tanpa pusat biaya tetap seperti sebelum issue #91", () => {
     // berdimensi, tes ini yang harus diperbarui lebih dulu.
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: {
+      stockMovementsById: {
         51: { id: 51, itemId: 9, date: DATE, type: "out", quantity: 2, item: { name: "Kopi Arabika" } },
       },
       stockMovements: [

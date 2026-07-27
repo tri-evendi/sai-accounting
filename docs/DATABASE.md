@@ -131,7 +131,7 @@ Skema existing sebagian besar patuh, tapi ada celah berikut. **Kebijakan: perbai
 
 | Deviasi | Tabel terdampak | Rencana |
 |---|---|---|
-| Tak ada `created_at`/`updated_at` | `contract_items`, `invoice_items`, `*_payments`, `items`, `stock`, `currency_conversions`; `cash_accounts` (hanya created_at) | Tambah saat tabel disentuh fitur terkait |
+| Tak ada `created_at`/`updated_at` | `contract_items`, `invoice_items`, `*_payments`, `items`, `stock_movements`, `currency_conversions`; `cash_accounts` (hanya created_at) | Tambah saat tabel disentuh fitur terkait |
 | Valas tanpa `rate` + `base_amount` (IDR) | `contract_payments`, `invoice_payments`, `supplier_transactions` | **Tambah saat membangun engine jurnal/FX (issue #9/#23)** — penting untuk buku besar |
 | Presisi tak seragam (`Decimal(10,2)`) | `contract_items`, `invoice_items`, `stock` | Kuantitas → `Decimal(15,3)` saat disentuh |
 | `rate` `Decimal(15,4)` | `currency_conversions` | → `Decimal(18,6)` saat disentuh |

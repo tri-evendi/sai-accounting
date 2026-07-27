@@ -83,7 +83,7 @@ export type PostingSourceType =
   | "supplier_transaction"
   | "stock_movement"
   /**
-   * Penyesuaian stok opname (issue #57). Source ROW adalah `stock` row hasil
+   * Penyesuaian stok opname (issue #57). Source ROW adalah baris `stock_movements` hasil
    * hitung-fisik — gerakan in (lebih) / out (susut). Beda dari `stock_movement`
    * (yang membukukan HPP untuk penjualan): ini membukukan selisih ke akun
    * Selisih Persediaan, BUKAN HPP. D/K Persediaan vs Selisih Persediaan,
@@ -1011,7 +1011,7 @@ async function buildStockMovementEntry(
   client: Client,
   ctx: PostingContext
 ): Promise<JournalEntryInput | null> {
-  const movement = await client.stock.findUnique({
+  const movement = await client.stockMovement.findUnique({
     where: { id: ctx.sourceId },
     include: { item: true },
   });
@@ -1064,7 +1064,7 @@ async function buildStockAdjustmentEntry(
   client: Client,
   ctx: PostingContext
 ): Promise<JournalEntryInput | null> {
-  const movement = await client.stock.findUnique({
+  const movement = await client.stockMovement.findUnique({
     where: { id: ctx.sourceId },
     include: { item: true },
   });

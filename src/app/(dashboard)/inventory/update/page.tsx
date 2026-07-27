@@ -24,7 +24,7 @@ export default async function StockUpdatePage() {
         id: true,
         name: true,
         unit: true,
-        stock: { select: { quantity: true, type: true, date: true } },
+        stockMovements: { select: { quantity: true, type: true, date: true } },
       },
     }),
     listClosedPeriods(),
@@ -36,7 +36,7 @@ export default async function StockUpdatePage() {
         id: it.id,
         name: it.name,
         unit: it.unit,
-        currentStock: calculateStockTotals(it.stock).currentStock,
+        currentStock: calculateStockTotals(it.stockMovements).currentStock,
       }))}
       closedPeriods={closedPeriods}
     />

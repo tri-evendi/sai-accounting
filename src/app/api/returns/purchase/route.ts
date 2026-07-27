@@ -184,7 +184,7 @@ export async function POST(request: Request) {
       // carry no unit cost, exactly as the inventory route records them.
       for (const it of items) {
         if (it.itemId == null) continue;
-        await tx.stock.create({
+        await tx.stockMovement.create({
           data: {
             itemId: it.itemId,
             quantity: it.quantity,

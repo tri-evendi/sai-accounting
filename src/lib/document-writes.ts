@@ -176,7 +176,7 @@ export async function createDeliveryOrderInTx(
 
   // Penjaga stok, di dalam transaksi supaya membaca stok yang konsisten dan ikut
   // ter-rollback bila menyala.
-  const stockRows = await tx.stock.findMany({
+  const stockRows = await tx.stockMovement.findMany({
     where: { itemId: { in: itemIds } },
     select: { itemId: true, quantity: true, type: true },
   });
@@ -221,7 +221,7 @@ export async function createDeliveryOrderInTx(
   });
 
   for (const line of order.items) {
-    const movement = await tx.stock.create({
+    const movement = await tx.stockMovement.create({
       data: {
         itemId: line.itemId,
         quantity: line.quantity,
@@ -263,7 +263,7 @@ export async function createStockInMovementsInTx(
 ): Promise<{ id: number; itemId: number; quantity: number }[]> {
   const created: { id: number; itemId: number; quantity: number }[] = [];
   for (const line of lines) {
-    const movement = await tx.stock.create({
+    const movement = await tx.stockMovement.create({
       data: {
         itemId: line.itemId,
         quantity: line.quantity,

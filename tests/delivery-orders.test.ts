@@ -162,7 +162,7 @@ describe("issuing a surat jalan posts HPP through the existing stock-out engine"
     // 6000 kg on hand @ 11,000 average; 6000 kg out → 66,000,000
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      stocks: {
+      stockMovementsById: {
         // The `out` movement the DO route creates for one line (6000 kg).
         70: {
           id: 70,

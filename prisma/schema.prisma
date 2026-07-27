@@ -352,7 +352,8 @@ model Item {
   name  String  @unique @db.VarChar(100)
   unit  String? @db.VarChar(20)
 
-  stock Stock[]
+  /// Pergerakan stok barang ini — SATU baris = satu masuk/keluar, bukan saldo.
+  stockMovements      StockMovement[]
   /// Return lines that move THIS item back in/out of stock (issue #27).
   salesReturnItems    SalesReturnItem[]
   purchaseReturnItems PurchaseReturnItem[]
@@ -362,7 +363,10 @@ model Item {
   @@map("items")
 }
 
-model Stock {
+/// Satu baris = SATU pergerakan stok (`in` / `out`), bukan saldo (issue #92).
+/// Saldo stok adalah hasil penjumlahan baris-baris ini; tak ada kolom saldo di
+/// mana pun. Nama lamanya (`Stock` / tabel `stock`) menyiratkan sebaliknya.
+model StockMovement {
   id       Int      @id @default(autoincrement())
   itemId   Int      @map("item_id")
   quantity Decimal  @db.Decimal(15, 3)
@@ -375,7 +379,7 @@ model Stock {
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@map("stock")
+  @@map("stock_movements")
 }
 
 // ─── Suppliers & Customers ───────────────────────────────

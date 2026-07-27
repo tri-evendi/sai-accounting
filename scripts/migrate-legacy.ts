@@ -156,7 +156,7 @@ async function main() {
     await prisma.invoiceItem.deleteMany();
     await prisma.invoice.deleteMany();
     await prisma.supplierTransaction.deleteMany();
-    await prisma.stock.deleteMany();
+    await prisma.stockMovement.deleteMany();
     await prisma.cashAccount.deleteMany();
     await prisma.currencyConversion.deleteMany();
     await prisma.supplier.deleteMany();
@@ -215,12 +215,12 @@ async function main() {
     itemIdMap.set(legacyId, newId);
   }
 
-  // ── stock (tb_stok) ──
+  // ── stock movements (tb_stok) ──
   for (const r of await q("SELECT * FROM tb_stok")) {
     const itemId = itemIdMap.get(Number(r.id_item));
     const date = parseDate(r.tanggal);
     if (!itemId || !date) { bump("stock_skipped"); continue; }
-    await prisma.stock.create({
+    await prisma.stockMovement.create({
       data: {
         itemId,
         quantity: parseNum(r.volume) || Number(r.bag) || 0,

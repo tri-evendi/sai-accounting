@@ -24,6 +24,8 @@ import {
   type OpeningBalancesInput,
 } from "@/lib/opening-balance";
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET() {
   const result = await requireApiPermission("setup.manage");
@@ -75,8 +77,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = setupSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -93,16 +104,18 @@ export async function POST(request: Request) {
 
   for (const r of receivables) {
     if (!customerName.has(r.partnerId)) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: `Pelanggan #${r.partnerId} tidak ditemukan.` },
+        { error: t("errors.setupCustomerNotFound", { id: r.partnerId }) },
         { status: 400 }
       );
     }
   }
   for (const p of payables) {
     if (!supplierName.has(p.partnerId)) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: `Supplier #${p.partnerId} tidak ditemukan.` },
+        { error: t("errors.setupSupplierNotFound", { id: p.partnerId }) },
         { status: 400 }
       );
     }

@@ -5,6 +5,8 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { roleEnum } from "@/lib/validations/common";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 const updateUserSchema = z.object({
   name: z.string().max(100).trim().optional(),
@@ -24,8 +26,17 @@ export async function PUT(
   const parsed = updateUserSchema.safeParse(body);
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -35,7 +46,8 @@ export async function PUT(
     select: { username: true, role: true },
   });
   if (!before) {
-    return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
   }
 
   const roleChanged = parsed.data.role !== undefined && parsed.data.role !== before.role;
@@ -94,7 +106,8 @@ export async function DELETE(
 
   // Prevent self-deletion
   if (result.session.user.id === String(userId)) {
-    return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.cannotDeleteSelf") }, { status: 400 });
   }
 
   try {
@@ -133,7 +146,8 @@ export async function DELETE(
     }
     // Sudah terhapus / tidak ada
     if (code === "P2025") {
-      return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
     }
     throw e;
   }

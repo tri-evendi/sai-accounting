@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 /**
  * Izin EFEKTIF milik pengguna yang sedang login (issue #73; sejak issue #75
@@ -17,7 +18,8 @@ import { effectivePermissionsFor } from "@/lib/authz-effective";
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sessionExpired") }, { status: 401 });
   }
 
   const permissions = await effectivePermissionsFor(session.user);

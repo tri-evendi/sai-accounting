@@ -12,6 +12,8 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { companyTaxIdentitySchema } from "@/lib/validations/setup";
 import { getCompanySettings } from "@/lib/opening-balance";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET() {
   const result = await requireApiPermission("company_setting.manage");
@@ -34,8 +36,17 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const parsed = companyTaxIdentitySchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -43,8 +54,9 @@ export async function PATCH(request: Request) {
   const existing = await getCompanySettings();
   if (!existing) {
     // No company row yet — the setup wizard must run first (it seeds the ledger).
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Perusahaan belum disiapkan. Jalankan Setup & Saldo Awal terlebih dahulu." },
+      { error: t("errors.companyNotSetUp") },
       { status: 409 }
     );
   }

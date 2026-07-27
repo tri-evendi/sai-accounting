@@ -9,6 +9,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { getRoles } from "@/lib/roles";
 import { validateNewRole } from "@/lib/roles-admin";
 import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function GET() {
   const result = await requireApiPermission("authz.manage");
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Payload bukan JSON yang sah." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidJson") }, { status: 400 });
   }
 
   const b = (body ?? {}) as { key?: unknown; label?: unknown };
@@ -33,7 +35,11 @@ export async function POST(request: Request) {
 
   const existing = await prisma.role.findUnique({ where: { key: valid.value.key } });
   if (existing) {
-    return NextResponse.json({ error: `Kunci "${valid.value.key}" sudah dipakai.` }, { status: 409 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      { error: t("errors.roleKeyTaken", { key: valid.value.key }) },
+      { status: 409 }
+    );
   }
 
   const role = await prisma.role.create({

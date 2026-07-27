@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getFixedAsset } from "@/lib/fixed-assets";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("fixed_asset.read");
@@ -11,10 +12,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const row = await getFixedAsset(id);
-  if (!row) return NextResponse.json({ error: "Aset tidak ditemukan." }, { status: 404 });
+  if (!row) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.assetNotFound") }, { status: 404 });
+  }
   return NextResponse.json(row);
 }

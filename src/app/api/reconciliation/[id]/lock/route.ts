@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { getReconciliation } from "@/lib/bank-statements";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("reconciliation.write");
@@ -19,13 +20,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const view = await getReconciliation(id);
-  if (!view) return NextResponse.json({ error: "Rekonsiliasi tidak ditemukan." }, { status: 404 });
+  if (!view) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationNotFound") }, { status: 404 });
+  }
   if (view.statement.status === "locked") {
-    return NextResponse.json({ error: "Rekonsiliasi sudah dikunci." }, { status: 409 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationAlreadyLocked") }, { status: 409 });
   }
   if (!view.summary.complete) {
     return NextResponse.json(
@@ -61,13 +67,18 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "id tidak valid." }, { status: 400 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
   }
 
   const statement = await prisma.bankStatement.findUnique({ where: { id } });
-  if (!statement) return NextResponse.json({ error: "Rekonsiliasi tidak ditemukan." }, { status: 404 });
+  if (!statement) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationNotFound") }, { status: 404 });
+  }
   if (statement.status !== "locked") {
-    return NextResponse.json({ error: "Rekonsiliasi belum dikunci." }, { status: 409 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationNotLocked") }, { status: 409 });
   }
 
   await prisma.bankStatement.update({

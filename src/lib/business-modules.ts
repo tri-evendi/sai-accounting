@@ -114,16 +114,22 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   supplier: "purchasing",
   purchase: "purchasing",
   payable: "purchasing",
+  // Uang muka ada DI SINI, bukan di `trading`. Rancangan awal #99 menaruhnya
+  // bersama kontrak karena di SAI uang muka memang menyertai kontrak komoditas
+  // — tapi membayar di muka ke pemasok adalah praktik PEMBELIAN yang lumrah,
+  // bukan ciri perdagangan berjangka. Perusahaan jasa atau distribusi yang
+  // mematikan `trading` tetap membayar uang muka; ikut menghilangkannya akan
+  // memaksa mereka mencatat pembayaran itu sebagai sesuatu yang bukan dirinya.
+  advance: "purchasing",
 
   // ── trading — lapisan khas perdagangan barang (issue #99 menyebutnya
   // "lapisan khas komoditas"): kontrak jual-beli berjangka, surat jalan,
-  // penerima barang di pelabuhan tujuan, retur fisik, dan uang muka yang
-  // menyertai kontrak. Perusahaan jasa mematikan ini dan setengah menu hilang.
+  // penerima barang di pelabuhan tujuan, dan retur fisik. Perusahaan jasa
+  // mematikan ini dan setengah menu hilang.
   contract: "trading",
   delivery_order: "trading",
   consignee: "trading",
   return: "trading",
-  advance: "trading",
 
   // ── inventory — stok barang.
   inventory: "inventory",

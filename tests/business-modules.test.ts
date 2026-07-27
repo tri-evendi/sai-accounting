@@ -135,10 +135,12 @@ describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
       "delivery_order.read",
       "consignee.read",
       "return.write",
-      "advance.read",
     ] as Permission[]) {
       expect(isPermissionEnabled(permission, enabled), permission).toBe(false);
     }
+
+    // Uang muka SENGAJA bertahan — ia hidup di `purchasing`, bukan `trading`.
+    expect(isPermissionEnabled("advance.read" as Permission, enabled)).toBe(true);
 
     // Inilah janji terpenting fitur ini: jurnal yang PERNAH dibuat kontrak tetap
     // terbaca, dan setiap laporan tetap terjangkau.
@@ -151,6 +153,24 @@ describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
     ] as Permission[]) {
       expect(isPermissionEnabled(permission, enabled), permission).toBe(true);
     }
+  });
+
+  it("uang muka ikut `purchasing`, bukan `trading`", () => {
+    /*
+     * Pasangan pembuktian, bukan satu asersi.
+     *
+     * Rancangan awal #99 menaruh `advance` bersama kontrak — masuk akal di SAI,
+     * karena di sana uang muka memang menyertai kontrak komoditas. Tapi
+     * membayar di muka ke pemasok adalah praktik PEMBELIAN yang lumrah:
+     * perusahaan jasa atau distribusi yang mematikan `trading` tetap membayar
+     * uang muka, dan ikut mematikannya akan memaksa mereka mencatat pembayaran
+     * itu sebagai sesuatu yang bukan dirinya.
+     *
+     * Kalau suatu saat `advance` digeser kembali ke `trading`, salah satu dari
+     * dua asersi ini pasti merah — jadi keputusannya tak bisa berbalik diam-diam.
+     */
+    expect(isPermissionEnabled("advance.read" as Permission, allExcept("trading"))).toBe(true);
+    expect(isPermissionEnabled("advance.read" as Permission, allExcept("purchasing"))).toBe(false);
   });
 
   it("penyaringan izin membuang persis izin modul non-aktif, urut aslinya", () => {

@@ -7,7 +7,8 @@
  * client dan API-nya tetap ber-gate peran masing-masing.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import { canEffective } from "@/lib/authz-effective";
+import { canEffective, getEnabledModules } from "@/lib/authz-effective";
+import { BUSINESS_MODULES, isModuleEnabled } from "@/lib/business-modules";
 import { SettingsClient } from "./settings-client";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,24 @@ export default async function SettingsPage() {
   // Keputusannya dihitung di server dengan pola yang sama; API-nya tetap
   // ber-gate `company_setting.manage`, jadi bukan tampilan yang menjaga dirinya.
   const canManageModules = await canEffective(session.user, "company_setting.manage");
+  /*
+   * issue #103 — modul yang sedang MATI, disebutkan namanya.
+   *
+   * Orang yang mencari "Kontrak" dan tidak menemukannya menyimpulkan
+   * aplikasinya TIDAK BISA kontrak — bukan "fitur itu sedang dimatikan".
+   * `/feature-inactive` hanya menolong yang mengetik URL-nya langsung, dan
+   * kartu "Modul Usaha" hanya terlihat oleh yang boleh mengubahnya. Baris ini
+   * untuk semua orang yang membuka Pengaturan, termasuk yang tidak berhak
+   * menyalakannya sendiri — mereka justru yang paling perlu tahu bahwa ada
+   * yang bisa dimintai.
+   */
+  const enabled = await getEnabledModules();
+  const inactiveModules = BUSINESS_MODULES.filter((m) => !isModuleEnabled(m, enabled));
   return (
-    <SettingsClient canReadAudit={canReadAudit} canManageModules={canManageModules} />
+    <SettingsClient
+      canReadAudit={canReadAudit}
+      canManageModules={canManageModules}
+      inactiveModules={inactiveModules}
+    />
   );
 }

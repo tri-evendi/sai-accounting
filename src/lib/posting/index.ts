@@ -1316,15 +1316,31 @@ const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
   /** Kompensasi uang muka: reklasifikasi antar-akun neraca (+ selisih kurs). */
   advance_application: none,
   /**
-   * HPP dari gerakan stok. Stok TIDAK berdimensi di fase 1, jadi HPP-nya belum
-   * bisa dipilah. Konsekuensinya jujur dan harus diketahui pembaca laporan:
-   * Laba/Rugi satu cabang menampilkan pendapatannya tanpa HPP-nya. Memberi
-   * dimensi pada persediaan adalah pekerjaan tersendiri (nilai persediaan per
-   * lokasi), bukan sesuatu yang boleh diselundupkan lewat sini.
+   * HPP dari gerakan stok (issue #98). Kolomnya ada DI BARIS GERAKANNYA, bukan
+   * diwarisi lewat FK seperti turunan di atas — dan itu bukan pilihan gaya:
+   * `stock_movements` cuma punya satu relasi (`item`), tak ada FK ke faktur
+   * maupun surat jalan, dan satu-satunya jejak asal-usulnya adalah TEKS BEBAS
+   * di `note`. Premis "warisi dari faktur yang memicunya" pun tak berlaku: HPP
+   * tak pernah dipicu posting FAKTUR — baris `out` lahir dari SURAT JALAN
+   * (`createDeliveryOrderInTx`) atau pengeluaran stok MANUAL, yang justru tak
+   * punya dokumen sumber sama sekali. Jadi pewarisannya terjadi saat MENULIS
+   * (surat jalan menyalin pusat biaya faktur yang disebutnya; gerakan manual
+   * memakai pemilih di formulirnya), dan di sini tinggal dibaca ulang.
+   *
+   * Konsekuensi yang tetap harus diketahui pembaca laporan: gerakan yang tak
+   * bertanda — SELURUH data historis, surat jalan tanpa faktur, dan
+   * pengeluaran manual yang dibiarkan kosong — jatuh ke "belum ditetapkan".
+   * Layar Laba/Rugi mengatakannya (`costCenters.filterScopeNote`) alih-alih
+   * membiarkan pembacanya menebak.
    */
-  stock_movement: none,
-  /** Selisih stok opname — sama seperti di atas: stok belum berdimensi. */
-  stock_adjustment: none,
+  stock_movement: own((c) => c.stockMovement),
+  /**
+   * Selisih stok opname — BARIS yang sama, jadi KOLOM yang sama. Penyesuaian
+   * opname tak lahir dari formulir berdimensi, sehingga praktisnya selalu NULL;
+   * membacanya lewat `own` tetap benar dan menghindari dua aturan berbeda untuk
+   * satu tabel.
+   */
+  stock_adjustment: own((c) => c.stockMovement),
   /** Penyusutan: asetnya belum berdimensi (lokasi aset ≠ pusat biaya). */
   depreciation: none,
   /** Pelepasan aset: idem. */

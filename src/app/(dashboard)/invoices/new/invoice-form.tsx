@@ -43,6 +43,11 @@ import {
   useInvoiceCustomers,
   type InvoiceFxValues,
 } from "@/components/shared/invoice-fx-fields";
+import {
+  CostCenterField,
+  costCenterPayload,
+  useCostCenters,
+} from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { defaultInvoiceTax } from "@/lib/tax";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -105,6 +110,10 @@ export function NewInvoiceForm({
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
+  // issue #98 — dimensi cabang/unit faktur ini. Ikut diwarisi surat jalan yang
+  // menyebutnya, sehingga HPP-nya mendarat di cabang yang sama.
+  const costCenters = useCostCenters();
+  const [costCenterId, setCostCenterId] = useState("");
 
   // ── Pola "Ambil" ──
   const [contractId, setContractId] = useState<number | null>(initialContractId);
@@ -280,6 +289,7 @@ export function NewInvoiceForm({
       dueDate: formData.get("dueDate"),
       status: formData.get("status"),
       contractId,
+      costCenterId: costCenterPayload(costCenterId),
       ...invoiceFxPayload(fx),
       items,
     };
@@ -627,6 +637,12 @@ export function NewInvoiceForm({
               customers={customers}
               value={fx}
               onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+            />
+            <CostCenterField
+              className="sm:col-span-2"
+              costCenters={costCenters}
+              value={costCenterId}
+              onChange={setCostCenterId}
             />
           </div>
         </DisclosureSection>

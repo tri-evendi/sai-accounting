@@ -27,6 +27,7 @@ import {
   OverIssueError,
 } from "@/lib/delivery-orders";
 import { deliveryOrderSchema } from "@/lib/validations/delivery-order";
+import { createDeliveryOrderInTx } from "@/lib/document-writes";
 import { createFakeClient, type FakeJournal, type FakeMapping } from "./fake-client";
 
 // ─── Zod: number/quantity validation ─────────────────────
@@ -206,5 +207,98 @@ describe("issuing a surat jalan posts HPP through the existing stock-out engine"
     const credit = lines.find((l) => l.accountId === ACC.inventory);
     expect(debit?.debit).toBe(66_000_000);
     expect(credit?.credit).toBe(66_000_000);
+  });
+});
+
+// ─── Pusat biaya HPP diwarisi dari faktur surat jalannya (issue #98) ──────────
+
+/**
+ * Dimensi HPP tidak bisa dibaca ulang saat posting: `stock_movements` tak punya
+ * FK ke faktur maupun surat jalan (satu-satunya jejaknya adalah teks `note`),
+ * dan HPP tak pernah dipicu posting FAKTUR — ia lahir DI SINI, saat surat jalan
+ * terbit. Jadi inilah satu-satunya titik di mana dokumen sumbernya masih
+ * terlihat, dan tes ini menjaganya: gerakan `out` yang ditulis harus membawa
+ * pusat biaya faktur yang disebut surat jalannya.
+ */
+describe("createDeliveryOrderInTx menurunkan pusat biaya faktur ke gerakan stoknya", () => {
+  /**
+   * Klien palsu + tiga model yang dibutuhkan penulis dokumen. `create` menulis
+   * balik ke seed, sehingga `postForSource` menemukan gerakan yang baru dibuat
+   * lewat `findUnique` seperti di database sungguhan.
+   */
+  function harness(invoice: Record<string, unknown> | null) {
+    const seed = {
+      mappings: MAPPINGS,
+      invoices: invoice ? { 77: invoice } : {},
+      stockMovementsById: {} as Record<number, unknown>,
+      stockMovements: [
+        { itemId: 9, type: "in", quantity: 8000, unitCost: 11_000, date: new Date("2026-05-01") },
+      ],
+    };
+    const base = createFakeClient(seed) as unknown as Record<string, Record<string, unknown>>;
+    const written: Record<string, unknown>[] = [];
+    let movementId = 500;
+
+    const tx = {
+      ...base,
+      invoice: base.invoice,
+      deliveryOrder: {
+        count: async () => 0,
+        create: async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 1,
+          no: data.no,
+          items: (data.items as { create: Record<string, unknown>[] }).create.map((i, k) => ({
+            id: k + 1,
+            ...i,
+          })),
+        }),
+      },
+      stockMovement: {
+        ...base.stockMovement,
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          movementId += 1;
+          const row = { id: movementId, ...data, item: { name: "Kopi Arabika" } };
+          seed.stockMovementsById[movementId] = row;
+          written.push(row);
+          return row;
+        },
+      },
+    };
+
+    return { tx: tx as never, written, journals: (base as unknown as { _journals: FakeJournal[] })._journals };
+  }
+
+  const input = (invoiceId: number | null) => ({
+    date: "2026-07-20",
+    contractId: null,
+    invoiceId,
+    consigneeId: null,
+    items: [{ itemId: 9, itemName: "Kopi Arabika", bags: 100, kgPerBag: 60 }],
+  });
+
+  it("faktur bertag → gerakan `out` DAN jurnal HPP-nya berdiri di cabang itu", async () => {
+    const { tx, written, journals } = harness({ id: 77, costCenterId: 5 });
+
+    await createDeliveryOrderInTx(tx, input(77), {
+      nameById: new Map([[9, "Kopi Arabika"]]),
+    });
+
+    expect(written).toHaveLength(1);
+    expect(written[0].costCenterId).toBe(5);
+    // Dan warisan itu benar-benar sampai ke buku besar, bukan berhenti di kolom.
+    const hpp = journals.find((j) => j.sourceType === "stock_movement")!;
+    expect([...new Set(hpp.lines.map((l) => l.costCenterId))]).toEqual([5]);
+  });
+
+  it("faktur TANPA tag → gerakan tetap 'belum ditetapkan', bukan ditebak", async () => {
+    const { tx, written } = harness({ id: 77, costCenterId: null });
+    await createDeliveryOrderInTx(tx, input(77), { nameById: new Map([[9, "Kopi Arabika"]]) });
+    expect(written[0].costCenterId).toBeNull();
+  });
+
+  it("surat jalan tanpa faktur → NULL, dan fakturnya tak pernah dibaca", async () => {
+    const { tx, written } = harness(null);
+    await createDeliveryOrderInTx(tx, input(null), { nameById: new Map([[9, "Kopi Arabika"]]) });
+    expect(written[0].costCenterId).toBeNull();
   });
 });

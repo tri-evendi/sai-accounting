@@ -81,6 +81,7 @@ export async function PUT(
     taxRate,
     taxAmount,
     contractId,
+    costCenterId,
     ...invoiceData
   } = parsed.data;
   const invoiceId = parseInt(id);
@@ -114,6 +115,11 @@ export async function PUT(
         data: {
           ...invoiceData,
           contractId: contractId ?? null,
+          // Eksplisit, BUKAN lewat `...invoiceData`: pada `update`, `undefined`
+          // berarti "jangan sentuh kolomnya", jadi pengguna yang MENGOSONGKAN
+          // pemilih pusat biaya tak akan pernah bisa melepas tag lamanya
+          // (issue #98). `?? null` membuat "dikosongkan" berarti dikosongkan.
+          costCenterId: costCenterId ?? null,
           currency,
           taxable: tax.taxable,
           taxRate: tax.taxRate,

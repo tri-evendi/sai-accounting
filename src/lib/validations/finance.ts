@@ -158,6 +158,13 @@ export const supplierTransactionSchema = z
      * exactly as every legacy row does. Empty is never the same as wrong.
      */
     allocations: z.array(supplierPaymentAllocationSchema).max(100).optional(),
+    /**
+     * Pusat biaya pembelian / pembayaran ini (issue #98; kolomnya dari #91).
+     * Mesin posting menstempelkannya ke setiap baris jurnal, dan retur
+     * pembeliannya mewarisi dari sini. Nullish: tak dipilih = "belum ditetapkan
+     * / seluruh perusahaan", nilai yang SAH — bukan isian yang terlewat.
+     */
+    costCenterId: z.coerce.number().int().positive().nullish(),
   })
   .superRefine((data, ctx) => {
     requireRateForForeign(data, ctx);

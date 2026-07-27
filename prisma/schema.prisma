@@ -376,9 +376,26 @@ model StockMovement {
   /// Nullable: legacy rows carry no cost and are skipped by the average.
   unitCost Decimal? @map("unit_cost") @db.Decimal(15, 2)
   note     String?  @db.Text
+  /// Pusat biaya gerakan ini (issue #98) — cabang/unit yang menanggung HPP-nya.
+  ///
+  /// KENAPA KOLOM SENDIRI, BUKAN DIWARISI SAAT POSTING. Semua turunan lain
+  /// (`invoice_payment`, `sales_return`, …) membaca dimensinya lewat FK ke
+  /// dokumen asalnya setiap kali diposting. Gerakan stok TIDAK BISA: tabel ini
+  /// hanya punya satu relasi — `item` — dan satu-satunya jejak asal-usulnya
+  /// adalah teks bebas di `note` ("Surat jalan SJ.… — Kopi"). Selain itu HPP
+  /// tidak dipicu faktur sama sekali, melainkan SURAT JALAN atau pengeluaran
+  /// stok manual (yang memang tak punya dokumen sumber). Jadi dimensinya
+  /// DISTEMPEL SAAT MENULIS: surat jalan mewarisinya dari faktur yang
+  /// disebutnya, pengeluaran manual mengambilnya dari pemilih di formulir.
+  ///
+  /// NULL = belum ditetapkan / seluruh perusahaan — nilai yang SAH, dan keadaan
+  /// SELURUH baris historis (tak ada backfill).
+  costCenterId Int? @map("cost_center_id")
 
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
+  @@index([costCenterId])
   @@map("stock_movements")
 }
 
@@ -1020,6 +1037,8 @@ model CostCenter {
   invoices             Invoice[]
   supplierTransactions SupplierTransaction[]
   cashAccounts         CashAccount[]
+  /// Gerakan stok yang menghasilkan HPP (issue #98).
+  stockMovements       StockMovement[]
 
   @@index([parentId])
   @@index([isActive])

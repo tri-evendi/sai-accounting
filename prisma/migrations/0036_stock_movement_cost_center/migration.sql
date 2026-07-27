@@ -1,0 +1,44 @@
+-- Dimensi pusat biaya untuk HPP (issue #98, lanjutan #91).
+--
+-- KENAPA: fase 1 memberi dimensi pada faktur, pembelian, kas dan jurnal manual,
+-- tetapi HPP dibiarkan `none` — sehingga Laba/Rugi satu cabang menampilkan
+-- pendapatannya TANPA harga pokoknya. Angkanya berjumlah pas (penjaga
+-- rekonsiliasi membuktikannya), tapi ia menjawab pertanyaan yang berbeda dari
+-- yang dikira pembacanya. Migration ini menutup celah itu.
+--
+-- ══ KENAPA KOLOM SENDIRI, BUKAN DIWARISI SAAT POSTING ══════════════════════
+-- Setiap dokumen turunan lain mewarisi dimensinya lewat FK ke dokumen asalnya,
+-- dibaca ULANG setiap kali diposting (lihat `COST_CENTER_OF` di
+-- src/lib/posting/index.ts). Gerakan stok tidak bisa mengikuti pola itu:
+--   • `stock_movements` hanya punya SATU relasi, yaitu `items`. Tidak ada FK ke
+--     faktur, surat jalan, maupun baris surat jalan.
+--   • Satu-satunya jejak asal-usulnya adalah TEKS BEBAS di kolom `note`
+--     ("Surat jalan SJ.2026.01.00001 — Kopi"). Mengurai teks itu untuk
+--     menentukan dimensi sebuah angka akuntansi jelas bukan pilihan.
+--   • Dan premisnya sendiri tidak berlaku: HPP tidak pernah dipicu posting
+--     FAKTUR. Baris `out` yang menghasilkan HPP lahir dari SURAT JALAN
+--     (`createDeliveryOrderInTx`) atau dari pengeluaran stok MANUAL
+--     (`POST /api/inventory`) — dan yang manual memang tak punya dokumen
+--     sumber untuk diwarisi.
+-- Karena itu dimensinya distempel SAAT MENULIS: surat jalan mewarisi dari
+-- faktur yang disebutnya, gerakan manual mengambil dari pemilih di formulir.
+-- Kolom ini juga yang nanti dibutuhkan kalau nilai persediaan ingin dipilah
+-- per gudang — sesuatu yang pewarisan lewat dokumen tak akan pernah bisa beri.
+--
+-- ══ NULL BERMAKNA — TIDAK ADA BACKFILL ═════════════════════════════════════
+-- Kolomnya NULLABLE dan `NULL` berarti "belum ditetapkan / seluruh perusahaan".
+-- Tidak ada satu baris pun yang di-UPDATE: seluruh gerakan stok historis tetap
+-- persis seperti adanya, jurnal HPP yang sudah terbit tidak disentuh, dan
+-- setiap laporan menghasilkan angka yang sama seperti sebelum migration ini.
+-- Janji rekonsiliasi tetap utuh: Σ semua pusat biaya + belum ditetapkan = total
+-- tanpa penyaring (`tests/cost-centre-reconciliation.test.ts`).
+--
+-- ══ FK RESTRICT, SAMA SEPERTI 0033 ═════════════════════════════════════════
+-- Pusat biaya yang sudah disebut sebuah gerakan stok harus tetap bisa
+-- diterjemahkan menjadi nama selamanya. Menonaktifkan adalah cara
+-- menyingkirkannya dari pemilih; menghapus ditolak DB.
+
+-- AlterTable: stock_movements — dimensi untuk HPP.
+ALTER TABLE `stock_movements` ADD COLUMN `cost_center_id` INTEGER NULL;
+CREATE INDEX `stock_movements_cost_center_id_idx` ON `stock_movements`(`cost_center_id`);
+ALTER TABLE `stock_movements` ADD CONSTRAINT `stock_movements_cost_center_id_fkey` FOREIGN KEY (`cost_center_id`) REFERENCES `cost_centers`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -59,6 +59,11 @@ const ACCOUNTS = [
   { id: 5, code: "510101", name: "Beban Listrik", type: "expense", normalBalance: "debit" },
   { id: 6, code: "510102", name: "Beban Gaji", type: "expense", normalBalance: "debit" },
   { id: 7, code: "310101", name: "Modal", type: "equity", normalBalance: "credit" },
+  // issue #98 — HPP & persediaan. Tanpa keduanya, Laba/Rugi cabang yang diuji
+  // di berkas ini hanya berisi pendapatan dan beban operasional, yaitu justru
+  // BUKAN pertanyaan "cabang ini untung berapa?".
+  { id: 8, code: "510103", name: "Beban Pokok Penjualan", type: "cogs", normalBalance: "debit" },
+  { id: 9, code: "110401", name: "Persediaan Barang Dagang", type: "inventory", normalBalance: "debit" },
 ];
 
 const d = (iso: string) => new Date(`${iso}T00:00:00`);
@@ -139,6 +144,43 @@ const JOURNALS: FakeSeedJournal[] = [
     lines: [
       { accountId: 2, debit: 1_000, currency: "USD", rate: 16_250, costCenterId: PROYEK },
       { accountId: 4, credit: 1_000, currency: "USD", rate: 16_250, costCenterId: PROYEK },
+    ],
+  },
+  // ── HPP faktur Jakarta di atas (issue #98). Lahir dari surat jalan yang
+  //    menyebut SI.001, jadi gerakan stoknya mewarisi pusat biaya fakturnya dan
+  //    jurnal HPP-nya berdiri di cabang yang sama. INILAH yang membuat
+  //    Laba/Rugi Jakarta memuat pendapatan DAN harga pokoknya sekaligus.
+  {
+    id: 9,
+    date: d("2026-01-10"),
+    note: "HPP SI.001",
+    lines: [
+      { accountId: 8, debit: 7_000_000, costCenterId: JAKARTA },
+      { accountId: 9, credit: 7_000_000, costCenterId: JAKARTA },
+    ],
+  },
+  // ── HPP Surabaya — cabang kedua juga punya harga pokok, supaya tes tidak
+  //    lulus hanya karena satu cabang kebetulan benar.
+  {
+    id: 10,
+    date: d("2026-01-15"),
+    note: "HPP SI.002",
+    lines: [
+      { accountId: 8, debit: 4_500_000, costCenterId: SURABAYA },
+      { accountId: 9, credit: 4_500_000, costCenterId: SURABAYA },
+    ],
+  },
+  // ── HPP dari pengeluaran stok yang TIDAK bertanda: surat jalan tanpa faktur,
+  //    pengeluaran manual, dan SELURUH gerakan sebelum issue #98. Ia harus
+  //    tetap terhitung — di "Belum ditetapkan", bukan hilang. Inilah baris yang
+  //    membuat catatan kejujuran di layar Laba/Rugi perlu ada.
+  {
+    id: 11,
+    date: d("2026-02-05"),
+    note: "HPP pengeluaran stok manual",
+    lines: [
+      { accountId: 8, debit: 1_500_000 },
+      { accountId: 9, credit: 1_500_000 },
     ],
   },
   // ── Setelah periode: harus terpotong penyaring tanggal, di pilahan mana pun.
@@ -261,24 +303,71 @@ describe("penyaring benar-benar menyaring (bukan lulus secara sepele)", () => {
       UNASSIGNED_COST_CENTER
     );
 
-    // Jakarta: penjualan 12.000.000 (SI.005 di April terpotong), listrik 1.800.000.
+    // Jakarta: penjualan 12.000.000 (SI.005 di April terpotong), listrik
+    // 1.800.000 + HPP 7.000.000 = beban 8.800.000.
     expect(jakarta.totalRevenue).toBe(12_000_000);
-    expect(jakarta.totalExpense).toBe(1_800_000);
-    // Surabaya: penjualan 7.500.000, listrik 1.200.000.
+    expect(jakarta.totalExpense).toBe(8_800_000);
+    // Surabaya: penjualan 7.500.000, listrik 1.200.000 + HPP 4.500.000.
     expect(surabaya.totalRevenue).toBe(7_500_000);
-    expect(surabaya.totalExpense).toBe(1_200_000);
+    expect(surabaya.totalExpense).toBe(5_700_000);
     // Proyek A: ekspor 1.000 USD @ 16.250 = 16.250.000 IDR base, gaji 5.000.000.
     expect(proyek.totalRevenue).toBe(16_250_000);
     expect(proyek.totalExpense).toBe(5_000_000);
-    // Belum ditetapkan: penjualan 3.000.000, gaji 4.000.000.
+    // Belum ditetapkan: penjualan 3.000.000; gaji 4.000.000 + HPP tak bertanda
+    // 1.500.000 = 5.500.000.
     expect(unassigned.totalRevenue).toBe(3_000_000);
-    expect(unassigned.totalExpense).toBe(4_000_000);
+    expect(unassigned.totalExpense).toBe(5_500_000);
+  });
+
+  /**
+   * Inti issue #98. Sebelumnya berkas ini membuktikan pilahannya menjumlah pas,
+   * tetapi tak satu pun seed-nya memuat harga pokok — jadi "L/R cabang" yang
+   * dijaganya sesungguhnya hanya pendapatan + beban operasional, yaitu laporan
+   * yang tidak bisa dipakai menjawab "cabang ini untung berapa?".
+   */
+  it("L/R satu cabang memuat pendapatan DAN harga pokoknya, bukan pendapatan saja", async () => {
+    const jakarta = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client, JAKARTA);
+    const hpp = jakarta.expense.find((l) => l.code === "510103");
+    const penjualan = jakarta.revenue.find((l) => l.code === "410101");
+
+    // Keduanya HARUS ada, di laporan yang sama, untuk cabang yang sama.
+    expect(penjualan?.amount).toBe(12_000_000);
+    expect(hpp?.amount).toBe(7_000_000);
+    // Dan laba kotornya jadi angka yang berarti: 12jt − 7jt − listrik 1,8jt.
+    expect(jakarta.netIncome).toBe(12_000_000 - 8_800_000);
+  });
+
+  it("HPP setiap cabang berdiri sendiri — tak ada yang ikut terbawa ke cabang lain", async () => {
+    const hppOf = (s: { expense: { code: string; amount: number }[] }) =>
+      s.expense.find((l) => l.code === "510103")?.amount ?? 0;
+
+    const jakarta = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client, JAKARTA);
+    const surabaya = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client, SURABAYA);
+    const proyek = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client, PROYEK);
+    const unassigned = await getIncomeStatement(
+      JAN_FEB.from,
+      JAN_FEB.to,
+      client,
+      UNASSIGNED_COST_CENTER
+    );
+    const whole = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client);
+
+    expect(hppOf(jakarta)).toBe(7_000_000);
+    expect(hppOf(surabaya)).toBe(4_500_000);
+    // Proyek A menjual jasa/ekspor tanpa gerakan stok — HPP-nya memang nol, dan
+    // nol di sini harus berarti NOL, bukan "ikut kebagian punya cabang lain".
+    expect(hppOf(proyek)).toBe(0);
+    // Yang tak bertanda tetap terhitung — di sinilah ia mendarat, bukan hilang.
+    expect(hppOf(unassigned)).toBe(1_500_000);
+    // Dan keempatnya persis membentuk HPP seluruh perusahaan.
+    expect(hppOf(jakarta) + hppOf(surabaya) + hppOf(proyek) + hppOf(unassigned)).toBe(hppOf(whole));
   });
 
   it("tiap pilahan berbeda dari total — penyaring yang diabaikan akan ketahuan di sini", async () => {
     const whole = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client);
     expect(whole.totalRevenue).toBe(38_750_000);
-    expect(whole.totalExpense).toBe(12_000_000);
+    // 3.000.000 listrik + 9.000.000 gaji + 13.000.000 HPP.
+    expect(whole.totalExpense).toBe(25_000_000);
     for (const cc of SLICES) {
       const slice = await getIncomeStatement(JAN_FEB.from, JAN_FEB.to, client, cc);
       expect(slice.totalRevenue, `pusat biaya ${String(cc)}`).not.toBe(whole.totalRevenue);

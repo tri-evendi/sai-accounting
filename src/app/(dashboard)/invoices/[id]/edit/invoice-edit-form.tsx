@@ -15,6 +15,11 @@ import {
   invoiceFxPayload,
   type InvoiceFxValues,
 } from "@/components/shared/invoice-fx-fields";
+import {
+  CostCenterField,
+  costCenterPayload,
+  useCostCenters,
+} from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { useT } from "@/lib/i18n/client";
 
@@ -41,6 +46,10 @@ export function EditInvoiceForm() {
   // pulled faktur from its contract and corrupt that contract's outstanding.
   const [contractId, setContractId] = useState<number | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  // issue #98 — pusat biaya faktur. Dimuat dari fakturnya supaya sebuah edit tak
+  // pernah diam-diam melepas tag yang sudah ada, dan bisa dipindah cabang.
+  const costCenters = useCostCenters();
+  const [costCenterId, setCostCenterId] = useState("");
   const [fx, setFx] = useState<InvoiceFxValues>({
     customerId: "",
     currency: "IDR",
@@ -67,6 +76,7 @@ export function EditInvoiceForm() {
         setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
         setStatus(data.status);
         setContractId(data.contractId ?? null);
+        setCostCenterId(data.costCenterId ? String(data.costCenterId) : "");
         // A legacy taxed row (taxable false but tax_amount > 0) is shown as taxed,
         // with the rate inferred from amount ÷ DPP so the user sees a sensible
         // percentage rather than a blank. A stored tax_rate always wins.
@@ -135,6 +145,7 @@ export function EditInvoiceForm() {
       dueDate,
       status,
       contractId,
+      costCenterId: costCenterPayload(costCenterId),
       ...invoiceFxPayload(fx),
       items,
     };
@@ -196,6 +207,12 @@ export function EditInvoiceForm() {
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
                 subtotal={subtotal}
+              />
+              <CostCenterField
+                className="sm:col-span-2"
+                costCenters={costCenters}
+                value={costCenterId}
+                onChange={setCostCenterId}
               />
             </div>
           </CardContent>

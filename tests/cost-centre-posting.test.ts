@@ -37,6 +37,7 @@ const ACC = {
   ap: 204,
   inventory: 205,
   cogs: 206,
+  inventoryAdjustment: 207,
   cash: 301,
   counter: 999,
 };
@@ -223,10 +224,14 @@ describe("dokumen tanpa pusat biaya tetap seperti sebelum issue #91", () => {
     expect(journal.costCenterId).toBeNull();
   });
 
-  it("HPP dari gerakan stok belum berdimensi di fase 1 — dan itu keputusan, bukan kelalaian", async () => {
-    // Persediaan belum punya dimensi, jadi HPP-nya belum bisa dipilah. Tes ini
-    // MENGUNCI kenyataan itu supaya perubahannya nanti disengaja: begitu stok
-    // berdimensi, tes ini yang harus diperbarui lebih dulu.
+  it("HPP dari gerakan stok TANPA tanda tetap 'belum ditetapkan'", async () => {
+    // Sejak issue #98 gerakan stok PUNYA kolom pusat biayanya sendiri, tetapi
+    // yang tak bertanda tetap jatuh ke NULL — dan itu keadaan SELURUH data
+    // historis (tak ada backfill), surat jalan tanpa faktur, dan pengeluaran
+    // manual yang dibiarkan kosong. Berpasangan dengan
+    // "HPP mengikuti pusat biaya gerakan stoknya" di bawah: yang satu mengunci
+    // bahwa dimensinya BEKERJA, yang ini mengunci bahwa ketiadaannya tidak
+    // mengubah apa pun untuk data lama.
     const tx = createFakeClient({
       mappings: MAPPINGS,
       stockMovementsById: {
@@ -239,6 +244,87 @@ describe("dokumen tanpa pusat biaya tetap seperti sebelum issue #91", () => {
 
     const journal = posted(await postForSource({ sourceType: "stock_movement", sourceId: 51, tx }));
     expect(centresOf(journal)).toEqual([null]);
+    expect(journal.costCenterId).toBeNull();
+  });
+});
+
+// ─── HPP berdimensi (issue #98) ──────────────────────────
+
+describe("HPP mengikuti pusat biaya gerakan stoknya", () => {
+  const IN_HISTORY = [
+    { itemId: 9, type: "in", quantity: 10, unitCost: 100_000, date: new Date("2026-01-01T00:00:00Z") },
+  ];
+
+  /** Satu gerakan `out` bertanda, dengan riwayat `in` bercosting untuk rata-ratanya. */
+  const outMovement = (costCenterId: number | null) => ({
+    id: 52,
+    itemId: 9,
+    date: DATE,
+    type: "out",
+    quantity: 2,
+    costCenterId,
+    item: { name: "Kopi Arabika" },
+  });
+
+  it("gerakan bertanda → SETIAP baris HPP berdiri di cabang itu", async () => {
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      stockMovementsById: { 52: outMovement(JAKARTA) },
+      stockMovements: IN_HISTORY,
+    });
+
+    const journal = posted(await postForSource({ sourceType: "stock_movement", sourceId: 52, tx }));
+    // D: HPP dan K: Persediaan — KEDUANYA, bukan hanya sisi bebannya.
+    expect(centresOf(journal)).toEqual([JAKARTA]);
+    expect(journal.costCenterId).toBe(JAKARTA);
+  });
+
+  it("gerakan dipindah cabang → posting ulang membaca kolomnya lagi, bukan stempel basi", async () => {
+    const movement = outMovement(JAKARTA);
+    const tx = createFakeClient({
+      mappings: MAPPINGS,
+      stockMovementsById: { 52: movement },
+      stockMovements: IN_HISTORY,
+    });
+
+    await postForSource({ sourceType: "stock_movement", sourceId: 52, tx });
+    movement.costCenterId = SURABAYA;
+    const reposted = posted(await repostForSource({ sourceType: "stock_movement", sourceId: 52, tx }));
+
+    const reversal = tx._journals.find((j) => j.type === "reversal")!;
+    // Jakarta dibebaskan persis sebesar yang pernah dibebankan; Surabaya
+    // menanggung penuh. Netto keduanya = beban yang sama, hanya berpindah.
+    expect(centresOf(reversal)).toEqual([JAKARTA]);
+    expect(centresOf(reposted)).toEqual([SURABAYA]);
+  });
+
+  it("selisih stok opname membaca KOLOM yang sama — satu tabel, satu aturan", async () => {
+    const tx = createFakeClient({
+      mappings: [
+        ...MAPPINGS,
+        {
+          key: MAPPING_KEYS.INVENTORY_ADJUSTMENT,
+          currency: ANY_CURRENCY,
+          accountId: ACC.inventoryAdjustment,
+          isActive: true,
+        },
+      ],
+      stockMovementsById: {
+        53: {
+          id: 53,
+          itemId: 9,
+          date: DATE,
+          type: "out",
+          quantity: 1,
+          costCenterId: SURABAYA,
+          item: { name: "Kopi Arabika" },
+        },
+      },
+      stockMovements: IN_HISTORY,
+    });
+
+    const journal = posted(await postForSource({ sourceType: "stock_adjustment", sourceId: 53, tx }));
+    expect(centresOf(journal)).toEqual([SURABAYA]);
   });
 });
 

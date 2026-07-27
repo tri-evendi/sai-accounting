@@ -228,6 +228,13 @@
   },
   "auth": {
     "brandTagline": "Contract & inventory management for internal teams.",
+    "setupRequired": {
+      "heading": "This app is not set up yet",
+      "description": "Company details have not been filled in, so the app cannot be used yet.",
+      "body": "Before the first transaction is recorded, management needs to enter the company details and opening balances using the setup guide. Without them there is no company name and no start of the financial year, so recorded figures could be wrong.",
+      "whoCanFix": "Please ask management to run the setup. Once it is done, this page disappears on its own.",
+      "retry": "Already set up? Try again"
+    },
     "login": {
       "heading": "Sign in",
       "description": "Use your company account to open dashboards, contracts, and stock.",

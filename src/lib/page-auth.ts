@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { ACCOUNTING_PERMISSIONS, type Permission } from "@/lib/authz";
 import { canEffective } from "@/lib/authz-effective";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
+import { isSetupDone } from "@/lib/setup-gate";
 import { redirect } from "next/navigation";
 
 /**
@@ -22,6 +23,26 @@ export async function requirePagePermission(permission: Permission) {
 
   if (!session?.user) {
     redirect("/login");
+  }
+
+  /*
+   * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).
+   *
+   * Diperiksa SEBELUM izin halaman, bukan sesudah: pada pemasangan baru, bos
+   * membuka /dashboard dan izinnya memang lolos — kalau urutannya dibalik,
+   * gerbang ini tidak akan pernah berbunyi di halaman yang paling mungkin
+   * dibuka pertama.
+   *
+   * Halaman ber-izin `setup.manage` DIKECUALIKAN, kalau tidak wizard-nya
+   * sendiri akan memantul tanpa henti ke dirinya sendiri.
+   *
+   * Yang tidak berhak menjalankan wizard tidak dilempar ke /setup (di sana
+   * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
+   */
+  if (permission !== "setup.manage" && !(await isSetupDone())) {
+    redirect(
+      (await canEffective(session.user, "setup.manage")) ? "/setup" : "/setup-required"
+    );
   }
 
   if (!(await canEffective(session.user, permission))) {

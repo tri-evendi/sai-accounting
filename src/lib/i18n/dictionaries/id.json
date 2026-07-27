@@ -228,6 +228,13 @@
   },
   "auth": {
     "brandTagline": "Pengelolaan kontrak & stok untuk tim internal.",
+    "setupRequired": {
+      "heading": "Aplikasi belum disiapkan",
+      "description": "Data perusahaan belum diisi, jadi aplikasi belum bisa dipakai.",
+      "body": "Sebelum transaksi pertama dicatat, pimpinan perlu mengisi data perusahaan dan saldo awal lewat panduan penyiapan. Tanpa itu, nama perusahaan dan awal tahun buku belum ada, sehingga angka yang tercatat bisa keliru.",
+      "whoCanFix": "Hubungi pimpinan untuk menjalankan penyiapan. Setelah selesai, halaman ini akan hilang dengan sendirinya.",
+      "retry": "Sudah disiapkan? Coba buka lagi"
+    },
     "login": {
       "heading": "Masuk",
       "description": "Gunakan akun perusahaan Anda untuk membuka dasbor, kontrak, dan stok.",

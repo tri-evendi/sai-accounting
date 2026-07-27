@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
+import { vmsg } from "@/lib/i18n/validation";
 
 /**
  * Retur penjualan & pembelian (issue #27).
@@ -15,21 +16,21 @@ import { round2 } from "@/lib/posting/rules";
 export const salesReturnItemSchema = z.object({
   /** The invoice line being returned — the source line the cap is measured on. */
   invoiceItemId: z.coerce.number().int().positive(),
-  quantity: z.coerce.number().positive("Jumlah retur harus lebih besar dari nol"),
+  quantity: z.coerce.number().positive(vmsg("validation.returnQuantityPositive")),
   /** Optional stock Item to move the goods back IN. Blank = not tracked. */
   itemId: z.coerce.number().int().positive().nullish(),
 });
 
 export const salesReturnSchema = z.object({
   invoiceId: z.coerce.number().int().positive(),
-  date: z.string().min(1, "Tanggal wajib diisi"),
+  date: z.string().min(1, vmsg("validation.dateRequired")),
   reason: z.string().max(1000).trim().optional(),
-  items: z.array(salesReturnItemSchema).min(1, "Minimal satu baris retur").max(50),
+  items: z.array(salesReturnItemSchema).min(1, vmsg("validation.minOneReturnLine")).max(50),
 });
 
 export const purchaseReturnItemSchema = z.object({
-  itemName: z.string().min(1, "Nama barang wajib diisi").max(100).trim(),
-  quantity: z.coerce.number().positive("Jumlah retur harus lebih besar dari nol"),
+  itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
+  quantity: z.coerce.number().positive(vmsg("validation.returnQuantityPositive")),
   price: z.coerce.number().min(0),
   /** Optional stock Item to move the goods OUT. Blank = not tracked. */
   itemId: z.coerce.number().int().positive().nullish(),
@@ -37,9 +38,9 @@ export const purchaseReturnItemSchema = z.object({
 
 export const purchaseReturnSchema = z.object({
   purchaseId: z.coerce.number().int().positive(),
-  date: z.string().min(1, "Tanggal wajib diisi"),
+  date: z.string().min(1, vmsg("validation.dateRequired")),
   reason: z.string().max(1000).trim().optional(),
-  items: z.array(purchaseReturnItemSchema).min(1, "Minimal satu baris retur").max(50),
+  items: z.array(purchaseReturnItemSchema).min(1, vmsg("validation.minOneReturnLine")).max(50),
 });
 
 /** Net line value (Σ qty × price) in the document's currency. */

@@ -1,25 +1,26 @@
 import { z } from "zod";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const loginSchema = z.object({
-  username: z.string().min(1, "Username is required").max(50).trim(),
-  password: z.string().min(1, "Password is required").max(128),
+  username: z.string().min(1, vmsg("validation.usernameRequired")).max(50).trim(),
+  password: z.string().min(1, vmsg("validation.passwordRequired")).max(128),
 });
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "Password must be at least 8 characters").max(128),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
+    currentPassword: z.string().min(1, vmsg("validation.currentPasswordRequired")),
+    newPassword: z.string().min(8, vmsg("validation.passwordMin8")).max(128),
+    confirmPassword: z.string().min(1, vmsg("validation.passwordConfirmRequired")),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: vmsg("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });
 
 /** API body (confirm handled on client). */
 export const changePasswordApiSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required").max(128),
-  newPassword: z.string().min(8, "Password must be at least 8 characters").max(128),
+  currentPassword: z.string().min(1, vmsg("validation.currentPasswordRequired")).max(128),
+  newPassword: z.string().min(8, vmsg("validation.passwordMin8")).max(128),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

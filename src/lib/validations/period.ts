@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { PERIOD_STATUSES } from "@/lib/period";
+import { vmsg } from "@/lib/i18n/validation";
 
 /** Mirrors the enum-like `periods.status` column (docs/DATABASE.md §2). */
 export const periodStatusSchema = z.enum(PERIOD_STATUSES);
 
 const yearMonth = {
-  year: z.coerce.number().int().min(2000, "Tahun tidak valid").max(2100, "Tahun tidak valid"),
-  month: z.coerce.number().int().min(1, "Bulan tidak valid").max(12, "Bulan tidak valid"),
+  year: z.coerce.number().int().min(2000, vmsg("validation.yearInvalid")).max(2100, vmsg("validation.yearInvalid")),
+  month: z.coerce.number().int().min(1, vmsg("validation.monthInvalid")).max(12, vmsg("validation.monthInvalid")),
 };
 
 export const periodQuerySchema = z.object(yearMonth);
@@ -23,7 +24,7 @@ export const periodReopenSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(5, "Alasan buka kembali wajib diisi (minimal 5 karakter)")
+    .min(5, vmsg("validation.reopenReasonRequired"))
     .max(1000),
 });
 

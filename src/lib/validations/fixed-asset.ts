@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 import { DEPRECIATION_METHODS } from "@/lib/depreciation";
+import { vmsg } from "@/lib/i18n/validation";
 
 export const depreciationMethodEnum = z.enum(DEPRECIATION_METHODS);
 
@@ -17,12 +18,12 @@ const positiveMoney = z.coerce.number().positive();
 
 /** Create/update a depreciation category (master data). */
 export const fixedAssetCategorySchema = z.object({
-  name: z.string().min(1, "Nama kategori wajib diisi").max(100).trim(),
+  name: z.string().min(1, vmsg("validation.categoryNameRequired")).max(100).trim(),
   defaultMethod: depreciationMethodEnum.default("straight_line"),
   defaultUsefulLifeMonths: z.coerce
     .number()
     .int()
-    .positive("Umur manfaat (bulan) harus lebih dari 0"),
+    .positive(vmsg("validation.usefulLifePositive")),
   assetAccountId: accountId,
   accumulatedAccountId: accountId,
   expenseAccountId: accountId,
@@ -37,12 +38,12 @@ export type FixedAssetCategoryInput = z.infer<typeof fixedAssetCategorySchema>;
  */
 export const fixedAssetSchema = z
   .object({
-    name: z.string().min(1, "Nama aset wajib diisi").max(150).trim(),
+    name: z.string().min(1, vmsg("validation.assetNameRequired")).max(150).trim(),
     categoryId: z.coerce.number().int().positive(),
-    acquisitionDate: z.string().min(1, "Tanggal perolehan wajib diisi"),
+    acquisitionDate: z.string().min(1, vmsg("validation.acquisitionDateRequired")),
     acquisitionCost: positiveMoney,
     residualValue: money.default(0),
-    usefulLifeMonths: z.coerce.number().int().positive("Umur manfaat (bulan) harus lebih dari 0"),
+    usefulLifeMonths: z.coerce.number().int().positive(vmsg("validation.usefulLifePositive")),
     depreciationMethod: depreciationMethodEnum.default("straight_line"),
     assetAccountId: accountId,
     accumulatedAccountId: accountId,
@@ -54,7 +55,7 @@ export const fixedAssetSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["residualValue"],
-        message: "Nilai residu harus lebih kecil dari nilai perolehan.",
+        message: vmsg("validation.residualBelowCost"),
       });
     }
   });
@@ -69,7 +70,7 @@ export type DepreciationRunInput = z.infer<typeof depreciationRunSchema>;
 
 /** Dispose/sell an asset. Proceeds may be 0 (scrapped). */
 export const assetDisposalSchema = z.object({
-  date: z.string().min(1, "Tanggal pelepasan wajib diisi"),
+  date: z.string().min(1, vmsg("validation.disposalDateRequired")),
   proceeds: money.default(0),
   note: z.string().max(500).trim().optional(),
 });
@@ -77,8 +78,8 @@ export type AssetDisposalInput = z.infer<typeof assetDisposalSchema>;
 
 /** Move an asset to a new location. */
 export const assetTransferSchema = z.object({
-  date: z.string().min(1, "Tanggal pindah wajib diisi"),
-  toLocation: z.string().min(1, "Lokasi tujuan wajib diisi").max(150).trim(),
+  date: z.string().min(1, vmsg("validation.transferDateRequired")),
+  toLocation: z.string().min(1, vmsg("validation.toLocationRequired")).max(150).trim(),
   note: z.string().max(500).trim().optional(),
 });
 export type AssetTransferInput = z.infer<typeof assetTransferSchema>;

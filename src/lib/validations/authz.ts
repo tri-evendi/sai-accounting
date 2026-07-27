@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PERMISSIONS, type Permission } from "@/lib/authz";
 import { roleEnum } from "@/lib/validations/common";
 import { ROLE_VALUES } from "@/lib/constants";
+import { vmsg } from "@/lib/i18n/validation";
 
 /**
  * Payload PUT /api/authz/overrides (issue #73): set LENGKAP override yang
@@ -24,7 +25,7 @@ export const overridesPayloadSchema = z.object({
   overrides: z
     .array(overrideRowSchema)
     // Paling banyak satu baris per sel matriks — lebih dari itu pasti kembar.
-    .max(PERMISSIONS.length * ROLE_VALUES.length, "Terlalu banyak baris override."),
+    .max(PERMISSIONS.length * ROLE_VALUES.length, vmsg("validation.tooManyOverrideRows")),
 });
 
 export type OverridesPayload = z.infer<typeof overridesPayloadSchema>;
@@ -44,7 +45,7 @@ export const userOverridesPayloadSchema = z.object({
   overrides: z
     .array(userOverrideRowSchema)
     // Paling banyak satu baris per izin — lebih dari itu pasti kembar.
-    .max(PERMISSIONS.length, "Terlalu banyak baris override."),
+    .max(PERMISSIONS.length, vmsg("validation.tooManyOverrideRows")),
 });
 
 export type UserOverridesPayload = z.infer<typeof userOverridesPayloadSchema>;

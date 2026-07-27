@@ -160,19 +160,20 @@ export async function DELETE(
     prisma.deliveryOrder.count({ where: { contractId } }),
   ]);
   if (invoiceCount > 0 || deliveryOrderCount > 0) {
-    const parts = [
-      invoiceCount > 0 ? `${invoiceCount} faktur` : null,
-      deliveryOrderCount > 0 ? `${deliveryOrderCount} surat jalan` : null,
-    ].filter(Boolean);
-    return NextResponse.json(
-      {
-        error:
-          `Kontrak ini sudah dipakai oleh ${parts.join(" dan ")}, jadi tidak bisa dihapus. ` +
-          `Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontrak ` +
-          `(status "canceled") agar rantai dokumennya tetap utuh.`,
-      },
-      { status: 400 }
-    );
+    const { t } = await getRequestI18n();
+    // Tiga cabang, bukan satu daftar yang disambung `" dan "`: kata sambung itu
+    // sendiri berbeda antarbahasa (dan hilang sama sekali dalam bahasa
+    // Mandarin), jadi tiap bahasa menulis frasa pencacahannya sendiri.
+    const used =
+      invoiceCount > 0 && deliveryOrderCount > 0
+        ? t("errors.contractUsedBoth", {
+            invoices: invoiceCount,
+            deliveryOrders: deliveryOrderCount,
+          })
+        : invoiceCount > 0
+          ? t("errors.contractUsedInvoices", { count: invoiceCount })
+          : t("errors.contractUsedDeliveryOrders", { count: deliveryOrderCount });
+    return NextResponse.json({ error: t("errors.contractInUse", { used }) }, { status: 400 });
   }
 
   try {

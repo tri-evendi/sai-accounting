@@ -49,13 +49,8 @@ export async function GET(request: Request) {
   const { result: built, sellerNpwpMissing } = await getEfakturExport(from, to);
 
   if (sellerNpwpMissing) {
-    return NextResponse.json(
-      {
-        error:
-          "NPWP penjual belum diisi. Isi Identitas Pajak Penjual dulu — file e-Faktur tidak dibuat agar tidak gagal impor DJP.",
-      },
-      { status: 422 }
-    );
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.sellerTaxIdMissing") }, { status: 422 });
   }
 
   const csv = efakturToCsv(built.rows);

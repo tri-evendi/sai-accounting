@@ -32,6 +32,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { invoiceSchema } from "@/lib/validations/invoice";
@@ -49,14 +52,30 @@ import { OverInvoiceError } from "@/lib/document-chain";
 import { OverIssueError } from "@/lib/delivery-orders";
 import { approvalNotice } from "@/lib/approval-requests";
 
-/** Galat yang menyebut LANGKAH mana yang harus dibuka kembali di wizard. */
-function stepError(
+/**
+ * Galat yang menyebut LANGKAH mana yang harus dibuka kembali di wizard.
+ *
+ * Pesannya sebuah KUNCI kamus (fase B), diterjemahkan di sini — batas tampilan
+ * yang tahu bahasa pengguna. `{ text }` adalah pintu untuk prosa yang datang
+ * dari modul lain (mis. `OverInvoiceError.message`), yang belum disapu.
+ * `details` melewati `translateFieldErrors` persis seperti route biasa.
+ */
+async function stepError(
   step: "pelanggan" | "barang" | "pengiriman" | "faktur",
-  message: string,
-  details?: unknown,
+  message: DictionaryKey | { text: string },
+  error?: Parameters<typeof translateFieldErrors>[0],
   status = 400
 ) {
-  return NextResponse.json({ error: message, step, details, saved: false }, { status });
+  const { dictionary, t } = await getRequestI18n();
+  return NextResponse.json(
+    {
+      error: typeof message === "string" ? t(message) : message.text,
+      step,
+      details: error ? translateFieldErrors(error, dictionary) : undefined,
+      saved: false,
+    },
+    { status }
+  );
 }
 
 export async function POST(request: Request) {
@@ -66,7 +85,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const envelope = salesWizardSchema.safeParse(body);
   if (!envelope.success) {
-    return stepError("pelanggan", "Data wizard belum lengkap.", envelope.error.flatten());
+    return stepError("pelanggan", "errors.wizardIncomplete", envelope.error);
   }
   const { customer, contractId } = envelope.data;
 
@@ -79,7 +98,7 @@ export async function POST(request: Request) {
     contractId,
   });
   if (!invoiceParsed.success) {
-    return stepError("faktur", "Tagihan belum bisa disimpan.", invoiceParsed.error.flatten());
+    return stepError("faktur", "errors.wizardInvoiceInvalid", invoiceParsed.error);
   }
 
   const deliveryRaw = envelope.data.delivery;
@@ -91,18 +110,14 @@ export async function POST(request: Request) {
       invoiceId: null,
     });
     if (!deliveryParsed.success) {
-      return stepError(
-        "pengiriman",
-        "Surat jalan belum bisa diterbitkan.",
-        deliveryParsed.error.flatten()
-      );
+      return stepError("pengiriman", "errors.wizardDeliveryOrderInvalid", deliveryParsed.error);
     }
   }
 
   // ── Pemeriksaan ramah atas dokumen/master yang dirujuk ─────────────────────
   // Dilakukan SEBELUM transaksi supaya pelanggaran FK tidak muncul sebagai 500.
   if (contractId != null && !(await prisma.contract.findUnique({ where: { id: contractId } }))) {
-    return stepError("barang", "Kontrak sumber tidak ditemukan.");
+    return stepError("barang", "errors.sourceContractNotFound");
   }
 
   let existingCustomerName: string | null = null;
@@ -111,13 +126,13 @@ export async function POST(request: Request) {
       where: { id: customer.id as number },
       select: { name: true },
     });
-    if (!row) return stepError("pelanggan", "Pelanggan tidak ditemukan.");
+    if (!row) return stepError("pelanggan", "errors.customerNotFound");
     existingCustomerName = row.name;
   }
 
   const newCustomer = customer.mode === "new" ? customerDataFromPartner(customer) : null;
   if (newCustomer && !newCustomer.success) {
-    return stepError("pelanggan", "Data pelanggan belum benar.", newCustomer.error.flatten());
+    return stepError("pelanggan", "errors.wizardCustomerInvalid", newCustomer.error);
   }
 
   let nameById: Map<number, string> | null = null;
@@ -127,14 +142,14 @@ export async function POST(request: Request) {
       deliveryParsed.data.items.map((i) => i.itemId)
     );
     if (!nameById) {
-      return stepError("pengiriman", "Salah satu barang tidak ditemukan di master stok.");
+      return stepError("pengiriman", "errors.stockItemNotFound");
     }
     const consigneeId = deliveryParsed.data.consigneeId;
     if (
       consigneeId != null &&
       !(await prisma.consignee.findUnique({ where: { id: consigneeId } }))
     ) {
-      return stepError("pengiriman", "Penerima barang (consignee) tidak ditemukan.");
+      return stepError("pengiriman", "errors.consigneeNotFound");
     }
   }
 
@@ -182,10 +197,10 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     if (e instanceof OverInvoiceError) {
-      return stepError("faktur", e.message);
+      return stepError("faktur", { text: e.message });
     }
     if (e instanceof OverIssueError) {
-      return stepError("pengiriman", e.message);
+      return stepError("pengiriman", { text: e.message });
     }
     return handlePostingError(e);
   }

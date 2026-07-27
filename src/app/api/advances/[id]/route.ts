@@ -58,11 +58,13 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     return NextResponse.json({ error: t("errors.advanceNotFound") }, { status: 404 });
   }
   if (advance.applications.length > 0) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error:
-          `Uang muka ${advance.advanceNo} sudah dikompensasi ke ` +
-          `${advance.applications.length} dokumen. Batalkan kompensasinya lebih dulu.`,
+        error: t("errors.advanceAlreadyApplied", {
+          advanceNo: advance.advanceNo,
+          count: advance.applications.length,
+        }),
       },
       { status: 409 }
     );

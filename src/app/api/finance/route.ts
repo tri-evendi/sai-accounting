@@ -104,14 +104,8 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     if (e instanceof CounterAccountError) {
-      return NextResponse.json(
-        {
-          error:
-            "Akun lawan tidak ditemukan atau sudah nonaktif. " +
-            "Pilih akun lawan yang aktif. Data tidak tersimpan.",
-        },
-        { status: 400 }
-      );
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.counterAccountMissing") }, { status: 400 });
     }
     return handlePostingError(e);
   }

@@ -76,23 +76,19 @@ export async function POST(
   const userId = parseInt(result.session.user.id, 10);
   const isRequester = existing.requestedById === userId;
   if (!isRequester && !isFullAccessRole(result.session.user.role)) {
-    return NextResponse.json(
-      {
-        error:
-          "Hanya pemohon, Direktur Utama, atau Administrator yang bisa mengajukan " +
-          "ulang pengajuan ini.",
-      },
-      { status: 403 }
-    );
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.resubmitNotAllowed") }, { status: 403 });
   }
 
   if (!canResubmit(existing.status)) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error:
+        error: t(
           existing.status === "pending_approval"
-            ? "Pengajuan ini sudah menunggu keputusan — tak perlu diajukan ulang."
-            : "Hanya pengajuan yang DITOLAK yang bisa diajukan ulang.",
+            ? "errors.approvalAlreadyPending"
+            : "errors.onlyRejectedCanResubmit"
+        ),
       },
       { status: 409 }
     );

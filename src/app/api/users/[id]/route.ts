@@ -134,13 +134,9 @@ export async function DELETE(
     // (approval_requests.requested_by_id / decided_by_id, migrasi 0024). Dulu
     // ini melempar 500 tak tertangani; kini 409 yang bisa ditindaklanjuti.
     if (code === "P2003") {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        {
-          error:
-            "Pengguna ini tidak bisa dihapus karena punya riwayat persetujuan. " +
-            "Ubah perannya atau nonaktifkan, jangan hapus.",
-          code: "referenced",
-        },
+        { error: t("errors.userHasApprovalHistory"), code: "referenced" },
         { status: 409 }
       );
     }

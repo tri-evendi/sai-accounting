@@ -56,11 +56,13 @@ export async function POST(request: Request) {
   }
 
   if (!summary.canClose) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
       {
-        error:
-          `Periode ${summary.label} belum bisa ditutup karena masih ada ` +
-          `${summary.blockerCount} masalah yang harus diperbaiki lebih dulu.`,
+        error: t("errors.periodCloseBlocked", {
+          period: summary.label,
+          count: summary.blockerCount,
+        }),
         code: "period_close_blocked",
         checks: summary.checks.filter((c) => c.status === "blocker"),
       },

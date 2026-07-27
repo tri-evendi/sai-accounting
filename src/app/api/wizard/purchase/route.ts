@@ -26,6 +26,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { supplierTransactionSchema } from "@/lib/validations/finance";
@@ -40,14 +43,30 @@ import {
   loadItemNames,
 } from "@/lib/document-writes";
 
-/** Galat yang menyebut LANGKAH mana yang harus dibuka kembali di wizard. */
-function stepError(
+/**
+ * Galat yang menyebut LANGKAH mana yang harus dibuka kembali di wizard.
+ *
+ * Pesannya sebuah KUNCI kamus (fase B), diterjemahkan di sini — batas tampilan
+ * yang tahu bahasa pengguna. `{ text }` adalah pintu untuk prosa yang datang
+ * dari modul lain (mis. `OverInvoiceError.message`), yang belum disapu.
+ * `details` melewati `translateFieldErrors` persis seperti route biasa.
+ */
+async function stepError(
   step: "pemasok" | "barang" | "penerimaan" | "pembelian",
-  message: string,
-  details?: unknown,
+  message: DictionaryKey | { text: string },
+  error?: Parameters<typeof translateFieldErrors>[0],
   status = 400
 ) {
-  return NextResponse.json({ error: message, step, details, saved: false }, { status });
+  const { dictionary, t } = await getRequestI18n();
+  return NextResponse.json(
+    {
+      error: typeof message === "string" ? t(message) : message.text,
+      step,
+      details: error ? translateFieldErrors(error, dictionary) : undefined,
+      saved: false,
+    },
+    { status }
+  );
 }
 
 export async function POST(request: Request) {
@@ -57,7 +76,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const envelope = purchaseWizardSchema.safeParse(body);
   if (!envelope.success) {
-    return stepError("pemasok", "Data wizard belum lengkap.", envelope.error.flatten());
+    return stepError("pemasok", "errors.wizardIncomplete", envelope.error);
   }
   const { supplier } = envelope.data;
 
@@ -68,12 +87,12 @@ export async function POST(request: Request) {
       where: { id: supplier.id as number },
       select: { name: true },
     });
-    if (!row) return stepError("pemasok", "Pemasok tidak ditemukan.");
+    if (!row) return stepError("pemasok", "errors.supplierNotFound");
     existingSupplierName = row.name;
   }
   const newSupplier = supplier.mode === "new" ? supplierDataFromPartner(supplier) : null;
   if (newSupplier && !newSupplier.success) {
-    return stepError("pemasok", "Data pemasok belum benar.", newSupplier.error.flatten());
+    return stepError("pemasok", "errors.wizardSupplierInvalid", newSupplier.error);
   }
   const supplierName = existingSupplierName ?? newSupplier?.data?.name ?? "";
 
@@ -89,7 +108,7 @@ export async function POST(request: Request) {
     allocations: undefined,
   });
   if (!purchaseParsed.success) {
-    return stepError("pembelian", "Pembelian belum bisa disimpan.", purchaseParsed.error.flatten());
+    return stepError("pembelian", "errors.wizardPurchaseInvalid", purchaseParsed.error);
   }
 
   // ── Barang masuk (opsional) ────────────────────────────────────────────────
@@ -99,14 +118,14 @@ export async function POST(request: Request) {
   if (receiptRaw != null) {
     const parsed = wizardReceiptSchema.safeParse(receiptRaw);
     if (!parsed.success) {
-      return stepError("penerimaan", "Barang masuk belum bisa dicatat.", parsed.error.flatten());
+      return stepError("penerimaan", "errors.wizardReceiptInvalid", parsed.error);
     }
     const nameById = await loadItemNames(
       prisma,
       parsed.data.items.map((i) => i.itemId)
     );
     if (!nameById) {
-      return stepError("penerimaan", "Salah satu barang tidak ditemukan di master stok.");
+      return stepError("penerimaan", "errors.stockItemNotFound");
     }
     receipt = {
       date: parsed.data.date,

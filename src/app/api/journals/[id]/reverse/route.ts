@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { reverseJournal } from "@/lib/ledger";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { postingErrorResponse } from "@/lib/api-errors";
+import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function POST(
   _request: Request,
@@ -21,8 +22,11 @@ export async function POST(
     const posting = postingErrorResponse(e);
     if (posting) return posting;
 
+    // `e.message` adalah prosa dari `lib/ledger` (fase C); yang diterjemahkan di
+    // sini adalah cadangan untuk lemparan yang bukan `Error`.
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Gagal membalik jurnal" },
+      { error: e instanceof Error ? e.message : t("errors.journalReverseFailed") },
       { status: 400 }
     );
   }

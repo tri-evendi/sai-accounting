@@ -472,12 +472,9 @@ export async function DELETE(
   // which reposts it), then the purchase is free to delete. A payment is exempt —
   // its allocations are its own to make, and its FK stays CASCADE.
   if (existing.type === "purchase" && existing._count.allocationsReceived > 0) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      {
-        error:
-          "Pembelian ini masih dialokasikan oleh pembayaran supplier. Lepaskan alokasinya " +
-          "terlebih dulu (ubah pembayaran terkait) sebelum menghapus pembelian ini.",
-      },
+      { error: t("errors.purchaseAllocatedByPayment") },
       { status: 409 }
     );
   }

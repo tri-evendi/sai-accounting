@@ -34,14 +34,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: t("errors.reconciliationAlreadyLocked") }, { status: 409 });
   }
   if (!view.summary.complete) {
-    return NextResponse.json(
-      {
-        error:
-          "Rekonsiliasi belum selesai — masih ada selisih atau item yang belum dicocokkan. " +
-          "Selesaikan dulu sebelum mengunci.",
-      },
-      { status: 409 }
-    );
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.reconciliationIncomplete") }, { status: 409 });
   }
 
   await prisma.bankStatement.update({

@@ -59,13 +59,8 @@ export async function POST(request: Request) {
   } catch (e) {
     // Unique (cashType, currency, periodStart, periodEnd).
     if (e && typeof e === "object" && "code" in e && (e as { code: string }).code === "P2002") {
-      return NextResponse.json(
-        {
-          error:
-            "Rekonsiliasi untuk rekening dan periode ini sudah ada. Buka yang sudah ada, jangan buat baru.",
-        },
-        { status: 409 }
-      );
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.reconciliationExists") }, { status: 409 });
     }
     throw e;
   }

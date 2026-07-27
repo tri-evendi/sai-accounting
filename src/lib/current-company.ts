@@ -35,17 +35,25 @@
  * konteks sama sekali. Tidak ada tebak-tebakan siapa yang menang.
  */
 
+import { cache } from "react";
 import { getCompanyContext, MissingCompanyContextError, type CompanyContext } from "@/lib/company-context";
 
 /**
  * Perusahaan menurut SESI permintaan yang sedang berjalan, atau `null`.
+ *
+ * DIBUNGKUS `cache()` REACT — sekali per permintaan, bukan sekali per query.
+ * Tanpa itu, satu render beranda yang menjalankan ~8 query akan membaca cookie
+ * dan memverifikasi JWT delapan kali untuk menjawab pertanyaan yang jawabannya
+ * tidak mungkin berubah di tengah permintaan. Di luar konteks permintaan
+ * (skrip, cron) `cache()` tidak menyimpan apa pun dan fungsinya berjalan biasa —
+ * dan di sana jalur ini memang tak terpakai, sebab konteks ALS sudah ada.
  *
  * `auth` dan registry diimpor secara dinamis: modul ini dipakai hampir setiap
  * berkas lib, dan menarik NextAuth ke dalam graf impor mereka membuat skrip
  * biasa (seed, migrasi) ikut memuat seluruh mesin autentikasi yang tak pernah
  * mereka butuhkan.
  */
-async function companyFromSession(): Promise<CompanyContext | null> {
+const companyFromSession = cache(async function companyFromSession(): Promise<CompanyContext | null> {
   const { auth } = await import("@/lib/auth");
   const session = await auth();
   const companyId = session?.user?.companyId ?? null;
@@ -56,7 +64,7 @@ async function companyFromSession(): Promise<CompanyContext | null> {
   if (!company || !company.isActive) return null;
 
   return { companyId: company.companyId, slug: company.slug, databaseName: company.databaseName };
-}
+});
 
 /** Konteks perusahaan yang berlaku sekarang — atau melempar. */
 export async function currentCompany(): Promise<CompanyContext> {

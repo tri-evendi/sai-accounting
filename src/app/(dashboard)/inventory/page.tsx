@@ -52,8 +52,26 @@ export default async function InventoryPage({
   const perPage = 10;
 
   // Get all items for summary cards
+  /*
+   * Halaman ini memang perlu SETIAP gerakan, dan itu bukan kelalaian: nilai
+   * persediaan memakai biaya rata-rata tertimbang, yang hanya bisa dihitung
+   * dari gerakan `in` beserta biayanya satu per satu. Menuliskannya ulang
+   * sebagai agregat SQL berarti punya DUA implementasi aturan costing — dan
+   * saat keduanya berselisih, neraca dan HPP akan menyebut angka berbeda untuk
+   * barang yang sama. Satu sumber kebenaran lebih berharga daripada satu query
+   * yang lebih cepat (lihat weightedAverageUnitCost di lib/posting/cogs.ts).
+   *
+   * Yang bisa dihemat tanpa mengorbankan itu: KOLOM. Hanya empat kolom yang
+   * dipakai perhitungannya, jadi `id`, `item_id`, `note`, `cost_center_id`, dan
+   * stempel waktunya tidak perlu ikut menyeberang. Beranda — yang jauh lebih
+   * sering dibuka — sudah tidak memuat gerakan sama sekali.
+   */
   const allItems = await prisma.item.findMany({
-    include: { stockMovements: true },
+    include: {
+      stockMovements: {
+        select: { quantity: true, type: true, date: true, unitCost: true },
+      },
+    },
     orderBy: { name: "asc" },
   });
 

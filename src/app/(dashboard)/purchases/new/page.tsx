@@ -20,12 +20,16 @@ export default async function NewPurchaseWizardPage() {
   const t = await getT();
 
   const [suppliers, items, closedPeriods] = await Promise.all([
+    // `isActive: true` — master yang sudah dinonaktifkan tidak ditawarkan untuk
+    // dokumen BARU (issue #104); pembelian lama tetap menyebut namanya.
     prisma.supplier.findMany({
+      where: { isActive: true },
       orderBy: { name: "asc" },
       take: 500,
       select: { id: true, name: true },
     }),
     prisma.item.findMany({
+      where: { isActive: true },
       orderBy: { name: "asc" },
       select: {
         id: true,

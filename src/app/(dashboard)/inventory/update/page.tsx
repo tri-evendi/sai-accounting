@@ -18,7 +18,11 @@ export default async function StockUpdatePage() {
   await requirePagePermission("inventory.write");
 
   const [items, closedPeriods] = await Promise.all([
+    // `isActive: true` — barang nonaktif tidak ditawarkan untuk gerakan BARU
+    // (issue #104). Laporan stok tetap menampilkannya: menonaktifkan berarti
+    // "jangan tawarkan lagi", bukan "anggap stoknya nol".
     prisma.item.findMany({
+      where: { isActive: true },
       orderBy: { name: "asc" },
       select: {
         id: true,

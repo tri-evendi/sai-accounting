@@ -43,7 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name || user.username,
           email: user.username,
           role: user.role,
-          status: user.status,
+          mustChangePassword: user.mustChangePassword,
           // issue #11 — carry the stored Mode Akuntan preference (may be null =
           // follow role default). Effective mode is derived, not stored.
           accountantMode: user.accountantMode,
@@ -57,7 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as { role: string }).role;
-        token.status = (user as { status: number }).status;
+        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
         token.userId = user.id;
         // issue #11 — persist the Mode Akuntan preference into the JWT so both
         // client (sidebar/navbar) and server (page guards) read it from auth().
@@ -84,11 +84,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (shouldRecheckSession(token, Date.now())) {
         const dbUser = await prisma.user.findUnique({
           where: { id: parseInt(String(token.userId), 10) },
-          select: { role: true, status: true, sessionVersion: true, accountantMode: true },
+          select: { role: true, mustChangePassword: true, sessionVersion: true, accountantMode: true },
         });
         if (evaluateSession(token, dbUser) === "revoke") return null;
         token.role = dbUser!.role;
-        token.status = dbUser!.status;
+        token.mustChangePassword = dbUser!.mustChangePassword;
         token.accountantMode = dbUser!.accountantMode ?? null;
         token.sessionVersion = dbUser!.sessionVersion;
         token.checkedAt = Date.now();
@@ -99,7 +99,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.userId as string;
         (session.user as { role: string }).role = token.role as string;
-        (session.user as { status: number }).status = token.status as number;
+        (session.user as { mustChangePassword: boolean }).mustChangePassword =
+          token.mustChangePassword === true;
         // issue #11 — expose the raw preference; effectiveAccountantMode() derives
         // the boolean the UI/guards act on.
         (session.user as { accountantMode?: boolean | null }).accountantMode =

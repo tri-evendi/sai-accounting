@@ -68,7 +68,7 @@ async function main() {
       password: hashed,
       name: name || username,
       role,
-      status: 0,
+      mustChangePassword: false,
     },
     select: { id: true, username: true, name: true, role: true },
   });

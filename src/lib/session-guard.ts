@@ -13,7 +13,7 @@
  * - Token tanpa `sessionVersion` (token lama dari sebelum fase 3) → cabut —
  *   sekali pasca-rilis semua orang login ulang, lalu tidak pernah lagi.
  * - `sessionVersion` token ≠ DB (admin menaikkannya) → cabut.
- * - Selainnya → segarkan: peran/status di token disalin ulang dari DB, jadi
+ * - Selainnya → segarkan: peran & wajib-ganti-sandi di token disalin ulang dari DB, jadi
  *   PERUBAHAN peran juga terasa ≤ interval revalidasi tanpa perlu login ulang.
  */
 
@@ -30,7 +30,7 @@ export interface SessionTokenLike {
 
 export interface SessionDbUser {
   role: string;
-  status: number;
+  mustChangePassword: boolean;
   sessionVersion: number;
   accountantMode: boolean | null;
 }

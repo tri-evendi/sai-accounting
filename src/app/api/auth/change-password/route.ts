@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     where: { id: user.id },
     data: {
       password: hashedPassword,
-      status: 0,
+      mustChangePassword: false,
       passDate: new Date(),
     },
   });

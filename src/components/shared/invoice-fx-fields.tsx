@@ -74,7 +74,10 @@ export function useInvoiceCustomers(): CustomerOption[] {
     let cancelled = false;
 
     async function loadCustomers() {
-      const res = await fetch("/api/customers");
+      // `active=1`: pelanggan yang dinonaktifkan tidak boleh muncul sebagai
+      // pilihan untuk faktur BARU (issue #104). Faktur lama tetap menampilkan
+      // namanya — relasinya tidak disentuh.
+      const res = await fetch("/api/customers?active=1");
       if (!res.ok || cancelled) return;
       const data: CustomerOption[] = await res.json();
       if (!cancelled) setCustomers(data);

@@ -3,7 +3,8 @@ import "next-auth";
 declare module "next-auth" {
   interface User {
     role?: string;
-    status?: number;
+    /** Wajib ganti kata sandi sebelum boleh membuka apa pun (users.must_change_password). */
+    mustChangePassword?: boolean;
     // issue #11 — Mode Akuntan preference (null = follow role default).
     accountantMode?: boolean | null;
     // audit RBAC fase 3 — versi sesi untuk pencabutan.
@@ -16,7 +17,7 @@ declare module "next-auth" {
       name: string;
       email: string;
       role: string;
-      status: number;
+      mustChangePassword: boolean;
       // issue #11 — raw preference; effectiveAccountantMode() derives the boolean.
       accountantMode?: boolean | null;
     };
@@ -26,7 +27,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: string;
-    status?: number;
+    mustChangePassword?: boolean;
     userId?: string;
     // issue #11 — Mode Akuntan preference carried across requests.
     accountantMode?: boolean | null;

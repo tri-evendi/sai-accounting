@@ -62,17 +62,17 @@ export default async function FinancePage({
 
   // All transactions for balance calculation, paginated for table
   const [allTransactions, transactions, totalCount] = await Promise.all([
-    prisma.cashAccount.findMany({
+    prisma.cashMovement.findMany({
       where,
       orderBy: { date: "desc" },
     }),
-    prisma.cashAccount.findMany({
+    prisma.cashMovement.findMany({
       where,
       orderBy: { date: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,
     }),
-    prisma.cashAccount.count({ where }),
+    prisma.cashMovement.count({ where }),
   ]);
   const totalPages = Math.ceil(totalCount / perPage);
 

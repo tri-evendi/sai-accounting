@@ -12,13 +12,13 @@ export const cashTransactionSchema = z
     currency: currencyEnum.default("IDR"),
     debit: z.coerce.number().min(0).default(0),
     credit: z.coerce.number().min(0).default(0),
-    // Persisted to cash_accounts.rate; drives base_amount and the journal.
+    // Persisted to cash_movements.rate; drives base_amount and the journal.
     rate: rateField,
     /**
      * The other side of the double entry. A cash movement on its own says
      * nothing about *why* money moved, so the posting engine refuses to post
      * without it — hence required here rather than optional.
-     * Not a column on cash_accounts: it is passed to the engine as
+     * Not a column on cash_movements: it is passed to the engine as
      * `ctx.counterAccountId` and lives on in the journal line it produces.
      */
     counterAccountId: z.coerce

@@ -5,7 +5,12 @@ import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 
 type AuthResult =
-  | { authorized: true; session: { user: { id: string; role: string; name: string; email: string; status: number } } }
+  | {
+      authorized: true;
+      session: {
+        user: { id: string; role: string; name: string; email: string; mustChangePassword: boolean };
+      };
+    }
   | { authorized: false; response: NextResponse };
 
 /**

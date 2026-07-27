@@ -59,7 +59,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/login" && token) {
     const destination =
-      token.status === 1 ? "/change-password" : "/dashboard";
+      token.mustChangePassword ? "/change-password" : "/dashboard";
     return NextResponse.redirect(new URL(destination, request.url));
   }
 
@@ -74,7 +74,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const mustChangePassword = token.status === 1;
+  const mustChangePassword = token.mustChangePassword === true;
   const allowedWhilePasswordReset =
     pathname === "/change-password" || pathname === "/api/auth/change-password";
 

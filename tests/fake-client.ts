@@ -79,7 +79,7 @@ export interface FakeSeed {
   invoicePayments?: Record<number, unknown>;
   contractPayments?: Record<number, unknown>;
   supplierTransactions?: Record<number, unknown>;
-  cashAccounts?: Record<number, unknown>;
+  cashMovements?: Record<number, unknown>;
   /**
    * Pergerakan stok (issue #92 — dulu `stock`). `…ById` melayani `findUnique`
    * (dokumen sumber HPP / penyesuaian opname); larik `stockMovements` melayani
@@ -217,8 +217,8 @@ export function createFakeClient(seed: FakeSeed = {}) {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.supplierTransactions, where.id),
     },
-    cashAccount: {
-      findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.cashAccounts, where.id),
+    cashMovement: {
+      findUnique: async ({ where }: { where: { id: number } }) => findOne(seed.cashMovements, where.id),
     },
     advancePayment: {
       findUnique: async ({ where }: { where: { id: number } }) =>

@@ -40,6 +40,17 @@ export const itemSchema = z.object({
 });
 
 /**
+ * Aktif/nonaktifkan barang (issue #104). Barang tidak pernah dihapus setelah
+ * pernah bergerak — gerakannya adalah dasar HPP dan penilaian persediaan yang
+ * sudah terbit di laporan. `is_active = false` menyingkirkannya dari pemilih
+ * tanpa menyentuh satu baris riwayat pun.
+ */
+export const itemActiveSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  isActive: z.boolean(),
+});
+
+/**
  * Stok opname (issue #57) — hitungan fisik per barang pada satu tanggal. Server
  * menghitung selisih (fisik − sistem) dan hanya menulis penyesuaian untuk yang
  * berselisih. `physicalQty` boleh 0 (barang habis saat dihitung).

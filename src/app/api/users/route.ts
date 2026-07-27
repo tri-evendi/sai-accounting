@@ -28,7 +28,7 @@ export async function GET() {
       username: true,
       name: true,
       role: true,
-      status: true,
+      mustChangePassword: true,
       createdAt: true,
       // issue #75 — jumlah izin khusus, untuk lencana di baris pengguna.
       _count: { select: { permissionOverrides: true } },
@@ -85,9 +85,9 @@ export async function POST(request: Request) {
       password: hashedPassword,
       name: parsed.data.name,
       role: parsed.data.role,
-      status: 1, // force password change on first login
+      mustChangePassword: true, // akun baru selalu wajib ganti sandi saat pertama masuk
     },
-    select: { id: true, username: true, name: true, role: true, status: true },
+    select: { id: true, username: true, name: true, role: true, mustChangePassword: true },
   });
 
   // audit RBAC fase 3 — pemberian akun (dan perannya) kini terekam.

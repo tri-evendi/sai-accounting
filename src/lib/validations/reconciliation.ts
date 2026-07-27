@@ -39,7 +39,7 @@ export const statementLineSchema = z.object({
 /** Match a book movement to a statement line (or unmatch by lineId alone). */
 export const matchSchema = z.object({
   lineId: z.coerce.number().int().positive(),
-  cashAccountId: z.coerce.number().int().positive(),
+  cashMovementId: z.coerce.number().int().positive(),
 });
 
 export const unmatchSchema = z.object({

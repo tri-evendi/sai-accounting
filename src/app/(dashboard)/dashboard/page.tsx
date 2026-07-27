@@ -115,7 +115,7 @@ export default async function DashboardPage() {
     itemsWithStock,
     pendingContracts,
     pendingInvoices,
-    cashAccounts,
+    cashMovements,
     latestContracts,
   ] = await Promise.all([
     canViewContracts ? prisma.contract.count() : Promise.resolve(0),
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
     prisma.item.findMany({ include: { stockMovements: true }, orderBy: { name: "asc" } }),
     canViewContracts ? prisma.contract.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count({ where: { status: "pending" } }) : Promise.resolve(0),
-    canViewFinance ? prisma.cashAccount.findMany({ orderBy: { date: "desc" } }) : Promise.resolve([]),
+    canViewFinance ? prisma.cashMovement.findMany({ orderBy: { date: "desc" } }) : Promise.resolve([]),
     canViewContracts
       ? prisma.contract.findMany({ orderBy: { createdAt: "desc" }, take: 5 })
       : Promise.resolve([]),
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   const balanceByAccount = new Map<string, FinanceBalanceRow>();
-  for (const t of cashAccounts) {
+  for (const t of cashMovements) {
     const key = `${t.type}_${t.currency}`;
     const existing = balanceByAccount.get(key) || {
       type: t.type,
@@ -192,13 +192,13 @@ export default async function DashboardPage() {
   }
 
   const balanceByCurrency = new Map<string, number>();
-  for (const t of cashAccounts) {
+  for (const t of cashMovements) {
     const net = Number(t.debit) - Number(t.credit);
     balanceByCurrency.set(t.currency, (balanceByCurrency.get(t.currency) || 0) + net);
   }
 
   const financeBalances = Array.from(balanceByAccount.values());
-  const financeTransactions: FinanceReportRow[] = cashAccounts.map((t) => ({
+  const financeTransactions: FinanceReportRow[] = cashMovements.map((t) => ({
     date: t.date.toISOString(),
     type: t.type,
     description: t.description,

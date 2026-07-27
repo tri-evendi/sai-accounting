@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 
-function resolvePostLoginPath(status: number | undefined, callbackUrl: string | null) {
-  if (status === 1) return "/change-password";
+function resolvePostLoginPath(mustChangePassword: boolean | undefined, callbackUrl: string | null) {
+  if (mustChangePassword) return "/change-password";
   if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
     return callbackUrl;
   }
@@ -58,7 +58,7 @@ function LoginForm() {
     if (sessionStatus !== "authenticated") return;
 
     getSession().then((session) => {
-      const destination = resolvePostLoginPath(session?.user?.status, callbackUrl);
+      const destination = resolvePostLoginPath(session?.user?.mustChangePassword, callbackUrl);
       router.replace(destination);
     });
   }, [sessionStatus, callbackUrl, router]);
@@ -82,7 +82,7 @@ function LoginForm() {
     }
 
     const session = await getSession();
-    router.push(resolvePostLoginPath(session?.user?.status, callbackUrl));
+    router.push(resolvePostLoginPath(session?.user?.mustChangePassword, callbackUrl));
     router.refresh();
   }
 

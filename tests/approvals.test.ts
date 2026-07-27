@@ -268,7 +268,7 @@ describe("documentTypeForSource", () => {
   it("returns null for sources approval never gates", () => {
     for (const source of [
       "stock_movement",
-      "cash_account",
+      "cash_movement",
       "advance_payment",
       "advance_application",
       "sales_return",

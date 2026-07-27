@@ -57,7 +57,7 @@ export async function PUT(
   if (parsed.data.role !== undefined) data.role = parsed.data.role;
   if (parsed.data.password) {
     data.password = await bcrypt.hash(parsed.data.password, 12);
-    data.status = 1; // force password change
+    data.mustChangePassword = true; // reset sandi = wajib ganti saat masuk berikutnya
     data.passDate = null;
   }
   // audit RBAC fase 3 — ganti peran / reset kata sandi mencabut sesi berjalan
@@ -70,7 +70,7 @@ export async function PUT(
   const user = await prisma.user.update({
     where: { id: parseInt(id) },
     data,
-    select: { id: true, username: true, name: true, role: true, status: true },
+    select: { id: true, username: true, name: true, role: true, mustChangePassword: true },
   });
 
   // audit RBAC fase 3 — mutasi paling ber-privilege kini terekam; kata sandi

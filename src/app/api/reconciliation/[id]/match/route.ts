@@ -1,7 +1,7 @@
 /**
  * Match / unmatch a book movement to a statement line (issue #24).
  *
- * POST   { lineId, cashAccountId }  → match the two (flags only, NO journal).
+ * POST   { lineId, cashMovementId }  → match the two (flags only, NO journal).
  * DELETE { lineId }                 → unmatch, clearing both flags.
  *
  * A match records "these two rows are the same event". It moves no money and
@@ -70,7 +70,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       { status: 400 }
     );
   }
-  const { lineId, cashAccountId } = parsed.data;
+  const { lineId, cashMovementId } = parsed.data;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -86,7 +86,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         throw new MatchError("errors.statementLineAlreadyMatched");
       }
 
-      const movement = await tx.cashAccount.findUnique({ where: { id: cashAccountId } });
+      const movement = await tx.cashMovement.findUnique({ where: { id: cashMovementId } });
       if (!movement) throw new MatchError("errors.bookMovementNotFound", 404);
       if (movement.type !== statement.cashType || movement.currency !== statement.currency) {
         throw new MatchError("errors.bookMovementWrongAccount");
@@ -100,10 +100,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
       await tx.bankStatementLine.update({
         where: { id: lineId },
-        data: { matched: true, cashAccountId },
+        data: { matched: true, cashMovementId },
       });
-      await tx.cashAccount.update({
-        where: { id: cashAccountId },
+      await tx.cashMovement.update({
+        where: { id: cashMovementId },
         data: { reconciled: true, reconciledAt: new Date(), statementId: id },
       });
     });
@@ -124,7 +124,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     action: "reconciliation.match",
     entity: "bank_statement_line",
     entityId: lineId,
-    details: { statementId: id, cashAccountId },
+    details: { statementId: id, cashMovementId },
     request,
   });
 
@@ -159,7 +159,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   }
   const { lineId } = parsed.data;
 
-  let cashAccountId: number | null = null;
+  let cashMovementId: number | null = null;
   try {
     await prisma.$transaction(async (tx) => {
       const statement = await loadUnlockedStatement(id);
@@ -167,15 +167,15 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       if (!line || line.statementId !== statement.id) {
         throw new MatchError("errors.statementLineNotFound", 404);
       }
-      cashAccountId = line.cashAccountId;
+      cashMovementId = line.cashMovementId;
 
       await tx.bankStatementLine.update({
         where: { id: lineId },
-        data: { matched: false, cashAccountId: null },
+        data: { matched: false, cashMovementId: null },
       });
-      if (cashAccountId != null) {
-        await tx.cashAccount.update({
-          where: { id: cashAccountId },
+      if (cashMovementId != null) {
+        await tx.cashMovement.update({
+          where: { id: cashMovementId },
           data: { reconciled: false, reconciledAt: null, statementId: null },
         });
       }
@@ -197,7 +197,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     action: "reconciliation.unmatch",
     entity: "bank_statement_line",
     entityId: lineId,
-    details: { statementId: id, cashAccountId },
+    details: { statementId: id, cashMovementId },
     request,
   });
 

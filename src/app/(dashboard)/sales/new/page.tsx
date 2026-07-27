@@ -31,7 +31,11 @@ export default async function NewSaleWizardPage() {
   const t = await getT();
 
   const [customers, contracts, consignees, items, closedPeriods] = await Promise.all([
+    // `isActive: true` — master yang sudah dinonaktifkan tidak ditawarkan untuk
+    // dokumen BARU (issue #104); faktur lama tetap menyebut namanya. Pola yang
+    // sudah dipakai `consignees` di bawah.
     prisma.customer.findMany({
+      where: { isActive: true },
       orderBy: { name: "asc" },
       take: 500,
       select: { id: true, name: true, taxExempt: true },

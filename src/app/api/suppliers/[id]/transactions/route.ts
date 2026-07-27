@@ -20,6 +20,8 @@ import { getSupplierPurchaseAllocations } from "@/lib/receivables";
 import { resolveAllocationLines } from "@/lib/supplier-allocations";
 import { createSupplierTransactionInTx } from "@/lib/document-writes";
 import { approvalNotice } from "@/lib/approval-requests";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 export async function GET(
   request: Request,
@@ -45,8 +47,9 @@ export async function GET(
   if (searchParams.get("allocations") === "1") {
     const paymentId = parseInt(searchParams.get("paymentId") ?? "");
     if (!Number.isInteger(paymentId)) {
+      const { t } = await getRequestI18n();
       return NextResponse.json(
-        { error: 'Parameter "paymentId" wajib diisi.' },
+        { error: t("errors.paramRequired", { name: "paymentId" }) },
         { status: 400 }
       );
     }
@@ -56,7 +59,8 @@ export async function GET(
       include: { allocationsMade: true },
     });
     if (!payment) {
-      return NextResponse.json({ error: "Pembayaran tidak ditemukan" }, { status: 404 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.paymentNotFound") }, { status: 404 });
     }
 
     const purchases = await getSupplierPurchaseAllocations(supplierId, prisma, {
@@ -136,15 +140,25 @@ export async function POST(
 
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
   if (!supplier) {
-    return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.supplierNotFound") }, { status: 404 });
   }
 
   const body = await request.json();
   const parsed = supplierTransactionSchema.safeParse({ ...body, supplierId });
 
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -281,8 +295,9 @@ export async function PUT(
   const body = await request.json();
   const transactionId = Number(body?.transactionId);
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: 'Parameter "transactionId" wajib diisi.' },
+      { error: t("errors.paramRequired", { name: "transactionId" }) },
       { status: 400 }
     );
   }
@@ -294,11 +309,13 @@ export async function PUT(
     include: { supplier: true, allocationsMade: true },
   });
   if (!payment) {
-    return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.transactionNotFound") }, { status: 404 });
   }
   if (payment.type !== "payment") {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Alokasi hanya berlaku untuk transaksi pembayaran, bukan pembelian." },
+      { error: t("validation.allocationOnPaymentOnly") },
       { status: 400 }
     );
   }
@@ -308,10 +325,9 @@ export async function PUT(
     // A foreign payment with no rate has no IDR value, so no allocation of it
     // can be measured against a purchase's IDR remainder. Refused out loud
     // rather than valued 1:1 (see the header of `receivables.ts`).
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      {
-        error: `Pembayaran ini bermata uang ${payment.currency} tanpa kurs, sehingga nilai IDR-nya tidak diketahui dan alokasinya tidak bisa diperiksa.`,
-      },
+      { error: t("errors.paymentRateMissing", { currency: payment.currency }) },
       { status: 400 }
     );
   }
@@ -321,8 +337,17 @@ export async function PUT(
   // the total cap are the same `checkAllocationSet` the create path runs.
   const parsed = supplierPaymentAllocationsSchema(Number(payment.amount)).safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -422,8 +447,9 @@ export async function DELETE(
   const { searchParams } = new URL(request.url);
   const transactionId = parseInt(searchParams.get("transactionId") ?? "");
   if (!Number.isInteger(transactionId)) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Parameter \"transactionId\" wajib diisi." },
+      { error: t("errors.paramRequired", { name: "transactionId" }) },
       { status: 400 }
     );
   }
@@ -433,7 +459,8 @@ export async function DELETE(
     include: { _count: { select: { allocationsReceived: true } } },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.transactionNotFound") }, { status: 404 });
   }
 
   // A purchase a payment still claims to have settled cannot be deleted out from

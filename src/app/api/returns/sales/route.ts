@@ -30,6 +30,8 @@ import {
   priorReturnedByInvoiceItem,
   nextSalesReturnNo,
 } from "@/lib/returns-data";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
@@ -45,14 +47,16 @@ export async function GET(request: Request) {
   if (invoiceIdParam) {
     const invoiceId = parseInt(invoiceIdParam);
     if (!Number.isInteger(invoiceId)) {
-      return NextResponse.json({ error: "invoiceId tidak valid" }, { status: 400 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.invalidId") }, { status: 400 });
     }
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: { items: true, customer: { select: { id: true, name: true } } },
     });
     if (!invoice) {
-      return NextResponse.json({ error: "Faktur tidak ditemukan" }, { status: 404 });
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.invoiceNotFound") }, { status: 404 });
     }
     const prior = await priorReturnedByInvoiceItem(invoiceId);
     return NextResponse.json({
@@ -93,8 +97,17 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = salesReturnSchema.safeParse(body);
   if (!parsed.success) {
+    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
+    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // Route handler boleh membaca cookie bahasa persis seperti server component,
+    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
+    const { dictionary, t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
+      {
+        error: t("validation.invalidInput"),
+        details: translateFieldErrors(parsed.error, dictionary),
+      },
       { status: 400 }
     );
   }
@@ -105,11 +118,13 @@ export async function POST(request: Request) {
     include: { items: true },
   });
   if (!invoice) {
-    return NextResponse.json({ error: "Faktur tidak ditemukan" }, { status: 404 });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.invoiceNotFound") }, { status: 404 });
   }
   if (invoice.status === "canceled") {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: "Faktur sudah dibatalkan; tidak dapat diretur." },
+      { error: t("errors.invoiceCanceled") },
       { status: 400 }
     );
   }
@@ -120,10 +135,9 @@ export async function POST(request: Request) {
   // foreign invoice has no honest IDR value, so its return cannot be valued
   // either — refused out loud rather than booked 1:1 (issue #35 posture).
   if (currency !== BASE_CURRENCY && !invoiceRate) {
+    const { t } = await getRequestI18n();
     return NextResponse.json(
-      {
-        error: `Faktur ini bermata uang ${currency} tanpa kurs, sehingga retur tidak dapat dinilai dalam rupiah. Isi kurs pada faktur lalu ulangi.`,
-      },
+      { error: t("errors.invoiceRateMissing", { currency }) },
       { status: 400 }
     );
   }
@@ -144,8 +158,9 @@ export async function POST(request: Request) {
     for (const req of items) {
       const src = byId.get(req.invoiceItemId);
       if (!src) {
+        const { t } = await getRequestI18n();
         return NextResponse.json(
-          { error: `Baris faktur #${req.invoiceItemId} bukan milik faktur ini.` },
+          { error: t("errors.invoiceLineMismatch", { line: req.invoiceItemId }) },
           { status: 400 }
         );
       }

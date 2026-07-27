@@ -12,14 +12,25 @@ interface Props {
   accountId: string;
   from: string;
   to: string;
+  /** issue #91 — pilihan pusat biaya; "" = semua, "unassigned" = belum ditetapkan. */
+  costCenterOptions: { value: string; label: string }[];
+  costCenter: string;
 }
 
-export function LedgerFilter({ accountOptions, accountId, from, to }: Props) {
+export function LedgerFilter({
+  accountOptions,
+  accountId,
+  from,
+  to,
+  costCenterOptions,
+  costCenter,
+}: Props) {
   const router = useRouter();
   const translate = useT();
   const [acc, setAcc] = useState(accountId);
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
+  const [cc, setCc] = useState(costCenter);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -27,6 +38,7 @@ export function LedgerFilter({ accountOptions, accountId, from, to }: Props) {
     if (acc) p.set("accountId", acc);
     if (f) p.set("from", f);
     if (t) p.set("to", t);
+    if (cc) p.set("costCenter", cc);
     router.push(`/ledger?${p.toString()}`);
   }
 
@@ -46,6 +58,15 @@ export function LedgerFilter({ accountOptions, accountId, from, to }: Props) {
       </div>
       <div>
         <Input id="to" type="date" label={translate("common.to")} value={t} onChange={(e) => setT(e.target.value)} />
+      </div>
+      <div className="min-w-[220px]">
+        <Select
+          id="costCenter"
+          label={translate("costCenters.filterLabel")}
+          value={cc}
+          onChange={(e) => setCc(e.target.value)}
+          options={costCenterOptions}
+        />
       </div>
       <Button type="submit" disabled={!acc}>
         {translate("common.show")}

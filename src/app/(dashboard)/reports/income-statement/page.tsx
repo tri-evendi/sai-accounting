@@ -14,6 +14,8 @@ import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
 import { resolvePeriod } from "@/lib/report-catalog";
+import { parseCostCenterFilter } from "@/lib/cost-centers";
+import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
@@ -67,17 +69,28 @@ function Section({
 export default async function IncomeStatementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; costCenter?: string }>;
 }) {
   await requirePagePermission("report.read");
   const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
-  const is = await getIncomeStatement(from, to);
+  // issue #91 — pilahan per pusat biaya. Laba/Rugi SAJA (bukan Neraca): tanpa
+  // akun antar-unit, neraca yang disaring tak lagi seimbang.
+  const costCenter = parseCostCenterFilter(sp.costCenter);
+  const [costCenterOptions, costCenterName] = await Promise.all([
+    costCenterFilterOptions(),
+    costCenterFilterLabel(sp.costCenter),
+  ]);
+  const is = await getIncomeStatement(from, to, undefined, costCenter);
   const profit = is.netIncome >= 0;
   // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
-  // Indonesia (lib/pdf, lib/report-summary).
-  const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
+  // Indonesia (lib/pdf, lib/report-summary). Pusat biaya yang sedang dipilih
+  // ikut TERCETAK: satu laporan yang hanya memuat sebagian angka tanpa
+  // mengatakannya adalah cara termudah salah dibaca setelah dicetak.
+  const periodLabel =
+    `Periode ${formatDate(from)} – ${formatDate(to)}` +
+    (costCenterName ? ` · Pusat Biaya: ${costCenterName}` : "");
 
   // One payload feeds both exports and the plain-language summary, so the PDF,
   // the Excel file, the sentence and the table below can never disagree.
@@ -112,7 +125,19 @@ export default async function IncomeStatementPage({
         }
       />
 
-      <PeriodFilter basePath="/reports/income-statement" from={fromISO} to={toISO} />
+      <PeriodFilter
+        basePath="/reports/income-statement"
+        from={fromISO}
+        to={toISO}
+        costCenterOptions={costCenterOptions}
+        costCenter={sp.costCenter ?? ""}
+      />
+
+      {costCenterName && (
+        <p className="mb-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          {t("costCenters.filterNote")}
+        </p>
+      )}
 
       <PlainSummary summary={summary} />
 

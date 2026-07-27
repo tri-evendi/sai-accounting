@@ -16,6 +16,8 @@ import { formatDateShort } from "@/lib/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";
+import { parseCostCenterFilter } from "@/lib/cost-centers";
+import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,7 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function LedgerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ accountId?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ accountId?: string; from?: string; to?: string; costCenter?: string }>;
 }) {
   await requirePagePermission("ledger.read");
   const t = await getT();
@@ -41,7 +43,16 @@ export default async function LedgerPage({
   const accountId = sp.accountId ? parseInt(sp.accountId) : undefined;
   const from = sp.from ? new Date(`${sp.from}T00:00:00`) : undefined;
   const to = sp.to ? new Date(`${sp.to}T23:59:59.999`) : undefined;
-  const ledger = accountId ? await getAccountLedger(accountId, from, to) : null;
+  // issue #91 — pilahan per pusat biaya, termasuk saldo awalnya (lihat
+  // `getAccountLedger`).
+  const costCenter = parseCostCenterFilter(sp.costCenter);
+  const [costCenterOptions, costCenterName] = await Promise.all([
+    costCenterFilterOptions(),
+    costCenterFilterLabel(sp.costCenter),
+  ]);
+  const ledger = accountId
+    ? await getAccountLedger(accountId, from, to, undefined, costCenter)
+    : null;
 
   const accountOptions = [
     { value: "", label: t("common.pickAccount") },
@@ -57,6 +68,8 @@ export default async function LedgerPage({
         accountId={sp.accountId ?? ""}
         from={sp.from ?? ""}
         to={sp.to ?? ""}
+        costCenterOptions={costCenterOptions}
+        costCenter={sp.costCenter ?? ""}
       />
 
       {!ledger ? (
@@ -74,6 +87,9 @@ export default async function LedgerPage({
             <p className="text-sm text-muted-foreground">
               {accountTypeLabel(dictionary, ledger.account.type)} · {t("ledger.normalBalance")}{" "}
               {ledger.account.normalBalance === "debit" ? t("common.debit") : t("common.credit")}
+              {costCenterName && (
+                <> · {t("costCenters.filterLabel")}: {costCenterName}</>
+              )}
             </p>
           </div>
 

@@ -33,7 +33,9 @@ export default async function JournalDetailPage({
   const journal = await prisma.journal.findUnique({
     where: { id: parseInt(id) },
     include: {
-      lines: { include: { account: true }, orderBy: { id: "asc" } },
+      // issue #91 — pusat biaya dibaca PER BARIS, karena di situlah dimensinya
+      // hidup: satu jurnal boleh mencakup lebih dari satu cabang.
+      lines: { include: { account: true, costCenter: true }, orderBy: { id: "asc" } },
       reversalOf: true,
       reversals: true,
     },
@@ -44,6 +46,9 @@ export default async function JournalDetailPage({
   const totalDebit = journal.lines.reduce((s, l) => s + Number(l.baseDebit), 0);
   const totalCredit = journal.lines.reduce((s, l) => s + Number(l.baseCredit), 0);
   const canReverse = !journal.isReversed && journal.type !== "reversal";
+  // Kolomnya hanya muncul bila jurnal ini memang bertag — jurnal lama (dan
+  // perusahaan yang belum memakai pusat biaya) tak perlu melihat kolom kosong.
+  const showCostCenter = journal.lines.some((l) => l.costCenterId != null);
 
   return (
     <div>
@@ -96,6 +101,7 @@ export default async function JournalDetailPage({
               <TableHead>{t("common.account")}</TableHead>
               <TableHead className="text-right">{t("journal.colDebitIdr")}</TableHead>
               <TableHead className="text-right">{t("journal.colCreditIdr")}</TableHead>
+              {showCostCenter && <TableHead>{t("journal.colCostCenter")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -125,6 +131,11 @@ export default async function JournalDetailPage({
                     "—"
                   )}
                 </TableCell>
+                {showCostCenter && (
+                  <TableCell className="text-muted-foreground">
+                    {l.costCenter ? `${l.costCenter.code} — ${l.costCenter.name}` : "—"}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -144,6 +155,7 @@ export default async function JournalDetailPage({
               <TableCell className="p-0">
                 <MoneyCell value={totalCredit} currency="IDR" hideCurrency />
               </TableCell>
+              {showCostCenter && <TableCell />}
             </TableRow>
           </TableFooter>
         </Table>

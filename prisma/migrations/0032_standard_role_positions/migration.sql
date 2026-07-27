@@ -96,6 +96,21 @@ UPDATE `approval_requests` SET `approver_role` = 'managing_director' WHERE `appr
 UPDATE `approval_requests` SET `approver_role` = 'finance_manager'   WHERE `approver_role` = 'core';
 UPDATE `approval_requests` SET `approver_role` = 'warehouse_head'    WHERE `approver_role` = 'ptg';
 
+-- 7. Cabut SEMUA sesi yang sedang berjalan.
+--
+--    WAJIB, bukan kebersihan belaka. Peran ikut disimpan di dalam JWT dan hanya
+--    disegarkan dari DB setiap `SESSION_RECHECK_MS` (60 detik). Tanpa langkah
+--    ini, setiap pengguna yang sedang aktif membawa token bertuliskan `bos` —
+--    kunci yang sudah tidak dikenal matriks izin — dan peran tak dikenal DITOLAK
+--    secara bawaan. Akibatnya: sampai satu menit, pengguna kehilangan SELURUH
+--    izinnya tanpa penjelasan apa pun, lalu pulih sendiri seolah tak terjadi apa-apa.
+--
+--    Menaikkan `session_version` mengubah kegagalan diam itu menjadi pencabutan
+--    sesi yang jujur: pengguna diminta masuk lagi, lalu token barunya membawa
+--    nama peran yang benar. Diminta login ulang jauh lebih baik daripada
+--    kehilangan izin secara misterius.
+UPDATE `users` SET `session_version` = `session_version` + 1;
+
 COMMIT;
 
 -- 7. DEFAULT kolom `users.role` — 'core' sudah tidak ada lagi sebagai peran.

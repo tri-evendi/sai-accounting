@@ -13,6 +13,13 @@ import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
+/**
+ * Identitas perusahaan kini DIOPER MASUK, bukan diimpor dari konstanta. Tes
+ * sengaja memakai nama lain supaya ikut membuktikan bahwa nama yang tercetak
+ * benar-benar berasal dari argumen — bukan dari nilai bawaan di kode.
+ */
+const TEST_COMPANY = { name: "PT Contoh Sejahtera" };
+
 const payload: StatementPayload = {
   kind: "income-statement",
   period: "Periode uji",
@@ -25,7 +32,7 @@ const payload: StatementPayload = {
 
 describe("buildWorkbookBuffer — money stays an exact number through ExcelJS", () => {
   it("round-trips a fractional rupiah value as a number with a number format", async () => {
-    const buffer = await buildWorkbookBuffer([buildReportSheet(payload)]);
+    const buffer = await buildWorkbookBuffer([buildReportSheet(payload)], TEST_COMPANY);
     expect(buffer.length).toBeGreaterThan(0);
 
     const wb = new ExcelJS.Workbook();
@@ -49,7 +56,7 @@ describe("buildWorkbookBuffer — money stays an exact number through ExcelJS", 
 
   it("writes one worksheet per sheet model", async () => {
     const sheet = buildReportSheet(payload);
-    const buffer = await buildWorkbookBuffer([sheet, sheet]);
+    const buffer = await buildWorkbookBuffer([sheet, sheet], TEST_COMPANY);
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as unknown as Parameters<typeof wb.xlsx.load>[0]);
     expect(wb.worksheets).toHaveLength(2);

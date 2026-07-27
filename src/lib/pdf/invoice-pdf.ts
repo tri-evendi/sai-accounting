@@ -1,8 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const COMPANY_NAME = "PT Subur Anugerah Indonesia";
-const COMPANY_ADDRESS = "Komplek Pergudangan Kapuk Ecopark, Jakarta, Indonesia";
 
 interface InvoiceData {
   invoiceNo: string;
@@ -56,7 +54,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function generateInvoicePDF(invoice: InvoiceData) {
+export function generateInvoicePDF(invoice: InvoiceData, company: { name: string; address: string }) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
@@ -64,11 +62,11 @@ export function generateInvoicePDF(invoice: InvoiceData) {
   // Header
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(COMPANY_NAME, pageWidth / 2, y, { align: "center" });
+  doc.text(company.name, pageWidth / 2, y, { align: "center" });
   y += 6;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(COMPANY_ADDRESS, pageWidth / 2, y, { align: "center" });
+  doc.text(company.address, pageWidth / 2, y, { align: "center" });
   y += 3;
 
   doc.setDrawColor(0);

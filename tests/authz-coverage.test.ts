@@ -31,6 +31,11 @@ const API_EXCEPTIONS = new Set([
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
   "user/permissions/route.ts",
   "health/route.ts", // health probe publik (container/load-balancer)
+  // publik: hanya NAMA & ALAMAT perusahaan — keduanya sudah tercetak di halaman
+  // masuk sebelum siapa pun log in, dan di setiap dokumen yang dikirim ke
+  // pelanggan. Identitas pajak (NPWP dll.) TIDAK di sini; itu tetap lewat
+  // `company-settings/route.ts` yang dijaga `company_setting.manage`.
+  "company/identity/route.ts",
 ]);
 
 function filesNamed(dir: string, filename: string): string[] {

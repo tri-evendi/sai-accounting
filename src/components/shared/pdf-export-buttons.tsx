@@ -9,6 +9,7 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@/lib/i18n/client";
+import { useCompanyIdentity } from "@/lib/company-identity-client";
 
 interface ContractPDFData {
   contractNo: string;
@@ -26,19 +27,21 @@ interface ContractPDFData {
 }
 
 export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
+  const company = useCompanyIdentity();
   return (
     <PdfDocumentButton
       title={`Kontrak ${contract.contractNo}`}
       filename={`Contract_${contract.contractNo}.pdf`}
       generate={async () => {
         const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
-        return generateContractPDF(contract);
+        return generateContractPDF(contract, company);
       }}
     />
   );
 }
 
 export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
+  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -58,7 +61,7 @@ export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
             bags: i.bags,
             kgPerBag: i.kgPerBag,
           })),
-        });
+        }, company);
       }}
     />
   );
@@ -81,6 +84,7 @@ interface InvoicePDFData {
 }
 
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
+  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -90,7 +94,7 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
       disabled={items.length === 0}
       generate={async () => {
         const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items);
+        return generateStockReportPDF(items, company);
       }}
     />
   );
@@ -103,6 +107,7 @@ export function FinanceReportPDFButton({
   balances: FinanceBalanceRow[];
   transactions: FinanceReportRow[];
 }) {
+  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -111,7 +116,7 @@ export function FinanceReportPDFButton({
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       generate={async () => {
         const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(balances, transactions);
+        return generateFinanceReportPDF(balances, transactions, company);
       }}
     />
   );
@@ -124,6 +129,7 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
+  const company = useCompanyIdentity();
   const t = useT();
   const dateSlug = new Date().toISOString().slice(0, 10);
   return (
@@ -133,7 +139,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
       filename={`Laporan_${dateSlug}.pdf`}
       generate={async () => {
         const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
-        return generateStatementPDF(payload);
+        return generateStatementPDF(payload, company);
       }}
     />
   );
@@ -147,6 +153,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
  * (summable, exact) number cells rather than pre-formatted strings.
  */
 export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
+  const company = useCompanyIdentity();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -191,6 +198,7 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
 }
 
 export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
+  const company = useCompanyIdentity();
   // Pratinjau + Unduh + Cetak lewat komponen dokumen bersama (contoh penerapan;
   // dokumen lain menyusul dengan pola yang sama).
   return (
@@ -199,7 +207,7 @@ export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
       filename={`Invoice_${invoice.invoiceNo}.pdf`}
       generate={async () => {
         const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
-        return generateInvoicePDF(invoice);
+        return generateInvoicePDF(invoice, company);
       }}
     />
   );

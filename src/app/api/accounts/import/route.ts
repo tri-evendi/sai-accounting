@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import { parseCoaRows, ACCURATE_TYPE_LEGEND, MAX_IMPORT_ROWS } from "@/lib/coa-import";
-import { COMPANY_NAME } from "@/lib/constants";
+import { getCompanyIdentity } from "@/lib/company-identity";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("account.manage");
@@ -98,7 +98,7 @@ export async function GET() {
   if (!result.authorized) return result.response;
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = COMPANY_NAME;
+  wb.creator = (await getCompanyIdentity()).name;
 
   const ws = wb.addWorksheet("Akun Perkiraan");
   ws.columns = [

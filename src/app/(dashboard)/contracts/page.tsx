@@ -13,12 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ChartCard } from "@/components/dashboard/chart-card";
+import {
+  ContractStatusChart,
+  MonthlyActivityChart,
+} from "@/components/shared/dashboard-charts";
+import { chartPeriodStart, monthlyActivitySeries } from "@/lib/chart-data";
+import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileText } from "lucide-react";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
-import { statusFilterLabels } from "@/lib/i18n/labels";
+import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -30,9 +37,10 @@ export default async function ContractsPage({
 }: {
   searchParams: Promise<{ status?: string; search?: string; page?: string }>;
 }) {
-  await requirePagePermission("contract.read");
+  const session = await requirePagePermission("contract.read");
   const t = await getT();
-  const statusLabels = statusFilterLabels(await getDictionary(await getLocale()));
+  const dictionary = await getDictionary(await getLocale());
+  const statusLabels = statusFilterLabels(dictionary);
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1"));
   const perPage = 10;
@@ -51,7 +59,22 @@ export default async function ContractsPage({
     ];
   }
 
-  const [contracts, totalCount] = await Promise.all([
+  /*
+   * Grafik (dipindah dari Beranda).
+   *
+   * "Aktivitas bulanan" menghitung kontrak DAN tagihan, dua izin yang berbeda.
+   * Halaman ini hanya menjamin `contract.read`, jadi barisnya tidak diambil
+   * dan grafiknya tidak dirender untuk pengguna yang tak boleh membaca
+   * tagihan — bukan diambil lalu hasilnya dibuang. Matriks efektif yang
+   * ditanya (`canEffective`), bukan asumsi "core pasti boleh".
+   */
+  const canViewInvoices = await canEffective(session.user, "invoice.read");
+  // Satu `now` untuk batas kueri DAN pelabelan ember, supaya keduanya tidak
+  // bisa jatuh di sisi tengah malam yang berbeda.
+  const now = new Date();
+  const chartFrom = chartPeriodStart(now);
+
+  const [contracts, totalCount, statusCounts, recentContracts, recentInvoices] = await Promise.all([
     prisma.contract.findMany({
       where,
       orderBy: { date: "desc" },
@@ -60,8 +83,36 @@ export default async function ContractsPage({
       take: perPage,
     }),
     prisma.contract.count({ where }),
+    // Donat status menghitung SELURUH kontrak, bukan halaman/saringan yang
+    // sedang aktif: menyaring `status=pending` lalu menggambar donatnya
+    // hanya akan menghasilkan satu irisan 100%.
+    prisma.contract.groupBy({ by: ["status"], _count: { _all: true } }),
+    // Deret kontrak ikut TIDAK diambil kalau grafiknya memang tidak dirender.
+    canViewInvoices
+      ? prisma.contract.findMany({
+          where: { createdAt: { gte: chartFrom } },
+          select: { createdAt: true },
+        })
+      : Promise.resolve([]),
+    canViewInvoices
+      ? prisma.invoice.findMany({
+          where: { createdAt: { gte: chartFrom } },
+          select: { createdAt: true },
+        })
+      : Promise.resolve([]),
   ]);
   const totalPages = Math.ceil(totalCount / perPage);
+
+  const countByStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
+  const contractStatusLabel = contractStatusLabels(dictionary);
+  // Urutan sah → menunggu → dibatalkan MENENTUKAN warna irisannya
+  // (hijau/kuning/merah dipasangkan per POSISI di `ContractStatusChart`).
+  const contractStatusData = [
+    { name: contractStatusLabel.signed, value: countByStatus.get("signed") ?? 0 },
+    { name: contractStatusLabel.pending, value: countByStatus.get("pending") ?? 0 },
+    { name: contractStatusLabel.canceled, value: countByStatus.get("canceled") ?? 0 },
+  ];
+  const monthlyData = monthlyActivitySeries(recentContracts, recentInvoices, now);
 
   return (
     <div>
@@ -106,6 +157,27 @@ export default async function ContractsPage({
           {t("common.search")}
         </Button>
       </form>
+
+      {/* Grafik: sebaran status + tren bulanan, di bawah saringan & sebelum
+          daftarnya — konteks dulu, baru barisnya. */}
+      <div
+        className={`mb-6 grid gap-6 ${canViewInvoices ? "lg:grid-cols-2" : "grid-cols-1"}`}
+      >
+        <ChartCard
+          title={t("dashboard.chartContractStatusTitle")}
+          description={t("dashboard.chartContractStatusDesc")}
+        >
+          <ContractStatusChart data={contractStatusData} />
+        </ChartCard>
+        {canViewInvoices && (
+          <ChartCard
+            title={t("dashboard.chartMonthlyTitle")}
+            description={t("dashboard.chartMonthlyDesc")}
+          >
+            <MonthlyActivityChart data={monthlyData} />
+          </ChartCard>
+        )}
+      </div>
 
       {/* Table */}
       <Card>

@@ -124,7 +124,7 @@ export function AuditLogPanel() {
                     {actionLabel(t, log.action)}
                   </TableCell>
                   <TableCell className="py-2 pr-4 pl-0 text-muted-foreground max-w-xs truncate">
-                    {formatDetails(log)}
+                    {formatDetails(log, t)}
                   </TableCell>
                   <TableCell className="px-0 py-2 text-muted-foreground text-xs">{log.ipAddress || "—"}</TableCell>
                 </TableRow>
@@ -162,9 +162,25 @@ export function AuditLogPanel() {
   );
 }
 
-function formatDetails(log: AuditEntry): string {
+function formatDetails(log: AuditEntry, t: TranslateFn): string {
   const d = log.details;
   if (!d) return `ID ${log.entityId ?? "—"}`;
+
+  /*
+   * Kuasa lintas-peran pada persetujuan HARUS terlihat, dan didahulukan.
+   *
+   * Peran berakses penuh boleh memutuskan pengajuan yang ditujukan ke peran
+   * lain. Setelah pemisahan tugas ditukar dengan kelangsungan proses, jejak
+   * audit adalah kendali yang tersisa — jadi pemakaiannya tidak boleh
+   * tenggelam. Tanpa cabang ini, `overrodeApproverRole` hanya ikut masuk ke
+   * `JSON.stringify(...).slice(0, 80)` di bawah, yang untuk detail persetujuan
+   * (belasan field) hampir pasti terpotong sebelum sampai — tercatat di
+   * berkas, tapi tak pernah terbaca di layar.
+   */
+  if (typeof d.overrodeApproverRole === "string") {
+    return t("audit.overrodeApprover", { role: d.overrodeApproverRole });
+  }
+
   if (typeof d.description === "string") return d.description;
   if (typeof d.itemName === "string") {
     return `${d.itemName} · ${d.quantity ?? ""} ${d.type ?? ""}`.trim();

@@ -2564,7 +2564,8 @@
     "colUser": "用户",
     "colAction": "操作",
     "colDetails": "详情",
-    "colIp": "IP 地址"
+    "colIp": "IP 地址",
+    "overrodeApprover": "越权代替审批人 {role}"
   },
   "auditAction": {
     "finance_create": "资金与银行交易",

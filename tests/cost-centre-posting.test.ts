@@ -53,6 +53,13 @@ const MAPPINGS: FakeMapping[] = [
   { key: MAPPING_KEYS.CASH_BANK, currency: ANY_CURRENCY, accountId: ACC.cash, isActive: true },
 ];
 
+/**
+ * `postForSource` bertipe `Journal` Prisma (kepala saja); yang dikembalikan
+ * klien palsu adalah `FakeJournal` lengkap dengan barisnya. Cast yang sama
+ * dipakai `tests/posting-engine.test.ts`.
+ */
+const posted = (j: unknown) => j as unknown as FakeJournal;
+
 /** Setiap pusat biaya yang muncul pada baris-baris sebuah jurnal, tanpa duplikat. */
 const centresOf = (j: FakeJournal) => [...new Set(j.lines.map((l) => l.costCenterId))];
 
@@ -75,7 +82,7 @@ describe("dokumen sumber menstempel pusat biayanya ke setiap baris", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "invoice", sourceId: 7, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "invoice", sourceId: 7, tx }));
     expect(journal.lines.length).toBe(3); // piutang, penjualan, PPN keluaran
     expect(centresOf(journal)).toEqual([JAKARTA]);
     expect(journal.costCenterId).toBe(JAKARTA);
@@ -98,7 +105,7 @@ describe("dokumen sumber menstempel pusat biayanya ke setiap baris", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "supplier_transaction", sourceId: 31, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "supplier_transaction", sourceId: 31, tx }));
     expect(journal.lines.length).toBe(3);
     expect(centresOf(journal)).toEqual([SURABAYA]);
   });
@@ -120,12 +127,12 @@ describe("dokumen sumber menstempel pusat biayanya ke setiap baris", () => {
       },
     });
 
-    const journal = (await postForSource({
+    const journal = posted(await postForSource({
       sourceType: "cash_account",
       sourceId: 41,
       counterAccountId: ACC.counter,
       tx,
-    }))!;
+    }));
     expect(centresOf(journal)).toEqual([SURABAYA]);
   });
 });
@@ -147,7 +154,7 @@ describe("dokumen turunan mewarisi pusat biaya dokumen asalnya", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "invoice_payment", sourceId: 11, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "invoice_payment", sourceId: 11, tx }));
     expect(centresOf(journal)).toEqual([JAKARTA]);
   });
 
@@ -168,7 +175,7 @@ describe("dokumen turunan mewarisi pusat biaya dokumen asalnya", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "sales_return", sourceId: 1, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "sales_return", sourceId: 1, tx }));
     expect(centresOf(journal)).toEqual([JAKARTA]);
   });
 
@@ -189,7 +196,7 @@ describe("dokumen turunan mewarisi pusat biaya dokumen asalnya", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "purchase_return", sourceId: 1, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "purchase_return", sourceId: 1, tx }));
     expect(centresOf(journal)).toEqual([SURABAYA]);
   });
 });
@@ -211,7 +218,7 @@ describe("dokumen tanpa pusat biaya tetap seperti sebelum issue #91", () => {
       },
     });
 
-    const journal = (await postForSource({ sourceType: "invoice", sourceId: 8, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "invoice", sourceId: 8, tx }));
     expect(centresOf(journal)).toEqual([null]);
     expect(journal.costCenterId).toBeNull();
   });
@@ -230,7 +237,7 @@ describe("dokumen tanpa pusat biaya tetap seperti sebelum issue #91", () => {
       ],
     });
 
-    const journal = (await postForSource({ sourceType: "stock_movement", sourceId: 51, tx }))!;
+    const journal = posted(await postForSource({ sourceType: "stock_movement", sourceId: 51, tx }));
     expect(centresOf(journal)).toEqual([null]);
   });
 });
@@ -269,7 +276,7 @@ describe("posting ulang & pembalikan membawa dimensinya ikut", () => {
 
     await postForSource({ sourceType: "invoice", sourceId: 7, tx });
     invoice.costCenterId = SURABAYA; // pengguna memindahkan fakturnya
-    const reposted = (await repostForSource({ sourceType: "invoice", sourceId: 7, tx }))!;
+    const reposted = posted(await repostForSource({ sourceType: "invoice", sourceId: 7, tx }));
 
     const reversal = tx._journals.find((j) => j.type === "reversal")!;
     // Pembalikan menghapus beban dari cabang yang MEMANG dibebani sebelumnya…

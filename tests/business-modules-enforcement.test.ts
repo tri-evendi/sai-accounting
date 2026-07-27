@@ -221,6 +221,24 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
     expect(src).toContain("/feature-inactive");
   });
 
+  it("wizard penyiapan pun tidak bisa mematikan modul inti (validasi di server)", () => {
+    // Permintaan pertama seumur pemasangan tetap lewat penjaga yang sama: tanpa
+    // ini sebuah POST /api/setup yang dirakit tangan bisa menutup /permissions
+    // dan /users sejak menit nol.
+    const src = read("app/api/setup/route.ts");
+    expect(src).toContain("validateEnabledModules(");
+    expect(src).toContain("serializeEnabledModules(");
+    expect(src).toContain("invalidateEnabledModules()");
+  });
+
+  it("API modul ber-gate izin & menginvalidasi cache setelah menyimpan", () => {
+    const src = read("app/api/company-settings/modules/route.ts");
+    expect(src).toContain('requireApiPermission("company_setting.manage")');
+    expect(src).toContain("validateEnabledModules(");
+    expect(src).toContain("invalidateEnabledModules()");
+    expect(src).toContain("writeAuditLog(");
+  });
+
   it("layar penjelasannya ada dan menjaga dirinya sendiri agar bukan jalan buntu", () => {
     const src = read("app/(auth)/feature-inactive/page.tsx");
     expect(src).toContain("isModuleEnabled(");

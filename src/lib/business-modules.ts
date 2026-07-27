@@ -364,13 +364,13 @@ export function validateEnabledModules(modules: readonly string[]): string[] {
   const errors: string[] = [];
   const seen = new Set<string>();
 
-  for (const module of modules) {
-    if (!isBusinessModule(module)) {
-      errors.push(`Modul "${module}" tidak dikenal.`);
+  for (const candidate of modules) {
+    if (!isBusinessModule(candidate)) {
+      errors.push(`Modul "${candidate}" tidak dikenal.`);
       continue;
     }
-    if (seen.has(module)) errors.push(`Modul "${module}" disebut dua kali.`);
-    seen.add(module);
+    if (seen.has(candidate)) errors.push(`Modul "${candidate}" disebut dua kali.`);
+    seen.add(candidate);
   }
   if (errors.length > 0) return errors;
 

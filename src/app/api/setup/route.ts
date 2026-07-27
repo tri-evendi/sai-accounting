@@ -26,6 +26,13 @@ import {
 import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import {
+  normalizeEnabledModules,
+  serializeEnabledModules,
+  validateEnabledModules,
+  type BusinessModule,
+} from "@/lib/business-modules";
+import { invalidateEnabledModules } from "@/lib/authz-effective";
 
 export async function GET() {
   const result = await requireApiPermission("setup.manage");
@@ -94,6 +101,26 @@ export async function POST(request: Request) {
 
   const { company, cash, receivables, payables, inventory } = parsed.data;
 
+  /*
+   * Modul per kategori usaha (issue #99). Wizard boleh menyertakan himpunan
+   * modul; penjaga terakhirnya tetap di server — modul inti tidak bisa dimatikan
+   * bahkan pada permintaan pertama seumur pemasangan, kalau tidak wizard yang
+   * dipanggil langsung bisa menutup /permissions & /users sejak menit nol.
+   * Tidak menyebut modul sama sekali = kolomnya NULL = semua modul aktif.
+   */
+  if (company.modules) {
+    const moduleErrors = validateEnabledModules(company.modules);
+    if (moduleErrors.length > 0) {
+      return NextResponse.json(
+        { error: moduleErrors.join(" "), errors: moduleErrors },
+        { status: 400 }
+      );
+    }
+  }
+  const enabledModules = company.modules
+    ? serializeEnabledModules(normalizeEnabledModules(company.modules as BusinessModule[]))
+    : null;
+
   // Partner names for the AR/AP line memos come from the DB, not the client.
   const [customers, suppliers] = await Promise.all([
     prisma.customer.findMany({ select: { id: true, name: true } }),
@@ -130,6 +157,8 @@ export async function POST(request: Request) {
       npwp: company.npwp ?? null,
       taxName: company.taxName ?? null,
       taxAddress: company.taxAddress ?? null,
+      businessCategory: company.businessCategory ?? null,
+      enabledModules,
     },
     cash: cash.map((c) => ({
       accountId: c.accountId,
@@ -157,6 +186,11 @@ export async function POST(request: Request) {
   try {
     const applied = await applyOpeningBalances(input);
 
+    // Sebelum ini pemuat modul mungkin sempat mengingat "belum ada baris
+    // perusahaan" (= semua modul aktif). Pilihan wizard harus berlaku pada
+    // permintaan berikutnya, bukan setelah satu TTL.
+    invalidateEnabledModules();
+
     await writeAuditLog({
       userId: result.session.user.id,
       username: result.session.user.name,
@@ -167,6 +201,9 @@ export async function POST(request: Request) {
         journalNumber: applied.journalNumber,
         equityPlug: applied.equityPlug,
         fiscalYearStart: company.fiscalYearStart,
+        businessCategory: company.businessCategory ?? null,
+        // NULL di sini berarti "semua modul aktif" — jejaknya sengaja jujur.
+        enabledModules,
       },
       request,
     });

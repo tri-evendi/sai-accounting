@@ -1,0 +1,187 @@
+"use client";
+
+/**
+ * Kartu "Modul Usaha" di halaman Pengaturan (issue #99) — permukaan pengelolaan
+ * modul setelah penyiapan.
+ *
+ * Kenapa DI SINI, bukan di /permissions: modul menjawab "perusahaan ini
+ * bidangnya apa" — satu keluarga dengan profil & identitas pajak perusahaan —
+ * sedangkan /permissions menjawab "siapa boleh apa". Menaruhnya di matriks izin
+ * akan mengaburkan justru perbedaan yang paling penting dijaga fitur ini: modul
+ * TIDAK memberi atau mencabut izin siapa pun. Halaman /permissions tetap ikut
+ * berubah — baris untuk modul non-aktif disembunyikan di sana, dengan tautan
+ * kembali ke kartu ini.
+ *
+ * Panel hanya dirender bila server menilai penggunanya memegang
+ * `company_setting.manage` (dihitung di `settings/page.tsx` terhadap matriks
+ * EFEKTIF, pola panel Audit). API-nya ber-gate izin yang sama — pertahanan
+ * berlapis, bukan tampilan yang menjaga dirinya sendiri.
+ */
+
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { ModulePicker } from "@/components/settings/module-picker";
+import {
+  BUSINESS_MODULES,
+  isBusinessCategory,
+  modulesForCategory,
+  normalizeEnabledModules,
+  validateEnabledModules,
+  type BusinessCategory,
+  type BusinessModule,
+} from "@/lib/business-modules";
+import { useT } from "@/lib/i18n/client";
+import { Save } from "lucide-react";
+
+interface ModulesResponse {
+  businessCategory: string | null;
+  modules: BusinessModule[];
+}
+
+export function ModuleSettingsPanel() {
+  const t = useT();
+  const { toast } = useToast();
+  const [saved, setSaved] = useState<ModulesResponse | null>(null);
+  const [category, setCategory] = useState<BusinessCategory | "">("");
+  const [modules, setModules] = useState<ReadonlySet<BusinessModule>>(new Set(BUSINESS_MODULES));
+  const [loadError, setLoadError] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/company-settings/modules");
+      if (!res.ok) throw new Error(t("modules.errLoad"));
+      const json = (await res.json()) as ModulesResponse;
+      setSaved(json);
+      setModules(new Set(json.modules));
+      setCategory(
+        json.businessCategory && isBusinessCategory(json.businessCategory)
+          ? json.businessCategory
+          : ""
+      );
+    } catch (err) {
+      setLoadError((err as Error).message);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  /** Preset = NILAI AWAL: ia mengisi daftar centang, tidak mengunci apa pun. */
+  function pickCategory(next: BusinessCategory) {
+    setCategory(next);
+    setModules(new Set(modulesForCategory(next)));
+    setErrors([]);
+  }
+
+  function toggle(module: BusinessModule, next: boolean) {
+    setErrors([]);
+    setModules((prev) => {
+      const draft = new Set(prev);
+      if (next) draft.add(module);
+      else draft.delete(module);
+      return draft;
+    });
+  }
+
+  const chosen = normalizeEnabledModules(modules);
+  const isDirty =
+    !!saved &&
+    (chosen.join(",") !== normalizeEnabledModules(saved.modules).join(",") ||
+      (category || null) !== (saved.businessCategory ?? null));
+
+  async function submit() {
+    // Umpan balik seketika di client; server tetap penjaga terakhir.
+    const found = validateEnabledModules(chosen);
+    if (found.length > 0) {
+      setErrors(found);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/company-settings/modules", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessCategory: category || null, modules: chosen }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const message = (json as { error?: string }).error ?? t("modules.errSave");
+        setErrors((json as { errors?: string[] }).errors ?? [message]);
+        toast(message, "error");
+        return;
+      }
+      const next = json as ModulesResponse;
+      setSaved(next);
+      setModules(new Set(next.modules));
+      setErrors([]);
+      toast(t("modules.saved"));
+    } catch {
+      toast(t("modules.errNetwork"), "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>{t("modules.sectionTitle")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="mb-4 text-sm text-muted-foreground">{t("modules.sectionDescription")}</p>
+
+        {loadError ? (
+          <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          <>
+            {errors.length > 0 && (
+              <div
+                role="alert"
+                className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
+              >
+                <ul className="list-disc pl-5">
+                  {errors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <ModulePicker
+              category={category}
+              modules={modules}
+              onCategoryChange={pickCategory}
+              onToggleModule={toggle}
+              disabled={saving || !saved}
+            />
+
+            <div className="mt-4 flex justify-end">
+              <Button disabled={saving || !isDirty} onClick={() => setConfirm(true)}>
+                <Save aria-hidden="true" />
+                {t("common.saveChanges")}
+              </Button>
+            </div>
+          </>
+        )}
+
+        <ConfirmDialog
+          open={confirm}
+          onOpenChange={setConfirm}
+          title={t("modules.confirmTitle")}
+          message={t("modules.confirmMessage")}
+          confirmLabel={t("common.save")}
+          onConfirm={submit}
+        />
+      </CardContent>
+    </Card>
+  );
+}

@@ -2985,6 +2985,7 @@
   },
   "modules": {
     "sectionTitle": "业务模块",
+    "auditAction": "修改业务模块",
     "sectionDescription": "只开启贵公司实际使用的功能。关闭的模块会从菜单中消失，也无法再用于录入新交易。",
     "activeCount": "已启用 {count} / {total} 个模块",
     "coreLocked": "始终启用",

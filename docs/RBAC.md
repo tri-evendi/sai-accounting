@@ -6,8 +6,10 @@
 > kode bertanya **"punya izin `resource.action`?"**
 > Sejak issue #73 matriks di kode adalah **BAWAAN (baseline)**; matriks
 > **EFEKTIF** = bawaan + override DB yang dikelola dari halaman `/permissions`;
-> sejak issue #75 di atasnya masih ada lapisan **izin khusus per PENGGUNA**
-> (lihat § Konfigurasi runtime).
+> sejak issue #75 di atasnya masih ada lapisan **izin khusus per PENGGUNA**;
+> sejak issue #99 di ATAS semuanya ada lapisan **modul per kategori usaha**
+> (fitur yang tidak dipakai perusahaan ini tidak terjangkau siapa pun — tetapi
+> tak pernah menggerbangi buku besar). Lihat § Konfigurasi runtime.
 
 ## Peran
 
@@ -115,13 +117,61 @@ hapus master = akses-penuh-saja (kecuali `advance.delete`, terdokumentasi);
   di #73, perubahan matriks peran belakangan tidak divalidasi ulang terhadap
   override pengguna yang sudah tersimpan.
 
+### Modul per kategori usaha (issue #99) — lapisan yang memperkecil permukaan
+
+- **Apa yang diputuskan**: fitur mana yang DIPAKAI perusahaan ini. Peta
+  `RESOURCE_MODULE` (`src/lib/business-modules.ts`) memberi setiap **sumber daya
+  izin** tepat satu modul (10 modul untuk 33 sumber daya). `Record` bertipe
+  penuh atas `PermissionResource` ⇒ sumber daya izin baru tanpa modul **ditolak
+  `tsc`**, sama seperti `RESOURCE_LABELS`.
+- **Penyimpanan**: satu kolom `company_settings.enabled_modules` (migrasi 0034),
+  dipisah koma, urut deklarasi. **NULL/kosong = SEMUA modul aktif** — tanpa
+  backfill, tanpa perubahan perilaku untuk pemasangan yang sudah berjalan; modul
+  yang ditambahkan ke kode belakangan pun ikut menyala sendiri.
+  `business_category` hanya PRESET (nilai awal wizard), tak pernah dibaca saat
+  menegakkan apa pun.
+- **Urutan evaluasi** `canEffective` kini: **modul** → bawaan → override peran →
+  override pengguna. Izin di modul non-aktif ditolak untuk SEMUA orang,
+  termasuk peran berakses penuh. `effectivePermissionsFor` ikut menyaring, jadi
+  menu, Aksi Cepat, dan tombol hilang tanpa satu pun halaman diubah.
+- **Modul TIDAK PERNAH menggerbangi buku besar.** Jurnal yang lahir dari
+  dokumen sebuah modul tetap ada, dan laporan tetap rekonsiliasi, setelah
+  modulnya dimatikan. Mesin laporan/posting tak boleh punya JALUR IMPOR apa pun
+  ke `business-modules.ts`/penjaga otorisasi — dijaga
+  `tests/business-modules-ledger.test.ts`.
+- **Izin ≠ modul.** Halaman diarahkan ke `/feature-inactive` ("fitur ini belum
+  aktif untuk perusahaan Anda"), API menjawab 403 ber-`code: "module_inactive"`;
+  penolakan peran tetap berbunyi seperti dulu. Baris override di DB tidak pernah
+  disentuh, jadi menyalakan modul kembali **tidak memberi izin kepada siapa
+  pun** — hanya membuat yang sudah dimiliki terjangkau lagi. `/permissions` dan
+  panel "Izin Khusus" MENYEMBUNYIKAN baris modul non-aktif, tetapi tetap
+  menyusun draft & payload dari daftar izin LENGKAP (kalau tidak, menyimpan akan
+  menghapus override milik modul yang sedang mati).
+- **Anti-lockout**: `core_accounting` (akun, jurnal, buku besar, laporan,
+  anggaran, periode, audit, setup, pengaturan, pusat biaya, kamus, **`authz` &
+  `user`**) tak bisa dimatikan. Ditegakkan di server —
+  `validateEnabledModules` di route PUT modul MAUPUN di `POST /api/setup` —
+  bukan sekadar checkbox yang di-`disabled`.
+- **Cache**: TTL yang SAMA dengan matriks izin efektif + invalidasi eksplisit
+  saat menulis (route modul & wizard). Gagal baca DB = semua modul aktif
+  (fail-open, dicatat): modul menyusutkan permukaan, jadi gagal-tertutup akan
+  melenyapkan aplikasi gara-gara DB yang sedang bermasalah.
+- **UI**: langkah "Modul Usaha" di wizard penyiapan (preset kategori = nilai
+  awal saja) dan kartu "Modul Usaha" di **/settings** — ber-gate
+  `company_setting.manage`, karena modul menjawab "perusahaan ini bidangnya apa"
+  (sekeluarga dengan profil & identitas pajak), bukan "siapa boleh apa".
+  Keduanya memakai satu komponen `components/settings/module-picker.tsx`.
+  API `GET/PUT /api/company-settings/modules`; setiap simpan diaudit
+  (`company_setting.modules.update`, beserta keadaan sebelumnya).
+
 ## Empat lapisan penegakan
 
 1. **Halaman** — `requirePagePermission("izin")` (`src/lib/page-auth.ts`). Tanpa sesi →
-   `/login`; tanpa izin → `/dashboard`. Izin di `ACCOUNTING_PERMISSIONS` otomatis
+   `/login`; modul non-aktif → `/feature-inactive` (issue #99); tanpa izin → `/dashboard`. Izin di `ACCOUNTING_PERMISSIONS` otomatis
    berlapis **Mode Akuntan** (issue #11). Halaman client? Pecah: `page.tsx` server
    pemanggil penjaga + `<nama>-form.tsx` client (pola `journal/new`).
-2. **API** — `requireApiPermission("izin")` (`src/lib/auth-guard.ts`). 401/403. Murni
+2. **API** — `requireApiPermission("izin")` (`src/lib/auth-guard.ts`). 401/403 (403
+   ber-`code: "module_inactive"` bila yang menutup adalah modulnya, issue #99). Murni
    peran (Mode Akuntan = preferensi tampilan, bukan otorisasi). Cek yang lebih halus
    (mis. persetujuan: peran harus = `approverRole` aturan; aksi self-scoped) ditulis
    inline SETELAH penjaga izin — pelengkap, bukan pengganti.
@@ -161,6 +211,8 @@ ditulis ulang oleh migration 0032 — jejak sejarah tidak dipalsukan.
 ## Checklist fitur baru
 
 - [ ] Tambah baris izin di `PERMISSION_ROLES` (bukan daftar peran lokal).
+- [ ] Sumber daya izin BARU? Beri modulnya di `RESOURCE_MODULE`
+      (`src/lib/business-modules.ts`) — `tsc` menolak yang belum diberi.
 - [ ] Halaman: `requirePagePermission`; API: `requireApiPermission`; tampilan: `can()`.
 - [ ] Halaman client dipecah server-wrapper + form.
 - [ ] Butuh pengecualian cakupan? Daftarkan di `tests/authz-coverage.test.ts` + alasan.

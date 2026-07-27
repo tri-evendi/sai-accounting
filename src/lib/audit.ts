@@ -115,7 +115,14 @@ export type AuditAction =
    */
   | "role.create"
   | "role.update"
-  | "role.delete";
+  | "role.delete"
+  /**
+   * Modul per kategori usaha (issue #99). Mencatat himpunan modul yang
+   * DISIMPAN beserta keadaan sebelumnya — jejak yang menjawab "sejak kapan
+   * menu itu hilang, dan siapa yang mematikannya". Tidak menyentuh satu baris
+   * jurnal pun, dan tidak mengubah izin siapa pun.
+   */
+  | "company_setting.modules.update";
 
 export type AuditEntity =
   | "cash_account"

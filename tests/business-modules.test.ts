@@ -52,17 +52,17 @@ const allExcept = (...off: BusinessModule[]): ReadonlySet<BusinessModule> =>
 describe("peta modul: lengkap, kasar, tanpa tumpang tindih", () => {
   it("setiap sumber daya izin punya modul yang dikenal", () => {
     for (const permission of PERMISSIONS) {
-      const module = moduleForPermission(permission);
-      expect(BUSINESS_MODULES, `izin ${permission}`).toContain(module);
+      const owner = moduleForPermission(permission);
+      expect(BUSINESS_MODULES, `izin ${permission}`).toContain(owner);
     }
   });
 
   it("gabungan seluruh modul = seluruh izin, tepat satu kali masing-masing", () => {
     const seen = new Map<Permission, BusinessModule>();
-    for (const module of BUSINESS_MODULES) {
-      for (const permission of permissionsForModule(module)) {
+    for (const owner of BUSINESS_MODULES) {
+      for (const permission of permissionsForModule(owner)) {
         expect(seen.has(permission), `izin ${permission} milik dua modul`).toBe(false);
-        seen.set(permission, module);
+        seen.set(permission, owner);
       }
     }
     expect([...seen.keys()].sort()).toEqual([...PERMISSIONS].sort());
@@ -74,8 +74,8 @@ describe("peta modul: lengkap, kasar, tanpa tumpang tindih", () => {
   });
 
   it("setiap modul benar-benar berisi izin (bukan modul kosong yang membingungkan)", () => {
-    for (const module of BUSINESS_MODULES) {
-      expect(permissionsForModule(module).length, `modul ${module}`).toBeGreaterThan(0);
+    for (const owner of BUSINESS_MODULES) {
+      expect(permissionsForModule(owner).length, `modul ${owner}`).toBeGreaterThan(0);
     }
   });
 
@@ -85,9 +85,9 @@ describe("peta modul: lengkap, kasar, tanpa tumpang tindih", () => {
   });
 
   it("setiap modul punya teks (kunci kamus), termasuk yang baru ditambahkan", () => {
-    for (const module of BUSINESS_MODULES) {
-      expect(MODULE_META[module].labelKey).toBe(`modules.name.${module}`);
-      expect(MODULE_META[module].descriptionKey).toBe(`modules.description.${module}`);
+    for (const owner of BUSINESS_MODULES) {
+      expect(MODULE_META[owner].labelKey).toBe(`modules.name.${owner}`);
+      expect(MODULE_META[owner].descriptionKey).toBe(`modules.description.${owner}`);
     }
   });
 });

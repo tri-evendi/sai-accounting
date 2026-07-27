@@ -2985,6 +2985,7 @@
   },
   "modules": {
     "sectionTitle": "Business Modules",
+    "auditAction": "Changed the business modules",
     "sectionDescription": "Turn on only the features your company uses. A module that is off disappears from the menu and can no longer be used to record new transactions.",
     "activeCount": "{count} of {total} modules active",
     "coreLocked": "Always on",

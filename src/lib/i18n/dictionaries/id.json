@@ -2985,6 +2985,7 @@
   },
   "modules": {
     "sectionTitle": "Modul Usaha",
+    "auditAction": "Mengubah modul usaha",
     "sectionDescription": "Nyalakan hanya fitur yang dipakai perusahaan Anda. Modul yang dimatikan hilang dari menu dan tidak bisa dipakai membuat transaksi baru.",
     "activeCount": "{count} dari {total} modul aktif",
     "coreLocked": "Selalu aktif",

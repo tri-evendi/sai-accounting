@@ -11,7 +11,6 @@
  * pre-formatted strings that would lose both precision and the ability to total.
  */
 import ExcelJS from "exceljs";
-import { COMPANY_NAME } from "@/lib/constants";
 import { IDR_NUMBER_FORMAT, type SheetModel } from "@/lib/report-export";
 
 /**
@@ -19,9 +18,12 @@ import { IDR_NUMBER_FORMAT, type SheetModel } from "@/lib/report-export";
  * Each model becomes its own worksheet, title + period as banner rows, then the
  * column headers, then the data rows with per-cell format and weight applied.
  */
-export async function buildWorkbookBuffer(models: SheetModel[]): Promise<Buffer> {
+export async function buildWorkbookBuffer(
+  models: SheetModel[],
+  company: { name: string }
+): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = COMPANY_NAME;
+  wb.creator = company.name;
   wb.created = new Date();
 
   // ExcelJS rejects duplicate worksheet names; disambiguate while respecting the
@@ -42,7 +44,7 @@ export async function buildWorkbookBuffer(models: SheetModel[]): Promise<Buffer>
     const colCount = model.columns.length;
 
     // Banner: company, report title, period. Kept visually distinct via weight.
-    ws.addRow([COMPANY_NAME]).font = { bold: true, size: 14 };
+    ws.addRow([company.name]).font = { bold: true, size: 14 };
     ws.addRow([model.title]).font = { bold: true, size: 12 };
     ws.addRow([model.period]).font = { color: { argb: "FF64748B" } };
     ws.addRow([`Dicetak: ${new Date().toLocaleString("id-ID")} · Nilai dalam IDR`]).font = {

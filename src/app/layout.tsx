@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/client";
+import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 
 // Inter (MASTER.md) — dipilih karena dukungan `tabular-nums` untuk angka keuangan.
@@ -54,7 +55,12 @@ export default async function RootLayout({
     <html lang={locale} className={`${inter.variable} h-full`}>
       <body className="min-h-full">
         <LocaleProvider locale={locale} dictionary={dictionary}>
-          {children}
+          {/* Identitas perusahaan diambil di sisi client (lihat
+              company-identity-client.tsx): membacanya di server SINI berarti
+              satu query Prisma di root layout, yang ikut berjalan saat
+              `next build` menghasilkan 49 halaman statis — padahal build
+              memakai DATABASE_URL placeholder tanpa koneksi. */}
+          <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
         </LocaleProvider>
       </body>
     </html>

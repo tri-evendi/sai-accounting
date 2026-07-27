@@ -1,17 +1,17 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { COMPANY_NAME, LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { STOCK_LEVEL_LABELS, getStockLevel, type ClientInventoryItem } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money-format";
 
-export function generateStockReportPDF(items: ClientInventoryItem[]) {
+export function generateStockReportPDF(items: ClientInventoryItem[], company: { name: string; address: string }) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(COMPANY_NAME, pageWidth / 2, y, { align: "center" });
+  doc.text(company.name, pageWidth / 2, y, { align: "center" });
   y += 7;
   doc.setFontSize(12);
   doc.text("Stock Report", pageWidth / 2, y, { align: "center" });

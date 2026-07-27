@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { COMPANY_NAME, CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
+import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
 
 export interface FinanceReportRow {
   date: string;
@@ -34,7 +34,8 @@ function formatMoney(amount: number, currency: string): string {
 
 export function generateFinanceReportPDF(
   balances: FinanceBalanceRow[],
-  transactions: FinanceReportRow[]
+  transactions: FinanceReportRow[],
+  company: { name: string; address: string }
 ) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -42,7 +43,7 @@ export function generateFinanceReportPDF(
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(COMPANY_NAME, pageWidth / 2, y, { align: "center" });
+  doc.text(company.name, pageWidth / 2, y, { align: "center" });
   y += 7;
   doc.setFontSize(12);
   doc.text("Finance Report", pageWidth / 2, y, { align: "center" });

@@ -1,7 +1,8 @@
 "use client";
 
 import { AlertCircle, MapPin } from "lucide-react";
-import { APP_NAME, COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
+import { APP_NAME } from "@/lib/constants";
+import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
@@ -16,6 +17,7 @@ interface AuthShellProps {
 
 function BrandPanel({ className }: { className?: string }) {
   const t = useT();
+  const company = useCompanyIdentity();
 
   return (
     <div
@@ -36,14 +38,14 @@ function BrandPanel({ className }: { className?: string }) {
           SAI
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
-        <p className="mt-2 text-sm font-medium text-sidebar-foreground/80">{COMPANY_NAME}</p>
+        <p className="mt-2 text-sm font-medium text-sidebar-foreground/80">{company.name}</p>
         <p className="mt-4 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
           {t("auth.brandTagline")}
         </p>
       </div>
       <div className="relative flex items-start gap-2 text-sm text-sidebar-foreground/70">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sidebar-foreground/70" aria-hidden />
-        <p>{COMPANY_ADDRESS}</p>
+        <p>{company.address}</p>
       </div>
     </div>
   );
@@ -57,6 +59,8 @@ export function AuthShell({
   icon,
   footer,
 }: AuthShellProps) {
+  const company = useCompanyIdentity();
+
   return (
     <div className="flex min-h-screen flex-col bg-muted lg:flex-row">
       <BrandPanel className="hidden lg:flex lg:w-[30%] lg:min-w-[280px] lg:max-w-sm lg:shrink-0" />
@@ -64,7 +68,7 @@ export function AuthShell({
       <div className="flex flex-1 flex-col">
         <div className="border-b border-border bg-sidebar px-6 py-5 lg:hidden">
           <p className="text-lg font-bold text-sidebar-foreground">{APP_NAME}</p>
-          <p className="text-sm text-sidebar-foreground/70">{COMPANY_NAME}</p>
+          <p className="text-sm text-sidebar-foreground/70">{company.name}</p>
         </div>
 
         <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-12">
@@ -101,7 +105,7 @@ export function AuthShell({
             </div>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} {COMPANY_NAME}
+              &copy; {new Date().getFullYear()} {company.name}
             </p>
           </div>
         </div>

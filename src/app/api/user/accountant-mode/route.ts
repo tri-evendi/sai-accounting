@@ -9,8 +9,8 @@ import { prisma } from "@/lib/prisma";
  * PATCH updates ONLY the current user's `accountant_mode` display preference.
  * The target row is always `session.user.id` — never a caller-supplied id — so a
  * user can only flip their OWN preference. `role` is never read from or written
- * to the body, so this can never escalate authorisation: a `ptg` user stays
- * `ptg`; this only changes what THEY see.
+ * to the body, so this can never escalate authorisation: a `warehouse_head`
+ * user stays `warehouse_head`; this only changes what THEY see.
  */
 const bodySchema = z.object({
   // true/false = explicit override; null = clear back to the role default.

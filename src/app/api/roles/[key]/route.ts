@@ -1,6 +1,7 @@
 /**
  * Kelola peran — ubah label / aktif-nonaktif (PATCH) & hapus (DELETE), by KEY.
- * Di-gate `authz.manage`. Peran SISTEM (bos/core/ptg) tak bisa dinonaktifkan
+ * Di-gate `authz.manage`. Peran SISTEM (managing_director/finance_manager/
+ * warehouse_head/administrator) tak bisa dinonaktifkan
  * maupun dihapus; peran yang masih dipakai pengguna tak bisa dihapus.
  */
 import { NextResponse } from "next/server";

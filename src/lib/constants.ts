@@ -23,16 +23,21 @@ export const COMPANY_ADDRESS = "Komplek Pergudangan Kapuk Ecopark, Jakarta";
 
 /** Kunci peran SISTEM bawaan (tak bisa dihapus/dinonaktifkan). Dipakai guard
  *  di kode: anti-lockout, default Mode Akuntan, dsb. Peran lain kini DATA
- *  (tabel `roles`, migration 0031) dan dibaca lewat `@/lib/roles`. */
+ *  (tabel `roles`, migration 0031) dan dibaca lewat `@/lib/roles`.
+ *
+ *  Kuncinya adalah nama jabatan baku dalam Bahasa Inggris `snake_case`
+ *  (migration 0032) — konvensi nilai enum-like docs/DATABASE.md. Singkatan
+ *  internal lama (`bos`, `core`, `ptg`) tidak ada lagi, baik di DB maupun kode. */
 export const ROLES = {
-  BOS: "bos",
-  CORE: "core",
-  PTG: "ptg",
+  MANAGING_DIRECTOR: "managing_director",
+  FINANCE_MANAGER: "finance_manager",
+  WAREHOUSE_HEAD: "warehouse_head",
+  ADMINISTRATOR: "administrator",
 } as const;
 
 /**
  * Peran kini DATA (tabel `roles`), bukan enum tetap — maka tipenya `string`
- * agar peran kustom yang dibuat Pimpinan tetap valid. `ROLES`/`ROLE_VALUES`
+ * agar peran kustom yang dibuat Direktur Utama tetap valid. `ROLES`/`ROLE_VALUES`
  * adalah peran SISTEM bawaan; `ROLE_LABELS` fallback labelnya.
  */
 export type Role = string;
@@ -41,8 +46,40 @@ export type Role = string;
  * Tuple nilai peran SISTEM untuk `z.enum` fallback & seed. Validasi peran user
  * yang mengizinkan peran kustom kini lewat `@/lib/roles` (cek ke DB), bukan
  * hanya tuple ini.
+ *
+ * URUTANNYA BERMAKNA: `applyOverrides` menyusun matriks efektif dengan
+ * `ROLE_VALUES.filter(...)`, jadi urutan di sini = urutan kolom peran yang
+ * terlihat di /permissions. Sengaja sama dengan urutan baris tabel `roles`
+ * (tiga peran migration 0031, lalu `administrator` migration 0032).
  */
-export const ROLE_VALUES = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
+export const ROLE_VALUES = [
+  ROLES.MANAGING_DIRECTOR,
+  ROLES.FINANCE_MANAGER,
+  ROLES.WAREHOUSE_HEAD,
+  ROLES.ADMINISTRATOR,
+] as const;
+
+/**
+ * Peran berakses PENUH — memegang SETIAP izin di `PERMISSION_ROLES`.
+ *
+ * `administrator` sengaja dibuat kembar dengan `managing_director` (keputusan
+ * pemilik sistem, migration 0032): harus selalu ada DUA jalan masuk yang
+ * berdiri sendiri untuk mengelola pengguna & hak akses, supaya satu akun yang
+ * hilang tak pernah mengunci seluruh perusahaan. Konsekuensinya pemisahan tugas
+ * memang ditukar dengan ketahanan; jejaknya tetap terbaca karena catatan audit
+ * menyimpan peran aktor.
+ *
+ * SATU sumber untuk semua tempat yang berarti "peran berakses penuh": matriks
+ * izin (`authz.ts`), bawaan Mode Akuntan (`accountant-mode.ts`), dan jalan
+ * pintas ajukan-ulang persetujuan.
+ */
+export const FULL_ACCESS_ROLES = [ROLES.MANAGING_DIRECTOR, ROLES.ADMINISTRATOR] as const;
+
+/** Apakah peran ini salah satu peran berakses penuh? Deny-by-default: peran
+ *  kosong/tak dikenal selalu `false`. */
+export function isFullAccessRole(role: string | null | undefined): boolean {
+  return !!role && (FULL_ACCESS_ROLES as readonly string[]).includes(role);
+}
 
 /** Peran SISTEM bawaan sebagai tipe union — dipakai peta label bertipe penuh. */
 export type SystemRole = (typeof ROLE_VALUES)[number];
@@ -60,9 +97,10 @@ export type SystemRole = (typeof ROLE_VALUES)[number];
  * kini DATA, dan titik pakainya mencari label untuk peran kustom juga.
  */
 export const ROLE_LABELS: Record<string, string> = {
-  bos: "Pimpinan",
-  core: "Staf Kantor",
-  ptg: "Bagian Gudang (PTG)",
+  managing_director: "Direktur Utama",
+  finance_manager: "Manajer Keuangan",
+  warehouse_head: "Kepala Gudang",
+  administrator: "Administrator Sistem",
 };
 
 export const CURRENCIES = ["USD", "CNY", "IDR"] as const;

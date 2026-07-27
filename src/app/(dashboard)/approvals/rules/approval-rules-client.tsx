@@ -55,7 +55,7 @@ export function ApprovalRules({
 
   const [documentType, setDocumentType] = useState<string>(APPROVAL_DOCUMENT_TYPES[0]);
   const [minAmount, setMinAmount] = useState("");
-  const [approverRole, setApproverRole] = useState<string>(ROLES.BOS);
+  const [approverRole, setApproverRole] = useState<string>(ROLES.MANAGING_DIRECTOR);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 

@@ -19,7 +19,9 @@
   bukan istilah akuntansi; setiap kartu wajib menaut ke laporan sumbernya agar
   angkanya selalu bisa dicek.
 - **Visibilitas per peran:** seksi Kas & Bank dan Penjualan & Kontrak hanya
-  bos+core; kartu untung/rugi hanya bos; ptg melihat beranda berfokus stok.
+  peran kantor (Direktur Utama, Manajer Keuangan, Administrator); kartu
+  untung/rugi hanya peran berakses penuh (Direktur Utama & Administrator);
+  Kepala Gudang melihat beranda berfokus stok.
   Query seksi yang tersembunyi tidak boleh dijalankan (bukan hasilnya dibuang).
 - **Anchor tur wajib dipertahankan:** `data-tour="aksi-cepat"` dan
   `data-tour="ringkasan"` dipakai tur "Kenalan dengan Beranda"

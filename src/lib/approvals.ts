@@ -246,8 +246,9 @@ export interface ApprovalMatchInput {
  * The rule that governs a document, or null when none does.
  *
  * ── WHEN SEVERAL RULES MATCH ────────────────────────────────────────────────
- * Rules are bands: "≥ 100jt perlu persetujuan core, ≥ 1M perlu persetujuan
- * bos". A 2M document satisfies both, and the answer must be the STRICTEST band
+ * Rules are bands: "≥ 100jt perlu persetujuan finance_manager, ≥ 1M perlu
+ * persetujuan managing_director". A 2M document satisfies both, and the answer
+ * must be the STRICTEST band
  * it reaches — the highest `minAmount` — otherwise adding a tighter high-value
  * rule would be silently overridden by a looser low-value one. Ties (two rules
  * with the same ambang for the same jenis dokumen) fall to the LOWEST id, so the
@@ -390,7 +391,8 @@ export type ReapprovalAction = "none" | "create" | "refresh" | "keep" | "revoke"
  *     berarti menyetujui Rp 900 juta, sedangkan turun ke Rp 100 juta jelas masih
  *     tercakup (yang lebih besar sudah direstui);
  *  2. band-nya tidak menjadi lebih ketat — bila kini cocok dengan aturan
- *     ber-ambang lebih tinggi (mis. yang mengharuskan bos, bukan core), keputusan
+ *     ber-ambang lebih tinggi (mis. yang mengharuskan managing_director, bukan
+ *     finance_manager), keputusan
  *     lama diberikan oleh peran yang mungkin tak berwenang untuk band itu.
  *
  * Pengajuan lama tanpa `approvedBaseAmount` (dibuat sebelum #45) dianggap

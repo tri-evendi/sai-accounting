@@ -5,7 +5,7 @@
  *        (and, if so, a read-only summary), plus the pickers (cash/bank accounts,
  *        customers, suppliers) and defaults.
  * POST — run the wizard once: post the balanced opening journal and mark the
- *        company set up. Manager (`bos`) only — it seeds the entire ledger.
+ *        company set up. `setup.manage` only — it seeds the entire ledger.
  *
  * The opening journal is posted through the normal ledger primitive, so
  * `assertBalanced` and the period lock (#13) apply. Run-once is enforced

@@ -21,9 +21,10 @@
  * - TANPA baris = pengguna mengikuti perannya sepenuhnya (perilaku hari ini).
  * - Deny-by-default dipertahankan: baris yatim (izin yang sudah dihapus dari
  *   kode) DIABAIKAN — override pengguna tidak pernah menciptakan izin baru.
- * - Anti-lockout: pengguna ber-peran bos tidak boleh dicabut `authz.manage` /
- *   `user.manage`-nya lewat override pengguna (sel terlindung yang sama
- *   dengan `PROTECTED_CELLS` #73) — tanpa keduanya tak ada lagi yang bisa
+ * - Anti-lockout: pengguna ber-peran berakses penuh (Direktur Utama atau
+ *   Administrator) tidak boleh dicabut `authz.manage` / `user.manage`-nya
+ *   lewat override pengguna (sel terlindung yang sama dengan
+ *   `PROTECTED_CELLS` #73) — tanpa keduanya tak ada lagi yang bisa
  *   memperbaiki kesalahan konfigurasi.
  * - Invarian `delete ⊆ write ⊆ read` harus tetap berlaku pada set izin FINAL
  *   pengguna (efektif peran + override pengguna): aksi lebih berbahaya tak
@@ -37,6 +38,7 @@ import {
   isProtectedCell,
   type EffectiveMatrix,
 } from "@/lib/authz-overrides";
+import { ROLE_LABELS } from "@/lib/constants";
 
 /** TTL cache override pengguna — KONSTANTA 60 dtk yang sama dengan matriks
  *  efektif #73 (`EFFECTIVE_MATRIX_TTL_MS`): total jeda terasa ≤ ±1 menit. */
@@ -129,12 +131,14 @@ export function validateUserOverrides(
     seen.add(row.permission);
 
     // Anti-lockout: sel terlindung #73 berlaku juga per pengguna — pengguna
-    // ber-peran bos tidak boleh kehilangan authz.manage / user.manage lewat
-    // jalur ini. (isProtectedCell hanya berisi sel bos, jadi peran lain bebas.)
+    // ber-peran berakses penuh tidak boleh kehilangan authz.manage /
+    // user.manage lewat jalur ini. (PROTECTED_CELLS hanya berisi sel Direktur
+    // Utama & Administrator, jadi peran lain bebas.)
     if (!row.allowed && isProtectedCell(targetRole, row.permission)) {
       errors.push(
-        `Pengguna ber-peran Pimpinan tidak boleh kehilangan izin "${row.permission}" — ` +
-          "tanpa izin ini tidak ada lagi yang bisa mengelola hak akses atau pengguna."
+        `Pengguna ber-peran ${ROLE_LABELS[targetRole] ?? targetRole} tidak boleh ` +
+          `kehilangan izin "${row.permission}" — tanpa izin ini tidak ada lagi ` +
+          "yang bisa mengelola hak akses atau pengguna."
       );
     }
   }

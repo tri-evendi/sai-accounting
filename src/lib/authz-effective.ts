@@ -5,7 +5,7 @@
  * SATU-SATUNYA modul yang membaca `role_permission_overrides` dan
  * `user_permission_overrides`. Penjaga halaman (`page-auth.ts`) dan API
  * (`auth-guard.ts`) bertanya ke sini, bukan ke matriks bawaan, sehingga
- * override yang dibuat Pimpinan di /permissions maupun "Izin Khusus" per
+ * override yang dibuat Direktur Utama di /permissions maupun "Izin Khusus" per
  * pengguna benar-benar mengubah otorisasi — bukan hanya tampilan.
  *
  * Urutan evaluasi `canEffective`: bawaan di kode → override peran → override

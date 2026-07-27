@@ -2,7 +2,7 @@
  * Peran sebagai DATA (tabel `roles`, migration 0031) — akses baca + label.
  *
  * Sumber kebenaran daftar peran kini DB, bukan enum `ROLE_VALUES` di kode.
- * `ROLE_VALUES`/`ROLE_LABELS` tinggal fallback untuk peran SISTEM (bos/core/ptg)
+ * `ROLE_VALUES`/`ROLE_LABELS` tinggal fallback untuk peran SISTEM
  * dan untuk konteks yang belum async (mis. tes murni). UI (kolom /permissions,
  * pemilih peran user & approver) membaca dari sini agar peran kustom muncul.
  *
@@ -23,7 +23,8 @@ export interface RoleRecord {
 export async function getRoles(client = prisma): Promise<RoleRecord[]> {
   const rows = await client.role.findMany({
     select: { key: true, label: true, isSystem: true, isActive: true },
-    // Peran sistem dulu (urut pembuatan: bos, core, ptg), lalu peran kustom
+    // Peran sistem dulu (urut pembuatan: managing_director, finance_manager,
+    // warehouse_head, administrator), lalu peran kustom
     // urut pembuatan — tata urut yang stabil & familiar bagi pengguna.
     orderBy: [{ isSystem: "desc" }, { id: "asc" }],
   });

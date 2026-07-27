@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { activeRoleKeys } from "@/lib/roles";
+import { ROLES } from "@/lib/constants";
 import { writeAuditLog } from "@/lib/audit";
 
 // Peran kini DATA (tabel roles), jadi bentuknya string; keberadaan & keaktifan
@@ -12,7 +13,7 @@ const createUserSchema = z.object({
   username: z.string().min(1).max(50).trim(),
   password: z.string().min(8).max(128),
   name: z.string().max(100).trim().optional(),
-  role: z.string().trim().min(1).max(20).default("core"),
+  role: z.string().trim().min(1).max(20).default(ROLES.FINANCE_MANAGER),
 });
 
 export async function GET() {

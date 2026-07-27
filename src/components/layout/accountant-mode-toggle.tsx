@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Calculator, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
-import { ROLES } from "@/lib/constants";
+import { ROLES, isFullAccessRole } from "@/lib/constants";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
 
@@ -34,10 +34,11 @@ export function AccountantModeToggle() {
 
   const role = session.user.role;
   // The toggle is meaningful only where there are accounting surfaces or
-  // transaction forms with debit/kredit terminology: bos (menus + forms) and
-  // core (forms). ptg has neither, so it never sees a control that would do
-  // nothing.
-  if (role !== ROLES.BOS && role !== ROLES.CORE) return null;
+  // transaction forms with debit/kredit terminology: the full-access roles
+  // (managing_director, administrator — menus + forms) and finance_manager
+  // (forms). warehouse_head has neither, so it never sees a control that would
+  // do nothing. Administrators default to ON, so this is also their way OFF.
+  if (!isFullAccessRole(role) && role !== ROLES.FINANCE_MANAGER) return null;
 
   const isOn = effectiveAccountantMode({
     role,

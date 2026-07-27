@@ -61,9 +61,14 @@ npm run start:prod
 
 | Role | Access |
 |------|--------|
-| **bos** (Manager) | Full access + users + audit log |
-| **core** (Staff) | Contracts, finance, inventory, etc. |
-| **ptg** | Inventory & stock only |
+| **managing_director** (Direktur Utama) | Full access + users + audit log |
+| **administrator** (System Administrator) | Full access — identical to Managing Director |
+| **finance_manager** (Manajer Keuangan) | Contracts, finance, inventory, etc. |
+| **warehouse_head** (Kepala Gudang) | Inventory & stock only |
+
+Role keys were standardised in migration `0032_standard_role_positions`
+(`bos` → `managing_director`, `core` → `finance_manager`, `ptg` → `warehouse_head`).
+Custom roles beyond these four are created from `/permissions` — see `docs/RBAC.md`.
 
 Users with `status = 0` use their password as-is. `status = 1` forces a password change on next login (new users / password reset).
 

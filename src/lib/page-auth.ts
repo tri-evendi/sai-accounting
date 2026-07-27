@@ -11,8 +11,8 @@ import { redirect } from "next/navigation";
  * hidup di `lib/authz.ts` dan sejak issue #73 dicek terhadap matriks EFEKTIF
  * (bawaan + override DB, `lib/authz-effective.ts`). Tanpa sesi → /login;
  * tanpa izin → /dashboard. Izin permukaan akuntansi
- * (`ACCOUNTING_PERMISSIONS`) otomatis berlapis Mode Akuntan (issue #11): bos
- * yang mematikan modenya ikut ditolak, sama seperti menunya yang ikut
+ * (`ACCOUNTING_PERMISSIONS`) otomatis berlapis Mode Akuntan (issue #11): peran
+ * berakses penuh yang mematikan modenya ikut ditolak, sama seperti menunya yang ikut
  * tersembunyi. Cakupan pemakaian dijaga `tests/authz-coverage.test.ts` —
  * halaman tanpa deklarasi = tes merah. (Pendahulunya,
  * `requirePageSession`/`requireAccountantPage` berbasis daftar peran,
@@ -28,8 +28,9 @@ export async function requirePagePermission(permission: Permission) {
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).
    *
-   * Diperiksa SEBELUM izin halaman, bukan sesudah: pada pemasangan baru, bos
-   * membuka /dashboard dan izinnya memang lolos — kalau urutannya dibalik,
+   * Diperiksa SEBELUM izin halaman, bukan sesudah: pada pemasangan baru, peran
+   * berakses penuh membuka /dashboard dan izinnya memang lolos — kalau
+   * urutannya dibalik,
    * gerbang ini tidak akan pernah berbunyi di halaman yang paling mungkin
    * dibuka pertama.
    *

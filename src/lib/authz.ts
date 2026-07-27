@@ -3,7 +3,8 @@
  *
  * SATU sumber kebenaran "peran X boleh apa": halaman, API, dan tampilan
  * semuanya bertanya lewat `can()` — bukan membandingkan string peran atau
- * mengetik ulang daftar `["bos","core"]` di tiap file. Matriksnya ditulis
+ * mengetik ulang daftar `["managing_director","finance_manager"]` di tiap
+ * file. Matriksnya ditulis
  * per IZIN (`resource.action`), bukan per halaman, supaya halaman dan API
  * pasangannya tak bisa menyimpang diam-diam.
  *
@@ -11,16 +12,18 @@
  * `tests/authz.test.ts`. Penegakannya hidup di `page-auth.ts`
  * (`requirePagePermission`) dan `auth-guard.ts` (`requireApiPermission`).
  *
- * Kebijakan ringkasnya (audit 2026-07):
- * - bos (Pimpinan) memegang SEMUA izin.
- * - core (Staf Kantor) = pekerjaan harian: dokumen penjualan/pembelian/kas
- *   boleh baca+tulis, TANPA hapus master (hapus = bos), tanpa laporan/
- *   anggaran/administrasi, tanpa permukaan akuntansi (kecuali BACA daftar
- *   akun — form kas butuh pemilih akun lawan).
- * - ptg (Gudang) = stok saja, plus halaman bersama (persetujuan, kamus,
- *   pengaturan tampilan).
- * - Pengecualian yang disengaja: `advance.delete` juga untuk core (uang muka
- *   adalah koreksi kerja harian, bukan penghapusan master data).
+ * Kebijakan ringkasnya (audit 2026-07, nama peran dibakukan migration 0032):
+ * - managing_director (Direktur Utama) memegang SEMUA izin.
+ * - administrator (Administrator Sistem) KEMBAR dengan Direktur Utama —
+ *   muncul di setiap izin, tanpa kecuali (lihat `FULL_ACCESS_ROLES`).
+ * - finance_manager (Manajer Keuangan) = pekerjaan harian: dokumen penjualan/
+ *   pembelian/kas boleh baca+tulis, TANPA hapus master (hapus = akses penuh),
+ *   tanpa laporan/anggaran/administrasi, tanpa permukaan akuntansi (kecuali
+ *   BACA daftar akun — form kas butuh pemilih akun lawan).
+ * - warehouse_head (Kepala Gudang) = stok saja, plus halaman bersama
+ *   (persetujuan, kamus, pengaturan tampilan).
+ * - Pengecualian yang disengaja: `advance.delete` juga untuk finance_manager
+ *   (uang muka adalah koreksi kerja harian, bukan penghapusan master data).
  *
  * Mode Akuntan BUKAN peran: permukaan akuntansi (izin di
  * `ACCOUNTING_PERMISSIONS`) berlapis DI ATAS cek peran untuk HALAMAN
@@ -28,11 +31,21 @@
  * perilaku lama.
  */
 
-import { ROLES, type Role } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, ROLES, type Role } from "@/lib/constants";
 
-const ALL = [ROLES.BOS, ROLES.CORE, ROLES.PTG] as const;
-const OFFICE = [ROLES.BOS, ROLES.CORE] as const;
-const BOS = [ROLES.BOS] as const;
+/** Semua peran sistem. Urutannya mengikuti `ROLE_VALUES` supaya matriks bawaan
+ *  dan matriks EFEKTIF (`applyOverrides`) menghasilkan urutan yang sama. */
+const ALL = [
+  ROLES.MANAGING_DIRECTOR,
+  ROLES.FINANCE_MANAGER,
+  ROLES.WAREHOUSE_HEAD,
+  ROLES.ADMINISTRATOR,
+] as const;
+/** Kantor: pekerjaan harian dokumen & kas (Gudang tidak termasuk). */
+const OFFICE = [ROLES.MANAGING_DIRECTOR, ROLES.FINANCE_MANAGER, ROLES.ADMINISTRATOR] as const;
+/** Akses penuh saja — Direktur Utama + Administrator (lihat FULL_ACCESS_ROLES).
+ *  Dulu bernama `BOS`; namanya ikut dibakukan migration 0032. */
+const FULL = FULL_ACCESS_ROLES;
 
 /**
  * Matriks izin → peran BAWAAN (baseline). Menambah fitur = menambah baris di
@@ -53,15 +66,15 @@ export const PERMISSION_ROLES = {
   // di route-nya (peran harus = approverRole yang di-snapshot aturan).
   "approval.view": ALL,
   "approval.decide": ALL,
-  "approval_rule.manage": BOS,
+  "approval_rule.manage": FULL,
 
   // ── Penjualan ────────────────────────────────────────────────────────
   "contract.read": OFFICE,
   "contract.write": OFFICE,
-  "contract.delete": BOS,
+  "contract.delete": FULL,
   "invoice.read": OFFICE,
   "invoice.write": OFFICE,
-  "invoice.delete": BOS,
+  "invoice.delete": FULL,
   "delivery_order.read": OFFICE,
   "delivery_order.write": OFFICE,
   "receivable.read": OFFICE,
@@ -69,23 +82,23 @@ export const PERMISSION_ROLES = {
   "return.write": OFFICE,
   "customer.read": OFFICE,
   "customer.write": OFFICE,
-  "customer.delete": BOS,
+  "customer.delete": FULL,
   "consignee.read": OFFICE,
   "consignee.write": OFFICE,
-  "consignee.delete": BOS,
+  "consignee.delete": FULL,
   "document.read": OFFICE,
   "document.write": OFFICE,
 
   // ── Pembelian ────────────────────────────────────────────────────────
   "supplier.read": OFFICE,
   "supplier.write": OFFICE,
-  "supplier.delete": BOS,
+  "supplier.delete": FULL,
   "payable.read": OFFICE,
   "advance.read": OFFICE,
   "advance.write": OFFICE,
-  "advance.delete": OFFICE, // koreksi kerja harian — sengaja bukan bos-only
+  "advance.delete": OFFICE, // koreksi kerja harian — sengaja bukan akses-penuh-saja
   "purchase.write": OFFICE, // wizard pembelian + transaksi pemasok
-  "purchase.delete": BOS, // hapus transaksi pemasok = hapus master, bos-only
+  "purchase.delete": FULL, // hapus transaksi pemasok = hapus master, akses penuh saja
 
   // ── Kas & Bank ───────────────────────────────────────────────────────
   "cash.read": OFFICE,
@@ -100,29 +113,30 @@ export const PERMISSION_ROLES = {
   "fixed_asset.write": OFFICE,
 
   // ── Laporan & anggaran ───────────────────────────────────────────────
-  "report.read": BOS,
-  "report.export": BOS,
-  "budget.manage": BOS,
-  "tax.read": BOS,
+  "report.read": FULL,
+  "report.export": FULL,
+  "budget.manage": FULL,
+  "tax.read": FULL,
 
   // ── Permukaan akuntansi (berlapis Mode Akuntan di halaman) ──────────
-  // account.read lebih longgar dan itu disengaja: form kas milik core butuh
+  // account.read lebih longgar dan itu disengaja: form kas milik Manajer Keuangan butuh
   // daftar akun untuk pemilih akun lawan (didokumentasikan di route-nya).
   "account.read": OFFICE,
-  "account.manage": BOS,
-  "journal.read": BOS,
-  "journal.write": BOS,
-  "ledger.read": BOS,
+  "account.manage": FULL,
+  "journal.read": FULL,
+  "journal.write": FULL,
+  "ledger.read": FULL,
 
   // ── Administrasi ─────────────────────────────────────────────────────
-  "period.manage": BOS,
-  "setup.manage": BOS,
-  "user.manage": BOS,
-  "audit.read": BOS,
-  "company_setting.manage": BOS,
+  "period.manage": FULL,
+  "setup.manage": FULL,
+  "user.manage": FULL,
+  "audit.read": FULL,
+  "company_setting.manage": FULL,
   // issue #73 — mengubah matriks izin dari UI (/permissions). Anti-lockout:
-  // bos tidak pernah bisa kehilangan izin ini (lihat authz-overrides.ts).
-  "authz.manage": BOS,
+  // peran berakses penuh tidak pernah bisa kehilangan izin ini
+  // (lihat PROTECTED_CELLS di authz-overrides.ts).
+  "authz.manage": FULL,
 
   // ── Halaman bersama ──────────────────────────────────────────────────
   "glossary.read": ALL,

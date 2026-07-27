@@ -4,7 +4,7 @@
  *   npm run create-admin -- --username admin --password 'YourSecurePass123' --name "Administrator"
  */
 import "dotenv/config";
-import { ROLE_VALUES } from "../src/lib/constants";
+import { ROLES, ROLE_VALUES } from "../src/lib/constants";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
@@ -26,7 +26,9 @@ async function main() {
     process.exit(1);
   }
 
-  const { username, password, name, role = "bos" } = parseArgs(process.argv.slice(2));
+  const { username, password, name, role = ROLES.MANAGING_DIRECTOR } = parseArgs(
+    process.argv.slice(2)
+  );
 
   if (!username || !password) {
     console.error("Usage: npm run create-admin -- --username <user> --password <pass> [--name \"Display Name\"] [--role bos|core|ptg]");

@@ -20,11 +20,11 @@ const t = (key: string, values?: Record<string, string | number>) =>
   translate(id, key, values);
 
 const ALL = new Set(
-  visibleWorkflows("bos", undefined).flatMap((w) => w.steps.map((s) => s.permission as string))
+  visibleWorkflows("managing_director", undefined).flatMap((w) => w.steps.map((s) => s.permission as string))
 );
 
 describe("WorkflowGuide", () => {
-  const workflows = visibleWorkflows("bos", ALL);
+  const workflows = visibleWorkflows("managing_director", ALL);
   const html = renderToStaticMarkup(<WorkflowGuide workflows={workflows} t={t} />);
 
   it("tidak merender apa pun bila tak ada alur", () => {
@@ -55,7 +55,7 @@ describe("WorkflowGuide", () => {
     // Tanpa izin membuat kontrak, langkah pertama Penjualan hilang → 'Catat
     // Penjualan' kini jadi langkah 1, bukan 2, dan tag opsional ikut hilang.
     const noContract = new Set([...ALL].filter((p) => p !== "contract.write"));
-    const wf = visibleWorkflows("bos", noContract);
+    const wf = visibleWorkflows("managing_director", noContract);
     const h = renderToStaticMarkup(<WorkflowGuide workflows={wf} t={t} />);
     expect(h).not.toContain('href="/contracts/new"');
     expect(h).toContain('href="/sales/new"');

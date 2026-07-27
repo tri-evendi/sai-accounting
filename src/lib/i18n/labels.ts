@@ -102,12 +102,18 @@ export function monthNames(dictionary: Dictionary | null | undefined): readonly 
 /** Label peran SISTEM. Peran kustom (data, tabel `roles`) tetap ambil label dari DB. */
 export function roleLabels(dictionary: Dictionary | null | undefined): Record<SystemRole, string> {
   if (!dictionary) {
-    return { bos: ROLE_LABELS.bos, core: ROLE_LABELS.core, ptg: ROLE_LABELS.ptg };
+    return {
+      managing_director: ROLE_LABELS.managing_director,
+      finance_manager: ROLE_LABELS.finance_manager,
+      warehouse_head: ROLE_LABELS.warehouse_head,
+      administrator: ROLE_LABELS.administrator,
+    };
   }
   return {
-    bos: dictionary.role.bos,
-    core: dictionary.role.core,
-    ptg: dictionary.role.ptg,
+    managing_director: dictionary.role.managing_director,
+    finance_manager: dictionary.role.finance_manager,
+    warehouse_head: dictionary.role.warehouse_head,
+    administrator: dictionary.role.administrator,
   };
 }
 

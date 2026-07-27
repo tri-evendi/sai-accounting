@@ -2,9 +2,13 @@
  * Kebijakan otorisasi terpusat (audit RBAC fase 1) — keputusan murninya.
  *
  * Yang dijaga: matriks izin↔peran di `lib/authz.ts` mempertahankan kebijakan
- * yang diaudit 2026-07 (bos memegang semua; hapus master = bos-only; ptg =
- * stok + halaman bersama), `can()` deny-by-default, dan enum peran satu
- * sumber tidak menyimpang dari `ROLES`.
+ * yang diaudit 2026-07 (peran berakses penuh memegang semua; hapus master =
+ * akses-penuh-saja; Kepala Gudang = stok + halaman bersama), `can()`
+ * deny-by-default, dan enum peran satu sumber tidak menyimpang dari `ROLES`.
+ *
+ * Sejak migration 0032 peran berakses penuh ada DUA — `managing_director` dan
+ * `administrator` — dan setiap invarian "bos-only" di bawah kini berarti
+ * "persis kedua peran itu, tidak lebih".
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -15,7 +19,7 @@ import {
   rolesFor,
   type Permission,
 } from "@/lib/authz";
-import { ROLES, ROLE_VALUES } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, ROLES, ROLE_VALUES } from "@/lib/constants";
 import { roleEnum } from "@/lib/validations/common";
 
 describe("matriks izin", () => {
@@ -29,24 +33,43 @@ describe("matriks izin", () => {
     }
   });
 
-  it("bos (Pimpinan) memegang SEMUA izin", () => {
+  it("managing_director (Direktur Utama) memegang SEMUA izin", () => {
     for (const permission of PERMISSIONS) {
-      expect(can({ role: "bos" }, permission), permission).toBe(true);
+      expect(can({ role: "managing_director" }, permission), permission).toBe(true);
     }
   });
 
-  it("hapus master data = bos-only; advance.delete pengecualian yang disengaja", () => {
+  it("administrator memegang SEMUA izin — kembar Direktur Utama, tanpa kecuali", () => {
+    // Kalau satu izin saja terlewat, "akses penuh" jadi janji kosong dan
+    // Administrator terkunci dari halaman yang justru harus ia perbaiki.
+    for (const permission of PERMISSIONS) {
+      expect(can({ role: ROLES.ADMINISTRATOR }, permission), permission).toBe(true);
+    }
+  });
+
+  it("kedua peran berakses penuh punya izin yang PERSIS sama", () => {
+    for (const permission of PERMISSIONS) {
+      expect(
+        can({ role: ROLES.ADMINISTRATOR }, permission),
+        `${permission}: administrator ≠ managing_director`
+      ).toBe(can({ role: ROLES.MANAGING_DIRECTOR }, permission));
+    }
+  });
+
+  it("hapus master data = akses-penuh-saja; advance.delete pengecualian yang disengaja", () => {
     const deletePermissions = PERMISSIONS.filter((p) => p.endsWith(".delete"));
     expect(deletePermissions.length).toBeGreaterThanOrEqual(5);
     for (const permission of deletePermissions) {
-      if (permission === "advance.delete") continue; // koreksi kerja harian core
-      expect(rolesFor(permission), permission).toEqual([ROLES.BOS]);
+      if (permission === "advance.delete") continue; // koreksi kerja harian Manajer Keuangan
+      expect(rolesFor(permission), permission).toEqual([...FULL_ACCESS_ROLES]);
     }
-    expect(can({ role: "core" }, "advance.delete")).toBe(true);
+    expect(can({ role: "finance_manager" }, "advance.delete")).toBe(true);
+    // Gudang tetap tidak boleh menghapus apa pun.
+    expect(can({ role: "warehouse_head" }, "advance.delete")).toBe(false);
   });
 
-  it("ptg (Gudang) HANYA stok + halaman bersama — tidak pernah dokumen uang", () => {
-    const ptgPermissions = PERMISSIONS.filter((p) => can({ role: "ptg" }, p));
+  it("warehouse_head (Gudang) HANYA stok + halaman bersama — tidak pernah dokumen uang", () => {
+    const ptgPermissions = PERMISSIONS.filter((p) => can({ role: "warehouse_head" }, p));
     expect(ptgPermissions.sort()).toEqual(
       [
         "approval.view",
@@ -59,7 +82,7 @@ describe("matriks izin", () => {
     );
   });
 
-  it("core tidak menyentuh laporan, anggaran, jurnal, atau administrasi", () => {
+  it("finance_manager tidak menyentuh laporan, anggaran, jurnal, atau administrasi", () => {
     for (const permission of [
       "report.read",
       "budget.manage",
@@ -71,13 +94,13 @@ describe("matriks izin", () => {
       "setup.manage",
       "audit.read",
       // issue #73 — mengubah matriks izin adalah administrasi paling
-      // ber-privilege; bawaannya bos-only.
+      // ber-privilege; bawaannya akses-penuh-saja.
       "authz.manage",
     ] as Permission[]) {
-      expect(can({ role: "core" }, permission), permission).toBe(false);
+      expect(can({ role: "finance_manager" }, permission), permission).toBe(false);
     }
-    // Pengecualian terdokumentasi: form kas core butuh daftar akun.
-    expect(can({ role: "core" }, "account.read")).toBe(true);
+    // Pengecualian terdokumentasi: form kas Manajer Keuangan butuh daftar akun.
+    expect(can({ role: "finance_manager" }, "account.read")).toBe(true);
   });
 
   it("aksi lebih berbahaya tidak pernah lebih longgar: delete ⊆ write ⊆ read", () => {
@@ -99,12 +122,12 @@ describe("matriks izin", () => {
     }
   });
 
-  it("permukaan akuntansi terdaftar dan bos-only", () => {
+  it("permukaan akuntansi terdaftar dan akses-penuh-saja", () => {
     expect(ACCOUNTING_PERMISSIONS.size).toBeGreaterThanOrEqual(4);
     for (const permission of ACCOUNTING_PERMISSIONS) {
       expect(PERMISSIONS).toContain(permission);
-      // Lapisan Mode Akuntan hanya masuk akal di atas izin bos-only.
-      expect(rolesFor(permission), permission).toEqual([ROLES.BOS]);
+      // Lapisan Mode Akuntan hanya masuk akal di atas izin akses-penuh-saja.
+      expect(rolesFor(permission), permission).toEqual([...FULL_ACCESS_ROLES]);
     }
   });
 });
@@ -115,7 +138,8 @@ describe("can() — deny by default", () => {
     expect(can(undefined, "inventory.read")).toBe(false);
     expect(can({ role: null }, "inventory.read")).toBe(false);
     expect(can({ role: "" }, "inventory.read")).toBe(false);
-    expect(can({ role: "boss" }, "inventory.read")).toBe(false); // salah ketik ≠ bos
+    expect(can({ role: "director" }, "inventory.read")).toBe(false); // salah ketik ≠ peran
+    expect(can({ role: "admin" }, "inventory.read")).toBe(false); // ≠ administrator
     expect(can({ role: "tamu" }, "glossary.read")).toBe(false);
   });
 
@@ -141,5 +165,15 @@ describe("enum peran satu sumber", () => {
     }
     expect(roleEnum.safeParse("admin").success).toBe(false);
     expect(roleEnum.safeParse("boss").success).toBe(false);
+    // Kunci peran LAMA (sebelum migration 0032) tidak boleh hidup kembali.
+    for (const legacy of ["bos", "core", "ptg"]) {
+      expect(roleEnum.safeParse(legacy).success, legacy).toBe(false);
+      expect(can({ role: legacy }, "inventory.read"), legacy).toBe(false);
+    }
+  });
+
+  it("FULL_ACCESS_ROLES = Direktur Utama + Administrator, keduanya peran sistem", () => {
+    expect([...FULL_ACCESS_ROLES]).toEqual([ROLES.MANAGING_DIRECTOR, ROLES.ADMINISTRATOR]);
+    for (const role of FULL_ACCESS_ROLES) expect(ROLE_VALUES).toContain(role);
   });
 });

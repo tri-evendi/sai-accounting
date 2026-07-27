@@ -1,10 +1,12 @@
 /**
- * Manajemen pengguna — hanya `bos` (issue #59: penjaga sisi-server).
+ * Manajemen pengguna — hanya peran berakses penuh (issue #59: penjaga
+ * sisi-server).
  *
  * Halaman ini adalah pembungkus server tipis yang menegakkan peran SEBELUM
  * komponen client dirender, konsisten dengan halaman lain (mis. approvals).
  * API `/api/users*` tetap menegakkan peran juga (pertahanan berlapis); ini
- * memastikan pengguna non-`bos` tidak sempat melihat halamannya sama sekali.
+ * memastikan pengguna tanpa `user.manage` tidak sempat melihat halamannya
+ * sama sekali.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import { getActiveRoles } from "@/lib/roles";

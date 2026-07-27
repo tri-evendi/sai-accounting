@@ -3014,6 +3014,7 @@
     "stepTitle": "Modul Usaha",
     "stepHeading": "Pilih kategori usaha",
     "stepHint": "Kategori hanya mengisi nilai awal. Tiap modul tetap bisa dinyalakan atau dimatikan satu per satu, sekarang maupun nanti di Pengaturan.",
+    "stepReversible": "Pilihan ini tidak permanen. Modul bisa diubah kapan saja di Pengaturan — nyalakan seperlunya sekarang, tambahkan lagi kalau nanti dibutuhkan.",
     "name": {
       "core_accounting": "Akuntansi Inti",
       "sales": "Penjualan",

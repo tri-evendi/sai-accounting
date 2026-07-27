@@ -3014,6 +3014,7 @@
     "stepTitle": "Business Modules",
     "stepHeading": "Choose your business category",
     "stepHint": "The category only fills in the starting values. Every module can still be switched on or off one by one, now or later under Settings.",
+    "stepReversible": "This choice is not permanent. Modules can be changed at any time in Settings — switch on what you need now and add more later.",
     "name": {
       "core_accounting": "Core Accounting",
       "sales": "Sales",

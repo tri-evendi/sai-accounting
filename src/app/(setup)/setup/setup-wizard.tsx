@@ -21,7 +21,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { Loader2, Info, Plus, Trash2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Info,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  RotateCcw,
+} from "lucide-react";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { ModulePicker } from "@/components/settings/module-picker";
 import {
@@ -345,6 +354,25 @@ export function SetupWizard({
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("modules.stepHeading")}</h2>
             <p className="text-sm text-muted-foreground">{t("modules.stepHint")}</p>
+            {/*
+             * "Ini bisa diubah lagi" — kalimat terpenting di seluruh langkah ini
+             * (issue #103 · UX Onboarding · User Freedom).
+             *
+             * Wizard ini WAJIB dan tidak bisa dilewati, jadi langkah modul mudah
+             * terbaca sebagai pintu satu arah. Pengguna yang mengira begitu akan
+             * menyalakan semuanya untuk berjaga-jaga — dan seluruh guna fitur ini
+             * (menyusutkan permukaan aplikasi) hilang tepat pada satu-satunya
+             * kesempatan ia dipakai.
+             *
+             * Sengaja kotak bertanda, bukan tambahan kalimat pada `stepHint` yang
+             * abu-abu kecil di atasnya: yang perlu diyakinkan justru orang yang
+             * sedang ragu-ragu memandangi daftar centang, dan teks samar tidak
+             * meyakinkan siapa pun.
+             */}
+            <p className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
+              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>{t("modules.stepReversible")}</span>
+            </p>
             <ModulePicker
               category={category}
               modules={modules}

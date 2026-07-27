@@ -11,6 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { assertPeriodOpen } from "@/lib/period";
+import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 
 export interface JournalLineInput {
   accountId: number;
@@ -207,27 +208,36 @@ export interface AccountLedger {
 }
 
 /**
- * Mutations + running balance for one account over an optional date range.
+ * Mutations + running balance for one account over an optional date range, and
+ * — since issue #91 — optionally for a single cost centre.
  * Running balance follows the account's normal balance:
  *   debit-normal  → balance += (debit - credit)
  *   credit-normal → balance += (credit - debit)
  * Efficient: 1 aggregate (opening) + 1 findMany (range).
+ *
+ * THE OPENING BALANCE TAKES THE SAME FILTER, and that is not a detail: an
+ * opening computed over every cost centre while the rows beneath it were
+ * computed over one would make each slice's closing balance wrong AND stop the
+ * slices summing to the whole — the one failure this dimension must never have.
+ * Both reads therefore share `cc`.
  */
 export async function getAccountLedger(
   accountId: number,
   from?: Date,
   to?: Date,
-  client = prisma
+  client = prisma,
+  costCenter?: CostCenterFilter
 ): Promise<AccountLedger | null> {
   const account = await client.account.findUnique({ where: { id: accountId } });
   if (!account) return null;
 
   const sign = account.normalBalance === "credit" ? -1 : 1;
+  const cc = costCenterLineWhere(costCenter);
 
   const opening = from
     ? await client.journalLine.aggregate({
         _sum: { baseDebit: true, baseCredit: true },
-        where: { accountId, journal: { date: { lt: from } } },
+        where: { accountId, ...cc, journal: { date: { lt: from } } },
       })
     : null;
   let balance =
@@ -241,6 +251,7 @@ export async function getAccountLedger(
   const lines = await client.journalLine.findMany({
     where: {
       accountId,
+      ...cc,
       ...(from || to ? { journal: { date: dateFilter } } : {}),
     },
     include: { journal: true },

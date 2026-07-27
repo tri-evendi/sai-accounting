@@ -291,6 +291,12 @@ export interface FakeSeedLine {
   currency?: string;
   rate?: number;
   memo?: string | null;
+  /**
+   * Dimensi pusat biaya (issue #91). Dibiarkan kosong ⇒ `null` = "belum
+   * ditetapkan" — keadaan SELURUH data lama, jadi seed yang sudah ada tetap
+   * berperilaku persis seperti sebelumnya.
+   */
+  costCenterId?: number | null;
 }
 
 export interface FakeSeedJournal {
@@ -312,6 +318,7 @@ interface ResolvedLine {
   baseDebit: number;
   baseCredit: number;
   memo: string | null;
+  costCenterId: number | null;
   journal: { id: number; number: string; date: Date; note: string | null };
 }
 
@@ -329,6 +336,13 @@ function dateMatches(date: Date, filter: { gte?: Date; lte?: Date; lt?: Date } |
 
 type LineWhere = {
   accountId?: number;
+  /**
+   * Issue #91. Tiga keadaan, dan bedanya penting: kunci TIDAK ADA = tanpa
+   * penyaring, `null` = hanya baris yang belum ditetapkan, angka = satu pusat
+   * biaya. Menyamakan `null` dengan "tanpa penyaring" akan membuat penjaga
+   * rekonsiliasi lulus padahal salah.
+   */
+  costCenterId?: number | null;
   journal?: { date?: { gte?: Date; lte?: Date; lt?: Date } };
 };
 
@@ -368,6 +382,7 @@ export function createFakeReportClient(seed: {
         baseDebit: round2(debit * rate),
         baseCredit: round2(credit * rate),
         memo: l.memo ?? null,
+        costCenterId: l.costCenterId ?? null,
         journal,
       });
     }
@@ -377,6 +392,9 @@ export function createFakeReportClient(seed: {
     lines.filter(
       (l) =>
         (where?.accountId === undefined || l.accountId === where.accountId) &&
+        // `in` (bukan `!== undefined`): `costCenterId: null` adalah penyaring
+        // yang SAH ("belum ditetapkan"), bukan ketiadaan penyaring.
+        (!where || !("costCenterId" in where) || l.costCenterId === where.costCenterId) &&
         dateMatches(l.journal.date, where?.journal?.date)
     );
 

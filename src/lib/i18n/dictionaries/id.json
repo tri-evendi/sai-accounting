@@ -2051,12 +2051,15 @@
     "reflectedAfter": "per {date}.",
     "wizardTitle": "Setup Perusahaan & Saldo Awal",
     "wizardDescription": "Siapkan buku dari posisi yang benar. Langkah ini hanya dijalankan sekali.",
+    "shellSubtitle": "Penyiapan awal perusahaan",
+    "backToApp": "Kembali ke Beranda",
     "stepsAria": "Langkah setup",
-    "step1": "Identitas",
-    "step2": "Mata Uang & Tahun Buku",
-    "step3": "Bagan Akun",
-    "step4": "Saldo Awal",
-    "step5": "Tinjau",
+    "stepCounter": "Langkah {current} dari {total}",
+    "stepIdentity": "Identitas",
+    "stepCurrency": "Mata Uang & Tahun Buku",
+    "stepCoa": "Bagan Akun",
+    "stepBalances": "Saldo Awal",
+    "stepReview": "Tinjau",
     "nameField": "Nama perusahaan",
     "npwpField": "NPWP (untuk e-Faktur)",
     "npwpPlaceholder": "Opsional — bisa diisi nanti",
@@ -2828,7 +2831,7 @@
       },
       "s2": {
         "title": "Aksi Cepat",
-        "body": "Enam pekerjaan tersering ada di sini — catat penjualan, catat pembelian, terima uang, bayar, tambah stok, buat kontrak. Satu klik langsung ke formulirnya."
+        "body": "Pekerjaan yang paling sering Anda lakukan ada di sini — mencatat penjualan, menerima uang, dan seterusnya. Yang tampil hanya yang boleh Anda kerjakan dan yang dipakai perusahaan ini, jadi daftarnya bisa berbeda antar pengguna. Satu klik langsung ke formulirnya."
       },
       "s3": {
         "title": "Ringkasan bahasa sehari-hari",
@@ -2836,7 +2839,7 @@
       },
       "s4": {
         "title": "Menu per jenis pekerjaan",
-        "body": "Menu kiri dikelompokkan menurut pekerjaan: Penjualan, Pembelian, Kas & Bank, Stok & Aset, Laporan, Bantuan & Pengaturan."
+        "body": "Menu kiri dikelompokkan menurut pekerjaan — penjualan, pembelian, kas & bank, laporan, dan seterusnya. Kelompok untuk fitur yang tidak dipakai perusahaan ini tidak ditampilkan, jadi menu Anda mungkin lebih pendek daripada milik orang lain."
       },
       "s5": {
         "title": "Bantuan & Kamus Istilah",
@@ -2997,6 +3000,8 @@
     "coreLocked": "Selalu aktif",
     "categoryLabel": "Kategori usaha",
     "categoryHint": "Kategori hanya mengisi nilai awal; tiap modul tetap bisa diubah satu per satu.",
+    "categoryTurnsOn": "Menyalakan",
+    "categoryTurnsOff": "Mematikan",
     "modulesLabel": "Modul yang aktif",
     "ledgerNote": "Mematikan modul tidak menghapus data apa pun. Jurnal, saldo, dan laporan lama tetap utuh; yang berhenti hanyalah menu dan pembuatan transaksi baru.",
     "saved": "Modul usaha disimpan.",
@@ -3009,9 +3014,13 @@
     "inactiveTitle": "Fitur ini belum aktif",
     "inactiveBody": "Halaman ini milik modul {module}, dan modul itu belum aktif untuk perusahaan Anda. Tidak ada data yang hilang: Direktur Utama atau Administrator bisa menyalakannya lagi di halaman Pengaturan.",
     "inactiveBack": "Kembali ke Beranda",
+    "inactiveSummary": "{count} modul sedang tidak aktif: {list}. Fiturnya tidak hilang — hanya dimatikan untuk perusahaan ini, dan data lamanya tetap utuh.",
+    "inactiveSummaryManage": "Kelola modul usaha",
+    "inactiveSummaryAsk": "Direktur Utama atau Administrator bisa menyalakannya lagi.",
     "stepTitle": "Modul Usaha",
     "stepHeading": "Pilih kategori usaha",
     "stepHint": "Kategori hanya mengisi nilai awal. Tiap modul tetap bisa dinyalakan atau dimatikan satu per satu, sekarang maupun nanti di Pengaturan.",
+    "stepReversible": "Pilihan ini tidak permanen. Modul bisa diubah kapan saja di Pengaturan — nyalakan seperlunya sekarang, tambahkan lagi kalau nanti dibutuhkan.",
     "name": {
       "core_accounting": "Akuntansi Inti",
       "sales": "Penjualan",
@@ -3035,6 +3044,18 @@
       "approvals": "Antrean persetujuan dan aturan ambangnya.",
       "tax_id": "Ekspor e-Faktur untuk pelaporan pajak.",
       "documents": "Arsip dokumen ekspor seperti B/L, COO, dan fumigasi."
+    },
+    "task": {
+      "core_accounting": "jurnal, buku besar, laporan, pengguna",
+      "sales": "tagihan penjualan & pelanggan",
+      "purchasing": "tagihan pembelian, pemasok & uang muka",
+      "trading": "kontrak berjangka, surat jalan, penerima barang, retur",
+      "inventory": "stok barang",
+      "cash_bank": "buku kas & bank",
+      "fixed_assets": "aset tetap & penyusutan",
+      "approvals": "antrean persetujuan",
+      "tax_id": "ekspor e-Faktur",
+      "documents": "arsip dokumen ekspor (B/L, COO)"
     },
     "category": {
       "commodity_trading": "Perdagangan Komoditas / Ekspor",

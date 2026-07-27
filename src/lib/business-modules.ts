@@ -173,39 +173,56 @@ export const isCoreModule = (module: BusinessModule): boolean => module === CORE
 export interface BusinessModuleMeta {
   labelKey: DictionaryKey;
   descriptionKey: DictionaryKey;
+  /**
+   * Frasa TUGAS yang sangat pendek — "kontrak berjangka, surat jalan, penerima
+   * barang", bukan nama modulnya (issue #103). Dipakai kartu preset kategori
+   * untuk menyebut apa yang dinyalakan DAN dimatikan sebuah pilihan, dalam
+   * bahasa pekerjaan seperti yang dituntut MASTER.md. Terpisah dari
+   * `descriptionKey` karena panjangnya beda peran: deskripsi menjelaskan satu
+   * modul, frasa ini harus bisa dirangkai bersama delapan lainnya dalam satu
+   * kalimat yang masih terbaca.
+   */
+  taskKey: DictionaryKey;
 }
 
 export const MODULE_META: Record<BusinessModule, BusinessModuleMeta> = {
   core_accounting: {
     labelKey: "modules.name.core_accounting",
     descriptionKey: "modules.description.core_accounting",
+    taskKey: "modules.task.core_accounting",
   },
-  sales: { labelKey: "modules.name.sales", descriptionKey: "modules.description.sales" },
+  sales: { labelKey: "modules.name.sales", descriptionKey: "modules.description.sales", taskKey: "modules.task.sales" },
   purchasing: {
     labelKey: "modules.name.purchasing",
     descriptionKey: "modules.description.purchasing",
+    taskKey: "modules.task.purchasing",
   },
-  trading: { labelKey: "modules.name.trading", descriptionKey: "modules.description.trading" },
+  trading: { labelKey: "modules.name.trading", descriptionKey: "modules.description.trading", taskKey: "modules.task.trading" },
   inventory: {
     labelKey: "modules.name.inventory",
     descriptionKey: "modules.description.inventory",
+    taskKey: "modules.task.inventory",
   },
   cash_bank: {
     labelKey: "modules.name.cash_bank",
     descriptionKey: "modules.description.cash_bank",
+    taskKey: "modules.task.cash_bank",
   },
   fixed_assets: {
     labelKey: "modules.name.fixed_assets",
     descriptionKey: "modules.description.fixed_assets",
+    taskKey: "modules.task.fixed_assets",
   },
   approvals: {
     labelKey: "modules.name.approvals",
     descriptionKey: "modules.description.approvals",
+    taskKey: "modules.task.approvals",
   },
-  tax_id: { labelKey: "modules.name.tax_id", descriptionKey: "modules.description.tax_id" },
+  tax_id: { labelKey: "modules.name.tax_id", descriptionKey: "modules.description.tax_id", taskKey: "modules.task.tax_id" },
   documents: {
     labelKey: "modules.name.documents",
     descriptionKey: "modules.description.documents",
+    taskKey: "modules.task.documents",
   },
 };
 

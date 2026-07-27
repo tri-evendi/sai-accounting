@@ -29,7 +29,7 @@ const ALLOWED = new Map<string, string>([
   ["lib/company-identity-client.tsx", "mendefinisikan nilai cadangan sisi client"],
   ["lib/constants.ts", "tempat konstanta itu sendiri"],
   ["app/api/setup/route.ts", "nilai awal yang mengisi form wizard setup"],
-  ["app/(dashboard)/setup/page.tsx", "nilai awal yang mengisi form wizard setup"],
+  ["app/(setup)/setup/page.tsx", "nilai awal yang mengisi form wizard setup"],
 ]);
 
 function sourceFiles(dir: string): string[] {

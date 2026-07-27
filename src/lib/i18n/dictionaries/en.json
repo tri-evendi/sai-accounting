@@ -2051,12 +2051,15 @@
     "reflectedAfter": "as of {date}.",
     "wizardTitle": "Company Setup & Opening Balances",
     "wizardDescription": "Start the books from the right position. This step runs only once.",
+    "shellSubtitle": "First-time company setup",
+    "backToApp": "Back to Home",
     "stepsAria": "Setup steps",
-    "step1": "Identity",
-    "step2": "Currency & Fiscal Year",
-    "step3": "Chart of Accounts",
-    "step4": "Opening Balances",
-    "step5": "Review",
+    "stepCounter": "Step {current} of {total}",
+    "stepIdentity": "Identity",
+    "stepCurrency": "Currency & Fiscal Year",
+    "stepCoa": "Chart of Accounts",
+    "stepBalances": "Opening Balances",
+    "stepReview": "Review",
     "nameField": "Company name",
     "npwpField": "NPWP tax number (for e-Faktur)",
     "npwpPlaceholder": "Optional — can be filled in later",
@@ -2828,7 +2831,7 @@
       },
       "s2": {
         "title": "Quick Actions",
-        "body": "The six most frequent jobs live here — record a sale, record a purchase, receive money, pay, add stock, create a contract. One click straight to the form."
+        "body": "The jobs you do most often live here — record a sale, receive money, and so on. Only what you are allowed to do and what this company actually uses is shown, so the list differs between users. One click straight to the form."
       },
       "s3": {
         "title": "Plain-language summary",
@@ -2836,7 +2839,7 @@
       },
       "s4": {
         "title": "A menu per kind of work",
-        "body": "The left-hand menu is grouped by job: Sales, Purchasing, Cash & Bank, Stock & Assets, Reports, Help & Settings."
+        "body": "The left-hand menu is grouped by job — sales, purchasing, cash & bank, reports, and so on. Groups for features this company does not use are simply not shown, so your menu may be shorter than someone else's."
       },
       "s5": {
         "title": "Help & Glossary",
@@ -2997,6 +3000,8 @@
     "coreLocked": "Always on",
     "categoryLabel": "Business category",
     "categoryHint": "The category only fills in the starting values; every module can still be changed one by one.",
+    "categoryTurnsOn": "Turns on",
+    "categoryTurnsOff": "Turns off",
     "modulesLabel": "Active modules",
     "ledgerNote": "Turning a module off deletes nothing. Existing journals, balances, and reports stay intact; only the menu and new transactions stop.",
     "saved": "Business modules saved.",
@@ -3009,9 +3014,13 @@
     "inactiveTitle": "This feature is not active yet",
     "inactiveBody": "This page belongs to the {module} module, which is not active for your company. Nothing is lost: a Managing Director or Administrator can switch it back on from the Settings page.",
     "inactiveBack": "Back to Home",
+    "inactiveSummary": "{count} module(s) are currently inactive: {list}. The features are not gone — they are simply switched off for this company, and the old data stays intact.",
+    "inactiveSummaryManage": "Manage business modules",
+    "inactiveSummaryAsk": "A Managing Director or Administrator can switch them back on.",
     "stepTitle": "Business Modules",
     "stepHeading": "Choose your business category",
     "stepHint": "The category only fills in the starting values. Every module can still be switched on or off one by one, now or later under Settings.",
+    "stepReversible": "This choice is not permanent. Modules can be changed at any time in Settings — switch on what you need now and add more later.",
     "name": {
       "core_accounting": "Core Accounting",
       "sales": "Sales",
@@ -3035,6 +3044,18 @@
       "approvals": "The approval queue and its threshold rules.",
       "tax_id": "The e-Faktur export for Indonesian tax reporting.",
       "documents": "The archive of export documents such as B/L, COO, and fumigation."
+    },
+    "task": {
+      "core_accounting": "journals, ledger, reports, users",
+      "sales": "sales invoices & customers",
+      "purchasing": "purchase bills, suppliers & advances",
+      "trading": "forward contracts, delivery orders, consignees, returns",
+      "inventory": "stock levels",
+      "cash_bank": "cash & bank book",
+      "fixed_assets": "fixed assets & depreciation",
+      "approvals": "approval queue",
+      "tax_id": "e-Faktur export",
+      "documents": "export document archive (B/L, COO)"
     },
     "category": {
       "commodity_trading": "Commodity Trading / Export",

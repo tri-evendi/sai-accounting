@@ -2051,12 +2051,15 @@
     "reflectedAfter": "（截至 {date}）。",
     "wizardTitle": "公司初始设置与期初余额",
     "wizardDescription": "从正确的起点建立账簿。此步骤只执行一次。",
+    "shellSubtitle": "公司首次设置",
+    "backToApp": "返回首页",
     "stepsAria": "设置步骤",
-    "step1": "公司信息",
-    "step2": "币种与会计年度",
-    "step3": "会计科目表",
-    "step4": "期初余额",
-    "step5": "复核",
+    "stepCounter": "第 {current} 步，共 {total} 步",
+    "stepIdentity": "公司信息",
+    "stepCurrency": "币种与会计年度",
+    "stepCoa": "会计科目表",
+    "stepBalances": "期初余额",
+    "stepReview": "复核",
     "nameField": "公司名称",
     "npwpField": "税号 NPWP（用于电子发票）",
     "npwpPlaceholder": "选填——可稍后补充",
@@ -2828,7 +2831,7 @@
       },
       "s2": {
         "title": "快捷操作",
-        "body": "六项最常用的工作都在这里——录入销售、录入采购、收款、付款、增加库存、新建合同。一键直达对应表单。"
+        "body": "您最常做的工作都在这里——录入销售、收款等等。只显示您有权限执行、且本公司实际启用的项目，因此每位用户看到的列表可能不同。一键直达对应表单。"
       },
       "s3": {
         "title": "日常用语摘要",
@@ -2836,7 +2839,7 @@
       },
       "s4": {
         "title": "按工作类型分组的菜单",
-        "body": "左侧菜单按工作分组：销售、采购、现金与银行、库存与资产、报表、帮助与设置。"
+        "body": "左侧菜单按工作分组——销售、采购、现金与银行、报表等等。本公司未启用的功能分组不会显示，因此您的菜单可能比别人短。"
       },
       "s5": {
         "title": "帮助与术语表",
@@ -2997,6 +3000,8 @@
     "coreLocked": "始终启用",
     "categoryLabel": "业务类别",
     "categoryHint": "类别只是填入初始值；每个模块之后仍可逐个调整。",
+    "categoryTurnsOn": "开启",
+    "categoryTurnsOff": "关闭",
     "modulesLabel": "已启用的模块",
     "ledgerNote": "关闭模块不会删除任何数据。既有的凭证、余额与报表完全保留；停止的只是菜单和新交易的录入。",
     "saved": "业务模块已保存。",
@@ -3009,9 +3014,13 @@
     "inactiveTitle": "此功能尚未启用",
     "inactiveBody": "本页面属于{module}模块，而该模块尚未对贵公司启用。数据不会丢失：董事总经理或系统管理员可在“设置”页面重新开启。",
     "inactiveBack": "返回首页",
+    "inactiveSummary": "当前有 {count} 个模块未启用：{list}。功能并未消失——只是为本公司关闭了，原有数据仍然完整。",
+    "inactiveSummaryManage": "管理业务模块",
+    "inactiveSummaryAsk": "董事总经理或管理员可以重新启用。",
     "stepTitle": "业务模块",
     "stepHeading": "请选择业务类别",
     "stepHint": "类别只是填入初始值。每个模块现在或以后都可以在“设置”中逐个开启或关闭。",
+    "stepReversible": "此选择并非永久。模块随时可在“设置”中更改——现在只开启需要的，日后需要时再添加。",
     "name": {
       "core_accounting": "核心会计",
       "sales": "销售",
@@ -3035,6 +3044,18 @@
       "approvals": "审批队列及其金额门槛规则。",
       "tax_id": "用于印尼税务申报的 e-Faktur 导出。",
       "documents": "提单、原产地证、熏蒸证等出口单证归档。"
+    },
+    "task": {
+      "core_accounting": "日记账、总账、报表、用户",
+      "sales": "销售发票与客户",
+      "purchasing": "采购账单、供应商与预付款",
+      "trading": "远期合同、送货单、收货人、退货",
+      "inventory": "库存",
+      "cash_bank": "现金与银行账簿",
+      "fixed_assets": "固定资产与折旧",
+      "approvals": "审批队列",
+      "tax_id": "e-Faktur 导出",
+      "documents": "出口单证档案（提单、原产地证）"
     },
     "category": {
       "commodity_trading": "大宗商品贸易 / 出口",

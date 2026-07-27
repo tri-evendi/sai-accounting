@@ -21,7 +21,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { Loader2, Info, Plus, Trash2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Info,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  RotateCcw,
+} from "lucide-react";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { ModulePicker } from "@/components/settings/module-picker";
 import {
@@ -87,15 +96,21 @@ export function SetupWizard({
    * baru di tengah). Angka yang tersebar di JSX membuat penyisipan berikutnya
    * jadi latihan menggeser indeks — dan satu indeks yang lupa digeser adalah
    * langkah yang hilang tanpa galat.
+   *
+   * Kunci kamusnya ikut bernama, bukan bernomor (issue #103). `setup.step1`–
+   * `step5` sudah bohong sejak langkah modul disisipkan di posisi kedua:
+   * "step2" adalah langkah KETIGA di layar. Nomor pada nama kunci hanya benar
+   * selama tak ada yang menyisipkan langkah — dan itu sudah terjadi sekali.
+   * Jumlah langkah kini dihitung dari `steps.length`, bukan diketik ulang.
    */
   const STEP_KEYS = ["identity", "modules", "settings", "coa", "balances", "review"] as const;
   const steps = [
-    t("setup.step1"),
+    t("setup.stepIdentity"),
     t("modules.stepTitle"),
-    t("setup.step2"),
-    t("setup.step3"),
-    t("setup.step4"),
-    t("setup.step5"),
+    t("setup.stepCurrency"),
+    t("setup.stepCoa"),
+    t("setup.stepBalances"),
+    t("setup.stepReview"),
   ];
 
   const [step, setStep] = useState(0);
@@ -278,11 +293,28 @@ export function SetupWizard({
 
   return (
     <div className="space-y-6">
-      {/* Stepper */}
+      {/*
+       * Stepper + hitungan "Langkah X dari Y" (issue #103 · Progress
+       * Indicators). Hitungannya DITURUNKAN dari `steps`, tidak pernah diketik:
+       * langkah modul yang disisipkan #99 membuat wizard ini enam langkah
+       * sementara kamusnya masih bernomor sampai lima, dan angka yang diketik
+       * ulang cepat atau lambat akan berbohong lagi.
+       *
+       * Kalimatnya berdiri sendiri di atas deretan pil, bukan mengandalkan
+       * pil-pilnya saja: pada layar sempit deretan itu membungkus jadi dua-tiga
+       * baris, dan "seberapa jauh lagi" — satu-satunya pertanyaan pengguna di
+       * layar wajib — jadi harus dihitung sendiri dengan mata.
+       */}
+      <p className="text-sm font-medium text-muted-foreground">
+        <span className="tabular-nums">
+          {t("setup.stepCounter", { current: step + 1, total: steps.length })}
+        </span>
+      </p>
       <ol className="flex flex-wrap gap-2 text-sm" aria-label={t("setup.stepsAria")}>
         {steps.map((label, i) => (
           <li
             key={label}
+            aria-current={i === step ? "step" : undefined}
             className={
               "flex items-center gap-2 rounded-md px-3 py-1.5 " +
               (i === step
@@ -345,6 +377,25 @@ export function SetupWizard({
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("modules.stepHeading")}</h2>
             <p className="text-sm text-muted-foreground">{t("modules.stepHint")}</p>
+            {/*
+             * "Ini bisa diubah lagi" — kalimat terpenting di seluruh langkah ini
+             * (issue #103 · UX Onboarding · User Freedom).
+             *
+             * Wizard ini WAJIB dan tidak bisa dilewati, jadi langkah modul mudah
+             * terbaca sebagai pintu satu arah. Pengguna yang mengira begitu akan
+             * menyalakan semuanya untuk berjaga-jaga — dan seluruh guna fitur ini
+             * (menyusutkan permukaan aplikasi) hilang tepat pada satu-satunya
+             * kesempatan ia dipakai.
+             *
+             * Sengaja kotak bertanda, bukan tambahan kalimat pada `stepHint` yang
+             * abu-abu kecil di atasnya: yang perlu diyakinkan justru orang yang
+             * sedang ragu-ragu memandangi daftar centang, dan teks samar tidak
+             * meyakinkan siapa pun.
+             */}
+            <p className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
+              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>{t("modules.stepReversible")}</span>
+            </p>
             <ModulePicker
               category={category}
               modules={modules}
@@ -368,7 +419,7 @@ export function SetupWizard({
         {/* Step 1 — base currency + fiscal year */}
         {current === "settings" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.step2")}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepCurrency")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
                 id="baseCurrency"
@@ -415,7 +466,7 @@ export function SetupWizard({
         {/* Step 3 — opening balances */}
         {current === "balances" && (
           <div className="space-y-8">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.step4")}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepBalances")}</h2>
 
             {/* Kas / Bank */}
             <Section

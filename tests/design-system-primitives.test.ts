@@ -35,7 +35,14 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const SRC_DIR = join(__dirname, "..", "src");
-const ROOTS = [join(SRC_DIR, "app", "(dashboard)"), join(SRC_DIR, "components")];
+// `(setup)` ikut sejak issue #103: wizard penyiapan pindah ke grup rutenya
+// sendiri demi kerangka fokus, dan pindah grup rute tidak boleh berarti pindah
+// keluar dari aturan primitif.
+const ROOTS = [
+  join(SRC_DIR, "app", "(dashboard)"),
+  join(SRC_DIR, "app", "(setup)"),
+  join(SRC_DIR, "components"),
+];
 /** Rumah para primitif — satu-satunya tempat markup mentah memang benar. */
 const PRIMITIVES_DIR = join(SRC_DIR, "components", "ui");
 

@@ -2564,7 +2564,8 @@
     "colUser": "User",
     "colAction": "Action",
     "colDetails": "Details",
-    "colIp": "IP"
+    "colIp": "IP",
+    "overrodeApprover": "Overrode approver {role}"
   },
   "auditAction": {
     "finance_create": "Cash & bank transaction",

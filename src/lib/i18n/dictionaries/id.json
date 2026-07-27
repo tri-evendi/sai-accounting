@@ -2564,7 +2564,8 @@
     "colUser": "Pengguna",
     "colAction": "Tindakan",
     "colDetails": "Rincian",
-    "colIp": "IP"
+    "colIp": "IP",
+    "overrodeApprover": "Menimpa penyetuju {role}"
   },
   "auditAction": {
     "finance_create": "Transaksi kas & bank",

@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { isFullAccessRole } from "@/lib/constants";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource, type PostingSourceType } from "@/lib/posting";
@@ -64,7 +65,31 @@ export async function POST(
     return NextResponse.json({ error: "Pengajuan tidak ditemukan." }, { status: 404 });
   }
 
-  if (result.session.user.role !== existing.approverRole) {
+  /*
+   * Biasanya keputusan hanya boleh diambil oleh peran yang TERTULIS di
+   * pengajuan — `approverRole` disalin saat pengajuan dibuat, jadi dokumen
+   * lama tetap menunjuk penyetuju yang sama meski aturannya berubah. Ini
+   * sengaja lebih sempit daripada matriks izin: ia menyatakan *kepada siapa*
+   * dokumen ini dieskalasikan, bukan sekadar siapa yang berwenang.
+   *
+   * PENGECUALIAN — peran berakses penuh boleh memutuskan pengajuan mana pun.
+   * Diminta pemilik sistem: tanpa ini, pengajuan bisa menggantung selamanya
+   * saat penyetuju yang dituju sedang tidak ada (cuti, keluar, akunnya
+   * nonaktif) dan tidak seorang pun bisa menuntaskannya.
+   *
+   * Berlaku untuk KEDUA peran berakses penuh, bukan administrator saja —
+   * `managing_director` dan `administrator` memang dirancang setara (lihat
+   * FULL_ACCESS_ROLES). Memberi kuasa ini hanya kepada administrator justru
+   * akan membuatnya lebih berkuasa daripada Direktur Utama.
+   *
+   * Harganya: pemisahan tugas ditukar dengan kelangsungan proses. Karena itu
+   * penggunaannya WAJIB terbaca di jejak audit — lihat `overrodeApproverRole`
+   * di bawah. Kalau kuasa ini dipakai, catatannya harus menunjukkan bahwa
+   * keputusan diambil oleh orang yang bukan tujuan eskalasi.
+   */
+  const isOverride = result.session.user.role !== existing.approverRole;
+
+  if (isOverride && !isFullAccessRole(result.session.user.role)) {
     return NextResponse.json(
       {
         error: `Pengajuan ini hanya bisa diputuskan oleh peran "${existing.approverRole}".`,
@@ -150,6 +175,16 @@ export async function POST(
       currency: updated.currency,
       requestedById: updated.requestedById,
       note: note ?? null,
+      /*
+       * Jejak pemakaian kuasa lintas-peran. `null` = keputusan normal (diambil
+       * oleh peran yang memang dituju). Berisi nama peran tujuan = keputusan
+       * diambil peran berakses penuh yang MENIMPA tujuan eskalasinya.
+       *
+       * Ini satu-satunya kendali yang tersisa setelah pemisahan tugas
+       * ditukar dengan kelangsungan proses: kuasanya boleh dipakai, tapi tidak
+       * boleh tak terlihat.
+       */
+      overrodeApproverRole: isOverride ? existing.approverRole : null,
       // Whether the decision actually released a journal — null on a rejection,
       // and also null when the document has nothing to post (cancelled, zero).
       journalId,

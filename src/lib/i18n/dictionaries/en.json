@@ -189,6 +189,12 @@
   "navbar": {
     "openMenu": "Open menu"
   },
+  "commandPalette": {
+    "title": "Find a page",
+    "placeholder": "Type a page name…",
+    "empty": "No matching pages.",
+    "mainGroup": "Main"
+  },
   "accountantMode": {
     "label": "Accountant Mode",
     "on": "ON",

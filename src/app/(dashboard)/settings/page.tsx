@@ -18,5 +18,11 @@ export default async function SettingsPage() {
   // dan diturunkan sebagai boolean; komponen client tidak lagi membaca matriks
   // bawaan dari bundle. API audit tetap ber-gate `audit.read` (pertahanan asli).
   const canReadAudit = await canEffective(session.user, "audit.read");
-  return <SettingsClient canReadAudit={canReadAudit} />;
+  // issue #99 — kartu "Modul Usaha" (fitur mana yang dipakai perusahaan ini).
+  // Keputusannya dihitung di server dengan pola yang sama; API-nya tetap
+  // ber-gate `company_setting.manage`, jadi bukan tampilan yang menjaga dirinya.
+  const canManageModules = await canEffective(session.user, "company_setting.manage");
+  return (
+    <SettingsClient canReadAudit={canReadAudit} canManageModules={canManageModules} />
+  );
 }

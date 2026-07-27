@@ -43,6 +43,10 @@ const ACTION_KEYS: Record<string, DictionaryKey> = {
   // manajemen pengguna; layak bernama, bukan tampil mentah.
   "authz.override.update": "auditAction.authz_override_update",
   "authz.override.reset": "auditAction.authz_override_reset",
+  // issue #99 — mematikan sebuah modul membuat menu hilang untuk SEMUA orang;
+  // jejaknya harus terbaca sebagai kalimat, bukan kode mentah. Kuncinya sengaja
+  // tinggal di namespace `modules` bersama seluruh teks fitur itu.
+  "company_setting.modules.update": "modules.auditAction",
 };
 
 /** Nama tindakan; kode yang belum punya nama tampil apa adanya. */

@@ -47,6 +47,7 @@ import {
   type UserPermissionOverrideRow,
 } from "@/lib/authz-user-overrides";
 import { permissionGroups } from "@/lib/authz-labels";
+import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { Lock, RotateCcw, Save, X } from "lucide-react";
@@ -57,6 +58,8 @@ interface UserPermissionsResponse {
   overrides: Array<{ permission: string; allowed: boolean }>;
   effective: Permission[];
   lockedPermissions: string[];
+  /** issue #99 — modul aktif; baris milik modul non-aktif tidak digambar. */
+  enabledModules: BusinessModule[];
 }
 
 /** Tri-state satu izin di draft. */
@@ -99,6 +102,22 @@ export function UserPermissionsPanel({
     () =>
       permissionGroups().map((group) => ({ ...group, label: resourceText[group.resource] })),
     [resourceText]
+  );
+  /**
+   * issue #99 — hanya kelompok milik modul AKTIF yang digambar. Penyaringan
+   * sengaja berhenti di tampilan: draft & daftar override yang dikirim ke server
+   * tetap disusun dari `groups` yang lengkap, kalau tidak menyimpan dari panel
+   * ini akan menghapus izin khusus milik modul yang sedang mati.
+   */
+  const visibleGroups = useMemo(
+    () =>
+      groups.filter((group) =>
+        isModuleEnabled(
+          RESOURCE_MODULE[group.resource],
+          new Set<BusinessModule>(data?.enabledModules ?? [])
+        )
+      ),
+    [groups, data]
   );
 
   useEffect(() => {
@@ -306,7 +325,7 @@ export function UserPermissionsPanel({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {groups.map((group) => (
+              {visibleGroups.map((group) => (
                 <UserPermissionGroupRows
                   key={group.resource}
                   label={group.label}

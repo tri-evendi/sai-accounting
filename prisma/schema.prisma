@@ -1229,6 +1229,25 @@ model CompanySetting {
   /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
   /// `address`. Reported on the seller identity line of any e-Faktur output.
   taxAddress String? @map("tax_address") @db.Text
+  // ── issue #99 — Modul per kategori usaha ───────────────────────────────────
+  /// Kategori usaha chosen in the setup wizard (`commodity_trading`,
+  /// `distribution`, `services`, `custom` — see `lib/business-modules.ts`).
+  /// PRESET ONLY: it seeds `enabledModules` once and is NEVER consulted when
+  /// enforcing anything, so a company that later toggles individual modules is
+  /// not contradicted by its own category. Kept because the wizard's answer is
+  /// worth remembering (and auditing).
+  businessCategory String? @map("business_category") @db.VarChar(30)
+  /// Modul yang aktif — comma-separated in declaration order, e.g.
+  /// "core_accounting,sales,cash_bank". **NULL/empty means ALL modules are
+  /// enabled**, which is what lets this land with no backfill and no behaviour
+  /// change: an existing install keeps every menu it had. Parsed by
+  /// `parseEnabledModules` (unknown tokens ignored, `core_accounting` always
+  /// forced on). Deliberately ONE column rather than a side table: it is at
+  /// most ten enum-like tokens hanging off the singleton company row, never
+  /// filtered on in SQL (the whole row is loaded and parsed in code), and a row
+  /// per module would make "no rows = everything on" ambiguous with "the wizard
+  /// never ran".
+  enabledModules String? @map("enabled_modules") @db.VarChar(255)
   /// Run-once flag: true once the wizard has completed and the opening journal is
   /// posted. Re-entry then shows a read-only summary and refuses a second run.
   isSetup Boolean @default(false) @map("is_setup")

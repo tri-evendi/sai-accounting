@@ -100,6 +100,11 @@ export interface OpeningBalancesInput {
     npwp?: string | null;
     taxName?: string | null;
     taxAddress?: string | null;
+    // ── Modul per kategori usaha (issue #99) — jawaban wizard, preset saja. ──
+    /** Kategori usaha yang dipilih; hanya disimpan, tak pernah menegakkan apa pun. */
+    businessCategory?: string | null;
+    /** Modul yang aktif, sudah dinormalkan. NULL = semua modul aktif. */
+    enabledModules?: string | null;
   };
   cash: OpeningCashInput[];
   receivables: OpeningPartnerInput[];
@@ -255,6 +260,8 @@ export async function applyOpeningBalances(
             npwp: input.company.npwp ?? null,
             taxName: input.company.taxName ?? null,
             taxAddress: input.company.taxAddress ?? null,
+            businessCategory: input.company.businessCategory ?? null,
+            enabledModules: input.company.enabledModules ?? null,
             isSetup: false,
           },
         });
@@ -298,6 +305,10 @@ export async function applyOpeningBalances(
         npwp: input.company.npwp ?? null,
         taxName: input.company.taxName ?? null,
         taxAddress: input.company.taxAddress ?? null,
+        // Modul (issue #99): NULL = semua aktif, jadi wizard yang dilewati
+        // begitu saja meninggalkan aplikasi persis seperti sebelum fitur ini ada.
+        businessCategory: input.company.businessCategory ?? null,
+        enabledModules: input.company.enabledModules ?? null,
         isSetup: true,
         openingJournalId: journal.id,
       },

@@ -10,6 +10,7 @@
  */
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { businessModulesPayloadSchema } from "./modules";
 import { vmsg } from "@/lib/i18n/validation";
 
 /** One opening cash/bank balance — the user picks a concrete cash_bank account. */
@@ -51,7 +52,17 @@ export const companyIdentitySchema = z
     /** Awal tahun buku (YYYY-MM-DD). The opening journal is dated here. */
     fiscalYearStart: z.string().min(1, vmsg("validation.fiscalYearStartRequired")),
   })
-  .merge(companyTaxIdentitySchema);
+  .merge(companyTaxIdentitySchema)
+  /**
+   * Modul per kategori usaha (issue #99). Bentuknya DIPAKAI ULANG dari skema
+   * API modul (`validations/modules.ts`), bukan disalin — wizard dan halaman
+   * Pengaturan tidak boleh bisa menyimpang diam-diam (Konvensi Form MASTER.md).
+   *
+   * Keduanya opsional, dan itu memang intinya: wizard yang melewati langkah ini
+   * meninggalkan kolomnya NULL, dan NULL berarti semua modul aktif — aplikasi
+   * berperilaku persis seperti sebelum fitur ini ada.
+   */
+  .merge(businessModulesPayloadSchema.partial());
 
 export type CompanyTaxIdentityInput = z.infer<typeof companyTaxIdentitySchema>;
 

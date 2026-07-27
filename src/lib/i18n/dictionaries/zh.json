@@ -377,6 +377,7 @@
     "mappedAccountNotFound": "未找到所映射的会计科目。",
     "customerNotFound": "未找到该客户。",
     "costCenterNotFound": "未找到成本中心。",
+    "companyNotSetUp": "尚未完成公司资料设置。请先执行「公司初始设置与期初余额」。",
     "supplierNotFound": "未找到该供应商。",
     "consigneeNotFound": "未找到该收货人。",
     "commodityNotFound": "未找到该商品。",
@@ -396,7 +397,6 @@
     "inventoryItemNotFound": "该商品不在库存清单中。",
     "setupCustomerNotFound": "未找到客户 #{id}。",
     "setupSupplierNotFound": "未找到供应商 #{id}。",
-    "companyNotSetUp": "尚未完成公司资料设置。请先执行「公司初始设置与期初余额」。",
     "accountCodeTaken": "该科目代码已被使用。",
     "accountOwnParent": "会计科目不能作为自身的上级科目。",
     "usernameTaken": "该用户名已被使用。",
@@ -2982,5 +2982,65 @@
     "partnerNameRequired": "新的往来单位必须填写名称。",
     "receiptQuantityPositive": "入库数量必须大于 0",
     "receiptDateRequired": "请填写入库日期"
+  },
+  "modules": {
+    "sectionTitle": "业务模块",
+    "auditAction": "修改业务模块",
+    "sectionDescription": "只开启贵公司实际使用的功能。关闭的模块会从菜单中消失，也无法再用于录入新交易。",
+    "activeCount": "已启用 {count} / {total} 个模块",
+    "coreLocked": "始终启用",
+    "categoryLabel": "业务类别",
+    "categoryHint": "类别只是填入初始值；每个模块之后仍可逐个调整。",
+    "modulesLabel": "已启用的模块",
+    "ledgerNote": "关闭模块不会删除任何数据。既有的凭证、余额与报表完全保留；停止的只是菜单和新交易的录入。",
+    "saved": "业务模块已保存。",
+    "errLoad": "业务模块加载失败。",
+    "errSave": "业务模块保存失败。",
+    "errNetwork": "网络异常，请重试。",
+    "confirmTitle": "保存业务模块？",
+    "confirmMessage": "被关闭模块的菜单和页面将对所有用户消失。既有数据完整保留，重新开启该模块后立即恢复显示。",
+    "permissionsNotice": "有 {count} 行权限已被隐藏，因为其所属模块未对本公司启用。模块在“设置”页面管理。",
+    "inactiveTitle": "此功能尚未启用",
+    "inactiveBody": "本页面属于{module}模块，而该模块尚未对贵公司启用。数据不会丢失：董事总经理或系统管理员可在“设置”页面重新开启。",
+    "inactiveBack": "返回首页",
+    "stepTitle": "业务模块",
+    "stepHeading": "请选择业务类别",
+    "stepHint": "类别只是填入初始值。每个模块现在或以后都可以在“设置”中逐个开启或关闭。",
+    "name": {
+      "core_accounting": "核心会计",
+      "sales": "销售",
+      "purchasing": "采购",
+      "trading": "货物贸易",
+      "inventory": "库存",
+      "cash_bank": "现金与银行",
+      "fixed_assets": "固定资产",
+      "approvals": "审批",
+      "tax_id": "税务（e-Faktur）",
+      "documents": "出口单证"
+    },
+    "description": {
+      "core_accounting": "会计科目表、凭证、总账、报表、预算、用户与权限。始终启用。",
+      "sales": "销售发票、客户，以及尚未付款的客户清单。",
+      "purchasing": "供应商、采购记录，以及应付账单。",
+      "trading": "合同、出库单、收货人、退货与预付款——货物贸易专属层。",
+      "inventory": "库存管理：入库、出库、盘点与存货金额。",
+      "cash_bank": "现金与银行账簿，以及银行对账。",
+      "fixed_assets": "公司自有资产及其折旧。",
+      "approvals": "审批队列及其金额门槛规则。",
+      "tax_id": "用于印尼税务申报的 e-Faktur 导出。",
+      "documents": "提单、原产地证、熏蒸证等出口单证归档。"
+    },
+    "category": {
+      "commodity_trading": "大宗商品贸易 / 出口",
+      "distribution": "分销 / 批发",
+      "services": "服务 / 代理",
+      "custom": "自行选择"
+    },
+    "categoryDesc": {
+      "commodity_trading": "以合同、出库单和出口单证经营货物贸易。全部模块开启。",
+      "distribution": "经营带仓储的货物买卖，不含远期合同与出口单证。",
+      "services": "完全不涉及货物：无库存，也无贸易层。",
+      "custom": "先全部开启，再关掉用不到的模块。"
+    }
   }
 }

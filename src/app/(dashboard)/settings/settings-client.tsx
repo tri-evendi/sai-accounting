@@ -7,6 +7,7 @@ import Link from "next/link";
 import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
+import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { BookMarked } from "lucide-react";
@@ -18,9 +19,12 @@ interface SettingsClientProps {
    * dibaca client dari matriks bawaan di bundle. Tampilan saja: API audit
    * tetap ber-gate `audit.read`. */
   canReadAudit: boolean;
+  /** issue #99 — kartu "Modul Usaha"; API-nya tetap ber-gate
+   * `company_setting.manage`, jadi ini murni menyembunyikan permukaan. */
+  canManageModules: boolean;
 }
 
-export function SettingsClient({ canReadAudit }: SettingsClientProps) {
+export function SettingsClient({ canReadAudit, canManageModules }: SettingsClientProps) {
   const t = useT();
   const company = useCompanyIdentity();
   const dictionary = useDictionary();
@@ -67,6 +71,9 @@ export function SettingsClient({ canReadAudit }: SettingsClientProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* issue #99 — modul usaha: fitur mana yang dipakai perusahaan ini. */}
+      {canManageModules && <ModuleSettingsPanel />}
 
       {isManager && (
         <div className="mb-6">

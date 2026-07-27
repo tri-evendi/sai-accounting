@@ -8,7 +8,7 @@ import {
   normalizeOverrides,
   validateOverrides,
 } from "@/lib/authz-overrides";
-import { invalidateEffectiveMatrix } from "@/lib/authz-effective";
+import { getEnabledModules, invalidateEffectiveMatrix } from "@/lib/authz-effective";
 import { overridesPayloadSchema } from "@/lib/validations/authz";
 import { getRoles } from "@/lib/roles";
 import { writeAuditLog } from "@/lib/audit";
@@ -31,12 +31,13 @@ import { translateFieldErrors } from "@/lib/i18n/validation";
  */
 
 async function currentState() {
-  const [overrides, roles] = await Promise.all([
+  const [overrides, roles, modules] = await Promise.all([
     prisma.rolePermissionOverride.findMany({
       select: { role: true, permission: true, allowed: true, updatedAt: true },
       orderBy: [{ role: "asc" }, { permission: "asc" }],
     }),
     getRoles(),
+    getEnabledModules(),
   ]);
   return {
     baseline: PERMISSION_ROLES,
@@ -45,6 +46,14 @@ async function currentState() {
     protectedCells: PROTECTED_CELLS,
     // Kolom matriks = peran dari DB (termasuk peran kustom) — bukan enum kode.
     roles: roles.map((r) => ({ key: r.key, label: r.label })),
+    /**
+     * issue #99 — modul yang aktif. Halaman memakainya untuk MENYEMBUNYIKAN
+     * baris izin yang modulnya mati (mencentangnya hanya menjanjikan akses ke
+     * halaman yang memang tidak ada). Matriks & override-nya dikirim UTUH:
+     * baris yang tersembunyi tetap tersimpan apa adanya, jadi menyalakan
+     * modulnya kembali memunculkan persis pengaturan yang dulu.
+     */
+    enabledModules: [...modules],
   };
 }
 

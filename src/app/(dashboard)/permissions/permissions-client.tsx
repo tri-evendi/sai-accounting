@@ -43,9 +43,10 @@ import {
   type PermissionOverride,
 } from "@/lib/authz-overrides";
 import { permissionGroups } from "@/lib/authz-labels";
+import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
-import { Lock, RotateCcw, Save } from "lucide-react";
+import { Lock, PackageX, RotateCcw, Save } from "lucide-react";
 
 interface OverridesResponse {
   baseline: Record<string, string[]>;
@@ -53,6 +54,8 @@ interface OverridesResponse {
   overrides: Array<{ role: string; permission: string; allowed: boolean }>;
   /** Kolom matriks — peran dari DB (termasuk peran kustom). */
   roles: Array<{ key: string; label: string }>;
+  /** issue #99 — modul yang aktif; baris modul non-aktif disembunyikan. */
+  enabledModules: BusinessModule[];
 }
 
 /** Kunci sel matriks di state draft. */
@@ -90,6 +93,30 @@ export function PermissionsClient() {
     () =>
       permissionGroups().map((group) => ({ ...group, label: resourceText[group.resource] })),
     [resourceText]
+  );
+  /**
+   * issue #99 — yang DIGAMBAR hanyalah kelompok milik modul yang aktif.
+   *
+   * Penyaringan berhenti di sini, dan itu disengaja: `groups` (lengkap) tetap
+   * yang dipakai menyusun draft & daftar override yang dikirim ke server. Kalau
+   * penyaringan ikut masuk ke sana, menyimpan dari halaman ini akan MENGHAPUS
+   * override milik modul yang sedang mati — dan menyalakan modulnya kembali
+   * akan diam-diam mengubah hak akses orang. Persis yang tidak boleh terjadi.
+   */
+  const enabledModules = useMemo(
+    () => new Set<BusinessModule>(data?.enabledModules ?? []),
+    [data]
+  );
+  const visibleGroups = useMemo(
+    () => groups.filter((group) => isModuleEnabled(RESOURCE_MODULE[group.resource], enabledModules)),
+    [groups, enabledModules]
+  );
+  const hiddenRowCount = useMemo(
+    () =>
+      groups
+        .filter((group) => !visibleGroups.includes(group))
+        .reduce((sum, group) => sum + group.permissions.length, 0),
+    [groups, visibleGroups]
   );
   // Kolom matriks berasal dari DB (peran, termasuk kustom), bukan enum kode.
   const roleKeys = useMemo(() => (data?.roles ?? []).map((r) => r.key), [data]);
@@ -249,6 +276,14 @@ export function PermissionsClient() {
         </div>
       )}
 
+      {/* issue #99 — kenapa matriksnya lebih pendek dari yang diingat orang. */}
+      {hiddenRowCount > 0 && (
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <PackageX className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>{t("modules.permissionsNotice", { count: hiddenRowCount })}</span>
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-block size-3 rounded-sm bg-warning-soft ring-1 ring-warning" />
@@ -277,7 +312,7 @@ export function PermissionsClient() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groups.map((group) => (
+            {visibleGroups.map((group) => (
               <PermissionGroupRows
                 key={group.resource}
                 label={group.label}

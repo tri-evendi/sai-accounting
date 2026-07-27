@@ -23,6 +23,14 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2, Info, Plus, Trash2, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { ModulePicker } from "@/components/settings/module-picker";
+import {
+  BUSINESS_MODULES,
+  modulesForCategory,
+  normalizeEnabledModules,
+  type BusinessCategory,
+  type BusinessModule,
+} from "@/lib/business-modules";
 
 interface CashAccount {
   id: number;
@@ -74,8 +82,16 @@ export function SetupWizard({
   const router = useRouter();
   const { toast } = useToast();
 
+  /**
+   * Langkah dirujuk lewat NAMA, bukan angka (issue #99 menyisipkan satu langkah
+   * baru di tengah). Angka yang tersebar di JSX membuat penyisipan berikutnya
+   * jadi latihan menggeser indeks — dan satu indeks yang lupa digeser adalah
+   * langkah yang hilang tanpa galat.
+   */
+  const STEP_KEYS = ["identity", "modules", "settings", "coa", "balances", "review"] as const;
   const steps = [
     t("setup.step1"),
+    t("modules.stepTitle"),
     t("setup.step2"),
     t("setup.step3"),
     t("setup.step4"),
@@ -83,6 +99,7 @@ export function SetupWizard({
   ];
 
   const [step, setStep] = useState(0);
+  const current = STEP_KEYS[step];
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +110,12 @@ export function SetupWizard({
   const [npwp, setNpwp] = useState("");
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
+
+  // Langkah modul (issue #99). Nilai awalnya SEMUA modul menyala: wizard yang
+  // diklik lewat begitu saja meninggalkan aplikasi persis seperti sebelum fitur
+  // ini ada — kolomnya tersimpan NULL (lihat `serializeEnabledModules`).
+  const [category, setCategory] = useState<BusinessCategory | "">("");
+  const [modules, setModules] = useState<ReadonlySet<BusinessModule>>(new Set(BUSINESS_MODULES));
 
   // Step 4: opening balances
   const [cash, setCash] = useState<CashRow[]>([]);
@@ -182,6 +205,11 @@ export function SetupWizard({
         baseCurrency,
         fiscalYearStart,
         npwp: npwp || undefined,
+        // Modul usaha (issue #99). Kategori hanya dicatat; yang berlaku adalah
+        // himpunan modulnya, dan server menormalkan + memvalidasinya lagi
+        // (modul inti tak bisa dimatikan, bahkan dari sini).
+        businessCategory: category || undefined,
+        modules: normalizeEnabledModules(modules),
       },
       cash: cash
         .filter((r) => r.accountId && (Number(r.amount) || 0) > 0)
@@ -239,10 +267,12 @@ export function SetupWizard({
   }
 
   const canNext =
-    (step === 0 && name.trim().length > 0) ||
-    (step === 1 && !!baseCurrency && !!fiscalYearStart) ||
-    step === 2 ||
-    step === 3;
+    (current === "identity" && name.trim().length > 0) ||
+    // Langkah modul tak pernah menghalangi: melewatinya berarti "semua aktif".
+    current === "modules" ||
+    (current === "settings" && !!baseCurrency && !!fiscalYearStart) ||
+    current === "coa" ||
+    current === "balances";
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
 
@@ -274,7 +304,7 @@ export function SetupWizard({
 
       <Card className="p-6">
         {/* Step 0 — identity */}
-        {step === 0 && (
+        {current === "identity" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.identityTitle")}</h2>
             <Input
@@ -309,8 +339,34 @@ export function SetupWizard({
           </div>
         )}
 
+        {/* Modul usaha (issue #99) — kategori sebagai preset, modul tetap
+            bisa diubah satu per satu. Melewatinya = semua modul aktif. */}
+        {current === "modules" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">{t("modules.stepHeading")}</h2>
+            <p className="text-sm text-muted-foreground">{t("modules.stepHint")}</p>
+            <ModulePicker
+              category={category}
+              modules={modules}
+              onCategoryChange={(next) => {
+                setCategory(next);
+                setModules(new Set(modulesForCategory(next)));
+              }}
+              onToggleModule={(module, next) =>
+                setModules((prev) => {
+                  const draft = new Set(prev);
+                  if (next) draft.add(module);
+                  else draft.delete(module);
+                  return draft;
+                })
+              }
+              disabled={saving}
+            />
+          </div>
+        )}
+
         {/* Step 1 — base currency + fiscal year */}
-        {step === 1 && (
+        {current === "settings" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.step2")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -340,7 +396,7 @@ export function SetupWizard({
         )}
 
         {/* Step 2 — confirm COA */}
-        {step === 2 && (
+        {current === "coa" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.coaTitle")}</h2>
             <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
@@ -357,7 +413,7 @@ export function SetupWizard({
         )}
 
         {/* Step 3 — opening balances */}
-        {step === 3 && (
+        {current === "balances" && (
           <div className="space-y-8">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.step4")}</h2>
 
@@ -488,7 +544,7 @@ export function SetupWizard({
         )}
 
         {/* Step 4 — review */}
-        {step === 4 && (
+        {current === "review" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">{t("setup.reviewTitle")}</h2>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -501,6 +557,18 @@ export function SetupWizard({
                   {t("setup.fiscalYearStartField")}
                 </dt>
                 <dd className="text-foreground tabular-nums">{fiscalYearStart}</dd>
+              </div>
+              {/* issue #99 — apa yang akan tampil di menu setelah wizard selesai. */}
+              <div>
+                <dt className="font-medium text-muted-foreground">
+                  {t("modules.sectionTitle")}
+                </dt>
+                <dd className="text-foreground">
+                  {t("modules.activeCount", {
+                    count: normalizeEnabledModules(modules).length,
+                    total: BUSINESS_MODULES.length,
+                  })}
+                </dd>
               </div>
             </dl>
             <BalancePanel totals={totals} t={t} />

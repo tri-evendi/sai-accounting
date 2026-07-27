@@ -8,7 +8,11 @@ import {
   rolePermissionSet,
   validateUserOverrides,
 } from "@/lib/authz-user-overrides";
-import { getEffectiveMatrix, invalidateUserOverrides } from "@/lib/authz-effective";
+import {
+  getEffectiveMatrix,
+  getEnabledModules,
+  invalidateUserOverrides,
+} from "@/lib/authz-effective";
 import { userOverridesPayloadSchema } from "@/lib/validations/authz";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -55,6 +59,10 @@ async function currentState(user: { id: number; username: string; name: string |
     lockedPermissions: PROTECTED_CELLS.filter((c) => c.role === user.role).map(
       (c) => c.permission
     ),
+    /** issue #99 — modul aktif; panel menyembunyikan baris modul non-aktif.
+     *  Override yang tersimpan tetap dikirim UTUH: yang disembunyikan hanya
+     *  tampilannya, jadi menyalakan modulnya kembali tidak mengubah hak siapa pun. */
+    enabledModules: [...(await getEnabledModules())],
   };
 }
 

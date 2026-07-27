@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { ACCOUNTING_PERMISSIONS, type Permission } from "@/lib/authz";
-import { canEffective } from "@/lib/authz-effective";
+import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
+import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
 import { redirect } from "next/navigation";
@@ -44,6 +45,20 @@ export async function requirePagePermission(permission: Permission) {
     redirect(
       (await canEffective(session.user, "setup.manage")) ? "/setup" : "/setup-required"
     );
+  }
+
+  /*
+   * Gerbang MODUL (issue #99) — dan kenapa ia punya tujuan sendiri.
+   *
+   * `canEffective` sudah menolak izin di modul non-aktif, jadi tanpa cabang ini
+   * pun halaman tetap tertutup. Yang dibedakan di sini adalah KALIMATNYA:
+   * "Anda tidak punya akses" (urusan peran, minta ke atasan) dan "fitur ini
+   * belum aktif untuk perusahaan Anda" (urusan konfigurasi, ada di Pengaturan)
+   * adalah dua keadaan berbeda, dan melemparkan keduanya ke /dashboard tanpa
+   * penjelasan membuat pengguna mengejar orang yang salah.
+   */
+  if (!(await isModuleActiveFor(permission))) {
+    redirect(`/feature-inactive?module=${moduleForPermission(permission)}`);
   }
 
   if (!(await canEffective(session.user, permission))) {

@@ -6,6 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { countUsersWithRole } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { canDeactivateRole, roleDeletionBlock, validateRoleLabel } from "@/lib/roles-admin";
 import { invalidateEffectiveMatrix } from "@/lib/authz-effective";
@@ -85,7 +86,10 @@ export async function DELETE(
     return NextResponse.json({ error: t("errors.roleNotFound") }, { status: 404 });
   }
 
-  const usersWithRole = await prisma.user.count({ where: { role: role.key } });
+  // Yang dihitung adalah ANGGOTA perusahaan ini yang memegang peran tersebut —
+  // peran adalah data per perusahaan, dan keanggotaan hidup di basis data
+  // kendali (issue #104).
+  const usersWithRole = await countUsersWithRole(role.key);
   const block = roleDeletionBlock(role, usersWithRole);
   if (block) return NextResponse.json({ error: block }, { status: 409 });
 
@@ -96,7 +100,7 @@ export async function DELETE(
   });
 
   // Baris override peran ini lenyap → matriks efektif dirakit ulang.
-  invalidateEffectiveMatrix();
+  await invalidateEffectiveMatrix();
 
   await writeAuditLog({
     userId: result.session.user.id,

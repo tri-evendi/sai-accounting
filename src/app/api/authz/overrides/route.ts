@@ -110,7 +110,7 @@ export async function PUT(request: Request) {
   });
 
   // Pembaca berikutnya (penjaga halaman/API mana pun) merakit ulang dari DB.
-  invalidateEffectiveMatrix();
+  await invalidateEffectiveMatrix();
 
   await writeAuditLog({
     userId: result.session.user.id,

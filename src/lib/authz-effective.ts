@@ -30,6 +30,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { currentCompanyId } from "@/lib/current-company";
 import type { Permission } from "@/lib/authz";
 import {
   canWithMatrix,
@@ -50,40 +51,96 @@ import {
 } from "@/lib/authz-user-overrides";
 import type { Role } from "@/lib/constants";
 
-const loader = createEffectiveMatrixLoader(() =>
-  prisma.rolePermissionOverride.findMany({
-    select: { role: true, permission: true, allowed: true },
-  })
-);
+/**
+ * ══ SETIAP CACHE DI SINI DIKUNCI PER PERUSAHAAN (issue #104) ═══════════════
+ *
+ * Ketiga loader di bawah membaca tabel yang hidup di basis data PERUSAHAAN:
+ * `role_permission_overrides`, `user_permission_overrides`, dan
+ * `company_settings.enabled_modules`. Sebelum multi-perusahaan, satu cache
+ * tingkat modul sudah benar — hanya ada satu basis data.
+ *
+ * Sekarang tidak lagi, dan salahnya akan sunyi: satu proses melayani beberapa
+ * PT bergantian, jadi cache bersama berarti izin efektif PT A dipakai untuk
+ * menilai permintaan PT B selama satu TTL. Bukan kebocoran DATA — querynya
+ * tetap ke basis data yang benar — melainkan kebocoran KEPUTUSAN, yang justru
+ * lebih sulit terlihat: seseorang menekan tombol yang seharusnya tidak ada
+ * untuknya, dan tidak ada satu pun galat yang tercatat.
+ *
+ * Karena itu loader dibuat SATU SET PER PERUSAHAAN, dan `invalidate*()` hanya
+ * menyentuh perusahaan yang konteksnya sedang aktif — persis seperti route PUT
+ * yang memanggilnya, yang juga hanya menulis untuk perusahaan itu.
+ *
+ * Petanya tidak dibatasi jumlahnya: kuncinya adalah id perusahaan terdaftar
+ * (puluhan, bukan jutaan) dan isinya beberapa ratus byte. Yang jamak dan mahal
+ * adalah KONEKSI, dan itu sudah dibatasi di `company-clients.ts`.
+ */
+interface CompanyAuthzLoaders {
+  matrix: ReturnType<typeof createEffectiveMatrixLoader>;
+  users: ReturnType<typeof createUserOverridesLoader>;
+  modules: ReturnType<typeof createEnabledModulesLoader>;
+}
 
-const userLoader = createUserOverridesLoader((userId) =>
-  prisma.userPermissionOverride.findMany({
-    where: { userId },
-    select: { permission: true, allowed: true },
-  })
-);
+const perCompany = new Map<number, CompanyAuthzLoaders>();
+
+function createLoaders(): CompanyAuthzLoaders {
+  return {
+    matrix: createEffectiveMatrixLoader(() =>
+      prisma.rolePermissionOverride.findMany({
+        select: { role: true, permission: true, allowed: true },
+      })
+    ),
+    users: createUserOverridesLoader((userId) =>
+      prisma.userPermissionOverride.findMany({
+        where: { userId },
+        select: { permission: true, allowed: true },
+      })
+    ),
+    /**
+     * Himpunan modul aktif (issue #99) — satu kolom pada baris singleton
+     * `company_settings`. NULL/kosong = semua modul aktif, jadi pemasangan yang
+     * belum pernah memilih berperilaku persis seperti sebelum fitur ini ada.
+     */
+    modules: createEnabledModulesLoader(async () => {
+      const settings = await prisma.companySetting.findFirst({
+        orderBy: { id: "asc" },
+        select: { enabledModules: true },
+      });
+      return settings?.enabledModules ?? null;
+    }),
+  };
+}
 
 /**
- * Himpunan modul aktif (issue #99) — satu kolom pada baris singleton
- * `company_settings`. NULL/kosong = semua modul aktif, jadi pemasangan yang
- * belum pernah memilih berperilaku persis seperti sebelum fitur ini ada.
+ * Loader milik perusahaan yang sedang dibuka. Tanpa perusahaan: melempar.
+ *
+ * Async karena perusahaan boleh berasal dari SESI, bukan hanya dari konteks
+ * `AsyncLocalStorage` — dan route self-scoped (`/api/user/permissions`, yang
+ * menyusun menu) memang tidak melewati penjaga mana pun.
  */
-const modulesLoader = createEnabledModulesLoader(async () => {
-  const settings = await prisma.companySetting.findFirst({
-    orderBy: { id: "asc" },
-    select: { enabledModules: true },
-  });
-  return settings?.enabledModules ?? null;
-});
+async function loaders(): Promise<CompanyAuthzLoaders> {
+  const companyId = await currentCompanyId();
+  let entry = perCompany.get(companyId);
+  if (!entry) {
+    entry = createLoaders();
+    perCompany.set(companyId, entry);
+  }
+  return entry;
+}
+
+/** Buang seluruh cache otorisasi milik satu perusahaan — dipakai saat
+ *  keanggotaan/registry berubah, dan oleh tes. */
+export function resetAuthzCachesForCompany(companyId: number): void {
+  perCompany.delete(companyId);
+}
 
 /** Modul yang aktif untuk perusahaan ini, dari cache bila masih segar. */
-export function getEnabledModules(): Promise<ReadonlySet<BusinessModule>> {
-  return modulesLoader.get();
+export async function getEnabledModules(): Promise<ReadonlySet<BusinessModule>> {
+  return (await loaders()).modules.get();
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `company_settings.enabled_modules`. */
-export function invalidateEnabledModules(): void {
-  modulesLoader.invalidate();
+export async function invalidateEnabledModules(): Promise<void> {
+  (await loaders()).modules.invalidate();
 }
 
 /**
@@ -94,7 +151,7 @@ export function invalidateEnabledModules(): void {
  * salah untuk memperbaikinya.
  */
 export async function isModuleActiveFor(permission: Permission): Promise<boolean> {
-  return isPermissionEnabled(permission, await modulesLoader.get());
+  return isPermissionEnabled(permission, await (await loaders()).modules.get());
 }
 
 /** `session.user.id` hidup sebagai string di JWT; baris override memakai Int.
@@ -106,24 +163,24 @@ function parseUserId(id: unknown): number | null {
 }
 
 /** Matriks efektif (bawaan + override), dari cache bila masih segar. */
-export function getEffectiveMatrix(): Promise<EffectiveMatrix> {
-  return loader.get();
+export async function getEffectiveMatrix(): Promise<EffectiveMatrix> {
+  return (await loaders()).matrix.get();
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `role_permission_overrides`. */
-export function invalidateEffectiveMatrix(): void {
-  loader.invalidate();
+export async function invalidateEffectiveMatrix(): Promise<void> {
+  (await loaders()).matrix.invalidate();
 }
 
 /** Peran yang efektif memegang sebuah izin. */
 export async function effectiveRolesFor(permission: Permission): Promise<readonly Role[]> {
-  return (await loader.get())[permission];
+  return (await (await loaders()).matrix.get())[permission];
 }
 
 /** WAJIB dipanggil setelah setiap tulis ke `user_permission_overrides`
  *  untuk pengguna itu (issue #75). Cache pengguna lain tidak tersentuh. */
-export function invalidateUserOverrides(userId: number): void {
-  userLoader.invalidate(userId);
+export async function invalidateUserOverrides(userId: number): Promise<void> {
+  (await loaders()).users.invalidate(userId);
 }
 
 /**
@@ -142,9 +199,10 @@ export async function canEffective(
   // Fitur yang tidak dipakai perusahaan ini tidak terjangkau siapa pun, sekalipun
   // perannya berakses penuh. Ini satu-satunya perubahan yang merambat ke ~50
   // halaman, seluruh menu, dan semua route API — persis seperti #73 dulu.
+  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = await loaders();
   if (!isPermissionEnabled(permission, await modulesLoader.get())) return false;
 
-  const matrix = await loader.get();
+  const matrix = await matrixLoader.get();
   const userId = parseUserId(user?.id);
   if (userId === null) return canWithMatrix(matrix, user, permission);
   const overrides = await userLoader.get(userId);
@@ -165,7 +223,8 @@ export async function effectivePermissionsFor(user: {
   id?: string | number | null;
   role?: string | null;
 }): Promise<Permission[]> {
-  const matrix = await loader.get();
+  const { matrix: matrixLoader, users: userLoader, modules: modulesLoader } = await loaders();
+  const matrix = await matrixLoader.get();
   const roleSet = rolePermissionSet(matrix, user.role);
   const userId = parseUserId(user.id);
   const permissions =

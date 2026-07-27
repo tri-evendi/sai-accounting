@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { summarizeInventoryItem, type ItemWithStock } from "@/lib/inventory";
+import { calculateStockTotals, stockLevelsFromTotals, summarizeInventoryItem, type ItemWithStock } from "@/lib/inventory";
 
 function item(stockMovements: ItemWithStock["stockMovements"]): ItemWithStock {
   return { id: 1, name: "Kopi", unit: "kg", stockMovements };
@@ -52,5 +52,53 @@ describe("summarizeInventoryItem — nilai persediaan", () => {
     );
     expect(s.unitCost).toBe(12000);
     expect(s.stockValue).toBe(200 * 12000);
+  });
+});
+
+/**
+ * Saldo dari GROUP BY vs saldo dari baris gerakan (issue #104).
+ *
+ * Beranda kini menjumlahkan stok di BASIS DATA, halaman Stok masih menjumlahkan
+ * di JavaScript dari baris gerakan. Dua jalur, satu angka — kalau keduanya
+ * berselisih, "stok menipis" di beranda akan menyebut angka lain daripada
+ * halaman yang dibuka pengguna untuk memeriksanya. Tes ini yang menahan itu.
+ */
+describe("stockLevelsFromTotals — sepakat dengan calculateStockTotals", () => {
+  const items = [
+    { id: 1, name: "Kopi", unit: "kg" },
+    { id: 2, name: "Teh", unit: "kg" },
+    { id: 3, name: "Gula", unit: "kg" }, // belum pernah bergerak
+  ];
+
+  it("menghitung saldo = Σ masuk − Σ keluar", () => {
+    const levels = stockLevelsFromTotals(items, [
+      { itemId: 1, type: "in", quantity: 100 },
+      { itemId: 1, type: "out", quantity: 40 },
+      { itemId: 2, type: "in", quantity: 7.5 },
+    ]);
+
+    expect(levels.find((l) => l.id === 1)!.currentStock).toBe(60);
+    expect(levels.find((l) => l.id === 2)!.currentStock).toBe(7.5);
+  });
+
+  it("barang tanpa gerakan tetap muncul dengan saldo nol", () => {
+    const levels = stockLevelsFromTotals(items, []);
+    expect(levels).toHaveLength(3);
+    expect(levels.every((l) => l.currentStock === 0)).toBe(true);
+  });
+
+  it("angkanya sama persis dengan jalur baris-per-baris", () => {
+    const movements = [
+      { quantity: 100, type: "in", date: "2026-01-01" },
+      { quantity: 25, type: "out", date: "2026-02-01" },
+      { quantity: 5, type: "out", date: "2026-03-01" },
+    ];
+    const viaRows = calculateStockTotals(movements).currentStock;
+    const viaGroupBy = stockLevelsFromTotals([items[0]], [
+      { itemId: 1, type: "in", quantity: 100 },
+      { itemId: 1, type: "out", quantity: 30 },
+    ])[0].currentStock;
+
+    expect(viaGroupBy).toBe(viaRows);
   });
 });

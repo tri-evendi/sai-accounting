@@ -14,8 +14,7 @@ import Link from "next/link";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import {
   countStockHealth,
-  summarizeInventory,
-  toClientInventory,
+  stockLevelsFromTotals,
   toLowStockAlerts,
 } from "@/lib/inventory";
 import { LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
@@ -37,7 +36,7 @@ import {
   InventoryExportAction,
   FinanceExportAction,
 } from "@/components/dashboard/dashboard-export-actions";
-import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
 import { getIncomeStatement } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
@@ -71,6 +70,15 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
+
+  /*
+   * Beranda menjaga dirinya sendiri dengan `auth()` (terdaftar di
+   * tests/authz-coverage.test.ts), jadi ia juga harus memeriksa PERUSAHAAN
+   * sendiri — penjaga izin yang biasanya melakukannya tidak lewat sini.
+   * Tanpa perusahaan aktif setiap query di bawah akan melempar; pengguna
+   * dikirim memilih perusahaannya dulu (issue #104).
+   */
+  if (session.user.companyId == null) redirect("/select-company");
 
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());
@@ -112,19 +120,49 @@ export default async function DashboardPage() {
     contractCount,
     invoiceCount,
     supplierCount,
-    itemsWithStock,
+    items,
+    movementTotals,
+    latestMovements,
     pendingContracts,
     pendingInvoices,
-    cashMovements,
+    cashTotals,
     latestContracts,
   ] = await Promise.all([
     canViewContracts ? prisma.contract.count() : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count() : Promise.resolve(0),
     canViewContracts ? prisma.supplier.count() : Promise.resolve(0),
-    prisma.item.findMany({ include: { stockMovements: true }, orderBy: { name: "asc" } }),
+    /*
+     * RINGKASAN, BUKAN SELURUH GERAKAN STOK.
+     *
+     * Sebelumnya baris ini memuat setiap barang BESERTA seluruh riwayat
+     * gerakannya, lalu menjumlahkannya di JavaScript — pekerjaan yang tumbuh
+     * seumur perusahaan dan diulang pada SETIAP pembukaan beranda, padahal yang
+     * ditampilkan hanya empat angka kesehatan stok dan daftar stok menipis.
+     * Penjumlahannya kini dilakukan basis data.
+     */
+    prisma.item.findMany({ select: { id: true, name: true, unit: true }, orderBy: { name: "asc" } }),
+    prisma.stockMovement.groupBy({ by: ["itemId", "type"], _sum: { quantity: true } }),
+    prisma.stockMovement.findMany({
+      orderBy: { date: "desc" },
+      take: 5,
+      select: { type: true, quantity: true, date: true, item: { select: { name: true } } },
+    }),
     canViewContracts ? prisma.contract.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count({ where: { status: "pending" } }) : Promise.resolve(0),
-    canViewFinance ? prisma.cashMovement.findMany({ orderBy: { date: "desc" } }) : Promise.resolve([]),
+    /*
+     * SALDO DIJUMLAHKAN BASIS DATA, bukan dengan menarik seluruh buku kas.
+     *
+     * Beranda hanya menampilkan saldo per (jenis × mata uang) dan per mata uang.
+     * Versi sebelumnya memuat SETIAP baris kas — 18.000+ baris pada pemasangan
+     * yang berjalan setahun — hanya untuk menjumlahkan dua kolom. Angkanya sama
+     * persis; yang hilang cuma pekerjaannya.
+     */
+    canViewFinance
+      ? prisma.cashMovement.groupBy({
+          by: ["type", "currency"],
+          _sum: { debit: true, credit: true },
+        })
+      : Promise.resolve([]),
     canViewContracts
       ? prisma.contract.findMany({ orderBy: { createdAt: "desc" }, take: 5 })
       : Promise.resolve([]),
@@ -159,53 +197,40 @@ export default async function DashboardPage() {
 
   const incomeStatementHref = `/reports/income-statement?from=${period.fromISO}&to=${period.toISO}`;
 
-  const inventorySummary = summarizeInventory(itemsWithStock);
-  const stockHealth = countStockHealth(inventorySummary);
-  const lowStockItems = toLowStockAlerts(inventorySummary);
+  // Saldo per barang dari hasil GROUP BY — aturan yang sama dengan
+  // `calculateStockTotals`, dibuktikan tes (tests/inventory-value.test.ts).
+  const stockLevels = stockLevelsFromTotals(
+    items,
+    movementTotals.map((row) => ({
+      itemId: row.itemId,
+      type: row.type,
+      quantity: Number(row._sum.quantity ?? 0),
+    }))
+  );
 
-  const recentMovements = itemsWithStock
-    .flatMap((item) =>
-      item.stockMovements.map((s) => ({
-        itemName: item.name,
-        type: s.type,
-        quantity: Number(s.quantity),
-        date: s.date,
-      }))
-    )
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 5);
+  const stockHealth = countStockHealth(stockLevels);
+  const lowStockItems = toLowStockAlerts(stockLevels);
 
-  const balanceByAccount = new Map<string, FinanceBalanceRow>();
-  for (const t of cashMovements) {
-    const key = `${t.type}_${t.currency}`;
-    const existing = balanceByAccount.get(key) || {
-      type: t.type,
-      currency: t.currency,
-      debit: 0,
-      credit: 0,
-      balance: 0,
-    };
-    existing.debit += Number(t.debit);
-    existing.credit += Number(t.credit);
-    existing.balance = existing.debit - existing.credit;
-    balanceByAccount.set(key, existing);
-  }
+  const recentMovements = latestMovements.map((m) => ({
+    itemName: m.item.name,
+    type: m.type,
+    quantity: Number(m.quantity),
+    date: m.date,
+  }));
+
+  const financeBalances: FinanceBalanceRow[] = cashTotals.map((row) => {
+    const debit = Number(row._sum.debit ?? 0);
+    const credit = Number(row._sum.credit ?? 0);
+    return { type: row.type, currency: row.currency, debit, credit, balance: debit - credit };
+  });
 
   const balanceByCurrency = new Map<string, number>();
-  for (const t of cashMovements) {
-    const net = Number(t.debit) - Number(t.credit);
-    balanceByCurrency.set(t.currency, (balanceByCurrency.get(t.currency) || 0) + net);
+  for (const row of financeBalances) {
+    balanceByCurrency.set(
+      row.currency,
+      (balanceByCurrency.get(row.currency) || 0) + row.balance
+    );
   }
-
-  const financeBalances = Array.from(balanceByAccount.values());
-  const financeTransactions: FinanceReportRow[] = cashMovements.map((t) => ({
-    date: t.date.toISOString(),
-    type: t.type,
-    description: t.description,
-    currency: t.currency,
-    debit: Number(t.debit),
-    credit: Number(t.credit),
-  }));
 
   return (
     <div className="w-full space-y-10">
@@ -319,7 +344,7 @@ export default async function DashboardPage() {
         description={t("dashboard.stockDescription", { threshold: LOW_STOCK_THRESHOLD })}
         href="/inventory"
         hrefLabel={t("dashboard.stockHrefLabel")}
-        actions={<InventoryExportAction items={toClientInventory(inventorySummary)} />}
+        actions={<InventoryExportAction />}
       >
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard title={t("dashboard.statItems")} value={stockHealth.totalItems} href="/inventory" />
@@ -407,10 +432,7 @@ export default async function DashboardPage() {
           href="/finance"
           hrefLabel={t("dashboard.financeHrefLabel")}
           actions={
-            <FinanceExportAction
-              balances={financeBalances}
-              transactions={financeTransactions}
-            />
+            <FinanceExportAction />
           }
         >
           {balanceByCurrency.size > 0 ? (

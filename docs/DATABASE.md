@@ -1,5 +1,12 @@
 # Standar Database & Penamaan — SAI Accounting
 
+> **Multi-perusahaan (issue #104).** Skema di `prisma/schema.prisma` adalah skema
+> **satu perusahaan**, dan sejak #104 ia digandakan: satu basis data per PT.
+> Pengguna/perusahaan/keanggotaan hidup di skema terpisah
+> (`prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
+> `docs/MULTI-COMPANY.md` — terutama: **tidak ada FK ke `users` dari basis data
+> perusahaan**, dan migration diterapkan dengan `npm run db:migrate:all`.
+
 Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). Tujuan: konsisten, aman untuk data keuangan, dan mudah dipelihara. Standar ini mengodifikasikan konvensi yang **sudah** dipakai di `prisma/schema.prisma` + menutup celah.
 
 > Ringkas: **Bahasa Inggris · `snake_case` di DB · tabel jamak · uang `Decimal` (jangan Float) · setiap tabel punya `id` + `created_at` + `updated_at`.**

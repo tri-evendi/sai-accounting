@@ -67,7 +67,10 @@ export function SetupShell({ children }: { children: React.ReactNode }) {
 
           <UserMenu
             userName={session.user.name}
-            role={session.user.role}
+            // Wizard penyiapan selalu berjalan DI DALAM sebuah perusahaan, jadi
+            // perannya ada; `?? ""` hanya menutup tipe nullable yang lahir dari
+            // keadaan "belum memilih perusahaan" (issue #104).
+            role={session.user.role ?? ""}
             onSignOut={() => signOut({ callbackUrl: "/login" })}
           />
         </div>

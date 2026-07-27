@@ -42,6 +42,9 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+# Klien basis data kendali (issue #104) — sama seperti klien perusahaan, dihasilkan
+# oleh `npm run db:generate`, bukan disimpan di repo.
+/src/generated/control
 
 # local audit trail (sensitive)
 /data/audit/*.jsonl

@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile } from "fs/promises";
 import path from "path";
+import { currentCompany } from "@/lib/current-company";
 
 export type AuditAction =
   | "finance.create"
@@ -156,6 +157,9 @@ export type AuditEntity =
 
 export type AuditLogEntry = {
   id: string;
+  /** Perusahaan tempat tindakan ini terjadi (issue #104). */
+  companyId?: number;
+  companySlug?: string;
   userId: string;
   username: string;
   /** Peran aktor SAAT beraksi (audit RBAC fase 3) — peran bisa berubah, jejak tidak. */
@@ -168,8 +172,28 @@ export type AuditLogEntry = {
   createdAt: string;
 };
 
-const AUDIT_DIR = path.join(process.cwd(), "data", "audit");
-const AUDIT_FILE = path.join(AUDIT_DIR, "audit.jsonl");
+/**
+ * Jejak audit DIPISAH PER PERUSAHAAN (issue #104): `data/audit/<slug>/audit.jsonl`.
+ *
+ * Kenapa berkas terpisah, bukan satu berkas dengan kolom `companyId`. Layar
+ * Audit hanya boleh memperlihatkan jejak perusahaan yang sedang dibuka —
+ * "siapa mengubah faktur siapa" adalah informasi yang paling tidak boleh
+ * menyeberang. Dengan satu berkas bersama, kebenaran itu bergantung pada satu
+ * penyaring yang harus diingat setiap pembaca; dengan berkas terpisah, pembaca
+ * yang lupa menyaring TIDAK PUNYA apa-apa untuk bocor. Pemisahan yang sama
+ * dengan alasan basis data per perusahaan.
+ *
+ * Berkas lama `data/audit/audit.jsonl` (sebelum multi-perusahaan) dibiarkan di
+ * tempatnya dan tetap terbaca sebagai jejak perusahaan yang diadopsi — lihat
+ * `scripts/adopt-existing-company.ts`, yang memindahkannya ke folder slug-nya.
+ */
+const AUDIT_ROOT = path.join(process.cwd(), "data", "audit");
+
+async function auditPaths(): Promise<{ dir: string; file: string; companyId: number }> {
+  const { slug, companyId } = await currentCompany();
+  const dir = path.join(AUDIT_ROOT, slug);
+  return { dir, file: path.join(dir, "audit.jsonl"), companyId };
+}
 
 export function getClientIp(request?: Request): string | null {
   if (!request) return null;
@@ -191,8 +215,12 @@ export async function writeAuditLog(params: {
   details?: Record<string, unknown>;
   request?: Request;
 }) {
+  const { dir, file, companyId } = await auditPaths();
+  const slug = path.basename(dir);
   const entry: AuditLogEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    companyId,
+    companySlug: slug,
     userId: params.userId,
     username: params.username.slice(0, 50),
     role: params.role,
@@ -205,8 +233,8 @@ export async function writeAuditLog(params: {
   };
 
   try {
-    await mkdir(AUDIT_DIR, { recursive: true });
-    await appendFile(AUDIT_FILE, `${JSON.stringify(entry)}\n`, "utf8");
+    await mkdir(dir, { recursive: true });
+    await appendFile(file, `${JSON.stringify(entry)}\n`, "utf8");
   } catch (err) {
     console.error("[audit] failed to write log:", err);
   }
@@ -261,7 +289,7 @@ export async function readAuditLogs(options: {
 }): Promise<AuditPage> {
   let lines: string[] = [];
   try {
-    const raw = await readFile(AUDIT_FILE, "utf8");
+    const raw = await readFile((await auditPaths()).file, "utf8");
     lines = raw.trim().split("\n").filter(Boolean);
   } catch {
     const page = Math.max(1, options.page ?? 1);

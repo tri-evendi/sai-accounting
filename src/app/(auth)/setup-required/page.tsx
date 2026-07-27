@@ -35,6 +35,14 @@ export default async function SetupRequiredPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  /*
+   * Tanpa perusahaan aktif, layar ini tidak punya pertanyaan untuk dijawab
+   * (issue #104): "sudah disiapkan atau belum" selalu tentang SATU perusahaan,
+   * dan tanpa itu setiap pembacaannya akan melempar. Pengguna dikirim memilih
+   * dulu — bukan dibiarkan bertemu galat yang tidak menjelaskan apa pun.
+   */
+  if (session.user.companyId == null) redirect("/select-company");
+
   // Bukan jalan buntu: kedua keadaan di bawah membuat halaman ini tak relevan.
   if (await isSetupDone()) redirect("/dashboard");
   if (await canEffective(session.user, "setup.manage")) redirect("/setup");

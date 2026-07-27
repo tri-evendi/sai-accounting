@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateStockTotals } from "@/lib/inventory";
+import { calculateStockTotals, summarizeInventory } from "@/lib/inventory";
 import { stockUpdateSchema, itemSchema, itemActiveSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
@@ -29,21 +29,31 @@ export async function GET(request: Request) {
   const items = await prisma.item.findMany({
     where: activeOnly ? { isActive: true } : undefined,
     include: {
-      stockMovements: { orderBy: { date: "desc" } },
+      // Empat kolom yang benar-benar dipakai ringkasan & PDF — bukan seluruh
+      // baris gerakan (issue #104).
+      stockMovements: {
+        select: { quantity: true, type: true, date: true, unitCost: true },
+        orderBy: { date: "desc" },
+      },
     },
   });
 
-  const inventory = items.map((item) => {
-    const totals = calculateStockTotals(item.stockMovements);
-    return {
-      id: item.id,
-      name: item.name,
-      unit: item.unit,
-      isActive: item.isActive,
-      ...totals,
-      lastMovement: item.stockMovements[0]?.date || null,
-    };
-  });
+  /*
+   * Ringkasan LENGKAP per barang — termasuk biaya rata-rata & nilai persediaan.
+   *
+   * Dulu route ini hanya mengembalikan total masuk/keluar, sehingga ekspor PDF
+   * stok harus disuapi dari halaman yang sudah memuat seluruh gerakan lebih
+   * dulu. Sejak ekspor mengambil datanya sendiri saat ditekan (issue #104),
+   * route inilah sumbernya, jadi ia harus membawa kolom yang sama dengan yang
+   * dicetak. Perhitungannya memakai `summarizeInventoryItem` — fungsi yang
+   * SAMA dengan penilaian persediaan di neraca dan HPP, supaya angka di PDF
+   * tidak pernah berbeda dari angka di laporan.
+   */
+  const inventory = summarizeInventory(items).map((summary, index) => ({
+    ...summary,
+    isActive: items[index].isActive,
+    lastMovement: items[index].stockMovements[0]?.date ?? null,
+  }));
 
   return NextResponse.json(inventory);
 }

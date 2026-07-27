@@ -3,13 +3,23 @@ import { auth } from "@/lib/auth";
 import type { Permission } from "@/lib/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
+import { enterCompanyFromSession } from "@/lib/company-session";
 
 type AuthResult =
   | {
       authorized: true;
       session: {
-        user: { id: string; role: string; name: string; email: string; mustChangePassword: boolean };
+        user: {
+          id: string;
+          /** Peran DI PERUSAHAAN yang sedang dibuka — dijamin ada di cabang ini. */
+          role: string;
+          name: string;
+          email: string;
+          mustChangePassword: boolean;
+        };
       };
+      /** Perusahaan yang konteksnya sudah ditanam untuk permintaan ini (#104). */
+      companyId: number;
     }
   | { authorized: false; response: NextResponse };
 
@@ -29,6 +39,31 @@ export async function requireApiPermission(permission: Permission): Promise<Auth
     return {
       authorized: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+
+  /*
+   * Konteks perusahaan (issue #104) — DI SINI, sebelum satu query pun.
+   *
+   * Kalau sesinya belum memilih perusahaan, jawabannya 409 dengan kode yang
+   * bisa dibaca klien, bukan 401: kredensialnya sah, yang kurang adalah
+   * pilihan perusahaan. Menjawab 401 akan membuat klien melempar orang ke
+   * halaman masuk untuk mengetik ulang kata sandi yang tidak pernah salah.
+   */
+  const company = await enterCompanyFromSession(session);
+  if (!company.ok) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        {
+          error:
+            company.reason === "no-company"
+              ? "Pilih perusahaan terlebih dahulu."
+              : "Perusahaan yang Anda buka tidak tersedia lagi.",
+          code: company.reason === "no-company" ? "company_required" : "company_unavailable",
+        },
+        { status: 409 }
+      ),
     };
   }
 
@@ -62,5 +97,5 @@ export async function requireApiPermission(permission: Permission): Promise<Auth
     };
   }
 
-  return { authorized: true, session } as AuthResult;
+  return { authorized: true, session, companyId: company.companyId } as AuthResult;
 }

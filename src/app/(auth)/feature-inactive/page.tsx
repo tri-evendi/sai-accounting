@@ -40,6 +40,13 @@ export default async function FeatureInactivePage({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  /*
+   * Modul aktif adalah pengaturan PER PERUSAHAAN (issue #104), jadi tanpa
+   * perusahaan aktif pertanyaan "modul ini menyala atau tidak" tidak punya
+   * jawaban — membacanya akan melempar. Pilih perusahaannya dulu.
+   */
+  if (session.user.companyId == null) redirect("/select-company");
+
   const raw = (await searchParams).module ?? "";
   // Nilai dari URL tidak pernah dipercaya: hanya modul yang dikenal kode yang
   // boleh disebut namanya di layar.

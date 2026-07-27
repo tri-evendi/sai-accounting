@@ -21,7 +21,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Check, ChevronDown, Languages, LogOut, KeyRound, User } from "lucide-react";
+import { Building2, Check, ChevronDown, Languages, LogOut, KeyRound, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { setLocale } from "@/lib/i18n/actions";
@@ -47,7 +47,18 @@ export function UserMenu({
   role: string;
   onSignOut: () => void;
 }) {
+  /**
+   * Perusahaan yang sedang dibuka + apakah ada yang lain (issue #104).
+   *
+   * Diambil hanya SAAT MENU DIBUKA, sekali per pemuatan halaman: ini informasi
+   * yang jarang berubah dan tidak layak dibayar satu permintaan di setiap
+   * render. Yang dipakai untuk berpindah tetap layar pemilih — di sanalah
+   * pemuatan ulang penuh terjadi, dan itu memang yang dibutuhkan (lihat
+   * CompanyChoices).
+   */
   const [open, setOpen] = useState(false);
+  const [companies, setCompanies] = useState<{ id: number; name: string }[] | null>(null);
+  const [activeCompany, setActiveCompany] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const dictionary = useDictionary();
@@ -58,6 +69,24 @@ export function UserMenu({
   // perannya sendiri jadi cadangan, sama seperti sebelum multibahasa.
   const roleLabel = roleLabels(dictionary)[role as SystemRole] || role;
   const abbr = initials(userName);
+
+  useEffect(() => {
+    if (!open || companies !== null) return;
+    let cancelled = false;
+    void fetch("/api/user/companies")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { activeId: number | null; companies: { id: number; name: string }[] } | null) => {
+        if (cancelled || !data) return;
+        setCompanies(data.companies);
+        setActiveCompany(data.companies.find((c) => c.id === data.activeId)?.name ?? null);
+      })
+      .catch(() => {
+        // Menu tetap berguna tanpa daftar perusahaan; jangan menggagalkannya.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, companies]);
 
   useEffect(() => {
     if (!open) return;
@@ -145,6 +174,14 @@ export function UserMenu({
               <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                 {roleLabel}
               </span>
+              {/* Perusahaan yang sedang dibuka — di aplikasi akuntansi, "buku
+                  siapa yang sedang saya lihat" adalah hal yang tidak boleh
+                  perlu ditebak. */}
+              {activeCompany && (
+                <span className="mt-1 block truncate text-xs text-muted-foreground">
+                  {activeCompany}
+                </span>
+              )}
             </span>
           </div>
 
@@ -189,6 +226,20 @@ export function UserMenu({
 
           {/* Aksi akun */}
           <div className="p-1">
+            {/* Ganti perusahaan — hanya muncul bila memang ADA yang lain.
+                Menawarkan pilihan yang tidak ada hanya membuat orang menekan
+                sesuatu yang mengembalikannya ke tempat yang sama. */}
+            {companies !== null && companies.length > 1 && (
+              <Link
+                role="menuitem"
+                href="/select-company"
+                onClick={() => setOpen(false)}
+                className={cn(itemClass, "text-foreground hover:bg-muted")}
+              >
+                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span>{t("auth.selectCompany.switchLabel")}</span>
+              </Link>
+            )}
             <Link
               role="menuitem"
               href="/change-password"

@@ -189,6 +189,12 @@
   "navbar": {
     "openMenu": "Buka menu"
   },
+  "commandPalette": {
+    "title": "Cari halaman",
+    "placeholder": "Ketik nama halaman…",
+    "empty": "Tidak ada halaman yang cocok.",
+    "mainGroup": "Utama"
+  },
   "accountantMode": {
     "label": "Mode Akuntan",
     "on": "ON",

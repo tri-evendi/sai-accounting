@@ -88,6 +88,9 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   // ── core_accounting — permukaan yang membuat aplikasi ini aplikasi akuntansi.
   // Setiap perusahaan memilikinya, apa pun bidangnya; dan di sinilah dua pintu
   // anti-lockout (`authz`, `user`) tinggal.
+  // Membuat PT baru bukan fitur opsional kategori usaha: tanpanya pemasangan
+  // multi-PT tidak bisa tumbuh sama sekali.
+  company: "core_accounting",
   account: "core_accounting",
   cost_center: "core_accounting",
   journal: "core_accounting",

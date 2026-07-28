@@ -221,8 +221,36 @@ lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
 
 ### Perusahaan berikutnya
 
+**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`,
+izin `company.create`, akses penuh saja). Ia mengerjakan hal yang sama dengan
+skrip di bawah — buat basis data, terapkan skema, daftarkan — sambil
+mengalirkan kemajuannya tahap demi tahap.
+
+Syaratnya satu: pengguna basis data aplikasi harus boleh membuat basis data.
+Hak itu dibatasi **pola nama**, bukan diberikan menyeluruh:
+
 ```bash
-npm run create-company -- --slug pt-b --name "PT Bumi Baru" [--admin budi]
+docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
+  GRANT ALL PRIVILEGES ON \`sai\_%\`.* TO '"'"'$MARIADB_USER'"'"'@'"'"'%'"'"';
+  FLUSH PRIVILEGES;"'
+```
+
+`sai\_%` berarti aplikasi hanya bisa menyentuh basis data yang namanya
+berawalan `sai_` — dan kode memaksa awalan yang sama
+(`COMPANY_DATABASE_PREFIX`). Dua sisi yang saling menjaga: satu di server, satu
+di kode. Tanpa GRANT ini halamannya tetap berguna, hanya jalurnya berbeda:
+administrator membuat basis data kosong lebih dulu, lalu penyediaan mengisinya.
+
+Migration diterapkan oleh aplikasi SENDIRI, bukan lewat Prisma CLI (image
+produksi tidak memuatnya). Pembukuannya ditulis ke `_prisma_migrations` dengan
+bentuk yang sama persis, jadi `db:migrate:all` berikutnya membacanya sebagai
+sudah diterapkan — dijaga `tests/company-provisioning.test.tsx`.
+
+**Dari baris perintah** — tetap ada, dan tetap jalan:
+
+```bash
+docker compose run --rm migrate npm run create-company -- \
+  --slug pt-b --name "PT Bumi Baru" [--admin budi]
 ```
 
 Pengguna basis datanya harus berhak `CREATE DATABASE`; bila tidak (dan di banyak

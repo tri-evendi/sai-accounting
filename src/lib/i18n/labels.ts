@@ -234,6 +234,7 @@ export function permissionResourceLabels(
   if (!dictionary) return RESOURCE_LABELS;
   const r = dictionary.permissionResource;
   return {
+    company: r.company,
     approval: r.approval,
     approval_rule: r.approval_rule,
     contract: r.contract,
@@ -277,6 +278,7 @@ export function permissionLabels(
   if (!dictionary) return PERMISSION_LABELS;
   const p = dictionary.permission;
   return {
+    "company.create": p.company_create,
     "approval.view": p.approval_view,
     "approval.decide": p.approval_decide,
     "approval_rule.manage": p.approval_rule_manage,

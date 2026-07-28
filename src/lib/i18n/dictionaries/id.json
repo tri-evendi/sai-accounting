@@ -143,7 +143,8 @@
       "setup": "Setup & Saldo Awal",
       "users": "Pengguna",
       "permissions": "Hak Akses",
-      "settings": "Pengaturan"
+      "settings": "Pengaturan",
+      "companyNew": "Tambah Perusahaan"
     }
   },
   "quickActions": {
@@ -2124,7 +2125,9 @@
     "equityDebit": "Modal/Ekuitas (debit)",
     "unratedWarning": "{count} saldo mata uang asing belum berkurs — isi kursnya sebelum menyimpan.",
     "balanced": "Seimbang: Aset = Kewajiban + Modal/Ekuitas ({amount})",
-    "noBalancesYet": "Belum ada saldo awal yang diisi."
+    "noBalancesYet": "Belum ada saldo awal yang diisi.",
+    "savingStatus": "Menyimpan penyiapan — identitas, modul, bagan akun, dan jurnal saldo awal. Mohon tunggu, jangan tutup halaman ini.",
+    "finishing": "Menyimpan…"
   },
   "approvalDocumentType": {
     "contract": "Kontrak",
@@ -2259,7 +2262,8 @@
     "company_setting": "Profil Perusahaan",
     "authz": "Hak Akses",
     "glossary": "Kamus Istilah",
-    "settings": "Pengaturan"
+    "settings": "Pengaturan",
+    "company": "Perusahaan"
   },
   "permission": {
     "approval_view": "Melihat antrean persetujuan",
@@ -2319,7 +2323,8 @@
     "company_setting_manage": "Mengubah profil perusahaan",
     "authz_manage": "Mengatur hak akses (halaman ini)",
     "glossary_read": "Membuka kamus istilah",
-    "settings_view": "Membuka halaman pengaturan"
+    "settings_view": "Membuka halaman pengaturan",
+    "company_create": "Membuat perusahaan baru beserta basis datanya — buku yang terpisah penuh dari perusahaan lain."
   },
   "users": {
     "title": "Manajemen Pengguna",
@@ -2952,6 +2957,9 @@
     "passwordConfirmRequired": "Ulangi kata sandi baru untuk memastikan",
     "passwordMismatch": "Kata sandi tidak sama",
     "tooManyOverrideRows": "Terlalu banyak baris override.",
+    "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
+    "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",
+    "companyDatabaseInvalid": "Nama basis data hanya boleh huruf kecil, angka, dan garis bawah",
     "itemNameRequired": "Nama barang wajib diisi",
     "bagsMin0": "Bags harus 0 atau lebih",
     "kgPerBagMin0": "Kg per bag harus 0 atau lebih",
@@ -3086,5 +3094,31 @@
       "services": "Tanpa barang sama sekali: tanpa stok dan tanpa lapisan perdagangan.",
       "custom": "Mulai dari semua modul menyala, lalu matikan yang tidak dipakai."
     }
+  },
+  "companies": {
+    "newTitle": "Tambah Perusahaan",
+    "newDescription": "Membuat PT baru beserta basis datanya sendiri.",
+    "explainIsolation": "Setiap perusahaan punya bukunya sendiri — faktur, jurnal, stok, dan penggunanya terpisah sepenuhnya dari perusahaan lain.",
+    "explainNextStep": "Setelah dibuat, buka perusahaannya lalu jalankan wizard penyiapan: identitas, tahun buku, bagan akun, dan saldo awal.",
+    "nameLabel": "Nama perusahaan",
+    "nameHelp": "Nama yang muncul di pemilih perusahaan dan di kop dokumen.",
+    "slugLabel": "Slug",
+    "slugHelp": "Huruf kecil, angka, dan tanda hubung. Dipakai di URL dan nama basis data.",
+    "databasePreview": "Basis datanya akan bernama",
+    "create": "Buat Perusahaan",
+    "creating": "Menyiapkan…",
+    "dontClose": "Jangan tutup halaman ini sampai selesai.",
+    "doneTitle": "Perusahaan siap dipakai",
+    "doneBody": "Basis datanya sudah dibuat dan skemanya lengkap. Anda sudah terdaftar sebagai anggotanya.",
+    "openPicker": "Buka pemilih perusahaan",
+    "addAnother": "Tambah satu lagi",
+    "errFailed": "Perusahaan gagal dibuat.",
+    "errNetwork": "Sambungan terputus sebelum penyediaan selesai.",
+    "errSafeToRetry": "Tidak ada perusahaan setengah jadi yang terdaftar — aman untuk diulang setelah penyebabnya dibereskan.",
+    "progressTitle": "Kemajuan penyediaan",
+    "stepValidate": "Memeriksa nama dan ketersediaan",
+    "stepDatabase": "Membuat basis data",
+    "stepMigrate": "Menerapkan skema",
+    "stepRegister": "Mendaftarkan perusahaan"
   }
 }

@@ -143,7 +143,8 @@
       "setup": "Setup & Opening Balances",
       "users": "Users",
       "permissions": "Access Rights",
-      "settings": "Settings"
+      "settings": "Settings",
+      "companyNew": "Add Company"
     }
   },
   "quickActions": {
@@ -2124,7 +2125,9 @@
     "equityDebit": "Capital/Equity (debit)",
     "unratedWarning": "{count} foreign-currency balances have no rate yet — enter the rate before saving.",
     "balanced": "Balanced: Assets = Liabilities + Capital/Equity ({amount})",
-    "noBalancesYet": "No opening balances entered yet."
+    "noBalancesYet": "No opening balances entered yet.",
+    "savingStatus": "Saving your setup — identity, modules, chart of accounts and the opening-balance journal. Please wait; keep this page open.",
+    "finishing": "Saving…"
   },
   "approvalDocumentType": {
     "contract": "Contract",
@@ -2259,7 +2262,8 @@
     "company_setting": "Company Profile",
     "authz": "Access Rights",
     "glossary": "Glossary",
-    "settings": "Settings"
+    "settings": "Settings",
+    "company": "Company"
   },
   "permission": {
     "approval_view": "View the approval queue",
@@ -2319,7 +2323,8 @@
     "company_setting_manage": "Edit the company profile",
     "authz_manage": "Configure access rights (this page)",
     "glossary_read": "Open the glossary",
-    "settings_view": "Open the settings page"
+    "settings_view": "Open the settings page",
+    "company_create": "Create a new company with its own database — books fully separate from every other company."
   },
   "users": {
     "title": "User Management",
@@ -2952,6 +2957,9 @@
     "passwordConfirmRequired": "Please confirm your new password",
     "passwordMismatch": "The passwords do not match",
     "tooManyOverrideRows": "Too many override rows.",
+    "companyDatabasePrefix": "The database name must start with \"sai_\"",
+    "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",
+    "companyDatabaseInvalid": "Database name may contain only lowercase letters, numbers and underscores",
     "itemNameRequired": "Item name is required",
     "bagsMin0": "Bags must be 0 or more",
     "kgPerBagMin0": "Kg per bag must be 0 or more",
@@ -3086,5 +3094,31 @@
       "services": "No goods at all: no stock and no trading layer.",
       "custom": "Start with every module on, then switch off whatever you do not use."
     }
+  },
+  "companies": {
+    "newTitle": "Add Company",
+    "newDescription": "Create a new company with its own database.",
+    "explainIsolation": "Each company keeps its own books — invoices, journals, stock and users are fully separate from every other company.",
+    "explainNextStep": "Once created, open the company and run the setup wizard: identity, fiscal year, chart of accounts and opening balances.",
+    "nameLabel": "Company name",
+    "nameHelp": "The name shown in the company picker and on document letterheads.",
+    "slugLabel": "Slug",
+    "slugHelp": "Lowercase letters, numbers and hyphens. Used in URLs and the database name.",
+    "databasePreview": "Its database will be named",
+    "create": "Create Company",
+    "creating": "Preparing…",
+    "dontClose": "Keep this page open until it finishes.",
+    "doneTitle": "Company is ready",
+    "doneBody": "The database is created and the schema is complete. You are already a member.",
+    "openPicker": "Open company picker",
+    "addAnother": "Add another",
+    "errFailed": "The company could not be created.",
+    "errNetwork": "The connection dropped before provisioning finished.",
+    "errSafeToRetry": "No half-created company was registered — it is safe to retry once the cause is fixed.",
+    "progressTitle": "Provisioning progress",
+    "stepValidate": "Checking the name and availability",
+    "stepDatabase": "Creating the database",
+    "stepMigrate": "Applying the schema",
+    "stepRegister": "Registering the company"
   }
 }

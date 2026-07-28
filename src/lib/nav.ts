@@ -203,6 +203,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // issue #73 — matriks izin dikonfigurasi dari sini; anti-lockout menjamin
       // peran berakses penuh tidak pernah kehilangan pintunya sendiri.
       { href: "/permissions", label: "Hak Akses", labelKey: "nav.items.permissions", icon: "KeyRound", permission: "authz.manage" },
+      // issue #104 — menambah PT baru dulu menuntut akses SSH ke server; kini
+      // ia berdiri di tempat orang yang berwenang memang sudah berada.
+      { href: "/companies/new", label: "Tambah Perusahaan", labelKey: "nav.items.companyNew", icon: "Building2", permission: "company.create" },
       { href: "/settings", label: "Pengaturan", labelKey: "nav.items.settings", icon: "Settings", permission: "settings.view" },
     ],
   },

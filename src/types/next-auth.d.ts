@@ -19,6 +19,12 @@ declare module "next-auth" {
      * pengenal mesin; yang dikenali orang adalah namanya.
      */
     companyName?: string | null;
+    /**
+     * BERAPA perusahaan yang boleh dibuka pengguna ini. Dibawa sesi supaya
+     * chrome bisa memutuskan menawarkan "Pilih Perusahaan" atau tidak, tanpa
+     * satu permintaan pun di setiap pemuatan halaman.
+     */
+    companyCount?: number;
   }
 
   interface Session {
@@ -35,6 +41,7 @@ declare module "next-auth" {
       companyId: number | null;
       companySlug: string | null;
       companyName: string | null;
+      companyCount: number;
     };
   }
 }
@@ -53,5 +60,6 @@ declare module "next-auth/jwt" {
     companyId?: number | null;
     companySlug?: string | null;
     companyName?: string | null;
+    companyCount?: number;
   }
 }

@@ -144,7 +144,8 @@
       "users": "用户",
       "permissions": "访问权限",
       "settings": "设置",
-      "companyNew": "添加公司"
+      "companyNew": "添加公司",
+      "selectCompany": "切换公司"
     }
   },
   "quickActions": {

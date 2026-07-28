@@ -38,6 +38,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <Sidebar
         role={role}
         accountantMode={session.user.accountantMode}
+        companyCount={session.user.companyCount}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -46,6 +47,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           userName={session.user.name}
           role={role}
           companyName={session.user.companyName}
+          companyCount={session.user.companyCount}
           onMenuClick={() => setSidebarOpen(true)}
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />
@@ -61,7 +63,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Ctrl/⌘+K — cari halaman dengan mengetik. Ditempel di layout (bukan per
           halaman) supaya pintasannya hidup di seluruh dashboard. Isinya berasal
           dari sumber yang sama dengan menu samping. */}
-      <CommandPalette role={role} accountantMode={session.user.accountantMode} />
+      <CommandPalette
+        role={role}
+        accountantMode={session.user.accountantMode}
+        companyCount={session.user.companyCount}
+      />
     </div>
   );
 }

@@ -86,6 +86,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           companyId: only?.companyId ?? null,
           companySlug: only?.slug ?? null,
           companyName: only?.name ?? null,
+          companyCount: companies.length,
           role: membership?.role ?? null,
           accountantMode: membership?.accountantMode ?? null,
         };
@@ -101,6 +102,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           companyId?: number | null;
           companySlug?: string | null;
           companyName?: string | null;
+          companyCount?: number;
           role?: string | null;
           accountantMode?: boolean | null;
         };
@@ -110,6 +112,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.companyId = u.companyId ?? null;
         token.companySlug = u.companySlug ?? null;
         token.companyName = u.companyName ?? null;
+        token.companyCount = u.companyCount ?? 0;
         token.role = u.role ?? null;
         token.accountantMode = u.accountantMode ?? null;
         token.checkedAt = Date.now();
@@ -180,6 +183,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.companyName = membership.company.name;
         }
 
+        /*
+         * Jumlahnya ikut disegarkan DI SINI, bukan tiap permintaan: keanggotaan
+         * berubah jarang (perusahaan baru dibuat, akses dicabut), dan revalidasi
+         * berkala ini memang sudah menyentuh basis data kendali.
+         */
+        token.companyCount = (await companiesForUser(userId)).length;
+
         token.mustChangePassword = dbUser!.mustChangePassword;
         token.sessionVersion = dbUser!.sessionVersion;
         token.checkedAt = Date.now();
@@ -200,6 +210,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (token.companySlug as string | null | undefined) ?? null;
         (session.user as { companyName: string | null }).companyName =
           (token.companyName as string | null | undefined) ?? null;
+        (session.user as { companyCount: number }).companyCount =
+          typeof token.companyCount === "number" ? token.companyCount : 0;
       }
       return session;
     },

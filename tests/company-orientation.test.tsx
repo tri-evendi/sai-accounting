@@ -19,6 +19,8 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { CompanyIndicator } from "@/components/layout/company-indicator";
+import { visibleNavHrefs } from "@/lib/nav";
+import { ROLES } from "@/lib/constants";
 import { LocaleProvider } from "@/lib/i18n/client";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -63,6 +65,54 @@ describe("penanda perusahaan aktif", () => {
 
   it("tanpa perusahaan aktif tidak merender apa pun — bukan menebak nama", () => {
     expect(render(null)).toBe("");
+  });
+});
+
+describe("penanda menjadi jalan berpindah — hanya bila ada yang lain", () => {
+  it("satu perusahaan: teks biasa, bukan tautan yang memantul balik", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" companyCount={1} />
+      </LocaleProvider>
+    );
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("PT Satu");
+  });
+
+  it("lebih dari satu: tautan ke pemilih perusahaan", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" companyCount={2} />
+      </LocaleProvider>
+    );
+    expect(html).toContain('href="/select-company"');
+    // Namanya saja tidak memberi tahu bahwa ia bisa ditekan.
+    expect(html).toContain((id as unknown as Dictionary).auth.selectCompany.switchLabel);
+  });
+
+  it("tanpa informasi jumlah, tidak menawarkan apa pun", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" />
+      </LocaleProvider>
+    );
+    expect(html).not.toContain("<a ");
+  });
+});
+
+describe("menu & palet menawarkan pemilih dengan syarat yang SAMA", () => {
+  const user = { role: ROLES.MANAGING_DIRECTOR as string, accountantMode: null };
+
+  it("satu perusahaan: tidak muncul di menu (maka juga tidak di palet)", () => {
+    expect(visibleNavHrefs({ ...user, companyCount: 1 })).not.toContain("/select-company");
+  });
+
+  it("dua perusahaan: muncul", () => {
+    expect(visibleNavHrefs({ ...user, companyCount: 2 })).toContain("/select-company");
+  });
+
+  it("jumlahnya tidak diketahui: disembunyikan, bukan ditawarkan spekulatif", () => {
+    expect(visibleNavHrefs(user)).not.toContain("/select-company");
   });
 });
 

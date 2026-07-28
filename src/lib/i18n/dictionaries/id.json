@@ -144,7 +144,8 @@
       "users": "Pengguna",
       "permissions": "Hak Akses",
       "settings": "Pengaturan",
-      "companyNew": "Tambah Perusahaan"
+      "companyNew": "Tambah Perusahaan",
+      "selectCompany": "Pilih Perusahaan"
     }
   },
   "quickActions": {

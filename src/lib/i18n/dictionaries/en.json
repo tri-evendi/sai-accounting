@@ -144,7 +144,8 @@
       "users": "Users",
       "permissions": "Access Rights",
       "settings": "Settings",
-      "companyNew": "Add Company"
+      "companyNew": "Add Company",
+      "selectCompany": "Switch Company"
     }
   },
   "quickActions": {

@@ -13,6 +13,12 @@ declare module "next-auth" {
     /** Perusahaan yang sedang dibuka. NULL = pengguna belum memilih (#104). */
     companyId?: number | null;
     companySlug?: string | null;
+    /**
+     * Nama perusahaan yang sedang dibuka — dibawa sesi supaya chrome aplikasi
+     * bisa MENYEBUTKANNYA tanpa satu permintaan pun. Slug ("pt-sai") adalah
+     * pengenal mesin; yang dikenali orang adalah namanya.
+     */
+    companyName?: string | null;
   }
 
   interface Session {
@@ -28,6 +34,7 @@ declare module "next-auth" {
       // issue #104 — perusahaan yang sedang dibuka sesi ini.
       companyId: number | null;
       companySlug: string | null;
+      companyName: string | null;
     };
   }
 }
@@ -45,5 +52,6 @@ declare module "next-auth/jwt" {
     // issue #104 — perusahaan yang sedang dibuka token ini.
     companyId?: number | null;
     companySlug?: string | null;
+    companyName?: string | null;
   }
 }

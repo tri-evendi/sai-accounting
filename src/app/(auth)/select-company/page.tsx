@@ -24,7 +24,7 @@ import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { CompanyChoices } from "./company-choices";
+import { CompanyChoices, SignOutAction } from "./company-choices";
 
 export const dynamic = "force-dynamic";
 
@@ -49,8 +49,15 @@ export default async function SelectCompanyPage() {
         heading={t("auth.selectCompany.noAccessHeading")}
         description={t("auth.selectCompany.noAccessBody")}
         icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+        footer={<SignOutAction />}
       >
-        <div className="text-sm leading-relaxed text-muted-foreground" />
+        {/* Keadaan ini hampir selalu berarti akses baru saja dicabut: masuk
+            tanpa satu pun keanggotaan sudah ditahan lebih awal di `authorize()`.
+            Jadi yang dibutuhkan pembacanya bukan penjelasan tambahan,
+            melainkan cara keluar untuk mencoba akun yang lain. */}
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {t("auth.selectCompany.noAccessNext")}
+        </p>
       </AuthShell>
     );
   }

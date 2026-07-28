@@ -49,6 +49,28 @@ Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). 
 - Ikuti pola existing: **`String @db.VarChar(n)`** dengan **daftar nilai terdokumentasi** + divalidasi `z.enum([...])` di layer Zod. (Belum pakai Prisma `enum` di proyek ini — jangan campur tanpa alasan.)
 - Nilai enum: **lowercase `snake_case`** (`pending`, `partial`, `paid`, `kas_besar`).
 
+#### Setiap pintu masuk data wajib memvalidasi — bukan cuma formulir (issue #111)
+
+Kolomnya `VARCHAR`, jadi basis data **tidak menolak apa pun**. Zod menjaga
+formulir; yang tidak dijaga adalah pintu kedua: **impor/ETL**. Impor legacy
+menyalin `'IN'`/`'OUT'`/`'PROCESS'` dan `'Kas Kecil'`/`'Rp'`/`'USD'`/`'CNY'` apa
+adanya, berhasil tanpa satu pun galat, dan menghasilkan saldo stok **nol** untuk
+33 barang serta 18.689 baris kas yang terposting ke akun kas bawaan.
+
+Kenapa tak pernah berbunyi: collation `utf8mb4_unicode_ci` membuat
+`WHERE type = 'in'` **cocok** dengan `'IN'`, sedangkan `s.type === "in"` di
+JavaScript **tidak** — dan saldo dihitung di JavaScript. Setiap pemeriksaan
+lewat SQL akan bilang "bersih".
+
+Aturannya:
+- Daftar nilai hidup di **satu tempat** (`src/lib/constants.ts`), dipakai
+  `z.enum(...)` maupun penjaga impor — jangan diketik ulang.
+- Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
+  nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah
+  tanpa jejak.
+- Memeriksa data yang sudah ada: `npm run check:legacy-values` (BINARY, jadi
+  perbedaan huruf besar/kecil terlihat) — jalankan pada gladi resik rilis.
+
 ---
 
 ## 3. Kolom wajib di SETIAP tabel

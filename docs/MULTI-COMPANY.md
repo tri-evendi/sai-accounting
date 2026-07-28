@@ -142,12 +142,23 @@ npm run db:migrate:control
 #    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
 npm run adopt-company -- --slug pt-sai --name "PT Subur Anugerah Indonesia"
 
-# 3. Migration perusahaan — 0042 membuang tabel `users` dari buku
+# 3. Migration perusahaan — 0042 membuang tabel `users` dari buku,
+#    0043 menyelaraskan nilai enum-like data legacy (issue #111)
 npm run db:migrate:companies
 
-# 4. Naikkan image baru (skema & kode harus naik bersama)
+# 4. Buktikan nilai enum-like sudah baku di SETIAP perusahaan
+npm run check:legacy-values
+
+# 5. Naikkan image baru (skema & kode harus naik bersama)
 docker compose up --build -d
 ```
+
+**Kenapa langkah 4 ada.** `migrate deploy` tidak melaporkan berapa baris yang
+diperbaikinya, dan sejak sekarang ia berjalan ke N basis data sekaligus.
+Pemeriksaannya BINARY — dengan collation `utf8mb4_unicode_ci`, `type = 'in'`
+cocok dengan `'IN'`, jadi pemeriksaan biasa akan bilang "bersih" untuk data yang
+justru sedang salah hitung (issue #111). Perintah ini read-only dan exit-nya
+bukan nol bila masih ada sisa.
 
 **`docker compose up` kini aman terhadap urutan.** Service `migrate` menjalankan
 `db:migrate:all`, bukan `prisma migrate deploy` mentah. Bedanya menentukan:

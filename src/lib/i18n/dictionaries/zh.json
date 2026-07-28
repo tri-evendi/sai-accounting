@@ -1958,6 +1958,7 @@
     "emptyMovementsDescription": "每一笔入库与出库都会显示在这里。先记录第一笔吧。",
     "stockIn": "入库",
     "stockOut": "出库",
+    "stockProcess": "加工中",
     "financeDescription": "最近 6 个月各币种的余额与资金变动",
     "financeHrefLabel": "打开现金与银行",
     "netBalance": "净余额 · {currency}",

@@ -118,6 +118,15 @@ export function getStockBadgeVariant(
   return "danger";
 }
 
+/**
+ * Saldo = jumlah `in` − jumlah `out`. `process` (issue #111) sengaja tidak
+ * masuk keduanya: barangnya sedang diolah, masih milik perusahaan, jadi
+ * mengurangkannya akan menghapus barang yang sebenarnya ada.
+ *
+ * Aturan yang sama PERSIS harus berlaku di `stockLevelsFromTotals` — beranda
+ * memakai yang itu, halaman Stok memakai yang ini, dan keduanya harus menyebut
+ * angka yang sama.
+ */
 export function calculateStockTotals(movements: StockMovement[]) {
   const totalIn = movements
     .filter((s) => s.type === "in")
@@ -197,8 +206,15 @@ export function stockLevelsFromTotals<T extends { id: number; name: string; unit
   const byItem = new Map<number, { totalIn: number; totalOut: number }>();
   for (const row of totals) {
     const entry = byItem.get(row.itemId) ?? { totalIn: 0, totalOut: 0 };
+    /*
+     * `else` di sini dulunya berarti "apa pun selain `in` mengurangi saldo" —
+     * dan itulah yang membuat `process` (issue #111) diperlakukan sebagai
+     * barang keluar DI BERANDA saja, sementara halaman Stok mengabaikannya.
+     * Dua halaman, satu barang, dua angka. Karena itu keduanya kini disebut
+     * eksplisit: hanya `out` yang mengurangi.
+     */
     if (row.type === "in") entry.totalIn += row.quantity;
-    else entry.totalOut += row.quantity;
+    else if (row.type === "out") entry.totalOut += row.quantity;
     byItem.set(row.itemId, entry);
   }
 

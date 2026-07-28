@@ -45,6 +45,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <Navbar
           userName={session.user.name}
           role={role}
+          companyName={session.user.companyName}
           onMenuClick={() => setSidebarOpen(true)}
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />

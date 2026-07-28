@@ -187,7 +187,8 @@
     "closeMenu": "Close menu"
   },
   "navbar": {
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "activeCompany": "Active company"
   },
   "commandPalette": {
     "title": "Find a page",
@@ -275,6 +276,7 @@
       "switching": "Opening company...",
       "noAccessHeading": "No company for this account yet",
       "noAccessBody": "Your account is valid but has not been given access to any company. Ask your system administrator to add you.",
+      "noAccessNext": "If you should have access, ask your system administrator to add this account to the company. If you have another account, sign out and use that one.",
       "switchLabel": "Switch company",
       "currentLabel": "Currently open",
       "signOut": "Sign out"

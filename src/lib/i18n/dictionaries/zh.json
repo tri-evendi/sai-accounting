@@ -187,7 +187,8 @@
     "closeMenu": "关闭菜单"
   },
   "navbar": {
-    "openMenu": "打开菜单"
+    "openMenu": "打开菜单",
+    "activeCompany": "当前公司"
   },
   "commandPalette": {
     "title": "查找页面",
@@ -275,6 +276,7 @@
       "switching": "正在打开公司…",
       "noAccessHeading": "该账户尚无公司",
       "noAccessBody": "您的账户有效，但尚未获得任何公司的访问权限。请联系系统管理员为您添加。",
+      "noAccessNext": "如果您本应拥有访问权限，请让系统管理员将此账号添加到相应公司。若您另有账号，请退出后改用该账号登录。",
       "switchLabel": "切换公司",
       "currentLabel": "当前打开",
       "signOut": "退出登录"

@@ -19,11 +19,39 @@
  */
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { Building2, Check } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { Building2, Check, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+
+/**
+ * Jalan keluar dari layar "belum ada perusahaan untuk akun ini".
+ *
+ * Tanpa ini layar tersebut adalah satu-satunya jalan buntu di seluruh aplikasi:
+ * setiap layar pra-aplikasi lain punya jalan keluarnya sendiri — /setup-required
+ * menawarkan "coba lagi", /feature-inactive menawarkan kembali ke beranda —
+ * sedangkan yang ini hanya kalimat, tanpa satu pun kendali. Orang yang aksesnya
+ * baru dicabut terdampar di sana: tidak bisa masuk, dan tidak bisa keluar untuk
+ * mencoba akun lain selain dengan menutup tab.
+ *
+ * Kuncinya (`auth.selectCompany.signOut`) sudah lama ada di ketiga kamus —
+ * hanya tidak pernah dirender.
+ */
+export function SignOutAction() {
+  const t = useT();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-full"
+      onClick={() => void signOut({ callbackUrl: "/login" })}
+    >
+      <LogOut className="h-4 w-4" aria-hidden="true" />
+      {t("auth.selectCompany.signOut")}
+    </Button>
+  );
+}
 
 export interface CompanyChoice {
   id: number;

@@ -94,6 +94,16 @@ Semua halaman dashboard memakai **`PageHeader`** (`src/components/ui/page-header
 - **Halaman di bawahnya** (baru / ubah / rincian): `breadcrumbs` dimulai dari **label menu induk** — kata yang sama dengan menu samping (mis. "Tagihan Penjualan", bukan "Invoices") — dan item terakhir (tanpa `href`) = halaman ini.
 - Badge status di samping judul lewat `badge`; kalimat penjelas lewat `description`.
 
+## Orientasi Perusahaan (chrome, wajib — issue #104)
+
+Sejak buku besar tiap PT hidup di basis datanya sendiri, satu pertanyaan berdiri di atas semua pertanyaan tampilan lain: **buku siapa yang sedang saya tulis?** Mencatat ke PT yang salah tidak berbunyi saat terjadi — ia muncul berbulan-bulan kemudian sebagai neraca yang tidak cocok.
+
+- **Nama perusahaan aktif selalu terlihat di top bar** (`CompanyIndicator`), di semua ukuran layar, tanpa perlu membuka menu apa pun. Namanya dibawa **sesi** (`session.user.companyName`), bukan diambil lewat permintaan — supaya ia hadir pada render pertama, bukan berkedip masuk setelah orang mulai mengetik.
+- Penanda itu **orientasi, bukan kendali**. Berganti perusahaan tinggal di menu avatar, dan hanya muncul bila pengguna memang memegang lebih dari satu PT.
+- Di layar sempit yang boleh menyempit adalah **namanya** (truncate + `title`), bukan target sentuh aksi di sebelah kanan.
+- **Identitas yang dicetak** (kop faktur/kontrak/surat jalan) diambil berurutan: setting perusahaan → nama di registry kendali → konstanta. Jangan pernah memundurkannya ke konstanta lebih awal: isinya nama pemasang pertama, dan mencetaknya di dokumen PT lain menghasilkan surat yang terlihat sah padahal salah badan hukum.
+- Layar pra-aplikasi (`/select-company`, `/setup-required`, `/feature-inactive`) **wajib punya jalan keluar** — tombol keluar atau tautan kembali. Layar tanpa kendali apa pun adalah jalan buntu bagi orang yang aksesnya baru dicabut.
+
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.

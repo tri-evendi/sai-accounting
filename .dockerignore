@@ -39,5 +39,18 @@ docker-compose*.yml
 # Docs & misc that don't belong in the image
 *.md
 !prisma/**/*.md
-subt5236_sai.sql
 .github
+
+# ── Cadangan & dump basis data — JANGAN PERNAH masuk ke image ──────────────
+# Baris ini dulu menyebut satu nama berkas (`subt5236_sai.sql`) sementara berkas
+# yang ada bernama `subt5236_sai_prod_18july.sql`. Polanya tidak pernah cocok,
+# jadi dump produksi 4,6 MB ikut terbangun ke dalam image — dan begitu seseorang
+# menaruh cadangan baru di akar repo (persis yang diminta runbook rilis), hash
+# kata sandi seluruh pengguna ikut terbawa juga.
+#
+# Karena itu polanya kini SELURUH `.sql` di mana pun, dengan satu pengecualian
+# yang memang wajib ada di image: SQL migration. Bentuknya sengaja disamakan
+# dengan `.gitignore`, yang sejak awal sudah benar.
+**/*.sql
+!prisma/migrations/**/*.sql
+backups/

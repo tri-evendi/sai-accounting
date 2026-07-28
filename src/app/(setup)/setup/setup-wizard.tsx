@@ -638,6 +638,38 @@ export function SetupWizard({
             {error}
           </p>
         )}
+
+        {/*
+         * Keadaan MENYIMPAN, dikatakan dengan kata — bukan hanya pemutar kecil
+         * di dalam tombol (issue #103).
+         *
+         * Langkah terakhir ini menulis identitas, modul, bagan akun, DAN
+         * membukukan jurnal saldo awal. Di sambungan yang lambat itu beberapa
+         * detik layar diam, dan yang paling mungkin dilakukan pengguna adalah
+         * menekan tombolnya lagi. `role="status"` membuatnya ikut DIBACAKAN —
+         * pemutar di dalam tombol `aria-hidden`, jadi tanpa baris ini pengguna
+         * pembaca layar tidak mendapat tanda apa pun bahwa sesuatu dimulai.
+         *
+         * Sengaja TIDAK mengarang tahapan ("menyimpan identitas… menyiapkan
+         * akun…"): servernya mengerjakan semuanya dalam satu transaksi dan
+         * tidak melaporkan kemajuan, jadi tahapan yang ditampilkan hanyalah
+         * tebakan berjadwal. Bandingkan dengan pembuatan perusahaan
+         * (`/companies/new`), yang kemajuannya SUNGGUHAN karena servernya
+         * memang mengalirkannya.
+         */}
+        {saving && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mt-4 flex items-center gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground"
+          >
+            <Loader2
+              className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            {t("setup.savingStatus")}
+          </p>
+        )}
       </Card>
 
       {/* Nav */}
@@ -676,7 +708,7 @@ export function SetupWizard({
                 aria-hidden="true"
               />
             )}
-            {t("setup.finish")}
+            {saving ? t("setup.finishing") : t("setup.finish")}
           </Button>
         )}
       </div>

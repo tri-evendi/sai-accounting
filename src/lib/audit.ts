@@ -3,6 +3,8 @@ import path from "path";
 import { currentCompany } from "@/lib/current-company";
 
 export type AuditAction =
+  /** Perusahaan baru dibuat dari aplikasi — basis datanya ikut lahir (#104). */
+  | "company.create"
   | "finance.create"
   | "stock.in"
   | "stock.out"
@@ -129,6 +131,8 @@ export type AuditAction =
   | "company_setting.modules.update";
 
 export type AuditEntity =
+  /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */
+  | "company"
   | "cash_movement"
   | "stock"
   | "item"

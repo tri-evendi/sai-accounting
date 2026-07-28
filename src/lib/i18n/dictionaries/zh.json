@@ -143,7 +143,8 @@
       "setup": "初始设置与期初余额",
       "users": "用户",
       "permissions": "访问权限",
-      "settings": "设置"
+      "settings": "设置",
+      "companyNew": "添加公司"
     }
   },
   "quickActions": {
@@ -2124,7 +2125,9 @@
     "equityDebit": "资本/权益（借方）",
     "unratedWarning": "有 {count} 项外币余额尚未填写汇率——请在保存前补填。",
     "balanced": "已平衡：资产 = 负债 + 资本/权益（{amount}）",
-    "noBalancesYet": "尚未填写任何期初余额。"
+    "noBalancesYet": "尚未填写任何期初余额。",
+    "savingStatus": "正在保存设置——公司信息、模块、会计科目表和期初余额日记账。请稍候，勿关闭此页面。",
+    "finishing": "保存中…"
   },
   "approvalDocumentType": {
     "contract": "合同",
@@ -2259,7 +2262,8 @@
     "company_setting": "公司资料",
     "authz": "访问权限",
     "glossary": "术语表",
-    "settings": "设置"
+    "settings": "设置",
+    "company": "公司"
   },
   "permission": {
     "approval_view": "查看审批队列",
@@ -2319,7 +2323,8 @@
     "company_setting_manage": "修改公司资料",
     "authz_manage": "配置访问权限（本页）",
     "glossary_read": "打开术语表",
-    "settings_view": "打开设置页面"
+    "settings_view": "打开设置页面",
+    "company_create": "创建拥有独立数据库的新公司——账簿与其他公司完全隔离。"
   },
   "users": {
     "title": "用户管理",
@@ -2952,6 +2957,9 @@
     "passwordConfirmRequired": "请再次输入新密码",
     "passwordMismatch": "两次输入的密码不一致",
     "tooManyOverrideRows": "覆盖规则行数过多。",
+    "companyDatabasePrefix": "数据库名称必须以 \"sai_\" 开头",
+    "companySlugInvalid": "标识只能包含小写字母、数字和连字符（例如 pt-bumi-baru）",
+    "companyDatabaseInvalid": "数据库名称只能包含小写字母、数字和下划线",
     "itemNameRequired": "请填写商品名称",
     "bagsMin0": "袋数必须为 0 或以上",
     "kgPerBagMin0": "每袋公斤数必须为 0 或以上",
@@ -3086,5 +3094,31 @@
       "services": "完全不涉及货物：无库存，也无贸易层。",
       "custom": "先全部开启，再关掉用不到的模块。"
     }
+  },
+  "companies": {
+    "newTitle": "添加公司",
+    "newDescription": "创建拥有独立数据库的新公司。",
+    "explainIsolation": "每家公司都有自己独立的账簿——发票、日记账、库存和用户与其他公司完全隔离。",
+    "explainNextStep": "创建后，打开该公司并运行设置向导：公司信息、会计年度、会计科目表和期初余额。",
+    "nameLabel": "公司名称",
+    "nameHelp": "显示在公司选择器和单据抬头上的名称。",
+    "slugLabel": "标识",
+    "slugHelp": "小写字母、数字和连字符。用于网址和数据库名称。",
+    "databasePreview": "数据库名称将为",
+    "create": "创建公司",
+    "creating": "正在准备…",
+    "dontClose": "完成前请勿关闭此页面。",
+    "doneTitle": "公司已就绪",
+    "doneBody": "数据库已创建，架构已完成。您已是其成员。",
+    "openPicker": "打开公司选择器",
+    "addAnother": "再添加一家",
+    "errFailed": "无法创建公司。",
+    "errNetwork": "配置完成前连接已中断。",
+    "errSafeToRetry": "没有注册任何半成品公司——排除原因后可安全重试。",
+    "progressTitle": "配置进度",
+    "stepValidate": "检查名称与可用性",
+    "stepDatabase": "创建数据库",
+    "stepMigrate": "应用数据库架构",
+    "stepRegister": "注册公司"
   }
 }

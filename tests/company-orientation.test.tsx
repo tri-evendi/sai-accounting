@@ -19,6 +19,8 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { CompanyIndicator } from "@/components/layout/company-indicator";
+import { visibleNavHrefs } from "@/lib/nav";
+import { ROLES } from "@/lib/constants";
 import { LocaleProvider } from "@/lib/i18n/client";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -66,6 +68,54 @@ describe("penanda perusahaan aktif", () => {
   });
 });
 
+describe("penanda menjadi jalan berpindah — hanya bila ada yang lain", () => {
+  it("satu perusahaan: teks biasa, bukan tautan yang memantul balik", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" companyCount={1} />
+      </LocaleProvider>
+    );
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("PT Satu");
+  });
+
+  it("lebih dari satu: tautan ke pemilih perusahaan", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" companyCount={2} />
+      </LocaleProvider>
+    );
+    expect(html).toContain('href="/select-company"');
+    // Namanya saja tidak memberi tahu bahwa ia bisa ditekan.
+    expect(html).toContain((id as unknown as Dictionary).auth.selectCompany.switchLabel);
+  });
+
+  it("tanpa informasi jumlah, tidak menawarkan apa pun", () => {
+    const html = renderToStaticMarkup(
+      <LocaleProvider locale="id" dictionary={id as unknown as Dictionary}>
+        <CompanyIndicator companyName="PT Satu" />
+      </LocaleProvider>
+    );
+    expect(html).not.toContain("<a ");
+  });
+});
+
+describe("menu & palet menawarkan pemilih dengan syarat yang SAMA", () => {
+  const user = { role: ROLES.MANAGING_DIRECTOR as string, accountantMode: null };
+
+  it("satu perusahaan: tidak muncul di menu (maka juga tidak di palet)", () => {
+    expect(visibleNavHrefs({ ...user, companyCount: 1 })).not.toContain("/select-company");
+  });
+
+  it("dua perusahaan: muncul", () => {
+    expect(visibleNavHrefs({ ...user, companyCount: 2 })).toContain("/select-company");
+  });
+
+  it("jumlahnya tidak diketahui: disembunyikan, bukan ditawarkan spekulatif", () => {
+    expect(visibleNavHrefs(user)).not.toContain("/select-company");
+  });
+});
+
 describe("orientasi tidak boleh hilang dari chrome", () => {
   it("tata letak dashboard mengoper perusahaan aktif ke top bar", () => {
     // Menghapus prop ini akan lolos tsc bila suatu saat ia dibuat opsional —
@@ -85,9 +135,22 @@ describe("orientasi tidak boleh hilang dari chrome", () => {
 });
 
 describe("layar tanpa perusahaan bukan jalan buntu", () => {
-  it("pemilih perusahaan menawarkan jalan keluar saat akun tak punya akses ke mana pun", () => {
+  it("pemilih perusahaan menawarkan jalan keluar di KEDUA cabangnya", () => {
+    /*
+     * Bukan hanya cabang "tidak punya perusahaan". Cabang normal pun tidak
+     * punya chrome apa pun — tanpa tombol keluar, orang yang ternyata masuk
+     * sebagai akun yang salah (komputer bersama) hanya bisa membuka buku
+     * perusahaan dengan akun orang lain.
+     */
     const page = read("app/(auth)/select-company/page.tsx");
-    expect(page).toMatch(/SignOutAction/);
+    const branches = page.match(/SignedInAs/g) ?? [];
+    expect(branches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("identitasnya ikut ditulis — keluar baru berguna setelah sadar masuk sebagai siapa", () => {
+    expect(read("app/(auth)/select-company/company-choices.tsx")).toMatch(
+      /auth\.selectCompany\.signedInAs/
+    );
   });
 
   it("jalan keluarnya benar-benar keluar (bukan tautan yang memantul balik)", () => {

@@ -31,6 +31,20 @@ import type { DictionaryKey } from "@/lib/i18n/dictionary";
 export interface NavItem {
   href: string;
   /**
+   * Jumlah perusahaan MINIMAL sebelum item ini pantas ditawarkan (issue #104).
+   *
+   * Dipakai satu item saja: "Pilih Perusahaan". Menawarkannya kepada pengguna
+   * yang hanya memegang satu PT berarti memberi pintu yang mengembalikannya ke
+   * ruangan yang sama — halaman itu memang langsung memantul ke beranda bila
+   * tidak ada yang perlu dipilih.
+   *
+   * Sengaja hidup DI SINI, bukan sebagai penyaring tambahan di sidebar atau di
+   * palet: keduanya wajib menampilkan daftar yang sama persis
+   * (`tests/command-palette.test.ts`), dan satu-satunya cara menjamin itu
+   * adalah satu aturan yang dibaca keduanya.
+   */
+  minCompanies?: number;
+  /**
    * Label bahasa tugas (bukan nama modul teknis) dalam bahasa SUMBER
    * (Indonesia). Yang digambar sidebar adalah `labelKey`; `label` tetap ada
    * karena modul ini murni & teruji — penjaga menu (mis. "label kelompok tidak
@@ -203,6 +217,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // issue #73 — matriks izin dikonfigurasi dari sini; anti-lockout menjamin
       // peran berakses penuh tidak pernah kehilangan pintunya sendiri.
       { href: "/permissions", label: "Hak Akses", labelKey: "nav.items.permissions", icon: "KeyRound", permission: "authz.manage" },
+      // issue #104 — berpindah buku. Hanya muncul bila memang ADA yang lain
+      // untuk dipilih; halaman itu memantul balik ke beranda kalau tidak.
+      { href: "/select-company", label: "Pilih Perusahaan", labelKey: "nav.items.selectCompany", icon: "Building2", minCompanies: 2 },
       // issue #104 — menambah PT baru dulu menuntut akses SSH ke server; kini
       // ia berdiri di tempat orang yang berwenang memang sudah berada.
       { href: "/companies/new", label: "Tambah Perusahaan", labelKey: "nav.items.companyNew", icon: "Building2", permission: "company.create" },
@@ -230,17 +247,20 @@ function holdsPermission(
 /** Boleh dilihat? Izin cocok DAN (bukan permukaan akuntansi ATAU Mode Akuntan ON). */
 export function isNavItemVisible(
   item: NavItem,
-  user: AccountantModeUser,
+  user: AccountantModeUser & { companyCount?: number | null },
   allowed?: AllowedPermissions
 ): boolean {
   if (!holdsPermission(user, item.permission, allowed)) return false;
   if (item.accountingOnly && !effectiveAccountantMode(user)) return false;
+  // Tanpa informasi jumlah perusahaan, item bersyarat itu DISEMBUNYIKAN:
+  // menawarkan pintu yang memantul lebih buruk daripada tidak menawarkannya.
+  if (item.minCompanies != null && (user.companyCount ?? 0) < item.minCompanies) return false;
   return true;
 }
 
 /** Kelompok menu yang boleh dilihat pengguna; kelompok tanpa isi ikut hilang. */
 export function visibleNavGroups(
-  user: AccountantModeUser,
+  user: AccountantModeUser & { companyCount?: number | null },
   allowed?: AllowedPermissions
 ): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
@@ -251,7 +271,7 @@ export function visibleNavGroups(
 
 /** Semua href yang terlihat (termasuk Beranda) — dipakai untuk menandai menu aktif. */
 export function visibleNavHrefs(
-  user: AccountantModeUser,
+  user: AccountantModeUser & { companyCount?: number | null },
   allowed?: AllowedPermissions
 ): string[] {
   const hrefs = isNavItemVisible(NAV_HOME, user, allowed) ? [NAV_HOME.href] : [];

@@ -144,7 +144,8 @@
       "users": "Users",
       "permissions": "Access Rights",
       "settings": "Settings",
-      "companyNew": "Add Company"
+      "companyNew": "Add Company",
+      "selectCompany": "Switch Company"
     }
   },
   "quickActions": {
@@ -280,7 +281,8 @@
       "noAccessNext": "If you should have access, ask your system administrator to add this account to the company. If you have another account, sign out and use that one.",
       "switchLabel": "Switch company",
       "currentLabel": "Currently open",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "signedInAs": "Signed in as"
     }
   },
   "status": {
@@ -3092,7 +3094,7 @@
       "commodity_trading": "Trading goods with contracts, delivery orders, and export documents. Every module on.",
       "distribution": "Trading warehoused goods, without forward contracts or export documents.",
       "services": "No goods at all: no stock and no trading layer.",
-      "custom": "Start with every module on, then switch off whatever you do not use."
+      "custom": "Start minimal — core bookkeeping only. Switch on the modules you use whenever you like; their accounts are created at that moment."
     }
   },
   "companies": {

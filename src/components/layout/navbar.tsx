@@ -12,11 +12,19 @@ interface NavbarProps {
   userName: string;
   role: string;
   companyName: string | null;
+  companyCount: number;
   onMenuClick: () => void;
   onSignOut: () => void;
 }
 
-export function Navbar({ userName, role, companyName, onMenuClick, onSignOut }: NavbarProps) {
+export function Navbar({
+  userName,
+  role,
+  companyName,
+  companyCount,
+  onMenuClick,
+  onSignOut,
+}: NavbarProps) {
   const t = useT();
 
   return (
@@ -33,7 +41,7 @@ export function Navbar({ userName, role, companyName, onMenuClick, onSignOut }: 
         {/* Buku siapa yang sedang dibuka — pertanyaan terpenting sejak tiap PT
             punya basis datanya sendiri (#104). Ikut tampil di layar sempit;
             di sanalah orang paling mudah lupa. */}
-        <CompanyIndicator companyName={companyName} />
+        <CompanyIndicator companyName={companyName} companyCount={companyCount} />
       </div>
 
       {/* `shrink-0`: di 375px yang boleh menyempit adalah NAMA perusahaan

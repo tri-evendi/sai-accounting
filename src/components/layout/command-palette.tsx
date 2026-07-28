@@ -43,15 +43,20 @@ import { useT } from "@/lib/i18n/client";
 interface CommandPaletteProps {
   role: string;
   accountantMode?: boolean | null;
+  /** Sama dengan sidebar — palet TIDAK BOLEH menyimpang dari menu. */
+  companyCount?: number;
 }
 
-export function CommandPalette({ role, accountantMode }: CommandPaletteProps) {
+export function CommandPalette({ role, accountantMode, companyCount }: CommandPaletteProps) {
   const router = useRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
 
   const allowed = useEffectivePermissions(role);
-  const user = useMemo(() => ({ role, accountantMode }), [role, accountantMode]);
+  const user = useMemo(
+    () => ({ role, accountantMode, companyCount }),
+    [role, accountantMode, companyCount]
+  );
   const groups = useMemo(() => visibleNavGroups(user, allowed), [user, allowed]);
   const homeVisible = isNavItemVisible(NAV_HOME, user, allowed);
 

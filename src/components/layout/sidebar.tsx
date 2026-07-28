@@ -59,6 +59,8 @@ interface SidebarProps {
   role: string;
   // ─── issue #11 — raw Mode Akuntan preference (null = follow role default) ───
   accountantMode?: boolean | null;
+  /** Jumlah perusahaan yang boleh dibuka — menentukan item "Pilih Perusahaan". */
+  companyCount?: number;
   open: boolean;
   onClose: () => void;
 }
@@ -140,13 +142,13 @@ function NavLink({
   );
 }
 
-export function Sidebar({ role, accountantMode, open, onClose }: SidebarProps) {
+export function Sidebar({ role, accountantMode, companyCount, open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const t = useT();
   // issue #11 — permukaan akuntansi (Catatan Transaksi, Rincian per Akun, Daftar
   // Akun) hanya muncul bila peran mengizinkan DAN Mode Akuntan efektif ON. Aturan
   // itu hidup di `isNavItemVisible`, satu keputusan dengan penjaga halaman.
-  const user = { role, accountantMode };
+  const user = { role, accountantMode, companyCount };
   // issue #73 — menu mengikuti matriks EFEKTIF (override dari /permissions)
   // begitu termuat; sebelumnya memakai matriks bawaan di bundle.
   const allowed = useEffectivePermissions(role);

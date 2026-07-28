@@ -22,19 +22,32 @@
  * halaman terlihat siap. Jeda itu penting: yang paling mungkin salah baca
  * adalah orang yang sudah mulai mengetik sebelum indikatornya sempat muncul.
  *
- * ══ KENAPA BUKAN TOMBOL PENGGANTI PERUSAHAAN ═══════════════════════════════
- * Ini penanda ORIENTASI, bukan kendali. Berganti perusahaan sudah punya
- * tempatnya di menu avatar, dan di sana ia hanya muncul bila pengguna memang
- * memegang lebih dari satu PT — pengetahuan yang tidak dimiliki komponen ini
- * tanpa satu permintaan tambahan. Menjadikannya tombol berarti sebagian
- * pengguna menekan sesuatu yang mengembalikannya ke tempat yang sama.
+ * ══ ORIENTASI DULU, KENDALI KEMUDIAN ═══════════════════════════════════════
+ * Versi pertamanya sengaja tidak bisa ditekan: komponen ini tidak tahu apakah
+ * ada perusahaan LAIN untuk dipilih, dan tombol yang mengembalikan sebagian
+ * pengguna ke ruangan yang sama lebih buruk daripada teks biasa.
+ *
+ * Sesi kini membawa jumlahnya (`companyCount`), jadi pengetahuan itu ada tanpa
+ * satu permintaan pun — dan nama perusahaan di bilah atas adalah tempat orang
+ * pertama kali mencari cara berpindah (pola yang sama di Accurate, Xero,
+ * QuickBooks). Jadi: SATU perusahaan → tetap teks biasa; LEBIH dari satu →
+ * tautan ke pemilihnya.
  */
 
-import { Building2 } from "lucide-react";
+import Link from "next/link";
+import { Building2, ChevronsUpDown } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
-export function CompanyIndicator({ companyName }: { companyName: string | null }) {
+export function CompanyIndicator({
+  companyName,
+  companyCount = 0,
+}: {
+  companyName: string | null;
+  /** Berapa perusahaan yang boleh dibuka pengguna ini (dari sesi). */
+  companyCount?: number;
+}) {
   const t = useT();
 
   // Tanpa perusahaan aktif tidak ada yang jujur untuk ditulis di sini. Tata
@@ -43,13 +56,9 @@ export function CompanyIndicator({ companyName }: { companyName: string | null }
   // penjaga terakhir — bukan keadaan yang perlu dijelaskan ke pengguna.
   if (!companyName) return null;
 
-  return (
-    <div
-      className="flex min-w-0 items-center gap-2 text-sm"
-      // Dibacakan sebagai satu kalimat utuh: nama saja tidak memberi tahu
-      // pembaca layar bahwa inilah perusahaan yang sedang dibuka.
-      aria-label={`${t("navbar.activeCompany")}: ${companyName}`}
-    >
+  const label = `${t("navbar.activeCompany")}: ${companyName}`;
+  const body = (
+    <>
       <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="sr-only">{t("navbar.activeCompany")}:</span>
       {/* `title` menyelamatkan nama panjang yang terpotong di layar sempit —
@@ -57,6 +66,33 @@ export function CompanyIndicator({ companyName }: { companyName: string | null }
       <span className="truncate font-medium text-foreground" title={companyName}>
         {companyName}
       </span>
-    </div>
+    </>
+  );
+
+  const shared = "flex min-w-0 items-center gap-2 text-sm";
+
+  if (companyCount < 2) {
+    return (
+      <div className={shared} aria-label={label}>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href="/select-company"
+      // Namanya saja tidak memberi tahu bahwa ia BISA ditekan; kalimat penuh
+      // inilah yang dibacakan pembaca layar.
+      aria-label={`${label} — ${t("auth.selectCompany.switchLabel")}`}
+      className={cn(
+        shared,
+        "cursor-pointer rounded-md px-2 py-1 -mx-2 transition-colors duration-150",
+        "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
+      {body}
+      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </Link>
   );
 }

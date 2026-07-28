@@ -55,15 +55,41 @@ COPY . .
 # jadi TypeScript mengevaluasi union berisi ~2.400 literal string. Itu memang
 # mahal di memori — jangan heran kalau batas ini perlu ditinjau lagi saat kamus
 # bertambah besar.
+#
+# DUA klien Prisma di-generate, dan keduanya wajib (issue #104): skema
+# PERUSAHAAN (`prisma/schema.prisma` → src/generated/prisma) dan skema KENDALI
+# (`prisma/control/schema.prisma` → src/generated/control). Keduanya
+# gitignored, jadi keduanya lahir di sini. Tanpa yang kedua, `next build`
+# berhenti dengan "module not found" pada `@/generated/control/client` — dan
+# pesan itu tidak menyebut sama sekali bahwa yang kurang adalah satu perintah
+# generate.
 RUN NODE_OPTIONS="--max-old-space-size=768" npx prisma generate \
+    && NODE_OPTIONS="--max-old-space-size=768" npx prisma generate --config prisma.control.config.ts \
     && NODE_OPTIONS="--max-old-space-size=768" npm run build
 
 
-# ─── Migrator (used by the `migrate` compose service) ────────
-# Keeps the full node_modules + Prisma CLI + schema so `migrate deploy` works.
+# ─── Migrator (dipakai service `migrate` di compose) ─────────
+# Menyimpan node_modules penuh + Prisma CLI + skema, jadi migration bisa jalan.
+#
+# ══ KENAPA BUKAN `prisma migrate deploy` LANGSUNG (issue #104) ═══════════════
+# Perintah itu menerapkan migration ke SATU basis data, yaitu yang ditunjuk
+# `DATABASE_URL`. Sejak buku besar menjadi satu basis data per perusahaan, itu
+# bukan lagi "basis data aplikasi" — dan yang lebih berbahaya: migration 0042
+# MENGHAPUS tabel `users` dari basis data perusahaan.
+#
+# Bila `docker compose up` dijalankan SEBELUM langkah adopsi (yang menyalin
+# pengguna ke basis data kendali), perintah lama itu akan menghapus seluruh akun
+# beserta hash kata sandinya, dan satu-satunya jalan pulang adalah cadangan.
+# Container yang naik otomatis tidak boleh punya kemampuan itu.
+#
+# `db:migrate:all` aman terhadap urutan: ia menerapkan migration kendali lebih
+# dulu, lalu HANYA ke perusahaan yang SUDAH TERDAFTAR di registry. Pemasangan
+# yang belum diadopsi tidak punya satu pun perusahaan terdaftar, jadi tidak ada
+# yang disentuh — skripnya berhenti dan menyebutkan perintah adopsi yang harus
+# dijalankan lebih dulu.
 FROM builder AS migrator
 ENV NODE_ENV=production
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npm", "run", "db:migrate:all"]
 
 
 # ─── Runtime ─────────────────────────────────────────────────

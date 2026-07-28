@@ -149,6 +149,15 @@ npm run db:migrate:companies
 docker compose up --build -d
 ```
 
+**`docker compose up` kini aman terhadap urutan.** Service `migrate` menjalankan
+`db:migrate:all`, bukan `prisma migrate deploy` mentah. Bedanya menentukan:
+perintah mentah itu menerapkan 0042 — yang **menghapus tabel `users`** — ke
+basis data yang ditunjuk `DATABASE_URL`, jadi menaikkan container sebelum
+langkah 2 akan menghapus seluruh akun beserta hash kata sandinya. `db:migrate:all`
+hanya menyentuh perusahaan yang **sudah terdaftar**; registry yang masih kosong
+membuatnya berhenti dengan kode bukan-nol dan menyebutkan perintah yang harus
+dijalankan lebih dulu, sehingga `web` pun tidak ikut naik.
+
 Skrip adopsi membaca skema LAMA (kolomnya masih `users.status`, bukan
 `must_change_password`) — ia mendeteksi mana yang ada, jadi urutan di atas benar
 apa adanya. Ia juga **menolak berjalan** bila tabel `users` sudah hilang, jadi

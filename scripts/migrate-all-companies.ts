@@ -71,12 +71,28 @@ async function main() {
   await control.$disconnect();
 
   if (companies.length === 0) {
-    console.log(
-      "Belum ada perusahaan terdaftar. Untuk pemasangan yang sudah berjalan, " +
-        "daftarkan basis data yang sekarang lebih dulu:\n" +
-        "  npx tsx scripts/adopt-existing-company.ts"
+    /*
+     * Registry kosong = aplikasi tidak bisa melayani siapa pun, sebab setiap
+     * halaman menuntut perusahaan. Karena itu keluar dengan kode BUKAN NOL:
+     * service `migrate` di compose dirantai `service_completed_successfully`,
+     * jadi `web` tidak akan naik — dan itu memang yang benar. Naik dengan
+     * registry kosong hanya menghasilkan aplikasi yang terlihat sehat tapi
+     * menolak setiap orang yang mencoba masuk, dan orang akan mencari
+     * penyebabnya di tempat yang salah.
+     *
+     * Tidak ada satu pun migration perusahaan yang dijalankan di jalur ini —
+     * termasuk 0042 yang menghapus tabel `users`. Itulah pengamannya: naiknya
+     * container sebelum adopsi tidak bisa menghapus akun siapa pun.
+     */
+    console.error(
+      "Belum ada perusahaan terdaftar — tidak ada migration perusahaan yang dijalankan.\n\n" +
+        "  Pemasangan yang SUDAH berjalan (punya basis data & pengguna):\n" +
+        "    npm run adopt-company -- --slug <slug> --name \"Nama PT\"\n\n" +
+        "  Pemasangan BARU:\n" +
+        "    npm run create-company -- --slug <slug> --name \"Nama PT\"\n\n" +
+        "Lihat docs/MULTI-COMPANY.md untuk urutan lengkapnya."
     );
-    return;
+    process.exit(1);
   }
 
   const failures: { slug: string; databaseName: string; detail: string }[] = [];

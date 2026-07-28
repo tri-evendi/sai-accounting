@@ -50,6 +50,31 @@ function createControlClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-export const controlDb: PrismaClient = globalForControl.controlPrisma ?? createControlClient();
+/**
+ * Klien dibuat SAAT DIPAKAI, bukan saat modul dimuat.
+ *
+ * Bukan kerapian: `next build` mengimpor modul ini ketika mengumpulkan data
+ * halaman, dan pembuatan klien saat impor berarti build MENUNTUT
+ * `CONTROL_DATABASE_URL` — padahal build tidak pernah menyentuh basis data.
+ * Versi pertama begitu, dan akibatnya `docker compose up --build` gagal di
+ * tahap build dengan pesan yang menyalahkan environment, bukan kodenya.
+ *
+ * Dengan Proxy ini, tidak adanya `CONTROL_DATABASE_URL` baru berbunyi pada
+ * query pertama yang sungguhan — tempat pesan galatnya memang berguna.
+ */
+function resolveControlClient(): PrismaClient {
+  if (!globalForControl.controlPrisma) {
+    globalForControl.controlPrisma = createControlClient();
+  }
+  return globalForControl.controlPrisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForControl.controlPrisma = controlDb;
+export const controlDb: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = resolveControlClient();
+    const value = Reflect.get(client as object, property);
+    // Method klien (`$transaction`, `$queryRaw`, …) harus tetap terikat pada
+    // kliennya; delegate model dikembalikan apa adanya.
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});

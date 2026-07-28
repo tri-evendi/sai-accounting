@@ -90,6 +90,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "documentType.bl",
     // Nama jenis kas; kata yang sama di kedua bahasa.
     "cashType.bank",
+    // Istilah teknis yang dipakai apa adanya dalam bahasa Indonesia — sama
+    // seperti "slug" di dunia URL berbahasa Inggris.
+    "companies.slugLabel",
     // Lencana sakelar Mode Akuntan. "ON"/"OFF" adalah konvensi antarmuka yang
     // dipakai apa adanya dalam bahasa Indonesia maupun Inggris (bahasa Mandarin
     // memakai 开/关).

@@ -11,8 +11,18 @@ export default async function NewAdvancePage() {
   const t = await getT();
 
   const [customers, suppliers, contracts] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.supplier.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    // `isActive: true` — master nonaktif tidak ditawarkan untuk uang muka BARU
+    // (issue #104); uang muka lama tetap menyebut namanya.
+    prisma.customer.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.supplier.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
     prisma.contract.findMany({
       where: { status: { not: "canceled" } },
       orderBy: { date: "desc" },

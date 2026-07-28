@@ -54,7 +54,7 @@ interface LineRow {
   description: string;
   amount: number;
   matched: boolean;
-  cashAccountId: number | null;
+  cashMovementId: number | null;
 }
 interface Summary {
   difference: number;
@@ -159,7 +159,7 @@ export function ReconciliationWorkspace({
     if (selectedBook == null || selectedLine == null) return;
     const ok = await call(`/api/reconciliation/${statement.id}/match`, "POST", {
       lineId: selectedLine,
-      cashAccountId: selectedBook,
+      cashMovementId: selectedBook,
     });
     if (ok) {
       setSelectedBook(null);
@@ -444,7 +444,7 @@ export function ReconciliationWorkspace({
               </TableRow>
             ) : (
               matchedLines.map((l) => {
-                const b = l.cashAccountId != null ? bookById.get(l.cashAccountId) : undefined;
+                const b = l.cashMovementId != null ? bookById.get(l.cashMovementId) : undefined;
                 return (
                   <TableRow key={l.id}>
                     <TableCell className="px-4 py-2 text-foreground">

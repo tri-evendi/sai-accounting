@@ -79,7 +79,7 @@ export type PostingSourceType =
   | "invoice_payment"
   | "contract"
   | "contract_payment"
-  | "cash_account"
+  | "cash_movement"
   | "supplier_transaction"
   | "stock_movement"
   /**
@@ -130,7 +130,7 @@ export interface PostingContext {
   tx?: Prisma.TransactionClient;
   /** Explicit FX rate to IDR, for sources whose model carries no rate column. */
   rate?: number;
-  /** The user-chosen other side of a cash_account posting. Required for it. */
+  /** The user-chosen other side of a cash_movement posting. Required for it. */
   counterAccountId?: number;
 }
 
@@ -691,12 +691,12 @@ async function buildSupplierTransactionEntry(
   );
 }
 
-async function buildCashAccountEntry(
+async function buildCashMovementEntry(
   client: Client,
   ctx: PostingContext
 ): Promise<JournalEntryInput | null> {
-  const entry = await client.cashAccount.findUnique({ where: { id: ctx.sourceId } });
-  if (!entry) throw new SourceNotFoundError("cash_account", ctx.sourceId);
+  const entry = await client.cashMovement.findUnique({ where: { id: ctx.sourceId } });
+  if (!entry) throw new SourceNotFoundError("cash_movement", ctx.sourceId);
 
   if (!ctx.counterAccountId) {
     throw new PostingRuleError(
@@ -718,7 +718,7 @@ async function buildCashAccountEntry(
     date: entry.date,
     type: "cash",
     note: entry.description,
-    sourceType: "cash_account",
+    sourceType: "cash_movement",
     sourceId: entry.id,
     lines: buildCashTransactionLines({
       cashAccountId,
@@ -1202,8 +1202,8 @@ async function buildEntry(
       return buildContractPaymentEntry(client, ctx);
     case "supplier_transaction":
       return buildSupplierTransactionEntry(client, ctx);
-    case "cash_account":
-      return buildCashAccountEntry(client, ctx);
+    case "cash_movement":
+      return buildCashMovementEntry(client, ctx);
     case "stock_movement":
       return buildStockMovementEntry(client, ctx);
     case "stock_adjustment":
@@ -1278,7 +1278,7 @@ const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
   // ── Dokumen sumber fase 1: kolomnya ada di kepala dokumen itu sendiri.
   invoice: own((c) => c.invoice),
   supplier_transaction: own((c) => c.supplierTransaction),
-  cash_account: own((c) => c.cashAccount),
+  cash_movement: own((c) => c.cashMovement),
 
   // ── Turunan: mewarisi dari dokumen asalnya.
   /** Penerimaan faktur → pusat biaya fakturnya. */

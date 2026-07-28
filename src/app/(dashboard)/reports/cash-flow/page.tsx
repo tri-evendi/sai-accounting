@@ -152,7 +152,7 @@ export default async function CashFlowPage({
    *  • Jendelanya TETAP 6 bulan terakhir ("6 bulan terakhir"), bukan periode
    *    saringan. Laporannya menjawab "periode ini berapa"; grafiknya memberi
    *    latar tren yang tidak ikut berubah tiap kali periodenya digeser.
-   *  • Angkanya PER MATA UANG apa adanya dari buku kas (`cash_accounts`),
+   *  • Angkanya PER MATA UANG apa adanya dari buku kas (`cash_movements`),
    *    tanpa konversi — sedangkan laporan arus kas berbasis jurnal selalu
    *    IDR dasar. Menjumlahkan rupiah dengan dolar adalah bug mata-uang
    *    campur; satu mata uang = satu grafik.
@@ -169,7 +169,7 @@ export default async function CashFlowPage({
   const [cf, cashBookRows] = await Promise.all([
     getCashFlow(from, to),
     canViewCashBook
-      ? prisma.cashAccount.findMany({
+      ? prisma.cashMovement.findMany({
           where: { date: { gte: chartPeriodStart(now) } },
           select: { date: true, debit: true, credit: true, currency: true },
         })

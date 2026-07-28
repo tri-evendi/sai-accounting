@@ -266,6 +266,18 @@
       "mismatch": "The new password and its confirmation do not match.",
       "tooShort": "Password must be at least 8 characters.",
       "failed": "Could not change the password. Please try again."
+    },
+    "selectCompany": {
+      "heading": "Choose a company",
+      "description": "Your account holds more than one company. Pick the one you want to open.",
+      "body": "Each company keeps its own books — invoices, journals, and stock are entirely separate. What you pick here decides which books you see and write to.",
+      "openLabel": "Open",
+      "switching": "Opening company...",
+      "noAccessHeading": "No company for this account yet",
+      "noAccessBody": "Your account is valid but has not been given access to any company. Ask your system administrator to add you.",
+      "switchLabel": "Switch company",
+      "currentLabel": "Currently open",
+      "signOut": "Sign out"
     }
   },
   "status": {
@@ -1946,6 +1958,7 @@
     "emptyMovementsDescription": "Every item received and issued shows up here. Record your first one.",
     "stockIn": "Goods In",
     "stockOut": "Goods Out",
+    "stockProcess": "In Processing",
     "financeDescription": "Balances and money movement over the last 6 months, per currency",
     "financeHrefLabel": "Open cash & bank",
     "netBalance": "Net balance · {currency}",

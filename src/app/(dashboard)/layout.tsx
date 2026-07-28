@@ -22,10 +22,21 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!session) return null;
 
+  /*
+   * Sesi tanpa PERAN berarti pengguna belum memilih perusahaan (issue #104):
+   * peran datang dari keanggotaan, jadi selama belum ada perusahaan aktif tidak
+   * ada peran untuk menyusun menu. Penjaga halaman di bawah tata letak ini
+   * sedang memantulkannya ke /select-company; sementara itu yang benar untuk
+   * ditampilkan adalah keadaan memuat — bukan menu kosong yang terlihat seperti
+   * "Anda tidak punya akses apa pun".
+   */
+  const role = session.user.role;
+  if (!role) return <PageLoader message={t("common.loadingSession")} />;
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
-        role={session.user.role}
+        role={role}
         accountantMode={session.user.accountantMode}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -33,7 +44,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar
           userName={session.user.name}
-          role={session.user.role}
+          role={role}
           onMenuClick={() => setSidebarOpen(true)}
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />
@@ -49,7 +60,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Ctrl/⌘+K — cari halaman dengan mengetik. Ditempel di layout (bukan per
           halaman) supaya pintasannya hidup di seluruh dashboard. Isinya berasal
           dari sumber yang sama dengan menu samping. */}
-      <CommandPalette role={session.user.role} accountantMode={session.user.accountantMode} />
+      <CommandPalette role={role} accountantMode={session.user.accountantMode} />
     </div>
   );
 }

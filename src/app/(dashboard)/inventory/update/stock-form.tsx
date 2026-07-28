@@ -98,7 +98,9 @@ export function StockUpdateForm({
     movementType === "out" && selected != null && qtyValue > selected.currentStock;
 
   async function refreshItems() {
-    const res = await fetch("/api/inventory");
+    // `active=1`: barang yang dinonaktifkan tidak ditawarkan untuk gerakan BARU
+    // (issue #104); saldo & riwayatnya tetap tampil di laporan stok.
+    const res = await fetch("/api/inventory?active=1");
     if (!res.ok) return;
     const data: { id: number; name: string; unit: string | null; currentStock: number }[] =
       await res.json();

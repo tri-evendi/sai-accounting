@@ -118,6 +118,15 @@ export function getStockBadgeVariant(
   return "danger";
 }
 
+/**
+ * Saldo = jumlah `in` − jumlah `out`. `process` (issue #111) sengaja tidak
+ * masuk keduanya: barangnya sedang diolah, masih milik perusahaan, jadi
+ * mengurangkannya akan menghapus barang yang sebenarnya ada.
+ *
+ * Aturan yang sama PERSIS harus berlaku di `stockLevelsFromTotals` — beranda
+ * memakai yang itu, halaman Stok memakai yang ini, dan keduanya harus menyebut
+ * angka yang sama.
+ */
 export function calculateStockTotals(movements: StockMovement[]) {
   const totalIn = movements
     .filter((s) => s.type === "in")
@@ -165,8 +174,63 @@ export function summarizeInventory(items: ItemWithStock[]): InventorySummary[] {
   return items.map(summarizeInventoryItem);
 }
 
+/**
+ * Bentuk MINIMAL yang dibutuhkan penghitungan kondisi stok: saldo saja, plus
+ * nama & satuan untuk peringatan.
+ *
+ * Sengaja bukan `InventorySummary` penuh (issue #104): beranda kini menghitung
+ * saldo lewat GROUP BY di basis data, jadi ia tidak punya — dan tidak perlu —
+ * biaya rata-rata, nilai persediaan, maupun jumlah gerakan. `InventorySummary`
+ * tetap cocok dengan bentuk ini, jadi semua pemanggil lama tak berubah.
+ */
+export type StockLevelInput = { currentStock: number };
+export type LowStockInput = StockLevelInput & { name: string; unit: string | null };
+
+/**
+ * Saldo per barang dari hasil GROUP BY basis data (issue #104).
+ *
+ * Aturannya sama persis dengan `calculateStockTotals`, hanya masukannya yang
+ * berbeda: di sana baris gerakan satu per satu, di sini jumlah yang sudah
+ * dihitung basis data. Dipisah jadi fungsi murni supaya kesamaan itu bisa
+ * DIBUKTIKAN tes, bukan sekadar diyakini — kalau keduanya berselisih, kartu
+ * "stok menipis" di beranda akan menyebut angka lain daripada halaman Stok.
+ *
+ * Barang tanpa satu pun gerakan tetap muncul dengan saldo nol; menghilangkannya
+ * dari daftar akan membuat "0 barang kosong" pada pemasangan yang justru baru
+ * saja memasukkan master barangnya.
+ */
+export function stockLevelsFromTotals<T extends { id: number; name: string; unit: string | null }>(
+  items: T[],
+  totals: { itemId: number; type: string; quantity: number }[]
+): (LowStockInput & { id: number })[] {
+  const byItem = new Map<number, { totalIn: number; totalOut: number }>();
+  for (const row of totals) {
+    const entry = byItem.get(row.itemId) ?? { totalIn: 0, totalOut: 0 };
+    /*
+     * `else` di sini dulunya berarti "apa pun selain `in` mengurangi saldo" —
+     * dan itulah yang membuat `process` (issue #111) diperlakukan sebagai
+     * barang keluar DI BERANDA saja, sementara halaman Stok mengabaikannya.
+     * Dua halaman, satu barang, dua angka. Karena itu keduanya kini disebut
+     * eksplisit: hanya `out` yang mengurangi.
+     */
+    if (row.type === "in") entry.totalIn += row.quantity;
+    else if (row.type === "out") entry.totalOut += row.quantity;
+    byItem.set(row.itemId, entry);
+  }
+
+  return items.map((item) => {
+    const t = byItem.get(item.id) ?? { totalIn: 0, totalOut: 0 };
+    return {
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      currentStock: t.totalIn - t.totalOut,
+    };
+  });
+}
+
 export function countStockHealth(
-  items: InventorySummary[],
+  items: StockLevelInput[],
   threshold: number = LOW_STOCK_THRESHOLD
 ) {
   let healthy = 0;
@@ -190,10 +254,10 @@ export function countStockHealth(
   };
 }
 
-export function getLowStockItems(
-  items: InventorySummary[],
+export function getLowStockItems<T extends StockLevelInput>(
+  items: T[],
   threshold: number = LOW_STOCK_THRESHOLD
-) {
+): T[] {
   return items
     .filter((i) => getStockLevel(i.currentStock, threshold) === "low")
     .sort((a, b) => a.currentStock - b.currentStock);
@@ -201,7 +265,7 @@ export function getLowStockItems(
 
 /** Plain objects for client/server alert UI. */
 export function toLowStockAlerts(
-  items: InventorySummary[],
+  items: LowStockInput[],
   threshold: number = LOW_STOCK_THRESHOLD
 ) {
   return getLowStockItems(items, threshold).map((i) => ({

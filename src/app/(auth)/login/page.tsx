@@ -10,8 +10,19 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 
-function resolvePostLoginPath(status: number | undefined, callbackUrl: string | null) {
-  if (status === 1) return "/change-password";
+function resolvePostLoginPath(
+  mustChangePassword: boolean | undefined,
+  companyId: number | null | undefined,
+  callbackUrl: string | null
+) {
+  if (mustChangePassword) return "/change-password";
+  /*
+   * Belum ada perusahaan aktif = pengguna memegang lebih dari satu PT dan
+   * belum memilih (issue #104). Dikirim langsung ke pemilihnya, bukan ke
+   * beranda: penjaga halaman toh akan memantulkannya ke sana, dan pantulan itu
+   * hanya menambah satu layar berkedip sebelum pertanyaan yang sebenarnya.
+   */
+  if (companyId == null) return "/select-company";
   if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
     return callbackUrl;
   }
@@ -27,6 +38,15 @@ function resolvePostLoginPath(status: number | undefined, callbackUrl: string | 
 function formatSignInError(message: string | undefined, t: TranslateFn) {
   if (!message || message === "CredentialsSignin") {
     return t("auth.login.invalidCredentials");
+  }
+  /*
+   * Akun sah tapi belum diberi akses ke perusahaan mana pun (issue #104).
+   * `authorize()` melemparnya sebagai penanda, bukan sebagai kalimat — kalau
+   * dibiarkan lewat apa adanya, pengguna membaca "NoCompanyAccess" dan
+   * menyimpulkan sistemnya rusak, padahal yang kurang cuma pendaftaran.
+   */
+  if (message.includes("NoCompanyAccess")) {
+    return t("auth.selectCompany.noAccessBody");
   }
   return message;
 }
@@ -58,7 +78,11 @@ function LoginForm() {
     if (sessionStatus !== "authenticated") return;
 
     getSession().then((session) => {
-      const destination = resolvePostLoginPath(session?.user?.status, callbackUrl);
+      const destination = resolvePostLoginPath(
+        session?.user?.mustChangePassword,
+        session?.user?.companyId,
+        callbackUrl
+      );
       router.replace(destination);
     });
   }, [sessionStatus, callbackUrl, router]);
@@ -82,7 +106,13 @@ function LoginForm() {
     }
 
     const session = await getSession();
-    router.push(resolvePostLoginPath(session?.user?.status, callbackUrl));
+    router.push(
+      resolvePostLoginPath(
+        session?.user?.mustChangePassword,
+        session?.user?.companyId,
+        callbackUrl
+      )
+    );
     router.refresh();
   }
 

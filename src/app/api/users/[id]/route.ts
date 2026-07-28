@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { prisma } from "@/lib/prisma";
+import { findCompanyUser, removeCompanyUser, updateCompanyUser } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { roleEnum } from "@/lib/validations/common";
@@ -41,10 +41,9 @@ export async function PUT(
     );
   }
 
-  const before = await prisma.user.findUnique({
-    where: { id: parseInt(id) },
-    select: { username: true, role: true },
-  });
+  // Hanya ANGGOTA perusahaan ini yang boleh diubah dari sini (issue #104):
+  // orang dari PT lain tidak bisa disentuh hanya dengan menebak id di URL.
+  const before = await findCompanyUser(parseInt(id));
   if (!before) {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
@@ -52,26 +51,21 @@ export async function PUT(
 
   const roleChanged = parsed.data.role !== undefined && parsed.data.role !== before.role;
 
-  const data: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name;
-  if (parsed.data.role !== undefined) data.role = parsed.data.role;
-  if (parsed.data.password) {
-    data.password = await bcrypt.hash(parsed.data.password, 12);
-    data.status = 1; // force password change
-    data.passDate = null;
-  }
-  // audit RBAC fase 3 — ganti peran / reset kata sandi mencabut sesi berjalan
-  // pengguna itu: versi sesi naik, revalidasi berkala di lib/auth.ts menolak
-  // token lama paling lama SESSION_RECHECK_MS kemudian.
-  if (roleChanged || parsed.data.password) {
-    data.sessionVersion = { increment: 1 };
-  }
-
-  const user = await prisma.user.update({
-    where: { id: parseInt(id) },
-    data,
-    select: { id: true, username: true, name: true, role: true, status: true },
+  // `name` & kata sandi menyentuh IDENTITAS (berlaku di semua PT orang itu);
+  // `role` hanya keanggotaannya DI SINI. Pencabutan sesi saat peran berganti
+  // atau sandi di-reset tetap berlaku — lihat users-directory.
+  const user = await updateCompanyUser(parseInt(id), {
+    ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+    ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
+    ...(parsed.data.password
+      ? { passwordHash: await bcrypt.hash(parsed.data.password, 12) }
+      : {}),
   });
+
+  if (!user) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
+  }
 
   // audit RBAC fase 3 — mutasi paling ber-privilege kini terekam; kata sandi
   // tidak pernah ikut tercatat, hanya FAKTA bahwa ia di-reset.
@@ -111,10 +105,15 @@ export async function DELETE(
   }
 
   try {
-    const deleted = await prisma.user.delete({
-      where: { id: userId },
-      select: { username: true, role: true },
-    });
+    // Yang dilepas adalah KEANGGOTAANNYA di perusahaan ini, bukan identitasnya
+    // (issue #104): orang itu mungkin masih memegang PT lain, dan menghapus
+    // akunnya dari layar Pengguna satu perusahaan akan mencabut aksesnya ke
+    // perusahaan yang tidak ada hubungannya.
+    const deleted = await removeCompanyUser(userId);
+    if (!deleted) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.userNotFound") }, { status: 404 });
+    }
     // audit RBAC fase 3 — penghapusan akun terekam; sesi berjalan pengguna itu
     // tercabut otomatis (barisnya hilang → revalidasi di lib/auth.ts menolak).
     await writeAuditLog({

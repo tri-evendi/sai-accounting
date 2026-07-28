@@ -266,6 +266,18 @@
       "mismatch": "新密码与确认密码不一致。",
       "tooShort": "密码至少需要 8 个字符。",
       "failed": "修改密码失败，请重试。"
+    },
+    "selectCompany": {
+      "heading": "选择公司",
+      "description": "您的账户拥有多家公司，请选择要打开的一家。",
+      "body": "每家公司都有各自独立的账簿——发票、日记账和库存完全分开。您在此处的选择决定了您查看和写入哪一套账簿。",
+      "openLabel": "打开",
+      "switching": "正在打开公司…",
+      "noAccessHeading": "该账户尚无公司",
+      "noAccessBody": "您的账户有效，但尚未获得任何公司的访问权限。请联系系统管理员为您添加。",
+      "switchLabel": "切换公司",
+      "currentLabel": "当前打开",
+      "signOut": "退出登录"
     }
   },
   "status": {
@@ -1946,6 +1958,7 @@
     "emptyMovementsDescription": "每一笔入库与出库都会显示在这里。先记录第一笔吧。",
     "stockIn": "入库",
     "stockOut": "出库",
+    "stockProcess": "加工中",
     "financeDescription": "最近 6 个月各币种的余额与资金变动",
     "financeHrefLabel": "打开现金与银行",
     "netBalance": "净余额 · {currency}",

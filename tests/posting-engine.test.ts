@@ -121,7 +121,7 @@ describe("account mapping resolution", () => {
     );
   });
 
-  it("maps CashAccount.type to the right cash slot", () => {
+  it("maps CashMovement.type to the right cash slot", () => {
     expect(cashKeyForType("bank")).toBe(MAPPING_KEYS.CASH_BANK);
     expect(cashKeyForType("kas_besar")).toBe(MAPPING_KEYS.CASH_KAS_BESAR);
     expect(cashKeyForType("kas_kecil")).toBe(MAPPING_KEYS.CASH_KAS_KECIL);
@@ -625,10 +625,10 @@ describe("postForSource per transaction type", () => {
     ).rejects.toThrow(PostingRuleError);
   });
 
-  it("cash_account debit → D: Kas/Bank, K: counter-account", async () => {
+  it("cash_movement debit → D: Kas/Bank, K: counter-account", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      cashAccounts: {
+      cashMovements: {
         41: {
           id: 41,
           type: "bank",
@@ -644,7 +644,7 @@ describe("postForSource per transaction type", () => {
 
     const j = expectBalancedIdr(
       (await postForSource({
-        sourceType: "cash_account",
+        sourceType: "cash_movement",
         sourceId: 41,
         tx,
         counterAccountId: ACC.counter,
@@ -654,10 +654,10 @@ describe("postForSource per transaction type", () => {
     expect(creditOn(j, ACC.counter)).toBe(25_000_000);
   });
 
-  it("cash_account credit in USD uses the USD bank account", async () => {
+  it("cash_movement credit in USD uses the USD bank account", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      cashAccounts: {
+      cashMovements: {
         42: {
           id: 42,
           type: "bank",
@@ -673,7 +673,7 @@ describe("postForSource per transaction type", () => {
 
     const j = expectBalancedIdr(
       (await postForSource({
-        sourceType: "cash_account",
+        sourceType: "cash_movement",
         sourceId: 42,
         tx,
         counterAccountId: ACC.counter,
@@ -687,7 +687,7 @@ describe("postForSource per transaction type", () => {
   it("requires a counter-account for cash postings", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      cashAccounts: {
+      cashMovements: {
         43: {
           id: 43,
           type: "bank",
@@ -701,7 +701,7 @@ describe("postForSource per transaction type", () => {
       },
     });
 
-    await expect(postForSource({ sourceType: "cash_account", sourceId: 43, tx })).rejects.toThrow(
+    await expect(postForSource({ sourceType: "cash_movement", sourceId: 43, tx })).rejects.toThrow(
       /counterAccountId/
     );
   });
@@ -1572,7 +1572,7 @@ describe("cash account resolution per currency", () => {
   });
 
   it("physical cash slots are reached by account type and keep their 'any' row", () => {
-    // `cash_kas_besar`/`cash_kas_kecil` come from an explicit CashAccount.type,
+    // `cash_kas_besar`/`cash_kas_kecil` come from an explicit CashMovement.type,
     // where the user has already named the account, so there is nothing to
     // resolve by currency and nothing to guess.
     for (const key of [MAPPING_KEYS.CASH_KAS_BESAR, MAPPING_KEYS.CASH_KAS_KECIL]) {

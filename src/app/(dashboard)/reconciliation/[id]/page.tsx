@@ -24,7 +24,7 @@ export default async function ReconciliationDetailPage({
 
   const { statement, movements, summary } = view;
   const matchedCashByLine = new Map(
-    statement.lines.filter((l) => l.cashAccountId != null).map((l) => [l.cashAccountId as number, l.id])
+    statement.lines.filter((l) => l.cashMovementId != null).map((l) => [l.cashMovementId as number, l.id])
   );
 
   const bookRows = movements.map((m) => ({
@@ -42,7 +42,7 @@ export default async function ReconciliationDetailPage({
     description: l.description,
     amount: Number(l.amount),
     matched: l.matched,
-    cashAccountId: l.cashAccountId,
+    cashMovementId: l.cashMovementId,
   }));
 
   return (

@@ -28,8 +28,19 @@ export default async function SalesTargetsPage({
   const month = monthRaw === 0 ? undefined : monthRaw;
 
   const [customers, items, targets] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.item.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    // `isActive: true` — target penjualan adalah rencana ke DEPAN, jadi master
+    // yang sudah dinonaktifkan tak perlu ditawarkan lagi (issue #104). Target
+    // yang terlanjur dibuat untuknya tetap tampil dan tetap dihitung.
+    prisma.customer.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.item.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
     listSalesTargets(year, month),
   ]);
 

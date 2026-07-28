@@ -1,5 +1,12 @@
 # Standar Database & Penamaan — SAI Accounting
 
+> **Multi-perusahaan (issue #104).** Skema di `prisma/schema.prisma` adalah skema
+> **satu perusahaan**, dan sejak #104 ia digandakan: satu basis data per PT.
+> Pengguna/perusahaan/keanggotaan hidup di skema terpisah
+> (`prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
+> `docs/MULTI-COMPANY.md` — terutama: **tidak ada FK ke `users` dari basis data
+> perusahaan**, dan migration diterapkan dengan `npm run db:migrate:all`.
+
 Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). Tujuan: konsisten, aman untuk data keuangan, dan mudah dipelihara. Standar ini mengodifikasikan konvensi yang **sudah** dipakai di `prisma/schema.prisma` + menutup celah.
 
 > Ringkas: **Bahasa Inggris · `snake_case` di DB · tabel jamak · uang `Decimal` (jangan Float) · setiap tabel punya `id` + `created_at` + `updated_at`.**
@@ -41,6 +48,28 @@ Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). 
 ### Enum-like (status, tipe)
 - Ikuti pola existing: **`String @db.VarChar(n)`** dengan **daftar nilai terdokumentasi** + divalidasi `z.enum([...])` di layer Zod. (Belum pakai Prisma `enum` di proyek ini — jangan campur tanpa alasan.)
 - Nilai enum: **lowercase `snake_case`** (`pending`, `partial`, `paid`, `kas_besar`).
+
+#### Setiap pintu masuk data wajib memvalidasi — bukan cuma formulir (issue #111)
+
+Kolomnya `VARCHAR`, jadi basis data **tidak menolak apa pun**. Zod menjaga
+formulir; yang tidak dijaga adalah pintu kedua: **impor/ETL**. Impor legacy
+menyalin `'IN'`/`'OUT'`/`'PROCESS'` dan `'Kas Kecil'`/`'Rp'`/`'USD'`/`'CNY'` apa
+adanya, berhasil tanpa satu pun galat, dan menghasilkan saldo stok **nol** untuk
+33 barang serta 18.689 baris kas yang terposting ke akun kas bawaan.
+
+Kenapa tak pernah berbunyi: collation `utf8mb4_unicode_ci` membuat
+`WHERE type = 'in'` **cocok** dengan `'IN'`, sedangkan `s.type === "in"` di
+JavaScript **tidak** — dan saldo dihitung di JavaScript. Setiap pemeriksaan
+lewat SQL akan bilang "bersih".
+
+Aturannya:
+- Daftar nilai hidup di **satu tempat** (`src/lib/constants.ts`), dipakai
+  `z.enum(...)` maupun penjaga impor — jangan diketik ulang.
+- Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
+  nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah
+  tanpa jejak.
+- Memeriksa data yang sudah ada: `npm run check:legacy-values` (BINARY, jadi
+  perbedaan huruf besar/kecil terlihat) — jalankan pada gladi resik rilis.
 
 ---
 
@@ -125,17 +154,23 @@ Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). 
 
 ---
 
-## 10. Deviasi skema saat ini (tech debt) & kebijakan retrofit
+## 10. Deviasi skema (tech debt) — LUNAS per migration 0037–0041
 
-Skema existing sebagian besar patuh, tapi ada celah berikut. **Kebijakan: perbaiki saat disentuh (incremental), BUKAN big-bang** — hindari migrasi masif berisiko pada data produksi. Tabel **baru** wajib 100% patuh sejak awal.
+Seluruh deviasi yang pernah tercatat di sini sudah ditutup pada issue #104, tepat **sebelum** skema digandakan menjadi satu basis data per perusahaan. Alasannya praktis: setelah penggandaan, satu perbaikan skema harus diputar ulang di N basis data milik N perusahaan yang berbeda jam sibuknya — jadi kebijakan lama ("perbaiki saat disentuh, jangan big-bang") justru berbalik menjadi mahal. Tabel **baru** tetap wajib 100% patuh sejak awal.
 
-| Deviasi | Tabel terdampak | Rencana |
+| Deviasi (dulu) | Tabel terdampak | Selesai di |
 |---|---|---|
-| Tak ada `created_at`/`updated_at` | `contract_items`, `invoice_items`, `*_payments`, `items`, `stock_movements`, `currency_conversions`; `cash_accounts` (hanya created_at) | Tambah saat tabel disentuh fitur terkait |
-| Valas tanpa `rate` + `base_amount` (IDR) | `contract_payments`, `invoice_payments`, `supplier_transactions` | **Tambah saat membangun engine jurnal/FX (issue #9/#23)** — penting untuk buku besar |
-| Presisi tak seragam (`Decimal(10,2)`) | `contract_items`, `invoice_items`, `stock` | Kuantitas → `Decimal(15,3)` saat disentuh |
-| `rate` `Decimal(15,4)` | `currency_conversions` | → `Decimal(18,6)` saat disentuh |
-| Tak ada `is_active` | `suppliers`, `customers`, `items` | Tambah saat fitur nonaktif master |
-| `status` sebagai `Int` | `users` | Biarkan (legacy), atau migrasi ke enum-like string bila menyentuh auth |
+| Tak ada `created_at`/`updated_at` | `contract_items`, `contract_payments`, `invoice_items`, `invoice_payments`, `items`, `stock_movements`, `supplier_transactions`, `currency_conversions`, `journal_lines`, `documents`; `cash_movements` (hanya `created_at`) | **0037** — di-backfill dari tanggal transaksi/header, bukan `NOW()` |
+| Tak ada `is_active` | `suppliers`, `customers`, `items` | **0038** — plus DELETE yang menonaktifkan alih-alih menghapus |
+| Index kurang di kolom `date`/`status` | 7 tabel | **0039** |
+| Nama tabel menyesatkan (isinya gerakan, namanya akun) | `cash_accounts` → `cash_movements` | **0040** — termasuk `bank_statement_lines.cash_account_id` → `cash_movement_id` dan nilai `journals.source_type` |
+| Boolean yang menyamar jadi `Int` | `users.status` → `users.must_change_password` | **0041** |
+| Valas tanpa `rate` + `base_amount` (IDR) | `contract_payments`, `invoice_payments`, `supplier_transactions` | issue #9/#23 |
+| Presisi tak seragam (`Decimal(10,2)`), `rate` `Decimal(15,4)` | `contract_items`, `invoice_items`, `stock_movements`, `currency_conversions` | 0026 |
 
-> Prinsip: **jangan hard-delete master yang direferensikan**; gunakan `is_active` begitu kolomnya tersedia.
+**Yang sengaja DIBIARKAN, dan alasannya:**
+- **Nama constraint FK lama** (`cash_accounts_*_fkey`, `stock_item_id_fkey`) tetap dipakai setelah tabelnya berganti nama. MariaDB tidak mengganti nama constraint saat `RENAME TABLE`, Prisma mencocokkan FK berdasarkan **kolom** bukan nama, dan `DROP` + `ADD` pada DDL MySQL yang non-transaksional sempat meninggalkan tabel tanpa FK di antara dua perintah. Nama yang tertinggal lebih murah daripada jendela tanpa integritas referensial.
+- **FK tidak dideklarasikan `@@index`** di Prisma: InnoDB sudah membuat index untuk setiap FOREIGN KEY. Mendeklarasikannya lagi hanya melahirkan index kembar yang memperlambat INSERT tanpa mempercepat satu query pun.
+- **Entri audit lama** tetap menyebut `cash_account`/`stock`. Log adalah catatan tentang apa yang benar SAAT ITU; menulis ulang isinya justru merusak nilainya sebagai jejak.
+
+> Prinsip: **jangan hard-delete master yang direferensikan** — nonaktifkan (`is_active = false`). Route DELETE master (`consignees`, `suppliers`, `customers`) menghapus HANYA bila baris itu belum pernah dipakai; selebihnya menonaktifkan dan mengembalikan `{ deactivated: true }`. `items` tidak punya DELETE sama sekali: menghapusnya akan menghapus gerakan stoknya (FK CASCADE), yaitu dasar HPP yang sudah masuk laporan.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
+import { createCompanyUser, findUserByUsername, listCompanyUsers } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { activeRoleKeys } from "@/lib/roles";
@@ -22,22 +23,23 @@ export async function GET() {
   const result = await requireApiPermission("user.manage");
   if (!result.authorized) return result.response;
 
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      role: true,
-      status: true,
-      createdAt: true,
-      // issue #75 — jumlah izin khusus, untuk lencana di baris pengguna.
-      _count: { select: { permissionOverrides: true } },
-    },
-    orderBy: { createdAt: "desc" },
+  // ANGGOTA perusahaan yang sedang dibuka — bukan seluruh pengguna pemasangan
+  // (issue #104). Tanpa batas ini, layar Pengguna PT A akan memperlihatkan
+  // seluruh karyawan PT B lengkap dengan peran mereka.
+  const users = await listCompanyUsers();
+
+  // issue #75 — jumlah izin khusus untuk lencana di baris pengguna. Dihitung
+  // dari basis data PERUSAHAAN (di sanalah override hidup), lalu dipasangkan
+  // per id: dua basis data berbeda tidak bisa di-JOIN dalam satu query.
+  const overrideCounts = await prisma.userPermissionOverride.groupBy({
+    by: ["userId"],
+    _count: { _all: true },
+    where: { userId: { in: users.map((u) => u.id) } },
   });
+  const countByUser = new Map(overrideCounts.map((row) => [row.userId, row._count._all]));
 
   return NextResponse.json(
-    users.map(({ _count, ...user }) => ({ ...user, overrideCount: _count.permissionOverrides }))
+    users.map((user) => ({ ...user, overrideCount: countByUser.get(user.id) ?? 0 }))
   );
 }
 
@@ -70,24 +72,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("errors.roleUnknownOrInactive") }, { status: 400 });
   }
 
-  // Check username uniqueness
-  const existing = await prisma.user.findUnique({ where: { username: parsed.data.username } });
+  // Username unik untuk SELURUH pemasangan, bukan per perusahaan: satu orang =
+  // satu akun, berapa pun PT yang dipegangnya (issue #104). Kalau namanya sudah
+  // dipakai, yang benar bukan membuat akun kedua melainkan menambahkan orang
+  // yang sudah ada itu sebagai anggota — jadi pesannya menyebutkan hal itu.
+  const existing = await findUserByUsername(parsed.data.username);
   if (existing) {
     const { t } = await getRequestI18n();
-    return NextResponse.json({ error: t("errors.usernameTaken") }, { status: 409 });
+    return NextResponse.json(
+      { error: t("errors.usernameTaken"), code: "username_taken", userId: existing.id },
+      { status: 409 }
+    );
   }
 
   const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
 
-  const user = await prisma.user.create({
-    data: {
-      username: parsed.data.username,
-      password: hashedPassword,
-      name: parsed.data.name,
-      role: parsed.data.role,
-      status: 1, // force password change on first login
-    },
-    select: { id: true, username: true, name: true, role: true, status: true },
+  const user = await createCompanyUser({
+    username: parsed.data.username,
+    passwordHash: hashedPassword,
+    name: parsed.data.name,
+    role: parsed.data.role,
   });
 
   // audit RBAC fase 3 — pemberian akun (dan perannya) kini terekam.

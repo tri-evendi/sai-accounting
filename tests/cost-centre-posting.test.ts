@@ -114,7 +114,7 @@ describe("dokumen sumber menstempel pusat biayanya ke setiap baris", () => {
   it("transaksi kas", async () => {
     const tx = createFakeClient({
       mappings: MAPPINGS,
-      cashAccounts: {
+      cashMovements: {
         41: {
           id: 41,
           type: "bank",
@@ -129,7 +129,7 @@ describe("dokumen sumber menstempel pusat biayanya ke setiap baris", () => {
     });
 
     const journal = posted(await postForSource({
-      sourceType: "cash_account",
+      sourceType: "cash_movement",
       sourceId: 41,
       counterAccountId: ACC.counter,
       tx,

@@ -28,7 +28,7 @@ interface User {
   username: string;
   name: string | null;
   role: string;
-  status: number;
+  mustChangePassword: boolean;
   createdAt: string;
   /** Jumlah izin khusus tersimpan (issue #75) — lencana di tombol per baris. */
   overrideCount: number;
@@ -220,8 +220,8 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={user.status === 1 ? "warning" : "success"}>
-                    {user.status === 1 ? t("users.mustChangePassword") : t("common.active")}
+                  <Badge variant={user.mustChangePassword ? "warning" : "success"}>
+                    {user.mustChangePassword ? t("users.mustChangePassword") : t("common.active")}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">

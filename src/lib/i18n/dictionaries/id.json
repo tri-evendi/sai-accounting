@@ -266,6 +266,18 @@
       "mismatch": "Kata sandi baru dan ulangannya tidak sama.",
       "tooShort": "Kata sandi minimal 8 karakter.",
       "failed": "Gagal mengganti kata sandi. Silakan coba lagi."
+    },
+    "selectCompany": {
+      "heading": "Pilih Perusahaan",
+      "description": "Akun Anda memegang lebih dari satu perusahaan. Pilih yang ingin dibuka.",
+      "body": "Setiap perusahaan punya bukunya sendiri — faktur, jurnal, dan stoknya terpisah sepenuhnya. Yang Anda pilih di sini menentukan buku mana yang Anda lihat dan tulis.",
+      "openLabel": "Buka",
+      "switching": "Membuka perusahaan...",
+      "noAccessHeading": "Belum ada perusahaan untuk akun ini",
+      "noAccessBody": "Akun Anda sah, tetapi belum diberi akses ke perusahaan mana pun. Hubungi pengelola sistem untuk didaftarkan.",
+      "switchLabel": "Ganti perusahaan",
+      "currentLabel": "Sedang dibuka",
+      "signOut": "Keluar"
     }
   },
   "status": {
@@ -1946,6 +1958,7 @@
     "emptyMovementsDescription": "Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama.",
     "stockIn": "Barang Masuk",
     "stockOut": "Barang Keluar",
+    "stockProcess": "Dalam Proses",
     "financeDescription": "Saldo dan pergerakan uang 6 bulan terakhir per mata uang",
     "financeHrefLabel": "Buka kas & bank",
     "netBalance": "Saldo bersih · {currency}",

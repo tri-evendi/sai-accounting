@@ -189,7 +189,7 @@ export async function POST(request: Request) {
     // Sebelum ini pemuat modul mungkin sempat mengingat "belum ada baris
     // perusahaan" (= semua modul aktif). Pilihan wizard harus berlaku pada
     // permintaan berikutnya, bukan setelah satu TTL.
-    invalidateEnabledModules();
+    await invalidateEnabledModules();
 
     await writeAuditLog({
       userId: result.session.user.id,

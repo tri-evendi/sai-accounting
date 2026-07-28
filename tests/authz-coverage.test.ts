@@ -49,6 +49,11 @@ const API_EXCEPTIONS = new Set([
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
   "user/permissions/route.ts",
+  // self-scoped (issue #104): daftar perusahaan MILIK PEMANGGIL SENDIRI, dipakai
+  // pemilih & penukar perusahaan. Tidak boleh memakai requireApiPermission —
+  // penjaga itu menuntut konteks perusahaan, sedangkan route ini justru dipanggil
+  // saat perusahaan BELUM dipilih.
+  "user/companies/route.ts",
   "health/route.ts", // health probe publik (container/load-balancer)
   // publik: hanya NAMA & ALAMAT perusahaan — keduanya sudah tercetak di halaman
   // masuk sebelum siapa pun log in, dan di setiap dokumen yang dikirim ke

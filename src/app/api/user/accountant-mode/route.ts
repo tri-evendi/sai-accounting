@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { setAccountantMode } from "@/lib/users-directory";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
@@ -51,12 +51,12 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const updated = await prisma.user.update({
-    // Scoped to the authenticated user only. No id comes from the request body.
-    where: { id: parseInt(session.user.id) },
-    data: { accountantMode: parsed.data.accountantMode },
-    select: { accountantMode: true },
-  });
+  // Preferensi ini milik KEANGGOTAAN, bukan identitas (issue #104): bawaannya
+  // diturunkan dari peran, dan peran berbeda per perusahaan — orang yang sama
+  // bisa butuh permukaan akuntansi di PT A dan tidak di PT B. Ditulis hanya
+  // untuk pengguna yang sedang masuk di perusahaan yang sedang dibuka; tidak
+  // ada id yang datang dari badan permintaan.
+  await setAccountantMode(parseInt(session.user.id), parsed.data.accountantMode);
 
-  return NextResponse.json({ accountantMode: updated.accountantMode });
+  return NextResponse.json({ accountantMode: parsed.data.accountantMode });
 }

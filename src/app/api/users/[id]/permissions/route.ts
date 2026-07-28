@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { findCompanyUser } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { PROTECTED_CELLS } from "@/lib/authz-overrides";
 import {
@@ -66,12 +67,15 @@ async function currentState(user: { id: number; username: string; name: string |
   };
 }
 
+/**
+ * Pengguna sasaran HARUS anggota perusahaan yang sedang dibuka (issue #104).
+ * `findCompanyUser` mengembalikan `null` untuk orang yang ada di pemasangan ini
+ * tapi bukan anggota PT ini — jadi izin khusus tidak bisa diberikan kepada
+ * karyawan perusahaan lain hanya dengan menebak id-nya di URL.
+ */
 async function findTargetUser(rawId: string) {
   if (!/^\d+$/.test(rawId)) return null;
-  return prisma.user.findUnique({
-    where: { id: Number.parseInt(rawId, 10) },
-    select: { id: true, username: true, name: true, role: true },
-  });
+  return findCompanyUser(Number.parseInt(rawId, 10));
 }
 
 export async function GET(
@@ -149,7 +153,7 @@ export async function PUT(
   });
 
   // Pembaca berikutnya untuk PENGGUNA ini membaca DB lagi; pengguna lain utuh.
-  invalidateUserOverrides(user.id);
+  await invalidateUserOverrides(user.id);
 
   await writeAuditLog({
     userId: result.session.user.id,

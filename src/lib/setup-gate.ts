@@ -26,6 +26,7 @@
 import "server-only";
 
 import { isSetupComplete } from "@/lib/opening-balance";
+import { currentCompanyId } from "@/lib/current-company";
 
 /**
  * Latch: `isSetup` adalah bendera sekali-jalan (skema menyebutnya "run-once
@@ -39,12 +40,17 @@ import { isSetupComplete } from "@/lib/opening-balance";
  *
  * Cache per-proses sudah cukup: beberapa container yang masing-masing
  * menyalakan latch-nya sendiri tetap konsisten, sebab arahnya satu arah.
+ *
+ * Sejak issue #104 latch-nya DIKUNCI PER PERUSAHAAN: satu proses melayani
+ * beberapa PT bergantian, dan PT yang wizard-nya sudah selesai tidak boleh
+ * membukakan gerbang untuk PT baru yang belum diisi apa pun — persis pemasangan
+ * yang paling membutuhkan gerbang ini.
  */
-let completedLatch = false;
+const completedCompanies = new Set<number>();
 
 /** Buang latch — hanya untuk tes. */
 export function resetSetupLatchForTests() {
-  completedLatch = false;
+  completedCompanies.clear();
 }
 
 /**
@@ -58,11 +64,12 @@ export function resetSetupLatchForTests() {
  * jauh lebih jujur.
  */
 export async function isSetupDone(): Promise<boolean> {
-  if (completedLatch) return true;
+  const companyId = await currentCompanyId();
+  if (completedCompanies.has(companyId)) return true;
 
   try {
     const done = await isSetupComplete();
-    if (done) completedLatch = true;
+    if (done) completedCompanies.add(companyId);
     return done;
   } catch {
     return true;

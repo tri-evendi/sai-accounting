@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supplierSchema } from "@/lib/validations/finance";
 import { requireApiPermission } from "@/lib/auth-guard";
-import { unpostForSource } from "@/lib/posting";
-import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
@@ -63,6 +61,19 @@ export async function PUT(
   return NextResponse.json(supplier);
 }
 
+/**
+ * Master data TIDAK dihapus begitu direferensikan (docs/DATABASE.md §1.3) —
+ * pemasok yang masih punya transaksi atau uang muka DINONAKTIFKAN
+ * (`is_active = false`): ia hilang dari pemilih, tapi setiap pembelian,
+ * pembayaran, dan jurnal tetap bisa menyebut namanya. Hanya pemasok yang belum
+ * pernah dipakai yang benar-benar dihapus. Pola yang sama dengan `consignees`.
+ *
+ * KENAPA INI PERBAIKAN, BUKAN SEKADAR KERAPIAN: FK `supplier_transactions`
+ * memakai ON DELETE CASCADE. Versi sebelumnya menghapus barisnya, jadi
+ * "menghapus satu pemasok" berarti MENGHAPUS SELURUH riwayat pembeliannya dan
+ * membalik jurnal yang sudah diposting — kerugian data permanen yang dipicu
+ * satu klik, dan persis yang dilarang standarnya.
+ */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -73,23 +84,19 @@ export async function DELETE(
   const { id } = await params;
   const supplierId = parseInt(id);
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Transactions cascade-delete with the supplier — reverse their journals
-      // first so the ledger has no entries pointing at deleted rows.
-      const transactions = await tx.supplierTransaction.findMany({
-        where: { supplierId },
-        select: { id: true },
-      });
-      for (const trx of transactions) {
-        await unpostForSource({ sourceType: "supplier_transaction", sourceId: trx.id, tx });
-      }
+  const [transactions, advances] = await Promise.all([
+    prisma.supplierTransaction.count({ where: { supplierId } }),
+    prisma.advancePayment.count({ where: { supplierId } }),
+  ]);
 
-      await tx.supplier.delete({ where: { id: supplierId } });
+  if (transactions > 0 || advances > 0) {
+    const supplier = await prisma.supplier.update({
+      where: { id: supplierId },
+      data: { isActive: false },
     });
-
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    return handlePostingError(e);
+    return NextResponse.json({ success: true, deactivated: true, supplier });
   }
+
+  await prisma.supplier.delete({ where: { id: supplierId } });
+  return NextResponse.json({ success: true, deactivated: false });
 }

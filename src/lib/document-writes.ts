@@ -190,7 +190,15 @@ export async function createDeliveryOrderInTx(
   });
   const availableByItem = new Map<number, number>();
   for (const s of stockRows) {
-    const signed = (s.type === "in" ? 1 : -1) * num(s.quantity);
+    /*
+     * Hanya `in` dan `out` yang menggeser saldo (issue #111). Versi lama
+     * membaca "masuk, kalau bukan berarti keluar", sehingga gerakan `process`
+     * — barang yang sedang disortir/diolah dan MASIH ada — dihitung sebagai
+     * barang keluar. Akibatnya penjaga ini menolak surat jalan atas barang
+     * yang sebenarnya tersedia, dengan pesan "stok tidak cukup" yang tidak
+     * bisa dibuktikan salah oleh siapa pun yang melihat gudang.
+     */
+    const signed = s.type === "in" ? num(s.quantity) : s.type === "out" ? -num(s.quantity) : 0;
     availableByItem.set(s.itemId, num(availableByItem.get(s.itemId)) + signed);
   }
   const requestedByItem = sumRequestedKgByItem(items);

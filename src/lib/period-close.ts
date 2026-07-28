@@ -7,6 +7,7 @@
  * a Manager approves are literally the ones the reports show.
  */
 import { prisma } from "@/lib/prisma";
+import { userDisplayName, userNamesByIds } from "@/lib/users-directory";
 import { getBalanceSheet, getTrialBalance } from "@/lib/reports";
 import { type PeriodStatus, periodBounds } from "@/lib/period";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -77,9 +78,11 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
   const label = (y: number, m: number) => localePeriodLabel(dictionary, y, m);
 
   const [existing, journals, lineGroups] = await Promise.all([
+    // Nama penutupnya TIDAK bisa di-`include` lagi: pengguna hidup di basis
+    // data kendali (issue #104), dan relasi Prisma tidak menyeberangi basis
+    // data. Id-nya dibaca di sini, namanya dicari sesudahnya.
     prisma.period.findUnique({
       where: { year_month: { year, month } },
-      include: { closedBy: { select: { name: true, username: true } } },
     }),
     prisma.journal.findMany({
       where: { date: { gte: start, lte: end } },
@@ -238,7 +241,7 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
     label: label(year, month),
     status,
     closedAt: existing?.closedAt?.toISOString() ?? null,
-    closedByName: existing?.closedBy?.name ?? existing?.closedBy?.username ?? null,
+    closedByName: await userDisplayName(existing?.closedById),
     note: existing?.note ?? null,
     journalCount: journals.length,
     totalDebit,
@@ -305,13 +308,17 @@ export async function listPeriods(limit = 24) {
   const dictionary = await getDictionary(await getLocale());
   const [rows, bounds] = await Promise.all([
     prisma.period.findMany({
-      include: { closedBy: { select: { name: true, username: true } } },
       orderBy: [{ year: "desc" }, { month: "desc" }],
     }),
     prisma.journal.aggregate({ _min: { date: true }, _max: { date: true } }),
   ]);
 
   const byKey = new Map(rows.map((r) => [`${r.year}-${r.month}`, r]));
+  // Satu pencarian nama untuk SELURUH daftar, bukan satu per baris: penutup
+  // periode biasanya orang yang sama berulang kali (issue #104).
+  const closerNames = await userNamesByIds(
+    rows.map((r) => r.closedById).filter((id): id is number => id != null)
+  );
   const months: { year: number; month: number }[] = [];
 
   const max = bounds._max.date ?? new Date();
@@ -338,7 +345,7 @@ export async function listPeriods(limit = 24) {
       label: localePeriodLabel(dictionary, m.year, m.month),
       status: (row?.status as PeriodStatus | undefined) ?? "open",
       closedAt: row?.closedAt?.toISOString() ?? null,
-      closedByName: row?.closedBy?.name ?? row?.closedBy?.username ?? null,
+      closedByName: row?.closedById != null ? closerNames.get(row.closedById) ?? null : null,
       note: row?.note ?? null,
     };
   });

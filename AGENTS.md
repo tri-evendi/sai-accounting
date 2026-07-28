@@ -22,6 +22,18 @@ Setiap kali membuat/mengubah/mereview UI (halaman, komponen, warna, tipografi, l
 
 Otorisasi berbasis **izin terpusat** — lihat `docs/RBAC.md`. Inti: matriks izin di `src/lib/authz.ts`; halaman memanggil `requirePagePermission("resource.action")`, API `requireApiPermission(...)`, tampilan `can(...)`. **Jangan** membandingkan string peran atau menulis daftar `["managing_director","finance_manager"]` di luar matriks — tes `authz-coverage` menolak halaman/route tanpa deklarasi izin. Sejak issue #73 matriks di kode adalah **BAWAAN**: matriks **EFEKTIF** = bawaan + override DB (`role_permission_overrides`) yang dikelola peran berakses penuh di halaman `/permissions`; penjaga memakai `canEffective` (`src/lib/authz-effective.ts`), jadi jangan tanam asumsi "peran X pasti tidak bisa Y" di luar penjaga.
 
+# Multi-perusahaan (WAJIB dibaca sebelum menyentuh basis data)
+
+Sejak issue #104 buku besar setiap PT hidup di **basis data sendiri**; pengguna,
+daftar perusahaan, dan keanggotaan ada di **basis data kendali**. Lihat
+`docs/MULTI-COMPANY.md`. Aturan yang tidak boleh dilanggar: **konteks perusahaan
+yang hilang harus MELEMPAR, tidak pernah jatuh ke basis data bawaan** — jatuh ke
+bawaan berarti transaksi PT A tertulis ke buku PT B tanpa galat dan tanpa jejak.
+Halaman & route mendapat konteksnya dari penjaga; skrip/cron **wajib**
+`runWithCompany()`. Cache tingkat modul yang isinya milik satu perusahaan
+**wajib** dikunci per `companyId`. Jangan pernah membuat FK ke `users` dari basis
+data perusahaan — pakai id global + `users-directory.ts`.
+
 # Database & Skema (WAJIB untuk perubahan data)
 
 Setiap perubahan model Prisma / migration / tabel **wajib** mengikuti `docs/DATABASE.md`. Inti:

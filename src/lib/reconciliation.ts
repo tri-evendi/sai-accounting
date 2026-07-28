@@ -20,7 +20,7 @@ export function round2(n: number): number {
 }
 
 /**
- * Signed value of a book (`cash_accounts`) movement:
+ * Signed value of a book (`cash_movements`) movement:
  *   + = money into the bank (debit), − = money out (credit).
  * This is the unit both sides of a reconciliation are compared in.
  */
@@ -46,7 +46,7 @@ export interface ReconciliationInput {
   openingBalance: number;
   /** Statement closing balance, in the account's own currency. */
   closingBalance: number;
-  /** Book movements in scope (`cash_accounts` rows). */
+  /** Book movements in scope (`cash_movements` rows). */
   book: ReconItem[];
   /** Statement lines (`bank_statement_lines` rows). */
   statement: ReconItem[];

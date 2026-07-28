@@ -8,47 +8,19 @@ datasource db {
 }
 
 // ─── Users & Auth ────────────────────────────────────────
-
-model User {
-  id       Int      @id @default(autoincrement())
-  username String   @unique @db.VarChar(50)
-  password String   @db.VarChar(255)
-  name     String?  @db.VarChar(100)
-  /// enum-like (migration 0032): managing_director | finance_manager |
-  /// warehouse_head | administrator — plus peran kustom apa pun yang dibuat
-  /// dari /permissions (peran adalah DATA, lihat model Role).
-  role     String   @default("finance_manager") @db.VarChar(20)
-  status   Int      @default(1) // 1 = must change password
-  passDate DateTime? @map("pass_date")
-
-  // ─── issue #11 — Mode Akuntan (accountant mode) ────────────
-  /// Per-user DISPLAY preference for "Mode Akuntan". Nullable on purpose:
-  ///   NULL  = follow the role default (managing_director & administrator → ON,
-  ///           finance_manager/warehouse_head → OFF),
-  ///   true  = explicitly show accounting surfaces (Jurnal/Buku Besar/COA + debit/kredit terms),
-  ///   false = explicitly hide them.
-  /// An explicit value overrides the role default; a user who never toggles
-  /// stays NULL and tracks their role's default even if their role changes.
-  /// Display-only — it NEVER changes authorisation (role still gates every
-  /// accounting page) nor what is posted. See src/lib/accountant-mode.ts.
-  accountantMode Boolean? @map("accountant_mode")
-  // ───────────────────────────────────────────────────────────
-
-  /// Pencabutan sesi (audit RBAC fase 3). JWT menyimpan angka ini saat login;
-  /// revalidasi berkala membandingkannya dengan DB — beda = sesi mati. Dinaikkan
-  /// oleh mutasi admin yang harus memutus sesi berjalan (ganti peran, reset
-  /// kata sandi); penghapusan pengguna otomatis mencabut (barisnya hilang).
-  sessionVersion Int @default(1) @map("session_version")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  closedPeriods Period[]
-  /// Izin khusus per pengguna (issue #75) — lihat UserPermissionOverride.
-  permissionOverrides UserPermissionOverride[]
-
-  @@map("users")
-}
+//
+// TIDAK ADA MODEL `User` DI SINI, dan itu inti issue #104.
+//
+// Identitas orang hidup di BASIS DATA KENDALI (`prisma/control/schema.prisma`)
+// bersama daftar perusahaan dan keanggotaannya. Kalau `users` ada di dalam buku
+// tiap perusahaan, satu orang yang memegang tiga PT punya tiga akun dengan tiga
+// kata sandi — dan "satu login mencakup semua perusahaan" jadi mustahil.
+//
+// Dua tabel di basis data ini tetap MENYEBUT pengguna lewat id global:
+// `periods.closed_by_id` dan `user_permission_overrides.user_id`. Keduanya
+// angka biasa tanpa foreign key — FK tidak bisa menyeberangi basis data.
+// Namanya dicari ke basis data kendali saat ditampilkan, dan id yang pemiliknya
+// sudah dihapus tampil sebagai "—", bukan sebagai galat.
 
 // ─── Peran dinamis (dikelola dari UI) ────────────────────
 /// Peran sebagai DATA, bukan enum kode. `key` = nilai yang disimpan di
@@ -116,6 +88,9 @@ model RolePermissionOverride {
 /// izin khusus.
 model UserPermissionOverride {
   id     Int @id @default(autoincrement())
+  /// Id pengguna GLOBAL (basis data kendali, issue #104) — tanpa FK. Baris yang
+  /// pemiliknya sudah dihapus tidak berbahaya: ia hanya tidak pernah cocok
+  /// dengan siapa pun lagi. Pembersihannya urusan penghapusan pengguna.
   userId Int @map("user_id")
   /// Kunci izin "resource.action" — harus ada di PERMISSION_ROLES.
   permission String  @db.VarChar(50)
@@ -123,8 +98,6 @@ model UserPermissionOverride {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// Satu keputusan per (pengguna × izin).
   @@unique([userId, permission])
@@ -185,6 +158,7 @@ model Contract {
   @@index([dueDate])
   @@index([date])
   @@index([consigneeId])
+  @@index([status])
   @@map("contracts")
 }
 
@@ -195,6 +169,9 @@ model ContractItem {
   bags       Int      @default(0)
   kgPerBag   Decimal  @default(0) @map("kg_per_bag") @db.Decimal(15, 3)
   pricePerKg Decimal  @default(0) @map("price_per_kg") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
@@ -213,8 +190,12 @@ model ContractPayment {
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   note       String?  @db.Text
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
+  @@index([date])
   @@map("contract_payments")
 }
 
@@ -311,6 +292,7 @@ model Invoice {
   @@index([dueDate])
   @@index([date])
   @@index([costCenterId])
+  @@index([status])
   @@map("invoices")
 }
 
@@ -321,6 +303,9 @@ model InvoiceItem {
   quantity  Decimal @default(0) @db.Decimal(15, 3)
   price     Decimal @default(0) @db.Decimal(15, 2)
   unit      String? @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   /// Retur penjualan lines that reference THIS invoice line (issue #27). Used to
@@ -340,8 +325,12 @@ model InvoicePayment {
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
   note       String?  @db.Text
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@index([date])
   @@map("invoice_payments")
 }
 
@@ -352,6 +341,14 @@ model Item {
   name  String  @unique @db.VarChar(100)
   unit  String? @db.VarChar(20)
 
+  /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3): barang
+  /// yang pernah bergerak tetap harus bisa diterjemahkan jadi nama selamanya.
+  /// `false` = hilang dari pemilih, riwayat & laporannya utuh.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   /// Pergerakan stok barang ini — SATU baris = satu masuk/keluar, bukan saldo.
   stockMovements      StockMovement[]
   /// Return lines that move THIS item back in/out of stock (issue #27).
@@ -360,6 +357,7 @@ model Item {
   /// Surat jalan lines that move THIS item OUT of stock on issue (issue #14).
   deliveryOrderItems  DeliveryOrderItem[]
 
+  @@index([isActive])
   @@map("items")
 }
 
@@ -392,10 +390,16 @@ model StockMovement {
   /// SELURUH baris historis (tak ada backfill).
   costCenterId Int? @map("cost_center_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
   costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
 
   @@index([costCenterId])
+  /// Penilaian persediaan & HPP selalu membaca gerakan SATU barang urut waktu —
+  /// index gabungan, bukan dua index terpisah (issue #104).
+  @@index([itemId, date])
   @@map("stock_movements")
 }
 
@@ -408,12 +412,18 @@ model Supplier {
   phone   String? @db.VarChar(30)
   email   String? @db.VarChar(100)
 
+  /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3). Pemasok
+  /// yang punya transaksi TIDAK BOLEH hilang — hutangnya, fakturnya, dan
+  /// jurnalnya menyebut namanya. `false` = keluar dari pemilih, riwayat utuh.
+  isActive Boolean @default(true) @map("is_active")
+
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
   advances     AdvancePayment[]
   purchaseReturns PurchaseReturn[]
 
+  @@index([isActive])
   @@map("suppliers")
 }
 
@@ -436,6 +446,9 @@ model SupplierTransaction {
   /// Nullable & tanpa backfill: NULL = belum ditetapkan / seluruh perusahaan.
   costCenterId Int?   @map("cost_center_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   /// issue #91 — dimensi pusat biaya. RESTRICT (nonaktifkan, jangan hapus).
   costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
@@ -456,6 +469,7 @@ model SupplierTransaction {
   @@index([supplierId, type])
   @@index([dueDate])
   @@index([costCenterId])
+  @@index([date])
   @@map("supplier_transactions")
 }
 
@@ -536,6 +550,12 @@ model Customer {
   /// as free text (digits/dots/dashes) — not validated as a check-digit here.
   npwp String? @db.VarChar(30)
 
+  /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3). Pelanggan
+  /// yang punya faktur TIDAK BOLEH hilang — piutang, faktur pajak, dan jurnalnya
+  /// menyebut namanya. `false` = keluar dari pemilih, riwayat utuh. Pola yang
+  /// sama sudah dipakai `consignees` sejak issue #22.
+  isActive Boolean @default(true) @map("is_active")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -543,6 +563,7 @@ model Customer {
   advances AdvancePayment[]
   salesReturns SalesReturn[]
 
+  @@index([isActive])
   @@map("customers")
 }
 
@@ -854,7 +875,14 @@ model PurchaseReturnItem {
 
 // ─── Financial ───────────────────────────────────────────
 
-model CashAccount {
+/// Satu baris = SATU TRANSAKSI kas/bank (masuk = `debit`, keluar = `credit`),
+/// bukan sebuah akun kas (issue #104). Saldo sebuah kas adalah hasil
+/// penjumlahan baris-baris ini; tidak ada kolom saldo di mana pun, dan "akun
+/// kas" sendiri tidak punya tabel — ia hanya pasangan (`type`, `currency`) yang
+/// muncul di baris-baris ini. Nama lamanya (`CashAccount` / tabel
+/// `cash_accounts`) menjanjikan yang sebaliknya. Sama persis dengan pelajaran
+/// `Stock` → `StockMovement` (issue #92).
+model CashMovement {
   id          Int      @id @default(autoincrement())
   type        String   @db.VarChar(20)
   date        DateTime
@@ -880,6 +908,7 @@ model CashAccount {
   costCenterId Int?      @map("cost_center_id")
 
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   statement     BankStatement?     @relation("StatementMovements", fields: [statementId], references: [id], onDelete: SetNull)
   statementLine BankStatementLine? @relation("LineMatch")
@@ -889,18 +918,25 @@ model CashAccount {
   @@index([statementId])
   @@index([reconciled])
   @@index([costCenterId])
-  @@map("cash_accounts")
+  @@index([date])
+  @@map("cash_movements")
 }
 
 model CurrencyConversion {
   id       Int      @id @default(autoincrement())
   date     DateTime
-  fromCur  String   @map("from_currency") @db.VarChar(5)
-  toCur    String   @map("to_currency") @db.VarChar(5)
+  /// Nama field mengikuti kolomnya (`from_currency`/`to_currency`); singkatan
+  /// `fromCur`/`toCur` adalah satu-satunya di skema ini dan tidak berumur panjang.
+  fromCurrency String @map("from_currency") @db.VarChar(5)
+  toCurrency   String @map("to_currency") @db.VarChar(5)
   amount   Decimal  @db.Decimal(15, 2)
   rate     Decimal  @db.Decimal(18, 6)
   result   Decimal  @db.Decimal(15, 2)
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([date])
   @@map("currency_conversions")
 }
 
@@ -1036,7 +1072,7 @@ model CostCenter {
   journals             Journal[]
   invoices             Invoice[]
   supplierTransactions SupplierTransaction[]
-  cashAccounts         CashAccount[]
+  cashMovements        CashMovement[]
   /// Gerakan stok yang menghasilkan HPP (issue #98).
   stockMovements       StockMovement[]
 
@@ -1097,6 +1133,9 @@ model JournalLine {
   /// laporan tak berubah satu rupiah pun di hari pertama.
   costCenterId Int?  @map("cost_center_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   journal    Journal     @relation(fields: [journalId], references: [id], onDelete: Cascade)
   account    Account     @relation(fields: [accountId], references: [id], onDelete: Restrict)
   costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
@@ -1118,15 +1157,15 @@ model Period {
   month    Int // 1-12
   status   String    @default("open") @db.VarChar(20) // open, closed
   closedAt DateTime? @map("closed_at")
-  /// Who performed the last close. Kept as a FK so the name stays correct if the
-  /// user is renamed; the full close/reopen history lives in the audit log.
+  /// Siapa melakukan penutupan terakhir — id pengguna GLOBAL di basis data
+  /// kendali (issue #104), tanpa foreign key: FK tidak bisa menyeberangi basis
+  /// data. Namanya dicari saat ditampilkan; pengguna yang sudah dihapus tampil
+  /// sebagai "—". Riwayat tutup/buka selengkapnya ada di log audit.
   closedById Int?    @map("closed_by_id")
   note       String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  closedBy User? @relation(fields: [closedById], references: [id], onDelete: Restrict)
 
   @@unique([year, month])
   @@index([status])
@@ -1142,7 +1181,12 @@ model Document {
   filename   String   @db.VarChar(255)
   filepath   String   @db.VarChar(500)
   type       String?  @db.VarChar(50)
-  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  /// `uploaded_at` lama = waktu baris dibuat, jadi ia DIGANTI NAMA jadi
+  /// `created_at` (migration 0037) alih-alih hidup berdampingan dengan kolom
+  /// kembar yang artinya sama.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
@@ -1180,7 +1224,7 @@ model BankStatement {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   lines     BankStatementLine[]
-  movements CashAccount[]       @relation("StatementMovements")
+  movements CashMovement[]      @relation("StatementMovements")
 
   // One statement per account (cashType+currency) per exact period.
   @@unique([cashType, currency, periodStart, periodEnd])
@@ -1201,13 +1245,13 @@ model BankStatementLine {
   matched       Boolean  @default(false)
   /// The single book movement (1:1) this line is matched to. SetNull so deleting
   /// a cash row does not erase koran history — it only unmatches the line.
-  cashAccountId Int?     @unique @map("cash_account_id")
+  cashMovementId Int?    @unique @map("cash_movement_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  cashAccount CashAccount?  @relation("LineMatch", fields: [cashAccountId], references: [id], onDelete: SetNull)
+  cashMovement CashMovement? @relation("LineMatch", fields: [cashMovementId], references: [id], onDelete: SetNull)
 
   @@index([statementId])
   @@index([date])

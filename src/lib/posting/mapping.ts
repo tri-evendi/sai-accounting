@@ -33,7 +33,7 @@ export const MAPPING_KEYS = {
   COGS: "cogs",
   /** Fallback cash/bank account when no specific one is implied. */
   CASH_DEFAULT: "cash_default",
-  /** Cash slots keyed by CashAccount.type (bank | kas_besar | kas_kecil). */
+  /** Cash slots keyed by CashMovement.type (bank | kas_besar | kas_kecil). */
   CASH_BANK: "cash_bank",
   CASH_KAS_BESAR: "cash_kas_besar",
   CASH_KAS_KECIL: "cash_kas_kecil",
@@ -215,7 +215,7 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   // need the same human check anyway.
   //
   // The physical-cash slots stay currency-agnostic: they are reached only from
-  // an explicit CashAccount.type, where the user has already named the account.
+  // an explicit CashMovement.type, where the user has already named the account.
   { key: MAPPING_KEYS.CASH_KAS_BESAR, code: "110102" },
   { key: MAPPING_KEYS.CASH_KAS_KECIL, code: "110101" },
   { key: MAPPING_KEYS.CASH_BANK, code: "110103" },
@@ -243,7 +243,7 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.DISPOSAL_GAIN_LOSS, code: "7103" },
 ];
 
-/** Cash slot for a CashAccount.type value. Unknown types fall back to cash_default. */
+/** Cash slot for a CashMovement.type value. Unknown types fall back to cash_default. */
 export function cashKeyForType(type: string | null | undefined): MappingKey {
   switch (type) {
     case "bank":

@@ -2,23 +2,31 @@ import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { normalizeConsigneeName } from "@/lib/consignee";
+import { CASH_TYPES } from "@/lib/constants";
 import { vissue, vmsg } from "@/lib/i18n/validation";
 
 export const cashTransactionSchema = z
   .object({
-    type: z.enum(["bank", "kas_besar", "kas_kecil"]),
+    /*
+     * Dari `CASH_TYPES`, bukan daftar yang diketik ulang (issue #111): penjaga
+     * impor legacy membaca daftar yang SAMA, jadi keduanya tidak bisa
+     * berselisih. Nilai di luar daftar ini jatuh ke akun kas bawaan di
+     * `cashKeyForType()` — persis kekeliruan yang membuat 18.689 baris legacy
+     * salah akun.
+     */
+    type: z.enum(CASH_TYPES),
     date: z.string().min(1, vmsg("validation.dateRequired")),
     description: z.string().min(1, vmsg("validation.descriptionRequired")).max(255).trim(),
     currency: currencyEnum.default("IDR"),
     debit: z.coerce.number().min(0).default(0),
     credit: z.coerce.number().min(0).default(0),
-    // Persisted to cash_accounts.rate; drives base_amount and the journal.
+    // Persisted to cash_movements.rate; drives base_amount and the journal.
     rate: rateField,
     /**
      * The other side of the double entry. A cash movement on its own says
      * nothing about *why* money moved, so the posting engine refuses to post
      * without it — hence required here rather than optional.
-     * Not a column on cash_accounts: it is passed to the engine as
+     * Not a column on cash_movements: it is passed to the engine as
      * `ctx.counterAccountId` and lives on in the journal line it produces.
      */
     counterAccountId: z.coerce

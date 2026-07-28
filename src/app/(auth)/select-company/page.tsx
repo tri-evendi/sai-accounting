@@ -17,11 +17,16 @@
  * perusahaan aktif, sedangkan setiap halaman dasbor menuntutnya. Menaruhnya di
  * dalam dasbor akan membuatnya memantul ke dirinya sendiri tanpa henti.
  */
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2 } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
+import { enterCompanyFromSession } from "@/lib/company-session";
+import { canEffective } from "@/lib/authz-effective";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { CompanyChoices, SignOutAction } from "./company-choices";
@@ -62,11 +67,39 @@ export default async function SelectCompanyPage() {
     );
   }
 
+  /*
+   * "Tambah Perusahaan" DI PEMILIH — tapi hanya bila memang bisa ditekan.
+   *
+   * Halaman pembuatannya hidup di dalam dasbor dan dijaga `company.create`,
+   * dan penjaga itu menuntut KONTEKS PERUSAHAAN: izin adalah milik keanggotaan
+   * di satu perusahaan, bukan milik akun. Karena itu tautannya baru muncul
+   * setelah ada perusahaan aktif — yaitu ketika pengguna datang untuk BERPINDAH,
+   * bukan saat ia baru masuk dan belum memilih apa pun. Pada keadaan itu
+   * tautannya pasti memantul, dan menawarkan pintu yang menutup sendiri lebih
+   * buruk daripada tidak menawarkannya.
+   *
+   * Izinnya diperiksa dengan `canEffective` — matriks EFEKTIF, termasuk
+   * override yang dikelola dari /permissions. Memakai matriks bawaan di sini
+   * akan menyembunyikan tautannya dari orang yang justru sudah diberi izin itu.
+   */
+  const entered = await enterCompanyFromSession(session);
+  const canCreate = entered.ok && (await canEffective(session.user, "company.create"));
+
   return (
     <AuthShell
       heading={t("auth.selectCompany.heading")}
       description={t("auth.selectCompany.description")}
       icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      footer={
+        canCreate ? (
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/companies/new">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              {t("companies.newTitle")}
+            </Link>
+          </Button>
+        ) : undefined
+      }
     >
       <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
         {t("auth.selectCompany.body")}

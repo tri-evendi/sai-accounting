@@ -3092,7 +3092,7 @@
       "commodity_trading": "Jual beli barang dengan kontrak, surat jalan, dan dokumen ekspor. Semua modul menyala.",
       "distribution": "Jual beli barang bergudang, tanpa kontrak berjangka maupun dokumen ekspor.",
       "services": "Tanpa barang sama sekali: tanpa stok dan tanpa lapisan perdagangan.",
-      "custom": "Mulai dari semua modul menyala, lalu matikan yang tidak dipakai."
+      "custom": "Mulai minimal — hanya pembukuan inti. Nyalakan modul yang Anda pakai kapan saja; akunnya ikut lahir saat itu."
     }
   },
   "companies": {

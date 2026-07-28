@@ -20,6 +20,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { seedCoaForModules } from "@/lib/coa-seeding";
 import { requireApiPermission } from "@/lib/auth-guard";
 import {
   normalizeEnabledModules,
@@ -89,7 +90,25 @@ export async function PUT(request: Request) {
     );
   }
 
+  const previous = parseEnabledModules(existing.enabledModules);
   const modules = normalizeEnabledModules(parsed.data.modules as BusinessModule[]);
+
+  /*
+   * MODUL YANG BARU DINYALAKAN MEMBAWA AKUNNYA SENDIRI (issue #99/#104).
+   *
+   * Tanpa ini, menyalakan modul "Persediaan" berbulan-bulan setelah penyiapan
+   * akan berhasil tanpa keluhan — lalu pemakaian PERTAMANYA berhenti dengan
+   * `PostingRuleError`: "aturan ini butuh slot akun yang belum dikonfigurasi
+   * siapa pun". Galat itu benar, tapi muncul di tempat yang salah: di tengah
+   * pekerjaan orang, bukan di layar tempat ia menyalakan modulnya.
+   *
+   * Idempoten: akun yang kodenya sudah ada tidak disentuh. Modul yang
+   * DIMATIKAN tidak menghapus akun apa pun — akun yang pernah dipakai adalah
+   * dasar angka yang sudah terbit di laporan (docs/DATABASE.md §1.3).
+   */
+  const added = [...modules].filter((m) => !previous.has(m));
+  const seeded =
+    added.length > 0 ? await seedCoaForModules(prisma, added) : { created: 0, existing: 0 };
 
   await prisma.companySetting.update({
     where: { id: existing.id },
@@ -112,6 +131,8 @@ export async function PUT(request: Request) {
     entity: "company_settings",
     entityId: existing.id,
     details: {
+      coaCreated: seeded.created,
+      modulesAdded: added,
       businessCategory: parsed.data.businessCategory ?? existing.businessCategory ?? null,
       modules,
       // Apa yang BERUBAH — jejak yang menjawab "sejak kapan menu itu hilang?".

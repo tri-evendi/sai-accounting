@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { seedCoaForModules } from "@/lib/coa-seeding";
 import { setupSchema } from "@/lib/validations/setup";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -27,6 +28,7 @@ import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import {
+  BUSINESS_MODULES,
   normalizeEnabledModules,
   serializeEnabledModules,
   validateEnabledModules,
@@ -117,9 +119,15 @@ export async function POST(request: Request) {
       );
     }
   }
-  const enabledModules = company.modules
-    ? serializeEnabledModules(normalizeEnabledModules(company.modules as BusinessModule[]))
-    : null;
+  /*
+   * Dua bentuk dari satu pilihan: himpunan modul untuk menyemai bagan akun,
+   * dan bentuk terserialisasi untuk disimpan. `null` berarti "semua aktif"
+   * (konvensi kolom `enabled_modules`), jadi penyemaiannya pun semua.
+   */
+  const moduleSet = company.modules
+    ? normalizeEnabledModules(company.modules as BusinessModule[])
+    : [...BUSINESS_MODULES];
+  const enabledModules = company.modules ? serializeEnabledModules(moduleSet) : null;
 
   // Partner names for the AR/AP line memos come from the DB, not the client.
   const [customers, suppliers] = await Promise.all([
@@ -184,6 +192,22 @@ export async function POST(request: Request) {
   };
 
   try {
+    /*
+     * BAGAN AKUN DISEMAI DI SINI, sebelum saldo awal (issue #99/#104).
+     *
+     * Urutannya tidak bisa dibalik: saldo awal memposting jurnal, dan jurnal
+     * menuntut akun beserta slot mapping-nya sudah ada. Sebelum ini penyemaian
+     * hanya ada sebagai perintah baris perintah, sehingga perusahaan yang
+     * dibuat lewat halaman "Tambah Perusahaan" tiba di wizard tanpa satu akun
+     * pun — dan langkah saldo awal berhenti tanpa bisa dijelaskan penggunanya.
+     *
+     * Yang disemai MENGIKUTI MODUL yang dipilih di wizard: perusahaan jasa
+     * tidak lagi mendapat akun persediaan dan HPP yang selamanya nol. Sifatnya
+     * idempoten — akun yang kodenya sudah ada tidak disentuh sama sekali, jadi
+     * pemasangan lama yang bagan akunnya sudah disesuaikan tidak berubah.
+     */
+    const seeded = await seedCoaForModules(prisma, moduleSet);
+
     const applied = await applyOpeningBalances(input);
 
     // Sebelum ini pemuat modul mungkin sempat mengingat "belum ada baris
@@ -198,6 +222,8 @@ export async function POST(request: Request) {
       entity: "company_settings",
       entityId: applied.settingId,
       details: {
+        coaCreated: seeded.created,
+        coaExisting: seeded.existing,
         journalNumber: applied.journalNumber,
         equityPlug: applied.equityPlug,
         fiscalYearStart: company.fiscalYearStart,

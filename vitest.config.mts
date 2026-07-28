@@ -3,6 +3,13 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      // Lihat tests/stubs/server-only.ts — tanpa ini, modul sisi server tidak
+      // bisa diuji sebagai unit sama sekali (impornya gagal diselesaikan).
+      "server-only": new URL("./tests/stubs/server-only.ts", import.meta.url).pathname,
+    },
+  },
   test: {
     environment: "node",
     // `.tsx` ikut disertakan sejak issue #50: invarian primitif UI diuji lewat

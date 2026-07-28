@@ -85,6 +85,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           sessionVersion: user.sessionVersion,
           companyId: only?.companyId ?? null,
           companySlug: only?.slug ?? null,
+          companyName: only?.name ?? null,
           role: membership?.role ?? null,
           accountantMode: membership?.accountantMode ?? null,
         };
@@ -99,6 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           sessionVersion?: number;
           companyId?: number | null;
           companySlug?: string | null;
+          companyName?: string | null;
           role?: string | null;
           accountantMode?: boolean | null;
         };
@@ -107,6 +109,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.sessionVersion = u.sessionVersion ?? 1;
         token.companyId = u.companyId ?? null;
         token.companySlug = u.companySlug ?? null;
+        token.companyName = u.companyName ?? null;
         token.role = u.role ?? null;
         token.accountantMode = u.accountantMode ?? null;
         token.checkedAt = Date.now();
@@ -127,6 +130,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (membership) {
             token.companyId = membership.company.companyId;
             token.companySlug = membership.company.slug;
+            token.companyName = membership.company.name;
             token.role = membership.role;
             token.accountantMode = membership.accountantMode;
             token.checkedAt = Date.now();
@@ -165,11 +169,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // jadi yang dilepas hanya perusahaannya, bukan sesinya.
           token.companyId = null;
           token.companySlug = null;
+          token.companyName = null;
           token.role = null;
           token.accountantMode = null;
         } else if (membership) {
           token.role = membership.role;
           token.accountantMode = membership.accountantMode;
+          // Nama perusahaan bisa berubah di halaman pengaturan; revalidasi
+          // berkala ini satu-satunya tempat sesi lama ikut menyusul.
+          token.companyName = membership.company.name;
         }
 
         token.mustChangePassword = dbUser!.mustChangePassword;
@@ -190,6 +198,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (token.companyId as number | null | undefined) ?? null;
         (session.user as { companySlug: string | null }).companySlug =
           (token.companySlug as string | null | undefined) ?? null;
+        (session.user as { companyName: string | null }).companyName =
+          (token.companyName as string | null | undefined) ?? null;
       }
       return session;
     },

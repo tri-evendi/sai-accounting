@@ -187,7 +187,8 @@
     "closeMenu": "Tutup menu"
   },
   "navbar": {
-    "openMenu": "Buka menu"
+    "openMenu": "Buka menu",
+    "activeCompany": "Perusahaan aktif"
   },
   "commandPalette": {
     "title": "Cari halaman",
@@ -275,6 +276,7 @@
       "switching": "Membuka perusahaan...",
       "noAccessHeading": "Belum ada perusahaan untuk akun ini",
       "noAccessBody": "Akun Anda sah, tetapi belum diberi akses ke perusahaan mana pun. Hubungi pengelola sistem untuk didaftarkan.",
+      "noAccessNext": "Bila Anda seharusnya punya akses, mintalah pengelola sistem mendaftarkan akun ini ke perusahaan yang bersangkutan. Bila Anda punya akun lain, keluar dan masuk dengan akun itu.",
       "switchLabel": "Ganti perusahaan",
       "currentLabel": "Sedang dibuka",
       "signOut": "Keluar"

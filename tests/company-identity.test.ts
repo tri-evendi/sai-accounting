@@ -17,6 +17,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { FALLBACK_COMPANY_IDENTITY, pickIdentity } from "@/lib/company-identity";
+
 const SRC = join(__dirname, "..", "src");
 
 /**
@@ -47,6 +49,41 @@ const files = sourceFiles(SRC).map((path) => ({
   rel: path.slice(SRC.length + 1),
   code: readFileSync(path, "utf8"),
 }));
+
+/*
+ * Urutan sumber nama (issue #104). Sebelum ini hanya ada DUA langkah — setting
+ * perusahaan, lalu konstanta — dan langkah kedua itu berisi nama PT yang
+ * memasang aplikasi pertama kali. Begitu satu pemasangan memegang beberapa PT,
+ * perusahaan yang belum menjalankan wizard mencetak nama badan hukum
+ * perusahaan LAIN di kop surat resminya sendiri.
+ */
+describe("urutan sumber identitas", () => {
+  it("setting perusahaan menang atas apa pun", () => {
+    expect(
+      pickIdentity({
+        settingName: "PT Bumi Baru",
+        settingAddress: "Jl. Merdeka 1",
+        registryName: "PT Nama Registry",
+      })
+    ).toEqual({ name: "PT Bumi Baru", address: "Jl. Merdeka 1" });
+  });
+
+  it("wizard belum diisi → nama dari registry, BUKAN nama pemasang pertama", () => {
+    const identity = pickIdentity({ settingName: "  ", registryName: "PT Bumi Baru" });
+    expect(identity.name).toBe("PT Bumi Baru");
+    expect(identity.name).not.toBe(FALLBACK_COMPANY_IDENTITY.name);
+  });
+
+  it("alamat dikosongkan, tidak dipinjam dari perusahaan lain", () => {
+    // Alamat pada faktur/kontrak/surat jalan bukan hiasan: alamat yang salah
+    // lebih buruk daripada alamat yang kosong.
+    expect(pickIdentity({ registryName: "PT Bumi Baru" }).address).toBe("");
+  });
+
+  it("konstanta hanya dipakai bila keduanya tidak ada", () => {
+    expect(pickIdentity({})).toEqual(FALLBACK_COMPANY_IDENTITY);
+  });
+});
 
 describe("identitas perusahaan dibaca dari basis data", () => {
   it("menemukan berkas sumber untuk diperiksa", () => {

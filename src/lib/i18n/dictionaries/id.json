@@ -280,7 +280,8 @@
       "noAccessNext": "Bila Anda seharusnya punya akses, mintalah pengelola sistem mendaftarkan akun ini ke perusahaan yang bersangkutan. Bila Anda punya akun lain, keluar dan masuk dengan akun itu.",
       "switchLabel": "Ganti perusahaan",
       "currentLabel": "Sedang dibuka",
-      "signOut": "Keluar"
+      "signOut": "Keluar",
+      "signedInAs": "Masuk sebagai"
     }
   },
   "status": {

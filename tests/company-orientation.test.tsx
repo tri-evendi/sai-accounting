@@ -85,9 +85,22 @@ describe("orientasi tidak boleh hilang dari chrome", () => {
 });
 
 describe("layar tanpa perusahaan bukan jalan buntu", () => {
-  it("pemilih perusahaan menawarkan jalan keluar saat akun tak punya akses ke mana pun", () => {
+  it("pemilih perusahaan menawarkan jalan keluar di KEDUA cabangnya", () => {
+    /*
+     * Bukan hanya cabang "tidak punya perusahaan". Cabang normal pun tidak
+     * punya chrome apa pun — tanpa tombol keluar, orang yang ternyata masuk
+     * sebagai akun yang salah (komputer bersama) hanya bisa membuka buku
+     * perusahaan dengan akun orang lain.
+     */
     const page = read("app/(auth)/select-company/page.tsx");
-    expect(page).toMatch(/SignOutAction/);
+    const branches = page.match(/SignedInAs/g) ?? [];
+    expect(branches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("identitasnya ikut ditulis — keluar baru berguna setelah sadar masuk sebagai siapa", () => {
+    expect(read("app/(auth)/select-company/company-choices.tsx")).toMatch(
+      /auth\.selectCompany\.signedInAs/
+    );
   });
 
   it("jalan keluarnya benar-benar keluar (bukan tautan yang memantul balik)", () => {

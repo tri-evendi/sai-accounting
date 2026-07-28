@@ -280,7 +280,8 @@
       "noAccessNext": "如果您本应拥有访问权限，请让系统管理员将此账号添加到相应公司。若您另有账号，请退出后改用该账号登录。",
       "switchLabel": "切换公司",
       "currentLabel": "当前打开",
-      "signOut": "退出登录"
+      "signOut": "退出登录",
+      "signedInAs": "当前登录"
     }
   },
   "status": {

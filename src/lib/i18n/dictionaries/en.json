@@ -280,7 +280,8 @@
       "noAccessNext": "If you should have access, ask your system administrator to add this account to the company. If you have another account, sign out and use that one.",
       "switchLabel": "Switch company",
       "currentLabel": "Currently open",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "signedInAs": "Signed in as"
     }
   },
   "status": {

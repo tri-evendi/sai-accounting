@@ -29,7 +29,7 @@ import { enterCompanyFromSession } from "@/lib/company-session";
 import { canEffective } from "@/lib/authz-effective";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { CompanyChoices, SignOutAction } from "./company-choices";
+import { CompanyChoices, SignedInAs } from "./company-choices";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,7 @@ export default async function SelectCompanyPage() {
         heading={t("auth.selectCompany.noAccessHeading")}
         description={t("auth.selectCompany.noAccessBody")}
         icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
-        footer={<SignOutAction />}
+        footer={<SignedInAs name={session.user.name} />}
       >
         {/* Keadaan ini hampir selalu berarti akses baru saja dicabut: masuk
             tanpa satu pun keanggotaan sudah ditahan lebih awal di `authorize()`.
@@ -91,14 +91,31 @@ export default async function SelectCompanyPage() {
       description={t("auth.selectCompany.description")}
       icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
       footer={
-        canCreate ? (
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/companies/new">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {t("companies.newTitle")}
-            </Link>
-          </Button>
-        ) : undefined
+        /*
+         * KELUAR HARUS ADA DI SINI, dan ini bukan kelengkapan kosmetik.
+         *
+         * Layar ini berdiri SEBELUM aplikasi: tidak ada menu samping, tidak
+         * ada menu avatar, tidak ada satu pun chrome. Tanpa tombol di bawah
+         * ini, satu-satunya tindakan yang mungkin dilakukan pengunjungnya
+         * adalah membuka salah satu perusahaan — termasuk ketika yang sedang
+         * masuk ternyata AKUN YANG SALAH (komputer bersama, sesi rekan kerja
+         * yang belum ditutup). Jalan keluarnya cuma menghapus cookie, dan tidak
+         * ada pengguna awam yang tahu caranya.
+         *
+         * Karena itu identitasnya ikut ditulis: "keluar" hanya berguna kalau
+         * orangnya lebih dulu SADAR ia masuk sebagai siapa.
+         */
+        <div className="space-y-3">
+          {canCreate && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/companies/new">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {t("companies.newTitle")}
+              </Link>
+            </Button>
+          )}
+          <SignedInAs name={session.user.name} />
+        </div>
       }
     >
       <p className="mb-5 text-sm leading-relaxed text-muted-foreground">

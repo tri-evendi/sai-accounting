@@ -143,6 +143,29 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   other: "Lainnya",
 };
 
+/**
+ * Nilai `stock_movements.type` yang SAH TERSIMPAN (issue #111).
+ *
+ * Sengaja BUKAN daftar yang sama dengan yang boleh DIBUAT lewat formulir —
+ * `stockUpdateSchema` hanya menerima `in`/`out`. `process` datang dari data
+ * legacy: barang yang diserahkan untuk disortir/diolah dan MASIH milik
+ * perusahaan (306 baris; kolom penangannya berisi nama orang dan 'DONE
+ * PROSES'). Karena barangnya masih ada, ia tidak menambah maupun mengurangi
+ * saldo — ia hanya tercatat. Menambahkannya ke formulir adalah keputusan
+ * produk yang berbeda, dan bukan bagian dari #111.
+ *
+ * Gunanya daftar ini: satu sumber kebenaran yang dipakai penjaga impor
+ * (`canonicalStockType` di `legacy-values.ts`) dan tampilan, supaya nilai yang
+ * tidak dikenal DITOLAK saat masuk alih-alih diam-diam menjadi angka yang
+ * salah.
+ */
+export const STOCK_MOVEMENT_TYPES = ["in", "out", "process"] as const;
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
+
+export function isStockMovementType(value: string): value is StockMovementType {
+  return (STOCK_MOVEMENT_TYPES as readonly string[]).includes(value);
+}
+
 export const CASH_TYPES = ["bank", "kas_besar", "kas_kecil"] as const;
 export type CashType = (typeof CASH_TYPES)[number];
 

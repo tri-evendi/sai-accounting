@@ -67,6 +67,25 @@ export const dynamic = "force-dynamic";
  * hilang, bukan sekadar tidak dirender. Lihat
  * design-system/sai-accounting/pages/dashboard.md.
  */
+/*
+ * Tiga jenis gerakan stok, bukan dua (issue #111). Sebelumnya barisnya dibaca
+ * "masuk, kalau bukan berarti keluar" — sehingga `process` (barang yang sedang
+ * disortir/diolah, MASIH milik perusahaan) muncul sebagai "Barang Keluar"
+ * berwarna merah, padahal ia tidak mengurangi saldo sama sekali. Warnanya
+ * netral karena memang tidak ada uang/barang yang berpindah.
+ */
+function movementTone(type: string): string {
+  if (type === "in") return "bg-success-soft text-success-strong";
+  if (type === "out") return "bg-destructive-soft text-destructive-strong";
+  return "bg-muted text-muted-foreground";
+}
+
+function movementLabelKey(type: string) {
+  if (type === "in") return "dashboard.stockIn" as const;
+  if (type === "out") return "dashboard.stockOut" as const;
+  return "dashboard.stockProcess" as const;
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
@@ -400,13 +419,9 @@ export default async function DashboardPage() {
                     <TableCell className="font-medium text-foreground">{m.itemName}</TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          m.type === "in"
-                            ? "bg-success-soft text-success-strong"
-                            : "bg-destructive-soft text-destructive-strong"
-                        }`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${movementTone(m.type)}`}
                       >
-                        {m.type === "in" ? t("dashboard.stockIn") : t("dashboard.stockOut")}
+                        {t(movementLabelKey(m.type))}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">

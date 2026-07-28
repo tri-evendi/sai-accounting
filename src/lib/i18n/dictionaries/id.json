@@ -1958,6 +1958,7 @@
     "emptyMovementsDescription": "Setiap barang masuk dan keluar akan muncul di sini. Catat yang pertama.",
     "stockIn": "Barang Masuk",
     "stockOut": "Barang Keluar",
+    "stockProcess": "Dalam Proses",
     "financeDescription": "Saldo dan pergerakan uang 6 bulan terakhir per mata uang",
     "financeHrefLabel": "Buka kas & bank",
     "netBalance": "Saldo bersih · {currency}",

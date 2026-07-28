@@ -20,6 +20,8 @@ import "dotenv/config";
 import { createPool } from "mariadb";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { canonicalCashType, canonicalStockType } from "../src/lib/legacy-values";
+import type { CashType } from "../src/lib/constants";
 
 const FORCE = process.argv.includes("--force");
 
@@ -224,7 +226,13 @@ async function main() {
       data: {
         itemId,
         quantity: parseNum(r.volume) || Number(r.bag) || 0,
-        type: (clean(r.status) || "in").slice(0, 10),
+        /*
+         * DIPETAKAN, bukan disalin (issue #111). Versi pertama menulis
+         * `clean(r.status)` apa adanya — 'IN'/'OUT'/'PROCESS' — sehingga tak
+         * satu pun dari 829 baris cocok dengan 'in'/'out' yang dibandingkan
+         * kode, dan saldo 33 barang terbaca nol. Nilai tak dikenal MELEMPAR.
+         */
+        type: canonicalStockType(r.status) ?? "in",
         date,
         note: [clean(r.item), r.bag ? `bags=${r.bag}` : null, clean(r.shipment)]
           .filter(Boolean).join("; ") || null,
@@ -387,12 +395,28 @@ async function main() {
     if (!date) { bump("cash_kecil_skipped"); continue; }
     const amt = parseNum(r.total) || parseNum(r.nilai);
     const isOut = (clean(r.kategori) || "").toLowerCase().startsWith("pengeluaran");
+    /*
+     * `sumber` legacy mencampur DUA dimensi: 'Kas Besar'/'Kas Kecil' adalah
+     * nama buku kas, sedangkan 'Rp'/'USD'/'CNY' adalah mata uang tiga rekening
+     * bank. Versi pertama menyalinnya ke `type` apa adanya DAN memaksa
+     * `currency: "IDR"` — jadi 63 baris valas terbaca sebagai rupiah (5 USD →
+     * Rp 5) dan 18.689 baris memakai akun kas bawaan (issue #111).
+     */
+    const cash: { type: CashType; currency?: string } = canonicalCashType(r.sumber) ?? {
+      type: "kas_kecil",
+    };
     await prisma.cashMovement.create({
       data: {
-        type: (clean(r.sumber) || "Kas Kecil").slice(0, 20),
+        type: cash.type,
         date,
         description: (clean(r.diskripsi) || "-").slice(0, 255),
-        currency: "IDR",
+        /*
+         * Kurs TIDAK diisi: data legacy tidak menyimpannya, dan mengarang kurs
+         * berarti mengarang angka rupiah di Neraca. Tanpa kurs, posting valas
+         * ditolak `resolveRate()` — berbunyi saat diposting, bukan diam-diam
+         * masuk sebagai rupiah.
+         */
+        currency: cash.currency ?? "IDR",
         debit: isOut ? 0 : amt,
         credit: isOut ? amt : 0,
         note: clean(r.user),
@@ -408,7 +432,7 @@ async function main() {
     const isCredit = st.startsWith("kredit") || st.startsWith("credit");
     await prisma.cashMovement.create({
       data: {
-        type: "Kas Besar",
+        type: "kas_besar",
         date,
         description: (clean(r.status) || "Kas Besar").slice(0, 255),
         currency: "IDR",

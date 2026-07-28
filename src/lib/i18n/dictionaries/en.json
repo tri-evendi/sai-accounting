@@ -1958,6 +1958,7 @@
     "emptyMovementsDescription": "Every item received and issued shows up here. Record your first one.",
     "stockIn": "Goods In",
     "stockOut": "Goods Out",
+    "stockProcess": "In Processing",
     "financeDescription": "Balances and money movement over the last 6 months, per currency",
     "financeHrefLabel": "Open cash & bank",
     "netBalance": "Net balance · {currency}",

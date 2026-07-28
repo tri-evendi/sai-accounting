@@ -6,8 +6,8 @@
  */
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { COA_TEMPLATE, normalBalanceFor } from "../src/lib/accounting";
-import { seedDefaultMappings } from "../src/lib/posting/mapping";
+import { seedCoaForModules } from "../src/lib/coa-seeding";
+import { BUSINESS_MODULES, type BusinessModule } from "../src/lib/business-modules";
 
 function createClient() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -25,51 +25,36 @@ function createClient() {
 }
 
 async function main() {
+  /*
+   * Skrip ini kini memakai penyemai yang SAMA dengan wizard penyiapan dan
+   * penyalaan modul (`lib/coa-seeding.ts`) — bukan salinan logikanya sendiri.
+   * Sebelumnya ia menyemai SELURUH template tanpa peduli modul apa yang
+   * dipakai perusahaan; salinan kedua seperti itu adalah cara paling mudah
+   * membuat dua jalur menyemai bagan akun yang berbeda.
+   *
+   * Tanpa argumen: seluruh modul (perilaku lama, dipakai pemasangan yang
+   * memang memakai semuanya). Dengan `--modules a,b`: hanya modul itu.
+   */
   const prisma = createClient();
-  const byCode = new Map<string, number>();
-  let created = 0;
+  const arg = process.argv.indexOf("--modules");
+  const modules =
+    arg >= 0 && process.argv[arg + 1]
+      ? (process.argv[arg + 1].split(",").map((m) => m.trim()) as BusinessModule[])
+      : [...BUSINESS_MODULES];
 
-  // Parents first (no `parent`), then children — so parentId can be resolved.
-  const ordered = [
-    ...COA_TEMPLATE.filter((r) => !r.parent),
-    ...COA_TEMPLATE.filter((r) => r.parent),
-  ];
+  const result = await seedCoaForModules(prisma, modules);
 
-  for (const row of ordered) {
-    const existing = await prisma.account.findUnique({ where: { code: row.code } });
-    if (existing) {
-      byCode.set(row.code, existing.id);
-      continue;
-    }
-    const parentId = row.parent ? byCode.get(row.parent) ?? null : null;
-    const account = await prisma.account.create({
-      data: {
-        code: row.code,
-        name: row.name,
-        type: row.type,
-        currency: row.currency ?? "IDR",
-        parentId,
-        normalBalance: normalBalanceFor(row.type),
-        isActive: true,
-      },
-    });
-    byCode.set(row.code, account.id);
-    created++;
-  }
-
-  console.log(`Chart of Accounts seed complete: ${created} created, ${byCode.size - created} already existed.`);
-
-  // Posting rules resolve accounts through account_mappings, so seed them too.
-  const mappings = await seedDefaultMappings(prisma);
   console.log(
-    `Account mappings seed complete: ${mappings.created} created` +
-      (mappings.skipped > 0 ? `, ${mappings.skipped} skipped (account code not found).` : ".")
+    `Chart of Accounts seed complete: ${result.created} created, ` +
+      `${result.existing} already existed (modul: ${modules.join(", ")}).`
   );
-
+  console.log(`Account mappings: ${result.mappingsCreated} created.`);
   await prisma.$disconnect();
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("SEED FAILED:", err);
+    process.exit(1);
+  });

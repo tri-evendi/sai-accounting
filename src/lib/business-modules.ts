@@ -266,8 +266,21 @@ export const CATEGORY_MODULES: Record<BusinessCategory, readonly BusinessModule[
   ],
   // Jasa / agensi: tak ada barang sama sekali — tanpa stok, tanpa lapisan dagang.
   services: ["sales", "purchasing", "cash_bank", "fixed_assets", "approvals", "tax_id"],
-  // Pilih sendiri: mulai dari semua menyala, matikan yang tak dipakai.
-  custom: BUSINESS_MODULES,
+  /*
+   * Pilih sendiri: mulai MINIMAL — hanya inti — lalu nyalakan yang dipakai.
+   *
+   * Dulu ia mulai dari semua menyala. Bedanya bukan sekadar arah: bagan akun
+   * kini mengikuti modul yang aktif (`coaTemplateFor`), jadi "semua menyala"
+   * berarti perusahaan yang belum tahu bentuk usahanya langsung mendapat
+   * SELURUH akun — persediaan, HPP, aset tetap, pajak — lalu harus menghapus
+   * yang tak dipakai. Mematikan modul tidak menghapus akun (akun yang pernah
+   * dipakai adalah dasar angka yang sudah terbit), jadi arah opt-out
+   * meninggalkan sisa yang tidak bisa dibersihkan.
+   *
+   * Menyalakan modul kemudian AMAN dan lengkap: akunnya ikut lahir saat itu
+   * juga (lihat `api/company-settings/modules`).
+   */
+  custom: [],
 };
 
 export const CATEGORY_META: Record<

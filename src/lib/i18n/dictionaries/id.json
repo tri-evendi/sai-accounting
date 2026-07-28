@@ -144,7 +144,8 @@
       "users": "Pengguna",
       "permissions": "Hak Akses",
       "settings": "Pengaturan",
-      "companyNew": "Tambah Perusahaan"
+      "companyNew": "Tambah Perusahaan",
+      "selectCompany": "Pilih Perusahaan"
     }
   },
   "quickActions": {
@@ -280,7 +281,8 @@
       "noAccessNext": "Bila Anda seharusnya punya akses, mintalah pengelola sistem mendaftarkan akun ini ke perusahaan yang bersangkutan. Bila Anda punya akun lain, keluar dan masuk dengan akun itu.",
       "switchLabel": "Ganti perusahaan",
       "currentLabel": "Sedang dibuka",
-      "signOut": "Keluar"
+      "signOut": "Keluar",
+      "signedInAs": "Masuk sebagai"
     }
   },
   "status": {
@@ -3092,7 +3094,7 @@
       "commodity_trading": "Jual beli barang dengan kontrak, surat jalan, dan dokumen ekspor. Semua modul menyala.",
       "distribution": "Jual beli barang bergudang, tanpa kontrak berjangka maupun dokumen ekspor.",
       "services": "Tanpa barang sama sekali: tanpa stok dan tanpa lapisan perdagangan.",
-      "custom": "Mulai dari semua modul menyala, lalu matikan yang tidak dipakai."
+      "custom": "Mulai minimal — hanya pembukuan inti. Nyalakan modul yang Anda pakai kapan saja; akunnya ikut lahir saat itu."
     }
   },
   "companies": {

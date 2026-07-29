@@ -71,6 +71,30 @@ export type StatementPayload =
       totalLiabilitiesEquity: number;
       balanced: boolean;
     }
+  /**
+   * Kartu Stok (issue #126). Quantities, not money — every figure here is
+   * `Decimal(15,3)` and must never be rendered with the rupiah formatter.
+   */
+  | {
+      kind: "stock-movement";
+      period: string;
+      rows: {
+        name: string;
+        unit: string | null;
+        opening: number;
+        movedIn: number;
+        movedOut: number;
+        processed: number;
+        closing: number;
+      }[];
+      totalOpening: number;
+      totalIn: number;
+      totalOut: number;
+      totalProcessed: number;
+      totalClosing: number;
+      hasProcess: boolean;
+      dormantCount: number;
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -89,7 +113,17 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "income-statement": "Laporan Laba / Rugi",
   "balance-sheet": "Neraca",
   "cash-flow": "Laporan Arus Kas",
+  "stock-movement": "Kartu Stok / Mutasi Persediaan",
 };
+
+/**
+ * Quantity, id-ID, up to three decimals with trailing zeros dropped — the screen
+ * uses `formatNumber` from `@/lib/utils`, and this must agree with it or the
+ * printout and the page would disagree on the same figure.
+ */
+function qty(value: number): string {
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(value);
+}
 
 const BRAND: [number, number, number] = [30, 64, 175]; // --color-primary #1E40AF
 
@@ -274,6 +308,52 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     doc.text(rp(payload.totalLiabilitiesEquity), doc.internal.pageSize.getWidth() - 14, y + 2, {
       align: "right",
     });
+  }
+
+  if (payload.kind === "stock-movement") {
+    // The `Diolah` column appears only when the period actually contains a
+    // `process` movement — same rule as the screen (see lib/stock-movement.ts).
+    const head = ["Barang", "Satuan", "Saldo Awal", "Masuk", "Keluar"];
+    if (payload.hasProcess) head.push("Diolah");
+    head.push("Saldo Akhir");
+
+    const row = (r: (typeof payload.rows)[number]) => {
+      const cells = [r.name, r.unit || "-", qty(r.opening), qty(r.movedIn), qty(r.movedOut)];
+      if (payload.hasProcess) cells.push(qty(r.processed));
+      cells.push(qty(r.closing));
+      return cells;
+    };
+    const footer = ["Total", "", qty(payload.totalOpening), qty(payload.totalIn), qty(payload.totalOut)];
+    if (payload.hasProcess) footer.push(qty(payload.totalProcessed));
+    footer.push(qty(payload.totalClosing));
+
+    // Right-align every numeric column, whichever count this report has.
+    const numericFrom = 2;
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    for (let i = numericFrom; i < head.length; i += 1) columnStyles[i] = { halign: "right" };
+
+    autoTable(doc, {
+      startY: y,
+      head: [head],
+      body: payload.rows.length ? payload.rows.map(row) : [["", "Tidak ada mutasi pada periode ini.", ...Array(head.length - 2).fill("")]],
+      foot: [footer],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    // Dormant items are omitted from the table; saying so is what keeps the
+    // omission honest rather than making the master look shorter than it is.
+    if (payload.dormantCount > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Catatan: ${payload.dormantCount} barang tanpa saldo awal dan tanpa mutasi pada periode ini tidak ditampilkan.`,
+        14,
+        afterTable(doc) + 6
+      );
+    }
   }
 
   if (payload.kind === "cash-flow") {

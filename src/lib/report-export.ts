@@ -21,8 +21,14 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { incomeStatementLayout } from "@/lib/statement-layout";
 
-/** How a cell's value should be rendered by the spreadsheet, without changing it. */
-export type CellFormat = "text" | "money";
+/**
+ * How a cell's value should be rendered by the spreadsheet, without changing it.
+ *
+ * `quantity` is NOT money and must never borrow its format: stock is
+ * `Decimal(15,3)`, so 12.5 kg has to survive as 12,5 rather than being rounded to
+ * a whole rupiah by the currency mask (issue #126).
+ */
+export type CellFormat = "text" | "money" | "quantity";
 
 export interface SheetCell {
   /** The raw value. Money cells MUST be a number so the spreadsheet can sum them. */
@@ -59,6 +65,13 @@ export interface SheetModel {
  * parentheses are that second signal.
  */
 export const IDR_NUMBER_FORMAT = '"Rp" #,##0;[Red]("Rp" #,##0)';
+
+/**
+ * Quantity display: thousands separated, up to three decimals, trailing zeros
+ * dropped (`#` rather than `0`). Matches `Decimal(15,3)` in the schema, so a
+ * whole number reads "1.200" and a fractional one "12,5" — never "1.200,000".
+ */
+export const QUANTITY_NUMBER_FORMAT = "#,##0.###;[Red]-#,##0.###";
 
 const money = (value: number, bold = false): SheetCell => ({
   value,
@@ -250,9 +263,64 @@ function buildCashFlowSheet(
   };
 }
 
+function buildStockMovementSheet(
+  p: Extract<StatementPayload, { kind: "stock-movement" }>
+): SheetModel {
+  // Quantities, never money — see the CellFormat note above.
+  const q = (value: number, bold = false): SheetCell => ({
+    value,
+    format: "quantity",
+    align: "right",
+    bold,
+  });
+
+  const columns: SheetColumn[] = [
+    { header: "Barang", width: 34 },
+    { header: "Satuan", width: 12 },
+    { header: "Saldo Awal", width: 14 },
+    { header: "Masuk", width: 14 },
+    { header: "Keluar", width: 14 },
+  ];
+  // The `Diolah` column exists only when the period has such a movement — the
+  // same rule the screen and the PDF apply, so all three have identical columns.
+  if (p.hasProcess) columns.push({ header: "Diolah", width: 14 });
+  columns.push({ header: "Saldo Akhir", width: 14 });
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => {
+        const cells: SheetCell[] = [text(r.name), text(r.unit || "-"), q(r.opening), q(r.movedIn), q(r.movedOut)];
+        if (p.hasProcess) cells.push(q(r.processed));
+        cells.push(q(r.closing));
+        return cells;
+      })
+    : [[text("Tidak ada mutasi pada periode ini."), ...columns.slice(1).map(() => text(null))]];
+
+  const footer: SheetCell[] = [
+    text("Total", true),
+    text(null),
+    q(p.totalOpening, true),
+    q(p.totalIn, true),
+    q(p.totalOut, true),
+  ];
+  if (p.hasProcess) footer.push(q(p.totalProcessed, true));
+  footer.push(q(p.totalClosing, true));
+  rows.push(footer);
+
+  if (p.dormantCount > 0) {
+    rows.push([
+      text(`Catatan: ${p.dormantCount} barang tanpa saldo awal dan tanpa mutasi tidak ditampilkan.`),
+      ...columns.slice(1).map(() => text(null)),
+    ]);
+  }
+
+  return { name: "Kartu Stok", title: "Kartu Stok / Mutasi Persediaan", period: p.period, columns, rows };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
+    case "stock-movement":
+      return buildStockMovementSheet(payload);
     case "income-statement":
       return buildIncomeStatementSheet(payload);
     case "balance-sheet":

@@ -127,25 +127,32 @@ export default async function ContractsPage({
       />
       <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreList")} />
 
-      {/* Filters */}
+      {/* Filters — hrefs membawa `search` yang sedang aktif agar berganti tab
+          tidak diam-diam membuang kata kunci pencarian. `page` sengaja TIDAK
+          dibawa: saringan baru = kembali ke halaman 1. */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {["all", "signed", "pending", "canceled"].map((status) => (
-          <Link
-            key={status}
-            href={`/contracts${status === "all" ? "" : `?status=${status}`}`}
-          >
-            <Button
-              variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
-              size="sm"
-            >
-              {statusLabels[status] ?? status}
-            </Button>
-          </Link>
-        ))}
+        {["all", "signed", "pending", "canceled"].map((status) => {
+          const query = new URLSearchParams();
+          if (status !== "all") query.set("status", status);
+          if (params.search) query.set("search", params.search);
+          const qs = query.toString();
+          return (
+            <Link key={status} href={`/contracts${qs ? `?${qs}` : ""}`}>
+              <Button
+                variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
+                size="sm"
+              >
+                {statusLabels[status] ?? status}
+              </Button>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Search */}
+      {/* Search — GET form; `status` ikut sebagai hidden input supaya mencari
+          tidak mereset tab status yang sedang aktif. */}
       <form className="mb-4">
+        {params.status && <input type="hidden" name="status" value={params.status} />}
         <TextInput
           type="text"
           name="search"

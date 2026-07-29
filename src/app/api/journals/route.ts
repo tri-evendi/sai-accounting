@@ -7,16 +7,28 @@ import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
-export async function GET() {
+export async function GET(request: Request) {
   const result = await requireApiPermission("journal.read");
   if (!result.authorized) return result.response;
 
-  const journals = await prisma.journal.findMany({
-    orderBy: [{ date: "desc" }, { id: "desc" }],
-    include: { lines: true },
-    take: 100,
-  });
-  return NextResponse.json(journals);
+  // Paginated — the old fixed `take: 100` made everything past the newest 100
+  // unreachable, silently. `total` lets a client know what it has not seen.
+  const url = new URL(request.url);
+  const pageRaw = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+  const perPageRaw = Number.parseInt(url.searchParams.get("perPage") ?? "100", 10);
+  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+  const perPage = Number.isFinite(perPageRaw) ? Math.min(Math.max(perPageRaw, 1), 200) : 100;
+
+  const [journals, total] = await Promise.all([
+    prisma.journal.findMany({
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      include: { lines: true },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.journal.count(),
+  ]);
+  return NextResponse.json({ journals, total, page, perPage });
 }
 
 export async function POST(request: Request) {

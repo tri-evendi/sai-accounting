@@ -209,6 +209,13 @@ export const supplierSchema = z.object({
   address: z.string().max(500).trim().optional(),
   phone: z.string().max(30).trim().optional(),
   email: z.string().email(vmsg("validation.emailInvalid")).max(100).optional().or(z.literal("")),
+  /**
+   * DELETE menonaktifkan (migration 0038), tapi tanpa field ini di skema tidak
+   * ada permintaan yang bisa MENGAKTIFKAN kembali — nonaktif jadi jalan satu
+   * arah yang hanya bisa dibalik lewat akses DB langsung. Optional: form lama
+   * yang tidak mengirimnya tidak mengubah status.
+   */
+  isActive: z.boolean().optional(),
 });
 
 export const customerSchema = z.object({
@@ -229,6 +236,8 @@ export const customerSchema = z.object({
    * (an export buyer has none); free text, not check-digit validated.
    */
   npwp: z.string().max(30).trim().optional(),
+  /** Lihat catatan `supplierSchema.isActive` — tanpa ini nonaktif = permanen. */
+  isActive: z.boolean().optional(),
 });
 
 /**

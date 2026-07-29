@@ -50,6 +50,18 @@ export function StockPeriodFilter({
   const [f, setF] = useState(fromISO);
   const [to, setTo] = useState(toISO);
 
+  // Sinkron ulang saat URL berubah (panah ◀ ▶, tombol granularitas): useState
+  // hanya membaca props sekali, jadi tanpa ini kolom rentang menampilkan
+  // rentang lama — yang lalu diam-diam dikirim ulang saat "Tampilkan" ditekan.
+  // Pola resmi React "adjusting state when props change": set saat render,
+  // bukan lewat effect.
+  const [prevRange, setPrevRange] = useState({ fromISO, toISO });
+  if (prevRange.fromISO !== fromISO || prevRange.toISO !== toISO) {
+    setPrevRange({ fromISO, toISO });
+    setF(fromISO);
+    setTo(toISO);
+  }
+
   const go = (g: StockPeriodGranularity, anchor: string) => {
     const p = new URLSearchParams({ g, d: anchor });
     router.push(`${basePath}?${p.toString()}`);

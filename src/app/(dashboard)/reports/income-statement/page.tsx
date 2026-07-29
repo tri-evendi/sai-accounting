@@ -110,13 +110,18 @@ export default async function IncomeStatementPage({
   ]);
   const is = await getIncomeStatement(from, to, undefined, costCenter);
   const profit = is.netIncome >= 0;
+  // Saringan AKTIF tapi labelnya tak ditemukan (pusat biaya terhapus / id
+  // salah ketik namun lolos parse): laporan tetap tersaring, jadi tandanya
+  // tidak boleh hilang — tanpa nama, pusat biayanya disebut `#<id>`.
+  const costCenterLabel =
+    costCenter !== undefined ? costCenterName ?? `#${costCenter}` : null;
   // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
   // Indonesia (lib/pdf, lib/report-summary). Pusat biaya yang sedang dipilih
   // ikut TERCETAK: satu laporan yang hanya memuat sebagian angka tanpa
   // mengatakannya adalah cara termudah salah dibaca setelah dicetak.
   const periodLabel =
     `Periode ${formatDate(from)} – ${formatDate(to)}` +
-    (costCenterName ? ` · Pusat Biaya: ${costCenterName}` : "");
+    (costCenterLabel ? ` · Pusat Biaya: ${costCenterLabel}` : "");
 
   // One payload feeds both exports and the plain-language summary, so the PDF,
   // the Excel file, the sentence and the table below can never disagree.
@@ -178,7 +183,7 @@ export default async function IncomeStatementPage({
           seperti laporan yang lengkap, dan itulah pola kegagalan yang paling
           berbahaya: bukan angka yang salah, melainkan angka yang benar untuk
           pertanyaan yang berbeda dari yang dikira pembacanya. */}
-      {costCenterName && (
+      {costCenterLabel && (
         <div className="mb-4 space-y-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
           <p>{t("costCenters.filterNote")}</p>
           <p className="flex items-start gap-1.5">

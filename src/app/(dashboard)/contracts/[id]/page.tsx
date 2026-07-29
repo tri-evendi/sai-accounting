@@ -19,7 +19,7 @@ import {
 import { Money, MoneyCell } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
-import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
+import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildContractChain, loadContractChain } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -403,6 +403,18 @@ export default async function ContractDetailPage({
             <div>
               <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
               <dd><StatusBadge status={contract.status} /></dd>
+            </div>
+            <div>
+              {/* Jatuh tempo — penggerak status "Jatuh Tempo" di /receivables,
+                  jadi ditampilkan juga di sini. NULL = memang belum diisi. */}
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.dueDate")}</dt>
+              <dd className="text-sm text-foreground tabular-nums">
+                {contract.dueDate ? (
+                  formatDateShort(contract.dueDate)
+                ) : (
+                  <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">{t("common.currency")}</dt>

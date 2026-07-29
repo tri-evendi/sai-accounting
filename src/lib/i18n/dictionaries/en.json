@@ -376,6 +376,7 @@
     "retypeLabel": "Retype to confirm:"
   },
   "errors": {
+    "accountParentCycle": "The chosen parent is a descendant of this account — the hierarchy would loop. Pick another parent.",
     "generic": "Something went wrong. Please try again.",
     "network": "Could not reach the server. Check your connection.",
     "unauthorized": "You do not have access to this page.",
@@ -456,6 +457,7 @@
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",
     "contractInUse": "This contract is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the contract so the document chain stays intact.",
+    "invoiceInUse": "This invoice is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the invoice so the document chain stays intact.",
     "contractUsedInvoices": "{count} invoice(s)",
     "contractUsedDeliveryOrders": "{count} delivery order(s)",
     "contractUsedBoth": "{invoices} invoice(s) and {deliveryOrders} delivery order(s)",
@@ -847,6 +849,7 @@
     "confirmLabel": "Yes, issue it"
   },
   "returns": {
+    "statusCanceled": "Canceled",
     "title": "Returns",
     "description": "Goods sent back — reversing part of an invoice or purchase along with its stock, receivable/payable, and VAT.",
     "addNew": "Create Return",
@@ -933,6 +936,7 @@
     "activeHint": "An inactive consignee no longer appears in the Contract picker, but existing contracts stay linked."
   },
   "customers": {
+    "activeHint": "An inactive customer no longer appears in the Invoice picker, but existing documents stay linked.",
     "title": "Customers ({count})",
     "addNew": "+ Add Customer",
     "colPic": "Person in Charge",
@@ -957,6 +961,7 @@
     "taxable": "Subject to VAT (standard)"
   },
   "suppliers": {
+    "activeHint": "An inactive supplier no longer appears in the Purchase picker, but existing documents stay linked.",
     "title": "Suppliers ({count})",
     "description": "Open a supplier to record its purchases and payments.",
     "addNew": "+ Add Supplier",
@@ -1186,6 +1191,7 @@
     "saveFailed": "The cost centre could not be saved",
     "codeTaken": "That cost centre code is already in use",
     "parentSelf": "A cost centre cannot be its own parent",
+    "parentCycle": "The chosen parent is a descendant of this cost centre — the hierarchy would loop. Pick another parent.",
     "emptyTitle": "No cost centres yet",
     "emptyDescription": "Create one cost centre to start splitting profit and loss by branch, unit or project.",
     "filterLabel": "Cost Centre",
@@ -1556,7 +1562,7 @@
       },
       "pajak": {
         "label": "Tax",
-        "description": "Output/input VAT export (e-Faktur / CTAS)."
+        "description": "Output VAT export (e-Faktur / CTAS)."
       }
     },
     "catalogReport": {
@@ -1986,12 +1992,12 @@
     "stockIn": "Goods In",
     "stockOut": "Goods Out",
     "stockProcess": "In Processing",
-    "financeDescription": "Balances and money movement over the last 6 months, per currency",
+    "financeDescription": "All-time balances and money movement, per currency",
     "financeHrefLabel": "Open cash & bank",
     "netBalance": "Net balance · {currency}",
     "noCashBefore": "No cash records yet —",
     "noCashLink": "record the first transaction",
-    "balancePerAccount": "Balance per account",
+    "balancePerAccount": "Balance per cash type",
     "cashFlowChartTitle": "Money in & out · {currency}",
     "cashFlowChartDesc": "Month-by-month comparison (last 6 months)",
     "contractsTitle": "Sales & Contracts",

@@ -3,14 +3,17 @@ import bcrypt from "bcrypt";
 import { findCompanyUser, removeCompanyUser, updateCompanyUser } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
-import { roleEnum } from "@/lib/validations/common";
+import { activeRoleKeys } from "@/lib/roles";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
+// Peran kini DATA (tabel roles), jadi bentuknya string; keberadaan & keaktifan
+// peran divalidasi terhadap DB setelah parse (bukan enum tetap) — sama seperti
+// POST /api/users.
 const updateUserSchema = z.object({
   name: z.string().max(100).trim().optional(),
-  role: roleEnum.optional(),
+  role: z.string().trim().min(1).max(20).optional(),
   password: z.string().min(8).max(128).optional(),
 });
 
@@ -39,6 +42,12 @@ export async function PUT(
       },
       { status: 400 }
     );
+  }
+
+  // Peran harus ada & aktif (peran dinamis) — validasi ke DB.
+  if (parsed.data.role !== undefined && !(await activeRoleKeys()).includes(parsed.data.role)) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.roleUnknownOrInactive") }, { status: 400 });
   }
 
   // Hanya ANGGOTA perusahaan ini yang boleh diubah dari sini (issue #104):

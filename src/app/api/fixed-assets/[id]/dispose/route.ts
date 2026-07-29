@@ -58,6 +58,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         assetNo: asset.assetNo,
         proceeds: asset.disposalProceeds,
         gainLoss: asset.disposalGainLoss,
+        // Alasan pelepasan yang diketik pengguna dulunya divalidasi lalu
+        // DIBUANG (audit 2026-07). Skemanya tidak punya kolom; jejak audit
+        // adalah rumah yang tepat sampai ada kolom `disposal_note`.
+        note: parsed.data.note ?? null,
       },
       request,
     });

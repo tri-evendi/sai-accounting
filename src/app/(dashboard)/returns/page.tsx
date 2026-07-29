@@ -145,7 +145,16 @@ export default async function ReturnsPage({
                     : (r as typeof purchaseReturns[number]).supplier?.name;
                   return (
                     <TableRow key={`${tab}-${r.id}`}>
-                      <TableCell className="font-medium text-foreground">{r.returnNo}</TableCell>
+                      <TableCell className="font-medium text-foreground">
+                        {r.returnNo}
+                        {/* Retur batal tidak memposting jurnal & tak dihitung
+                            kaps retur — tanpa lencana ia tampak hidup. */}
+                        {r.status === "canceled" && (
+                          <Badge variant="default" className="ml-2">
+                            {t("returns.statusCanceled")}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-foreground">{formatDateShort(r.date)}</TableCell>
                       <TableCell className="text-foreground">
                         {originLabel}

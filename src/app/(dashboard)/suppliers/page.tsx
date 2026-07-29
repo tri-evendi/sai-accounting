@@ -3,6 +3,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -35,7 +36,8 @@ export default async function SuppliersPage({
 
   const [suppliers, totalCount] = await Promise.all([
     prisma.supplier.findMany({
-      orderBy: { name: "asc" },
+      // Nonaktif diurutkan belakangan & diberi lencana — pola consignees.
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
       // A real count, not a `take: 3` relation whose length saturates at 3.
       include: { _count: { select: { transactions: true } } },
       skip: (page - 1) * perPage,
@@ -90,6 +92,11 @@ export default async function SuppliersPage({
                     <Link href={`/suppliers/${s.id}`} className="text-primary hover:underline font-medium">
                       {s.name}
                     </Link>
+                    {/* Lencana menjelaskan mengapa pemasok ini tak muncul di
+                        pemilih pembelian — tanpa ini nonaktif tak terlihat. */}
+                    {!s.isActive && (
+                      <Badge variant="default" className="ml-2">{t("common.inactive")}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{s.address || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{s.phone || "-"}</TableCell>

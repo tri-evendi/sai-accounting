@@ -12,7 +12,6 @@
  */
 import { z } from "zod";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
-import { ROLE_VALUES } from "@/lib/constants";
 import { vmsg } from "@/lib/i18n/validation";
 
 
@@ -27,7 +26,11 @@ const threshold = z.coerce.number().nonnegative().max(9_999_999_999_999);
 export const approvalRuleSchema = z.object({
   documentType: z.enum(APPROVAL_DOCUMENT_TYPES),
   minAmount: threshold,
-  approverRole: z.enum(ROLE_VALUES),
+  // Peran itu DATA (bisa dibuat di /permissions), bukan enum statis — bentuk
+  // di sini, keberadaan & keaktifannya divalidasi route ke DB (pola
+  // POST /api/users). z.enum(ROLE_VALUES) menolak setiap peran kustom yang
+  // ditawarkan formulirnya sendiri.
+  approverRole: z.string().trim().min(1).max(50),
   note: z.string().max(1000).trim().optional().nullable(),
   isActive: z.boolean().optional(),
 });

@@ -376,6 +376,7 @@
     "retypeLabel": "请重新输入以确认："
   },
   "errors": {
+    "accountParentCycle": "所选上级科目是该科目自身的下级——层级将形成循环。请选择其他上级。",
     "generic": "出现错误，请重试。",
     "network": "无法连接服务器，请检查网络连接。",
     "unauthorized": "您没有访问此页面的权限。",
@@ -456,6 +457,7 @@
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",
     "contractInUse": "该合同已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该合同，以保持单据链完整。",
+    "invoiceInUse": "该发票已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该发票，以保持单据链完整。",
     "contractUsedInvoices": "{count} 张发票",
     "contractUsedDeliveryOrders": "{count} 张送货单",
     "contractUsedBoth": "{invoices} 张发票和 {deliveryOrders} 张送货单",
@@ -847,6 +849,7 @@
     "confirmLabel": "是，开具"
   },
   "returns": {
+    "statusCanceled": "已作废",
     "title": "退货",
     "description": "退回的货物 — 冲销发票或采购的一部分，连同其库存、应收/应付账款和增值税。",
     "addNew": "新建退货",
@@ -933,6 +936,7 @@
     "activeHint": "已停用的收货人不再出现在合同的选择列表中，但既有合同的关联仍然保留。"
   },
   "customers": {
+    "activeHint": "已停用的客户不再出现在发票的选择列表中，但既有单据的关联仍然保留。",
     "title": "客户（{count}）",
     "addNew": "+ 添加客户",
     "colPic": "负责人",
@@ -957,6 +961,7 @@
     "taxable": "计征增值税（标准）"
   },
   "suppliers": {
+    "activeHint": "已停用的供应商不再出现在采购的选择列表中，但既有单据的关联仍然保留。",
     "title": "供应商（{count}）",
     "description": "打开某个供应商即可记录其采购与付款。",
     "addNew": "+ 添加供应商",
@@ -1186,6 +1191,7 @@
     "saveFailed": "成本中心保存失败",
     "codeTaken": "该成本中心代号已被使用",
     "parentSelf": "成本中心不能作为自身的上级",
+    "parentCycle": "所选上级是该成本中心自身的下级——层级将形成循环。请选择其他上级。",
     "emptyTitle": "尚无成本中心",
     "emptyDescription": "先建立一个成本中心，即可按分公司、部门或项目拆分损益。",
     "filterLabel": "成本中心",
@@ -1556,7 +1562,7 @@
       },
       "pajak": {
         "label": "税务",
-        "description": "销项/进项增值税导出（e-Faktur / CTAS）。"
+        "description": "销项增值税导出（e-Faktur / CTAS）。"
       }
     },
     "catalogReport": {
@@ -1986,12 +1992,12 @@
     "stockIn": "入库",
     "stockOut": "出库",
     "stockProcess": "加工中",
-    "financeDescription": "最近 6 个月各币种的余额与资金变动",
+    "financeDescription": "各币种的历史累计余额与资金变动",
     "financeHrefLabel": "打开现金与银行",
     "netBalance": "净余额 · {currency}",
     "noCashBefore": "暂无资金记录 —",
     "noCashLink": "记录第一笔交易",
-    "balancePerAccount": "各科目余额",
+    "balancePerAccount": "各现金类型余额",
     "cashFlowChartTitle": "资金流入与流出 · {currency}",
     "cashFlowChartDesc": "按月对比（最近 6 个月）",
     "contractsTitle": "销售与合同",

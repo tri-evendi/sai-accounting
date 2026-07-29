@@ -376,6 +376,7 @@
     "retypeLabel": "Ketik ulang untuk memastikan:"
   },
   "errors": {
+    "accountParentCycle": "Induk yang dipilih adalah turunan akun ini sendiri — hierarki akan berputar. Pilih induk lain.",
     "generic": "Terjadi kesalahan. Silakan coba lagi.",
     "network": "Gagal menghubungi server. Periksa koneksi Anda.",
     "unauthorized": "Anda tidak punya akses ke halaman ini.",
@@ -456,6 +457,7 @@
     "csvEmpty": "Isi CSV kosong.",
     "csvInvalidRows": "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.",
     "contractInUse": "Kontrak ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontraknya saja agar rantai dokumen tetap utuh.",
+    "invoiceInUse": "Tagihan ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan tagihannya saja agar rantai dokumen tetap utuh.",
     "contractUsedInvoices": "{count} faktur",
     "contractUsedDeliveryOrders": "{count} surat jalan",
     "contractUsedBoth": "{invoices} faktur dan {deliveryOrders} surat jalan",
@@ -847,6 +849,7 @@
     "confirmLabel": "Ya, terbitkan"
   },
   "returns": {
+    "statusCanceled": "Dibatalkan",
     "title": "Retur",
     "description": "Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok, piutang/utang, dan PPN-nya.",
     "addNew": "Buat Retur",
@@ -933,6 +936,7 @@
     "activeHint": "Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut."
   },
   "customers": {
+    "activeHint": "Pelanggan nonaktif tidak muncul di pilihan Tagihan, tetapi dokumen lama tetap tertaut.",
     "title": "Pelanggan ({count})",
     "addNew": "+ Tambah Pelanggan",
     "colPic": "Penanggung Jawab",
@@ -957,6 +961,7 @@
     "taxable": "Kena PPN (standar)"
   },
   "suppliers": {
+    "activeHint": "Pemasok nonaktif tidak muncul di pilihan Pembelian, tetapi dokumen lama tetap tertaut.",
     "title": "Pemasok ({count})",
     "description": "Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya.",
     "addNew": "+ Tambah Pemasok",
@@ -1186,6 +1191,7 @@
     "saveFailed": "Pusat biaya gagal disimpan",
     "codeTaken": "Kode pusat biaya sudah dipakai",
     "parentSelf": "Pusat biaya tidak boleh menjadi induk dirinya sendiri",
+    "parentCycle": "Induk yang dipilih adalah turunan pusat biaya ini sendiri — hierarki akan berputar. Pilih induk lain.",
     "emptyTitle": "Belum ada pusat biaya",
     "emptyDescription": "Buat satu pusat biaya untuk mulai memilah laba/rugi per cabang, unit, atau proyek.",
     "filterLabel": "Pusat Biaya",
@@ -1556,7 +1562,7 @@
       },
       "pajak": {
         "label": "Pajak",
-        "description": "Ekspor pajak keluaran/masukan (e-Faktur / CTAS)."
+        "description": "Ekspor pajak keluaran (e-Faktur / CTAS)."
       }
     },
     "catalogReport": {
@@ -1986,12 +1992,12 @@
     "stockIn": "Barang Masuk",
     "stockOut": "Barang Keluar",
     "stockProcess": "Dalam Proses",
-    "financeDescription": "Saldo dan pergerakan uang 6 bulan terakhir per mata uang",
+    "financeDescription": "Saldo dan total pergerakan uang sepanjang waktu, per mata uang",
     "financeHrefLabel": "Buka kas & bank",
     "netBalance": "Saldo bersih · {currency}",
     "noCashBefore": "Belum ada catatan kas —",
     "noCashLink": "catat transaksi pertama",
-    "balancePerAccount": "Saldo per akun",
+    "balancePerAccount": "Saldo per jenis kas",
     "cashFlowChartTitle": "Uang masuk & keluar · {currency}",
     "cashFlowChartDesc": "Perbandingan per bulan (6 bulan terakhir)",
     "contractsTitle": "Penjualan & Kontrak",

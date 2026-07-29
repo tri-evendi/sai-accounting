@@ -3,6 +3,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -34,7 +35,8 @@ export default async function CustomersPage({
 
   const [customers, totalCount] = await Promise.all([
     prisma.customer.findMany({
-      orderBy: { name: "asc" },
+      // Nonaktif diurutkan belakangan & diberi lencana — pola consignees.
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
       skip: (page - 1) * perPage,
       take: perPage,
     }),
@@ -80,7 +82,14 @@ export default async function CustomersPage({
             ) : (
               customers.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell><Link href={`/customers/${c.id}`} className="text-primary hover:underline font-medium">{c.name}</Link></TableCell>
+                  <TableCell>
+                    <Link href={`/customers/${c.id}`} className="text-primary hover:underline font-medium">{c.name}</Link>
+                    {/* Lencana menjelaskan mengapa pelanggan ini tak muncul di
+                        pemilih faktur — tanpa ini nonaktif tak terlihat. */}
+                    {!c.isActive && (
+                      <Badge variant="default" className="ml-2">{t("common.inactive")}</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{c.address || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{c.phone || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || "-"}</TableCell>

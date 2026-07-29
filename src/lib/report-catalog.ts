@@ -46,7 +46,9 @@ export const CATEGORY_DESCRIPTIONS: Record<ReportCategory, string> = {
   pembelian: "Utang ke pemasok dan analisa pembelian.",
   stok: "Nilai dan pergerakan persediaan.",
   kas_bank: "Posisi kas & bank dan rekonsiliasi.",
-  pajak: "Ekspor pajak keluaran/masukan (e-Faktur / CTAS).",
+  // Hanya pajak KELUARAN yang diekspor — menjanjikan PPN Masukan yang tidak
+  // ada di modulnya membuat kategori ini berbohong (audit 2026-07).
+  pajak: "Ekspor pajak keluaran (e-Faktur / CTAS).",
 };
 
 export type ReportStatus = "available" | "coming_soon";

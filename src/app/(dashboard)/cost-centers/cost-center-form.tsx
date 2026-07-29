@@ -66,7 +66,9 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
   });
 
   useEffect(() => {
-    fetch("/api/cost-centers")
+    // Hanya yang AKTIF yang boleh jadi induk baru — cabang yang sudah
+    // dipensiunkan tidak menerima anak baru (pola journal-form).
+    fetch("/api/cost-centers?activeOnly=1")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: ParentOption[]) => setParents(data))
       .catch(() => setParents([]));

@@ -23,10 +23,13 @@ const TEST_COMPANY = { name: "PT Contoh Sejahtera" };
 const payload: StatementPayload = {
   kind: "income-statement",
   period: "Periode uji",
-  revenue: [{ code: "4-100", name: "Penjualan", amount: 1_234_567.89 }],
-  expense: [{ code: "5-100", name: "Beban", amount: 234_567.89 }],
-  totalRevenue: 1_234_567.89,
-  totalExpense: 234_567.89,
+  sales: { lines: [{ code: "4-100", name: "Penjualan", amount: 1_234_567.89 }], total: 1_234_567.89 },
+  cogs: { lines: [], total: 0 },
+  grossProfit: 1_234_567.89,
+  operatingExpense: { lines: [{ code: "5-100", name: "Beban", amount: 234_567.89 }], total: 234_567.89 },
+  operatingProfit: 1_000_000,
+  otherIncome: { lines: [], total: 0 },
+  otherExpense: { lines: [], total: 0 },
   netIncome: 1_000_000,
 };
 

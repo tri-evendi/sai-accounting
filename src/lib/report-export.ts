@@ -19,6 +19,7 @@
  * concern applied by the number format, never by mutating the value.
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { incomeStatementLayout } from "@/lib/statement-layout";
 
 /** How a cell's value should be rendered by the spreadsheet, without changing it. */
 export type CellFormat = "text" | "money";
@@ -81,16 +82,33 @@ function statementLineRows(
   return lines.map((l) => [text(`${l.code}  ${l.name}`.trim()), money(l.amount)]);
 }
 
+/** A whole band of the multi-step Laba/Rugi: heading, its lines, its total. */
+function sectionRows(
+  heading: string,
+  s: { lines: { code: string; name: string; amount: number }[]; total: number }
+): SheetCell[][] {
+  return [
+    headingRow(heading, 2),
+    ...statementLineRows(s.lines),
+    [text(`Total ${heading}`, true), money(s.total, true)],
+  ];
+}
+
 function buildIncomeStatementSheet(
   p: Extract<StatementPayload, { kind: "income-statement" }>
 ): SheetModel {
+  // Same bands, same collapse rule as the screen and the PDF — one helper decides.
+  const layout = incomeStatementLayout(p);
   const rows: SheetCell[][] = [
-    headingRow("Pendapatan", 2),
-    ...statementLineRows(p.revenue),
-    [text("Total Pendapatan", true), money(p.totalRevenue, true)],
-    headingRow("Beban", 2),
-    ...statementLineRows(p.expense),
-    [text("Total Beban", true), money(p.totalExpense, true)],
+    ...sectionRows("Pendapatan", p.sales),
+    ...(layout.showCogs ? sectionRows("Beban Pokok Penjualan", p.cogs) : []),
+    ...(layout.showGrossProfit ? [[text("LABA KOTOR", true), money(p.grossProfit, true)]] : []),
+    ...sectionRows("Beban Operasional", p.operatingExpense),
+    ...(layout.showOperatingProfit
+      ? [[text("LABA USAHA", true), money(p.operatingProfit, true)]]
+      : []),
+    ...(layout.showOtherIncome ? sectionRows("Pendapatan Lain-lain", p.otherIncome) : []),
+    ...(layout.showOtherExpense ? sectionRows("Beban Lain-lain", p.otherExpense) : []),
     [
       text(p.netIncome >= 0 ? "LABA BERSIH" : "RUGI BERSIH", true),
       money(p.netIncome, true),

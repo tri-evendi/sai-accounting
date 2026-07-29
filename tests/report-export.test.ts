@@ -39,32 +39,97 @@ describe("buildReportSheet — income statement", () => {
   const payload: StatementPayload = {
     kind: "income-statement",
     period: "Periode 1 Jan 2026 – 31 Jul 2026",
-    revenue: [
-      { code: "4-100", name: "Penjualan Ekspor", amount: 1_234_567.89 },
-      { code: "4-200", name: "Penjualan Lokal", amount: 500_000.5 },
-    ],
-    expense: [{ code: "5-100", name: "Beban Gaji", amount: 400_000.33 }],
-    totalRevenue: 1_734_568.39,
-    totalExpense: 400_000.33,
-    netIncome: 1_334_568.06,
+    sales: {
+      lines: [
+        { code: "4-100", name: "Penjualan Ekspor", amount: 1_234_567.89 },
+        { code: "4-200", name: "Penjualan Lokal", amount: 500_000.5 },
+      ],
+      total: 1_734_568.39,
+    },
+    cogs: {
+      lines: [{ code: "5-100", name: "Beban Pokok Penjualan", amount: 900_000.11 }],
+      total: 900_000.11,
+    },
+    grossProfit: 834_568.28,
+    operatingExpense: {
+      lines: [{ code: "6-100", name: "Beban Gaji", amount: 400_000.33 }],
+      total: 400_000.33,
+    },
+    operatingProfit: 434_567.95,
+    otherIncome: {
+      lines: [{ code: "7-100", name: "Selisih Kurs", amount: 10_000 }],
+      total: 10_000,
+    },
+    otherExpense: {
+      lines: [{ code: "8-100", name: "Beban Bunga", amount: 5_000 }],
+      total: 5_000,
+    },
+    netIncome: 439_567.95,
   };
 
-  it("carries every figure through as an exact number, in report order", () => {
+  it("carries every figure through as an exact number, in multi-step order", () => {
     const sheet = buildReportSheet(payload);
     expect(moneyValues(sheet)).toEqual([
       1_234_567.89,
       500_000.5,
       1_734_568.39, // Total Pendapatan
+      900_000.11,
+      900_000.11, // Total Beban Pokok Penjualan
+      834_568.28, // LABA KOTOR
       400_000.33,
-      400_000.33, // Total Beban
+      400_000.33, // Total Beban Operasional
+      434_567.95, // LABA USAHA
+      10_000,
+      10_000, // Total Pendapatan Lain-lain
+      5_000,
+      5_000, // Total Beban Lain-lain
+      439_567.95, // Laba bersih
+    ]);
+  });
+
+  it("prints the two step subtotals with their exact values", () => {
+    const sheet = buildReportSheet(payload);
+    expect(cellFor(sheet, (l) => l === "LABA KOTOR")[1].value).toBe(834_568.28);
+    expect(cellFor(sheet, (l) => l === "LABA USAHA")[1].value).toBe(434_567.95);
+  });
+
+  /**
+   * The collapse rule (see `@/lib/statement-layout`): a business with no HPP and
+   * no other income/expense accounts must get exactly the single-step statement
+   * it had before — no empty bands, and no "Laba Kotor" row merely restating
+   * total revenue.
+   */
+  it("collapses to a single-step statement when the extra bands are empty", () => {
+    const sheet = buildReportSheet({
+      ...payload,
+      cogs: { lines: [], total: 0 },
+      grossProfit: 1_734_568.39,
+      operatingProfit: 1_334_568.06,
+      otherIncome: { lines: [], total: 0 },
+      otherExpense: { lines: [], total: 0 },
+      netIncome: 1_334_568.06,
+    });
+    const labels = sheet.rows.map((r) => String(r[0]?.value ?? ""));
+    expect(labels).not.toContain("LABA KOTOR");
+    expect(labels).not.toContain("LABA USAHA");
+    expect(labels.filter((l) => l.startsWith("Total "))).toEqual([
+      "Total Pendapatan",
+      "Total Beban Operasional",
+    ]);
+    expect(moneyValues(sheet)).toEqual([
+      1_234_567.89,
+      500_000.5,
+      1_734_568.39, // Total Pendapatan
+      400_000.33,
+      400_000.33, // Total Beban Operasional
       1_334_568.06, // Laba bersih
     ]);
   });
 
   it("labels a positive net as LABA BERSIH and keeps the exact value", () => {
     const sheet = buildReportSheet(payload);
-    const row = cellFor(sheet, (l) => l.startsWith("LABA"));
-    expect(row[1].value).toBe(1_334_568.06);
+    const row = cellFor(sheet, (l) => l.startsWith("LABA BERSIH"));
+    expect(row[1].value).toBe(439_567.95);
   });
 
   it("labels a negative net as RUGI BERSIH", () => {

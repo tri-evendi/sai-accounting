@@ -1482,7 +1482,13 @@
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
     "incomeStatementTitle": "Laba / Rugi",
     "sectionRevenue": "Pendapatan",
-    "sectionExpense": "Beban",
+    "sectionCogs": "Beban Pokok Penjualan",
+    "sectionOperatingExpense": "Beban Operasional",
+    "sectionOtherIncome": "Pendapatan Lain-lain",
+    "sectionOtherExpense": "Beban Lain-lain",
+    "grossProfitRow": "Laba Kotor",
+    "operatingProfitRow": "Laba Usaha",
+    "grossMarginNote": "{pct}% dari pendapatan",
     "netIncomeRow": "Laba / Rugi Bersih",
     "profit": "Laba",
     "loss": "Rugi",
@@ -1544,7 +1550,7 @@
       },
       "income_statement": {
         "title": "Laba / Rugi",
-        "description": "Pendapatan dikurangi beban untuk suatu periode, plus ringkasan bahasa awam."
+        "description": "Bertingkat: penjualan − HPP = laba kotor, dikurangi beban jadi laba bersih, plus ringkasan bahasa awam."
       },
       "balance_sheet": {
         "title": "Neraca",

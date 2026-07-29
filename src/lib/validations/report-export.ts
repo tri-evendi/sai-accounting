@@ -23,13 +23,18 @@ const trialBalance = z.object({
   balanced: z.boolean(),
 });
 
+const section = z.object({ lines: z.array(line), total: money });
+
 const incomeStatement = z.object({
   kind: z.literal("income-statement"),
   period: z.string(),
-  revenue: z.array(line),
-  expense: z.array(line),
-  totalRevenue: money,
-  totalExpense: money,
+  sales: section,
+  cogs: section,
+  grossProfit: money,
+  operatingExpense: section,
+  operatingProfit: money,
+  otherIncome: section,
+  otherExpense: section,
   netIncome: money,
 });
 

@@ -1482,7 +1482,13 @@
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "incomeStatementTitle": "Income Statement",
     "sectionRevenue": "Revenue",
-    "sectionExpense": "Expenses",
+    "sectionCogs": "Cost of Goods Sold",
+    "sectionOperatingExpense": "Operating Expenses",
+    "sectionOtherIncome": "Other Income",
+    "sectionOtherExpense": "Other Expenses",
+    "grossProfitRow": "Gross Profit",
+    "operatingProfitRow": "Operating Profit",
+    "grossMarginNote": "{pct}% of revenue",
     "netIncomeRow": "Net Profit / Loss",
     "profit": "Profit",
     "loss": "Loss",
@@ -1544,7 +1550,7 @@
       },
       "income_statement": {
         "title": "Income Statement",
-        "description": "Revenue less expenses for a period, plus a plain-language summary."
+        "description": "Multi-step: sales − COGS = gross profit, less expenses to net profit, plus a plain-language summary."
       },
       "balance_sheet": {
         "title": "Balance Sheet",

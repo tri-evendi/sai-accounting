@@ -1482,7 +1482,13 @@
     "totalLiabilitiesEquity": "负债与所有者权益合计",
     "incomeStatementTitle": "利润表",
     "sectionRevenue": "营业收入",
-    "sectionExpense": "营业费用",
+    "sectionCogs": "营业成本",
+    "sectionOperatingExpense": "营业费用",
+    "sectionOtherIncome": "营业外收入",
+    "sectionOtherExpense": "营业外支出",
+    "grossProfitRow": "毛利",
+    "operatingProfitRow": "营业利润",
+    "grossMarginNote": "占营业收入 {pct}%",
     "netIncomeRow": "净利润",
     "profit": "盈利",
     "loss": "亏损",
@@ -1544,7 +1550,7 @@
       },
       "income_statement": {
         "title": "利润表",
-        "description": "某一期间的收入减去费用，并附通俗易懂的说明。"
+        "description": "多步式：营业收入 − 营业成本 = 毛利，再减去费用得出净利润，并附通俗易懂的说明。"
       },
       "balance_sheet": {
         "title": "资产负债表",

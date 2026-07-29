@@ -82,7 +82,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "income-statement",
     title: "Laba / Rugi",
-    description: "Pendapatan dikurangi beban untuk suatu periode, plus ringkasan bahasa awam.",
+    description:
+      "Bertingkat: penjualan − HPP = laba kotor, dikurangi beban jadi laba bersih, plus ringkasan bahasa awam.",
     category: "keuangan",
     status: "available",
     href: "/reports/income-statement",

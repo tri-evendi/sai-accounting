@@ -47,3 +47,16 @@ export function formatDateShort(date: Date | string) {
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
+
+/**
+ * Nomor halaman dari query string, aman terhadap sampah.
+ *
+ * `parseInt("abc")` adalah `NaN`, dan `Math.max(1, NaN)` tetap `NaN` — yang
+ * lalu mengalir ke `skip`/`slice` dan membuat daftar berisi tampak kosong
+ * (atau Prisma melempar). URL bisa diedit tangan atau basi dari bookmark,
+ * jadi setiap halaman berpaginasi memakai helper ini alih-alih parseInt polos.
+ */
+export function parsePageParam(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? "1", 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}

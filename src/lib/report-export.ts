@@ -151,7 +151,7 @@ function buildBalanceSheetSheet(
     [text("Total Liabilitas", true), money(p.totalLiabilities, true)],
     headingRow("Ekuitas", 2),
     ...statementLineRows(p.equity),
-    [text("Laba / Rugi Berjalan"), money(p.netIncome)],
+    [text("Akumulasi Laba/Rugi"), money(p.netIncome)],
     [text("Total Ekuitas", true), money(p.totalEquity + p.netIncome, true)],
     [
       text(

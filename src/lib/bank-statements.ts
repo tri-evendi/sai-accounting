@@ -59,11 +59,17 @@ export async function getReconciliation(
   });
   if (!statement) return null;
 
-  const movements = await scopedMovements(statement, client);
-
   // A book movement is matched iff a line of THIS statement points at it.
   const matchedCashIds = new Set(
     statement.lines.map((l) => l.cashMovementId).filter((v): v is number => v != null)
+  );
+
+  // A movement already reconciled under ANOTHER statement (overlapping period)
+  // is out of scope here: offering it as "unmatched" invites a click the match
+  // API must 409, and counting it in the book totals makes this statement's
+  // difference unreachable. It is that other statement's explained row.
+  const movements = (await scopedMovements(statement, client)).filter(
+    (m) => !m.reconciled || m.statementId === statement.id || matchedCashIds.has(m.id)
   );
 
   const book: ReconItem[] = movements.map((m) => ({

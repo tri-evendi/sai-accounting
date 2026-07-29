@@ -1,3 +1,4 @@
+import { parsePageParam } from "@/lib/utils";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
@@ -28,7 +29,7 @@ export default async function CustomersPage({
   await requirePagePermission("customer.read");
   const t = await getT();
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   const [customers, totalCount] = await Promise.all([

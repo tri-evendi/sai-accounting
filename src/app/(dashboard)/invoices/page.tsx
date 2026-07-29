@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Money } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Receipt } from "lucide-react";
@@ -34,7 +34,7 @@ export default async function InvoicesPage({
   const t = await getT();
   const statusLabels = statusFilterLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
   const where: Record<string, unknown> = {};
 

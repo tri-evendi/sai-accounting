@@ -16,7 +16,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileText } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { documentTypeLabels } from "@/lib/i18n/labels";
@@ -32,7 +32,7 @@ export default async function DocumentsPage({
   const t = await getT();
   const typeLabels = documentTypeLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   const [documents, totalCount] = await Promise.all([

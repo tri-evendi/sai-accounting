@@ -483,6 +483,7 @@
     "bookMovementNotFound": "Transaksi buku tidak ditemukan.",
     "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
+    "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
     "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
   },
   "contracts": {
@@ -1492,7 +1493,7 @@
     "sectionLiabilities": "Liabilitas",
     "sectionEquity": "Ekuitas",
     "sectionTotal": "Total {section}",
-    "currentNetIncome": "Laba/Rugi Berjalan",
+    "currentNetIncome": "Akumulasi Laba/Rugi",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
     "incomeStatementTitle": "Laba / Rugi",

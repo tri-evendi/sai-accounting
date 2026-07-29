@@ -138,20 +138,19 @@ export default async function BalanceSheetPage({
               lines={bs.liabilities}
               total={bs.totalLiabilities}
             />
+            {/* Akumulasi laba masuk KE DALAM seksi ekuitas, sebelum totalnya —
+                "Total Ekuitas" yang tidak memuat laba adalah angka yang
+                berbeda dari PDF/Excel/ringkasan di halaman yang sama (mereka
+                selalu menjumlahkannya). Satu label, satu angka, empat media. */}
             <Section
               title={t("reports.sectionEquity")}
               totalLabel={t("reports.sectionTotal", { section: t("reports.sectionEquity") })}
-              lines={bs.equity}
-              total={bs.totalEquity}
+              lines={[
+                ...bs.equity,
+                { code: "", name: t("reports.currentNetIncome"), amount: bs.netIncome },
+              ]}
+              total={bs.totalEquity + bs.netIncome}
             />
-            <TableRow>
-              <TableCell className="py-2 pl-10 text-muted-foreground">
-                {t("reports.currentNetIncome")}
-              </TableCell>
-              <TableCell className="p-0">
-                <MoneyCell className="py-2" value={bs.netIncome} currency="IDR" />
-              </TableCell>
-            </TableRow>
           </TableBody>
           <TableFooter className="border-t-2 bg-transparent">
             <TableRow className="border-b-0 font-bold hover:bg-transparent">

@@ -21,7 +21,7 @@ import {
 import { chartPeriodStart, monthlyActivitySeries } from "@/lib/chart-data";
 import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileText } from "lucide-react";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -42,7 +42,7 @@ export default async function ContractsPage({
   const dictionary = await getDictionary(await getLocale());
   const statusLabels = statusFilterLabels(dictionary);
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
   const where: Record<string, unknown> = {};
 

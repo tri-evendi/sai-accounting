@@ -483,6 +483,7 @@
     "bookMovementNotFound": "The book transaction was not found.",
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
+    "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
     "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
   },
   "contracts": {
@@ -1492,7 +1493,7 @@
     "sectionLiabilities": "Liabilities",
     "sectionEquity": "Equity",
     "sectionTotal": "Total {section}",
-    "currentNetIncome": "Current Profit / Loss",
+    "currentNetIncome": "Accumulated Profit / Loss",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "incomeStatementTitle": "Income Statement",

@@ -37,13 +37,6 @@ class MatchError extends Error {
   }
 }
 
-async function loadUnlockedStatement(id: number) {
-  const statement = await prisma.bankStatement.findUnique({ where: { id } });
-  if (!statement) throw new MatchError("errors.reconciliationNotFound", 404);
-  assertStatementUnlocked(statement);
-  return statement;
-}
-
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("reconciliation.write");
   if (!result.authorized) return result.response;
@@ -93,6 +86,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
       if (movement.reconciled) {
         throw new MatchError("errors.bookMovementAlreadyReconciled");
+      }
+      // Same scope as `scopedMovements`: a movement outside the statement
+      // period is never in the summary's book totals, so matching it would
+      // shrink `unmatchedStatement` while `matchedBookTotal` never sees it —
+      // the difference could then never reach zero and the lock stays 409.
+      const periodEnd = new Date(statement.periodEnd);
+      periodEnd.setHours(23, 59, 59, 999);
+      if (movement.date < statement.periodStart || movement.date > periodEnd) {
+        throw new MatchError("errors.bookMovementOutsidePeriod");
       }
       if (!canMatch({ amount: movementSigned(movement) }, { amount: Number(line.amount) })) {
         throw new MatchError("errors.matchAmountMismatch");
@@ -162,7 +164,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   let cashMovementId: number | null = null;
   try {
     await prisma.$transaction(async (tx) => {
-      const statement = await loadUnlockedStatement(id);
+      // Re-read via `tx` (not the root client) so a lock committed
+      // concurrently is visible to this transaction's check — same as POST.
+      const statement = await tx.bankStatement.findUnique({ where: { id } });
+      if (!statement) throw new MatchError("errors.reconciliationNotFound", 404);
+      assertStatementUnlocked(statement);
       const line = await tx.bankStatementLine.findUnique({ where: { id: lineId } });
       if (!line || line.statementId !== statement.id) {
         throw new MatchError("errors.statementLineNotFound", 404);

@@ -1,3 +1,4 @@
+import { parsePageParam } from "@/lib/utils";
 import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
@@ -48,7 +49,7 @@ export default async function InventoryPage({
   await requirePagePermission("inventory.read");
   const t = await getT();
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   // Get all items for summary cards

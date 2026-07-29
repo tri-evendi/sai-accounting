@@ -483,6 +483,7 @@
     "bookMovementNotFound": "未找到该账簿交易。",
     "bookMovementWrongAccount": "该账簿交易所属的账户或币种与此次对账不符。",
     "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
+    "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
     "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。"
   },
   "contracts": {
@@ -1492,7 +1493,7 @@
     "sectionLiabilities": "负债",
     "sectionEquity": "所有者权益",
     "sectionTotal": "{section}合计",
-    "currentNetIncome": "本期利润",
+    "currentNetIncome": "累计利润",
     "totalAssets": "资产合计",
     "totalLiabilitiesEquity": "负债与所有者权益合计",
     "incomeStatementTitle": "利润表",

@@ -1,3 +1,4 @@
+import { parsePageParam } from "@/lib/utils";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
@@ -29,15 +30,14 @@ export default async function SuppliersPage({
   await requirePagePermission("supplier.read");
   const t = await getT();
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   const [suppliers, totalCount] = await Promise.all([
     prisma.supplier.findMany({
       orderBy: { name: "asc" },
-      include: {
-        transactions: { orderBy: { date: "desc" }, take: 3 },
-      },
+      // A real count, not a `take: 3` relation whose length saturates at 3.
+      include: { _count: { select: { transactions: true } } },
       skip: (page - 1) * perPage,
       take: perPage,
     }),
@@ -94,7 +94,7 @@ export default async function SuppliersPage({
                   <TableCell className="text-muted-foreground">{s.address || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{s.phone || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{s.email || "-"}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.transactions.length}</TableCell>
+                  <TableCell className="text-muted-foreground">{s._count.transactions}</TableCell>
                 </TableRow>
               ))
             )}

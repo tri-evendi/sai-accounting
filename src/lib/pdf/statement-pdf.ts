@@ -316,7 +316,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       doc,
       y,
       "Ekuitas",
-      [...payload.equity, { code: "", name: "Laba / Rugi Berjalan", amount: payload.netIncome }],
+      [...payload.equity, { code: "", name: "Akumulasi Laba/Rugi", amount: payload.netIncome }],
       "Total Ekuitas",
       payload.totalEquity + payload.netIncome
     );

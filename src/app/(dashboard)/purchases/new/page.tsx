@@ -19,15 +19,11 @@ export default async function NewPurchaseWizardPage() {
   await requirePagePermission("purchase.write");
   const t = await getT();
 
-  const [suppliers, items, closedPeriods] = await Promise.all([
-    // `isActive: true` — master yang sudah dinonaktifkan tidak ditawarkan untuk
-    // dokumen BARU (issue #104); pembelian lama tetap menyebut namanya.
-    prisma.supplier.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      take: 500,
-      select: { id: true, name: true },
-    }),
+  // Pemasok TIDAK lagi dipreload `take: 500` — daftar terpotong membuat pemasok
+  // lama mustahil dipilih (audit). Pemilihnya mencari ke server
+  // (`/api/suppliers?active=1&picker=1`); filter `active=1` issue #104 tetap
+  // berlaku lewat query string endpoint-nya.
+  const [items, closedPeriods] = await Promise.all([
     prisma.item.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -60,7 +56,6 @@ export default async function NewPurchaseWizardPage() {
       <LearnMore term="pembelian" className="mt-1 mb-6" label={t("purchases.learnMore")} />
 
       <PurchaseWizard
-        suppliers={suppliers}
         items={items.map((i) => ({
           id: i.id,
           name: i.name,

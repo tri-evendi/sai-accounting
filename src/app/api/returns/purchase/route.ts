@@ -32,6 +32,11 @@ import {
 } from "@/lib/returns-data";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import {
+  PICKER_DEFAULT_TAKE,
+  PICKER_MAX_TAKE,
+  type PickerOption,
+} from "@/lib/picker";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("return.read");
@@ -69,6 +74,50 @@ export async function GET(request: Request) {
       returned,
       returnable: returnableRemaining(amount, returned),
     });
+  }
+
+  // ── Mode picker (audit: pemilih pembelian asal terpotong `take: 300`) ──
+  // `?searchOrigin=<q>&take=` menjawab kontrak `{ options }` untuk
+  // `ServerSearchableSelect`: baris `supplier_transactions` bertipe `purchase`,
+  // dicocokkan pada id TRX ("12" / "TRX-12") ATAU nama pemasok. Parameternya
+  // sengaja BUKAN `search` supaya mode lama route ini tidak tersentuh.
+  if (searchParams.has("searchOrigin")) {
+    const search = (searchParams.get("searchOrigin") ?? "").trim();
+    const rawTake = parseInt(searchParams.get("take") ?? "", 10);
+    const take =
+      Number.isFinite(rawTake) && rawTake > 0
+        ? Math.min(rawTake, PICKER_MAX_TAKE)
+        : PICKER_DEFAULT_TAKE;
+    const idMatch = /^(?:trx-?)?(\d+)$/i.exec(search);
+    const purchases = await prisma.supplierTransaction.findMany({
+      where: {
+        type: "purchase",
+        ...(search
+          ? {
+              OR: [
+                ...(idMatch ? [{ id: parseInt(idMatch[1], 10) }] : []),
+                { supplier: { name: { contains: search } } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { date: "desc" },
+      take,
+      select: {
+        id: true,
+        date: true,
+        currency: true,
+        amount: true,
+        supplier: { select: { name: true } },
+      },
+    });
+    return NextResponse.json({
+      options: purchases.map((p) => ({
+        value: String(p.id),
+        label: `TRX-${p.id} · ${p.supplier?.name ?? "—"} · ${p.date.toISOString().slice(0, 10)}`,
+        hint: `${p.currency || "IDR"} ${Number(p.amount).toFixed(2)}`,
+      })),
+    } satisfies { options: PickerOption[] });
   }
 
   const returns = await prisma.purchaseReturn.findMany({

@@ -30,28 +30,11 @@ export default async function NewSaleWizardPage() {
   const canUpdateStock = await canOpenPage(session.user, "inventory.write");
   const t = await getT();
 
-  const [customers, contracts, consignees, items, closedPeriods] = await Promise.all([
-    // `isActive: true` — master yang sudah dinonaktifkan tidak ditawarkan untuk
-    // dokumen BARU (issue #104); faktur lama tetap menyebut namanya. Pola yang
-    // sudah dipakai `consignees` di bawah.
-    prisma.customer.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      take: 500,
-      select: { id: true, name: true, taxExempt: true },
-    }),
-    prisma.contract.findMany({
-      where: { status: { not: "canceled" } },
-      orderBy: { date: "desc" },
-      take: 300,
-      select: { id: true, contractNo: true, buyer: true, currency: true },
-    }),
-    prisma.consignee.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      take: 300,
-      select: { id: true, name: true, country: true },
-    }),
+  // Pelanggan / kontrak / penerima TIDAK lagi dipreload `take: 500/300/300` —
+  // daftar terpotong membuat baris lama mustahil dipilih (audit). Pemilihnya
+  // kini mencari ke server (`ServerSearchableSelect` → `?picker=1`); filter
+  // `active=1` issue #104 ikut lewat query string endpoint-nya.
+  const [items, closedPeriods] = await Promise.all([
     prisma.item.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -84,18 +67,6 @@ export default async function NewSaleWizardPage() {
 
       <SalesWizard
         canUpdateStock={canUpdateStock}
-        customers={customers.map((c) => ({
-          id: c.id,
-          name: c.name,
-          taxExempt: Boolean(c.taxExempt),
-        }))}
-        contracts={contracts.map((c) => ({
-          id: c.id,
-          contractNo: c.contractNo,
-          buyer: c.buyer,
-          currency: c.currency || "IDR",
-        }))}
-        consignees={consignees}
         items={items.map((i) => ({
           id: i.id,
           name: i.name,

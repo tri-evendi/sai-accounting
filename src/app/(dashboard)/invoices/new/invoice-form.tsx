@@ -31,7 +31,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import {
+  ServerSearchableSelect,
+  type PickerOption,
+} from "@/components/ui/server-searchable-select";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { DueDateField } from "@/components/shared/due-date-field";
@@ -61,13 +64,6 @@ import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
 import { Trash2, Plus, Download, Info, Loader2, AlertCircle, Lock } from "lucide-react";
 
-interface ContractOption {
-  id: number;
-  contractNo: string;
-  buyer: string;
-  currency: string;
-}
-
 interface InvoiceItem {
   itemName: string;
   quantity: number;
@@ -90,14 +86,15 @@ const isPristine = (items: InvoiceItem[]) =>
   items.every((i) => !i.itemName.trim() && !i.quantity && !i.price);
 
 export function NewInvoiceForm({
-  contracts,
-  initialContractId,
+  initialContract,
   closedPeriods,
 }: {
-  contracts: ContractOption[];
-  initialContractId: number | null;
+  /** Kontrak yang sudah terpilih lewat `?contractId=` — label + hint-nya dibaca
+   *  server supaya pemilih tidak menunggu halaman hasil memuatnya. */
+  initialContract: PickerOption | null;
   closedPeriods: ClosedPeriodRef[];
 }) {
+  const initialContractId = initialContract ? Number(initialContract.value) : null;
   const router = useRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
@@ -323,12 +320,6 @@ export function NewInvoiceForm({
     dueDate ? t("invoices.advDueDate", { date: dueDate }) : t("invoices.advNoDueDate"),
   ].join(" · ");
 
-  const contractOptions: SearchableOption[] = contracts.map((c) => ({
-    value: String(c.id),
-    label: c.contractNo,
-    description: `${c.buyer} · ${c.currency}`,
-  }));
-
   return (
     <>
       {error && (
@@ -354,13 +345,17 @@ export function NewInvoiceForm({
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <SearchableSelect
+              {/* Mencari ke server (audit: daftar statis `take: 300` membuat
+                  kontrak lama tak terpilih). Detail barisnya tetap dari
+                  `/api/contracts/[id]/outstanding` begitu terpilih. */}
+              <ServerSearchableSelect
                 id="contractId"
                 label={t("invoices.contractSourceOptional")}
                 placeholder={t("invoices.pickContract")}
                 searchPlaceholder={t("invoices.searchContract")}
                 emptyText={t("invoices.noContractMatch")}
-                options={contractOptions}
+                fetchUrl="/api/contracts?picker=1"
+                initialOption={initialContract}
                 value={contractId != null ? String(contractId) : null}
                 onChange={(v) => chooseContract(v == null ? null : Number(v))}
               />

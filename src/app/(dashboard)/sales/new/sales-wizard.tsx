@@ -16,7 +16,7 @@
  *   • pemetaan galat → bagian   → `@/lib/form-sections` (#4).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -68,22 +69,10 @@ import {
 } from "lucide-react";
 
 // ── Data yang disiapkan server shell ──────────────────────────────────────
-export interface CustomerOption {
-  id: number;
-  name: string;
-  taxExempt: boolean;
-}
-export interface ContractOption {
-  id: number;
-  contractNo: string;
-  buyer: string;
-  currency: string;
-}
-export interface ConsigneeOption {
-  id: number;
-  name: string;
-  country: string | null;
-}
+// Pelanggan / kontrak / penerima tidak lagi dikirim sebagai daftar statis
+// (audit: `take: 500/300/300` memotong daftar — baris lama tak terpilih).
+// Pemilihnya mencari ke server; detail baris terpilih (bebas-PPN, sisa
+// kontrak, label) dibaca dari endpoint detail masing-masing.
 export interface ItemOption {
   id: number;
   name: string;
@@ -109,16 +98,10 @@ interface SalesResult {
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export function SalesWizard({
-  customers,
-  contracts,
-  consignees,
   items,
   closedPeriods,
   canUpdateStock,
 }: {
-  customers: CustomerOption[];
-  contracts: ContractOption[];
-  consignees: ConsigneeOption[];
   items: ItemOption[];
   closedPeriods: ClosedPeriodRef[];
   /** Modul `inventory` aktif DAN pengguna boleh menulisnya (issue #103) —
@@ -137,6 +120,18 @@ export function SalesWizard({
   const [outstanding, setOutstanding] = useState<OutstandingResponse | null>(null);
   const [pullNote, setPullNote] = useState("");
   const [result, setResult] = useState<SalesResult | null>(null);
+  // Detail baris yang terpilih di pemilih cari-ke-server: nama (label ringkasan
+  // & label pemilih saat draf dipulihkan) dan bebas-PPN pelanggan. Diisi dari
+  // endpoint detail, bukan dari daftar statis yang sudah tidak ada lagi.
+  const [customerInfo, setCustomerInfo] = useState<
+    Record<number, { name: string; taxExempt: boolean }>
+  >({});
+  const [consigneeInfo, setConsigneeInfo] = useState<
+    Record<number, { name: string; country: string | null }>
+  >({});
+  /** Pelanggan yang BARU dipilih dan defaults pajaknya masih menunggu detail
+   *  bebas-PPN — draf yang dipulihkan tidak boleh ikut ditimpa. */
+  const pendingTaxCustomerId = useRef<number | null>(null);
 
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const stockByItem = useMemo(() => new Map(items.map((i) => [i.id, i.currentStock])), [items]);
@@ -190,21 +185,69 @@ export function SalesWizard({
     };
   }, [draft.contractId, t]);
 
-  const customerOptions: SearchableOption[] = customers.map((c) => ({
-    value: String(c.id),
-    label: c.name,
-    description: c.taxExempt ? t("sales.taxExempt") : undefined,
-  }));
-  const contractOptions: SearchableOption[] = contracts.map((c) => ({
-    value: String(c.id),
-    label: c.contractNo,
-    description: `${c.buyer} · ${c.currency}`,
-  }));
-  const consigneeOptions: SearchableOption[] = consignees.map((c) => ({
-    value: String(c.id),
-    label: c.name,
-    description: c.country ?? undefined,
-  }));
+  // Detail pelanggan terpilih — nama untuk label/ringkasan, bebas-PPN untuk
+  // default pajak. Saat cache siap DAN pemilihan baru saja terjadi, default
+  // pajaknya diterapkan; draf yang dipulihkan hanya mendapat labelnya.
+  useEffect(() => {
+    const id = draft.customer.mode === "existing" ? draft.customer.id : null;
+    if (id == null) return;
+    const cached = customerInfo[id];
+    if (cached) {
+      if (pendingTaxCustomerId.current === id) {
+        pendingTaxCustomerId.current = null;
+        patch((d) => {
+          if (d.customer.mode !== "existing" || d.customer.id !== id) return d;
+          const tax = defaultInvoiceTax({
+            currency: d.invoice.currency,
+            customerTaxExempt: cached.taxExempt,
+          });
+          return { ...d, invoice: { ...d.invoice, taxable: tax.taxable, taxRate: tax.taxRate } };
+        });
+      }
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/customers/${id}`);
+      if (!res.ok || cancelled) return;
+      const c = (await res.json()) as { name: string; taxExempt?: boolean };
+      if (cancelled) return;
+      setCustomerInfo((m) => ({
+        ...m,
+        [id]: { name: c.name, taxExempt: Boolean(c.taxExempt) },
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.customer.mode, draft.customer.id, customerInfo, patch]);
+
+  // Label penerima barang terpilih — untuk pemilih & draf yang dipulihkan.
+  useEffect(() => {
+    const id = draft.delivery.consigneeId;
+    if (id == null || consigneeInfo[id]) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/consignees/${id}`);
+      if (!res.ok || cancelled) return;
+      const c = (await res.json()) as { name: string; country: string | null };
+      if (cancelled) return;
+      setConsigneeInfo((m) => ({ ...m, [id]: { name: c.name, country: c.country ?? null } }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.delivery.consigneeId, consigneeInfo]);
+
+  const selectedCustomerId =
+    draft.customer.mode === "existing" ? draft.customer.id : null;
+  const selectedCustomer =
+    selectedCustomerId != null ? customerInfo[selectedCustomerId] : undefined;
+  const selectedConsignee =
+    draft.delivery.consigneeId != null
+      ? consigneeInfo[draft.delivery.consigneeId]
+      : undefined;
+
   const itemOptions: SearchableOption[] = items.map((i) => ({
     value: String(i.id),
     label: i.name,
@@ -382,18 +425,32 @@ export function SalesWizard({
       {stepId === "pelanggan" && (
         <WizardPartnerStep
           kind="customer"
-          options={customerOptions}
+          fetchUrl="/api/customers?active=1&picker=1"
+          initialOption={
+            selectedCustomerId != null && selectedCustomer
+              ? {
+                  value: String(selectedCustomerId),
+                  label: selectedCustomer.name,
+                  ...(selectedCustomer.taxExempt ? { hint: t("sales.taxExempt") } : {}),
+                }
+              : null
+          }
           value={draft.customer}
           withCustomerFields
           manageHref="/customers"
-          onChange={(values) =>
+          onChange={(values) => {
+            // Bebas-PPN pelanggan yang baru dipilih datang menyusul dari
+            // endpoint detail — efek `customerInfo` yang menerapkannya.
+            if (values.id !== undefined) pendingTaxCustomerId.current = values.id;
             patch((d) => {
               const customer = { ...d.customer, ...values };
               // Pelanggan bebas PPN → tagihannya default tanpa PPN (#16).
               const exempt =
                 customer.mode === "new"
                   ? customer.taxExempt
-                  : (customers.find((c) => c.id === customer.id)?.taxExempt ?? false);
+                  : customer.id != null
+                    ? (customerInfo[customer.id]?.taxExempt ?? false)
+                    : false;
               const tax = defaultInvoiceTax({
                 currency: d.invoice.currency,
                 customerTaxExempt: exempt,
@@ -403,8 +460,8 @@ export function SalesWizard({
                 customer,
                 invoice: { ...d.invoice, taxable: tax.taxable, taxRate: tax.taxRate },
               };
-            })
-          }
+            });
+          }}
         />
       )}
 
@@ -420,13 +477,27 @@ export function SalesWizard({
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-2">
-                <SearchableSelect
+                {/* Mencari ke server (audit: daftar statis `take: 300`).
+                    Sisa & label kontrak terpilih datang dari endpoint
+                    `outstanding` yang sama seperti sebelumnya. */}
+                <ServerSearchableSelect
                   id="contractId"
                   label={t("sales.contractSource")}
                   placeholder={t("invoices.pickContract")}
                   searchPlaceholder={t("invoices.searchContract")}
                   emptyText={t("invoices.noContractMatch")}
-                  options={contractOptions}
+                  fetchUrl="/api/contracts?picker=1"
+                  initialOption={
+                    outstanding != null &&
+                    draft.contractId != null &&
+                    outstanding.contract.id === draft.contractId
+                      ? {
+                          value: String(outstanding.contract.id),
+                          label: outstanding.contract.contractNo,
+                          hint: `${outstanding.contract.buyer} · ${outstanding.contract.currency}`,
+                        }
+                      : null
+                  }
                   value={draft.contractId != null ? String(draft.contractId) : null}
                   onChange={(v) => {
                     setPullNote("");
@@ -642,13 +713,22 @@ export function SalesWizard({
                     }
                     required
                   />
-                  <SearchableSelect
+                  <ServerSearchableSelect
                     id="consigneeId"
                     label={t("sales.consigneeOptional")}
                     placeholder={t("sales.pickConsignee")}
                     searchPlaceholder={t("sales.searchConsignee")}
                     emptyText={t("sales.noConsigneeMatch")}
-                    options={consigneeOptions}
+                    fetchUrl="/api/consignees?active=1&picker=1"
+                    initialOption={
+                      draft.delivery.consigneeId != null && selectedConsignee
+                        ? {
+                            value: String(draft.delivery.consigneeId),
+                            label: selectedConsignee.name,
+                            hint: selectedConsignee.country ?? undefined,
+                          }
+                        : null
+                    }
                     value={
                       draft.delivery.consigneeId != null
                         ? String(draft.delivery.consigneeId)
@@ -1108,15 +1188,16 @@ export function SalesWizard({
                 value={
                   draft.customer.mode === "new"
                     ? t("sales.summaryNew", { name: draft.customer.name })
-                    : (customers.find((c) => c.id === draft.customer.id)?.name ?? "—")
+                    : (selectedCustomer?.name ?? "—")
                 }
               />
               {draft.contractId != null && (
                 <WizardSummaryRow
                   label={t("sales.summaryContract")}
                   value={
-                    contracts.find((c) => c.id === draft.contractId)?.contractNo ??
-                    `#${draft.contractId}`
+                    outstanding?.contract.id === draft.contractId
+                      ? outstanding.contract.contractNo
+                      : `#${draft.contractId}`
                   }
                 />
               )}

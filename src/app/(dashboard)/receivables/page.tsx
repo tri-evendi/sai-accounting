@@ -41,7 +41,13 @@ export default async function ReceivablesPage({
   await requirePagePermission("receivable.read");
   const t = await getT();
   const sp = await searchParams;
-  const asOfStr = sp.asOf ?? todayISO();
+  // `asOf` sampah dari URL yang diedit tangan menghasilkan Invalid Date, yang
+  // membuat `ageInDays` NaN dan MENJATUHKAN semua baris ke ember ">90 hari"
+  // tanpa satu pun galat (audit 2026-07) — validasi dulu, mundur ke hari ini.
+  const asOfRaw = sp.asOf ?? todayISO();
+  const asOfStr = /^\d{4}-\d{2}-\d{2}$/.test(asOfRaw) && !Number.isNaN(new Date(`${asOfRaw}T00:00:00`).getTime())
+    ? asOfRaw
+    : todayISO();
   const asOf = new Date(`${asOfStr}T23:59:59.999`);
   const overdueOnly = sp.overdue === "1";
 

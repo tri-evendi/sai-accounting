@@ -183,7 +183,10 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "stock-movement",
-    title: "Kartu Stok / Mutasi",
+    // Nama awam di permukaan, istilah bakunya hidup di glosarium & judul
+    // cetakan — pola yang sama dengan "Hitung Ulang Stok" (stok opname) dan
+    // "Cocokkan Rekening Koran" (rekonsiliasi bank).
+    title: "Riwayat Stok",
     description: "Saldo awal, masuk-keluar, dan saldo akhir tiap komoditas — per minggu, bulan atau tahun.",
     category: "stok",
     status: "available",

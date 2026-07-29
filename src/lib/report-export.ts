@@ -316,11 +316,57 @@ function buildStockMovementSheet(
   return { name: "Kartu Stok", title: "Kartu Stok / Mutasi Persediaan", period: p.period, columns, rows };
 }
 
+function buildOpnameHistorySheet(
+  p: Extract<StatementPayload, { kind: "opname-history" }>
+): SheetModel {
+  const q = (value: number, bold = false): SheetCell => ({
+    value,
+    format: "quantity",
+    align: "right",
+    bold,
+  });
+
+  const rows: SheetCell[][] = [];
+  for (const s of p.sessions) {
+    // Tanggalnya jadi baris judul sesi, bukan kolom yang diulang tiap baris:
+    // satu hitung ulang adalah satu peristiwa, dan lembar sebarnya harus
+    // terbaca begitu.
+    rows.push([text(`Hitung ulang ${s.dateISO}`, true), text(null), q(s.increase, true), q(-s.decrease, true)]);
+    for (const a of s.adjustments) {
+      rows.push([text(`   ${a.itemName}`), text(a.unit || "-"), q(a.variance), text(null)]);
+    }
+  }
+  if (rows.length === 0) {
+    rows.push([text("Tidak ada hitung ulang stok pada periode ini."), text(null), text(null), text(null)]);
+  }
+  rows.push([
+    text(`${p.sessionCount} kali hitung ulang · ${p.adjustmentCount} penyesuaian`, true),
+    text("Selisih bersih", true),
+    q(p.netVariance, true),
+    text(null),
+  ]);
+
+  return {
+    name: "Riwayat Opname",
+    title: "Riwayat Hitung Ulang Stok (Stok Opname)",
+    period: p.period,
+    columns: [
+      { header: "Tanggal / Barang", width: 40 },
+      { header: "Satuan", width: 12 },
+      { header: "Selisih", width: 16 },
+      { header: "Susut", width: 16 },
+    ],
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
     case "stock-movement":
       return buildStockMovementSheet(payload);
+    case "opname-history":
+      return buildOpnameHistorySheet(payload);
     case "income-statement":
       return buildIncomeStatementSheet(payload);
     case "balance-sheet":

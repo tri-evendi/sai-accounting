@@ -95,6 +95,22 @@ export type StatementPayload =
       hasProcess: boolean;
       dormantCount: number;
     }
+  /** Riwayat Hitung Ulang Stok (issue #129). Quantities, signed by direction. */
+  | {
+      kind: "opname-history";
+      period: string;
+      sessions: {
+        dateISO: string;
+        adjustments: { itemName: string; unit: string | null; variance: number }[];
+        increase: number;
+        decrease: number;
+      }[];
+      sessionCount: number;
+      adjustmentCount: number;
+      totalIncrease: number;
+      totalDecrease: number;
+      netVariance: number;
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -114,7 +130,16 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "balance-sheet": "Neraca",
   "cash-flow": "Laporan Arus Kas",
   "stock-movement": "Kartu Stok / Mutasi Persediaan",
+  "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
 };
+
+/** Kuantitas bertanda: "+40" / "−12,5". Tanda adalah penanda NON-WARNA-nya. */
+function signedQty(value: number): string {
+  const text = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(Math.abs(value));
+  if (value > 0) return `+${text}`;
+  if (value < 0) return `−${text}`;
+  return text;
+}
 
 /**
  * Quantity, id-ID, up to three decimals with trailing zeros dropped — the screen
@@ -354,6 +379,35 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
         afterTable(doc) + 6
       );
     }
+  }
+
+  if (payload.kind === "opname-history") {
+    autoTable(doc, {
+      startY: y,
+      head: [["Tanggal Hitung", "Barang", "Satuan", "Selisih"]],
+      body: payload.sessions.length
+        ? payload.sessions.flatMap((s) => [
+            [
+              { content: `Hitung ulang ${s.dateISO}`, colSpan: 2, styles: { fontStyle: "bold" as const } },
+              { content: `Lebih ${signedQty(s.increase)}`, styles: { halign: "right" as const } },
+              { content: `Susut ${signedQty(-s.decrease)}`, styles: { halign: "right" as const } },
+            ],
+            ...s.adjustments.map((a) => ["", `   ${a.itemName}`, a.unit || "-", signedQty(a.variance)]),
+          ])
+        : [["", "Tidak ada hitung ulang stok pada periode ini.", "", ""]],
+      foot: [
+        [
+          `${payload.sessionCount} kali hitung ulang`,
+          `${payload.adjustmentCount} penyesuaian barang`,
+          "Selisih bersih",
+          signedQty(payload.netVariance),
+        ],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles: { 3: { halign: "right" } },
+    });
   }
 
   if (payload.kind === "cash-flow") {

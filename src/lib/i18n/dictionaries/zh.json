@@ -128,6 +128,7 @@
       "cashBook": "现金与银行账簿",
       "reconciliation": "银行对账",
       "inventory": "库存",
+      "inventoryMovement": "库存变动记录",
       "inventoryUpdate": "增加 / 减少库存",
       "inventoryOpname": "库存盘点",
       "fixedAssets": "公司资产",
@@ -1589,7 +1590,7 @@
         "description": "各商品的当前存货数量与金额。"
       },
       "stock_movement": {
-        "title": "库存台账 / 出入库",
+        "title": "库存变动记录",
         "description": "各商品的期初余额、出入库与期末余额——可按周、按月或按年查看。"
       },
       "cash_bank": {
@@ -2004,9 +2005,9 @@
     "workflowOptional": "可选"
   },
   "stockMovement": {
-    "title": "存货卡 / 出入库明细",
-    "description": "所选期间内各商品的期初余额、入库与出库数量，以及期末余额。",
-    "linkLabel": "分期间存货卡",
+    "title": "库存变动记录",
+    "description": "所选时间范围内各商品的期初余额、入库与出库数量，以及期末余额。正式名称：存货卡 / 出入库明细。",
+    "linkLabel": "库存变动记录",
     "granularityLabel": "时间范围",
     "granularityWeek": "按周",
     "granularityMonth": "按月",
@@ -2024,6 +2025,16 @@
     "emptyTitle": "本期间没有出入库记录",
     "emptyDescription": "该时间范围内没有商品持有期初余额或发生出入库。请尝试其他期间。",
     "dormantNote": "有 {count} 项商品在本期间既无期初余额也无出入库，已隐藏。"
+  },
+  "opnameHistory": {
+    "title": "库存盘点记录",
+    "description": "所选时间范围内已完成的库存盘点，以及各货物的盘盈盘亏。",
+    "linkLabel": "查看盘点记录",
+    "sessionTitle": "{date} 盘点",
+    "sessionSummary": "{count} 项货物有差异 · 盘盈 {increase} · 盘亏 {decrease}",
+    "periodSummary": "本范围合计：盘点 {sessions} 次，货物调整 {adjustments} 项，净差异 {net}。",
+    "emptyTitle": "本范围内没有盘点记录",
+    "emptyDescription": "该时间范围内没有记录任何盘点调整。请尝试其他期间，或立即执行盘点。"
   },
   "inventory": {
     "levelHealthy": "充足",
@@ -2074,6 +2085,13 @@
     "opnameEmptyDescription": "盘点是将记录与实盘数量进行对比。请先记录第一笔入库，才有可对比的数据。",
     "opnameDateField": "盘点日期",
     "opnameHint": "填写实盘数量。留空的货物不会被修改。",
+    "opnameSearchLabel": "查找货物",
+    "opnameSearchPlaceholder": "输入货物名称…",
+    "opnameNoMatch": "没有与“{query}”匹配的货物。",
+    "opnameHiddenCounts": "您已录入的 {count} 项盘点数量被搜索条件隐藏——它们仍会一并保存。",
+    "opnameSheetButton": "打印盘点表",
+    "opnameSheetTitle": "实物库存盘点表",
+    "opnameSheetIncludeSystem": "显示系统数量",
     "colSystemStock": "系统库存",
     "colPhysicalCount": "实盘数量",
     "colVariance": "差异",

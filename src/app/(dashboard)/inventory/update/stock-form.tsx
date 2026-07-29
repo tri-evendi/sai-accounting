@@ -242,6 +242,12 @@ export function StockUpdateForm({
     <div className="w-full">
       <PageHeader
         className="mb-1"
+        // Sub-halaman Stok tanpa remah roti memaksa pengguna kembali lewat menu
+        // samping — satu-satunya jalan pulang sebelum ini.
+        breadcrumbs={[
+          { label: t("nav.items.inventory"), href: "/inventory" },
+          { label: t("common.addRemoveStock") },
+        ]}
         title={<TermTooltip term="persediaan">{t("common.addRemoveStock")}</TermTooltip>}
         description={t("inventory.updateDescription")}
         actions={

@@ -100,6 +100,38 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
   );
 }
 
+/**
+ * Lembar hitung fisik stok opname (issue #129).
+ *
+ * Satu-satunya cetakan yang dipakai SEBELUM datanya ada: dicetak kosong, dibawa
+ * ke gudang, ditulisi, baru diketik balik. `showSystemQty` bawaannya mati —
+ * lihat alasan hitung-buta di `lib/pdf/opname-sheet-pdf.ts`.
+ */
+export function OpnameSheetPDFButton({
+  items,
+  date,
+  showSystemQty,
+}: {
+  items: { name: string; unit: string | null; currentStock: number }[];
+  date: string;
+  showSystemQty: boolean;
+}) {
+  const company = useCompanyIdentity();
+  const t = useT();
+  return (
+    <PdfDocumentButton
+      label={t("inventory.opnameSheetButton")}
+      title={t("inventory.opnameSheetTitle")}
+      filename={`Lembar_Hitung_Stok_${date}.pdf`}
+      disabled={items.length === 0}
+      generate={async () => {
+        const { generateOpnameSheetPDF } = await import("@/lib/pdf/opname-sheet-pdf");
+        return generateOpnameSheetPDF(items, company, { date, showSystemQty });
+      }}
+    />
+  );
+}
+
 export function FinanceReportPDFButton({
   balances,
   transactions,

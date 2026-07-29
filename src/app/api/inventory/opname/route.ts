@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
+import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { opnameSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";
@@ -84,7 +85,9 @@ export async function POST(request: Request) {
             type,
             date: when,
             unitCost: type === "in" && avgCost > 0 ? avgCost : null,
-            note: "Penyesuaian stok opname",
+            // Penanda yang membuat gerakan ini bisa ditemukan lagi sebagai
+            // opname (issue #129) — dibaca `getOpnameHistory`.
+            note: OPNAME_ADJUSTMENT_NOTE,
           },
           include: { item: { select: { name: true } } },
         });

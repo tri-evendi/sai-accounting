@@ -18,11 +18,13 @@
  * date])` serves exactly this shape.
  */
 import { prisma } from "@/lib/prisma";
+import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
 import {
   buildStockMovementReport,
   type StockMovementReport,
   type StockTotalRow,
 } from "@/lib/stock-movement";
+import { buildOpnameHistory, type OpnameHistory } from "@/lib/opname-history";
 
 type Client = typeof prisma;
 
@@ -64,4 +66,43 @@ export async function getStockMovementReport(
   ]);
 
   return buildStockMovementReport(items, openingTotals, periodTotals);
+}
+
+/**
+ * Riwayat Hitung Ulang Stok for an inclusive [from, to] window (issue #129).
+ *
+ * Opname has no table of its own: a count exists only as the stock movements it
+ * produced, marked with `OPNAME_ADJUSTMENT_NOTE`. Matching on that constant — the
+ * same one the write path stamps — is what keeps the two halves from drifting
+ * into a history that is silently always empty.
+ *
+ * `note` is an exact match, not a `contains`: a user-typed note that merely
+ * mentions the phrase in a manual adjustment must not be dressed up as a
+ * stock count that never happened.
+ */
+export async function getOpnameHistory(
+  from: Date,
+  to: Date,
+  client: Client = prisma
+): Promise<OpnameHistory> {
+  const rows = await client.stockMovement.findMany({
+    where: { note: OPNAME_ADJUSTMENT_NOTE, date: { gte: from, lte: to } },
+    select: {
+      date: true,
+      type: true,
+      quantity: true,
+      item: { select: { name: true, unit: true } },
+    },
+    orderBy: [{ date: "desc" }, { id: "asc" }],
+  });
+
+  return buildOpnameHistory(
+    rows.map((r) => ({
+      date: r.date,
+      itemName: r.item.name,
+      unit: r.item.unit,
+      type: r.type,
+      quantity: Number(r.quantity),
+    }))
+  );
 }

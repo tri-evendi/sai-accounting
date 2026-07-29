@@ -29,6 +29,7 @@ import { SearchableSelect, type SearchableOption } from "@/components/ui/searcha
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { DueDateField } from "@/components/shared/due-date-field";
+import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
 import { Wizard, WizardSummaryRow } from "@/components/shared/wizard";
 import { WizardPartnerStep } from "@/components/shared/wizard-partner-step";
 import { useWizardDraft } from "@/components/shared/use-wizard-draft";
@@ -91,6 +92,10 @@ export function PurchaseWizard({
   const [result, setResult] = useState<PurchaseResult | null>(null);
 
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // issue #91/#98 — dimensi pusat biaya, pemilih yang sama dengan formulir di
+  // halaman pemasok. Perusahaan tanpa pusat biaya mendapat daftar kosong dan
+  // pemilihnya tidak dirender sama sekali.
+  const costCenters = useCostCenters();
   const guardContext = useMemo(() => ({ closedPeriods }), [closedPeriods]);
   const blockers = validatePurchaseStep(draft, stepId, guardContext);
 
@@ -525,6 +530,15 @@ export function PurchaseWizard({
                   }
                 />
               </div>
+
+              <CostCenterField
+                className="mt-4"
+                costCenters={costCenters}
+                value={draft.purchase.costCenterId ?? ""}
+                onChange={(v) =>
+                  patch((d) => ({ ...d, purchase: { ...d.purchase, costCenterId: v } }))
+                }
+              />
 
               <dl className="mt-4 border-t border-border pt-3">
                 <WizardSummaryRow

@@ -198,6 +198,19 @@ export const REPORTS: ReportDefinition[] = [
     paramKind: "period",
     icon: "PackageOpen",
   },
+  {
+    id: "opname-history",
+    // Jalan masuk BACA ke riwayat opname (issue #129): tautan lamanya hanya
+    // hidup di halaman hitung ulang yang berizin tulis, sehingga pemegang
+    // izin baca-saja tidak pernah bisa sampai ke sana (audit 2026-07).
+    title: "Riwayat Hitung Ulang Stok",
+    description: "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya.",
+    category: "stok",
+    status: "available",
+    href: "/inventory/opname/history",
+    paramKind: "period",
+    icon: "Package",
+  },
   // ── Kas & Bank ────────────────────────────────────────────────────────────
   {
     id: "cash-bank",

@@ -43,17 +43,27 @@ export async function GET(request: Request) {
   }
 
   const { scope, status, documentType } = parsed.data;
+  // `mine`-scope filters go INTO the query: the list is truncated to the
+  // newest 50, and filtering a truncated list returns "matches within the
+  // newest 50", not "the newest 50 matches". The inbox is the complete
+  // pending set, so its `documentType` refinement here is exact — and a
+  // `status` filter on it is meaningful only for the value it is pinned to.
   const rows =
     scope === "mine"
-      ? await listMyApprovalRequests(parseInt(result.session.user.id, 10))
+      ? await listMyApprovalRequests(parseInt(result.session.user.id, 10), 50, {
+          status,
+          documentType,
+        })
       : await listPendingApprovals(result.session.user.role);
 
-  // Both filters are optional refinements over an already-narrow list; applying
-  // them here keeps the two queue queries above indexed and identical.
-  const filtered = rows.filter(
-    (r) =>
-      (!status || r.status === status) && (!documentType || r.documentType === documentType)
-  );
+  const filtered =
+    scope === "inbox"
+      ? rows.filter(
+          (r) =>
+            (!status || r.status === status) &&
+            (!documentType || r.documentType === documentType)
+        )
+      : rows;
 
   return NextResponse.json(filtered);
 }

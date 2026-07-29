@@ -1566,6 +1566,7 @@
       }
     },
     "catalogReport": {
+      "opname_history": { "title": "库存盘点历史", "description": "各期间的盘点结果：盘盈、盘亏及净差异。" },
       "trial_balance": {
         "title": "试算表",
         "description": "某一日期全部科目的借贷余额——必须平衡。"

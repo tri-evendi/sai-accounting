@@ -128,7 +128,13 @@ export type AuditAction =
    * menu itu hilang, dan siapa yang mematikannya". Tidak menyentuh satu baris
    * jurnal pun, dan tidak mengubah izin siapa pun.
    */
-  | "company_setting.modules.update";
+  | "company_setting.modules.update"
+  /**
+   * Unggah dokumen (lampiran kontrak/faktur). Tidak menyentuh jurnal — tapi
+   * menulis berkas ke server, dan setiap route yang menulis wajib meninggalkan
+   * jejak.
+   */
+  | "document.upload";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */
@@ -157,7 +163,9 @@ export type AuditEntity =
   /** Override matriks izin (issue #73). */
   | "role_permission_override"
   /** Izin khusus per pengguna (issue #75). */
-  | "user_permission_override";
+  | "user_permission_override"
+  /** Dokumen unggahan (lampiran). */
+  | "document";
 
 export type AuditLogEntry = {
   id: string;

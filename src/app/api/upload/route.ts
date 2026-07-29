@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { writeAuditLog } from "@/lib/audit";
+import { DOCUMENT_TYPES, type DocumentType } from "@/lib/constants";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -71,8 +73,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // `type` masuk ke kolom enum-like — hanya nilai dari DOCUMENT_TYPES yang sah.
+  if (docType && !DOCUMENT_TYPES.includes(docType as DocumentType)) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("validation.invalidInput") }, { status: 400 });
+  }
+
   // Validate contractId exists if provided
   if (contractId) {
+    // `parseInt("abc")` = NaN dan Prisma melemparnya sebagai 500 — id wajib
+    // murni digit sebelum menyentuh kueri.
+    if (!/^\d+$/.test(contractId)) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("validation.invalidInput") }, { status: 400 });
+    }
     const contract = await prisma.contract.findUnique({
       where: { id: parseInt(contractId) },
     });
@@ -109,6 +123,21 @@ export async function POST(request: Request) {
       type: docType || null,
       contractId: contractId ? parseInt(contractId) : null,
     },
+  });
+
+  await writeAuditLog({
+    userId: result.session.user.id,
+    username: result.session.user.name,
+    action: "document.upload",
+    entity: "document",
+    entityId: document.id,
+    details: {
+      filename: document.filename,
+      filepath: document.filepath,
+      type: document.type,
+      contractId: document.contractId,
+    },
+    request,
   });
 
   return NextResponse.json(document, { status: 201 });

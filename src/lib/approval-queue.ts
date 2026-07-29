@@ -173,13 +173,23 @@ export async function listPendingApprovals(role: Role | string): Promise<Approva
   return withUserNames(rows);
 }
 
-/** Everything a user has raised, newest first — including decided outcomes. */
+/**
+ * Everything a user has raised, newest first — including decided outcomes.
+ * Optional filters are applied IN the query, before the `limit` — filtering
+ * after a `take` would return matches within the newest N, not the newest N
+ * matches.
+ */
 export async function listMyApprovalRequests(
   userId: number,
-  limit = 50
+  limit = 50,
+  filters: { status?: string; documentType?: string } = {}
 ): Promise<ApprovalRequestView[]> {
   const rows = await prisma.approvalRequest.findMany({
-    where: { requestedById: userId },
+    where: {
+      requestedById: userId,
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.documentType ? { documentType: filters.documentType } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

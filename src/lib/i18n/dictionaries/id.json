@@ -1566,6 +1566,7 @@
       }
     },
     "catalogReport": {
+      "opname_history": { "title": "Riwayat Hitung Ulang Stok", "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya." },
       "trial_balance": {
         "title": "Neraca Saldo",
         "description": "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang."

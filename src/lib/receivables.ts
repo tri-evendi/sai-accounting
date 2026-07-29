@@ -29,6 +29,7 @@
  * `overdue`, because we do not know that it is.
  */
 import { prisma } from "@/lib/prisma";
+import { buildContractOutstanding } from "@/lib/document-chain";
 
 /** Half a cent — money is Decimal(15,2), so anything under this is rounding noise. */
 const EPSILON = 0.005;
@@ -523,7 +524,19 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
     }),
     client.contract.findMany({
       where: { status: { not: "canceled" }, date: { lte: asOf } },
-      include: { items: true, payments: true },
+      include: {
+        items: true,
+        payments: true,
+        // Faktur "tarikan" (pola Ambil, issue #15): nilai yang sudah
+        // difakturkan bukan lagi klaim KONTRAK — klaimnya kini hidup di baris
+        // faktur itu sendiri di daftar ini. Tanpa pengurangan ini satu
+        // penjualan tampil dua kali (kontrak penuh + fakturnya) dan total
+        // piutang menggelembung ~2× untuk pasangan kontrak→faktur.
+        invoices: {
+          where: { status: { not: "canceled" }, date: { lte: asOf } },
+          include: { items: true },
+        },
+      },
       orderBy: { date: "desc" },
     }),
   ]);
@@ -575,6 +588,40 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
   for (const c of contracts) {
     const total = contractSubtotal(c.items);
     if (total <= EPSILON) continue;
+
+    // The invoiced slice of this contract, measured by the SAME per-line
+    // name-matching arithmetic the contract detail page uses. It enters as a
+    // settlement row in the contract's own currency (the chain inherits it on
+    // a pull), valued through `toBase` at the contract's rate — a rate-less
+    // foreign contract already has no IDR value at all, so nothing new leaks.
+    const invoicedValue = buildContractOutstanding({
+      lines: c.items.map((i) => ({
+        itemName: i.itemName ?? "",
+        bags: num(i.bags),
+        kgPerBag: num(i.kgPerBag),
+        pricePerKg: num(i.pricePerKg),
+      })),
+      invoiced: (c.invoices ?? []).flatMap((inv) =>
+        inv.items.map((i) => ({
+          itemName: i.itemName ?? "",
+          quantity: num(i.quantity),
+          price: num(i.price),
+        }))
+      ),
+    }).totals.invoicedValue;
+
+    const settlements: MoneyRow[] = [...upTo(c.payments, asOf)];
+    if (invoicedValue > EPSILON) {
+      settlements.push({
+        // Capped at the contract's own value: over-invoicing must not turn the
+        // row into a negative claim (settleDocument also floors at zero).
+        amount: Math.min(invoicedValue, total),
+        currency: c.currency || BASE_CURRENCY,
+        rate: c.rate,
+        baseAmount: null,
+      });
+    }
+
     // Contracts carry their own rate + IDR base since migration 0008 (issue #36),
     // so a rated foreign contract now counts toward the IDR totals. Legacy rows
     // predate the column and keep a NULL rate: `toBase` returns null for them and
@@ -586,7 +633,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       rate: c.rate == null ? null : num(c.rate),
       date: c.date,
       dueDate: c.dueDate,
-      payments: upTo(c.payments, asOf),
+      payments: settlements,
       asOf,
     });
     rows.push({

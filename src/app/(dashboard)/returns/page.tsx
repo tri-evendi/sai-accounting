@@ -21,9 +21,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Money, MoneyCell } from "@/components/ui/money";
+import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { Undo2, Plus, Info } from "lucide-react";
 import { ReturnPdfButton } from "./pdf-button";
@@ -33,28 +34,45 @@ export const dynamic = "force-dynamic";
 export default async function ReturnsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   await requirePagePermission("return.read");
   const t = await getT();
   const sp = await searchParams;
   const tab = sp.tab === "purchase" ? "purchase" : "sales";
+  const page = parsePageParam(sp.page);
+  const perPage = 20;
 
-  const [salesReturns, purchaseReturns] = await Promise.all([
-    prisma.salesReturn.findMany({
-      orderBy: { date: "desc" },
-      include: {
-        items: true,
-        invoice: { select: { invoiceNo: true } },
-        customer: { select: { name: true } },
-      },
-    }),
-    prisma.purchaseReturn.findMany({
-      orderBy: { date: "desc" },
-      include: { items: true, supplier: { select: { name: true } } },
-    }),
+  // Hanya tab yang sedang dibuka yang barisnya diambil (berpaginasi); lencana
+  // jumlah di kedua tab cukup dari `count` — bukan dua daftar penuh + relasi
+  // setiap kali halaman dibuka.
+  const [salesCount, purchaseCount, salesReturns, purchaseReturns] = await Promise.all([
+    prisma.salesReturn.count(),
+    prisma.purchaseReturn.count(),
+    tab === "sales"
+      ? prisma.salesReturn.findMany({
+          orderBy: { date: "desc" },
+          include: {
+            items: true,
+            invoice: { select: { invoiceNo: true } },
+            customer: { select: { name: true } },
+          },
+          skip: (page - 1) * perPage,
+          take: perPage,
+        })
+      : Promise.resolve([]),
+    tab === "purchase"
+      ? prisma.purchaseReturn.findMany({
+          orderBy: { date: "desc" },
+          include: { items: true, supplier: { select: { name: true } } },
+          skip: (page - 1) * perPage,
+          take: perPage,
+        })
+      : Promise.resolve([]),
   ]);
 
+  const totalCount = tab === "sales" ? salesCount : purchaseCount;
+  const totalPages = Math.ceil(totalCount / perPage);
   const rows = tab === "sales" ? salesReturns : purchaseReturns;
 
   return (
@@ -75,12 +93,12 @@ export default async function ReturnsPage({
       <div className="mb-6 flex flex-wrap gap-2">
         {[
           {
-            label: t("returns.tabSales", { count: salesReturns.length }),
+            label: t("returns.tabSales", { count: salesCount }),
             href: "/returns?tab=sales",
             active: tab === "sales",
           },
           {
-            label: t("returns.tabPurchase", { count: purchaseReturns.length }),
+            label: t("returns.tabPurchase", { count: purchaseCount }),
             href: "/returns?tab=purchase",
             active: tab === "purchase",
           },
@@ -211,6 +229,14 @@ export default async function ReturnsPage({
                 })}
             </TableBody>
           </Table>
+          {/* `sp` diteruskan utuh — komponen Pagination membawa `tab` yang
+              sedang aktif ke tautan halamannya. */}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/returns"
+            searchParams={sp}
+          />
         </Card>
       )}
     </div>

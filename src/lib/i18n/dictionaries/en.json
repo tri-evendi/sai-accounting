@@ -1566,6 +1566,7 @@
       }
     },
     "catalogReport": {
+      "opname_history": { "title": "Stock Count History", "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance." },
       "trial_balance": {
         "title": "Trial Balance",
         "description": "Debit/credit balance of every account on one date — it must balance."

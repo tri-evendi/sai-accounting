@@ -12,7 +12,7 @@
  * never the authority. A foreign balance with no rate is refused, here and again
  * on the server, rather than valued 1:1.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +35,7 @@ import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { ModulePicker } from "@/components/settings/module-picker";
 import {
   BUSINESS_MODULES,
+  isBusinessCategory,
   modulesForCategory,
   normalizeEnabledModules,
   type BusinessCategory,
@@ -57,6 +58,9 @@ const baseOf = (amount: number, rate: number) => round2(round2(amount) * rate);
 
 let uid = 0;
 const nextId = () => ++uid;
+
+/** Kunci draf sessionStorage — lihat blok "Draf tahan-muat-ulang" di bawah. */
+const SETUP_DRAFT_KEY = "setup-wizard-draft";
 
 interface CashRow {
   key: number;
@@ -137,6 +141,86 @@ export function SetupWizard({
   const [receivables, setReceivables] = useState<PartnerRow[]>([]);
   const [payables, setPayables] = useState<PartnerRow[]>([]);
   const [inventory, setInventory] = useState("");
+
+  // ── Draf tahan-muat-ulang (audit 2026-07) ──────────────────────────────────
+  // Empat puluh baris saldo awal yang lenyap karena tab ter-refresh adalah
+  // cara tercepat kehilangan kepercayaan operator. Draf hidup di
+  // sessionStorage (BUKAN localStorage: draf setup adalah satu sesi kerja, dan
+  // mesin bersama tidak boleh mewariskan draf orang lain), dipulihkan saat
+  // mount, dan dihapus saat POST sukses. Server tetap memvalidasi semuanya —
+  // draf hanyalah ketikan, bukan data tepercaya.
+  const hydrated = useRef(false);
+  const submitted = useRef(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SETUP_DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw) as Record<string, unknown>;
+        const str = (v: unknown): v is string => typeof v === "string";
+        const rows = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+        if (typeof d.step === "number" && d.step >= 0 && d.step < STEP_KEYS.length)
+          setStep(d.step);
+        if (str(d.name) && d.name) setName(d.name);
+        if (str(d.address)) setAddress(d.address);
+        if (str(d.npwp)) setNpwp(d.npwp);
+        if (str(d.baseCurrency) && d.baseCurrency) setBaseCurrency(d.baseCurrency);
+        if (str(d.fiscalYearStart) && d.fiscalYearStart) setFiscalYearStart(d.fiscalYearStart);
+        if (str(d.category) && isBusinessCategory(d.category)) setCategory(d.category);
+        if (Array.isArray(d.modules)) {
+          const known = new Set<string>(BUSINESS_MODULES);
+          setModules(new Set(d.modules.filter((m): m is BusinessModule => known.has(String(m)))));
+        }
+        if (d.cash != null) setCash(rows<CashRow>(d.cash));
+        if (d.receivables != null) setReceivables(rows<PartnerRow>(d.receivables));
+        if (d.payables != null) setPayables(rows<PartnerRow>(d.payables));
+        if (str(d.inventory)) setInventory(d.inventory);
+      }
+    } catch {
+      // Draf rusak → mulai bersih; jangan pernah memblokir wizard-nya sendiri.
+    }
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Menyimpan sebelum pulih akan MENIMPA draf dengan nilai awal — tunggu.
+    if (!hydrated.current || submitted.current) return;
+    try {
+      sessionStorage.setItem(
+        SETUP_DRAFT_KEY,
+        JSON.stringify({
+          step,
+          name,
+          address,
+          npwp,
+          baseCurrency,
+          fiscalYearStart,
+          category,
+          modules: [...modules],
+          cash,
+          receivables,
+          payables,
+          inventory,
+        })
+      );
+    } catch {
+      // Storage penuh/di-nonaktifkan — draf memang best-effort.
+    }
+  }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory]);
+
+  const hasMeaningfulDraft =
+    cash.length > 0 || receivables.length > 0 || payables.length > 0 || inventory !== "";
+
+  useEffect(() => {
+    if (!hasMeaningfulDraft) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      if (submitted.current) return;
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasMeaningfulDraft]);
 
   const cashById = useMemo(
     () => new Map(cashAccounts.map((a) => [String(a.id), a])),
@@ -272,6 +356,14 @@ export function SetupWizard({
         return;
       }
       toast(t("setup.toastDone"), "success");
+      // Setup tersimpan — drafnya selesai bertugas dan tidak boleh muncul
+      // lagi di kunjungan berikutnya (halaman ini berubah jadi ringkasan).
+      submitted.current = true;
+      try {
+        sessionStorage.removeItem(SETUP_DRAFT_KEY);
+      } catch {
+        /* storage tak tersedia — tak apa */
+      }
       router.push("/reports");
       router.refresh();
     } catch {

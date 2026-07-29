@@ -49,11 +49,17 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   const [error, setError] = useState("");
   const [type, setType] = useState<"purchase" | "payment">("purchase");
   const [currency, setCurrency] = useState(BASE_CURRENCY);
+  // Controlled so the allocation prefill can cap itself at the payment amount
+  // (the same `Math.min` the allocation editor applies).
+  const [amount, setAmount] = useState("");
 
   // Allocation state (issue #37). `alloc` maps purchase id → amount typed by the
   // user, in the PAYMENT's currency. Absent key = not allocated.
   const [purchases, setPurchases] = useState<OutstandingPurchase[]>([]);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
+  // A failed outstanding-purchases fetch must not masquerade as "nothing
+  // outstanding": the two states render differently below.
+  const [purchasesError, setPurchasesError] = useState(false);
   const [alloc, setAlloc] = useState<Record<number, string>>({});
   // issue #98 — cabang/unit yang menanggung pembelian (atau membayarnya). Retur
   // pembeliannya mewarisi dimensi ini.
@@ -65,13 +71,18 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
 
   const loadPurchases = useCallback(async () => {
     setLoadingPurchases(true);
+    setPurchasesError(false);
     try {
       const res = await fetch(`/api/suppliers/${supplierId}/transactions?outstanding=1`);
-      setPurchases(res.ok ? await res.json() : []);
+      if (!res.ok) throw new Error();
+      setPurchases(await res.json());
     } catch {
       // A failed lookup must not block recording the payment — allocation is
-      // optional, and an unallocated payment is still a correct payment.
+      // optional, and an unallocated payment is still a correct payment. But it
+      // must SAY it failed rather than render as "nothing outstanding", so the
+      // rows are withheld and an error message shown instead.
       setPurchases([]);
+      setPurchasesError(true);
     }
     setLoadingPurchases(false);
   }, [supplierId]);
@@ -149,6 +160,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
     setOpen(false);
     setLoading(false);
     setAlloc({});
+    setAmount("");
     router.refresh();
   }
 
@@ -215,6 +227,8 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           min="0"
           className="text-right tabular-nums"
           label={isPurchase ? t("suppliers.txAmountPurchase") : t("suppliers.txAmountPayment")}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
           required
         />
 
@@ -284,6 +298,10 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
 
             {loadingPurchases ? (
               <p className="text-xs text-muted-foreground">{t("suppliers.allocLoading")}</p>
+            ) : purchasesError ? (
+              <p className="text-xs text-destructive-strong" role="alert">
+                {t("suppliers.allocLoadFailed")}
+              </p>
             ) : purchases.length === 0 ? (
               <p className="text-xs text-muted-foreground">{t("suppliers.txNoOutstanding")}</p>
             ) : (
@@ -307,11 +325,18 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                                 const next = { ...prev };
                                 if (v === true) {
                                   // Default to clearing the document in full when
-                                  // the payment is in IDR; otherwise leave blank
-                                  // rather than guess across currencies.
+                                  // the payment is in IDR — capped at the payment
+                                  // amount, like the allocation editor; otherwise
+                                  // leave blank rather than guess across
+                                  // currencies.
+                                  const paymentAmount = Number(amount);
                                   next[p.id] =
                                     !isForeign && p.remainingBase != null
-                                      ? String(p.remainingBase)
+                                      ? String(
+                                          paymentAmount > 0
+                                            ? Math.min(p.remainingBase, paymentAmount)
+                                            : p.remainingBase
+                                        )
                                       : "";
                                 } else delete next[p.id];
                                 return next;

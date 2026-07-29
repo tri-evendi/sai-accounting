@@ -126,6 +126,10 @@ export default async function InventoryPage({
         actions={
           <>
             <InventoryPageActions items={toClientInventory(allInventory)} />
+            {/* Halaman ini menjawab "berapa yang saya punya SEKARANG" dan sengaja
+                tanpa periode; pertanyaan "apa yang bergerak bulan lalu" dijawab
+                Kartu Stok, yang punya saldo awal & akhir sendiri (issue #126). */}
+            <Link href="/inventory/movement"><Button variant="secondary">{t("stockMovement.linkLabel")}</Button></Link>
             <Link href="/inventory/update"><Button>{t("common.addRemoveStock")}</Button></Link>
             <Link href="/inventory/opname"><Button variant="secondary">{t("nav.items.inventoryOpname")}</Button></Link>
           </>

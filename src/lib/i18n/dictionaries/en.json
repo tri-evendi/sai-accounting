@@ -1590,7 +1590,7 @@
       },
       "stock_movement": {
         "title": "Stock Card / Movements",
-        "description": "The in/out history of each commodity over a period."
+        "description": "Opening balance, goods in and out, and closing balance per commodity — by week, month or year."
       },
       "cash_bank": {
         "title": "Cash & Bank Report",
@@ -2002,6 +2002,28 @@
     "workflowTitle": "Workflows",
     "workflowHint": "Not sure where to start? Follow the steps in order — each one opens its page.",
     "workflowOptional": "optional"
+  },
+  "stockMovement": {
+    "title": "Stock Card / Movement",
+    "description": "Opening balance, goods in and out, then closing balance for each commodity over the selected period.",
+    "linkLabel": "Stock Card by Period",
+    "granularityLabel": "Time range",
+    "granularityWeek": "Weekly",
+    "granularityMonth": "Monthly",
+    "granularityYear": "Yearly",
+    "granularityCustom": "Custom range",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "periodRange": "{from} – {to}",
+    "periodWeek": "Week {week} · {range}",
+    "colOpening": "Opening",
+    "colIn": "In",
+    "colOut": "Out",
+    "colProcessed": "In process",
+    "colClosing": "Closing",
+    "emptyTitle": "No movement in this period",
+    "emptyDescription": "No item held an opening balance or moved within this time range. Try another period.",
+    "dormantNote": "{count} items with no opening balance and no movement in this period are hidden."
   },
   "inventory": {
     "levelHealthy": "Healthy",

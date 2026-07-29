@@ -1590,7 +1590,7 @@
       },
       "stock_movement": {
         "title": "Kartu Stok / Mutasi",
-        "description": "Riwayat masuk-keluar tiap komoditas pada suatu periode."
+        "description": "Saldo awal, masuk-keluar, dan saldo akhir tiap komoditas — per minggu, bulan atau tahun."
       },
       "cash_bank": {
         "title": "Laporan Kas & Bank",
@@ -2002,6 +2002,28 @@
     "workflowTitle": "Alur Kerja",
     "workflowHint": "Belum tahu mulai dari mana? Ikuti urutan langkah berikut — tiap langkah membuka halamannya.",
     "workflowOptional": "opsional"
+  },
+  "stockMovement": {
+    "title": "Kartu Stok / Mutasi",
+    "description": "Saldo awal, barang masuk dan keluar, lalu saldo akhir tiap komoditas pada periode yang dipilih.",
+    "linkLabel": "Kartu Stok per Periode",
+    "granularityLabel": "Rentang waktu",
+    "granularityWeek": "Mingguan",
+    "granularityMonth": "Bulanan",
+    "granularityYear": "Tahunan",
+    "granularityCustom": "Rentang khusus",
+    "previousPeriod": "Periode sebelumnya",
+    "nextPeriod": "Periode berikutnya",
+    "periodRange": "{from} – {to}",
+    "periodWeek": "Minggu ke-{week} · {range}",
+    "colOpening": "Saldo Awal",
+    "colIn": "Masuk",
+    "colOut": "Keluar",
+    "colProcessed": "Diolah",
+    "colClosing": "Saldo Akhir",
+    "emptyTitle": "Tidak ada mutasi pada periode ini",
+    "emptyDescription": "Belum ada barang yang bersaldo awal maupun bergerak di rentang waktu ini. Coba pilih periode lain.",
+    "dormantNote": "{count} barang tanpa saldo awal dan tanpa mutasi pada periode ini tidak ditampilkan."
   },
   "inventory": {
     "levelHealthy": "Aman",

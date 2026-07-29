@@ -184,9 +184,10 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "stock-movement",
     title: "Kartu Stok / Mutasi",
-    description: "Riwayat masuk-keluar tiap komoditas pada suatu periode.",
+    description: "Saldo awal, masuk-keluar, dan saldo akhir tiap komoditas — per minggu, bulan atau tahun.",
     category: "stok",
-    status: "coming_soon",
+    status: "available",
+    href: "/inventory/movement",
     paramKind: "period",
     icon: "PackageOpen",
   },

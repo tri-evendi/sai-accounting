@@ -81,11 +81,42 @@ const cashFlow = z.object({
   suspectUnrated: z.number().int().nonnegative(),
 });
 
+/**
+ * Kartu Stok (issue #126). `quantity` is a plain finite number like `money` —
+ * it may be negative (an oversold item, a correction) and is never re-rounded
+ * here; `Decimal(15,3)` precision has to survive to the spreadsheet.
+ */
+const quantity = z.number().finite();
+
+const stockMovement = z.object({
+  kind: z.literal("stock-movement"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      name: z.string(),
+      unit: z.string().nullable(),
+      opening: quantity,
+      movedIn: quantity,
+      movedOut: quantity,
+      processed: quantity,
+      closing: quantity,
+    })
+  ),
+  totalOpening: quantity,
+  totalIn: quantity,
+  totalOut: quantity,
+  totalProcessed: quantity,
+  totalClosing: quantity,
+  hasProcess: z.boolean(),
+  dormantCount: z.number().int().nonnegative(),
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
   balanceSheet,
   cashFlow,
+  stockMovement,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

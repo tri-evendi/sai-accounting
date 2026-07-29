@@ -11,7 +11,7 @@
  * pre-formatted strings that would lose both precision and the ability to total.
  */
 import ExcelJS from "exceljs";
-import { IDR_NUMBER_FORMAT, type SheetModel } from "@/lib/report-export";
+import { IDR_NUMBER_FORMAT, QUANTITY_NUMBER_FORMAT, type SheetModel } from "@/lib/report-export";
 
 /**
  * Render one or more sheet models into a single workbook buffer.
@@ -71,6 +71,7 @@ export async function buildWorkbookBuffer(
       cells.forEach((c, i) => {
         const cell = row.getCell(i + 1);
         if (c.format === "money") cell.numFmt = IDR_NUMBER_FORMAT;
+        if (c.format === "quantity") cell.numFmt = QUANTITY_NUMBER_FORMAT;
         if (c.bold) cell.font = { bold: true };
         if (c.align) cell.alignment = { horizontal: c.align };
       });

@@ -1590,7 +1590,7 @@
       },
       "stock_movement": {
         "title": "库存台账 / 出入库",
-        "description": "某一期间各商品的出入库明细。"
+        "description": "各商品的期初余额、出入库与期末余额——可按周、按月或按年查看。"
       },
       "cash_bank": {
         "title": "现金与银行报表",
@@ -2002,6 +2002,28 @@
     "workflowTitle": "工作流程",
     "workflowHint": "不知从何入手？请按以下步骤顺序操作——每一步都会打开对应页面。",
     "workflowOptional": "可选"
+  },
+  "stockMovement": {
+    "title": "存货卡 / 出入库明细",
+    "description": "所选期间内各商品的期初余额、入库与出库数量，以及期末余额。",
+    "linkLabel": "分期间存货卡",
+    "granularityLabel": "时间范围",
+    "granularityWeek": "按周",
+    "granularityMonth": "按月",
+    "granularityYear": "按年",
+    "granularityCustom": "自定义范围",
+    "previousPeriod": "上一期间",
+    "nextPeriod": "下一期间",
+    "periodRange": "{from} – {to}",
+    "periodWeek": "第 {week} 周 · {range}",
+    "colOpening": "期初余额",
+    "colIn": "入库",
+    "colOut": "出库",
+    "colProcessed": "加工中",
+    "colClosing": "期末余额",
+    "emptyTitle": "本期间没有出入库记录",
+    "emptyDescription": "该时间范围内没有商品持有期初余额或发生出入库。请尝试其他期间。",
+    "dormantNote": "有 {count} 项商品在本期间既无期初余额也无出入库，已隐藏。"
   },
   "inventory": {
     "levelHealthy": "充足",

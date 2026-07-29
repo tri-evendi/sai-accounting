@@ -190,6 +190,15 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // penampung dan sebuah titik dua, jadi tidak ada yang bisa diterjemahkan
     // (bahasa Mandarin memakai titik dua penuh-lebar).
     "permissions.cellAria",
+    // Rentang tanggal Kartu Stok: "{from} – {to}" — dua penampung dan sebuah
+    // tanda pisah. Tidak ada satu kata pun di dalamnya, dan tanggalnya sendiri
+    // sudah diformat id-ID oleh `formatDate` sebelum disisipkan.
+    "stockMovement.periodRange",
+  ]),
+  zh: new Set([
+    // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
+    // memakai en-dash di antara dua tanggal, jadi tidak ada yang berubah.
+    "stockMovement.periodRange",
   ]),
 };
 

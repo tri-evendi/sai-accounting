@@ -72,7 +72,17 @@ export async function PlainSummary({ summary }: { summary: ReportSummary }) {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        {/* Tiga kartu adalah bentuk bakunya (Neraca, Arus Kas). Laba/Rugi
+            menambah Laba Kotor saat pembukuannya memang punya HPP (issue #123),
+            dan empat kartu di `sm:grid-cols-3` akan menyisakan satu yatim di
+            baris kedua — jadi jumlah kartunya yang menentukan kisinya, bukan
+            angka tetap. Laporan berkartu tiga tidak berubah sama sekali. */}
+        <div
+          className={cn(
+            "grid gap-3",
+            summary.cards.length >= 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+          )}
+        >
           {summary.cards.map((c) => {
             const s = DIR[c.direction];
             const { Icon } = s;

@@ -98,6 +98,71 @@ export interface StatementLine {
   amount: number;
 }
 
+/** One band of the multi-step statement, its lines already in account-code order. */
+export interface IncomeStatementSection {
+  lines: StatementLine[];
+  total: number;
+}
+
+/**
+ * The five bands a profit-and-loss account can fall into (issue #123).
+ *
+ * These are what makes the report *multi-step*: Penjualan − HPP = Laba Kotor,
+ * − Beban Operasional = Laba Usaha, ± lain-lain = Laba Bersih. Gross margin is
+ * the number a trading business reads first, and a single-step statement — one
+ * "Beban" bucket holding cost of goods, salaries and FX losses together — cannot
+ * show it at all.
+ */
+export type IncomeStatementSectionKey =
+  | "sales"
+  | "cogs"
+  | "operating_expense"
+  | "other_income"
+  | "other_expense";
+
+/**
+ * The section an account belongs to, from its TYPE.
+ *
+ * TOTAL over P&L accounts, on purpose. Every account whose category is `revenue`
+ * or `expense` gets a section — the two `other_*` types are named explicitly and
+ * everything else falls to `sales` / `operating_expense`. That is what makes
+ * "Σ sections = Σ revenue − Σ expense" a property of the code rather than a
+ * coincidence: a revenue-ish type added to `ACCOUNT_TYPES` later still lands in a
+ * visible band instead of vanishing from the breakdown while remaining in the
+ * totals — the failure mode where a report silently stops adding up.
+ * Non-P&L accounts (asset, liability, equity) return `undefined`.
+ */
+export function incomeStatementSectionFor(type: string): IncomeStatementSectionKey | undefined {
+  const category = accountCategoryFor(type);
+  if (category === "revenue") return type === "other_income" ? "other_income" : "sales";
+  if (category === "expense") {
+    if (type === "cogs") return "cogs";
+    if (type === "other_expense") return "other_expense";
+    return "operating_expense";
+  }
+  return undefined;
+}
+
+export interface IncomeStatement {
+  /** Every revenue-category line (sales + other income), in code order. */
+  revenue: StatementLine[];
+  /** Every expense-category line (COGS + operating + other), in code order. */
+  expense: StatementLine[];
+  totalRevenue: number;
+  totalExpense: number;
+  netIncome: number;
+  // ── Multi-step breakdown: the same lines, regrouped (issue #123) ───────────
+  sales: IncomeStatementSection;
+  cogs: IncomeStatementSection;
+  /** Penjualan − HPP. */
+  grossProfit: number;
+  operatingExpense: IncomeStatementSection;
+  /** Laba Kotor − Beban Operasional. */
+  operatingProfit: number;
+  otherIncome: IncomeStatementSection;
+  otherExpense: IncomeStatementSection;
+}
+
 /**
  * Laba/Rugi, optionally for a single cost centre (issue #91).
  *
@@ -106,43 +171,74 @@ export interface StatementLine {
  * Deliberately NOT offered on `getBalanceSheet`: filtering a balance sheet by
  * cost centre leaves debits and credits unequal unless inter-unit due-to/due-from
  * accounts exist to bridge them, which is a deeper design (see issue #91).
+ *
+ * ── One accumulation, two views (issue #123) ────────────────────────────────
+ * Amounts are summed ONCE, into the five multi-step sections; the aggregates
+ * (`revenue` / `expense` / `totalRevenue` / `totalExpense`) are those same lines
+ * and those same totals regrouped, and `netIncome` walks the multi-step chain.
+ * So the flat view and the stepped view cannot drift: they are not two additions
+ * of the same numbers, they are one addition presented two ways. Consumers that
+ * only want actuals per account (`budget-report.ts`) keep reading the flat
+ * arrays, which stay in account-code order exactly as before.
  */
 export async function getIncomeStatement(
   from?: Date,
   to?: Date,
   client = prisma,
   costCenter?: CostCenterFilter
-) {
+): Promise<IncomeStatement> {
   const range: DateRange = {};
   if (from) range.gte = from;
   if (to) range.lte = to;
   const nets = await accountNets(from || to ? range : undefined, client, costCenter);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
 
+  const empty = (): IncomeStatementSection => ({ lines: [], total: 0 });
+  const sections: Record<IncomeStatementSectionKey, IncomeStatementSection> = {
+    sales: empty(),
+    cogs: empty(),
+    operating_expense: empty(),
+    other_income: empty(),
+    other_expense: empty(),
+  };
   const revenue: StatementLine[] = [];
   const expense: StatementLine[] = [];
-  let totalRevenue = 0;
-  let totalExpense = 0;
 
   for (const a of accounts) {
+    const key = incomeStatementSectionFor(a.type);
+    if (!key) continue;
     const cat = accountCategoryFor(a.type);
     const n = nets.get(a.id) ?? { debit: 0, credit: 0 };
-    if (cat === "revenue") {
-      const amount = n.credit - n.debit;
-      if (amount !== 0) {
-        revenue.push({ code: a.code, name: a.name, amount });
-        totalRevenue += amount;
-      }
-    } else if (cat === "expense") {
-      const amount = n.debit - n.credit;
-      if (amount !== 0) {
-        expense.push({ code: a.code, name: a.name, amount });
-        totalExpense += amount;
-      }
-    }
+    // Sign normalisation stays per CATEGORY, not per section: revenue is
+    // credit−debit (so Retur Penjualan nets itself back out), expense is
+    // debit−credit. A section only decides where the line is printed.
+    const amount = cat === "revenue" ? n.credit - n.debit : n.debit - n.credit;
+    if (amount === 0) continue;
+    const line: StatementLine = { code: a.code, name: a.name, amount };
+    sections[key].lines.push(line);
+    sections[key].total += amount;
+    (cat === "revenue" ? revenue : expense).push(line);
   }
 
-  return { revenue, expense, totalRevenue, totalExpense, netIncome: totalRevenue - totalExpense };
+  const { sales, cogs, operating_expense: operatingExpense, other_income: otherIncome } = sections;
+  const otherExpense = sections.other_expense;
+  const grossProfit = sales.total - cogs.total;
+  const operatingProfit = grossProfit - operatingExpense.total;
+
+  return {
+    revenue,
+    expense,
+    totalRevenue: sales.total + otherIncome.total,
+    totalExpense: cogs.total + operatingExpense.total + otherExpense.total,
+    netIncome: operatingProfit + otherIncome.total - otherExpense.total,
+    sales,
+    cogs,
+    grossProfit,
+    operatingExpense,
+    operatingProfit,
+    otherIncome,
+    otherExpense,
+  };
 }
 
 export async function getBalanceSheet(asOf?: Date, client = prisma) {

@@ -14,12 +14,19 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { incomeStatementLayout } from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
 export interface StatementRow {
   code: string;
   name: string;
   amount: number;
+}
+
+/** One band of the multi-step Laba/Rugi, serialisable (issue #123). */
+export interface StatementSectionPayload {
+  lines: StatementRow[];
+  total: number;
 }
 
 export interface CashFlowGroupPayload {
@@ -42,10 +49,13 @@ export type StatementPayload =
   | {
       kind: "income-statement";
       period: string;
-      revenue: StatementRow[];
-      expense: StatementRow[];
-      totalRevenue: number;
-      totalExpense: number;
+      sales: StatementSectionPayload;
+      cogs: StatementSectionPayload;
+      grossProfit: number;
+      operatingExpense: StatementSectionPayload;
+      operatingProfit: number;
+      otherIncome: StatementSectionPayload;
+      otherExpense: StatementSectionPayload;
       netIncome: number;
     }
   | {
@@ -178,8 +188,58 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "income-statement") {
-    y = moneySection(doc, y, "Pendapatan", payload.revenue, "Total Pendapatan", payload.totalRevenue);
-    y = moneySection(doc, y, "Beban", payload.expense, "Total Beban", payload.totalExpense);
+    const layout = incomeStatementLayout(payload);
+
+    /** A bold subtotal line between two sections (Laba Kotor, Laba Usaha). */
+    const subtotal = (label: string, amount: number, atY: number) => {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(label, 14, atY);
+      doc.text(rp(amount), doc.internal.pageSize.getWidth() - 14, atY, { align: "right" });
+      return atY + 8;
+    };
+
+    y = moneySection(doc, y, "Pendapatan", payload.sales.lines, "Total Pendapatan", payload.sales.total);
+    if (layout.showCogs) {
+      y = moneySection(
+        doc,
+        y,
+        "Beban Pokok Penjualan",
+        payload.cogs.lines,
+        "Total Beban Pokok Penjualan",
+        payload.cogs.total
+      );
+    }
+    if (layout.showGrossProfit) y = subtotal("LABA KOTOR", payload.grossProfit, y);
+    y = moneySection(
+      doc,
+      y,
+      "Beban Operasional",
+      payload.operatingExpense.lines,
+      "Total Beban Operasional",
+      payload.operatingExpense.total
+    );
+    if (layout.showOperatingProfit) y = subtotal("LABA USAHA", payload.operatingProfit, y);
+    if (layout.showOtherIncome) {
+      y = moneySection(
+        doc,
+        y,
+        "Pendapatan Lain-lain",
+        payload.otherIncome.lines,
+        "Total Pendapatan Lain-lain",
+        payload.otherIncome.total
+      );
+    }
+    if (layout.showOtherExpense) {
+      y = moneySection(
+        doc,
+        y,
+        "Beban Lain-lain",
+        payload.otherExpense.lines,
+        "Total Beban Lain-lain",
+        payload.otherExpense.total
+      );
+    }
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");

@@ -24,7 +24,8 @@
  * `ReportSummary` tidak berubah sedikit pun — isinya tetap string biasa, hanya
  * kini dalam bahasa pengguna.
  */
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
+import { grossMarginPct } from "@/lib/statement-layout";
 import type { TranslateFn } from "@/lib/i18n/client";
 
 /** Same literal union as `SummaryCard`'s `MoneyDirection`, structurally assignable. */
@@ -45,6 +46,8 @@ export interface ReportSummary {
 }
 
 const rp = (n: number) => formatCurrency(n, "IDR");
+/** One decimal, id-ID — "33,3", matching the margin printed on the report itself. */
+const pct = (n: number) => formatNumber(Math.round(n * 10) / 10);
 
 interface IncomeStatementTotals {
   totalRevenue: number;
@@ -53,12 +56,36 @@ interface IncomeStatementTotals {
 }
 
 /**
+ * The extra figures the gross-margin sentence needs (issue #123).
+ *
+ * OPTIONAL on purpose. A margin is a claim about the relationship between
+ * revenue and the cost of the goods that produced it, and a caller that cannot
+ * supply the cost side has no business making that claim — so the sentence is
+ * simply absent rather than computed from a `cogs` we guessed at zero, which
+ * would report a flattering 100% margin to a business that never told us its
+ * costs. Present-but-empty says the same thing honestly: see below.
+ */
+interface GrossMarginFigures {
+  sales: { total: number };
+  cogs: { lines: readonly unknown[]; total: number };
+  grossProfit: number;
+}
+
+/**
  * "Untung/rugi" explained from the P&L totals. `netIncome` is compared to zero
  * with a 1-cent tolerance so a rounding-only residue reads as impas, not a
  * misleading Rp 0 profit/loss.
+ *
+ * When the caller also passes the multi-step figures AND the books actually have
+ * cost-of-goods accounts, a second sentence explains the gross margin and a
+ * fourth card carries Laba Kotor. Both are gated on `cogs.lines` being non-empty
+ * — the same rule the report's own layout uses (`@/lib/statement-layout`), for
+ * the same reason: with no HPP accounts the "gross" profit IS the revenue, and a
+ * sentence announcing a 100% margin would be arithmetically true and completely
+ * misleading.
  */
 export function incomeStatementSummary(
-  is: IncomeStatementTotals,
+  is: IncomeStatementTotals & Partial<GrossMarginFigures>,
   periodLabel: string,
   t: TranslateFn
 ): ReportSummary {
@@ -88,6 +115,40 @@ export function incomeStatementSummary(
     });
   }
 
+  // Gross margin — only when the books have cost-of-goods accounts to compute it
+  // against, and only when there were sales to be a percentage of.
+  const hasCogs = (is.cogs?.lines.length ?? 0) > 0;
+  const margin =
+    hasCogs && is.sales && is.grossProfit !== undefined
+      ? grossMarginPct(is.grossProfit, is.sales.total)
+      : null;
+
+  const grossCards: SummaryStat[] = [];
+  if (margin !== null && is.grossProfit !== undefined && is.sales && is.cogs) {
+    // A negative margin is not "a small margin" — it means goods left the door
+    // for less than they cost, so every extra sale deepens the loss. That is a
+    // different sentence, not the same one with a minus in it.
+    narrative +=
+      " " +
+      (margin < 0
+        ? t("reportSummary.isGrossMarginNegative", {
+            pct: pct(Math.abs(margin)),
+            cogs: rp(is.cogs.total),
+            sales: rp(is.sales.total),
+          })
+        : t("reportSummary.isGrossMargin", {
+            pct: pct(margin),
+            sales: rp(is.sales.total),
+            gross: rp(is.grossProfit),
+          }));
+    grossCards.push({
+      title: t("reports.grossProfitRow"),
+      amount: Math.abs(is.grossProfit),
+      direction: is.grossProfit < 0 ? "loss" : "profit",
+      explanation: t("reportSummary.isGrossExplanation"),
+    });
+  }
+
   return {
     narrative,
     cards: [
@@ -97,6 +158,9 @@ export function incomeStatementSummary(
         direction: "in",
         explanation: t("reportSummary.isMoneyInExplanation"),
       },
+      // Laba Kotor sits right after money-in: it is what is left of that money
+      // once the goods behind it are paid for, before anything else is deducted.
+      ...grossCards,
       {
         title: t("finance.colMoneyOut"),
         amount: is.totalExpense,

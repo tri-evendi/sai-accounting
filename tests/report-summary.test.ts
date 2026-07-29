@@ -11,6 +11,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { translate } from "@/lib/i18n/dictionary";
+import { formatCurrency } from "@/lib/utils";
 import id from "@/lib/i18n/dictionaries/id.json";
 import {
   incomeStatementSummary,
@@ -25,6 +26,9 @@ import {
  */
 const t = (key: string, values?: Record<string, string | number>) =>
   translate(id, key, values);
+
+/** Same formatter the summary uses — asserts on the rendered figure, not a guess. */
+const rp = (n: number) => formatCurrency(n, "IDR");
 
 describe("incomeStatementSummary — derived from the P&L totals", () => {
   const is = { totalRevenue: 1_734_568, totalExpense: 400_000, netIncome: 1_334_568 };
@@ -71,6 +75,117 @@ describe("incomeStatementSummary — derived from the P&L totals", () => {
       t
     );
     expect(s.narrative).toContain("impas");
+  });
+});
+
+/**
+ * Gross margin in the summary (issue #123).
+ *
+ * The hazard worth pinning is not the arithmetic — it is a margin sentence that
+ * appears when it has no right to. A caller with no cost-of-goods accounts must
+ * get NO margin claim rather than a flattering 100%, and the three-card layout
+ * every other report shares must be untouched when the sentence is absent.
+ */
+describe("incomeStatementSummary — gross margin", () => {
+  const trading = {
+    totalRevenue: 1_000_000,
+    totalExpense: 800_000,
+    netIncome: 200_000,
+    sales: { total: 1_000_000 },
+    cogs: { lines: [{ code: "5101" }], total: 600_000 },
+    grossProfit: 400_000,
+  };
+
+  it("states the margin and keeps the report's own figures", () => {
+    const s = incomeStatementSummary(trading, "Juli 2026", t);
+    expect(s.narrative).toContain("Marjin kotornya 40%");
+    expect(s.narrative).toContain(rp(400_000)); // laba kotor, verbatim
+    expect(s.narrative).toContain(rp(1_000_000)); // penjualan, verbatim
+  });
+
+  it("adds a Laba Kotor card straight after money-in, without disturbing the rest", () => {
+    const s = incomeStatementSummary(trading, "Juli 2026", t);
+    expect(s.cards.map((c) => c.title)).toEqual([
+      "Uang Masuk",
+      "Laba Kotor",
+      "Uang Keluar",
+      "Selisih (Untung / Rugi)",
+    ]);
+    const gross = s.cards[1];
+    expect(gross.amount).toBe(400_000);
+    expect(gross.direction).toBe("profit");
+  });
+
+  it("says nothing about margin when the books have no cost-of-goods accounts", () => {
+    // A service business: gross profit WOULD equal revenue, and announcing a
+    // 100% margin would be arithmetically true and completely misleading.
+    const s = incomeStatementSummary(
+      { ...trading, cogs: { lines: [], total: 0 }, grossProfit: 1_000_000 },
+      "Juli 2026",
+      t
+    );
+    expect(s.narrative).not.toContain("Marjin");
+    expect(s.cards.map((c) => c.title)).toEqual([
+      "Uang Masuk",
+      "Uang Keluar",
+      "Selisih (Untung / Rugi)",
+    ]);
+  });
+
+  it("says nothing about margin when the caller supplies only the flat totals", () => {
+    const s = incomeStatementSummary(
+      { totalRevenue: 1_000_000, totalExpense: 800_000, netIncome: 200_000 },
+      "Juli 2026",
+      t
+    );
+    expect(s.narrative).not.toContain("Marjin");
+    expect(s.cards).toHaveLength(3);
+  });
+
+  it("warns in different words when goods sold for less than they cost", () => {
+    const s = incomeStatementSummary(
+      {
+        totalRevenue: 1_000_000,
+        totalExpense: 1_400_000,
+        netIncome: -400_000,
+        sales: { total: 1_000_000 },
+        cogs: { lines: [{ code: "5101" }], total: 1_200_000 },
+        grossProfit: -200_000,
+      },
+      "Juli 2026",
+      t
+    );
+    expect(s.narrative).toContain("MINUS 20%");
+    expect(s.narrative).toContain("menambah rugi");
+    const gross = s.cards.find((c) => c.title === "Laba Kotor")!;
+    expect(gross.direction).toBe("loss");
+    expect(gross.amount).toBe(200_000); // absolute, the sign is carried by direction
+  });
+
+  it("says nothing about margin when there were no sales to have a margin on", () => {
+    const s = incomeStatementSummary(
+      {
+        totalRevenue: 0,
+        totalExpense: 50_000,
+        netIncome: -50_000,
+        sales: { total: 0 },
+        cogs: { lines: [{ code: "5101" }], total: 0 },
+        grossProfit: 0,
+      },
+      "Juli 2026",
+      t
+    );
+    expect(s.narrative).not.toContain("Marjin");
+    expect(s.cards).toHaveLength(3);
+  });
+
+  it("rounds the margin to one decimal, id-ID", () => {
+    const s = incomeStatementSummary(
+      { ...trading, cogs: { lines: [{ code: "5101" }], total: 666_666 }, grossProfit: 333_334 },
+      "Juli 2026",
+      t
+    );
+    expect(s.narrative).toContain("33,3%");
   });
 });
 

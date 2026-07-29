@@ -128,6 +128,7 @@
       "cashBook": "Buku Kas & Bank",
       "reconciliation": "Cocokkan Rekening Koran",
       "inventory": "Stok Barang",
+      "inventoryMovement": "Riwayat Stok",
       "inventoryUpdate": "Tambah / Kurangi Stok",
       "inventoryOpname": "Hitung Ulang Stok",
       "fixedAssets": "Barang Milik Perusahaan",
@@ -1589,7 +1590,7 @@
         "description": "Kuantitas dan nilai persediaan terkini per komoditas."
       },
       "stock_movement": {
-        "title": "Kartu Stok / Mutasi",
+        "title": "Riwayat Stok",
         "description": "Saldo awal, masuk-keluar, dan saldo akhir tiap komoditas — per minggu, bulan atau tahun."
       },
       "cash_bank": {
@@ -2004,9 +2005,9 @@
     "workflowOptional": "opsional"
   },
   "stockMovement": {
-    "title": "Kartu Stok / Mutasi",
-    "description": "Saldo awal, barang masuk dan keluar, lalu saldo akhir tiap komoditas pada periode yang dipilih.",
-    "linkLabel": "Kartu Stok per Periode",
+    "title": "Riwayat Stok",
+    "description": "Saldo awal, barang masuk dan keluar, lalu saldo akhir tiap barang pada rentang waktu yang dipilih. Nama resminya: Kartu Stok / Mutasi Persediaan.",
+    "linkLabel": "Riwayat Stok",
     "granularityLabel": "Rentang waktu",
     "granularityWeek": "Mingguan",
     "granularityMonth": "Bulanan",
@@ -2024,6 +2025,16 @@
     "emptyTitle": "Tidak ada mutasi pada periode ini",
     "emptyDescription": "Belum ada barang yang bersaldo awal maupun bergerak di rentang waktu ini. Coba pilih periode lain.",
     "dormantNote": "{count} barang tanpa saldo awal dan tanpa mutasi pada periode ini tidak ditampilkan."
+  },
+  "opnameHistory": {
+    "title": "Riwayat Hitung Ulang Stok",
+    "description": "Hitung ulang stok yang pernah dilakukan pada rentang waktu yang dipilih, beserta selisih tiap barangnya.",
+    "linkLabel": "Lihat Riwayat Hitung Ulang",
+    "sessionTitle": "Hitung ulang {date}",
+    "sessionSummary": "{count} barang berselisih · lebih {increase} · susut {decrease}",
+    "periodSummary": "Total pada rentang ini: {sessions} kali hitung ulang, {adjustments} penyesuaian barang, selisih bersih {net}.",
+    "emptyTitle": "Belum ada hitung ulang stok pada rentang ini",
+    "emptyDescription": "Tidak ada penyesuaian dari hitung ulang stok yang tercatat di rentang waktu ini. Coba pilih periode lain, atau lakukan hitung ulang sekarang."
   },
   "inventory": {
     "levelHealthy": "Aman",
@@ -2074,6 +2085,13 @@
     "opnameEmptyDescription": "Stok opname membandingkan catatan dengan hitungan fisik. Catat barang masuk pertama Anda supaya ada yang dibandingkan.",
     "opnameDateField": "Tanggal opname",
     "opnameHint": "Isi jumlah fisik yang dihitung. Barang yang dikosongkan tidak diubah.",
+    "opnameSearchLabel": "Cari barang",
+    "opnameSearchPlaceholder": "Ketik nama barang…",
+    "opnameNoMatch": "Tidak ada barang yang cocok dengan “{query}”.",
+    "opnameHiddenCounts": "{count} hitungan yang sudah Anda isi sedang tersembunyi oleh pencarian — semuanya tetap akan ikut tersimpan.",
+    "opnameSheetButton": "Cetak Lembar Hitung",
+    "opnameSheetTitle": "Lembar Hitung Fisik Persediaan",
+    "opnameSheetIncludeSystem": "Sertakan jumlah sistem",
     "colSystemStock": "Stok Sistem",
     "colPhysicalCount": "Hitung Fisik",
     "colVariance": "Selisih",

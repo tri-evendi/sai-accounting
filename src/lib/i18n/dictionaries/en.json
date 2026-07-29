@@ -128,6 +128,7 @@
       "cashBook": "Cash & Bank Book",
       "reconciliation": "Match Bank Statement",
       "inventory": "Stock on Hand",
+      "inventoryMovement": "Stock History",
       "inventoryUpdate": "Add / Remove Stock",
       "inventoryOpname": "Stock Count",
       "fixedAssets": "Company-Owned Assets",
@@ -1589,7 +1590,7 @@
         "description": "Current inventory quantity and value per commodity."
       },
       "stock_movement": {
-        "title": "Stock Card / Movements",
+        "title": "Stock History",
         "description": "Opening balance, goods in and out, and closing balance per commodity — by week, month or year."
       },
       "cash_bank": {
@@ -2004,9 +2005,9 @@
     "workflowOptional": "optional"
   },
   "stockMovement": {
-    "title": "Stock Card / Movement",
-    "description": "Opening balance, goods in and out, then closing balance for each commodity over the selected period.",
-    "linkLabel": "Stock Card by Period",
+    "title": "Stock History",
+    "description": "Opening balance, goods in and out, then closing balance for each item over the selected time range. Formally: the Stock Card / Inventory Movement report.",
+    "linkLabel": "Stock History",
     "granularityLabel": "Time range",
     "granularityWeek": "Weekly",
     "granularityMonth": "Monthly",
@@ -2024,6 +2025,16 @@
     "emptyTitle": "No movement in this period",
     "emptyDescription": "No item held an opening balance or moved within this time range. Try another period.",
     "dormantNote": "{count} items with no opening balance and no movement in this period are hidden."
+  },
+  "opnameHistory": {
+    "title": "Stock Count History",
+    "description": "Stock counts carried out within the selected time range, with the variance for each item.",
+    "linkLabel": "View Count History",
+    "sessionTitle": "Count on {date}",
+    "sessionSummary": "{count} items differed · surplus {increase} · shortage {decrease}",
+    "periodSummary": "Totals for this range: {sessions} counts, {adjustments} item adjustments, net variance {net}.",
+    "emptyTitle": "No stock count in this range",
+    "emptyDescription": "No stock-count adjustments were recorded in this time range. Try another period, or run a count now."
   },
   "inventory": {
     "levelHealthy": "Healthy",
@@ -2074,6 +2085,13 @@
     "opnameEmptyDescription": "A stock count compares the records with a physical count. Record your first goods receipt so there is something to compare.",
     "opnameDateField": "Count date",
     "opnameHint": "Enter the physical quantity you counted. Items left blank are not changed.",
+    "opnameSearchLabel": "Find item",
+    "opnameSearchPlaceholder": "Type an item name…",
+    "opnameNoMatch": "No item matches “{query}”.",
+    "opnameHiddenCounts": "{count} counts you already entered are hidden by the search — all of them will still be saved.",
+    "opnameSheetButton": "Print Count Sheet",
+    "opnameSheetTitle": "Physical Stock Count Sheet",
+    "opnameSheetIncludeSystem": "Include system quantity",
     "colSystemStock": "System Stock",
     "colPhysicalCount": "Physical Count",
     "colVariance": "Variance",

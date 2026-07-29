@@ -1482,7 +1482,13 @@
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "incomeStatementTitle": "Income Statement",
     "sectionRevenue": "Revenue",
-    "sectionExpense": "Expenses",
+    "sectionCogs": "Cost of Goods Sold",
+    "sectionOperatingExpense": "Operating Expenses",
+    "sectionOtherIncome": "Other Income",
+    "sectionOtherExpense": "Other Expenses",
+    "grossProfitRow": "Gross Profit",
+    "operatingProfitRow": "Operating Profit",
+    "grossMarginNote": "{pct}% of revenue",
     "netIncomeRow": "Net Profit / Loss",
     "profit": "Profit",
     "loss": "Loss",
@@ -1544,7 +1550,7 @@
       },
       "income_statement": {
         "title": "Income Statement",
-        "description": "Revenue less expenses for a period, plus a plain-language summary."
+        "description": "Multi-step: sales − COGS = gross profit, less expenses to net profit, plus a plain-language summary."
       },
       "balance_sheet": {
         "title": "Balance Sheet",
@@ -2789,6 +2795,9 @@
     "isMoneyInExplanation": "Total sales and income booked in this period.",
     "isMoneyOutExplanation": "Total expenses and outgoings booked in this period.",
     "isNetExplanation": "Money in minus money out. A plus sign means profit, a minus sign means loss.",
+    "isGrossMargin": "Gross margin is {pct}%: of {sales} in sales, {gross} is left after the cost of the goods — before salaries, rent and other operating expenses.",
+    "isGrossMarginNegative": "Gross margin is MINUS {pct}%: the goods cost more ({cogs}) than they sold for ({sales}), so every sale deepens the loss even before operating expenses are counted.",
+    "isGrossExplanation": "Sales less the cost of the goods sold — before salaries, rent and other operating expenses.",
     "bsBalanced": "{asOf}: total assets {assets} = liabilities {liabilities} + equity {equity}. The books balance.",
     "bsUnbalanced": "{asOf}: assets ({assets}) do not yet equal liabilities + equity ({total}) — check the journals.",
     "bsAssets": "Assets",

@@ -111,12 +111,38 @@ const stockMovement = z.object({
   dormantCount: z.number().int().nonnegative(),
 });
 
+/** Riwayat Hitung Ulang Stok (issue #129). `variance` is signed by direction. */
+const opnameHistory = z.object({
+  kind: z.literal("opname-history"),
+  period: z.string(),
+  sessions: z.array(
+    z.object({
+      dateISO: z.string(),
+      adjustments: z.array(
+        z.object({
+          itemName: z.string(),
+          unit: z.string().nullable(),
+          variance: quantity,
+        })
+      ),
+      increase: quantity,
+      decrease: quantity,
+    })
+  ),
+  sessionCount: z.number().int().nonnegative(),
+  adjustmentCount: z.number().int().nonnegative(),
+  totalIncrease: quantity,
+  totalDecrease: quantity,
+  netVariance: quantity,
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
   balanceSheet,
   cashFlow,
   stockMovement,
+  opnameHistory,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

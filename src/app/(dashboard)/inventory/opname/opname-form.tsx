@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
+import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
 
 export interface OpnameItem {
@@ -41,6 +42,22 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [query, setQuery] = useState("");
+  const [showSystemQty, setShowSystemQty] = useState(false);
+
+  /**
+   * Penyaring nama barang (issue #129).
+   *
+   * MURNI TAMPILAN: yang disembunyikan tidak ikut terhapus dari `counts`, karena
+   * state-nya berkunci id barang, bukan posisi baris. Mengetik 40 hitungan lalu
+   * mencari satu nama tidak boleh membuang 39 di antaranya.
+   */
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) => it.name.toLowerCase().includes(q));
+  }, [items, query]);
+
   // Barang yang diisi DAN berselisih dari sistem — hanya ini yang disesuaikan.
   const changed = useMemo(() => {
     return items
@@ -55,6 +72,12 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
       })
       .filter((x): x is { it: OpnameItem; physical: number; variance: number } => x !== null);
   }, [items, counts]);
+
+  /** Selisih yang sudah diketik tetapi sedang tersembunyi oleh penyaring. */
+  const hiddenChanged = useMemo(() => {
+    const shown = new Set(visible.map((it) => it.id));
+    return changed.filter((c) => !shown.has(c.it.id)).length;
+  }, [changed, visible]);
 
   async function submit() {
     setSubmitting(true);
@@ -97,10 +120,46 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
+        <label className="text-sm">
+          <span className="mb-1 block font-medium text-foreground">
+            {t("inventory.opnameSearchLabel")}
+          </span>
+          <TextInput
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("inventory.opnameSearchPlaceholder")}
+            className="w-56"
+          />
+        </label>
+        {/* Cetak DULU, hitung, baru ketik — urutan itulah alasan tombolnya ada
+            di sebelah tanggalnya, bukan di kepala halaman. */}
+        <div className="flex flex-col gap-1">
+          <OpnameSheetPDFButton items={items} date={date} showSystemQty={showSystemQty} />
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showSystemQty}
+              onChange={(e) => setShowSystemQty(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            {t("inventory.opnameSheetIncludeSystem")}
+          </label>
+        </div>
         <p className="text-sm text-muted-foreground">
           {t("inventory.opnameHint")}
         </p>
       </div>
+
+      {/* Angka yang sudah diketik tapi kini tersembunyi penyaring TETAP ikut
+          terkirim. Mengirim nilai yang tak terlihat di layar adalah cara
+          termudah membuat penyesuaian yang tak seorang pun merasa membuatnya —
+          jadi jumlahnya disebutkan, bukan didiamkan. */}
+      {hiddenChanged > 0 && (
+        <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+          {t("inventory.opnameHiddenCounts", { count: hiddenChanged })}
+        </p>
+      )}
 
       <div className="rounded-lg border border-border">
         <Table>
@@ -114,7 +173,14 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((it) => {
+            {visible.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                  {t("inventory.opnameNoMatch", { query })}
+                </TableCell>
+              </TableRow>
+            )}
+            {visible.map((it) => {
               const raw = counts[it.id];
               const has = raw !== undefined && raw.trim() !== "" && !Number.isNaN(Number(raw));
               const variance = has ? Number(raw) - it.currentStock : null;

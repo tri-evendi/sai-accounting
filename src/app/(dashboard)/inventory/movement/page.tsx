@@ -1,7 +1,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import { getStockMovementReport } from "@/lib/stock-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
-import { StockPeriodFilter } from "./stock-period-filter";
+import { StockPeriodFilter } from "@/components/shared/stock-period-filter";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -18,6 +18,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 import { PackageOpen, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -92,7 +93,10 @@ export default async function StockMovementPage({
           { label: t("nav.items.inventory"), href: "/inventory" },
           { label: t("stockMovement.title") },
         ]}
-        title={t("stockMovement.title")}
+        // Nama awam di judul, istilah bakunya ("Kartu Stok / Mutasi Persediaan")
+        // sejengkal jauhnya lewat tooltip — akuntan tetap menemukannya, pengguna
+        // awam tidak perlu melewatinya lebih dulu.
+        title={<TermTooltip term="kartu_stok">{t("stockMovement.title")}</TermTooltip>}
         description={t("stockMovement.description")}
         actions={
           <>

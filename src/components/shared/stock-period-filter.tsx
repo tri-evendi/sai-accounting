@@ -1,7 +1,12 @@
 "use client";
 
 /**
- * Pemilih periode Kartu Stok (issue #126) — Minggu / Bulan / Tahun / Rentang.
+ * Pemilih periode Minggu / Bulan / Tahun / Rentang (issue #126).
+ *
+ * DIPAKAI BERSAMA oleh Riwayat Stok dan Riwayat Hitung Ulang Stok (issue #129):
+ * dua halaman yang menanyakan rentang waktu dengan cara yang sama harus
+ * MENAWARKANNYA dengan cara yang sama — pemilih kembar yang berperilaku beda
+ * tipis justru lebih membingungkan daripada dua rancangan yang jelas berbeda.
  *
  * Satu ANCHOR, empat tampilan. Mengganti granularitas mengirim ulang tanggal
  * jangkar yang sama, jadi berpindah dari "Juli 2026" ke Minggu mendarat di

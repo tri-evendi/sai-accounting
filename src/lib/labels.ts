@@ -368,6 +368,18 @@ export const TERMS = {
     kategori: "laporan",
     alias: ["membukukan", "post"],
   },
+  kartu_stok: {
+    key: "kartu_stok",
+    label: "Riwayat Stok",
+    term: "Kartu Stok / Mutasi Persediaan (Stock Card)",
+    definisi:
+      "Rekap pergerakan satu barang dalam satu rentang waktu: saldo awal, jumlah masuk, jumlah keluar, lalu saldo akhir. Berbeda dari halaman Stok Barang yang hanya menunjukkan sisa saat ini.",
+    contoh:
+      "Awal Juli ada 1.200 kg kopi, masuk 400 kg, keluar 650 kg → saldo akhir 950 kg.",
+    kategori: "laporan",
+    alias: ["kartu stok", "mutasi stok", "stock card", "riwayat stok", "keluar masuk stok"],
+    href: "/inventory/movement",
+  },
   laba_rugi: {
     key: "laba_rugi",
     label: "Untung atau Rugi",

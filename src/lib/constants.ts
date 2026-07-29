@@ -166,6 +166,21 @@ export function isStockMovementType(value: string): value is StockMovementType {
   return (STOCK_MOVEMENT_TYPES as readonly string[]).includes(value);
 }
 
+/**
+ * Penanda gerakan stok yang lahir dari hitung ulang stok (issue #129).
+ *
+ * Gerakan opname tidak punya tabel sendiri — ia ditulis sebagai `stock_movement`
+ * biasa, dan SATU-SATUNYA yang membedakannya dari penambahan/pengurangan manual
+ * adalah catatan ini. Karena itulah ia menjadi konstanta: route yang MENULISnya
+ * dan pembaca riwayat yang MENCARInya harus memakai teks yang sama persis, dan
+ * dua salinan literal yang menyimpang akan membuat riwayat opname kosong tanpa
+ * satu pun galat.
+ *
+ * NILAINYA TIDAK BOLEH DIUBAH. Baris produksi yang sudah ada membawa teks ini
+ * apa adanya; menggantinya akan memutus seluruh riwayat yang sudah tercatat.
+ */
+export const OPNAME_ADJUSTMENT_NOTE = "Penyesuaian stok opname";
+
 export const CASH_TYPES = ["bank", "kas_besar", "kas_kecil"] as const;
 export type CashType = (typeof CASH_TYPES)[number];
 

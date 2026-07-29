@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
 import {
   countStockHealth,
-  summarizeInventory,
+  stockLevelsFromTotals,
   toLowStockAlerts,
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
@@ -24,33 +24,66 @@ export default async function StockOpnamePage() {
   // Sama seperti /inventory: semua peran boleh, tapi wajib login (audit RBAC fase 0).
   await requirePagePermission("inventory.write");
   const t = await getT();
-  const allItems = await prisma.item.findMany({
-    include: { stockMovements: true },
-    orderBy: { name: "asc" },
-  });
+  /*
+   * RINGKASAN, BUKAN SELURUH GERAKAN STOK — pola yang sama dengan Beranda.
+   *
+   * Sebelumnya baris ini memuat SETIAP barang beserta SELURUH riwayat gerakannya
+   * (semua kolom), lalu `summarizeInventory` menghitung biaya rata-rata
+   * tertimbang, nilai persediaan, dan gerakan terakhir untuk tiap barang —
+   * padahal halaman ini memakai SATU angka saja: saldo saat ini. Pekerjaannya
+   * tumbuh seumur perusahaan dan diulang tiap kali halaman dibuka.
+   *
+   * Penjumlahannya kini dilakukan basis data, lalu `stockLevelsFromTotals`
+   * menerapkan aturan saldo yang sama persis dengan `calculateStockTotals`
+   * (dibuktikan tests/inventory-value.test.ts). Angkanya identik; yang hilang
+   * hanya pekerjaannya.
+   */
+  const [allItems, movementTotals] = await Promise.all([
+    prisma.item.findMany({
+      select: { id: true, name: true, unit: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.stockMovement.groupBy({ by: ["itemId", "type"], _sum: { quantity: true } }),
+  ]);
 
-  const allInventory = summarizeInventory(allItems);
-  const stockHealth = countStockHealth(allInventory);
-  const lowStockAlerts = toLowStockAlerts(allInventory);
+  const opnameItems = stockLevelsFromTotals(
+    allItems,
+    movementTotals.map((row) => ({
+      itemId: row.itemId,
+      type: row.type,
+      quantity: Number(row._sum.quantity ?? 0),
+    }))
+  );
 
+  const stockHealth = countStockHealth(opnameItems);
+  const lowStockAlerts = toLowStockAlerts(opnameItems);
   const totalCount = stockHealth.totalItems;
-  const opnameItems = allInventory.map((it) => ({
-    id: it.id,
-    name: it.name,
-    unit: it.unit,
-    currentStock: it.currentStock,
-  }));
 
   return (
     <div>
       <PageHeader
         className="mb-1"
+        // Sub-halaman Stok tanpa remah roti memaksa pengguna kembali lewat menu
+        // samping — satu-satunya jalan pulang sebelum ini.
+        breadcrumbs={[
+          { label: t("nav.items.inventory"), href: "/inventory" },
+          { label: t("nav.items.inventoryOpname") },
+        ]}
         title={<TermTooltip term="stok_opname">{t("nav.items.inventoryOpname")}</TermTooltip>}
         description={t("inventory.opnameDescription", { threshold: LOW_STOCK_THRESHOLD })}
         actions={
-          <Link href="/inventory/update">
-            <Button>{t("common.addRemoveStock")}</Button>
-          </Link>
+          <>
+            {/* Hitung ulang yang SUDAH terjadi punya halamannya sendiri: layar
+                ini adalah formulir untuk menghitung HARI INI, dan menyaringnya
+                per minggu/bulan/tahun tidak punya arti — yang disaring per
+                periode adalah riwayatnya (issue #129). */}
+            <Link href="/inventory/opname/history">
+              <Button variant="secondary">{t("opnameHistory.linkLabel")}</Button>
+            </Link>
+            <Link href="/inventory/update">
+              <Button>{t("common.addRemoveStock")}</Button>
+            </Link>
+          </>
         }
       />
       <LearnMore term="stok_opname" className="mt-1 mb-6" />

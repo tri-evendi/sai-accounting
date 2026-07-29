@@ -176,6 +176,10 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.groups.inventory",
     items: [
       { href: "/inventory", label: "Stok Barang", labelKey: "nav.items.inventory", icon: "Package", permission: "inventory.read", termKey: "persediaan" },
+      // Kartu Stok baca-saja, jadi izinnya `inventory.read` — bukan `write`
+      // seperti dua item di bawahnya. Staf yang tidak boleh mengubah stok tetap
+      // boleh melihat mutasinya (issue #126).
+      { href: "/inventory/movement", label: "Riwayat Stok", labelKey: "nav.items.inventoryMovement", icon: "PackageOpen", permission: "inventory.read", termKey: "kartu_stok" },
       { href: "/inventory/update", label: "Tambah / Kurangi Stok", labelKey: "nav.items.inventoryUpdate", icon: "PackagePlus", permission: "inventory.write", termKey: "persediaan" },
       { href: "/inventory/opname", label: "Hitung Ulang Stok", labelKey: "nav.items.inventoryOpname", icon: "ClipboardCheck", permission: "inventory.write", termKey: "stok_opname" },
       { href: "/fixed-assets", label: "Barang Milik Perusahaan", labelKey: "nav.items.fixedAssets", icon: "Building2", permission: "fixed_asset.read", termKey: "aset_tetap" },

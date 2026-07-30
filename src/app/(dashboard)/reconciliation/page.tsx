@@ -14,7 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MoneyCell } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { Lock, Scale } from "lucide-react";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -23,14 +24,40 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReconciliationListPage() {
+export default async function ReconciliationListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; page?: string }>;
+}) {
   await requirePagePermission("reconciliation.read");
   const t = await getT();
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const perPage = 20;
 
-  const statements = await prisma.bankStatement.findMany({
-    orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
-    include: { _count: { select: { lines: true } } },
-  });
+  // Saringan status memakai dua nilai yang memang ada di kolomnya; nilai lain
+  // (atau kosong) berarti "semua" — URL editan tangan tidak bisa membuat 500.
+  const status =
+    params.status === "locked" || params.status === "draft" ? params.status : undefined;
+  const where = status ? { status } : {};
+
+  const [statements, totalCount] = await Promise.all([
+    prisma.bankStatement.findMany({
+      where,
+      orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
+      include: { _count: { select: { lines: true } } },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.bankStatement.count({ where }),
+  ]);
+  const totalPages = Math.ceil(totalCount / perPage);
+
+  const statusFilters = [
+    { value: undefined, label: t("common.all") },
+    { value: "locked", label: t("reconciliation.statusLocked") },
+    { value: "draft", label: t("reconciliation.statusDraft") },
+  ] as const;
 
   return (
     <div>
@@ -47,6 +74,20 @@ export default async function ReconciliationListPage() {
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
       <LearnMore term="rekonsiliasi_bank" className="mt-1 mb-6" />
 
+      {/* Saringan status — chip GET (pola /contracts); saringan baru = hal. 1. */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {statusFilters.map((f) => (
+          <Link
+            key={f.label}
+            href={f.value ? `/reconciliation?status=${f.value}` : "/reconciliation"}
+          >
+            <Button variant={status === f.value ? "primary" : "secondary"} size="sm">
+              {f.label}
+            </Button>
+          </Link>
+        ))}
+      </div>
+
       {statements.length === 0 ? (
         <EmptyState
           icon={<Scale className="h-12 w-12" />}
@@ -58,7 +99,7 @@ export default async function ReconciliationListPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>{t("reconciliation.listTitle", { count: statements.length })}</CardTitle>
+            <CardTitle>{t("reconciliation.listTitle", { count: totalCount })}</CardTitle>
           </CardHeader>
           <Table>
             <TableHeader>
@@ -116,6 +157,12 @@ export default async function ReconciliationListPage() {
               ))}
             </TableBody>
           </Table>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/reconciliation"
+            searchParams={params}
+          />
         </Card>
       )}
     </div>

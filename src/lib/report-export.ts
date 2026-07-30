@@ -81,6 +81,13 @@ const money = (value: number, bold = false): SheetCell => ({
 });
 const text = (value: string | null, bold = false): SheetCell => ({ value, bold });
 
+/** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
+function opnameSheetDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(d);
+}
+
 /** A section heading spanning the label column, with the rest of the row blank. */
 function headingRow(label: string, cols: number): SheetCell[] {
   const row: SheetCell[] = [text(label, true)];
@@ -151,7 +158,7 @@ function buildBalanceSheetSheet(
     [text("Total Liabilitas", true), money(p.totalLiabilities, true)],
     headingRow("Ekuitas", 2),
     ...statementLineRows(p.equity),
-    [text("Laba / Rugi Berjalan"), money(p.netIncome)],
+    [text("Akumulasi Laba/Rugi"), money(p.netIncome)],
     [text("Total Ekuitas", true), money(p.totalEquity + p.netIncome, true)],
     [
       text(
@@ -330,20 +337,30 @@ function buildOpnameHistorySheet(
   for (const s of p.sessions) {
     // Tanggalnya jadi baris judul sesi, bukan kolom yang diulang tiap baris:
     // satu hitung ulang adalah satu peristiwa, dan lembar sebarnya harus
-    // terbaca begitu.
-    rows.push([text(`Hitung ulang ${s.dateISO}`, true), text(null), q(s.increase, true), q(-s.decrease, true)]);
+    // terbaca begitu. Kolom "Lebih"/"Susut" masing-masing SATU arti — angka
+    // positif, arah dari kolomnya (audit 2026-07: dua jenis baris dulu memakai
+    // kolom yang sama untuk makna berbeda).
+    rows.push([text(`Hitung ulang ${opnameSheetDate(s.dateISO)}`, true), text(null), q(s.increase, true), q(s.decrease, true)]);
     for (const a of s.adjustments) {
-      rows.push([text(`   ${a.itemName}`), text(a.unit || "-"), q(a.variance), text(null)]);
+      rows.push([
+        text(`   ${a.itemName}`),
+        text(a.unit || "-"),
+        a.variance > 0 ? q(a.variance) : text(null),
+        a.variance < 0 ? q(-a.variance) : text(null),
+      ]);
     }
   }
   if (rows.length === 0) {
     rows.push([text("Tidak ada hitung ulang stok pada periode ini."), text(null), text(null), text(null)]);
   }
   rows.push([
-    text(`${p.sessionCount} kali hitung ulang · ${p.adjustmentCount} penyesuaian`, true),
-    text("Selisih bersih", true),
-    q(p.netVariance, true),
+    text(
+      `${p.sessionCount} kali hitung ulang · ${p.adjustmentCount} penyesuaian · Selisih bersih`,
+      true
+    ),
     text(null),
+    p.netVariance >= 0 ? q(p.netVariance, true) : text(null),
+    p.netVariance < 0 ? q(-p.netVariance, true) : text(null),
   ]);
 
   return {
@@ -353,7 +370,7 @@ function buildOpnameHistorySheet(
     columns: [
       { header: "Tanggal / Barang", width: 40 },
       { header: "Satuan", width: 12 },
-      { header: "Selisih", width: 16 },
+      { header: "Lebih", width: 16 },
       { header: "Susut", width: 16 },
     ],
     rows,

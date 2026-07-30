@@ -28,11 +28,18 @@ export async function GET(request: Request) {
 
   const sp = new URL(request.url).searchParams;
   const status = sp.get("status");
-  const categoryId = sp.get("categoryId");
+  // Sampah diabaikan seperti `status` di bawah: `Number("abc")` adalah NaN,
+  // yang dulu mengalir ke `where` Prisma dan meledak jadi 500. Digit saja —
+  // `parseInt` sendirian masih menerima "12abc" sebagai 12.
+  const rawCategoryId = sp.get("categoryId");
+  const categoryId =
+    rawCategoryId && /^\d+$/.test(rawCategoryId.trim())
+      ? Number.parseInt(rawCategoryId, 10)
+      : undefined;
 
   const rows = await getFixedAssets({
     status: status === "active" || status === "disposed" ? (status as FixedAssetStatus) : undefined,
-    categoryId: categoryId ? Number(categoryId) : undefined,
+    categoryId,
   });
   return NextResponse.json({ rows, summary: summarizeFixedAssets(rows) });
 }

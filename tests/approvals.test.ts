@@ -429,8 +429,15 @@ describe("approval rule schema mirrors the DB constraints", () => {
     );
   });
 
-  it("rejects a role that does not exist", () => {
-    expect(approvalRuleSchema.safeParse({ ...base, approverRole: "manajer" }).success).toBe(false);
+  it("accepts a custom role key — roles are DATA since /permissions; the route validates existence against the DB", () => {
+    // z.enum(ROLE_VALUES) here used to 400 every custom role the rules form
+    // itself offered (audit 2026-07). Shape stays here; existence lives in the
+    // route via activeRoleKeys(), the same split POST /api/users uses.
+    expect(approvalRuleSchema.safeParse({ ...base, approverRole: "manajer" }).success).toBe(true);
+  });
+
+  it("still rejects an empty role — shape is the schema's job", () => {
+    expect(approvalRuleSchema.safeParse({ ...base, approverRole: "" }).success).toBe(false);
   });
 
   it("rejects a negative ambang — it would match every document, including worthless ones", () => {

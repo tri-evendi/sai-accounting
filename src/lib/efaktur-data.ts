@@ -47,6 +47,9 @@ export async function getEfakturExport(from: Date, to: Date): Promise<EfakturExp
     prisma.invoice.findMany({
       where: {
         date: { gte: from, lte: rangeEnd },
+        // A canceled invoice posted no VAT (the posting engine refuses it), so
+        // exporting it would file output tax the ledger never carries.
+        status: { not: "canceled" },
         OR: [{ taxable: true }, { taxAmount: { gt: 0 } }, { NOT: { pebNumber: null } }],
       },
       include: { items: true, customer: true },

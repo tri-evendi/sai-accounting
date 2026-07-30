@@ -46,7 +46,9 @@ export const CATEGORY_DESCRIPTIONS: Record<ReportCategory, string> = {
   pembelian: "Utang ke pemasok dan analisa pembelian.",
   stok: "Nilai dan pergerakan persediaan.",
   kas_bank: "Posisi kas & bank dan rekonsiliasi.",
-  pajak: "Ekspor pajak keluaran/masukan (e-Faktur / CTAS).",
+  // Hanya pajak KELUARAN yang diekspor — menjanjikan PPN Masukan yang tidak
+  // ada di modulnya membuat kategori ini berbohong (audit 2026-07).
+  pajak: "Ekspor pajak keluaran (e-Faktur / CTAS).",
 };
 
 export type ReportStatus = "available" | "coming_soon";
@@ -146,7 +148,8 @@ export const REPORTS: ReportDefinition[] = [
     title: "Penjualan per Pelanggan",
     description: "Rekap penjualan per pelanggan pada suatu periode.",
     category: "penjualan",
-    status: "coming_soon",
+    status: "available",
+    href: "/reports/sales-by-customer",
     paramKind: "period",
     icon: "Users",
   },
@@ -166,7 +169,8 @@ export const REPORTS: ReportDefinition[] = [
     title: "Pembelian per Pemasok",
     description: "Rekap pembelian per pemasok pada suatu periode.",
     category: "pembelian",
-    status: "coming_soon",
+    status: "available",
+    href: "/reports/purchases-by-supplier",
     paramKind: "period",
     icon: "Truck",
   },
@@ -193,6 +197,19 @@ export const REPORTS: ReportDefinition[] = [
     href: "/inventory/movement",
     paramKind: "period",
     icon: "PackageOpen",
+  },
+  {
+    id: "opname-history",
+    // Jalan masuk BACA ke riwayat opname (issue #129): tautan lamanya hanya
+    // hidup di halaman hitung ulang yang berizin tulis, sehingga pemegang
+    // izin baca-saja tidak pernah bisa sampai ke sana (audit 2026-07).
+    title: "Riwayat Hitung Ulang Stok",
+    description: "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya.",
+    category: "stok",
+    status: "available",
+    href: "/inventory/opname/history",
+    paramKind: "period",
+    icon: "Package",
   },
   // ── Kas & Bank ────────────────────────────────────────────────────────────
   {

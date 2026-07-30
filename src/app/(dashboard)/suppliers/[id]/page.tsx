@@ -27,7 +27,11 @@ import {
   isCompensationTarget,
 } from "@/lib/advances";
 import type { AppliedAdvance } from "@/components/shared/advance-compensation";
+import { toBase } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
+
+/** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
+const EPSILON = 0.005;
 
 export const dynamic = "force-dynamic";
 
@@ -112,15 +116,31 @@ export default async function SupplierDetailPage({
   const unratedPurchaseCount = purchaseTargets.filter((t) => t.remainingBase == null).length;
 
   // Landing here from the "Perkiraan" badge means the user has just seen a row
-  // whose split is a guess. Open the editor on the payment responsible for that
-  // — the oldest payment with no allocation, since FIFO spends the oldest money
-  // first — instead of making them work out which one to click.
-  const autoOpenPaymentId =
+  // whose split is at least partly a FIFO guess. That guess is fed by every
+  // payment whose RECORDED allocations do not exhaust its own IDR value — not
+  // just the fully unallocated ones: a partially allocated payment spills its
+  // remainder into the same pool (see `getPayables`). So open the editor on the
+  // oldest payment that still has such a remainder (FIFO spends the oldest
+  // money first), valuing both sides the way the ledger does (`toBase`), and
+  // fall back to the oldest zero-allocation payment — an unrated foreign
+  // payment has no IDR value to compare, yet is still the row worth fixing.
+  // No candidate at all means the badge should not have been shown; then
+  // nothing auto-opens and the page simply shows the payment list.
+  const paymentsOldestFirst =
     alokasi === "1"
-      ? (supplier.transactions
-          .filter((t) => t.type === "payment" && t.allocationsMade.length === 0)
-          .sort((a, b) => a.date.getTime() - b.date.getTime())[0]?.id ?? null)
-      : null;
+      ? supplier.transactions
+          .filter((t) => t.type === "payment")
+          .sort((a, b) => a.date.getTime() - b.date.getTime())
+      : [];
+  const autoOpenPaymentId =
+    paymentsOldestFirst.find((p) => {
+      const base = toBase(p);
+      if (base == null) return false;
+      const allocatedBase = p.allocationsMade.reduce((s, a) => s + (toBase(a) ?? 0), 0);
+      return base - allocatedBase > EPSILON;
+    })?.id ??
+    paymentsOldestFirst.find((p) => p.allocationsMade.length === 0)?.id ??
+    null;
 
   return (
     <div className="w-full">

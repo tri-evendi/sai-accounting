@@ -376,6 +376,7 @@
     "retypeLabel": "Retype to confirm:"
   },
   "errors": {
+    "accountParentCycle": "The chosen parent is a descendant of this account — the hierarchy would loop. Pick another parent.",
     "generic": "Something went wrong. Please try again.",
     "network": "Could not reach the server. Check your connection.",
     "unauthorized": "You do not have access to this page.",
@@ -456,6 +457,7 @@
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",
     "contractInUse": "This contract is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the contract so the document chain stays intact.",
+    "invoiceInUse": "This invoice is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the invoice so the document chain stays intact.",
     "contractUsedInvoices": "{count} invoice(s)",
     "contractUsedDeliveryOrders": "{count} delivery order(s)",
     "contractUsedBoth": "{invoices} invoice(s) and {deliveryOrders} delivery order(s)",
@@ -483,6 +485,7 @@
     "bookMovementNotFound": "The book transaction was not found.",
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
+    "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
     "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
   },
   "contracts": {
@@ -846,6 +849,7 @@
     "confirmLabel": "Yes, issue it"
   },
   "returns": {
+    "statusCanceled": "Canceled",
     "title": "Returns",
     "description": "Goods sent back — reversing part of an invoice or purchase along with its stock, receivable/payable, and VAT.",
     "addNew": "Create Return",
@@ -932,6 +936,7 @@
     "activeHint": "An inactive consignee no longer appears in the Contract picker, but existing contracts stay linked."
   },
   "customers": {
+    "activeHint": "An inactive customer no longer appears in the Invoice picker, but existing documents stay linked.",
     "title": "Customers ({count})",
     "addNew": "+ Add Customer",
     "colPic": "Person in Charge",
@@ -956,6 +961,7 @@
     "taxable": "Subject to VAT (standard)"
   },
   "suppliers": {
+    "activeHint": "An inactive supplier no longer appears in the Purchase picker, but existing documents stay linked.",
     "title": "Suppliers ({count})",
     "description": "Open a supplier to record its purchases and payments.",
     "addNew": "+ Add Supplier",
@@ -1185,6 +1191,7 @@
     "saveFailed": "The cost centre could not be saved",
     "codeTaken": "That cost centre code is already in use",
     "parentSelf": "A cost centre cannot be its own parent",
+    "parentCycle": "The chosen parent is a descendant of this cost centre — the hierarchy would loop. Pick another parent.",
     "emptyTitle": "No cost centres yet",
     "emptyDescription": "Create one cost centre to start splitting profit and loss by branch, unit or project.",
     "filterLabel": "Cost Centre",
@@ -1460,6 +1467,20 @@
     "title": "Report Centre",
     "description": "Every report in one place, grouped by category. Pick a report, set the period, then export to PDF or Excel. Figures are in IDR (the ledger base value).",
     "comingSoon": "Coming soon",
+    "colCustomer": "Customer",
+    "colSupplier": "Supplier",
+    "colDocuments": "Documents",
+    "colGrossSales": "Sales (IDR)",
+    "colGrossPurchases": "Purchases (IDR)",
+    "colReturns": "Returns (IDR)",
+    "colNet": "Net (IDR)",
+    "noCustomerLabel": "No customer",
+    "noSupplierLabel": "No supplier",
+    "salesByCustomerEmpty": "No sales invoices in this period.",
+    "purchasesBySupplierEmpty": "No purchases in this period.",
+    "grossIncludesTaxNote": "Gross values include VAT (PPN); returns in the same period are deducted in their own column.",
+    "rowUnrated": "{count} documents missing a rate",
+    "unratedDocsNote": "{count} foreign-currency documents without a usable rate are excluded from the totals.",
     "openReport": "Open report",
     "breadcrumb": "Report Centre",
     "asOfWithCurrency": "As of {date} · figures in IDR",
@@ -1478,7 +1499,7 @@
     "sectionLiabilities": "Liabilities",
     "sectionEquity": "Equity",
     "sectionTotal": "Total {section}",
-    "currentNetIncome": "Current Profit / Loss",
+    "currentNetIncome": "Accumulated Profit / Loss",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "incomeStatementTitle": "Income Statement",
@@ -1541,10 +1562,11 @@
       },
       "pajak": {
         "label": "Tax",
-        "description": "Output/input VAT export (e-Faktur / CTAS)."
+        "description": "Output VAT export (e-Faktur / CTAS)."
       }
     },
     "catalogReport": {
+      "opname_history": { "title": "Stock Count History", "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance." },
       "trial_balance": {
         "title": "Trial Balance",
         "description": "Debit/credit balance of every account on one date — it must balance."
@@ -1971,12 +1993,12 @@
     "stockIn": "Goods In",
     "stockOut": "Goods Out",
     "stockProcess": "In Processing",
-    "financeDescription": "Balances and money movement over the last 6 months, per currency",
+    "financeDescription": "All-time balances and money movement, per currency",
     "financeHrefLabel": "Open cash & bank",
     "netBalance": "Net balance · {currency}",
     "noCashBefore": "No cash records yet —",
     "noCashLink": "record the first transaction",
-    "balancePerAccount": "Balance per account",
+    "balancePerAccount": "Balance per cash type",
     "cashFlowChartTitle": "Money in & out · {currency}",
     "cashFlowChartDesc": "Month-by-month comparison (last 6 months)",
     "contractsTitle": "Sales & Contracts",

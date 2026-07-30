@@ -12,16 +12,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MoneyCell } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function JournalPage() {
+export default async function JournalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requirePagePermission("journal.read");
   const t = await getT();
   const typeLabels: Record<string, string> = {
@@ -33,16 +38,26 @@ export default async function JournalPage() {
     reversal: t("journal.type.reversal"),
   };
 
-  const journals = await prisma.journal.findMany({
-    orderBy: [{ date: "desc" }, { id: "desc" }],
-    include: { lines: true },
-    take: 100,
-  });
+  // Paginated with a real count — the old hard `take: 100` made journal #101
+  // unreachable from any UI surface and froze the heading at "(100)" forever.
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const perPage = 25;
+  const [journals, totalCount] = await Promise.all([
+    prisma.journal.findMany({
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      include: { lines: true },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.journal.count(),
+  ]);
+  const totalPages = Math.ceil(totalCount / perPage);
 
   return (
     <div>
       <PageHeader
-        title={t("journal.title", { count: journals.length })}
+        title={t("journal.title", { count: totalCount })}
         actions={
           <Link href="/journal/new">
             <Button>{t("journal.addNew")}</Button>
@@ -106,6 +121,7 @@ export default async function JournalPage() {
             )}
           </TableBody>
         </Table>
+        <Pagination currentPage={page} totalPages={totalPages} basePath="/journal" searchParams={params} />
       </Card>
     </div>
   );

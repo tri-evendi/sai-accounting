@@ -114,9 +114,12 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
           <span className="mb-1 block font-medium text-foreground">
             {t("inventory.opnameDateField")}
           </span>
+          {/* Tak bisa menghitung fisik di masa depan; hitungan mundur sah —
+              server membandingkannya dengan saldo buku per tanggal itu. */}
           <TextInput
             type="date"
             value={date}
+            max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setDate(e.target.value)}
           />
         </label>

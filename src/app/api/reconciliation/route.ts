@@ -13,11 +13,43 @@ import { bankStatementSchema } from "@/lib/validations/reconciliation";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
-export async function GET() {
+export async function GET(request: Request) {
   const result = await requireApiPermission("reconciliation.read");
   if (!result.authorized) return result.response;
 
+  // Parameter sejalan dengan halaman daftar: `status` (locked/draft) menyaring,
+  // `page` memotong 20 baris. KEDUANYA opsional — tanpa parameter, jawabannya
+  // tetap array datar persis seperti sebelumnya (kompatibel ke belakang).
+  const searchParams = new URL(request.url).searchParams;
+  const statusParam = searchParams.get("status");
+  const status = statusParam === "locked" || statusParam === "draft" ? statusParam : undefined;
+  const where = status ? { status } : {};
+
+  const pageParam = searchParams.get("page");
+  if (pageParam !== null) {
+    const perPage = 20;
+    const pageNum = Number.parseInt(pageParam, 10);
+    const page = Number.isFinite(pageNum) && pageNum >= 1 ? pageNum : 1;
+    const [statements, totalCount] = await Promise.all([
+      prisma.bankStatement.findMany({
+        where,
+        orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
+        include: { _count: { select: { lines: true } } },
+        skip: (page - 1) * perPage,
+        take: perPage,
+      }),
+      prisma.bankStatement.count({ where }),
+    ]);
+    return NextResponse.json({
+      statements,
+      totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / perPage),
+    });
+  }
+
   const statements = await prisma.bankStatement.findMany({
+    where,
     orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
     include: { _count: { select: { lines: true } } },
   });

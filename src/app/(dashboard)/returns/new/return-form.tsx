@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import {
   Table,
   TableBody,
@@ -29,20 +30,6 @@ import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { Loader2, Info, Trash2, Plus } from "lucide-react";
 
-interface InvoiceOption {
-  id: number;
-  invoiceNo: string;
-  date: string;
-  currency: string;
-  customerName: string | null;
-}
-interface PurchaseOption {
-  id: number;
-  date: string;
-  currency: string;
-  amount: number;
-  supplierName: string | null;
-}
 interface ItemOption {
   id: number;
   name: string;
@@ -85,13 +72,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function ReturnForm({
   initialType,
-  invoices,
-  purchases,
   items,
 }: {
   initialType: "sales" | "purchase";
-  invoices: InvoiceOption[];
-  purchases: PurchaseOption[];
   items: ItemOption[];
 }) {
   const router = useRouter();
@@ -255,36 +238,31 @@ export function ReturnForm({
             required
           />
 
+          {/* Pemilih dokumen asal mencari ke server (audit: daftar statis
+              `take: 300` membuat faktur/pembelian lama mustahil diretur).
+              Detail moneternya tetap dibaca dari endpoint detail yang sama
+              begitu satu dokumen terpilih — lihat loadInvoice/loadPurchase. */}
           {type === "sales" ? (
             <div className="sm:col-span-2">
-              <Select
+              <ServerSearchableSelect
                 id="invoiceId"
                 label={t("returns.originInvoice")}
-                value={invoiceId}
-                onChange={(e) => setInvoiceId(e.target.value)}
                 placeholder={t("returns.pickInvoice")}
-                options={invoices.map((i) => ({
-                  value: String(i.id),
-                  label: `${i.invoiceNo} · ${i.currency} · ${i.customerName ?? "—"}`,
-                }))}
-                required
+                fetchUrl="/api/invoices?picker=1"
+                value={invoiceId || null}
+                onChange={(v) => setInvoiceId(v ?? "")}
               />
             </div>
           ) : (
             <div className="sm:col-span-2">
-              <Select
+              <ServerSearchableSelect
                 id="purchaseId"
                 label={t("returns.originPurchase")}
-                value={purchaseId}
-                onChange={(e) => setPurchaseId(e.target.value)}
                 placeholder={t("returns.pickPurchase")}
-                options={purchases.map((p) => ({
-                  value: String(p.id),
-                  label: `TRX-${p.id} · ${p.currency} ${formatCurrency(p.amount, p.currency)} · ${
-                    p.supplierName ?? "—"
-                  }`,
-                }))}
-                required
+                fetchUrl="/api/returns/purchase"
+                searchParam="searchOrigin"
+                value={purchaseId || null}
+                onChange={(v) => setPurchaseId(v ?? "")}
               />
             </div>
           )}

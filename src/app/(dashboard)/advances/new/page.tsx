@@ -10,7 +10,10 @@ export default async function NewAdvancePage() {
   await requirePagePermission("advance.write");
   const t = await getT();
 
-  const [customers, suppliers, contracts] = await Promise.all([
+  // Kontrak TIDAK lagi dipreload `take: 200` — daftar terpotong membuat kontrak
+  // lama mustahil ditautkan (audit). Pemilihnya kini mencari ke server
+  // (`/api/contracts?picker=1`) di dalam AdvanceForm.
+  const [customers, suppliers] = await Promise.all([
     // `isActive: true` — master nonaktif tidak ditawarkan untuk uang muka BARU
     // (issue #104); uang muka lama tetap menyebut namanya.
     prisma.customer.findMany({
@@ -22,12 +25,6 @@ export default async function NewAdvancePage() {
       where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
-    }),
-    prisma.contract.findMany({
-      where: { status: { not: "canceled" } },
-      orderBy: { date: "desc" },
-      select: { id: true, contractNo: true, buyer: true },
-      take: 200,
     }),
   ]);
 
@@ -41,7 +38,7 @@ export default async function NewAdvancePage() {
         title={t("advances.record")}
         description={t("advances.newDescription")}
       />
-      <AdvanceForm customers={customers} suppliers={suppliers} contracts={contracts} />
+      <AdvanceForm customers={customers} suppliers={suppliers} />
     </div>
   );
 }

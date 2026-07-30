@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { MoneyCell } from "@/components/ui/money";
 import { formatDateShort } from "@/lib/utils";
+import { toISODate } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -33,12 +34,19 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** First and last day of the current month as `YYYY-MM-DD`. */
+/**
+ * First and last day of the current month as `YYYY-MM-DD`, in LOCAL time —
+ * the same convention as every other report (`resolvePeriod`). UTC month
+ * bounds land on the previous month during the first hours of the 1st under
+ * TZ=Asia/Jakarta, so the default period would disagree with the rest of the
+ * app.
+ */
 function currentMonthRange(): { from: string; to: string } {
   const now = new Date();
-  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-  return { from: first.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) };
+  return {
+    from: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
 }
 
 function parseDate(value: string | undefined): Date | null {

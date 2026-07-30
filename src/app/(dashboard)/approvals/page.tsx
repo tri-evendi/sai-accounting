@@ -29,7 +29,7 @@ export default async function ApprovalsPage() {
   const [inbox, mine, decided] = await Promise.all([
     listPendingApprovals(role),
     listMyApprovalRequests(userId),
-    listDecidedApprovals(role),
+    listDecidedApprovals(role, 25, userId),
   ]);
 
   return (

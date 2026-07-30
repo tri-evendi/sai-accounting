@@ -133,6 +133,13 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
 };
 
+/** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
+function opnameDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(d);
+}
+
 /** Kuantitas bertanda: "+40" / "−12,5". Tanda adalah penanda NON-WARNA-nya. */
 function signedQty(value: number): string {
   const text = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(Math.abs(value));
@@ -316,7 +323,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       doc,
       y,
       "Ekuitas",
-      [...payload.equity, { code: "", name: "Laba / Rugi Berjalan", amount: payload.netIncome }],
+      [...payload.equity, { code: "", name: "Akumulasi Laba/Rugi", amount: payload.netIncome }],
       "Total Ekuitas",
       payload.totalEquity + payload.netIncome
     );
@@ -388,7 +395,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       body: payload.sessions.length
         ? payload.sessions.flatMap((s) => [
             [
-              { content: `Hitung ulang ${s.dateISO}`, colSpan: 2, styles: { fontStyle: "bold" as const } },
+              { content: `Hitung ulang ${opnameDate(s.dateISO)}`, colSpan: 2, styles: { fontStyle: "bold" as const } },
               { content: `Lebih ${signedQty(s.increase)}`, styles: { halign: "right" as const } },
               { content: `Susut ${signedQty(-s.decrease)}`, styles: { halign: "right" as const } },
             ],

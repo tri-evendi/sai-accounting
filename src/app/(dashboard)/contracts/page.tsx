@@ -21,7 +21,7 @@ import {
 import { chartPeriodStart, monthlyActivitySeries } from "@/lib/chart-data";
 import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileText } from "lucide-react";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -42,7 +42,7 @@ export default async function ContractsPage({
   const dictionary = await getDictionary(await getLocale());
   const statusLabels = statusFilterLabels(dictionary);
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
   const where: Record<string, unknown> = {};
 
@@ -127,25 +127,32 @@ export default async function ContractsPage({
       />
       <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreList")} />
 
-      {/* Filters */}
+      {/* Filters — hrefs membawa `search` yang sedang aktif agar berganti tab
+          tidak diam-diam membuang kata kunci pencarian. `page` sengaja TIDAK
+          dibawa: saringan baru = kembali ke halaman 1. */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {["all", "signed", "pending", "canceled"].map((status) => (
-          <Link
-            key={status}
-            href={`/contracts${status === "all" ? "" : `?status=${status}`}`}
-          >
-            <Button
-              variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
-              size="sm"
-            >
-              {statusLabels[status] ?? status}
-            </Button>
-          </Link>
-        ))}
+        {["all", "signed", "pending", "canceled"].map((status) => {
+          const query = new URLSearchParams();
+          if (status !== "all") query.set("status", status);
+          if (params.search) query.set("search", params.search);
+          const qs = query.toString();
+          return (
+            <Link key={status} href={`/contracts${qs ? `?${qs}` : ""}`}>
+              <Button
+                variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
+                size="sm"
+              >
+                {statusLabels[status] ?? status}
+              </Button>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Search */}
+      {/* Search — GET form; `status` ikut sebagai hidden input supaya mencari
+          tidak mereset tab status yang sedang aktif. */}
       <form className="mb-4">
+        {params.status && <input type="hidden" name="status" value={params.status} />}
         <TextInput
           type="text"
           name="search"

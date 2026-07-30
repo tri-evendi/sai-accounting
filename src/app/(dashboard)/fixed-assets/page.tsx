@@ -40,8 +40,11 @@ export default async function FixedAssetsPage({
   const sp = await searchParams;
   const status = sp.status === "active" || sp.status === "disposed" ? sp.status : undefined;
 
-  const [rows, categories] = await Promise.all([getFixedAssets({ status }), getCategories()]);
-  const summary = summarizeFixedAssets(await getFixedAssets({}));
+  // Satu ambilan tanpa saring untuk ringkasan; tabelnya disaring di memori —
+  // dulu register + join kategorinya dibaca DUA KALI per permintaan.
+  const [allRows, categories] = await Promise.all([getFixedAssets({}), getCategories()]);
+  const rows = status ? allRows.filter((r) => r.status === status) : allRows;
+  const summary = summarizeFixedAssets(allRows);
   const hasCategories = categories.length > 0;
 
   return (

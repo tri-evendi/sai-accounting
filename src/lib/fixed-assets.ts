@@ -245,7 +245,7 @@ export async function depreciateAsset(
   assetId: number,
   year: number,
   month: number,
-  client = prisma
+  client: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<DepreciationResult> {
   const asset = await client.fixedAsset.findUnique({ where: { id: assetId } });
   if (!asset) throw new Error(`Aset #${assetId} tidak ditemukan.`);
@@ -274,7 +274,13 @@ export async function depreciateAsset(
 
   const accumulatedAfter = round2(accumulated + amount);
 
-  await prisma.$transaction(async (tx) => {
+  // Tulis lewat client YANG DIBERIKAN: pemanggil yang sudah di dalam transaksi
+  // harus melihat baca & tulisnya satu snapshot — `prisma.$transaction` yang
+  // dipaku di sini akan menulis DI LUAR transaksi pemanggil (audit 2026-07).
+  const inTx = async (fn: (tx: Prisma.TransactionClient) => Promise<void>) =>
+    "$transaction" in client ? client.$transaction(fn) : fn(client);
+
+  await inTx(async (tx) => {
     const dep = await tx.fixedAssetDepreciation.create({
       data: { assetId, year, month, date: end, amount, accumulatedAfter },
     });

@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -43,6 +44,7 @@ interface ModulesResponse {
 
 export function ModuleSettingsPanel() {
   const t = useT();
+  const router = useRouter();
   const { toast } = useToast();
   const [saved, setSaved] = useState<ModulesResponse | null>(null);
   const [category, setCategory] = useState<BusinessCategory | "">("");
@@ -122,6 +124,13 @@ export function ModuleSettingsPanel() {
       setModules(new Set(next.modules));
       setErrors([]);
       toast(t("modules.saved"));
+      // Tanpa ini permukaan yang dirender server (banner, halaman yang menunya
+      // ikut modul) tetap memakai keadaan lama sampai reload manual — tampak
+      // seperti simpanannya gagal. Catatan: sidebar & palet perintah membaca
+      // izinnya lewat fetch client saat mount (`useEffectivePermissions`), jadi
+      // keduanya baru menyusul pada navigasi berikutnya; refresh ini tetap
+      // membereskan semua permukaan server.
+      router.refresh();
     } catch {
       toast(t("modules.errNetwork"), "error");
     } finally {

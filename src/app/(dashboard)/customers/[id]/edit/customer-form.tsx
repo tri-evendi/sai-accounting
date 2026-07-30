@@ -25,6 +25,7 @@ export function EditCustomerForm() {
     pic: "",
     npwp: "",
     taxExempt: false,
+    isActive: true,
   });
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function EditCustomerForm() {
           pic: data.pic || "",
           npwp: data.npwp || "",
           taxExempt: Boolean(data.taxExempt),
+          isActive: data.isActive !== false,
         });
         setFetching(false);
       })
@@ -105,6 +107,22 @@ export function EditCustomerForm() {
                   {t("customers.taxExemptLabel")}
                   <span className="block text-xs text-muted-foreground">
                     {t("customers.taxExemptHint")}
+                  </span>
+                </span>
+              </label>
+              {/* Nonaktif lewat DELETE sudah lama ada; tanpa toggle ini tidak
+                  ada layar yang bisa MENGAKTIFKAN kembali (audit 2026-07). */}
+              <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
+                <Checkbox
+                  id="isActive"
+                  className="mt-0.5"
+                  checked={form.isActive}
+                  onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
+                />
+                <span className="text-sm text-foreground">
+                  {t("common.active")}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("customers.activeHint")}
                   </span>
                 </span>
               </label>

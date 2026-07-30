@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
@@ -40,7 +40,7 @@ export default async function FinancePage({
   const dictionary = await getDictionary(await getLocale());
   const cashLabels = cashTypeLabels(dictionary);
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   // Build filters
@@ -48,15 +48,25 @@ export default async function FinancePage({
   if (params.type) where.type = params.type;
   if (params.currency) where.currency = params.currency;
 
-  if (params.year) {
-    const year = parseInt(params.year);
-    const month = params.month ? parseInt(params.month) - 1 : 0;
-    const startDate = params.month
-      ? new Date(year, month, 1)
-      : new Date(year, 0, 1);
-    const endDate = params.month
-      ? new Date(year, month + 1, 1)
-      : new Date(year + 1, 0, 1);
+  // Sanitized: hand-edited URLs must not put NaN into the query. A month
+  // chosen with year "Semua tahun" cannot mean "Maret every year" in one
+  // range — it defaults to the current year, and the Year select below shows
+  // that, so the filter applied is always the filter displayed.
+  const yearNum = params.year ? Number.parseInt(params.year, 10) : NaN;
+  const monthNum = params.month ? Number.parseInt(params.month, 10) : NaN;
+  const monthValid = Number.isFinite(monthNum) && monthNum >= 1 && monthNum <= 12;
+  const effectiveYear = Number.isFinite(yearNum)
+    ? yearNum
+    : monthValid
+      ? new Date().getFullYear()
+      : null;
+  if (effectiveYear != null) {
+    const startDate = monthValid
+      ? new Date(effectiveYear, monthNum - 1, 1)
+      : new Date(effectiveYear, 0, 1);
+    const endDate = monthValid
+      ? new Date(effectiveYear, monthNum, 1)
+      : new Date(effectiveYear + 1, 0, 1);
     where.date = { gte: startDate, lt: endDate };
   }
 
@@ -168,7 +178,7 @@ export default async function FinancePage({
               <NativeSelect
                 id="filter-year"
                 name="year"
-                defaultValue={params.year || ""}
+                defaultValue={effectiveYear != null ? String(effectiveYear) : ""}
                 options={[
                   { value: "", label: t("finance.allYears") },
                   ...years.map((y) => ({ value: String(y), label: String(y) })),
@@ -182,7 +192,7 @@ export default async function FinancePage({
               <NativeSelect
                 id="filter-month"
                 name="month"
-                defaultValue={params.month || ""}
+                defaultValue={monthValid ? String(monthNum) : ""}
                 options={[
                   { value: "", label: t("finance.allMonths") },
                   ...months.map((m, i) => ({ value: String(i + 1), label: m })),
@@ -207,7 +217,7 @@ export default async function FinancePage({
         {balances.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              {params.year ? t("finance.noCashRecordsPeriod") : t("finance.noCashRecords")}
+              {effectiveYear != null ? t("finance.noCashRecordsPeriod") : t("finance.noCashRecords")}
             </CardContent>
           </Card>
         ) : (

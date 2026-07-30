@@ -59,6 +59,26 @@ export async function PUT(
     return NextResponse.json({ error: t("costCenters.parentSelf") }, { status: 400 });
   }
 
+  // Induk juga tidak boleh TURUNANNYA sendiri — siklus melepaskan seluruh
+  // cabang dari akar null dan daftar pusat biaya kehilangan barisnya
+  // diam-diam. Telusuri rantai induk calon induk.
+  if (parentId != null) {
+    let cursor: number | null = parentId;
+    const seen = new Set<number>();
+    while (cursor != null && !seen.has(cursor)) {
+      if (cursor === costCenterId) {
+        const { t } = await getRequestI18n();
+        return NextResponse.json({ error: t("costCenters.parentCycle") }, { status: 400 });
+      }
+      seen.add(cursor);
+      const parent: { parentId: number | null } | null = await prisma.costCenter.findUnique({
+        where: { id: cursor },
+        select: { parentId: true },
+      });
+      cursor = parent?.parentId ?? null;
+    }
+  }
+
   try {
     const costCenter = await prisma.costCenter.update({
       where: { id: costCenterId },

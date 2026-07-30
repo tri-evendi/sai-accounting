@@ -83,7 +83,11 @@ export async function getTrialBalance(asOf?: Date, client = prisma) {
     const net = n.debit - n.credit; // positive => debit-side balance
     const debit = net > 0 ? net : 0;
     const credit = net < 0 ? -net : 0;
-    if (debit === 0 && credit === 0) continue;
+    // Skip only accounts with NO movement at all. An account whose debits and
+    // credits net to exactly zero HAD movement — dropping it made the row
+    // unauditable from the TB (it looked identical to an untouched account).
+    // It stays, as a 0/0 line.
+    if (n.debit === 0 && n.credit === 0) continue;
     rows.push({ code: a.code, name: a.name, debit, credit });
     totalDebit += debit;
     totalCredit += credit;

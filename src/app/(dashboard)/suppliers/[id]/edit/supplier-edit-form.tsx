@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +17,7 @@ export function EditSupplierForm() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "" });
+  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "", isActive: true });
 
   useEffect(() => {
     fetch(`/api/suppliers/${params.id}`)
@@ -30,6 +31,7 @@ export function EditSupplierForm() {
           address: data.address || "",
           phone: data.phone || "",
           email: data.email || "",
+          isActive: data.isActive !== false,
         });
         setFetching(false);
       })
@@ -83,6 +85,22 @@ export function EditSupplierForm() {
               <Input id="address" label={t("common.address")} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               <Input id="phone" label={t("common.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <Input id="email" type="email" label={t("common.email")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              {/* Nonaktif lewat DELETE sudah lama ada; tanpa toggle ini tidak
+                  ada layar yang bisa MENGAKTIFKAN kembali (audit 2026-07). */}
+              <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
+                <Checkbox
+                  id="isActive"
+                  className="mt-0.5"
+                  checked={form.isActive}
+                  onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
+                />
+                <span className="text-sm text-foreground">
+                  {t("common.active")}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("suppliers.activeHint")}
+                  </span>
+                </span>
+              </label>
             </div>
           </CardContent>
         </Card>

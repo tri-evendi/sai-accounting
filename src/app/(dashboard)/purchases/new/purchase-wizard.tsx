@@ -16,7 +16,7 @@
  *    menghasilkan jurnal — persediaan sudah didebet oleh jurnal pembeliannya.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { SearchableSelect, type SearchableOption } from "@/components/ui/searcha
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { DueDateField } from "@/components/shared/due-date-field";
+import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
 import { Wizard, WizardSummaryRow } from "@/components/shared/wizard";
 import { WizardPartnerStep } from "@/components/shared/wizard-partner-step";
 import { useWizardDraft } from "@/components/shared/use-wizard-draft";
@@ -50,10 +51,9 @@ import {
 import { useT } from "@/lib/i18n/client";
 import { CheckCircle2, PackagePlus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 
-export interface SupplierOption {
-  id: number;
-  name: string;
-}
+// Pemasok tidak lagi dikirim sebagai daftar statis (audit: `take: 500`
+// memotong daftar — pemasok lama tak terpilih). Pemilihnya mencari ke server;
+// nama pemasok terpilih dibaca dari endpoint detailnya.
 export interface ItemOption {
   id: number;
   name: string;
@@ -71,11 +71,9 @@ interface PurchaseResult {
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export function PurchaseWizard({
-  suppliers,
   items,
   closedPeriods,
 }: {
-  suppliers: SupplierOption[];
   items: ItemOption[];
   closedPeriods: ClosedPeriodRef[];
 }) {
@@ -89,8 +87,15 @@ export function PurchaseWizard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PurchaseResult | null>(null);
+  // Nama pemasok yang terpilih di pemilih cari-ke-server — untuk label saat
+  // draf dipulihkan dan untuk baris ringkasan. Diisi dari endpoint detail.
+  const [supplierInfo, setSupplierInfo] = useState<Record<number, { name: string }>>({});
 
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // issue #91/#98 — dimensi pusat biaya, pemilih yang sama dengan formulir di
+  // halaman pemasok. Perusahaan tanpa pusat biaya mendapat daftar kosong dan
+  // pemilihnya tidak dirender sama sekali.
+  const costCenters = useCostCenters();
   const guardContext = useMemo(() => ({ closedPeriods }), [closedPeriods]);
   const blockers = validatePurchaseStep(draft, stepId, guardContext);
 
@@ -107,10 +112,29 @@ export function PurchaseWizard({
     [patch]
   );
 
-  const supplierOptions: SearchableOption[] = suppliers.map((s) => ({
-    value: String(s.id),
-    label: s.name,
-  }));
+  // Nama pemasok terpilih — dibaca sekali dari endpoint detail lalu di-cache;
+  // menutup label pemilih pada draf yang dipulihkan dan baris ringkasan.
+  useEffect(() => {
+    const id = draft.supplier.mode === "existing" ? draft.supplier.id : null;
+    if (id == null || supplierInfo[id]) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/suppliers/${id}`);
+      if (!res.ok || cancelled) return;
+      const s = (await res.json()) as { name: string };
+      if (cancelled) return;
+      setSupplierInfo((m) => ({ ...m, [id]: { name: s.name } }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.supplier.mode, draft.supplier.id, supplierInfo]);
+
+  const selectedSupplierId =
+    draft.supplier.mode === "existing" ? draft.supplier.id : null;
+  const selectedSupplier =
+    selectedSupplierId != null ? supplierInfo[selectedSupplierId] : undefined;
+
   const itemOptions: SearchableOption[] = items.map((i) => ({
     value: String(i.id),
     label: i.name,
@@ -225,7 +249,12 @@ export function PurchaseWizard({
       {stepId === "pemasok" && (
         <WizardPartnerStep
           kind="supplier"
-          options={supplierOptions}
+          fetchUrl="/api/suppliers?active=1&picker=1"
+          initialOption={
+            selectedSupplierId != null && selectedSupplier
+              ? { value: String(selectedSupplierId), label: selectedSupplier.name }
+              : null
+          }
           value={draft.supplier}
           manageHref="/suppliers"
           onChange={(values) =>
@@ -526,6 +555,15 @@ export function PurchaseWizard({
                 />
               </div>
 
+              <CostCenterField
+                className="mt-4"
+                costCenters={costCenters}
+                value={draft.purchase.costCenterId ?? ""}
+                onChange={(v) =>
+                  patch((d) => ({ ...d, purchase: { ...d.purchase, costCenterId: v } }))
+                }
+              />
+
               <dl className="mt-4 border-t border-border pt-3">
                 <WizardSummaryRow
                   label={t("purchases.valueBeforeVat")}
@@ -666,7 +704,7 @@ export function PurchaseWizard({
                 value={
                   draft.supplier.mode === "new"
                     ? t("purchases.summaryNew", { name: draft.supplier.name })
-                    : (suppliers.find((s) => s.id === draft.supplier.id)?.name ?? "—")
+                    : (selectedSupplier?.name ?? "—")
                 }
               />
               <WizardSummaryRow

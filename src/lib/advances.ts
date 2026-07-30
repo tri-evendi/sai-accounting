@@ -284,7 +284,7 @@ export async function getAdvanceTargetState(
   if (kind === "invoice") {
     const invoice = await client.invoice.findUnique({
       where: { id },
-      include: { items: true, payments: true, advanceApplications: true },
+      include: { items: true, payments: true, advanceApplications: true, salesReturns: true },
     });
     if (!invoice || invoice.status === "canceled") return null;
 
@@ -304,6 +304,18 @@ export async function getAdvanceTargetState(
     for (const a of invoice.advanceApplications) {
       if (keep(a.id)) settledBase += toBase(a) ?? 0;
     }
+    // A posted retur penjualan settled its slice (issue #27): its journal
+    // credited Piutang, so that value is no longer room to compensate into.
+    for (const r of invoice.salesReturns ?? []) {
+      if (r.status === "canceled") continue;
+      settledBase +=
+        toBase({
+          amount: num(r.subtotal) + num(r.taxAmount),
+          currency: r.currency || BASE_CURRENCY,
+          rate: r.rate,
+          baseAmount: r.baseAmount,
+        }) ?? 0;
+    }
     settledBase = round2(settledBase);
 
     return {
@@ -321,7 +333,7 @@ export async function getAdvanceTargetState(
 
   const purchase = await client.supplierTransaction.findUnique({
     where: { id },
-    include: { allocationsReceived: true, advanceApplications: true },
+    include: { allocationsReceived: true, advanceApplications: true, purchaseReturns: true },
   });
   if (!purchase) return null;
   return purchaseTargetState(purchase, options);
@@ -349,6 +361,15 @@ export function purchaseTargetState(
     baseAmount: unknown;
     allocationsReceived: MoneyRow[];
     advanceApplications: (MoneyRow & { id: number })[];
+    /** Optional so pure-math callers/tests may omit it; treated as empty. */
+    purchaseReturns?: {
+      status: string;
+      subtotal: unknown;
+      taxAmount: unknown;
+      currency: string | null;
+      rate: unknown;
+      baseAmount: unknown;
+    }[];
   },
   options: { excludeApplicationId?: number } = {}
 ): AdvanceTargetState | null {
@@ -370,6 +391,18 @@ export function purchaseTargetState(
   for (const a of purchase.allocationsReceived) settledBase += toBase(a) ?? 0;
   for (const a of purchase.advanceApplications) {
     if (keep(a.id)) settledBase += toBase(a) ?? 0;
+  }
+  // A posted retur pembelian settled its slice (issue #27): its journal
+  // debited Hutang, so the returned value is no longer room to compensate into.
+  for (const r of purchase.purchaseReturns ?? []) {
+    if (r.status === "canceled") continue;
+    settledBase +=
+      toBase({
+        amount: num(r.subtotal) + num(r.taxAmount),
+        currency: r.currency || BASE_CURRENCY,
+        rate: r.rate,
+        baseAmount: r.baseAmount,
+      }) ?? 0;
   }
   settledBase = round2(settledBase);
 
@@ -405,7 +438,7 @@ export async function getSupplierPurchaseTargets(
 ): Promise<AdvanceTargetState[]> {
   const purchases = await client.supplierTransaction.findMany({
     where: { supplierId, type: "purchase" },
-    include: { allocationsReceived: true, advanceApplications: true },
+    include: { allocationsReceived: true, advanceApplications: true, purchaseReturns: true },
     orderBy: { date: "asc" },
   });
 

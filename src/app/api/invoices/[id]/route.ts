@@ -204,6 +204,51 @@ export async function DELETE(
   const { id } = await params;
   const invoiceId = parseInt(id);
 
+  // Dokumen berantai: faktur yang sudah ditarik oleh surat jalan, retur
+  // penjualan, atau kompensasi uang muka di-RESTRICT oleh FK masing-masing
+  // (`delivery_orders.invoice_id` / `sales_returns.invoice_id` /
+  // `advance_applications.invoice_id`). Katakan itu dengan jelas alih-alih
+  // membiarkan driver melempar 500 buram — cermin penjaga di route kontrak.
+  const [deliveryOrderCount, salesReturnCount, advanceApplications] = await Promise.all([
+    prisma.deliveryOrder.count({ where: { invoiceId } }),
+    prisma.salesReturn.count({ where: { invoiceId } }),
+    prisma.advanceApplication.findMany({
+      where: { invoiceId },
+      select: { advance: { select: { advanceNo: true } } },
+    }),
+  ]);
+  if (deliveryOrderCount > 0 || salesReturnCount > 0) {
+    const { t } = await getRequestI18n();
+    // Frasa pencacahan dipinjam dari penjaga kontrak (kamus belum punya varian
+    // khusus faktur); dua jenis disambung "·" — tanda baca yang netral bahasa,
+    // bukan kata sambung yang berbeda antarbahasa.
+    const parts: string[] = [];
+    if (deliveryOrderCount > 0) {
+      parts.push(t("errors.contractUsedDeliveryOrders", { count: deliveryOrderCount }));
+    }
+    if (salesReturnCount > 0) {
+      parts.push(t("returns.tabSales", { count: salesReturnCount }));
+    }
+    return NextResponse.json(
+      { error: t("errors.invoiceInUse", { used: parts.join(" · ") }) },
+      { status: 409 }
+    );
+  }
+  if (advanceApplications.length > 0) {
+    const { t } = await getRequestI18n();
+    // Faktur ini adalah SATU dokumen target kompensasi uang muka tersebut —
+    // batalkan kompensasinya dulu (lewat panel uang muka di halaman faktur).
+    return NextResponse.json(
+      {
+        error: t("errors.advanceAlreadyApplied", {
+          advanceNo: advanceApplications[0].advance.advanceNo,
+          count: 1,
+        }),
+      },
+      { status: 409 }
+    );
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       // Payments cascade-delete with the invoice, so their journals have to be

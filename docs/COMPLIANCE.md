@@ -70,3 +70,6 @@ final pertama terbit.
 3. **Durasi tenggang (30 hari) dan jangkar retensi** (entri jurnal termuda +
    10 tahun, konservatif) — angka yang dipakai kode; konfirmasi ke penasihat
    pajak bila ingin lebih presisi (mis. akhir tahun buku).
+4. **Persetujuan S&K penerima undangan (#139)**: yang tercatat ber-versi baru
+   persetujuan PENDAFTAR utama; halaman terima-undangan belum memintanya —
+   lengkapi bersama alur persetujuan-ulang saat naskah final terbit.

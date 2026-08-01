@@ -558,7 +558,8 @@
     "bookMovementWrongAccount": "该账簿交易所属的账户或币种与此次对账不符。",
     "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
     "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
-    "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。"
+    "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。",
+    "selectCompanyFirst": "请先选择公司。"
   },
   "contracts": {
     "title": "合同（{count}）",
@@ -2572,7 +2573,20 @@
     "choiceNotAllowed": "禁止",
     "choiceAlwaysAllow": "始终允许",
     "choiceAlwaysDeny": "始终禁止",
-    "lockedShort": "已锁定"
+    "lockedShort": "已锁定",
+    "inviteUser": "邀请用户",
+    "inviteTitle": "邀请新用户",
+    "inviteHint": "输入邮箱和角色。对方将收到链接并自行设置密码——您无需(也无法)替任何人输入密码。",
+    "inviting": "发送中...",
+    "sendInvite": "发送邀请",
+    "errInvite": "发送邀请失败",
+    "pendingInvites": "待处理邀请",
+    "inviteExpires": "有效期至",
+    "revokeInvite": "撤销",
+    "revokeInviteTitle": "撤销邀请",
+    "revokeInviteMessage": "撤销发给 {email} 的邀请?邮件中的链接将失效。",
+    "inviteRevoked": "邀请已撤销",
+    "errRevokeInvite": "撤销邀请失败"
   },
   "permissions": {
     "errNoPermission": "您没有管理访问权限的权限。",
@@ -3309,5 +3323,62 @@
     "stepDatabase": "创建数据库",
     "stepMigrate": "应用数据库架构",
     "stepRegister": "注册公司"
+  },
+  "invitations": {
+    "sent": "邀请已发送。",
+    "tooMany": "尝试次数过多,请稍后再试。",
+    "quotaExceeded": "您套餐的用户配额已满——请撤销待处理的邀请或升级套餐。",
+    "quotaExceededAccept": "该订阅的用户配额已满,请联系邀请您的人。",
+    "invalidToken": "该邀请链接无效——可能已过期、已被使用或复制有误。请向邀请人重新索取邀请。",
+    "notFound": "未找到该邀请。",
+    "goLogin": "前往登录",
+    "checking": "正在检查邀请...",
+    "acceptHeading": "接受邀请",
+    "acceptDescription": "您受邀加入 {company}。",
+    "acceptAs": "此邀请发给 {email}。请在下方完善您的账户。",
+    "username": "用户名(用于显示)",
+    "choosePassword": "您的密码(至少 8 个字符)",
+    "submitting": "正在创建账户...",
+    "submit": "创建账户并加入",
+    "successTitle": "您的账户已就绪。",
+    "successBody": "使用您的邮箱和刚设置的密码登录,然后选择公司。"
+  },
+  "tenantSettings": {
+    "title": "订阅与套餐",
+    "description": "您的套餐、用量与账单历史。",
+    "planHeading": "套餐",
+    "statusLabel": "状态",
+    "trialEndsAt": "试用截止",
+    "usageHeading": "用量",
+    "usageCompanies": "公司",
+    "usageUsers": "用户",
+    "usageOf": "{used} / {max}",
+    "billingHeading": "账单历史",
+    "billingUnavailable": "计费数据库暂时无法访问。登录与账簿不受影响——请稍后再试。",
+    "noSubscription": "该租户尚无订阅记录。",
+    "noInvoices": "暂无账单。",
+    "invoiceNumber": "编号",
+    "invoiceDue": "到期日",
+    "invoiceTotal": "合计",
+    "period": "当前周期至 {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "月",
+    "cycleYearly": "年",
+    "planChangeNote": "更换套餐与在线支付将随支付网关一同推出。目前请联系平台运营方。",
+    "readOnlyNote": "订阅已暂停:账簿为只读。您的数据不会被删除;仍可查看与导出。",
+    "status": {
+      "pending_verification": "待验证",
+      "trialing": "试用中",
+      "active": "生效中",
+      "past_due": "已逾期",
+      "suspended": "已暂停(只读)",
+      "cancelled": "已终止"
+    },
+    "invoiceStatus": {
+      "draft": "草稿",
+      "issued": "已开具",
+      "paid": "已付款",
+      "void": "作废"
+    }
   }
 }

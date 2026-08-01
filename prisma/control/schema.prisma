@@ -68,6 +68,7 @@ model Tenant {
   companies   Company[]
   users       User[]
   memberships TenantMembership[]
+  invitations Invitation[]
 
   @@index([status])
   @@map("tenants")
@@ -135,6 +136,7 @@ model Company {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   memberships Membership[]
+  invitations Invitation[]
 
   @@index([isActive])
   @@index([tenantId])
@@ -212,6 +214,54 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+/// Undangan staf lewat email (issue #139) — pengganti alur "admin mengetik
+/// kata sandi orang lain": penerima menentukan kata sandinya SENDIRI lewat
+/// tautan berbatas waktu. Baris di sini hanya untuk calon PENGGUNA BARU;
+/// orang yang sudah punya akun setenant langsung ditambahkan keanggotaannya
+/// (`addExistingUserToCompany`) tanpa baris undangan.
+///
+/// Token disimpan TER-HASH (SHA-256), berbatas waktu, sekali pakai — pola yang
+/// sama persis dengan `password_reset_tokens`.
+model Invitation {
+  id Int @id @default(autoincrement())
+
+  /// Tenant & PT tujuan. Disimpan dua-duanya walau company sudah menyiratkan
+  /// tenant: kuota `max_users` dihitung per TENANT, dan penerimaan harus
+  /// membuktikan keduanya masih serasi tanpa join tambahan.
+  tenantId  Int     @map("tenant_id")
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Alamat yang diundang, huruf kecil. TIDAK unik: undangan lama yang hangus
+  /// boleh berdampingan dengan yang baru — hanya yang termuda yang hidup
+  /// (yang lama ditandai `used_at` saat yang baru terbit).
+  email String @db.VarChar(255)
+
+  /// Peran DI PT TUJUAN (nilai `roles.key` basis data perusahaan itu) — BUKAN
+  /// peran tenant; penerima undangan selalu lahir sebagai tenant `member`.
+  companyRole String @map("company_role") @db.VarChar(20)
+
+  /// Pengundang — id pengguna global, untuk jejak. FK sengaja TIDAK dipasang:
+  /// undangan harus tetap terbaca walau akun pengundangnya kelak dihapus.
+  invitedByUserId Int @map("invited_by_user_id")
+
+  /// SHA-256 hex dari token mentah; token mentah hanya hidup di dalam surel.
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  /// Terisi = sudah dipakai ATAU digantikan undangan yang lebih baru/dicabut.
+  usedAt    DateTime? @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("invitations")
 }
 
 /// Pengguna × perusahaan × peran. Inilah yang tidak bisa dinyatakan oleh satu

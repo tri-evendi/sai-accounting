@@ -10,13 +10,30 @@
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import { getActiveRoles } from "@/lib/roles";
+import { tenantCan } from "@/lib/tenant-authz";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { UsersClient } from "./users-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  await requirePagePermission("user.manage");
+  const session = await requirePagePermission("user.manage");
   // Daftar peran dari DB (termasuk peran kustom) untuk pemilih peran.
   const roles = await getActiveRoles();
-  return <UsersClient roles={roles.map((r) => ({ key: r.key, label: r.label }))} />;
+
+  /*
+   * Mengundang orang = kewenangan TENANT (`tenant.member.invite`, issue #139),
+   * bukan bagian `user.manage`. `tenantCan` di sini untuk TAMPILAN saja
+   * (menyembunyikan form yang pasti ditolak); penegakan sebenarnya di
+   * `/api/tenant/invitations` lewat `requireTenantApiPermission`.
+   */
+  const membership = await tenantMembershipForUser(Number.parseInt(session.user.id!, 10));
+  const canInvite = tenantCan(membership, "tenant.member.invite");
+
+  return (
+    <UsersClient
+      roles={roles.map((r) => ({ key: r.key, label: r.label }))}
+      canInvite={canInvite}
+    />
+  );
 }

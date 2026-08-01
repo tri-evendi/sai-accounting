@@ -558,7 +558,8 @@
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
     "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
-    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
+    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched.",
+    "selectCompanyFirst": "Select a company first."
   },
   "contracts": {
     "title": "Contracts ({count})",
@@ -2572,7 +2573,20 @@
     "choiceNotAllowed": "Not allowed",
     "choiceAlwaysAllow": "Always allow",
     "choiceAlwaysDeny": "Always deny",
-    "lockedShort": "locked"
+    "lockedShort": "locked",
+    "inviteUser": "Invite User",
+    "inviteTitle": "Invite a New User",
+    "inviteHint": "Enter an email address and a role. The recipient gets a link to set their own password — you never type anyone's password.",
+    "inviting": "Sending...",
+    "sendInvite": "Send Invitation",
+    "errInvite": "Failed to send the invitation",
+    "pendingInvites": "Pending Invitations",
+    "inviteExpires": "Valid until",
+    "revokeInvite": "Revoke",
+    "revokeInviteTitle": "Revoke Invitation",
+    "revokeInviteMessage": "Revoke the invitation for {email}? The link in the email stops working.",
+    "inviteRevoked": "Invitation revoked",
+    "errRevokeInvite": "Failed to revoke the invitation"
   },
   "permissions": {
     "errNoPermission": "You do not have permission to manage access rights.",
@@ -3309,5 +3323,62 @@
     "stepDatabase": "Creating the database",
     "stepMigrate": "Applying the schema",
     "stepRegister": "Registering the company"
+  },
+  "invitations": {
+    "sent": "The invitation has been sent.",
+    "tooMany": "Too many attempts. Try again later.",
+    "quotaExceeded": "Your plan's user quota is full — revoke a pending invitation or upgrade the plan.",
+    "quotaExceededAccept": "This subscription's user quota is full. Contact the person who invited you.",
+    "invalidToken": "This invitation link is not valid — it may have expired, been used already, or been copied incorrectly. Ask for a new invitation.",
+    "notFound": "Invitation not found.",
+    "goLogin": "Go to sign in",
+    "checking": "Checking the invitation...",
+    "acceptHeading": "Accept Invitation",
+    "acceptDescription": "You have been invited to join {company}.",
+    "acceptAs": "This invitation is for {email}. Complete your account below.",
+    "username": "Username (for display)",
+    "choosePassword": "Your Password (min. 8 characters)",
+    "submitting": "Creating account...",
+    "submit": "Create Account & Join",
+    "successTitle": "Your account is ready.",
+    "successBody": "Sign in with your email and the password you just created, then pick the company."
+  },
+  "tenantSettings": {
+    "title": "Subscription & Plan",
+    "description": "Your plan, usage, and billing history.",
+    "planHeading": "Plan",
+    "statusLabel": "Status",
+    "trialEndsAt": "Trial ends",
+    "usageHeading": "Usage",
+    "usageCompanies": "Companies",
+    "usageUsers": "Users",
+    "usageOf": "{used} of {max}",
+    "billingHeading": "Billing History",
+    "billingUnavailable": "The billing database is currently unreachable. Sign-in and the ledgers are unaffected — try again later.",
+    "noSubscription": "No subscription is recorded for this tenant yet.",
+    "noInvoices": "No invoices yet.",
+    "invoiceNumber": "Number",
+    "invoiceDue": "Due Date",
+    "invoiceTotal": "Total",
+    "period": "Current period runs until {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "month",
+    "cycleYearly": "year",
+    "planChangeNote": "Plan changes and online payment arrive with the payment gateway. For now, contact the platform operator.",
+    "readOnlyNote": "The subscription is suspended: the ledgers are READ-ONLY. Your data is not deleted; reading and exporting still work.",
+    "status": {
+      "pending_verification": "Pending Verification",
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Past Due",
+      "suspended": "Suspended (read-only)",
+      "cancelled": "Cancelled"
+    },
+    "invoiceStatus": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "paid": "Paid",
+      "void": "Void"
+    }
   }
 }

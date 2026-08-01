@@ -24,6 +24,13 @@ const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
 export const RATE_LIMITS = {
   login: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
   changePassword: { windowMs: 15 * 60 * 1000, maxAttempts: 5 },
+  /*
+   * Penerbitan undangan staf (issue #139): per-PENGUNDANG — permukaan
+   * TERAUTENTIKASI (akun admin yang dibajak tidak boleh jadi meriam spam),
+   * jadi penghitung memori cukup; penerimaan undangan yang PUBLIK memakai
+   * penghitung persisten (`rate-limit-persistent.ts`, aturan #138).
+   */
+  invitation: { windowMs: 15 * 60 * 1000, maxAttempts: 20 },
 } as const;
 
 export function checkRateLimit(

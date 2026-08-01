@@ -558,7 +558,8 @@
     "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
     "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
-    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
+    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan.",
+    "selectCompanyFirst": "Pilih perusahaan terlebih dahulu."
   },
   "contracts": {
     "title": "Kontrak ({count})",
@@ -2572,7 +2573,20 @@
     "choiceNotAllowed": "Tidak",
     "choiceAlwaysAllow": "Selalu boleh",
     "choiceAlwaysDeny": "Selalu tidak",
-    "lockedShort": "terkunci"
+    "lockedShort": "terkunci",
+    "inviteUser": "Undang Pengguna",
+    "inviteTitle": "Undang Pengguna Baru",
+    "inviteHint": "Masukkan email dan peran. Penerima akan mendapat tautan untuk menentukan kata sandinya sendiri — Anda tidak perlu (dan tidak bisa) mengetikkan kata sandi siapa pun.",
+    "inviting": "Mengirim...",
+    "sendInvite": "Kirim Undangan",
+    "errInvite": "Gagal mengirim undangan",
+    "pendingInvites": "Undangan Menunggu",
+    "inviteExpires": "Berlaku sampai",
+    "revokeInvite": "Cabut",
+    "revokeInviteTitle": "Cabut Undangan",
+    "revokeInviteMessage": "Cabut undangan untuk {email}? Tautan di surelnya berhenti bekerja.",
+    "inviteRevoked": "Undangan dicabut",
+    "errRevokeInvite": "Gagal mencabut undangan"
   },
   "permissions": {
     "errNoPermission": "Anda tidak punya izin mengelola hak akses.",
@@ -3309,5 +3323,62 @@
     "stepDatabase": "Membuat basis data",
     "stepMigrate": "Menerapkan skema",
     "stepRegister": "Mendaftarkan perusahaan"
+  },
+  "invitations": {
+    "sent": "Undangan sudah dikirim.",
+    "tooMany": "Terlalu banyak percobaan. Coba lagi nanti.",
+    "quotaExceeded": "Kuota pengguna paket Anda sudah penuh — cabut undangan yang menunggu atau naikkan paket.",
+    "quotaExceededAccept": "Kuota pengguna langganan ini sudah penuh. Hubungi pengundang Anda.",
+    "invalidToken": "Tautan undangan tidak berlaku — mungkin kedaluwarsa, sudah dipakai, atau salah salin. Minta undangan baru kepada pengundang Anda.",
+    "notFound": "Undangan tidak ditemukan.",
+    "goLogin": "Ke halaman masuk",
+    "checking": "Memeriksa undangan...",
+    "acceptHeading": "Terima Undangan",
+    "acceptDescription": "Anda diundang bergabung ke {company}.",
+    "acceptAs": "Undangan ini untuk {email}. Lengkapi akun Anda di bawah.",
+    "username": "Nama Pengguna (untuk tampilan)",
+    "choosePassword": "Kata Sandi Anda (minimal 8 karakter)",
+    "submitting": "Membuat akun...",
+    "submit": "Buat Akun & Bergabung",
+    "successTitle": "Akun Anda siap.",
+    "successBody": "Masuk dengan email dan kata sandi yang baru Anda buat, lalu pilih perusahaannya."
+  },
+  "tenantSettings": {
+    "title": "Langganan & Paket",
+    "description": "Paket, pemakaian, dan riwayat tagihan langganan Anda.",
+    "planHeading": "Paket",
+    "statusLabel": "Status",
+    "trialEndsAt": "Uji coba berakhir",
+    "usageHeading": "Pemakaian",
+    "usageCompanies": "Perusahaan",
+    "usageUsers": "Pengguna",
+    "usageOf": "{used} dari {max}",
+    "billingHeading": "Riwayat Tagihan",
+    "billingUnavailable": "Basis data penagihan sedang tidak terjangkau. Masuk dan buku besar tidak terpengaruh — coba lagi nanti.",
+    "noSubscription": "Belum ada langganan tercatat untuk tenant ini.",
+    "noInvoices": "Belum ada tagihan.",
+    "invoiceNumber": "Nomor",
+    "invoiceDue": "Jatuh Tempo",
+    "invoiceTotal": "Total",
+    "period": "Periode berjalan sampai {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "bulan",
+    "cycleYearly": "tahun",
+    "planChangeNote": "Ganti paket & pembayaran daring menyusul bersama gateway pembayaran. Untuk saat ini hubungi pengelola platform.",
+    "readOnlyNote": "Langganan ditangguhkan: buku besar HANYA-BACA. Data Anda tidak dihapus; membaca dan mengekspor tetap bisa.",
+    "status": {
+      "pending_verification": "Menunggu Verifikasi",
+      "trialing": "Masa Uji Coba",
+      "active": "Aktif",
+      "past_due": "Menunggak",
+      "suspended": "Ditangguhkan (hanya-baca)",
+      "cancelled": "Berhenti"
+    },
+    "invoiceStatus": {
+      "draft": "Draf",
+      "issued": "Terbit",
+      "paid": "Lunas",
+      "void": "Batal"
+    }
   }
 }

@@ -102,6 +102,12 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Kata serapan yang ejaannya IDENTIK di kedua bahasa — "menerjemahkan"-nya
     // hanya akan menghasilkan kata yang sama.
     "common.status",
+    // "Status"/"Total" serapan identik juga di layar langganan (issue #140);
+    // `tenantSettings.price` hanyalah "{amount} / {cycle}" — dua placeholder
+    // dan satu garis miring, tidak ada kata untuk diterjemahkan.
+    "tenantSettings.statusLabel",
+    "tenantSettings.invoiceTotal",
+    "tenantSettings.price",
     // "Email" ditulis sama di bahasa Indonesia dan Inggris (Mandarin: 邮箱).
     "auth.forgotPassword.email",
     "common.total",
@@ -202,6 +208,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
     // memakai en-dash di antara dua tanggal, jadi tidak ada yang berubah.
     "stockMovement.periodRange",
+    // "{amount} / {cycle}" — dua placeholder dan satu garis miring (#140).
+    "tenantSettings.price",
   ]),
 };
 

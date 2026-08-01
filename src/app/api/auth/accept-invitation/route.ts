@@ -1,0 +1,160 @@
+/**
+ * Menerima undangan (issue #139) — PUBLIK, seperti reset-password: penerimanya
+ * jelas belum punya sesi. Kredensialnya token sekali-pakai ter-hash dari surel
+ * (dilepas proxy lewat `/api/auth/*`; pengecualian beralasan di
+ * tests/authz-coverage.test.ts).
+ *
+ * GET  ?token=…  → isi undangan untuk PEMEGANG TOKEN (nama PT, email, peran) —
+ *                  halaman penerimaan menampilkannya. Memegang tautan =
+ *                  menerima surelnya, jadi tidak ada yang bocor ke pihak lain;
+ *                  semua kegagalan token dijawab SATU bentuk yang sama.
+ * POST {token, username, name?, password}
+ *                → buat akun: penerima MENENTUKAN KATA SANDINYA SENDIRI —
+ *                  inilah yang mengubur alur "admin mengetik kata sandi lalu
+ *                  mengirimnya lewat WhatsApp". User + Membership +
+ *                  TenantMembership lahir satu transaksi (invitation-store).
+ */
+import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
+import { z } from "zod";
+
+import { acceptInvitation, invitationInfoByToken } from "@/lib/invitation-store";
+import {
+  PERSISTENT_RATE_LIMITS,
+  checkPersistentRateLimit,
+} from "@/lib/rate-limit-persistent";
+import { controlDb } from "@/lib/control-db";
+import { runWithCompany } from "@/lib/company-context";
+import { writeAuditLog } from "@/lib/audit";
+import { getRequestI18n } from "@/lib/i18n/server";
+import { translateFieldErrors } from "@/lib/i18n/validation";
+
+const acceptSchema = z.object({
+  token: z.string().min(1).max(128),
+  username: z.string().min(1).max(50).trim(),
+  name: z.string().max(100).trim().optional(),
+  password: z.string().min(8).max(128),
+});
+
+function clientIp(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+export async function GET(request: Request) {
+  const token = new URL(request.url).searchParams.get("token") ?? "";
+
+  const limit = await checkPersistentRateLimit(
+    `invite-info:ip:${clientIp(request)}`,
+    PERSISTENT_RATE_LIMITS.invitationAcceptIp
+  );
+  if (!limit.allowed) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
+  const info = token ? await invitationInfoByToken(token) : null;
+  /* Tak dikenal / kedaluwarsa / terpakai — SATU jawaban: membedakannya memberi
+   * penebak token informasi gratis tentang token mana yang pernah hidup. */
+  if (!info) return NextResponse.json({ ok: false });
+
+  return NextResponse.json({
+    ok: true,
+    invitation: {
+      email: info.email,
+      companyName: info.companyName,
+      role: info.companyRole,
+      expiresAt: info.expiresAt,
+    },
+  });
+}
+
+export async function POST(request: Request) {
+  const { t, dictionary } = await getRequestI18n();
+
+  const limit = await checkPersistentRateLimit(
+    `invite-accept:ip:${clientIp(request)}`,
+    PERSISTENT_RATE_LIMITS.invitationAcceptIp
+  );
+  if (!limit.allowed) {
+    return NextResponse.json({ error: t("invitations.tooMany") }, { status: 429 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsed = acceptSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: t("validation.invalidInput"), details: translateFieldErrors(parsed.error, dictionary) },
+      { status: 400 }
+    );
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const result = await acceptInvitation(parsed.data.token, {
+    username: parsed.data.username,
+    name: parsed.data.name,
+    passwordHash,
+  });
+
+  switch (result.status) {
+    case "accepted":
+      break;
+    case "not_found":
+    case "used":
+    case "expired":
+      /* Ketiganya SATU kalimat — sama seperti reset-password. */
+      return NextResponse.json(
+        { error: t("invitations.invalidToken"), code: "invalid_token" },
+        { status: 400 }
+      );
+    case "username_taken":
+      return NextResponse.json(
+        { error: t("errors.usernameTaken"), code: "username_taken" },
+        { status: 409 }
+      );
+    case "email_taken":
+      /* Di antara undangan dan penerimaan, alamatnya telanjur dipakai akun
+       * lain. Pemegang token adalah pemilik alamatnya sendiri — tidak ada
+       * enumerasi di sini. */
+      return NextResponse.json(
+        { error: t("errors.emailTaken"), code: "email_taken" },
+        { status: 409 }
+      );
+    case "quota_exceeded":
+      return NextResponse.json(
+        { error: t("invitations.quotaExceededAccept"), code: "quota_exceeded" },
+        { status: 422 }
+      );
+  }
+
+  /* Jejak audit di PT tempat akunnya lahir. Kegagalan menulis jejak tidak
+   * membatalkan akun yang SUDAH sah dibuat — dicatat ke log server saja. */
+  try {
+    const company = await controlDb.company.findUnique({
+      where: { id: result.companyId },
+      select: { id: true, slug: true, databaseName: true },
+    });
+    if (company) {
+      await runWithCompany(
+        { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+        () =>
+          writeAuditLog({
+            userId: String(result.userId),
+            username: parsed.data.username,
+            role: result.companyRole,
+            action: "user.invite_accepted",
+            entity: "user",
+            entityId: result.userId,
+            details: { email: result.email, role: result.companyRole },
+            request,
+          })
+      );
+    }
+  } catch (error) {
+    console.error("[accept-invitation] gagal menulis jejak audit:", error);
+  }
+
+  return NextResponse.json({ ok: true }, { status: 201 });
+}

@@ -49,6 +49,9 @@ export const PERSISTENT_RATE_LIMITS = {
   /** Atur-ulang kata sandi (#136; penghitung persistennya dijanjikan di sini). */
   passwordResetIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
   passwordResetEmail: { windowMs: 15 * 60 * 1000, maxAttempts: 3 },
+  /** Penerimaan undangan staf (#139) per IP — publik bertoken 256 bit; pagar
+   *  ini menahan penebakan buta, bukan pemakaian wajar. */
+  invitationAcceptIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
 } as const satisfies Record<string, PersistentRateLimitOptions>;
 
 export interface PersistentRateLimitResult {

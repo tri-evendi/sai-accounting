@@ -45,6 +45,8 @@ next-env.d.ts
 # Klien basis data kendali (issue #104) — sama seperti klien perusahaan, dihasilkan
 # oleh `npm run db:generate`, bukan disimpan di repo.
 /src/generated/control
+# Klien basis data platform (issue #137) — idem.
+/src/generated/platform
 
 # local audit trail (sensitive)
 # Sejak #104 jejak audit pindah ke `data/audit/<slug>/audit.jsonl` — satu
@@ -64,6 +66,8 @@ next-env.d.ts
 # migration basis data KENDALI: repo mengira dirinya lengkap, lalu
 # `db:migrate:control` di mesin baru berhenti dengan "No migration found".
 !prisma/control/migrations/**/*.sql
+# … dan sejak #137 TIGA: migration basis data PLATFORM ikut dikecualikan.
+!prisma/platform/migrations/**/*.sql
 
 # transient agent worktrees
 /.claude/worktrees/

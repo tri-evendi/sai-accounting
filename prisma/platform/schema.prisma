@@ -1,0 +1,227 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BASIS DATA PLATFORM (`sai_platform`) — issue #137, epik multi-tenant #133
+//
+// Lapisan ketiga di samping kendali (`prisma/control`) dan perusahaan
+// (`prisma/schema.prisma`). Isinya adalah data BISNIS KAMI sebagai penyedia
+// SaaS: paket, langganan, pembayaran, tagihan platform, dan penghitung
+// pemakaian. TIDAK ADA satu pun angka akuntansi PELANGGAN di sini — buku besar
+// mereka tetap di basis data perusahaannya masing-masing.
+//
+// KENAPA DIPISAH DARI KENDALI (docs/MULTI-TENANT.md §4A):
+//   • Radius ledakan — migration/bug penagihan tidak boleh mengancam tabel yang
+//     mengautentikasi semua orang. Penagihan mati = orang tetap bisa masuk.
+//   • Retensi & cadangan catatan pembayaran berbeda dari buku pelanggan.
+//   • Hak akses berbeda — pengguna basis data aplikasi TIDAK menyentuh
+//     `sai_platform` di jalur permintaan biasa (lihat docs/DATABASE.md §11).
+//
+// ATURAN LINTAS-BASIS-DATA (tidak boleh dilanggar):
+//   FK tidak bisa menyeberangi basis data, dan transaksi juga tidak. Karena itu
+//   `tenant_id` di sini adalah Int BIASA TANPA FK — persis pola
+//   `periods.closed_by_id`. Konsistensi ditegakkan oleh URUTAN TULIS, bukan
+//   transaksi:
+//
+//       Tulis di `sai_platform` DULU, baru tandai di `sai_control`.
+//
+//   Arah kegagalan yang benar: lebih baik pembayaran tercatat tanpa tenant naik
+//   kelas (bisa direkonsiliasi — `npm run reconcile:platform`) daripada tenant
+//   naik kelas tanpa pembayaran (tidak akan pernah ketahuan).
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/platform"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// Paket berlangganan — master data (nonaktifkan, jangan hapus: langganan lama
+/// masih menunjuknya). Harga dalam IDR, `Decimal(15,2)` sesuai docs/DATABASE.md.
+model Plan {
+  id  Int    @id @default(autoincrement())
+  /// Kunci stabil yang dipakai kode & disalin ke `tenants.plan_key` di basis
+  /// data kendali (mis. `trial`, `starter`, `business`). snake_case lowercase.
+  key String @unique @db.VarChar(30)
+
+  name        String  @db.VarChar(100)
+  description String? @db.VarChar(255)
+
+  /// Harga langganan per siklus, dalam `currency` (IDR). JANGAN Float.
+  priceMonthly Decimal  @map("price_monthly") @db.Decimal(15, 2)
+  priceYearly  Decimal? @map("price_yearly") @db.Decimal(15, 2)
+  currency     String   @default("IDR") @db.VarChar(5)
+
+  /// Kuota paket. Saat paket sebuah tenant berubah, angka-angka ini DISALIN ke
+  /// `tenants.max_companies`/`max_users` di basis data kendali (pola snapshot,
+  /// docs/MULTI-TENANT.md §5) — penjaga kuota TIDAK membaca tabel ini di jalur
+  /// permintaan. Menaikkan harga/kuota paket tidak boleh diam-diam mengubah
+  /// pelanggan yang sudah berjalan.
+  maxCompanies Int @default(1) @map("max_companies")
+  maxUsers     Int @default(3) @map("max_users")
+
+  /// Lama masa uji-coba untuk langganan baru pada paket ini. 0 = tanpa trial.
+  trialDays Int @default(14) @map("trial_days")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@index([isActive])
+  @@map("plans")
+}
+
+/// Langganan sebuah tenant pada sebuah paket. Siklus hidup (issue #140):
+///
+///   trialing ──(bayar)──> active ──(gagal bayar)──> past_due
+///       │                    ↑                          │
+///       └──(trial habis)─────┘                          └─(tenggang habis)─> suspended
+///
+///   suspended ──(bayar)──> active
+///   suspended ──(berhenti)──> cancelled   [buku besar TIDAK PERNAH dihapus]
+model Subscription {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data KENDALI (`tenants.id`, issue #134) — Int biasa
+  /// TANPA FK, persis pola `periods.closed_by_id`. FK tidak bisa menyeberangi
+  /// basis data; konsistensinya dijaga urutan tulis (platform dulu, kendali
+  /// belakangan) + `npm run reconcile:platform`.
+  tenantId Int @map("tenant_id")
+
+  /// FK di DALAM basis data yang sama — ini boleh. Restrict: paket yang masih
+  /// dirujuk langganan tidak boleh dihapus (nonaktifkan lewat `is_active`).
+  planId Int  @map("plan_id")
+  plan   Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  /// trialing | active | past_due | suspended | cancelled
+  /// String + z.enum (`src/lib/platform-constants.ts`) — konvensi docs/DATABASE.md.
+  status String @db.VarChar(20)
+
+  /// monthly | yearly
+  billingCycle String @default("monthly") @map("billing_cycle") @db.VarChar(10)
+
+  /// Harga yang DISEPAKATI saat berlangganan — snapshot dari `plans`, bukan
+  /// dibaca ulang saat menagih. Alasannya sama dengan snapshot kuota di atas.
+  price    Decimal @db.Decimal(15, 2)
+  currency String  @default("IDR") @db.VarChar(5)
+
+  /// Periode tagih yang sedang berjalan. Penjadwal (#140) menagih saat
+  /// `current_period_end` lewat.
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+
+  trialEndsAt DateTime? @map("trial_ends_at")
+  /// Sejak kapan menunggak — dasar penghitungan masa tenggang menuju `suspended`.
+  pastDueSince DateTime? @map("past_due_since")
+  cancelledAt  DateTime? @map("cancelled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoices PlatformInvoice[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+/// Tagihan KAMI ke pelanggan — sengaja dinamai `platform_invoices`, berbeda
+/// dari `invoices` milik buku besar pelanggan di basis data perusahaan.
+/// PPN & e-Faktur atas tagihan ini menyusul di issue #141.
+model PlatformInvoice {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  subscriptionId Int          @map("subscription_id")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  /// Nomor dokumen, unik (mis. `PINV-2026-00001`).
+  number String @unique @db.VarChar(30)
+
+  /// draft | issued | paid | void
+  status String @default("draft") @db.VarChar(20)
+
+  issueDate DateTime @map("issue_date")
+  dueDate   DateTime @map("due_date")
+
+  /// `total = amount + tax_amount`. IDR, Decimal(15,2) — JANGAN Float.
+  amount    Decimal @db.Decimal(15, 2)
+  taxAmount Decimal @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  total     Decimal @db.Decimal(15, 2)
+  currency  String  @default("IDR") @db.VarChar(5)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("platform_invoices")
+}
+
+/// Pembayaran atas tagihan platform. Gateway Indonesia (Midtrans/Xendit/Doku —
+/// VA, QRIS, kartu) menyusul di issue #141; skema ini sudah menyediakan
+/// tempatnya. SATU pembayaran = SATU catatan gateway; `gateway_ref` unik supaya
+/// webhook yang diputar ulang tidak mencatat pembayaran dua kali.
+model Payment {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  platformInvoiceId Int             @map("platform_invoice_id")
+  platformInvoice   PlatformInvoice @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict)
+
+  /// pending | paid | failed | expired | refunded
+  status String @default("pending") @db.VarChar(20)
+
+  /// virtual_account | qris | card | manual_transfer (issue #141)
+  method String? @db.VarChar(30)
+  /// midtrans | xendit | doku | manual (issue #141)
+  gateway String? @db.VarChar(30)
+  /// Id transaksi di sisi gateway — kunci idempotensi webhook.
+  gatewayRef String? @unique @map("gateway_ref") @db.VarChar(100)
+
+  amount   Decimal @db.Decimal(15, 2)
+  currency String  @default("IDR") @db.VarChar(5)
+
+  paidAt DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("payments")
+}
+
+/// Penghitung pemakaian per tenant — dasar penegakan kuota & penagihan berbasis
+/// pemakaian. SATU baris per (tenant, kunci); nilainya disinkronkan dari basis
+/// data kendali oleh pekerjaan berkala (#140), BUKAN sumber kebenaran — sumber
+/// kebenarannya tetap tabel aslinya (registry perusahaan, keanggotaan).
+model UsageCounter {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  /// companies | users — daftar sah di `src/lib/platform-constants.ts`.
+  key   String @db.VarChar(30)
+  value Int    @default(0)
+
+  /// Kapan terakhir disinkronkan dari sumber kebenarannya.
+  syncedAt DateTime? @map("synced_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key])
+  @@map("usage_counters")
+}

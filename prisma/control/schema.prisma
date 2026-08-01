@@ -35,6 +35,71 @@ datasource db {
   provider = "mysql"
 }
 
+/// PELANGGAN platform (issue #134, epik #133) — pihak yang berlangganan dan
+/// membayar. Satu tenant memegang beberapa Company (PT) dan beberapa User.
+///
+/// KENAPA DI BASIS DATA KENDALI, BUKAN DI `sai_platform`: `tenants` dibaca di
+/// jalur panas (pengguna ini tenant mana → perusahaan apa saja → apakah
+/// suspended), dan pendaftaran harus atomik — Tenant + User(owner) +
+/// TenantMembership lahir dalam SATU transaksi. Lihat docs/MULTI-TENANT.md §4A.
+model Tenant {
+  id   Int    @id @default(autoincrement())
+  slug String @unique @db.VarChar(50)
+  name String @db.VarChar(150)
+
+  /// pending_verification | trialing | active | past_due | suspended | cancelled
+  /// String + z.enum (`TENANT_STATUSES` di src/lib/constants.ts), snake_case —
+  /// konvensi docs/DATABASE.md, bukan enum Prisma.
+  status String @default("pending_verification") @db.VarChar(30)
+
+  planKey     String    @default("trial") @map("plan_key") @db.VarChar(30)
+  trialEndsAt DateTime? @map("trial_ends_at")
+
+  /// Batas dari paket, DISALIN saat paket berubah — bukan dibaca dari tabel
+  /// paket saat dipakai. Alasannya sama dengan snapshot peran penyetuju di
+  /// aturan persetujuan: menaikkan harga paket tidak boleh diam-diam
+  /// mempersempit pelanggan yang sudah berjalan.
+  maxCompanies Int @default(1) @map("max_companies")
+  maxUsers     Int @default(3) @map("max_users")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  companies   Company[]
+  users       User[]
+  memberships TenantMembership[]
+
+  @@index([status])
+  @@map("tenants")
+}
+
+/// Keanggotaan TINGKAT TENANT: menjawab "boleh membuat perusahaan? boleh
+/// mengubah paket?" — pertanyaan yang harus terjawab TANPA perusahaan aktif,
+/// karena pelanggan baru belum punya satu pun. BUKAN pengganti `Membership`
+/// (peran per-PT), melainkan lapisan di atasnya.
+model TenantMembership {
+  id       Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+  userId   Int @map("user_id")
+
+  /// owner | admin | member (`TENANT_ROLE_VALUES` di src/lib/constants.ts).
+  /// BUKAN peran akuntansi — itu milik `memberships`. Minimal SATU owner per
+  /// tenant; anti-lockout ditegakkan di lapisan aplikasi (`tenant-directory`).
+  role String @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Satu peran tenant per (tenant, pengguna) — sama alasannya dengan
+  /// `memberships`: dua peran bukan keadaan yang bisa dijawab penjaga.
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_memberships")
+}
+
 /// Satu PT = satu baris di sini = satu basis data sendiri.
 model Company {
   id   Int    @id @default(autoincrement())
@@ -57,12 +122,22 @@ model Company {
   /// hilang dari pemilih dan tak bisa dibuka; basis datanya tidak disentuh.
   isActive Boolean @default(true) @map("is_active")
 
+  /// Tenant PEMILIK perusahaan ini (issue #134). Nullable di TIPE hanya untuk
+  /// masa transisi adopsi (migration 0002 → skrip adopsi → 0003 NOT NULL);
+  /// kode yang MEMBUAT perusahaan wajib selalu mengisinya — basis data menolak
+  /// NULL sejak 0003. `Restrict`: menghapus tenant yang masih punya perusahaan
+  /// berarti membuang registry buku yang wajib disimpan — tidak boleh terjadi
+  /// lewat cascade yang sunyi.
+  tenantId Int?    @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   memberships Membership[]
 
   @@index([isActive])
+  @@index([tenantId])
   @@map("companies")
 }
 
@@ -72,6 +147,20 @@ model User {
   username String  @unique @db.VarChar(50)
   password String  @db.VarChar(255)
   name     String? @db.VarChar(100)
+
+  /// PENGENAL LOGIN sejak issue #136, unik global — email tidak mengejutkan
+  /// siapa pun sebagai pengenal, berbeda dengan username unik se-pemasangan.
+  /// Nullable di TIPE hanya untuk masa transisi adopsi (0002 → skrip adopsi
+  /// mengisi email dari data yang disiapkan operator → 0003 NOT NULL); kode
+  /// yang MEMBUAT pengguna wajib selalu mengisinya.
+  email           String?   @unique @db.VarChar(255)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+
+  /// Tenant PEMILIK akun ini. Satu user milik TEPAT SATU tenant — tidak ada
+  /// akun yang menyeberang antar-tenant (docs/MULTI-TENANT.md §2). Nullable
+  /// hanya untuk masa transisi adopsi, sama seperti `companies.tenant_id`.
+  tenantId Int?    @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   /// Wajib mengganti kata sandi sebelum boleh membuka apa pun. Milik IDENTITAS,
   /// bukan keanggotaan: kata sandinya satu untuk semua perusahaan, jadi
@@ -88,8 +177,10 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships Membership[]
+  memberships       Membership[]
+  tenantMemberships TenantMembership[]
 
+  @@index([tenantId])
   @@map("users")
 }
 

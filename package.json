@@ -31,6 +31,8 @@
     "create-admin": "npx tsx scripts/create-admin.ts",
     "create-company": "npx tsx scripts/create-company.ts",
     "adopt-company": "npx tsx scripts/adopt-existing-company.ts",
+    "adopt-tenant": "npx tsx scripts/adopt-tenant.ts",
+    "prove-tenant": "npx tsx scripts/prove-tenant-adoption.ts",
     "check:legacy-values": "npx tsx scripts/check-legacy-values.ts",
     "check:env": "node scripts/check-env.mjs"
   },

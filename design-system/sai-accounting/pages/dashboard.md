@@ -3,6 +3,40 @@
 > Beranda dipakai untuk *mengerjakan*, bukan sekadar melihat — urutan seksinya
 > disengaja dan menjadi sasaran tur berpandu, jadi tidak boleh digeser bebas.
 
+## Dua wujud: hari pertama, lalu seterusnya
+
+Beranda punya **dua** susunan, dan yang dipilih ditentukan keadaan perusahaan —
+bukan preferensi siapa pun.
+
+**Wujud hari pertama** (belum ada satu pun penjualan, penerimaan kas, maupun
+gerakan stok — `isFirstRun` di `src/lib/first-steps.ts`): Aksi Cepat →
+**Langkah Pertama**. Tidak ada seksi angka sama sekali.
+
+Alasannya: susunan penuh pada perusahaan tanpa data menampilkan tiga kartu
+Ringkasan berisi Rp 0, sembilan kartu angka berisi 0, dan dua empty state yang
+terkubur di dalam badan tabel. Yang terbaca dari layar itu bukan "belum ada
+apa-apa" melainkan "ada yang rusak", dan tak satu pun angka nol di sana
+memberitahu pembacanya apa yang harus dikerjakan.
+
+- **Langkah Pertama menggantikan Alur Kerja, bukan menumpuknya.** Keduanya
+  daftar bernomor yang menjawab "mulai dari mana"; dua sekaligus membuat
+  keduanya lebih mudah diabaikan. Alur Kerja kembali begitu wujud biasa kembali.
+- **Isinya milik `src/lib/first-steps.ts`** (modul murni, teruji di
+  `tests/i18n.test.ts` & `tests/first-steps.test.ts`) — jangan menambah baris
+  langsung di halaman, aturan yang sama dengan Aksi Cepat.
+- **Kueri berat tidak dijalankan** pada wujud ini. Probe-nya tiga `count()`
+  dan berjalan LEBIH DULU; bila hasilnya "baru", ringkasan laba/rugi, piutang,
+  utang, saldo kas, gerakan stok, dan kontrak tak pernah ditanyakan.
+- **Peran tanpa satu pun langkah yang boleh dikerjakan tetap mendapat wujud
+  biasa** — panel kosong lebih buruk daripada seksi berisi nol yang setidaknya
+  punya empty state.
+- **Tur Beranda tidak diputar otomatis di sini** (`data-tour-suppress="beranda"`).
+  Ia menjelaskan Ringkasan dan seksi angka yang justru tidak dirender. Turnya
+  belum ditandai "sudah dilihat", jadi ia berjalan sendiri pada kunjungan
+  pertama ke beranda yang sudah berisi. Menu Bantuan tetap bisa memutarnya.
+
+**Wujud biasa** — aturan di bawah berlaku untuknya.
+
 ## Aturan (meng-override / menambah MASTER.md)
 
 - **Urutan seksi tetap:** Aksi Cepat → Alur Kerja → peringatan stok → Ringkasan

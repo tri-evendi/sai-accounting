@@ -65,6 +65,28 @@ function hasSeen(tour: TourDef): boolean {
   }
 }
 
+/**
+ * Halaman boleh menolak PEMUTARAN OTOMATIS turnya dengan merender
+ * `data-tour-suppress="<id tur>"`.
+ *
+ * Ada karena beranda punya dua wujud. Pada perusahaan yang belum bertransaksi
+ * ia berganti menjadi panel "Langkah Pertama" — tanpa Ringkasan, tanpa seksi
+ * angka mana pun. Tur Beranda menjelaskan justru bagian-bagian itu, jadi
+ * memainkannya di sana berarti menyorot kotak yang tidak ada, di atas layar
+ * yang sudah membawa penjelasannya sendiri. Dua sambutan sekaligus, dan yang
+ * satu membicarakan halaman yang lain.
+ *
+ * Yang ditahan hanya OTOMATISNYA. Memutar dari menu Bantuan tetap bekerja di
+ * mana pun — penilaian "ini belum saatnya" milik halaman, keputusan "saya mau
+ * melihatnya sekarang" milik penggunanya.
+ *
+ * Bentuknya opt-out, bukan opt-in, supaya halaman bertur di masa depan tidak
+ * diam-diam kehilangan turnya karena lupa memasang penanda.
+ */
+function autostartSuppressed(tour: TourDef): boolean {
+  return document.querySelector(`[data-tour-suppress="${tour.id}"]`) !== null;
+}
+
 export function GuidedTour() {
   const t = useT();
   const pathname = usePathname();
@@ -86,7 +108,10 @@ export function GuidedTour() {
   // Efek ini juga yang menutup tur ketika pengguna pindah halaman.
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setIndex(tour && !hasSeen(tour) ? 0 : null);
+      // Penundaan satu frame juga yang membuat `autostartSuppressed` bisa
+      // dipercaya: pada frame ini halamannya sudah terpasang, jadi penanda
+      // penolakan (bila ada) memang sudah ada di DOM saat ditanyakan.
+      setIndex(tour && !hasSeen(tour) && !autostartSuppressed(tour) ? 0 : null);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [tour]);

@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ArrowLeft,
   RotateCcw,
+  Save,
 } from "lucide-react";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { ModulePicker } from "@/components/settings/module-picker";
@@ -364,7 +365,15 @@ export function SetupWizard({
       } catch {
         /* storage tak tersedia — tak apa */
       }
-      router.push("/reports");
+      /*
+       * Ke layar "penyiapan selesai", BUKAN ke `/reports`.
+       *
+       * Tujuan lama menyerahkan pelanggan baru kepada sebuah laporan atas
+       * perusahaan yang baru punya satu jurnal — tanpa menyebut apa yang
+       * barusan dibuat, dan tanpa satu pun langkah berikutnya. Neracanya tetap
+       * satu klik dari layar baru itu, bagi yang memang datang untuk melihatnya.
+       */
+      router.push("/setup/done");
       router.refresh();
     } catch {
       setError(t("setup.errNetwork"));
@@ -373,13 +382,65 @@ export function SetupWizard({
     }
   }
 
-  const canNext =
-    (current === "identity" && name.trim().length > 0) ||
-    // Langkah modul tak pernah menghalangi: melewatinya berarti "semua aktif".
-    current === "modules" ||
-    (current === "settings" && !!baseCurrency && !!fiscalYearStart) ||
-    current === "coa" ||
-    current === "balances";
+  /*
+   * ── Validasi per langkah: TOMBOL HIDUP, bukan tombol mati ─────────────────
+   *
+   * Sampai audit ini tombol "Lanjut" hanya `disabled` selama syarat langkahnya
+   * belum terpenuhi. Bentuk itu benar secara mekanis dan diam secara total:
+   * pada layar wajib pertama, seorang pengguna awam menghadapi tombol yang
+   * tidak bereaksi dan tidak satu pun kalimat yang mengatakan field mana yang
+   * kurang. Yang tersisa baginya adalah menebak — atau menyimpulkan
+   * aplikasinya rusak.
+   *
+   * Sekarang tombolnya selalu bisa ditekan, dan penekanan yang belum memenuhi
+   * syarat MENJAWAB: pesan mendarat di bawah field yang bersangkutan dan fokus
+   * dipindahkan ke sana (Forms · Inline Validation, ui-ux-pro-max).
+   */
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
+  function validateStep(): Record<string, string> {
+    const errors: Record<string, string> = {};
+    if (current === "identity" && name.trim().length === 0) {
+      errors.name = t("validation.companyNameRequired");
+    }
+    /*
+     * Mata uang dasar TIDAK divalidasi di sini: pemilihnya diisi dari
+     * `CURRENCIES` tanpa opsi kosong dan berangkat dari "IDR", jadi keadaan
+     * "belum dipilih" tidak bisa dicapai lewat layar ini. Memvalidasinya hanya
+     * menambah satu pesan yang tak akan pernah dibaca siapa pun — dan satu
+     * kunci kamus yang tak dipakai skema mana pun (dijaga
+     * `tests/i18n-validation.test.tsx`).
+     */
+    if (current === "settings" && !fiscalYearStart) {
+      errors.fiscalYearStart = t("validation.fiscalYearStartRequired");
+    }
+    // Langkah modul, COA, dan saldo awal tak pernah menghalangi: melewatinya
+    // masing-masing berarti "semua modul aktif", "COA bawaan diterima", dan
+    // "saldo awal diisi di langkah tinjauan" — ketiganya keadaan yang sah.
+    return errors;
+  }
+
+  function goNext() {
+    const errors = validateStep();
+    setStepErrors(errors);
+    const firstInvalid = Object.keys(errors)[0];
+    if (firstInvalid) {
+      document.getElementById(firstInvalid)?.focus();
+      return;
+    }
+    setStep((s) => Math.min(steps.length - 1, s + 1));
+  }
+
+  /** Pesan sebuah field lenyap begitu isinya disentuh — bukan menunggu
+   *  penekanan "Lanjut" berikutnya untuk membuktikan sudah diperbaiki. */
+  function clearStepError(field: string) {
+    setStepErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
 
@@ -397,11 +458,32 @@ export function SetupWizard({
        * baris, dan "seberapa jauh lagi" — satu-satunya pertanyaan pengguna di
        * layar wajib — jadi harus dihitung sendiri dengan mata.
        */}
-      <p className="text-sm font-medium text-muted-foreground">
-        <span className="tabular-nums">
-          {t("setup.stepCounter", { current: step + 1, total: steps.length })}
-        </span>
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-muted-foreground">
+          <span className="tabular-nums">
+            {t("setup.stepCounter", { current: step + 1, total: steps.length })}
+          </span>
+        </p>
+
+        {/*
+         * Penanda draf — mekanismenya sudah ada sejak audit 2026-07, yang
+         * belum ada adalah pemberitahuannya.
+         *
+         * Ketikan wizard disimpan ke `sessionStorage` pada setiap perubahan
+         * dan dipulihkan saat halaman dimuat ulang. Selama itu tak pernah
+         * dikatakan, jaringnya tidak menolong siapa pun: orang yang tabnya
+         * tertutup di tengah empat puluh baris saldo awal tetap mengira
+         * pekerjaannya hilang, dan yang ragu-ragu tetap tidak berani
+         * meninggalkan layar ini untuk mencari angkanya. Rasa aman itulah
+         * gunanya, dan rasa aman harus terbaca.
+         */}
+        {(step > 0 || hasMeaningfulDraft) && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Save className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {t("setup.draftSaved")}
+          </p>
+        )}
+      </div>
       <ol className="flex flex-wrap gap-2 text-sm" aria-label={t("setup.stepsAria")}>
         {steps.map((label, i) => (
           <li
@@ -430,12 +512,46 @@ export function SetupWizard({
         {/* Step 0 — identity */}
         {current === "identity" && (
           <div className="space-y-4">
+            {/*
+             * Panel pembuka — hanya di langkah pertama.
+             *
+             * Wizard ini enam langkah dan berakhir dengan sebuah JURNAL yang
+             * menjadi titik nol seluruh laporan perusahaan. Sampai audit ini,
+             * langkah pertamanya langsung meminta nama perusahaan tanpa
+             * menyebut apa yang sedang dimulai, berapa lama, atau apa yang
+             * terjadi bila salah — padahal yang membukanya adalah orang yang
+             * belum pernah melihat aplikasi ini.
+             *
+             * Tiga kalimat, dan yang ketiga adalah yang paling penting: saldo
+             * awal bisa diisi belakangan. Tanpa itu, orang yang belum memegang
+             * angka neraca akan berhenti di sini dan menunda seluruh
+             * pemasangan, atau — lebih buruk — mengarang angkanya.
+             */}
+            <div className="rounded-lg border border-border bg-muted px-4 py-3">
+              <p className="text-sm font-medium text-foreground">{t("setup.introTitle")}</p>
+              <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                {(["introPoint1", "introPoint2", "introPoint3"] as const).map((key) => (
+                  <li key={key} className="flex items-start gap-2">
+                    <span
+                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span>{t(`setup.${key}`)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <h2 className="text-lg font-semibold text-foreground">{t("setup.identityTitle")}</h2>
             <Input
               id="name"
               label={t("setup.nameField")}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearStepError("name");
+              }}
+              error={stepErrors.name}
               maxLength={150}
               required
             />
@@ -517,7 +633,11 @@ export function SetupWizard({
                 id="baseCurrency"
                 label={t("setup.baseCurrencyField")}
                 value={baseCurrency}
-                onChange={(e) => setBaseCurrency(e.target.value)}
+                onChange={(e) => {
+                  setBaseCurrency(e.target.value);
+                  clearStepError("baseCurrency");
+                }}
+                error={stepErrors.baseCurrency}
                 options={currencyOptions}
               />
               <Input
@@ -525,7 +645,11 @@ export function SetupWizard({
                 type="date"
                 label={t("setup.fiscalYearStartField")}
                 value={fiscalYearStart}
-                onChange={(e) => setFiscalYearStart(e.target.value)}
+                onChange={(e) => {
+                  setFiscalYearStart(e.target.value);
+                  clearStepError("fiscalYearStart");
+                }}
+                error={stepErrors.fiscalYearStart}
                 required
               />
             </div>
@@ -771,19 +895,20 @@ export function SetupWizard({
           variant="ghost"
           className="cursor-pointer"
           disabled={step === 0 || saving}
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          onClick={() => {
+            // Mundur tidak pernah dihalangi, jadi pesan langkah ini ikut
+            // ditinggalkan — membawanya mundur berarti memerahi field yang
+            // penggunanya justru sedang menjauh darinya.
+            setStepErrors({});
+            setStep((s) => Math.max(0, s - 1));
+          }}
         >
           <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
           {t("common.back")}
         </Button>
 
         {step < steps.length - 1 ? (
-          <Button
-            type="button"
-            className="cursor-pointer"
-            disabled={!canNext}
-            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-          >
+          <Button type="button" className="cursor-pointer" disabled={saving} onClick={goNext}>
             {t("setup.next")}
             <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
           </Button>

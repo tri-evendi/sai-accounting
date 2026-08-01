@@ -30,6 +30,7 @@
     "scheduler:subscriptions": "npx tsx scripts/subscription-scheduler.ts",
     "_scheduler_note": "Penjadwal langganan (issue #140): trial habis, tagihan, dunning, suspensi, pengingat H-7/H-3/H-1, sinkronisasi pemakaian, rekonsiliasi. IDEMPOTEN — aman dijalankan berulang. Jadwalkan lewat cron host: `17 * * * * cd <app> && docker compose run --rm migrate npm run scheduler:subscriptions` (lihat kepala scripts/subscription-scheduler.ts).",
     "db:seed:plans": "npx tsx scripts/seed-plans.ts",
+    "efaktur:platform": "npx tsx scripts/efaktur-platform.ts",
     "change-plan": "npx tsx scripts/change-tenant-plan.ts",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "npx prisma migrate reset",

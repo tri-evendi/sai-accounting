@@ -124,7 +124,15 @@ const ROUTES = routeFiles(API_DIR)
  * Bentuk entri: `"<berkas route>: <teks literal>"`, mis.
  * `"tax/efaktur/route.ts: DJP-CSV"`.
  */
-const ERROR_LITERAL_ALLOWED: ReadonlySet<string> = new Set([]);
+const ERROR_LITERAL_ALLOWED: ReadonlySet<string> = new Set([
+  // Webhook gerbang pembayaran (issue #141): pembacanya SERVER Midtrans dan
+  // log operator — bukan pengguna ber-browser; tidak ada bahasa sesi untuk
+  // dinegosiasikan, dan kalimat Inggris stabil justru yang dicari di log
+  // gerbang. Tiga-tiganya tak pernah tampil di UI.
+  "billing/webhook/route.ts: Gateway webhook is not configured.",
+  "billing/webhook/route.ts: Malformed notification.",
+  "billing/webhook/route.ts: Invalid signature.",
+]);
 
 /** Setiap `error:` yang nilainya dimulai dengan literal teks. */
 function rawErrorLiterals(code: string): string[] {

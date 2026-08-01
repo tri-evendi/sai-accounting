@@ -35,7 +35,7 @@
  * jaringan dan tanpa kredensial sungguhan.
  */
 
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 export type PaymentMethod = "virtual_account" | "qris" | "manual_transfer";
 
@@ -93,7 +93,11 @@ export function midtransSignature(
 }
 
 export function verifyMidtransSignature(n: MidtransNotification, serverKey: string): boolean {
-  return n.signature_key === midtransSignature(n, serverKey);
+  /* Perbandingan waktu-konstan: tanda tangan adalah kredensial, dan `===`
+   * berhenti pada byte pertama yang berbeda. */
+  const given = Buffer.from(n.signature_key, "utf8");
+  const expected = Buffer.from(midtransSignature(n, serverKey), "utf8");
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
 /**

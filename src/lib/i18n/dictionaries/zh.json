@@ -289,7 +289,10 @@
       "switchLabel": "切换公司",
       "currentLabel": "当前打开",
       "signOut": "退出登录",
-      "signedInAs": "当前登录"
+      "signedInAs": "当前登录",
+      "noCompanyYetHeading": "尚无公司",
+      "noCompanyYetBody": "您的租户还没有任何公司。创建第一家公司即可开始记账。",
+      "noCompanyYetOwner": "每家公司都有自己独立的账簿——发票、日记账和库存完全分开。创建后，请运行设置向导以完成公司信息、会计科目表和期初余额。"
     }
   },
   "status": {
@@ -2387,8 +2390,7 @@
     "company_setting": "公司资料",
     "authz": "访问权限",
     "glossary": "术语表",
-    "settings": "设置",
-    "company": "公司"
+    "settings": "设置"
   },
   "permission": {
     "approval_view": "查看审批队列",
@@ -2448,8 +2450,7 @@
     "company_setting_manage": "修改公司资料",
     "authz_manage": "配置访问权限（本页）",
     "glossary_read": "打开术语表",
-    "settings_view": "打开设置页面",
-    "company_create": "创建拥有独立数据库的新公司——账簿与其他公司完全隔离。"
+    "settings_view": "打开设置页面"
   },
   "users": {
     "title": "用户管理",

@@ -69,7 +69,8 @@ function companyUrl(databaseName: string): string {
 }
 
 async function main() {
-  const { slug, name, database, admin } = parseArgs(process.argv.slice(2));
+  const args = parseArgs(process.argv.slice(2));
+  const { slug, name, database, admin, tenant } = args;
   const controlUrl = process.env.CONTROL_DATABASE_URL;
 
   if (!controlUrl) {
@@ -78,7 +79,7 @@ async function main() {
   }
   if (!slug || !SLUG.test(slug) || !name) {
     console.error(
-      'Usage: npx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>]\n' +
+      'Usage: npx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>]\n' +
         "  slug: huruf kecil, angka, tanda hubung (mis. pt-b)"
     );
     process.exit(1);
@@ -93,6 +94,39 @@ async function main() {
   }
 
   const control = controlClient(controlUrl);
+
+  /*
+   * ── Tenant pemilik (issue #135) ──────────────────────────────────────────
+   * Sejak migration 0003 setiap perusahaan WAJIB milik sebuah tenant, dan
+   * skrip ini tidak menebak: bila tenant hanya SATU, dialah pemiliknya (tidak
+   * ambigu); bila lebih dari satu — atau belum ada — `--tenant` wajib disebut
+   * / adopsi dijalankan dulu. Pola yang sama dengan larangan jatuh-ke-bawaan
+   * #104: yang ambigu harus ditanyakan, bukan dipilihkan.
+   */
+  const tenants = await control.tenant.findMany({ select: { id: true, slug: true } });
+  let tenantId: number;
+  if (tenant) {
+    const found = tenants.find((t) => t.slug === tenant);
+    if (!found) {
+      console.error(`ERROR: tenant "${tenant}" tidak ada. Yang terdaftar: ${tenants.map((t) => t.slug).join(", ") || "(kosong)"}`);
+      process.exit(1);
+    }
+    tenantId = found.id;
+  } else if (tenants.length === 1) {
+    tenantId = tenants[0].id;
+    console.log(`     tenant pemilik: ${tenants[0].slug} (satu-satunya yang terdaftar)`);
+  } else if (tenants.length === 0) {
+    console.error(
+      "ERROR: belum ada tenant di basis data kendali. Jalankan adopsi dulu:\n" +
+        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+    );
+    process.exit(1);
+  } else {
+    console.error(
+      `ERROR: ada ${tenants.length} tenant (${tenants.map((t) => t.slug).join(", ")}) — sebutkan pemiliknya lewat --tenant <slug>.`
+    );
+    process.exit(1);
+  }
 
   const clash = await control.company.findFirst({
     where: { OR: [{ slug }, { databaseName }] },
@@ -140,7 +174,7 @@ async function main() {
 
   // ── 3. Registry (paling akhir — lihat komentar kepala berkas) ────────────
   const company = await control.company.create({
-    data: { slug, name, databaseName },
+    data: { slug, name, databaseName, tenantId },
   });
   console.log(`3/3  terdaftar sebagai perusahaan #${company.id}`);
 

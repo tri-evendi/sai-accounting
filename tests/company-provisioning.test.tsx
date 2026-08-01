@@ -32,7 +32,7 @@ import {
   ProvisionProgress,
   PROVISION_STEPS,
   type ProvisionState,
-} from "@/app/(dashboard)/companies/new/provision-progress";
+} from "@/app/(tenant)/companies/new/provision-progress";
 import { LocaleProvider } from "@/lib/i18n/client";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";

@@ -34,11 +34,33 @@ const API_DIR = join(APP_DIR, "api");
  */
 const GUARDED_PAGE_GROUPS = ["(dashboard)", "(setup)"];
 
+/**
+ * Grup rute TINGKAT TENANT (issue #135): halamannya wajib memanggil
+ * `requireTenantPagePermission` — penjaga yang bekerja TANPA perusahaan aktif.
+ * Sengaja dipisah dari `GUARDED_PAGE_GROUPS`: memakai penjaga perusahaan di
+ * sini justru salah (ayam-dan-telur #135), dan sebaliknya penjaga tenant tidak
+ * boleh menggantikan penjaga perusahaan di dasbor. Kedua himpunan kunci izinnya
+ * saling lepas, jadi salah matriks sudah ditolak `tsc`; tes ini menjaga yang
+ * tak terlihat kompiler — halaman TANPA penjaga sama sekali.
+ */
+const TENANT_PAGE_GROUPS = ["(tenant)"];
+
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
   // Beranda terbuka untuk semua peran; menjaga sendiri dengan auth() dan
   // menyusun isinya per peran di server.
   "(dashboard)/dashboard/page.tsx",
+]);
+
+/**
+ * Route API bertingkat TENANT (issue #135): wajib `requireTenantApiPermission`.
+ * Setiap permukaan tenant BARU (penagihan, undangan, pengaturan tenant) wajib
+ * didaftarkan di sini — tanpa ini permukaan penagihan lahir tanpa pagar.
+ */
+const TENANT_API_ROUTES = new Set([
+  // Membuat perusahaan = kewenangan tenant; pemilik tenant tanpa satu pun PT
+  // adalah pemanggil yang sah, jadi penjaga perusahaan tidak bisa dipakai.
+  "companies/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */
@@ -69,6 +91,31 @@ function filesNamed(dir: string, filename: string): string[] {
     return entry.name === filename ? [full] : [];
   });
 }
+
+describe("cakupan penjaga halaman tenant (issue #135)", () => {
+  const pages = TENANT_PAGE_GROUPS.flatMap((group) =>
+    existsSync(join(APP_DIR, group)) ? filesNamed(join(APP_DIR, group), "page.tsx") : []
+  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
+
+  it("grup (tenant) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages).toContain("(tenant)/companies/new/page.tsx");
+  });
+
+  it("setiap halaman tenant memakai requireTenantPagePermission — BUKAN penjaga perusahaan", () => {
+    for (const rel of pages) {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireTenantPagePermission`).toContain(
+        "requireTenantPagePermission("
+      );
+      // Penjaga perusahaan menuntut konteks perusahaan — di halaman tenant ia
+      // memantulkan justru pengguna yang paling sah (pemilik tenant tanpa PT).
+      expect(src, `${rel} memanggil penjaga perusahaan`).not.toContain(
+        "requirePagePermission("
+      );
+    }
+  });
+});
 
 describe("cakupan penjaga halaman aplikasi", () => {
   const pages = GUARDED_PAGE_GROUPS.flatMap((group) =>
@@ -120,9 +167,22 @@ describe("cakupan penjaga API route", () => {
   it("setiap route mendeklarasikan izinnya (requireApiPermission)", () => {
     const offenders = routes
       .map((f) => relative(API_DIR, f))
-      .filter((rel) => !API_EXCEPTIONS.has(rel))
+      .filter((rel) => !API_EXCEPTIONS.has(rel) && !TENANT_API_ROUTES.has(rel))
       .filter((rel) => !readFileSync(join(API_DIR, rel), "utf8").includes("requireApiPermission("));
     expect(offenders).toEqual([]);
+  });
+
+  it("route bertingkat tenant memakai requireTenantApiPermission — BUKAN penjaga perusahaan (issue #135)", () => {
+    expect(TENANT_API_ROUTES.size).toBeGreaterThan(0);
+    for (const rel of TENANT_API_ROUTES) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireTenantApiPermission`).toContain(
+        "requireTenantApiPermission("
+      );
+      // `requireApiPermission(` juga cocok dengan nama panjangnya, jadi cek
+      // impornya: route tenant tidak boleh menyentuh penjaga perusahaan.
+      expect(src, `${rel} mengimpor penjaga perusahaan`).not.toContain("@/lib/auth-guard");
+    }
   });
 
   it("requireAuth generasi lama tidak muncul lagi di route", () => {

@@ -289,7 +289,10 @@
       "switchLabel": "Switch company",
       "currentLabel": "Currently open",
       "signOut": "Sign out",
-      "signedInAs": "Signed in as"
+      "signedInAs": "Signed in as",
+      "noCompanyYetHeading": "No company yet",
+      "noCompanyYetBody": "Your tenant does not have a company yet. Create the first one to start keeping books.",
+      "noCompanyYetOwner": "Every company gets its own books — invoices, journals, and stock fully separated. After creating it, run the setup wizard for identity, chart of accounts, and opening balances."
     }
   },
   "status": {
@@ -2387,8 +2390,7 @@
     "company_setting": "Company Profile",
     "authz": "Access Rights",
     "glossary": "Glossary",
-    "settings": "Settings",
-    "company": "Company"
+    "settings": "Settings"
   },
   "permission": {
     "approval_view": "View the approval queue",
@@ -2448,8 +2450,7 @@
     "company_setting_manage": "Edit the company profile",
     "authz_manage": "Configure access rights (this page)",
     "glossary_read": "Open the glossary",
-    "settings_view": "Open the settings page",
-    "company_create": "Create a new company with its own database — books fully separate from every other company."
+    "settings_view": "Open the settings page"
   },
   "users": {
     "title": "User Management",

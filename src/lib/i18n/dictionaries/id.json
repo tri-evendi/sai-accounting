@@ -289,7 +289,10 @@
       "switchLabel": "Ganti perusahaan",
       "currentLabel": "Sedang dibuka",
       "signOut": "Keluar",
-      "signedInAs": "Masuk sebagai"
+      "signedInAs": "Masuk sebagai",
+      "noCompanyYetHeading": "Belum ada perusahaan",
+      "noCompanyYetBody": "Tenant Anda belum punya satu pun perusahaan. Buat yang pertama untuk mulai membuka buku.",
+      "noCompanyYetOwner": "Setiap perusahaan mendapat bukunya sendiri — faktur, jurnal, dan stok yang terpisah penuh. Setelah dibuat, jalankan wizard penyiapan untuk identitas, bagan akun, dan saldo awal."
     }
   },
   "status": {
@@ -2387,8 +2390,7 @@
     "company_setting": "Profil Perusahaan",
     "authz": "Hak Akses",
     "glossary": "Kamus Istilah",
-    "settings": "Pengaturan",
-    "company": "Perusahaan"
+    "settings": "Pengaturan"
   },
   "permission": {
     "approval_view": "Melihat antrean persetujuan",
@@ -2448,8 +2450,7 @@
     "company_setting_manage": "Mengubah profil perusahaan",
     "authz_manage": "Mengatur hak akses (halaman ini)",
     "glossary_read": "Membuka kamus istilah",
-    "settings_view": "Membuka halaman pengaturan",
-    "company_create": "Membuat perusahaan baru beserta basis datanya — buku yang terpisah penuh dari perusahaan lain."
+    "settings_view": "Membuka halaman pengaturan"
   },
   "users": {
     "title": "Manajemen Pengguna",

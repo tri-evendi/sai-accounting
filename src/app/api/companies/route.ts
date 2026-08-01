@@ -37,10 +37,46 @@ import { ProvisionError, type ProvisionEvent } from "@/lib/company-provisioning-
 import { writeAuditLog } from "@/lib/audit";
 import { runWithCompany } from "@/lib/company-context";
 import { ROLES } from "@/lib/constants";
+import { controlDb } from "@/lib/control-db";
+import { refuseProvisioning } from "@/lib/registration";
 
 export async function POST(request: Request) {
   const result = await requireTenantApiPermission("company.create");
   if (!result.authorized) return result.response;
+
+  /*
+   * ══ GERBANG KUOTA & STATUS — DI SERVER, SEBELUM SATU BYTE PUN DIALIRKAN ══
+   * (issue #138, §9). Dengan pendaftaran mandiri, siapa pun yang lolos
+   * verifikasi bisa meminta pembuatan SEBUAH BASIS DATA — dan `db:migrate:all`
+   * menyusuri semuanya pada setiap rilis. Kuota `max_companies` adalah
+   * snapshot di baris tenant (#134); status di luar trialing/active tidak
+   * boleh menumbuhkan buku baru (suspended = hanya-baca, §7.4). Keputusannya
+   * murni (`refuseProvisioning`, teruji); jumlah dihitung DI SINI supaya UI
+   * yang menyembunyikan tombol tidak pernah dianggap pagar.
+   */
+  const [tenantRow, companyCount] = await Promise.all([
+    controlDb.tenant.findUnique({
+      where: { id: result.tenant.tenantId },
+      select: { status: true, maxCompanies: true },
+    }),
+    controlDb.company.count({ where: { tenantId: result.tenant.tenantId } }),
+  ]);
+  const refusal = tenantRow
+    ? refuseProvisioning({ ...tenantRow, companyCount })
+    : "tenant_not_active";
+  if (refusal) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      {
+        error:
+          refusal === "company_quota_reached"
+            ? t("errors.companyQuotaReached")
+            : t("errors.tenantNotActive"),
+        code: refusal,
+      },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = companyCreateSchema.safeParse(body);

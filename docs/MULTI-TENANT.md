@@ -8,8 +8,11 @@ saling kenal dan mendaftar sendiri.
 > #134 skema `tenants`+`tenant_memberships` di `sai_control` beserta jalur
 > adopsi (`adopt-tenant` → `prove-tenant` → migration NOT NULL), #135 pemisahan
 > izin tenant vs perusahaan (`lib/tenant-authz.ts` + `requireTenantPermission`),
-> #136 email sebagai pengenal login + mailer + atur-ulang kata sandi mandiri.
-> Tahap 4 dst. masih rencana. Keadaan multi-PT yang berlaku tetap di
+> #136 email sebagai pengenal login + mailer + atur-ulang kata sandi mandiri,
+> #137 basis data `sai_platform` terpisah, #138 pendaftaran mandiri /register
+> (verifikasi email sebagai gerbang penyediaan, kuota `max_companies` di
+> server, pembatas laju persisten di basis data kendali). Tahap 6 dst. masih
+> rencana. Keadaan multi-PT yang berlaku tetap di
 > [`MULTI-COMPANY.md`](./MULTI-COMPANY.md).
 
 ---

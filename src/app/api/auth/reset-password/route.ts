@@ -16,7 +16,10 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 
 import { resetPasswordApiSchema } from "@/lib/validations/auth";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  PERSISTENT_RATE_LIMITS,
+  checkPersistentRateLimit,
+} from "@/lib/rate-limit-persistent";
 import { consumeResetToken } from "@/lib/password-reset-store";
 import { getRequestI18n } from "@/lib/i18n/server";
 
@@ -31,9 +34,10 @@ function clientIp(request: Request): string {
 export async function POST(request: Request) {
   const { t } = await getRequestI18n();
 
-  const perIp = checkRateLimit(
+  // Persisten sejak issue #138 — lihat catatan di forgot-password/route.ts.
+  const perIp = await checkPersistentRateLimit(
     `pwreset:consume:${clientIp(request)}`,
-    RATE_LIMITS.passwordResetIp
+    PERSISTENT_RATE_LIMITS.passwordResetIp
   );
   if (!perIp.allowed) {
     return NextResponse.json({ error: t("auth.forgotPassword.tooMany") }, { status: 429 });

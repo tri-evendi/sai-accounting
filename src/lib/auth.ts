@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { controlDb } from "@/lib/control-db";
 import { companiesForUser, membershipFor } from "@/lib/company-registry";
+import { tenantCan } from "@/lib/tenant-authz";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { loginSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { evaluateSession, shouldRecheckSession } from "@/lib/session-guard";
@@ -86,12 +88,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordMatch) return null;
 
-        // Perusahaan yang boleh dibukanya. Kosong = akunnya sah tapi belum
-        // diberi akses ke PT mana pun; katakan itu apa adanya, jangan biarkan
-        // ia masuk ke aplikasi yang setiap halamannya akan menolak.
+        /*
+         * Perusahaan yang boleh dibukanya. KOSONG punya dua arti sejak issue
+         * #138, dan keduanya diperlakukan berbeda:
+         *   • pemegang izin tenant `company.create` (owner/admin) — keadaan
+         *     yang SAH dan diharapkan: pelanggan baru yang barusan
+         *     memverifikasi emailnya memang belum punya PT, dan justru sedang
+         *     menuju layar pembuatannya. Ia boleh masuk; alur pasca-masuk
+         *     membawanya ke /companies/new.
+         *   • selainnya — akunnya sah tapi tidak diberi akses ke PT mana pun
+         *     dan tidak bisa membuat sendiri; katakan itu apa adanya, jangan
+         *     biarkan ia masuk ke aplikasi yang setiap halamannya menolak.
+         */
         const companies = await companiesForUser(user.id);
         if (companies.length === 0) {
-          throw new Error("NoCompanyAccess");
+          const membership = await tenantMembershipForUser(user.id);
+          if (!tenantCan(membership, "company.create")) {
+            throw new Error("NoCompanyAccess");
+          }
         }
 
         // Satu perusahaan = tidak ada yang perlu dipilih. Lebih dari satu =

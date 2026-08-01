@@ -3342,5 +3342,43 @@
     "submit": "Create Account & Join",
     "successTitle": "Your account is ready.",
     "successBody": "Sign in with your email and the password you just created, then pick the company."
+  },
+  "tenantSettings": {
+    "title": "Subscription & Plan",
+    "description": "Your plan, usage, and billing history.",
+    "planHeading": "Plan",
+    "statusLabel": "Status",
+    "trialEndsAt": "Trial ends",
+    "usageHeading": "Usage",
+    "usageCompanies": "Companies",
+    "usageUsers": "Users",
+    "usageOf": "{used} of {max}",
+    "billingHeading": "Billing History",
+    "billingUnavailable": "The billing database is currently unreachable. Sign-in and the ledgers are unaffected — try again later.",
+    "noSubscription": "No subscription is recorded for this tenant yet.",
+    "noInvoices": "No invoices yet.",
+    "invoiceNumber": "Number",
+    "invoiceDue": "Due Date",
+    "invoiceTotal": "Total",
+    "period": "Current period runs until {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "month",
+    "cycleYearly": "year",
+    "planChangeNote": "Plan changes and online payment arrive with the payment gateway. For now, contact the platform operator.",
+    "readOnlyNote": "The subscription is suspended: the ledgers are READ-ONLY. Your data is not deleted; reading and exporting still work.",
+    "status": {
+      "pending_verification": "Pending Verification",
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Past Due",
+      "suspended": "Suspended (read-only)",
+      "cancelled": "Cancelled"
+    },
+    "invoiceStatus": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "paid": "Paid",
+      "void": "Void"
+    }
   }
 }

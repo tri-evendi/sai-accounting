@@ -120,7 +120,8 @@ model Subscription {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  invoices PlatformInvoice[]
+  invoices     PlatformInvoice[]
+  reminderLogs ReminderLog[]
 
   @@index([tenantId])
   @@index([status])
@@ -200,6 +201,30 @@ model Payment {
   @@index([tenantId])
   @@index([status])
   @@map("payments")
+}
+
+/// Jejak pengingat yang SUDAH terkirim (issue #140) — kunci idempotensi
+/// penjadwal: `@@unique([subscriptionId, kind, dueKey])` membuat penjadwal
+/// yang berjalan dua kali menabrak constraint, bukan mengirim surel dua kali.
+/// `due_key` bentuknya `H-<offset>:<tanggal-target>` (lihat `pendingReminder`
+/// di src/lib/subscription-lifecycle.ts).
+model ReminderLog {
+  id Int @id @default(autoincrement())
+
+  subscriptionId Int          @map("subscription_id")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  /// trial_ending | invoice_due
+  kind   String @db.VarChar(30)
+  dueKey String @map("due_key") @db.VarChar(40)
+
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([subscriptionId, kind, dueKey])
+  @@map("reminder_logs")
 }
 
 /// Penghitung pemakaian per tenant — dasar penegakan kuota & penagihan berbasis

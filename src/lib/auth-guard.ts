@@ -4,6 +4,8 @@ import type { Permission } from "@/lib/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromSession } from "@/lib/company-session";
+import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { tenantStateForCompany } from "@/lib/tenant-state";
 
 type AuthResult =
   | {
@@ -95,6 +97,31 @@ export async function requireApiPermission(permission: Permission): Promise<Auth
       authorized: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };
+  }
+
+  /*
+   * Gerbang HANYA-BACA saat langganan ditangguhkan (issue #140).
+   *
+   * `suspended`/`cancelled` menolak setiap izin TULIS — di PENJAGA, bukan
+   * disembunyikan di UI — sementara baca & ekspor tetap jalan: pelanggan yang
+   * menunggak tetap wajib (secara hukum) bisa membaca dan mengunduh bukunya.
+   * Statusnya dibaca dari basis data KENDALI lewat cache per-perusahaan
+   * (`tenant-state.ts`) — TIDAK PERNAH dari `sai_platform` di jalur ini
+   * (penagihan mati ≠ login mati, doktrin #137). Izin baca dilewatkan tanpa
+   * query tambahan sama sekali.
+   */
+  if (isWritePermission(permission)) {
+    const tenantState = await tenantStateForCompany(company.companyId);
+    const refusal = readOnlyRefusal(tenantState?.status, permission);
+    if (refusal) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: refusal.message, code: refusal.code },
+          { status: 403 }
+        ),
+      };
+    }
   }
 
   return { authorized: true, session, companyId: company.companyId } as AuthResult;

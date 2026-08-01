@@ -3342,5 +3342,43 @@
     "submit": "Buat Akun & Bergabung",
     "successTitle": "Akun Anda siap.",
     "successBody": "Masuk dengan email dan kata sandi yang baru Anda buat, lalu pilih perusahaannya."
+  },
+  "tenantSettings": {
+    "title": "Langganan & Paket",
+    "description": "Paket, pemakaian, dan riwayat tagihan langganan Anda.",
+    "planHeading": "Paket",
+    "statusLabel": "Status",
+    "trialEndsAt": "Uji coba berakhir",
+    "usageHeading": "Pemakaian",
+    "usageCompanies": "Perusahaan",
+    "usageUsers": "Pengguna",
+    "usageOf": "{used} dari {max}",
+    "billingHeading": "Riwayat Tagihan",
+    "billingUnavailable": "Basis data penagihan sedang tidak terjangkau. Masuk dan buku besar tidak terpengaruh — coba lagi nanti.",
+    "noSubscription": "Belum ada langganan tercatat untuk tenant ini.",
+    "noInvoices": "Belum ada tagihan.",
+    "invoiceNumber": "Nomor",
+    "invoiceDue": "Jatuh Tempo",
+    "invoiceTotal": "Total",
+    "period": "Periode berjalan sampai {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "bulan",
+    "cycleYearly": "tahun",
+    "planChangeNote": "Ganti paket & pembayaran daring menyusul bersama gateway pembayaran. Untuk saat ini hubungi pengelola platform.",
+    "readOnlyNote": "Langganan ditangguhkan: buku besar HANYA-BACA. Data Anda tidak dihapus; membaca dan mengekspor tetap bisa.",
+    "status": {
+      "pending_verification": "Menunggu Verifikasi",
+      "trialing": "Masa Uji Coba",
+      "active": "Aktif",
+      "past_due": "Menunggak",
+      "suspended": "Ditangguhkan (hanya-baca)",
+      "cancelled": "Berhenti"
+    },
+    "invoiceStatus": {
+      "draft": "Draf",
+      "issued": "Terbit",
+      "paid": "Lunas",
+      "void": "Batal"
+    }
   }
 }

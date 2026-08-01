@@ -19,7 +19,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Plus } from "lucide-react";
+import { Building2, CreditCard, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -51,6 +51,9 @@ export default async function SelectCompanyPage() {
    */
   const tenantMembership = await tenantMembershipForUser(userId);
   const canCreate = tenantCan(tenantMembership, "company.create");
+  /* Pengaturan langganan (issue #140) — halaman tingkat tenant, owner saja;
+   * pintunya di sini karena layar inilah "rumah" di antara buku-buku. */
+  const canManageTenant = tenantCan(tenantMembership, "tenant.settings");
 
   // Bukan jalan buntu ke arah mana pun:
   //  • satu perusahaan → tidak ada yang perlu dipilih, langsung buka;
@@ -127,6 +130,14 @@ export default async function SelectCompanyPage() {
               <Link href="/companies/new">
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {t("companies.newTitle")}
+              </Link>
+            </Button>
+          )}
+          {canManageTenant && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/tenant">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+                {t("tenantSettings.title")}
               </Link>
             </Button>
           )}

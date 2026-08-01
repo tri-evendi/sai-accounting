@@ -3342,5 +3342,43 @@
     "submit": "创建账户并加入",
     "successTitle": "您的账户已就绪。",
     "successBody": "使用您的邮箱和刚设置的密码登录,然后选择公司。"
+  },
+  "tenantSettings": {
+    "title": "订阅与套餐",
+    "description": "您的套餐、用量与账单历史。",
+    "planHeading": "套餐",
+    "statusLabel": "状态",
+    "trialEndsAt": "试用截止",
+    "usageHeading": "用量",
+    "usageCompanies": "公司",
+    "usageUsers": "用户",
+    "usageOf": "{used} / {max}",
+    "billingHeading": "账单历史",
+    "billingUnavailable": "计费数据库暂时无法访问。登录与账簿不受影响——请稍后再试。",
+    "noSubscription": "该租户尚无订阅记录。",
+    "noInvoices": "暂无账单。",
+    "invoiceNumber": "编号",
+    "invoiceDue": "到期日",
+    "invoiceTotal": "合计",
+    "period": "当前周期至 {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "月",
+    "cycleYearly": "年",
+    "planChangeNote": "更换套餐与在线支付将随支付网关一同推出。目前请联系平台运营方。",
+    "readOnlyNote": "订阅已暂停:账簿为只读。您的数据不会被删除;仍可查看与导出。",
+    "status": {
+      "pending_verification": "待验证",
+      "trialing": "试用中",
+      "active": "生效中",
+      "past_due": "已逾期",
+      "suspended": "已暂停(只读)",
+      "cancelled": "已终止"
+    },
+    "invoiceStatus": {
+      "draft": "草稿",
+      "issued": "已开具",
+      "paid": "已付款",
+      "void": "作废"
+    }
   }
 }

@@ -216,7 +216,8 @@ menyertakannya di antara kendali dan perusahaan).
   adalah `Int` biasa tanpa FK — persis pola `periods.closed_by_id`.
 - **Urutan tulis:** alur yang menulis platform DAN kendali menulis ke
   **platform dulu**, kendali belakangan; selisihnya ditemukan
-  `npm run reconcile:platform` (kerangka #137, dijadwalkan berkala di #140).
+  `npm run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
+  termasuk kecocokan status dan usage_counters).
 - **Penagihan mati ≠ login mati.** `src/lib/platform-db.ts` malas (lazy) dan
   hanya boleh diimpor kode penagihan — jangan pernah dari penjaga, sesi, atau
   jalur lain yang berjalan pada setiap permintaan. `db:migrate:all` melewati
@@ -225,3 +226,27 @@ menyertakannya di antara kendali dan perusahaan).
   gagal.
 - **Cache data platform dikunci per `tenant_id`** — aturan cache #104 diperluas;
   pakai `TenantKeyedCache` (`src/lib/tenant-cache.ts`).
+
+**Siklus hidup langganan (issue #140).** Mesin keputusannya MURNI di
+`src/lib/subscription-lifecycle.ts` (teruji tuntas); `suspended`/`cancelled`
+membuat buku besar **HANYA-BACA di lapisan penjaga** — setiap izin tulis
+ditolak, baca & ekspor tetap jalan, TIDAK ADA data yang dihapus otomatis pada
+keadaan mana pun. Penjaga membaca status dari **salinan di `tenants`**
+(kendali) lewat cache per-perusahaan (`src/lib/tenant-state.ts`) — tidak
+pernah dari `sai_platform` di jalur permintaan.
+
+**Penjadwal.** `npm run scheduler:subscriptions` — satu putaran: trial habis
+(+ tagihan pertama), dunning, suspensi setelah tenggang, pengingat H-7/H-3/H-1,
+sinkronisasi `usage_counters`, deteksi basis data yatim (lapor saja), dan
+rekonsiliasi. **Idempoten** (nomor tagihan deterministik + `reminder_logs`
+unik): dijalankan dua kali tidak menagih/mengirim dua kali. Jadwalkan lewat
+cron host — pemasangan compose:
+
+```cron
+17 * * * *  \
+  docker compose run --rm migrate npm run scheduler:subscriptions
+```
+
+Paket bawaan: `npm run db:seed:plans`; ganti paket sebuah tenant (operator,
+sampai gateway #141): `npm run change-plan -- --tenant <slug> --plan <key>` —
+kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.

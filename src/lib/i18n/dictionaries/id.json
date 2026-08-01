@@ -261,7 +261,9 @@
       "submitting": "Sedang masuk...",
       "checkingSession": "Memeriksa sesi Anda...",
       "forgotPassword": "Lupa kata sandi? Atur ulang lewat email",
-      "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi."
+      "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi.",
+      "registerPrompt": "Belum punya akun?",
+      "registerLink": "Daftar sekarang"
     },
     "changePassword": {
       "heading": "Ganti Kata Sandi Anda",
@@ -322,6 +324,29 @@
       "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda, atau minta tautan baru.",
       "goLogin": "Masuk sekarang",
       "requestNew": "Minta tautan baru"
+    },
+    "register": {
+      "heading": "Daftar",
+      "description": "Buat akun untuk mulai membukukan usaha Anda. Gratis selama masa uji coba.",
+      "name": "Nama Anda",
+      "namePlaceholder": "Nama lengkap",
+      "terms": "Saya menyetujui syarat & ketentuan serta kebijakan privasi.",
+      "submit": "Daftar",
+      "submitting": "Mendaftarkan...",
+      "sentTitle": "Periksa kotak masuk Anda",
+      "sentBody": "Kalau alamat itu bisa didaftarkan, surel verifikasi sudah dikirim dan berlaku 24 jam. Buka tautannya untuk mengaktifkan akun. Tidak menerima apa pun? Periksa folder spam.",
+      "haveAccount": "Sudah punya akun? Masuk",
+      "verifyHeading": "Aktifkan Akun",
+      "verifyDescription": "Satu tekanan tombol lagi — supaya robot pemindai tautan tidak mengaktifkan (atau menghanguskan) akun Anda diam-diam.",
+      "verifyButton": "Aktifkan akun saya",
+      "verifying": "Mengaktifkan...",
+      "verifiedTitle": "Akun Anda aktif",
+      "verifiedBody": "Email terverifikasi dan akun Anda siap. Masuk, lalu buat perusahaan pertama Anda — setiap perusahaan mendapat buku yang terpisah penuh.",
+      "verifiedCta": "Masuk & buat perusahaan pertama",
+      "invalidToken": "Tautan ini tidak berlaku — mungkin sudah dipakai, kedaluwarsa, atau salah salin. Daftar ulang untuk menerima tautan baru.",
+      "alreadyRegistered": "Email ini sudah punya akun. Silakan masuk — atau atur ulang kata sandi bila lupa.",
+      "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda.",
+      "registerAgain": "Daftar ulang"
     }
   },
   "status": {
@@ -470,6 +495,8 @@
     "accountOwnParent": "Akun perkiraan tidak boleh menjadi induk dirinya sendiri.",
     "usernameTaken": "Nama pengguna itu sudah dipakai.",
     "emailTaken": "Email itu sudah dipakai akun lain.",
+    "companyQuotaReached": "Kuota perusahaan paket Anda sudah terpakai penuh. Naikkan paket untuk menambah perusahaan.",
+    "tenantNotActive": "Langganan Anda sedang tidak aktif, jadi perusahaan baru tidak bisa dibuat. Hubungi kami untuk mengaktifkannya kembali.",
     "assetCategoryNameTaken": "Nama kategori itu sudah dipakai.",
     "roleKeyTaken": "Kunci “{key}” sudah dipakai.",
     "approvalRuleDuplicate": "Sudah ada aturan aktif dengan jenis dokumen dan ambang yang sama.",
@@ -3110,6 +3137,8 @@
     "compensationExceedsAdvance": "Kompensasi ({amount} {currency}) melebihi sisa uang muka ({remaining} {currency}).",
     "rejectionNoteRequired": "Alasan penolakan wajib diisi (minimal 5 karakter).",
     "identifierRequired": "Email atau nama pengguna wajib diisi",
+    "nameRequired": "Nama wajib diisi",
+    "termsRequired": "Anda harus menyetujui syarat & ketentuan",
     "passwordRequired": "Kata sandi wajib diisi",
     "currentPasswordRequired": "Kata sandi saat ini wajib diisi",
     "passwordMin8": "Kata sandi minimal 8 karakter",

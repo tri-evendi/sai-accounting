@@ -261,7 +261,9 @@
       "submitting": "正在登录...",
       "checkingSession": "正在检查您的登录状态...",
       "forgotPassword": "忘记密码？通过邮箱重置",
-      "invalidCredentials": "用户名或密码不正确，请重试。"
+      "invalidCredentials": "用户名或密码不正确，请重试。",
+      "registerPrompt": "还没有账号？",
+      "registerLink": "立即注册"
     },
     "changePassword": {
       "heading": "修改您的密码",
@@ -322,6 +324,29 @@
       "missingToken": "链接不完整。请重新打开邮件中的链接，或申请新链接。",
       "goLogin": "立即登录",
       "requestNew": "申请新链接"
+    },
+    "register": {
+      "heading": "注册",
+      "description": "创建账号，开始为您的企业记账。试用期内免费。",
+      "name": "您的姓名",
+      "namePlaceholder": "全名",
+      "terms": "我同意条款与条件及隐私政策。",
+      "submit": "注册",
+      "submitting": "注册中...",
+      "sentTitle": "请查收邮箱",
+      "sentBody": "如果该地址可以注册，验证邮件已发送，24 小时内有效。打开链接即可激活账号。没有收到？请检查垃圾邮件文件夹。",
+      "haveAccount": "已有账号？登录",
+      "verifyHeading": "激活账号",
+      "verifyDescription": "再点一下——以免链接扫描机器人悄悄激活（或作废）您的账号。",
+      "verifyButton": "激活我的账号",
+      "verifying": "激活中...",
+      "verifiedTitle": "您的账号已激活",
+      "verifiedBody": "邮箱已验证，账号已就绪。请登录并创建您的第一家公司——每家公司都拥有完全独立的账簿。",
+      "verifiedCta": "登录并创建第一家公司",
+      "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请重新注册以获取新链接。",
+      "alreadyRegistered": "该邮箱已有账号。请直接登录——忘记密码可重置。",
+      "missingToken": "链接不完整。请重新打开邮件中的链接。",
+      "registerAgain": "重新注册"
     }
   },
   "status": {
@@ -470,6 +495,8 @@
     "accountOwnParent": "会计科目不能作为自身的上级科目。",
     "usernameTaken": "该用户名已被使用。",
     "emailTaken": "该邮箱已被其他账号使用。",
+    "companyQuotaReached": "您的套餐公司配额已用完。升级套餐即可添加更多公司。",
+    "tenantNotActive": "您的订阅当前未生效，无法创建新公司。请联系我们重新激活。",
     "assetCategoryNameTaken": "该类别名称已被使用。",
     "roleKeyTaken": "键“{key}”已被使用。",
     "approvalRuleDuplicate": "已存在单据类型和金额门槛相同的启用规则。",
@@ -3110,6 +3137,8 @@
     "compensationExceedsAdvance": "抵扣金额（{amount} {currency}）超过预付款余额（{remaining} {currency}）。",
     "rejectionNoteRequired": "请填写拒绝理由（至少 5 个字符）。",
     "identifierRequired": "请输入邮箱或用户名",
+    "nameRequired": "请输入姓名",
+    "termsRequired": "您必须同意条款与条件",
     "passwordRequired": "请填写密码",
     "currentPasswordRequired": "请填写当前密码",
     "passwordMin8": "密码至少 8 个字符",

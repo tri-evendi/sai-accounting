@@ -72,6 +72,13 @@ const API_EXCEPTIONS = new Set([
   // (anti-enumerasi) dan keduanya dibatasi laju per-IP/per-email.
   "auth/forgot-password/route.ts",
   "auth/reset-password/route.ts",
+  // publik (issue #138): pendaftaran mandiri & verifikasi email adalah
+  // keadaan PRA-akun. Jawaban /register seragam (anti-enumerasi), verifikasi
+  // memakai token acak sekali-pakai lewat POST (bukan GET — pemindai tautan),
+  // keduanya dibatasi laju PERSISTEN (rate-limit-persistent.ts), dan TIDAK
+  // ADA basis data yang lahir sebelum verifikasi + klik "buat perusahaan".
+  "auth/register/route.ts",
+  "auth/verify-email/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.

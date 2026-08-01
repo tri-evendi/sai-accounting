@@ -19,6 +19,23 @@ export const forgotPasswordSchema = z.object({
 });
 
 /**
+ * Pendaftaran mandiri (issue #138) — form §7.1: nama, email, kata sandi,
+ * setuju S&K. `termsAccepted` literal `true`: tanpa persetujuan tidak ada
+ * yang diproses, dan waktunya dicatat di baris pendaftaran.
+ */
+export const registerSchema = z.object({
+  name: z.string().min(1, vmsg("validation.nameRequired")).max(100).trim(),
+  email: z.email(vmsg("validation.emailInvalid")).max(255).trim(),
+  password: z.string().min(8, vmsg("validation.passwordMin8")).max(128),
+  termsAccepted: z.literal(true, vmsg("validation.termsRequired")),
+});
+
+/** Memakai tautan verifikasi email (issue #138). */
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1).max(128),
+});
+
+/**
  * Field yang DIPAKAI BERSAMA form dan route handler atur-ulang (pola yang sama
  * dengan `changePasswordFields` di bawah — dua daftar identik tidak ditulis
  * dua kali).

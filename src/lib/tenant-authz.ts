@@ -55,6 +55,16 @@ export const TENANT_PERMISSION_ROLES = {
   "tenant.billing": OWNER_ONLY,
   /** Mengundang orang ke tenant (dipakai #139). */
   "tenant.member.invite": MANAGERS,
+  /**
+   * Ekspor SELURUH data tenant (issue #142, hak akses UU PDP). Owner saja:
+   * satu unduhan berisi seluruh pembukuan setiap PT — kewenangan sekelas
+   * penagihan, bukan pekerjaan harian. Penjaga TIDAK memeriksa status tenant:
+   * tenant suspended justru pihak yang paling berhak mengunduh bukunya.
+   */
+  "tenant.export": OWNER_ONLY,
+  /** Meminta / membatalkan penghapusan akun (issue #142). Owner saja —
+   *  keputusan yang mengakhiri kontrak. Eksekusinya TETAP di tangan operator. */
+  "tenant.deletion": OWNER_ONLY,
 } as const satisfies Record<string, readonly TenantRole[]>;
 
 export type TenantPermission = keyof typeof TENANT_PERMISSION_ROLES;

@@ -63,13 +63,17 @@ export interface TenantAuditEntry {
   createdAt: string;
 }
 
-const TENANT_AUDIT_ROOT = path.join(process.cwd(), "data", "audit", "tenants");
+/** Bisa dialihkan lewat env — tes menulis ke direktori sementaranya sendiri
+ *  (pola MAIL_OUTBOX_DIR). Dievaluasi per panggilan, bukan saat impor. */
+function tenantAuditRoot(): string {
+  return process.env.TENANT_AUDIT_DIR ?? path.join(process.cwd(), "data", "audit", "tenants");
+}
 
 function fileFor(tenantSlug: string): { dir: string; file: string } {
   // Slug tervalidasi saat tenant lahir (huruf kecil/angka/hubung) — tetapi
   // jejak audit tidak boleh bergantung pada itu untuk keamanan jalur berkas.
   const safe = tenantSlug.replace(/[^a-z0-9-]/g, "_");
-  const dir = path.join(TENANT_AUDIT_ROOT, safe);
+  const dir = path.join(tenantAuditRoot(), safe);
   return { dir, file: path.join(dir, "audit.jsonl") };
 }
 

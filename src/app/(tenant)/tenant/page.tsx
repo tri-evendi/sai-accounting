@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantCan } from "@/lib/tenant-authz";
+import { PrivacySection } from "./privacy-section";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { formatMoney } from "@/lib/money-format";
@@ -45,6 +46,11 @@ export default async function TenantSettingsPage() {
 
   const overview = await billingOverviewForTenant(tenant.tenantId);
   const canSeeBilling = tenantCan(tenant, "tenant.billing");
+  /* Kartu Data & Privasi (issue #142): ekspor untuk pemegang `tenant.export`,
+   * permintaan penghapusan untuk pemegang `tenant.deletion` — dan kartunya
+   * SELALU dirender saat berhak, termasuk (terutama) ketika suspended. */
+  const canExport = tenantCan(tenant, "tenant.export");
+  const canDelete = tenantCan(tenant, "tenant.deletion");
 
   const statusKey = (status: string) => t(`tenantSettings.status.${status}` as DictionaryKey);
   const readOnly = isReadOnlyTenantStatus(overview?.tenant.status);
@@ -61,9 +67,12 @@ export default async function TenantSettingsPage() {
       }
     >
       {!overview ? (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("tenantSettings.noSubscription")}
-        </p>
+        <div className="space-y-6">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t("tenantSettings.noSubscription")}
+          </p>
+          {canExport && <PrivacySection canDelete={canDelete} />}
+        </div>
       ) : (
         <div className="space-y-6">
           {readOnly && (
@@ -199,6 +208,8 @@ export default async function TenantSettingsPage() {
               )}
             </section>
           )}
+
+          {canExport && <PrivacySection canDelete={canDelete} />}
         </div>
       )}
     </AuthShell>

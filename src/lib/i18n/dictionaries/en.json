@@ -3379,6 +3379,21 @@
       "issued": "Issued",
       "paid": "Paid",
       "void": "Void"
-    }
+    },
+    "privacyHeading": "Data & Privacy",
+    "exportBody": "Download all your bookkeeping data — every company, every table — as a ZIP archive of CSV files that open in Excel/LibreOffice without this app. Remains available even while the subscription is suspended.",
+    "exportButton": "Download All Data (ZIP)",
+    "exportFailed": "The export could not be built. Try again, or contact us if it keeps failing.",
+    "deletionBody": "Requesting account deletion closes all access and anonymizes personal data after a {days}-day grace period. The ledgers are NOT deleted: Indonesian tax law (UU KUP) requires keeping them for 10 years before they may be destroyed.",
+    "deletionRequestButton": "Request Account Deletion",
+    "deletionCancelButton": "Cancel Deletion Request",
+    "deletionPending": "A deletion request is on record — it will be executed after {date}. Until then you can still cancel it.",
+    "deletionConfirmTitle": "Request account deletion?",
+    "deletionConfirmBody": "After the {days}-day grace period, all access is closed and personal data is anonymized — irreversible once executed. Download your data first. Ledgers are kept for 10 years as required by UU KUP.",
+    "deletionRequested": "The deletion request is on record. All owners have been notified by email.",
+    "deletionCancelled": "The deletion request was cancelled. Nothing has changed.",
+    "deletionFailed": "The request could not be processed. Please try again.",
+    "deletionAlreadyPending": "A deletion request is already pending.",
+    "deletionNonePending": "There is no pending deletion request."
   }
 }

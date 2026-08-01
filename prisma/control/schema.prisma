@@ -65,9 +65,10 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  companies   Company[]
-  users       User[]
-  memberships TenantMembership[]
+  companies        Company[]
+  users            User[]
+  memberships      TenantMembership[]
+  deletionRequests TenantDeletionRequest[]
   invitations Invitation[]
 
   @@index([status])
@@ -296,12 +297,62 @@ model Registration {
   /// Jejak persetujuan S&K — kapan kotaknya dicentang (dikirim bersama form).
   termsAcceptedAt DateTime @map("terms_accepted_at")
 
+  /// VERSI dokumen yang disetujui (issue #142) — "menyetujui S&K" tanpa versi
+  /// tidak membuktikan apa-apa begitu dokumennya berubah. Nullable hanya untuk
+  /// baris yang lahir sebelum kolomnya ada; alur daftar selalu mengisinya
+  /// (nilai dari `lib/legal.ts`).
+  termsVersion   String? @map("terms_version") @db.VarChar(30)
+  privacyVersion String? @map("privacy_version") @db.VarChar(30)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([email])
   @@index([expiresAt])
   @@map("registrations")
+}
+
+/// PERMINTAAN PENGHAPUSAN AKUN (issue #142, UU PDP) — penghapusan TIDAK PERNAH
+/// terjadi dari satu tombol: baris ini hanyalah PERMINTAAN eksplisit, dengan
+/// masa tenggang untuk berubah pikiran, dan EKSEKUSINYA di tangan operator
+/// lewat skrip bergerbang bukti (scripts/execute-tenant-deletion.ts — pola
+/// adopsi #134). Buku besar TIDAK dihapus oleh eksekusi: UU KUP menuntut
+/// retensi 10 tahun; yang terjadi adalah penonaktifan + anonimisasi data
+/// pribadi, dan penghancuran buku baru boleh SETELAH `retention_until`
+/// (docs/COMPLIANCE.md).
+model TenantDeletionRequest {
+  id       Int @id @default(autoincrement())
+  tenantId Int @map("tenant_id")
+
+  /// Id pengguna GLOBAL peminta — sengaja TANPA FK (pola periods.closed_by_id):
+  /// eksekusi menganonimkan pengguna, dan permintaan harus tetap terbaca
+  /// sebagai jejak sesudahnya.
+  requestedByUserId Int @map("requested_by_user_id")
+
+  /// pending | cancelled | executed (`DELETION_REQUEST_STATUSES`,
+  /// lib/tenant-deletion.ts).
+  status String @default("pending") @db.VarChar(20)
+
+  /// Akhir masa tenggang — sebelum ini lewat, eksekusi DITOLAK skripnya.
+  graceEndsAt DateTime  @map("grace_ends_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  executedAt  DateTime? @map("executed_at")
+
+  /// Batas retensi UU KUP, dihitung SAAT eksekusi dari tanggal jurnal termuda
+  /// + 10 tahun. Sebelum lewat, penghancuran buku (--drop-ledgers) ditolak.
+  retentionUntil DateTime? @map("retention_until")
+
+  /// Alasan dari peminta (opsional) — membantu operator menimbang.
+  note String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_deletion_requests")
 }
 
 /// Penghitung pembatas laju PERSISTEN (issue #138) — `lib/rate-limit.ts` yang

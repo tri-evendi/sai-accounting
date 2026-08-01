@@ -3379,6 +3379,21 @@
       "issued": "Terbit",
       "paid": "Lunas",
       "void": "Batal"
-    }
+    },
+    "privacyHeading": "Data & Privasi",
+    "exportBody": "Unduh seluruh data pembukuan Anda — semua perusahaan, semua tabel — sebagai arsip ZIP berisi berkas CSV yang terbuka di Excel/LibreOffice tanpa aplikasi ini. Tetap tersedia walau langganan ditangguhkan.",
+    "exportButton": "Unduh Semua Data (ZIP)",
+    "exportFailed": "Ekspor gagal dibuat. Coba lagi, atau hubungi kami bila berulang.",
+    "deletionBody": "Meminta penghapusan akun menutup seluruh akses dan menganonimkan data pribadi setelah masa tenggang {days} hari. Buku pembukuan TIDAK ikut terhapus: UU KUP mewajibkannya disimpan 10 tahun sebelum boleh dihancurkan.",
+    "deletionRequestButton": "Minta Penghapusan Akun",
+    "deletionCancelButton": "Batalkan Permintaan Penghapusan",
+    "deletionPending": "Permintaan penghapusan tercatat — dieksekusi setelah {date}. Sampai saat itu Anda masih bisa membatalkannya.",
+    "deletionConfirmTitle": "Minta penghapusan akun?",
+    "deletionConfirmBody": "Setelah masa tenggang {days} hari, seluruh akses ditutup dan data pribadi dianonimkan — tidak bisa dibatalkan setelah dieksekusi. Unduh data Anda terlebih dahulu. Buku pembukuan disimpan 10 tahun sesuai UU KUP.",
+    "deletionRequested": "Permintaan penghapusan tercatat. Seluruh owner diberi tahu lewat email.",
+    "deletionCancelled": "Permintaan penghapusan dibatalkan. Tidak ada yang berubah.",
+    "deletionFailed": "Permintaan gagal diproses. Silakan coba lagi.",
+    "deletionAlreadyPending": "Sudah ada permintaan penghapusan yang menunggu.",
+    "deletionNonePending": "Tidak ada permintaan penghapusan yang menunggu."
   }
 }

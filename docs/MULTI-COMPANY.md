@@ -5,13 +5,12 @@ yang sudah berjalan**, dan **aturan yang tidak boleh dilanggar** saat menulis
 kode baru.
 
 > **Lingkupnya: SATU GRUP USAHA yang memegang beberapa PT** — bukan platform
-> berlangganan dengan pelanggan yang tidak saling kenal. Perbedaannya nyata dan
-> ada di kode: `company.create` adalah izin milik KEANGGOTAAN di sebuah
-> perusahaan (`lib/authz.ts`), username unik se-pemasangan, dan tidak ada
-> entitas pelanggan/langganan sama sekali. Rencana untuk menjadikannya
-> multi-pelanggan — beserta ayam-dan-telur yang menghalanginya — ada di
-> [`MULTI-TENANT.md`](./MULTI-TENANT.md) (berstatus RENCANA; yang berlaku
-> sekarang adalah dokumen ini).
+> berlangganan dengan pelanggan yang tidak saling kenal. Rencana menjadikannya
+> multi-pelanggan ada di [`MULTI-TENANT.md`](./MULTI-TENANT.md); tahap 1–3-nya
+> (#134 skema `tenants` di basis data kendali, #135 izin lingkup TENANT —
+> `company.create` kini milik keanggotaan tenant, bukan keanggotaan PT —, #136
+> email sebagai pengenal login + atur-ulang kata sandi mandiri) SUDAH
+> diimplementasikan. Aturan multi-PT di dokumen ini tetap berlaku penuh.
 
 ---
 
@@ -178,8 +177,10 @@ docker compose run --rm migrate npm run db:migrate:control
 
 # 2. Daftarkan basis data yang sekarang sebagai perusahaan pertama
 #    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
+#    Sejak issue #134/#136 adopsi juga MEMBUAT TENANT dan menuntut peta email
+#    (JSON {"username": "email"} yang diisi operator — bukan ditebak mesin):
 docker compose run --rm migrate npm run adopt-company -- \
-  --slug pt-sai --name "PT Subur Anugerah Indonesia"
+  --slug pt-sai --name "PT Subur Anugerah Indonesia" --emails emails.json
 
 #    BUKTIKAN akunnya sudah pindah SEBELUM langkah 3 — ini titik tak-bisa-balik.
 #    Yang dicari: jumlah pengguna DAN keanggotaan di basis data kendali > 0.
@@ -253,8 +254,9 @@ lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
 
 ### Perusahaan berikutnya
 
-**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`,
-izin `company.create`, akses penuh saja). Ia mengerjakan hal yang sama dengan
+**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`;
+sejak issue #135 izinnya `company.create` di matriks TENANT — owner/admin
+tenant, tanpa menuntut perusahaan aktif). Ia mengerjakan hal yang sama dengan
 skrip di bawah — buat basis data, terapkan skema, daftarkan — sambil
 mengalirkan kemajuannya tahap demi tahap.
 

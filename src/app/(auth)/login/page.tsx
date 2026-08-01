@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { signIn, getSession, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ function LoginForm() {
 
     const formData = new FormData(e.currentTarget);
     const result = await signIn("credentials", {
-      username: formData.get("username"),
+      identifier: formData.get("identifier"),
       password: formData.get("password"),
       redirect: false,
     });
@@ -137,17 +138,26 @@ function LoginForm() {
       error={error}
       icon={<LogIn className="h-5 w-5" aria-hidden />}
       footer={
+        /* Tautan SUNGGUHAN sejak issue #136 — dulu kalimat "hubungi admin
+           sistem", jalan buntu bagi pelanggan yang justru dirinya adminnya. */
         <p className="text-center text-xs text-muted-foreground">
-          {t("auth.login.forgotPassword")}
+          <Link
+            href="/forgot-password"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t("auth.login.forgotPassword")}
+          </Link>
         </p>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email = pengenal resmi (issue #136); username lama tetap diterima
+            selama masa peralihan — lihat authorize() di lib/auth.ts. */}
         <Input
-          id="username"
-          name="username"
-          label={t("auth.login.username")}
-          placeholder={t("auth.login.usernamePlaceholder")}
+          id="identifier"
+          name="identifier"
+          label={t("auth.login.identifier")}
+          placeholder={t("auth.login.identifierPlaceholder")}
           autoComplete="username"
           required
           autoFocus

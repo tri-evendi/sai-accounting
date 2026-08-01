@@ -144,7 +144,11 @@ model Company {
 /// Identitas orang. Satu baris per manusia, berapa pun perusahaan yang dipegangnya.
 model User {
   id       Int     @id @default(autoincrement())
-  username String  @unique @db.VarChar(50)
+  /// Sejak issue #136 BUKAN pengenal login dan BUKAN unik se-pemasangan
+  /// (migration 0004 membuang indeks uniknya): Pelanggan B boleh punya `budi`
+  /// walau Pelanggan A sudah punya. Tinggal sebagai nama tampilan/panggilan;
+  /// keunikan per-TENANT ditegakkan lapisan aplikasi (`users-directory.ts`).
+  username String  @db.VarChar(50)
   password String  @db.VarChar(255)
   name     String? @db.VarChar(100)
 
@@ -177,11 +181,37 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships       Membership[]
-  tenantMemberships TenantMembership[]
+  memberships         Membership[]
+  tenantMemberships   TenantMembership[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
+  @@index([tenantId, username])
   @@map("users")
+}
+
+/// Token atur-ulang kata sandi (issue #136) — disimpan TER-HASH (SHA-256),
+/// berbatas waktu, sekali pakai. Token mentah hanya pernah hidup di dalam
+/// surel yang dikirim ke pemiliknya; baris di sini tidak cukup untuk mengatur
+/// ulang apa pun tanpa surel itu.
+model PasswordResetToken {
+  id     Int @id @default(autoincrement())
+  userId Int @map("user_id")
+
+  /// SHA-256 hex dari token mentah. Unik: satu token satu baris.
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  /// Terisi = sudah dipakai; token yang sama tidak pernah bekerja dua kali.
+  usedAt    DateTime? @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 /// Pengguna × perusahaan × peran. Inilah yang tidak bisa dinyatakan oleh satu

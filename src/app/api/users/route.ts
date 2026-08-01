@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
-import { createCompanyUser, findUserByUsername, listCompanyUsers } from "@/lib/users-directory";
+import {
+  createCompanyUser,
+  findUserByEmail,
+  findUserByUsername,
+  listCompanyUsers,
+} from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { z } from "zod";
 import { activeRoleKeys } from "@/lib/roles";
@@ -14,6 +19,8 @@ import { translateFieldErrors } from "@/lib/i18n/validation";
 // peran divalidasi terhadap DB setelah parse (bukan enum tetap).
 const createUserSchema = z.object({
   username: z.string().min(1).max(50).trim(),
+  /** Pengenal login (issue #136) — wajib; unik global, dinormalkan huruf kecil. */
+  email: z.email().max(255).trim(),
   password: z.string().min(8).max(128),
   name: z.string().max(100).trim().optional(),
   role: z.string().trim().min(1).max(20).default(ROLES.FINANCE_MANAGER),
@@ -72,10 +79,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("errors.roleUnknownOrInactive") }, { status: 400 });
   }
 
-  // Username unik untuk SELURUH pemasangan, bukan per perusahaan: satu orang =
-  // satu akun, berapa pun PT yang dipegangnya (issue #104). Kalau namanya sudah
-  // dipakai, yang benar bukan membuat akun kedua melainkan menambahkan orang
-  // yang sudah ada itu sebagai anggota — jadi pesannya menyebutkan hal itu.
+  // Username unik PER TENANT sejak issue #136 (bukan lagi se-pemasangan):
+  // satu orang = satu akun, berapa pun PT yang dipegangnya di tenant ini.
+  // Kalau namanya sudah dipakai, yang benar bukan membuat akun kedua melainkan
+  // menambahkan orang yang sudah ada itu sebagai anggota — pesannya menyebut
+  // itu. Pencariannya sudah terkunci ke tenant sendiri, jadi id yang ikut
+  // terjawab tidak pernah milik tenant lain (menutup separuh kebocoran §4.4).
   const existing = await findUserByUsername(parsed.data.username);
   if (existing) {
     const { t } = await getRequestI18n();
@@ -85,10 +94,32 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * Email unik GLOBAL (pengenal login). Dua dunia dibedakan dengan sengaja:
+   * pemilik SETENANT boleh disebut id-nya (alur "tambahkan orang yang sudah
+   * ada", sama seperti username); pemilik BEDA TENANT dijawab tanpa id dan
+   * tanpa membenarkan apa pun selain "email tidak bisa dipakai" — kalimat yang
+   * sama yang akan keluar untuk email cacat lain. Jawaban yang SEPENUHNYA
+   * seragam baru mungkin ketika pembuatan akun berganti menjadi undangan
+   * (#139, docs/MULTI-TENANT.md §7.3); route ini masih di belakang
+   * `user.manage`, bukan permukaan publik.
+   */
+  const emailOwner = await findUserByEmail(parsed.data.email);
+  if (emailOwner) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      emailOwner.sameTenant
+        ? { error: t("errors.emailTaken"), code: "email_taken", userId: emailOwner.id }
+        : { error: t("errors.emailTaken"), code: "email_taken" },
+      { status: 409 }
+    );
+  }
+
   const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
 
   const user = await createCompanyUser({
     username: parsed.data.username,
+    email: parsed.data.email,
     passwordHash: hashedPassword,
     name: parsed.data.name,
     role: parsed.data.role,
@@ -102,7 +133,7 @@ export async function POST(request: Request) {
     action: "user.create",
     entity: "user",
     entityId: user.id,
-    details: { username: user.username, role: user.role },
+    details: { username: user.username, email: user.email, role: user.role },
     request,
   });
 

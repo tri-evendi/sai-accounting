@@ -67,6 +67,11 @@ const TENANT_API_ROUTES = new Set([
 const API_EXCEPTIONS = new Set([
   "auth/[...nextauth]/route.ts", // handler NextAuth
   "auth/change-password/route.ts", // self-scoped: auth() + target selalu diri sendiri
+  // publik (issue #136): alur atur-ulang kata sandi berjalan justru TANPA
+  // sesi. Kredensialnya token sekali-pakai ter-hash; jawabannya seragam
+  // (anti-enumerasi) dan keduanya dibatasi laju per-IP/per-email.
+  "auth/forgot-password/route.ts",
+  "auth/reset-password/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.

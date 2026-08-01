@@ -254,11 +254,13 @@
       "description": "Gunakan akun perusahaan Anda untuk membuka buku dan pekerjaan harian.",
       "username": "Nama Pengguna",
       "usernamePlaceholder": "nama.pengguna",
+      "identifier": "Email atau Nama Pengguna",
+      "identifierPlaceholder": "nama@perusahaan.co.id",
       "password": "Kata Sandi",
       "submit": "Masuk",
       "submitting": "Sedang masuk...",
       "checkingSession": "Memeriksa sesi Anda...",
-      "forgotPassword": "Lupa kata sandi? Hubungi admin sistem untuk mengatur ulang akses.",
+      "forgotPassword": "Lupa kata sandi? Atur ulang lewat email",
       "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi."
     },
     "changePassword": {
@@ -293,6 +295,33 @@
       "noCompanyYetHeading": "Belum ada perusahaan",
       "noCompanyYetBody": "Tenant Anda belum punya satu pun perusahaan. Buat yang pertama untuk mulai membuka buku.",
       "noCompanyYetOwner": "Setiap perusahaan mendapat bukunya sendiri — faktur, jurnal, dan stok yang terpisah penuh. Setelah dibuat, jalankan wizard penyiapan untuk identitas, bagan akun, dan saldo awal."
+    },
+    "forgotPassword": {
+      "heading": "Lupa Kata Sandi",
+      "description": "Masukkan email akun Anda. Kalau terdaftar, kami kirimkan tautan untuk membuat kata sandi baru.",
+      "email": "Email",
+      "emailPlaceholder": "nama@perusahaan.co.id",
+      "submit": "Kirim Tautan",
+      "submitting": "Mengirim...",
+      "sentTitle": "Periksa kotak masuk Anda",
+      "sentBody": "Kalau email itu terdaftar, tautan atur-ulang sudah dikirim dan berlaku 60 menit. Tidak menerima apa pun? Periksa folder spam, atau pastikan emailnya benar.",
+      "tooMany": "Terlalu banyak permintaan. Tunggu beberapa menit, lalu coba lagi.",
+      "failed": "Permintaan gagal diproses. Silakan coba lagi.",
+      "backToLogin": "Kembali ke halaman masuk"
+    },
+    "resetPassword": {
+      "heading": "Buat Kata Sandi Baru",
+      "description": "Pilih kata sandi baru untuk akun Anda. Tautan ini sekali pakai.",
+      "newPassword": "Kata Sandi Baru",
+      "confirm": "Ulangi Kata Sandi Baru",
+      "submit": "Simpan Kata Sandi",
+      "submitting": "Menyimpan...",
+      "successTitle": "Kata sandi tersimpan",
+      "successBody": "Kata sandi Anda sudah diganti dan seluruh sesi lama dikeluarkan. Silakan masuk dengan kata sandi baru.",
+      "invalidToken": "Tautan ini tidak berlaku — mungkin sudah dipakai, kedaluwarsa, atau salah salin. Minta tautan baru dari halaman lupa kata sandi.",
+      "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda, atau minta tautan baru.",
+      "goLogin": "Masuk sekarang",
+      "requestNew": "Minta tautan baru"
     }
   },
   "status": {
@@ -440,6 +469,7 @@
     "accountCodeTaken": "Kode perkiraan itu sudah dipakai.",
     "accountOwnParent": "Akun perkiraan tidak boleh menjadi induk dirinya sendiri.",
     "usernameTaken": "Nama pengguna itu sudah dipakai.",
+    "emailTaken": "Email itu sudah dipakai akun lain.",
     "assetCategoryNameTaken": "Nama kategori itu sudah dipakai.",
     "roleKeyTaken": "Kunci “{key}” sudah dipakai.",
     "approvalRuleDuplicate": "Sudah ada aturan aktif dengan jenis dokumen dan ambang yang sama.",
@@ -3079,7 +3109,7 @@
     "advanceUsedTwice": "Uang muka yang sama dikompensasi lebih dari sekali.",
     "compensationExceedsAdvance": "Kompensasi ({amount} {currency}) melebihi sisa uang muka ({remaining} {currency}).",
     "rejectionNoteRequired": "Alasan penolakan wajib diisi (minimal 5 karakter).",
-    "usernameRequired": "Nama pengguna wajib diisi",
+    "identifierRequired": "Email atau nama pengguna wajib diisi",
     "passwordRequired": "Kata sandi wajib diisi",
     "currentPasswordRequired": "Kata sandi saat ini wajib diisi",
     "passwordMin8": "Kata sandi minimal 8 karakter",

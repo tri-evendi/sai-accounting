@@ -254,11 +254,13 @@
       "description": "Use your company account to open the books and your daily work.",
       "username": "Username",
       "usernamePlaceholder": "your.username",
+      "identifier": "Email or Username",
+      "identifierPlaceholder": "name@company.com",
       "password": "Password",
       "submit": "Sign in",
       "submitting": "Signing in...",
       "checkingSession": "Checking your session...",
-      "forgotPassword": "Forgotten your password? Contact your system administrator to reset access.",
+      "forgotPassword": "Forgot your password? Reset it via email",
       "invalidCredentials": "Invalid username or password. Please try again."
     },
     "changePassword": {
@@ -293,6 +295,33 @@
       "noCompanyYetHeading": "No company yet",
       "noCompanyYetBody": "Your tenant does not have a company yet. Create the first one to start keeping books.",
       "noCompanyYetOwner": "Every company gets its own books — invoices, journals, and stock fully separated. After creating it, run the setup wizard for identity, chart of accounts, and opening balances."
+    },
+    "forgotPassword": {
+      "heading": "Forgot Password",
+      "description": "Enter your account email. If it is registered, we will send a link to set a new password.",
+      "email": "Email",
+      "emailPlaceholder": "name@company.com",
+      "submit": "Send Link",
+      "submitting": "Sending...",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If that email is registered, a reset link has been sent and is valid for 60 minutes. Nothing arrived? Check your spam folder, or make sure the address is correct.",
+      "tooMany": "Too many requests. Wait a few minutes, then try again.",
+      "failed": "The request could not be processed. Please try again.",
+      "backToLogin": "Back to sign in"
+    },
+    "resetPassword": {
+      "heading": "Set a New Password",
+      "description": "Choose a new password for your account. This link is single-use.",
+      "newPassword": "New Password",
+      "confirm": "Repeat New Password",
+      "submit": "Save Password",
+      "submitting": "Saving...",
+      "successTitle": "Password saved",
+      "successBody": "Your password has been changed and all old sessions were signed out. Sign in with your new password.",
+      "invalidToken": "This link is not valid — it may have been used, expired, or copied incorrectly. Request a new link from the forgot-password page.",
+      "missingToken": "The link is incomplete. Reopen the link from your email, or request a new one.",
+      "goLogin": "Sign in now",
+      "requestNew": "Request a new link"
     }
   },
   "status": {
@@ -440,6 +469,7 @@
     "accountCodeTaken": "That account code is already in use.",
     "accountOwnParent": "An account cannot be its own parent.",
     "usernameTaken": "That username is already taken.",
+    "emailTaken": "That email is already in use by another account.",
     "assetCategoryNameTaken": "That category name is already in use.",
     "roleKeyTaken": "The key “{key}” is already in use.",
     "approvalRuleDuplicate": "An active rule with the same document type and threshold already exists.",
@@ -3079,7 +3109,7 @@
     "advanceUsedTwice": "The same advance is offset more than once.",
     "compensationExceedsAdvance": "The offset ({amount} {currency}) is more than the advance has left ({remaining} {currency}).",
     "rejectionNoteRequired": "Give a reason for the rejection (at least 5 characters).",
-    "usernameRequired": "Username is required",
+    "identifierRequired": "Email or username is required",
     "passwordRequired": "Password is required",
     "currentPasswordRequired": "Enter your current password",
     "passwordMin8": "Password must be at least 8 characters",

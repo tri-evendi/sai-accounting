@@ -254,11 +254,13 @@
       "description": "使用您的公司账号进入账簿与日常工作。",
       "username": "用户名",
       "usernamePlaceholder": "您的用户名",
+      "identifier": "邮箱或用户名",
+      "identifierPlaceholder": "name@company.com",
       "password": "密码",
       "submit": "登录",
       "submitting": "正在登录...",
       "checkingSession": "正在检查您的登录状态...",
-      "forgotPassword": "忘记密码？请联系系统管理员重置访问权限。",
+      "forgotPassword": "忘记密码？通过邮箱重置",
       "invalidCredentials": "用户名或密码不正确，请重试。"
     },
     "changePassword": {
@@ -293,6 +295,33 @@
       "noCompanyYetHeading": "尚无公司",
       "noCompanyYetBody": "您的租户还没有任何公司。创建第一家公司即可开始记账。",
       "noCompanyYetOwner": "每家公司都有自己独立的账簿——发票、日记账和库存完全分开。创建后，请运行设置向导以完成公司信息、会计科目表和期初余额。"
+    },
+    "forgotPassword": {
+      "heading": "忘记密码",
+      "description": "请输入账号邮箱。如果该邮箱已注册，我们会发送设置新密码的链接。",
+      "email": "邮箱",
+      "emailPlaceholder": "name@company.com",
+      "submit": "发送链接",
+      "submitting": "发送中...",
+      "sentTitle": "请查收邮箱",
+      "sentBody": "如果该邮箱已注册，重置链接已发送，60 分钟内有效。没有收到？请检查垃圾邮件文件夹，或确认邮箱地址是否正确。",
+      "tooMany": "请求过于频繁。请稍等几分钟后再试。",
+      "failed": "请求处理失败，请重试。",
+      "backToLogin": "返回登录"
+    },
+    "resetPassword": {
+      "heading": "设置新密码",
+      "description": "为您的账号选择新密码。该链接仅可使用一次。",
+      "newPassword": "新密码",
+      "confirm": "再次输入新密码",
+      "submit": "保存密码",
+      "submitting": "保存中...",
+      "successTitle": "密码已保存",
+      "successBody": "密码已更改，所有旧会话已退出。请使用新密码登录。",
+      "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请在忘记密码页面重新申请链接。",
+      "missingToken": "链接不完整。请重新打开邮件中的链接，或申请新链接。",
+      "goLogin": "立即登录",
+      "requestNew": "申请新链接"
     }
   },
   "status": {
@@ -440,6 +469,7 @@
     "accountCodeTaken": "该科目代码已被使用。",
     "accountOwnParent": "会计科目不能作为自身的上级科目。",
     "usernameTaken": "该用户名已被使用。",
+    "emailTaken": "该邮箱已被其他账号使用。",
     "assetCategoryNameTaken": "该类别名称已被使用。",
     "roleKeyTaken": "键“{key}”已被使用。",
     "approvalRuleDuplicate": "已存在单据类型和金额门槛相同的启用规则。",
@@ -3079,7 +3109,7 @@
     "advanceUsedTwice": "同一笔预付款被重复抵扣。",
     "compensationExceedsAdvance": "抵扣金额（{amount} {currency}）超过预付款余额（{remaining} {currency}）。",
     "rejectionNoteRequired": "请填写拒绝理由（至少 5 个字符）。",
-    "usernameRequired": "请填写用户名",
+    "identifierRequired": "请输入邮箱或用户名",
     "passwordRequired": "请填写密码",
     "currentPasswordRequired": "请填写当前密码",
     "passwordMin8": "密码至少 8 个字符",

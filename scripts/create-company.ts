@@ -179,12 +179,13 @@ async function main() {
   console.log(`3/3  terdaftar sebagai perusahaan #${company.id}`);
 
   if (admin) {
-    const user = await control.user.findUnique({ where: { username: admin } });
+    // Username tidak lagi unik global (#136) — dicari di tenant pemilik PT ini.
+    const user = await control.user.findFirst({ where: { username: admin, tenantId } });
     if (!user) {
       console.warn(
         `\nCatatan: pengguna "${admin}" belum ada, jadi keanggotaan tidak dibuat.\n` +
           "Buat akunnya sekaligus dengan:\n" +
-          `  npm run create-admin -- --username ${admin} --password '…' --company ${slug}`
+          `  npm run create-admin -- --username ${admin} --password '…' --email <email> --company ${slug}`
       );
     } else {
       await control.membership.create({

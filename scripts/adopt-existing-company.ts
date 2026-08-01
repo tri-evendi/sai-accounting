@@ -2,7 +2,15 @@
  * Daftarkan pemasangan SATU perusahaan yang sudah berjalan sebagai perusahaan
  * pertama di basis data kendali (issue #104).
  *
- *   npx tsx scripts/adopt-existing-company.ts --slug pt-sai [--name "PT Subur Anugerah"]
+ *   npx tsx scripts/adopt-existing-company.ts --slug pt-sai --emails emails.json \
+ *       [--name "PT Subur Anugerah"] [--tenant-slug pt-sai] [--owners admin]
+ *
+ * Sejak issue #134 basis data kendali menuntut setiap akun ber-EMAIL dan
+ * ber-TENANT (migration 0003 menolak NULL), jadi adopsi pemasangan lama kini
+ * SEKALIGUS membuat tenantnya: `--emails` menunjuk berkas JSON
+ * `{ "<username>": "<email>", … }` yang DIISI OPERATOR — mesin tidak pernah
+ * mengarang alamat. Pengguna berperan akses penuh (termasuk kunci lama `bos`)
+ * menjadi owner tenant; `--owners` menimpanya.
  *
  * ══ URUTAN YANG WAJIB ══════════════════════════════════════════════════════
  *   1. npm run db:migrate:control          — siapkan basis data kendali
@@ -27,7 +35,7 @@
  */
 
 import "dotenv/config";
-import { rename, mkdir, access } from "node:fs/promises";
+import { readFile, rename, mkdir, access } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
@@ -77,14 +85,32 @@ function clientFor(rawUrl: string, Ctor: typeof ControlClient | typeof CompanyCl
 
 const bool = (v: number | boolean | null): boolean => v === true || v === 1;
 
-async function main() {
-  const { slug, name } = parseArgs(process.argv.slice(2));
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!slug || !/^[a-z0-9][a-z0-9-]{0,49}$/.test(slug)) {
+/** Peran yang menjadikan pemegangnya OWNER tenant. Kunci lama pra-0032 ikut:
+ *  pemasangan yang diadopsi di bawah 0032 masih menyimpan `bos` (lihat
+ *  docs/MULTI-COMPANY.md §"di bawah 0032"). */
+const FULL_ACCESS_LEGACY = new Set(["managing_director", "administrator", "bos"]);
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const { slug, name, emails: emailsPath, owners } = args;
+
+  if (!slug || !/^[a-z0-9][a-z0-9-]{0,49}$/.test(slug) || !emailsPath) {
     console.error(
-      'Usage: npx tsx scripts/adopt-existing-company.ts --slug <slug> [--name "Nama PT"]\n' +
-        "  slug: huruf kecil, angka, dan tanda hubung (mis. pt-sai)"
+      'Usage: npx tsx scripts/adopt-existing-company.ts --slug <slug> --emails <peta.json> [--name "Nama PT"] [--tenant-slug <slug>] [--owners a,b]\n' +
+        "  slug: huruf kecil, angka, dan tanda hubung (mis. pt-sai)\n" +
+        '  peta.json: { "<username>": "<email>", ... } — disiapkan operator (issue #134)'
     );
+    process.exit(1);
+  }
+  const tenantSlug = args["tenant-slug"] ?? slug;
+
+  let emailByUsername: Record<string, string>;
+  try {
+    emailByUsername = JSON.parse(await readFile(emailsPath, "utf8"));
+  } catch (error) {
+    console.error(`ERROR: gagal membaca peta email "${emailsPath}": ${String(error)}`);
     process.exit(1);
   }
 
@@ -157,12 +183,74 @@ async function main() {
     `SELECT id, username, password, name, role, ${mustChangeColumn}, pass_date, accountant_mode, session_version FROM users ORDER BY id`
   );
 
+  // ── Email tiap pengguna: lengkap, valid, tanpa kembar — SEBELUM menulis ──
+  const problems: string[] = [];
+  const emailById = new Map<number, string>();
+  const seenEmail = new Map<string, string>();
+  for (const u of users) {
+    const raw = (emailByUsername[u.username] ?? "").trim().toLowerCase();
+    if (!raw) problems.push(`pengguna "${u.username}" tidak punya email di peta ${emailsPath}`);
+    else if (!EMAIL_RE.test(raw)) problems.push(`email "${raw}" milik "${u.username}" cacat`);
+    else if (seenEmail.has(raw))
+      problems.push(`email "${raw}" kembar: ${seenEmail.get(raw)} dan ${u.username}`);
+    else {
+      seenEmail.set(raw, u.username);
+      emailById.set(u.id, raw);
+    }
+  }
+  if (problems.length > 0) {
+    console.error("ERROR: peta email belum siap — TIDAK ADA yang ditulis:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+
+  // ── Owner tenant (issue #134): eksplisit, atau peran akses penuh ──────────
+  const explicitOwners = owners
+    ? new Set(owners.split(",").map((v) => v.trim()).filter(Boolean))
+    : null;
+  const tenantRoleFor = (u: LegacyUser): string =>
+    (explicitOwners ? explicitOwners.has(u.username) : FULL_ACCESS_LEGACY.has(u.role))
+      ? "owner"
+      : "member";
+  if (!users.some((u) => tenantRoleFor(u) === "owner")) {
+    console.error(
+      "ERROR: tidak ada satu pun owner tenant. Sebutkan lewat --owners, atau pastikan\n" +
+        "ada pengguna berperan akses penuh (managing_director/administrator/bos)."
+    );
+    process.exit(1);
+  }
+
+  const existingTenant = await control.tenant.findUnique({ where: { slug: tenantSlug } });
+  if (existingTenant) {
+    console.error(`ERROR: tenant "${tenantSlug}" sudah ada. Pakai --tenant-slug lain.`);
+    process.exit(1);
+  }
+
   console.log(`Mengadopsi ${databaseName} sebagai "${companyName}" (${slug})`);
   console.log(`  ${users.length} pengguna akan dipindahkan ke basis data kendali`);
+  console.log(`  tenant "${tenantSlug}" ikut dibuat (issue #134) — owner: ${users
+    .filter((u) => tenantRoleFor(u) === "owner")
+    .map((u) => u.username)
+    .join(", ")}`);
 
   await control.$transaction(async (tx) => {
+    /*
+     * Tenant lahir DULUAN (issue #134): sejak migration 0003, perusahaan dan
+     * pengguna tanpa tenant ditolak basis data. Kuota di-snapshot longgar
+     * untuk pemasangan yang diadopsi (bukan pelanggan trial).
+     */
+    const tenant = await tx.tenant.create({
+      data: {
+        slug: tenantSlug,
+        name: companyName,
+        status: "active",
+        planKey: "internal",
+        maxCompanies: 10,
+        maxUsers: Math.max(50, users.length),
+      },
+    });
+
     const created = await tx.company.create({
-      data: { slug, name: companyName, databaseName },
+      data: { slug, name: companyName, databaseName, tenantId: tenant.id },
     });
 
     for (const u of users) {
@@ -171,6 +259,8 @@ async function main() {
         data: {
           id: u.id,
           username: u.username,
+          email: emailById.get(u.id)!,
+          tenantId: tenant.id,
           password: u.password,
           name: u.name,
           // `status` lama: 1 = wajib ganti sandi, selain itu tidak — pemetaan
@@ -193,6 +283,9 @@ async function main() {
               ? null
               : bool(u.accountant_mode),
         },
+      });
+      await tx.tenantMembership.create({
+        data: { tenantId: tenant.id, userId: u.id, role: tenantRoleFor(u) },
       });
     }
   });

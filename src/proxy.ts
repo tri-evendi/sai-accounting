@@ -5,6 +5,10 @@ import { getToken } from "next-auth/jwt";
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  // issue #136 — alur atur-ulang kata sandi mandiri: orang yang lupa kata
+  // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
+  // `/api/auth/*` di bawah.
+  if (pathname === "/forgot-password" || pathname === "/reset-password") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
   if (pathname.startsWith("/api/auth/")) {

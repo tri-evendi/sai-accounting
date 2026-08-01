@@ -102,6 +102,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Kata serapan yang ejaannya IDENTIK di kedua bahasa — "menerjemahkan"-nya
     // hanya akan menghasilkan kata yang sama.
     "common.status",
+    // "Email" ditulis sama di bahasa Indonesia dan Inggris (Mandarin: 邮箱).
+    "auth.forgotPassword.email",
     "common.total",
     // Istilah pembukuan berpasangan: "Debit" ditulis sama di kedua bahasa
     // (pasangannya "Kredit"/"Credit" memang berbeda). Bahasa Mandarin memakai

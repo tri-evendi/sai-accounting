@@ -220,7 +220,7 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.advanceUsedTwice": "Uang muka yang sama dikompensasi lebih dari sekali.",
   "validation.compensationExceedsAdvance": "Kompensasi ({amount} {currency}) melebihi sisa uang muka ({remaining} {currency}).",
   "validation.rejectionNoteRequired": "Alasan penolakan wajib diisi (minimal 5 karakter).",
-  "validation.usernameRequired": "Nama pengguna wajib diisi",
+  "validation.identifierRequired": "Email atau nama pengguna wajib diisi",
   "validation.passwordRequired": "Kata sandi wajib diisi",
   "validation.currentPasswordRequired": "Kata sandi saat ini wajib diisi",
   "validation.passwordMin8": "Kata sandi minimal 8 karakter",

@@ -21,6 +21,10 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/terms" || pathname === "/privacy") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
+  // issue #141 — webhook gerbang pembayaran: pengirimnya server Midtrans,
+  // tanpa sesi. JALUR PERSIS, bukan prefix; kredensialnya tanda tangan
+  // SHA-512 yang diverifikasi di route-nya (fail-closed tanpa kunci).
+  if (pathname === "/api/billing/webhook") return true;
   if (pathname.startsWith("/api/auth/")) {
     return !pathname.startsWith("/api/auth/change-password");
   }

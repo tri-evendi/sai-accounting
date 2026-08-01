@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
+import { BillingProfileForm, PayInvoice } from "./billing-actions";
 import { tenantCan } from "@/lib/tenant-authz";
 import { PrivacySection } from "./privacy-section";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
@@ -178,6 +179,7 @@ export default async function TenantSettingsPage() {
                             {t("tenantSettings.invoiceTotal")}
                           </TableHead>
                           <TableHead>{t("tenantSettings.statusLabel")}</TableHead>
+                          <TableHead>{t("billing.payColumn")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -199,6 +201,18 @@ export default async function TenantSettingsPage() {
                                 )}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              {/* "Bayar" hanya untuk tagihan TERBUKA (issue #141) —
+                                  VA/QRIS; tagih-lalu-ingatkan, bukan auto-debit. */}
+                              {invoice.status === "issued" ? (
+                                <PayInvoice
+                                  invoiceId={invoice.id}
+                                  pending={invoice.pendingPayment}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -206,6 +220,18 @@ export default async function TenantSettingsPage() {
                   )}
                 </>
               )}
+              {/* Profil penagihan — NPWP lawan transaksi untuk Faktur Pajak
+                  KAMI (issue #141). ⚠ Kewajiban PPN/e-Faktur langganan harus
+                  dikonfirmasi penasihat pajak; ini mekanisme datanya. */}
+              <div className="space-y-2 pt-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t("billing.profileHeading")}
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t("billing.profileHint")}
+                </p>
+                <BillingProfileForm profile={overview.billing?.profile ?? null} />
+              </div>
             </section>
           )}
 

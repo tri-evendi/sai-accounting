@@ -3398,5 +3398,26 @@
     "deletionFailed": "The request could not be processed. Please try again.",
     "deletionAlreadyPending": "A deletion request is already pending.",
     "deletionNonePending": "There is no pending deletion request."
+  },
+  "billing": {
+    "payColumn": "Pay",
+    "payVa": "Create VA",
+    "payQris": "QRIS",
+    "vaLabel": "{bank} VA:",
+    "payBefore": "pay before {date}",
+    "qrisHint": "Scan / copy this QRIS code in your banking app:",
+    "manualFallback": "Manual transfer — contact the platform operator for the destination account.",
+    "errPay": "Failed to prepare payment instructions",
+    "invoiceNotFound": "Invoice not found.",
+    "invoiceNotPayable": "This invoice is not awaiting payment.",
+    "profileHeading": "Tax Profile (Faktur Pajak)",
+    "profileHint": "NPWP, name, and address as registered — used for the tax invoice on your subscription bills. The VAT/e-Faktur obligation for subscriptions is being confirmed with a tax advisor; this data prepares for it.",
+    "npwp": "NPWP",
+    "npwpName": "Name as per NPWP",
+    "npwpAddress": "Address as per NPWP",
+    "saveProfile": "Save Profile",
+    "savingProfile": "Saving...",
+    "profileSaved": "Tax profile saved",
+    "errProfile": "Failed to save the tax profile"
   }
 }

@@ -48,6 +48,7 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import {
   GRACE_PERIOD_DAYS,
   invoiceNumberFor,
+  platformInvoiceAmounts,
   nextPeriod,
   pendingReminder,
   planDunning,
@@ -60,6 +61,7 @@ import {
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
+import { resolvePaymentGateway } from "../src/lib/payment-gateway";
 import { runReconciliation } from "./reconcile-platform";
 
 function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl: string): T {
@@ -78,6 +80,21 @@ function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl:
 
 type Platform = InstanceType<typeof PlatformClient>;
 type Control = InstanceType<typeof ControlClient>;
+
+/** Baris instruksi bayar untuk surel pengingat — kosong bila tidak ada
+ *  instruksi yang menunggu (jalur manual: /tenant yang menjelaskan). */
+function paymentInstructionText(
+  payment: { bank: string | null; vaNumber: string | null; qrString: string | null } | undefined
+): string {
+  if (!payment) return "Cara bayar & rincian tagihan: buka menu Langganan (/tenant) di aplikasi.\n";
+  if (payment.vaNumber) {
+    return `Bayar lewat Virtual Account ${(payment.bank ?? "").toUpperCase()}: ${payment.vaNumber}\n`;
+  }
+  if (payment.qrString) {
+    return "Bayar lewat QRIS: buka menu Langganan (/tenant) untuk memindai kodenya.\n";
+  }
+  return "Cara bayar & rincian tagihan: buka menu Langganan (/tenant) di aplikasi.\n";
+}
 
 /** Email para OWNER sebuah tenant — penerima surel penagihan. */
 async function ownerEmails(control: Control, tenantId: number): Promise<string[]> {
@@ -179,10 +196,17 @@ async function main() {
         data: { currentPeriodStart: period.start, currentPeriodEnd: period.end },
       });
 
-      /* Tagihan pertama — nomor deterministik = kunci idempotensinya. */
+      /* Tagihan pertama — nomor deterministik = kunci idempotensinya.
+       * PPN dihitung lewat lib/tax.ts (issue #141) — tarifnya tidak pernah
+       * diketik ulang; sakelar PLATFORM_PPN_DISABLED = mekanisme untuk
+       * jawaban penasihat pajak, bukan kebijakan yang kami tetapkan. */
       const number = invoiceNumberFor(sub.id, period.start);
+      const amounts = platformInvoiceAmounts(
+        sub.price.toString(),
+        process.env.PLATFORM_PPN_DISABLED !== "true"
+      );
       try {
-        await platform.platformInvoice.create({
+        const invoice = await platform.platformInvoice.create({
           data: {
             tenantId: sub.tenantId,
             subscriptionId: sub.id,
@@ -190,13 +214,57 @@ async function main() {
             status: "issued",
             issueDate: now,
             dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-            amount: sub.price,
-            taxAmount: 0, // PPN & e-Faktur menyusul di #141
-            total: sub.price,
+            amount: amounts.amount,
+            taxAmount: amounts.taxAmount,
+            total: amounts.total,
             currency: sub.currency,
           },
         });
-        console.log(`+ trial habis: sub #${sub.id} → active, tagihan ${number} terbit`);
+        console.log(
+          `+ trial habis: sub #${sub.id} → active, tagihan ${number} terbit ` +
+            `(DPP ${amounts.amount} + PPN ${amounts.taxAmount} = ${amounts.total})`
+        );
+
+        /* Tagih-lalu-ingatkan (bukan auto-debit): instruksi bayar (VA) dibuat
+         * BERSAMA tagihannya bila gerbang terpasang — surel pengingat H-x
+         * tinggal menyebut nomornya. Jalur `manual` tidak membuat charge;
+         * pelanggan melihat instruksi transfer di /tenant. */
+        const gateway = resolvePaymentGateway();
+        if (gateway.name !== "manual") {
+          try {
+            const charge = await gateway.createCharge({
+              invoiceNumber: number,
+              grossAmount: amounts.total,
+              method: "virtual_account",
+              bank: process.env.PAYMENT_DEFAULT_VA_BANK ?? "bca",
+            });
+            await platform.payment.create({
+              data: {
+                tenantId: sub.tenantId,
+                platformInvoiceId: invoice.id,
+                status: "pending",
+                method: charge.method,
+                gateway: charge.gateway,
+                gatewayRef: charge.gatewayRef,
+                amount: amounts.total,
+                currency: sub.currency,
+                bank: charge.bank ?? null,
+                vaNumber: charge.vaNumber ?? null,
+                qrString: charge.qrString ?? null,
+                expiresAt: charge.expiresAt ?? null,
+              },
+            });
+            console.log(`  ↳ VA ${charge.bank ?? "?"} ${charge.vaNumber ?? "?"} disiapkan (${charge.gatewayRef})`);
+          } catch (chargeError) {
+            if ((chargeError as { code?: string }).code === "P2002") {
+              console.log("  = instruksi bayar sudah ada — tidak dibuat dua kali");
+            } else {
+              /* Gerbang mati ≠ tagihan batal: tagihannya SUDAH terbit; VA bisa
+               * dibuat pelanggan dari /tenant atau putaran berikutnya. */
+              errors.push(`charge tagihan ${number}: ${chargeError}`);
+            }
+          }
+        }
       } catch (e) {
         if ((e as { code?: string }).code === "P2002") {
           console.log(`= tagihan ${number} sudah ada — tidak ditagih dua kali`);
@@ -261,11 +329,26 @@ async function main() {
     }
     const issuedInvoices = await platform.platformInvoice.findMany({
       where: { status: "issued" },
-      select: { subscriptionId: true, dueDate: true, number: true },
+      select: { id: true, subscriptionId: true, dueDate: true, number: true },
     });
+    /* Instruksi bayar yang masih menunggu (issue #141) — pengingat jatuh tempo
+     * menyebut nomor VA-nya, bukan sekadar "bayarlah". */
+    const pendingPayments = await platform.payment.findMany({
+      where: { status: "pending", platformInvoiceId: { in: issuedInvoices.map((i) => i.id) } },
+      select: { platformInvoiceId: true, bank: true, vaNumber: true, qrString: true },
+      orderBy: { id: "desc" },
+    });
+    const paymentByInvoice = new Map<number, (typeof pendingPayments)[number]>();
+    for (const p of pendingPayments) {
+      if (!paymentByInvoice.has(p.platformInvoiceId)) paymentByInvoice.set(p.platformInvoiceId, p);
+    }
+    const invoiceBySub = new Map<number, (typeof issuedInvoices)[number]>();
     for (const inv of issuedInvoices) {
       const sub = subscriptions.find((s) => s.id === inv.subscriptionId);
-      if (sub) targets.push({ sub, kind: "invoice_due", target: inv.dueDate });
+      if (sub) {
+        targets.push({ sub, kind: "invoice_due", target: inv.dueDate });
+        invoiceBySub.set(sub.id, inv);
+      }
     }
 
     for (const { sub, kind, target } of targets) {
@@ -298,6 +381,7 @@ async function main() {
               ? `Halo,\n\nMasa uji coba langganan Anda berakhir pada ${target.toISOString().slice(0, 10)}.\n` +
                 "Setelah itu siklus tagih dimulai dan tagihan pertama terbit otomatis.\n\n— SAI Accounting"
               : `Halo,\n\nTagihan langganan Anda jatuh tempo pada ${target.toISOString().slice(0, 10)}.\n` +
+                paymentInstructionText(invoiceBySub.get(sub.id) && paymentByInvoice.get(invoiceBySub.get(sub.id)!.id)) +
                 "Bila terlewat, langganan menunggak dan setelah masa tenggang buku besar\n" +
                 "menjadi HANYA-BACA (data Anda tidak dihapus).\n\n— SAI Accounting",
         });

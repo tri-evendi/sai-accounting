@@ -108,6 +108,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "tenantSettings.statusLabel",
     "tenantSettings.invoiceTotal",
     "tenantSettings.price",
+    // "QRIS" dan "NPWP" adalah nama diri (standar pembayaran & nomor pajak
+    // Indonesia) — sama di semua bahasa (issue #141).
+    "billing.payQris",
+    "billing.npwp",
     // "Email" ditulis sama di bahasa Indonesia dan Inggris (Mandarin: 邮箱).
     "auth.forgotPassword.email",
     "common.total",
@@ -210,6 +214,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "stockMovement.periodRange",
     // "{amount} / {cycle}" — dua placeholder dan satu garis miring (#140).
     "tenantSettings.price",
+    // Nama diri standar Indonesia (issue #141) — lihat catatan di daftar en.
+    "billing.payQris",
+    "billing.npwp",
   ]),
 };
 

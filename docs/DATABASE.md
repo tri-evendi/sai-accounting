@@ -250,3 +250,18 @@ cron host — pemasangan compose:
 Paket bawaan: `npm run db:seed:plans`; ganti paket sebuah tenant (operator,
 sampai gateway #141): `npm run change-plan -- --tenant <slug> --plan <key>` —
 kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.
+
+**Penagihan Indonesia (issue #141).** Gerbang pembayaran di
+`src/lib/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
+`manual` bawaan; transport `mock` di luar produksi (nol jaringan, VA
+deterministik) — kredensial real HANYA lewat env (`PAYMENT_GATEWAY`,
+`MIDTRANS_SERVER_KEY`, lihat `.env.docker.example`; bawaan TIDAK terpasang).
+Webhook `/api/billing/webhook`: tanda tangan SHA-512 diverifikasi (503
+fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
+`payments.gateway_ref`, menulis platform DULU lalu kendali; gagal bayar →
+`past_due`, tidak pernah langsung `suspended`. PPN tagihan platform dihitung
+lewat `src/lib/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
+keputusan penasihat pajak); e-Faktur: `npm run efaktur:platform` memakai mesin
+`src/lib/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
+pelanggan di /tenant). **TIDAK ADA data kartu yang disimpan** — hanya
+referensi gerbang, nomor VA, dan payload QR.

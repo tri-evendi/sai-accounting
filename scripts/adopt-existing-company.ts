@@ -139,12 +139,18 @@ async function main() {
     process.exit(1);
   }
 
+  /*
+   * Hanya NAMA BASIS DATA yang diperiksa global (issue #153): adopsi selalu
+   * melahirkan tenant BARU, jadi slug pilihan operator tidak mungkin kembar di
+   * dalam tenantnya sendiri — dan slug yang kebetulan sudah dipakai pelanggan
+   * LAIN bukan halangan (keunikan slug kini per tenant, bukan se-pemasangan).
+   */
   const existing = await control.company.findFirst({
-    where: { OR: [{ slug }, { databaseName }] },
+    where: { databaseName },
   });
   if (existing) {
     console.error(
-      `ERROR: sudah terdaftar sebagai "${existing.slug}" → ${existing.databaseName}. ` +
+      `ERROR: basis data ${existing.databaseName} sudah terdaftar sebagai "${existing.slug}". ` +
         "Tidak ada yang diubah."
     );
     process.exit(1);

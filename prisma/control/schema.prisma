@@ -107,7 +107,15 @@ model Company {
   id   Int    @id @default(autoincrement())
   /// Dipakai di URL dan sebagai bagian nama basis data. Huruf kecil, angka, dan
   /// tanda hubung — divalidasi di `lib/validations/company.ts`, bukan hanya di UI.
-  slug String @unique @db.VarChar(50)
+  ///
+  /// UNIK PER TENANT sejak issue #153 (`@@unique([tenantId, slug])` di bawah),
+  /// BUKAN se-pemasangan: keunikan global membuat pelanggan saling berebut nama
+  /// ("pusat" milik siapa yang duluan) dan galat "sudah dipakai" membocorkan
+  /// slug pelanggan lain — kelas kebocoran yang sama dengan §4.4
+  /// docs/MULTI-TENANT.md pada username. Nama basis data turunannya ikut aman:
+  /// `sai_t{tenantId}_{slug}` memuat id tenant, jadi slug kembar lintas tenant
+  /// tidak pernah bertemu di ruang nama fisik.
+  slug String @db.VarChar(50)
   name String @db.VarChar(150)
 
   /// NAMA basis datanya saja, bukan URL lengkap. Host, pengguna, dan kata sandi
@@ -139,6 +147,12 @@ model Company {
   memberships Membership[]
   invitations Invitation[]
 
+  /// Slug unik DI DALAM tenantnya (issue #153) — lihat komentar `slug`.
+  /// Dilahirkan bertahap dengan pola #134: migration 0008 menambah indeks ini
+  /// BERDAMPINGAN dengan keunikan global lama, `scripts/
+  /// prove-company-slug-scope.ts` membuktikan datanya bersih, baru 0009
+  /// membuang yang global.
+  @@unique([tenantId, slug])
   @@index([isActive])
   @@index([tenantId])
   @@map("companies")

@@ -44,14 +44,16 @@ async function main() {
     email,
     name,
     company: companySlug,
+    tenant: tenantSlug,
     role = ROLES.MANAGING_DIRECTOR,
   } = parseArgs(process.argv.slice(2));
 
   if (!username || !password || !companySlug || !email) {
     console.error(
-      'Usage: bun run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--name "Nama"] [--role ...]\n' +
+      'Usage: bun run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--tenant <slug-tenant>] [--name "Nama"] [--role ...]\n' +
         "  --email wajib sejak issue #136: email adalah pengenal login dan jalan\n" +
-        "  satu-satunya mengatur ulang kata sandi secara mandiri."
+        "  satu-satunya mengatur ulang kata sandi secara mandiri.\n" +
+        "  --tenant wajib hanya bila slug perusahaan ada di lebih dari satu tenant (#153)."
     );
     process.exit(1);
   }
@@ -82,14 +84,37 @@ async function main() {
   });
   const controlDb = new PrismaClient({ adapter });
 
-  const company = await controlDb.company.findUnique({ where: { slug: companySlug } });
-  if (!company) {
+  /*
+   * Slug perusahaan unik PER TENANT sejak issue #153, jadi satu slug bisa
+   * menunjuk perusahaan di dua tenant yang berbeda. Yang ambigu harus
+   * ditanyakan, bukan dipilihkan (pola #104): bila kembar, `--tenant
+   * <slug-tenant>` wajib disebut.
+   */
+  const candidates = await controlDb.company.findMany({
+    where: { slug: companySlug },
+    include: { tenant: { select: { slug: true } } },
+  });
+  const matches = tenantSlug
+    ? candidates.filter((c) => c.tenant?.slug === tenantSlug)
+    : candidates;
+  if (matches.length === 0) {
     console.error(
-      `ERROR: perusahaan dengan slug "${companySlug}" tidak ada. Daftarkan dulu ` +
-        "(scripts/adopt-existing-company.ts untuk pemasangan yang sudah berjalan)."
+      tenantSlug
+        ? `ERROR: perusahaan "${companySlug}" tidak ada di tenant "${tenantSlug}".`
+        : `ERROR: perusahaan dengan slug "${companySlug}" tidak ada. Daftarkan dulu ` +
+            "(scripts/adopt-existing-company.ts untuk pemasangan yang sudah berjalan)."
     );
     process.exit(1);
   }
+  if (matches.length > 1) {
+    console.error(
+      `ERROR: slug "${companySlug}" ada di ${matches.length} tenant ` +
+        `(${matches.map((c) => c.tenant?.slug ?? `#${c.tenantId}`).join(", ")}) — ` +
+        "sebutkan pemiliknya lewat --tenant <slug-tenant>."
+    );
+    process.exit(1);
+  }
+  const company = matches[0];
 
   /*
    * Tenant pemilik akun = tenant perusahaan tujuan (issue #134/#136): sejak

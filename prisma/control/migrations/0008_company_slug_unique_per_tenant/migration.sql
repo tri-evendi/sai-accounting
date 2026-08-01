@@ -1,0 +1,21 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Slug perusahaan unik PER TENANT (issue #153) — langkah 1 dari 3.
+--
+-- Keunikan global `companies_slug_key` membuat dua masalah dengan satu sebab:
+-- pelanggan saling berebut nama ("pusat" milik siapa yang duluan), dan galat
+-- "sudah dipakai" membocorkan slug pelanggan lain ke siapa pun yang mencoba —
+-- kelas kebocoran yang sama dengan §4.4 docs/MULTI-TENANT.md pada username.
+--
+-- Urutannya pola #134 (longgar → buktikan → kunci), dan tidak boleh ditukar:
+--   1. migration INI — indeks komposit lahir BERDAMPINGAN dengan keunikan
+--      global lama; keduanya hidup, tidak ada yang berubah perilakunya
+--   2. npx tsx scripts/prove-company-slug-scope.ts   ← WAJIB exit 0 lebih dulu
+--   3. migration 0009 — membuang keunikan global
+--
+-- Migration ini sendiri TIDAK PERNAH gagal pada basis data yang memenuhi
+-- keunikan lama: (tenant_id, slug) kembar mensyaratkan slug kembar, dan itu
+-- justru yang dilarang indeks global yang masih berdiri.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- CreateIndex — nama mengikuti pola Prisma untuk `@@unique([tenantId, slug])`
+CREATE UNIQUE INDEX `companies_tenant_id_slug_key` ON `companies`(`tenant_id`, `slug`);

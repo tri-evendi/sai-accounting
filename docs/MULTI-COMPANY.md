@@ -4,6 +4,15 @@ Issue #104. Dokumen ini menjelaskan **bentuknya**, **cara memindahkan pemasangan
 yang sudah berjalan**, dan **aturan yang tidak boleh dilanggar** saat menulis
 kode baru.
 
+> **Lingkupnya: SATU GRUP USAHA yang memegang beberapa PT** — bukan platform
+> berlangganan dengan pelanggan yang tidak saling kenal. Perbedaannya nyata dan
+> ada di kode: `company.create` adalah izin milik KEANGGOTAAN di sebuah
+> perusahaan (`lib/authz.ts`), username unik se-pemasangan, dan tidak ada
+> entitas pelanggan/langganan sama sekali. Rencana untuk menjadikannya
+> multi-pelanggan — beserta ayam-dan-telur yang menghalanginya — ada di
+> [`MULTI-TENANT.md`](./MULTI-TENANT.md) (berstatus RENCANA; yang berlaku
+> sekarang adalah dokumen ini).
+
 ---
 
 ## 1. Bentuknya
@@ -212,6 +221,29 @@ langkah 2 akan menghapus seluruh akun beserta hash kata sandinya. `db:migrate:al
 hanya menyentuh perusahaan yang **sudah terdaftar**; registry yang masih kosong
 membuatnya berhenti dengan kode bukan-nol dan menyebutkan perintah yang harus
 dijalankan lebih dulu, sehingga `web` pun tidak ikut naik.
+
+### Bila pemasangannya masih di bawah 0032, PERIKSA `memberships.role`
+
+Adopsi menyalin `users.role` apa adanya ke `memberships.role` di basis data
+kendali, dan itu terjadi **sebelum** langkah 3. Migration `0032` mengganti nama
+kunci peran (`bos → managing_director`, `core → finance_manager`,
+`ptg → warehouse_head`) — tapi ia hanya menyentuh basis data PERUSAHAAN, tempat
+kuncinya sudah tidak lagi tinggal. Akibatnya, pada pemasangan yang diadopsi saat
+masih di bawah 0032, `memberships.role` tertinggal memakai kunci lama sementara
+tabel `roles` dan kode sudah memakai kunci baru: setiap pengguna kehilangan
+SELURUH izinnya, tanpa satu pun galat — sekadar aplikasi yang kosong.
+
+Produksi tidak mengalaminya karena sudah di 0036 saat diadopsi. Pemasangan yang
+lebih tua harus diperbaiki sesudah langkah 3:
+
+```sql
+UPDATE memberships SET role='managing_director' WHERE role='bos';
+UPDATE memberships SET role='finance_manager'   WHERE role='core';
+UPDATE memberships SET role='warehouse_head'    WHERE role='ptg';
+```
+
+Cara memeriksanya: setiap nilai `memberships.role` di basis data kendali harus
+ada di `roles.key` basis data perusahaannya.
 
 Skrip adopsi membaca skema LAMA (kolomnya masih `users.status`, bukan
 `must_change_password`) — ia mendeteksi mana yang ada, jadi urutan di atas benar

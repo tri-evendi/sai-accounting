@@ -9,6 +9,10 @@ function isPublicPath(pathname: string): boolean {
   // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
   // `/api/auth/*` di bawah.
   if (pathname === "/forgot-password" || pathname === "/reset-password") return true;
+  // issue #139 — penerimaan undangan staf: penerimanya BELUM punya akun, jadi
+  // jelas belum punya sesi. Kredensialnya token sekali-pakai dari surel; API
+  // pasangannya sudah tercakup `/api/auth/*` di bawah.
+  if (pathname === "/accept-invitation") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
   if (pathname.startsWith("/api/auth/")) {

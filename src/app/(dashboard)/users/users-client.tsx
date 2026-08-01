@@ -36,12 +36,30 @@ interface User {
   overrideCount: number;
 }
 
-export function UsersClient({ roles }: { roles: { key: string; label: string }[] }) {
+/** Undangan yang masih menunggu (issue #139). */
+interface PendingInvitation {
+  id: number;
+  email: string;
+  companyRole: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export function UsersClient({
+  roles,
+  canInvite,
+}: {
+  roles: { key: string; label: string }[];
+  /** Kewenangan TENANT `tenant.member.invite` (issue #139) — tampilan saja;
+   *  API-nya menegakkan sendiri lewat `requireTenantApiPermission`. */
+  canInvite: boolean;
+}) {
   const t = useT();
   const [users, setUsers] = useState<User[]>([]);
+  const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviting, setInviting] = useState(false);
   // issue #75 — pengguna yang panel "Izin Khusus"-nya sedang terbuka.
   const [permissionsFor, setPermissionsFor] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -57,10 +75,16 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
     setLoading(false);
   }
 
+  async function fetchInvitations() {
+    if (!canInvite) return;
+    const res = await fetch("/api/tenant/invitations");
+    if (res.ok) setInvitations(await res.json());
+  }
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadUsers() {
+    async function load() {
       const res = await fetch("/api/users");
       if (cancelled) return;
       if (res.ok) {
@@ -69,43 +93,62 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
         setError(t("users.errNoPermission"));
       }
       setLoading(false);
+
+      if (canInvite) {
+        const inv = await fetch("/api/tenant/invitations");
+        if (!cancelled && inv.ok) setInvitations(await inv.json());
+      }
     }
 
-    void loadUsers();
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, canInvite]);
 
-  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+  /*
+   * UNDANGAN, bukan pembuatan akun (issue #139): admin tidak pernah lagi
+   * mengetik kata sandi orang lain — penerima menentukan kata sandinya sendiri
+   * lewat tautan surel. Jawaban API SERAGAM apa pun keadaan emailnya; yang
+   * berbeda hanya isi surelnya, jadi tidak ada yang bisa disimpulkan dari sini.
+   */
+  async function handleInvite(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setCreating(true);
+    setInviting(true);
     setError("");
 
     const formData = new FormData(e.currentTarget);
-    const body = {
-      username: formData.get("username"),
-      email: formData.get("email"),
-      password: formData.get("password"),
-      name: formData.get("name"),
-      role: formData.get("role"),
-    };
-
-    const res = await fetch("/api/users", {
+    const res = await fetch("/api/tenant/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        email: formData.get("email"),
+        role: formData.get("role"),
+      }),
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || t("users.errCreate"));
+      const data = await res.json().catch(() => null);
+      setError(data?.error || t("users.errInvite"));
     } else {
-      toast(t("users.created"));
-      setShowCreate(false);
-      await fetchUsers();
+      toast(t("invitations.sent"));
+      setShowInvite(false);
+      // Baris undangan ditulis SETELAH respons (anti-enumerasi), jadi daftar
+      // di bawah menyusul — disegarkan sekali lagi sesaat kemudian.
+      setTimeout(() => void fetchInvitations(), 1500);
     }
-    setCreating(false);
+    setInviting(false);
+  }
+
+  async function handleRevokeInvitation(id: number) {
+    const res = await fetch(`/api/tenant/invitations/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast(t("users.inviteRevoked"));
+      await fetchInvitations();
+    } else {
+      const data = await res.json().catch(() => null);
+      toast(data?.error || t("users.errRevokeInvite"), "error");
+    }
   }
 
   async function handleDelete(userId: number) {
@@ -144,57 +187,100 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
       <PageHeader
         title={t("users.title")}
         actions={
-          <Button onClick={() => setShowCreate(!showCreate)}>
-            <UserPlus className="h-4 w-4 mr-1" />{" "}
-            {showCreate ? t("common.cancel") : t("users.newUser")}
-          </Button>
+          canInvite ? (
+            <Button onClick={() => setShowInvite(!showInvite)}>
+              <UserPlus className="h-4 w-4 mr-1" />{" "}
+              {showInvite ? t("common.cancel") : t("users.inviteUser")}
+            </Button>
+          ) : undefined
         }
       />
 
       {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
 
-      {/* Create User Form */}
-      {showCreate && (
+      {/* Form UNDANGAN (issue #139) — email + peran; TANPA kolom kata sandi.
+          Penerima menentukan kata sandinya sendiri lewat tautan surel. */}
+      {showInvite && (
         <Card className="mb-6">
-          <CardHeader><CardTitle>{t("users.createTitle")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("users.inviteTitle")}</CardTitle></CardHeader>
           <div className="px-6 pb-6">
-            <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="username"
-                name="username"
-                label={t("auth.login.username")}
-                required
-                autoFocus
-              />
-              {/* Pengenal LOGIN (issue #136) — wajib: tanpa email akun ini tidak
-                  bisa masuk dan tidak bisa mengatur ulang kata sandinya sendiri. */}
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+              {t("users.inviteHint")}
+            </p>
+            <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
               <Input
                 id="email"
                 name="email"
                 type="email"
                 label={t("auth.forgotPassword.email")}
                 required
+                autoFocus
               />
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                label={t("users.passwordField")}
-                required
-              />
-              <Input id="name" name="name" label={t("users.displayName")} />
               <Select
                 id="role" name="role" label={t("users.role")}
                 defaultValue={ROLES.FINANCE_MANAGER}
                 options={roles.map((r) => ({ value: r.key, label: r.label }))}
               />
               <div className="sm:col-span-2">
-                <Button type="submit" disabled={creating}>
-                  {creating ? t("users.creating") : t("users.createUser")}
+                <Button type="submit" disabled={inviting}>
+                  {inviting ? t("users.inviting") : t("users.sendInvite")}
                 </Button>
               </div>
             </form>
           </div>
+        </Card>
+      )}
+
+      {/* Undangan yang masih menunggu (issue #139). */}
+      {canInvite && invitations.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader><CardTitle>{t("users.pendingInvites")}</CardTitle></CardHeader>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t("auth.forgotPassword.email")}</TableHead>
+                <TableHead>{t("users.role")}</TableHead>
+                <TableHead>{t("users.inviteExpires")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invitations.map((invitation) => (
+                <TableRow key={invitation.id}>
+                  <TableCell className="font-medium text-foreground">{invitation.email}</TableCell>
+                  <TableCell>
+                    <Badge>
+                      {roles.find((r) => r.key === invitation.companyRole)?.label ??
+                        ROLE_LABELS[invitation.companyRole] ??
+                        invitation.companyRole}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(invitation.expiresAt).toLocaleDateString("id-ID")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <ConfirmDialog
+                      title={t("users.revokeInviteTitle")}
+                      message={t("users.revokeInviteMessage", { email: invitation.email })}
+                      confirmLabel={t("users.revokeInvite")}
+                      onConfirm={() => handleRevokeInvitation(invitation.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
+                          title={t("users.revokeInvite")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
 

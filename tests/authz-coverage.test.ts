@@ -61,6 +61,12 @@ const TENANT_API_ROUTES = new Set([
   // Membuat perusahaan = kewenangan tenant; pemilik tenant tanpa satu pun PT
   // adalah pemanggil yang sah, jadi penjaga perusahaan tidak bisa dipakai.
   "companies/route.ts",
+  // Undangan staf (issue #139): mengundang orang ke tenant = kewenangan tenant
+  // (`tenant.member.invite`, owner/admin) — bukan `user.manage` di salah satu
+  // PT. PT tujuan dipakai sebagai KONTEKS (validasi peran, jejak audit) dan
+  // dibuktikan milik tenant pemanggil di dalam route-nya.
+  "tenant/invitations/route.ts",
+  "tenant/invitations/[id]/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */
@@ -72,6 +78,10 @@ const API_EXCEPTIONS = new Set([
   // (anti-enumerasi) dan keduanya dibatasi laju per-IP/per-email.
   "auth/forgot-password/route.ts",
   "auth/reset-password/route.ts",
+  // publik (issue #139): penerimaan undangan berjalan justru TANPA sesi —
+  // penerimanya belum punya akun. Kredensialnya token sekali-pakai ter-hash
+  // berbatas waktu; dibatasi laju per-IP; kegagalan token dijawab seragam.
+  "auth/accept-invitation/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.

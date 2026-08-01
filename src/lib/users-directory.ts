@@ -73,8 +73,14 @@ export async function listCompanyUsers(): Promise<CompanyUser[]> {
 
 /** Satu anggota perusahaan ini, atau `null` bila ia bukan anggota. */
 export async function findCompanyUser(userId: number): Promise<CompanyUser | null> {
+  return findCompanyUserIn(await activeCompanyId(), userId);
+}
+
+/** Bentuk eksplisitnya — untuk pemanggil TANPA konteks perusahaan (undangan
+ *  berjalan di pekerjaan latar / route publik, issue #139). */
+async function findCompanyUserIn(companyId: number, userId: number): Promise<CompanyUser | null> {
   const membership = await controlDb.membership.findUnique({
-    where: { userId_companyId: { userId, companyId: await activeCompanyId() } },
+    where: { userId_companyId: { userId, companyId } },
     select: {
       role: true,
       accountantMode: true,
@@ -265,18 +271,25 @@ export async function createCompanyUser(input: {
  * Ini jalur yang membuat satu login benar-benar mencakup banyak PT: orangnya
  * tetap satu akun dengan satu kata sandi, hanya keanggotaannya yang bertambah.
  * Keanggotaan yang pernah dinonaktifkan dihidupkan lagi dengan peran baru.
+ *
+ * Sejak issue #139 dipanggil dari alur UNDANGAN (pemanggil pertamanya dari
+ * antarmuka — janji #104 §4.5 akhirnya ditepati): orang setenant yang diundang
+ * ke PT kedua langsung ditambahkan lewat sini, tanpa akun baru. Alur itu
+ * berjalan di pekerjaan latar tanpa konteks perusahaan, maka `companyId` boleh
+ * diberikan eksplisit; tanpa argumen, perilaku lamanya (konteks aktif) utuh.
  */
 export async function addExistingUserToCompany(
   userId: number,
-  role: string
+  role: string,
+  companyId?: number
 ): Promise<CompanyUser | null> {
-  const companyId = await activeCompanyId();
+  const targetCompanyId = companyId ?? (await activeCompanyId());
   await controlDb.membership.upsert({
-    where: { userId_companyId: { userId, companyId } },
-    create: { userId, companyId, role },
+    where: { userId_companyId: { userId, companyId: targetCompanyId } },
+    create: { userId, companyId: targetCompanyId, role },
     update: { role, isActive: true },
   });
-  return findCompanyUser(userId);
+  return findCompanyUserIn(targetCompanyId, userId);
 }
 
 /**

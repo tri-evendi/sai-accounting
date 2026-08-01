@@ -531,7 +531,8 @@
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
     "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
-    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
+    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched.",
+    "selectCompanyFirst": "Select a company first."
   },
   "contracts": {
     "title": "Contracts ({count})",
@@ -2545,7 +2546,20 @@
     "choiceNotAllowed": "Not allowed",
     "choiceAlwaysAllow": "Always allow",
     "choiceAlwaysDeny": "Always deny",
-    "lockedShort": "locked"
+    "lockedShort": "locked",
+    "inviteUser": "Invite User",
+    "inviteTitle": "Invite a New User",
+    "inviteHint": "Enter an email address and a role. The recipient gets a link to set their own password — you never type anyone's password.",
+    "inviting": "Sending...",
+    "sendInvite": "Send Invitation",
+    "errInvite": "Failed to send the invitation",
+    "pendingInvites": "Pending Invitations",
+    "inviteExpires": "Valid until",
+    "revokeInvite": "Revoke",
+    "revokeInviteTitle": "Revoke Invitation",
+    "revokeInviteMessage": "Revoke the invitation for {email}? The link in the email stops working.",
+    "inviteRevoked": "Invitation revoked",
+    "errRevokeInvite": "Failed to revoke the invitation"
   },
   "permissions": {
     "errNoPermission": "You do not have permission to manage access rights.",
@@ -3280,5 +3294,24 @@
     "stepDatabase": "Creating the database",
     "stepMigrate": "Applying the schema",
     "stepRegister": "Registering the company"
+  },
+  "invitations": {
+    "sent": "The invitation has been sent.",
+    "tooMany": "Too many attempts. Try again later.",
+    "quotaExceeded": "Your plan's user quota is full — revoke a pending invitation or upgrade the plan.",
+    "quotaExceededAccept": "This subscription's user quota is full. Contact the person who invited you.",
+    "invalidToken": "This invitation link is not valid — it may have expired, been used already, or been copied incorrectly. Ask for a new invitation.",
+    "notFound": "Invitation not found.",
+    "goLogin": "Go to sign in",
+    "checking": "Checking the invitation...",
+    "acceptHeading": "Accept Invitation",
+    "acceptDescription": "You have been invited to join {company}.",
+    "acceptAs": "This invitation is for {email}. Complete your account below.",
+    "username": "Username (for display)",
+    "choosePassword": "Your Password (min. 8 characters)",
+    "submitting": "Creating account...",
+    "submit": "Create Account & Join",
+    "successTitle": "Your account is ready.",
+    "successBody": "Sign in with your email and the password you just created, then pick the company."
   }
 }

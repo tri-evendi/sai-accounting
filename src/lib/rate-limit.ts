@@ -25,6 +25,14 @@ export const RATE_LIMITS = {
    */
   passwordResetEmail: { windowMs: 15 * 60 * 1000, maxAttempts: 3 },
   passwordResetIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /*
+   * Undangan staf (issue #139): penerbitan dibatasi per-PENGUNDANG (undangan
+   * mengirim surel atas nama pemasangan ini — akun admin yang dibajak tidak
+   * boleh menjadi meriam spam), penerimaan per-IP (route publik bertoken;
+   * pembatasnya menahan penebakan token, bukan pemakaian wajar).
+   */
+  invitation: { windowMs: 15 * 60 * 1000, maxAttempts: 20 },
+  invitationAccept: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
 } as const;
 
 export function checkRateLimit(

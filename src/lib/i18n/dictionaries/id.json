@@ -531,7 +531,8 @@
     "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
     "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
-    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
+    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan.",
+    "selectCompanyFirst": "Pilih perusahaan terlebih dahulu."
   },
   "contracts": {
     "title": "Kontrak ({count})",
@@ -2545,7 +2546,20 @@
     "choiceNotAllowed": "Tidak",
     "choiceAlwaysAllow": "Selalu boleh",
     "choiceAlwaysDeny": "Selalu tidak",
-    "lockedShort": "terkunci"
+    "lockedShort": "terkunci",
+    "inviteUser": "Undang Pengguna",
+    "inviteTitle": "Undang Pengguna Baru",
+    "inviteHint": "Masukkan email dan peran. Penerima akan mendapat tautan untuk menentukan kata sandinya sendiri — Anda tidak perlu (dan tidak bisa) mengetikkan kata sandi siapa pun.",
+    "inviting": "Mengirim...",
+    "sendInvite": "Kirim Undangan",
+    "errInvite": "Gagal mengirim undangan",
+    "pendingInvites": "Undangan Menunggu",
+    "inviteExpires": "Berlaku sampai",
+    "revokeInvite": "Cabut",
+    "revokeInviteTitle": "Cabut Undangan",
+    "revokeInviteMessage": "Cabut undangan untuk {email}? Tautan di surelnya berhenti bekerja.",
+    "inviteRevoked": "Undangan dicabut",
+    "errRevokeInvite": "Gagal mencabut undangan"
   },
   "permissions": {
     "errNoPermission": "Anda tidak punya izin mengelola hak akses.",
@@ -3280,5 +3294,24 @@
     "stepDatabase": "Membuat basis data",
     "stepMigrate": "Menerapkan skema",
     "stepRegister": "Mendaftarkan perusahaan"
+  },
+  "invitations": {
+    "sent": "Undangan sudah dikirim.",
+    "tooMany": "Terlalu banyak percobaan. Coba lagi nanti.",
+    "quotaExceeded": "Kuota pengguna paket Anda sudah penuh — cabut undangan yang menunggu atau naikkan paket.",
+    "quotaExceededAccept": "Kuota pengguna langganan ini sudah penuh. Hubungi pengundang Anda.",
+    "invalidToken": "Tautan undangan tidak berlaku — mungkin kedaluwarsa, sudah dipakai, atau salah salin. Minta undangan baru kepada pengundang Anda.",
+    "notFound": "Undangan tidak ditemukan.",
+    "goLogin": "Ke halaman masuk",
+    "checking": "Memeriksa undangan...",
+    "acceptHeading": "Terima Undangan",
+    "acceptDescription": "Anda diundang bergabung ke {company}.",
+    "acceptAs": "Undangan ini untuk {email}. Lengkapi akun Anda di bawah.",
+    "username": "Nama Pengguna (untuk tampilan)",
+    "choosePassword": "Kata Sandi Anda (minimal 8 karakter)",
+    "submitting": "Membuat akun...",
+    "submit": "Buat Akun & Bergabung",
+    "successTitle": "Akun Anda siap.",
+    "successBody": "Masuk dengan email dan kata sandi yang baru Anda buat, lalu pilih perusahaannya."
   }
 }

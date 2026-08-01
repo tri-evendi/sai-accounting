@@ -24,10 +24,13 @@ import "server-only";
 
 import { controlDb } from "@/lib/control-db";
 import { currentCompanyId } from "@/lib/current-company";
+import { TENANT_ROLES } from "@/lib/constants";
 
 export interface CompanyUser {
   id: number;
   username: string;
+  /** Pengenal login (issue #136). NULL hanya di tengah masa adopsi #134. */
+  email: string | null;
   name: string | null;
   /** Peran DI PERUSAHAAN INI (dari `memberships.role`). */
   role: string;
@@ -49,7 +52,9 @@ export async function listCompanyUsers(): Promise<CompanyUser[]> {
       role: true,
       accountantMode: true,
       createdAt: true,
-      user: { select: { id: true, username: true, name: true, mustChangePassword: true } },
+      user: {
+        select: { id: true, username: true, email: true, name: true, mustChangePassword: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -57,6 +62,7 @@ export async function listCompanyUsers(): Promise<CompanyUser[]> {
   return memberships.map((m) => ({
     id: m.user.id,
     username: m.user.username,
+    email: m.user.email,
     name: m.user.name,
     role: m.role,
     mustChangePassword: m.user.mustChangePassword,
@@ -74,7 +80,9 @@ export async function findCompanyUser(userId: number): Promise<CompanyUser | nul
       accountantMode: true,
       createdAt: true,
       isActive: true,
-      user: { select: { id: true, username: true, name: true, mustChangePassword: true } },
+      user: {
+        select: { id: true, username: true, email: true, name: true, mustChangePassword: true },
+      },
     },
   });
   if (!membership || !membership.isActive) return null;
@@ -82,6 +90,7 @@ export async function findCompanyUser(userId: number): Promise<CompanyUser | nul
   return {
     id: membership.user.id,
     username: membership.user.username,
+    email: membership.user.email,
     name: membership.user.name,
     role: membership.role,
     mustChangePassword: membership.user.mustChangePassword,
@@ -133,14 +142,64 @@ export async function reassignRole(from: string, to: string): Promise<number> {
   return result.count;
 }
 
-/** Sudah ada orang dengan username ini di SELURUH pemasangan? */
+/**
+ * Tenant milik perusahaan yang sedang dibuka — jangkar SETIAP pembuatan
+ * pengguna (issue #136): sejak migration 0003 akun tanpa tenant ditolak basis
+ * data, dan menebak tenant adalah dosa yang sama dengan menebak perusahaan.
+ * `null` (basis data masih di tengah adopsi #134) membuat pemanggil MELEMPAR,
+ * tidak pernah membuat akun yatim.
+ */
+async function activeTenantId(): Promise<number> {
+  const company = await controlDb.company.findUnique({
+    where: { id: await activeCompanyId() },
+    select: { slug: true, tenantId: true },
+  });
+  if (!company?.tenantId) {
+    throw new Error(
+      `Perusahaan "${company?.slug ?? "?"}" belum bertaut ke tenant mana pun — ` +
+        "jalankan adopsi tenant (scripts/adopt-tenant.ts) sebelum membuat pengguna baru."
+    );
+  }
+  return company.tenantId;
+}
+
+/**
+ * Sudah ada orang dengan username ini DI TENANT INI? Sejak issue #136 username
+ * berhenti unik se-pemasangan (Pelanggan B boleh punya `budi` walau Pelanggan A
+ * sudah punya), jadi pencariannya dikunci ke tenant perusahaan yang sedang
+ * dibuka — sekaligus menutup separuh kebocoran enumerasi §4.4: nama di tenant
+ * lain tidak pernah lagi memantulkan id siapa pun.
+ */
 export async function findUserByUsername(
   username: string
 ): Promise<{ id: number; username: string; name: string | null } | null> {
-  return controlDb.user.findUnique({
-    where: { username },
+  return controlDb.user.findFirst({
+    where: { username, tenantId: await activeTenantId() },
     select: { id: true, username: true, name: true },
   });
+}
+
+/**
+ * Pemilik email ini, bila ada — beserta apakah ia SATU TENANT dengan
+ * perusahaan yang sedang dibuka. Email unik GLOBAL, jadi pemanggil wajib
+ * membedakan dua dunia itu: yang setenant boleh disebutkan (alur "tambahkan
+ * orang yang sudah ada"), yang beda tenant TIDAK boleh membocorkan apa pun
+ * selain "email tidak bisa dipakai".
+ */
+export async function findUserByEmail(
+  email: string
+): Promise<{ id: number; username: string; name: string | null; sameTenant: boolean } | null> {
+  const user = await controlDb.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, username: true, name: true, tenantId: true },
+  });
+  if (!user) return null;
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    sameTenant: user.tenantId === (await activeTenantId()),
+  };
 }
 
 /**
@@ -151,25 +210,39 @@ export async function findUserByUsername(
  */
 export async function createCompanyUser(input: {
   username: string;
+  /** WAJIB sejak issue #136 — email adalah pengenal login. */
+  email: string;
   passwordHash: string;
   name?: string | null;
   role: string;
 }): Promise<CompanyUser> {
   const companyId = await activeCompanyId();
+  const tenantId = await activeTenantId();
 
   const created = await controlDb.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         username: input.username,
+        email: input.email.trim().toLowerCase(),
         password: input.passwordHash,
         name: input.name ?? null,
+        tenantId,
         mustChangePassword: true, // akun baru selalu wajib ganti sandi
       },
-      select: { id: true, username: true, name: true, mustChangePassword: true },
+      select: { id: true, username: true, email: true, name: true, mustChangePassword: true },
     });
     const membership = await tx.membership.create({
       data: { userId: user.id, companyId, role: input.role },
       select: { role: true, accountantMode: true, createdAt: true },
+    });
+    /*
+     * Keanggotaan TENANT ikut lahir di transaksi yang sama (issue #135):
+     * `member` — tanpa izin tenant; aksesnya murni dari keanggotaan per-PT.
+     * Menaikkannya menjadi admin/owner adalah keputusan terpisah milik
+     * pengelolaan tenant, bukan efek samping membuat pengguna PT.
+     */
+    await tx.tenantMembership.create({
+      data: { tenantId, userId: user.id, role: TENANT_ROLES.MEMBER },
     });
     return { user, membership };
   });
@@ -177,6 +250,7 @@ export async function createCompanyUser(input: {
   return {
     id: created.user.id,
     username: created.user.username,
+    email: created.user.email,
     name: created.user.name,
     role: created.membership.role,
     mustChangePassword: created.user.mustChangePassword,

@@ -1,10 +1,45 @@
 import { z } from "zod";
 import { vmsg } from "@/lib/i18n/validation";
 
+/**
+ * Pengenal masuk (issue #136): EMAIL — pengenal resmi sejak migrasi #134
+ * membekali setiap akun dengan email — atau, untuk masa peralihan, username
+ * lama. Keduanya lewat satu field: berisi `@` berarti email; `authorize()`
+ * yang memutuskan jalur pencariannya (lihat lib/auth.ts). Batasnya 255
+ * mengikuti kolom `users.email`.
+ */
 export const loginSchema = z.object({
-  username: z.string().min(1, vmsg("validation.usernameRequired")).max(50).trim(),
+  identifier: z.string().min(1, vmsg("validation.identifierRequired")).max(255).trim(),
   password: z.string().min(1, vmsg("validation.passwordRequired")).max(128),
 });
+
+/** Meminta tautan atur-ulang kata sandi (issue #136). */
+export const forgotPasswordSchema = z.object({
+  email: z.email(vmsg("validation.emailInvalid")).max(255).trim(),
+});
+
+/**
+ * Field yang DIPAKAI BERSAMA form dan route handler atur-ulang (pola yang sama
+ * dengan `changePasswordFields` di bawah — dua daftar identik tidak ditulis
+ * dua kali).
+ */
+const resetPasswordFields = {
+  token: z.string().min(1).max(128),
+  newPassword: z.string().min(8, vmsg("validation.passwordMin8")).max(128),
+};
+
+/** API body atur-ulang (`confirmPassword` hanya urusan client). */
+export const resetPasswordApiSchema = z.object(resetPasswordFields);
+
+export const resetPasswordSchema = z
+  .object({
+    ...resetPasswordFields,
+    confirmPassword: z.string().min(1, vmsg("validation.passwordConfirmRequired")),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: vmsg("validation.passwordMismatch"),
+    path: ["confirmPassword"],
+  });
 
 /**
  * Field yang DIPAKAI BERSAMA form dan route handler (MASTER.md §Konvensi Form

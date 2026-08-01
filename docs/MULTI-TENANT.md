@@ -4,10 +4,13 @@ Issue #133 (epik). Lanjutan dari #104, yang membangun multi-PT untuk **satu grup
 usaha**; dokumen ini merancang apa yang berubah bila pelanggannya tidak lagi
 saling kenal dan mendaftar sendiri.
 
-> **STATUS: RENCANA — belum ada satu baris kode pun.**
-> Keadaan yang BERLAKU SEKARANG ada di [`MULTI-COMPANY.md`](./MULTI-COMPANY.md).
-> Selama statusnya masih "RENCANA", jangan memperlakukan isinya sebagai aturan
-> yang harus dipatuhi kode baru.
+> **STATUS: SEDANG DIKERJAKAN.** Tahap 1–3 (§12) sudah diimplementasikan:
+> #134 skema `tenants`+`tenant_memberships` di `sai_control` beserta jalur
+> adopsi (`adopt-tenant` → `prove-tenant` → migration NOT NULL), #135 pemisahan
+> izin tenant vs perusahaan (`lib/tenant-authz.ts` + `requireTenantPermission`),
+> #136 email sebagai pengenal login + mailer + atur-ulang kata sandi mandiri.
+> Tahap 4 dst. masih rencana. Keadaan multi-PT yang berlaku tetap di
+> [`MULTI-COMPANY.md`](./MULTI-COMPANY.md).
 
 ---
 

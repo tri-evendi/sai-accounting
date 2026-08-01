@@ -21,7 +21,6 @@ export function permissionResource(permission: Permission): PermissionResource {
 
 /** Nama kelompok baris di matriks — bahasa menu samping, bukan nama teknis. */
 export const RESOURCE_LABELS: Record<PermissionResource, string> = {
-  company: "Perusahaan",
   approval: "Persetujuan",
   approval_rule: "Aturan Persetujuan",
   contract: "Kontrak",
@@ -58,9 +57,10 @@ export const RESOURCE_LABELS: Record<PermissionResource, string> = {
 };
 
 /** Satu kalimat per izin: apa yang BOLEH dilakukan pemegangnya. */
+// `company.create` tidak lagi berlabel di sini: ia pindah ke matriks TENANT
+// (issue #135, lib/tenant-authz.ts) dan tidak tampil di /permissions —
+// halaman itu mengatur izin per-perusahaan.
 export const PERMISSION_LABELS: Record<Permission, string> = {
-  "company.create":
-    "Membuat perusahaan baru beserta basis datanya — buku yang terpisah penuh dari perusahaan lain.",
   "approval.view": "Melihat antrean persetujuan",
   "approval.decide": "Memutus pengajuan (menyetujui / menolak)",
   "approval_rule.manage": "Mengelola aturan ambang & peran penyetuju",

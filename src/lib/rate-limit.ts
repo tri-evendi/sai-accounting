@@ -17,6 +17,14 @@ const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
 export const RATE_LIMITS = {
   login: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
   changePassword: { windowMs: 15 * 60 * 1000, maxAttempts: 5 },
+  /*
+   * Atur-ulang kata sandi (issue #136): dibatasi per-EMAIL (spam ke satu kotak
+   * masuk) DAN per-IP (menyisir banyak alamat). Masih penghitung di memori —
+   * cukup selama endpointnya belum terbuka ke pendaftaran publik; penghitung
+   * persisten adalah pekerjaan #138 dan disebut di sana.
+   */
+  passwordResetEmail: { windowMs: 15 * 60 * 1000, maxAttempts: 3 },
+  passwordResetIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
 } as const;
 
 export function checkRateLimit(

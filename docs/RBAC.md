@@ -164,6 +164,28 @@ hapus master = akses-penuh-saja (kecuali `advance.delete`, terdokumentasi);
   API `GET/PUT /api/company-settings/modules`; setiap simpan diaudit
   (`company_setting.modules.update`, beserta keadaan sebelumnya).
 
+## Lingkup TENANT (issue #135) — matriks kedua, penjaga kedua
+
+Sejak epik multi-tenant (#133), izin punya DUA lingkup dan keduanya tidak
+pernah bercampur:
+
+| Lingkup | Matriks | Penjaga | Sumber jawaban |
+|---|---|---|---|
+| **Tenant** (`company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data kendali |
+| **Perusahaan** (seluruh matriks di atas) | `PERMISSION_ROLES` di `src/lib/authz.ts` | `requireApiPermission` / `requirePagePermission` | `memberships` per-PT |
+
+Aturannya: **izin tenant TIDAK BOLEH diperiksa penjaga perusahaan** — penjaga
+perusahaan menuntut konteks perusahaan, dan ketiadaan konteks itu justru
+keadaan yang SAH di lingkup tenant (pemilik tenant yang belum punya satu pun
+PT sedang membuat yang pertama). Kedua himpunan kunci izin saling lepas, jadi
+salah matriks ditolak `tsc`; halaman grup `(tenant)` dan route yang terdaftar
+di `TENANT_API_ROUTES` dijaga `tests/authz-coverage.test.ts`.
+
+Peran tenant: `owner` (semua, termasuk penagihan; yang terakhir tidak bisa
+dihapus/diturunkan — `validateTenantMembershipChange`, teruji), `admin` (buat
+perusahaan & undang, tanpa penagihan), `member` (tanpa izin tenant). Matriks
+tenant TIDAK bisa di-override dari /permissions — perannya kontraktual.
+
 ## Empat lapisan penegakan
 
 1. **Halaman** — `requirePagePermission("izin")` (`src/lib/page-auth.ts`). Tanpa sesi →

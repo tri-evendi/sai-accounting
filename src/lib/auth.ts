@@ -41,22 +41,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        username: {},
+        identifier: {},
         password: {},
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        // Rate limit by username
-        const rateCheck = checkRateLimit(`login:${parsed.data.username}`, RATE_LIMITS.login);
+        const identifier = parsed.data.identifier.toLowerCase();
+
+        // Rate limit per pengenal (email/username), sebelum menyentuh DB.
+        const rateCheck = checkRateLimit(`login:${identifier}`, RATE_LIMITS.login);
         if (!rateCheck.allowed) {
           throw new Error("Too many login attempts. Please try again later.");
         }
 
-        const user = await controlDb.user.findUnique({
-          where: { username: parsed.data.username },
-        });
+        /*
+         * ── Pengenal login = EMAIL (issue #136), username sebagai peralihan ──
+         *
+         * Berisi `@` → dicari lewat `users.email` (unik sejak migration 0003).
+         * Tanpa `@` → username LAMA: dicari `findMany take 2`, dan HANYA
+         * diterima bila hasilnya persis satu. Sejak 0004 username tidak lagi
+         * unik se-pemasangan; nama yang kembar (dua tenant, dua `budi`) tidak
+         * bisa dijawab tanpa menebak pemiliknya, jadi ia ditolak sebagai
+         * kredensial salah — pemiliknya masuk dengan email, pengenal yang
+         * memang tidak pernah ambigu. Jalur username sengaja TIDAK dibuang:
+         * pengguna pt-sai belum tentu tahu email yang didaftarkan untuknya,
+         * dan mengunci mereka semua pada hari rilis bukan migrasi, melainkan
+         * pemadaman.
+         */
+        const user = identifier.includes("@")
+          ? await controlDb.user.findUnique({ where: { email: identifier } })
+          : await (async () => {
+              const matches = await controlDb.user.findMany({
+                where: { username: parsed.data.identifier },
+                take: 2,
+              });
+              return matches.length === 1 ? matches[0] : null;
+            })();
 
         if (!user) return null;
 
@@ -80,7 +102,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: String(user.id),
           name: user.name || user.username,
-          email: user.username,
+          /*
+           * AKHIRNYA email sungguhan (issue #136) — bukan lagi username yang
+           * dialiaskan. NULL hanya mungkin di tengah masa adopsi #134
+           * (sebelum migration 0003); username menjadi pengisi supaya audit
+           * yang mencatat kolom ini tidak pernah kosong.
+           */
+          email: user.email ?? user.username,
           mustChangePassword: user.mustChangePassword,
           sessionVersion: user.sessionVersion,
           companyId: only?.companyId ?? null,

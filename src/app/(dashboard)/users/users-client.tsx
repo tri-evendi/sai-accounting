@@ -26,6 +26,8 @@ import { useT } from "@/lib/i18n/client";
 interface User {
   id: number;
   username: string;
+  /** Pengenal login (issue #136). NULL hanya di tengah masa adopsi #134. */
+  email: string | null;
   name: string | null;
   role: string;
   mustChangePassword: boolean;
@@ -83,6 +85,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
     const formData = new FormData(e.currentTarget);
     const body = {
       username: formData.get("username"),
+      email: formData.get("email"),
       password: formData.get("password"),
       name: formData.get("name"),
       role: formData.get("role"),
@@ -163,6 +166,15 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
                 required
                 autoFocus
               />
+              {/* Pengenal LOGIN (issue #136) — wajib: tanpa email akun ini tidak
+                  bisa masuk dan tidak bisa mengatur ulang kata sandinya sendiri. */}
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                label={t("auth.forgotPassword.email")}
+                required
+              />
               <Input
                 id="password"
                 name="password"
@@ -203,6 +215,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>{t("auth.login.username")}</TableHead>
+              <TableHead>{t("auth.forgotPassword.email")}</TableHead>
               <TableHead>{t("common.name")}</TableHead>
               <TableHead>{t("users.role")}</TableHead>
               <TableHead>{t("common.status")}</TableHead>
@@ -213,6 +226,7 @@ export function UsersClient({ roles }: { roles: { key: string; label: string }[]
             {users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium text-foreground">{user.username}</TableCell>
+                <TableCell className="text-foreground">{user.email || "-"}</TableCell>
                 <TableCell className="text-foreground">{user.name || "-"}</TableCell>
                 <TableCell>
                   <Badge variant={isFullAccessRole(user.role) ? "success" : "default"}>

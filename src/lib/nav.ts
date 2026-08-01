@@ -24,6 +24,7 @@
  */
 
 import { can, type Permission } from "@/lib/authz";
+import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import type { TermKey } from "@/lib/labels";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -64,7 +65,7 @@ export interface NavItem {
    * `requirePagePermission` di halaman itu. Tanpa izin (hanya Beranda) =
    * tampil untuk semua pengguna terautentikasi.
    */
-  permission?: Permission;
+  permission?: Permission | TenantPermission;
   /** Permukaan akuntansi yang disembunyikan saat Mode Akuntan OFF (issue #11). */
   accountingOnly?: boolean;
   /** Entri kamus istilah yang menjelaskan menu ini (issue #21). */
@@ -226,6 +227,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/select-company", label: "Pilih Perusahaan", labelKey: "nav.items.selectCompany", icon: "Building2", minCompanies: 2 },
       // issue #104 — menambah PT baru dulu menuntut akses SSH ke server; kini
       // ia berdiri di tempat orang yang berwenang memang sudah berada.
+      // Sejak issue #135 izinnya TINGKAT TENANT (owner/admin tenant), bukan
+      // milik peran di PT mana pun — lihat holdsPermission di bawah.
       { href: "/companies/new", label: "Tambah Perusahaan", labelKey: "nav.items.companyNew", icon: "Building2", permission: "company.create" },
       { href: "/settings", label: "Pengaturan", labelKey: "nav.items.settings", icon: "Settings", permission: "settings.view" },
     ],
@@ -239,11 +242,21 @@ export const NAV_GROUPS: NavGroup[] = [
  */
 function holdsPermission(
   user: AccountantModeUser,
-  permission: Permission | undefined,
+  permission: Permission | TenantPermission | undefined,
   allowed?: AllowedPermissions
 ): boolean {
   if (!user.role) return false;
   if (!permission) return true;
+  /*
+   * Izin TENANT (issue #135) tidak pernah bisa dijawab matriks per-perusahaan:
+   * `can()` membaca peran DI PT yang sedang dibuka, sedangkan "boleh membuat
+   * perusahaan?" milik keanggotaan tenant. Jawabannya hanya ada di set izin
+   * efektif dari `/api/user/permissions` (yang sejak #135 menyertakan izin
+   * tenant pemanggil); sebelum set itu tiba, item tenant DISEMBUNYIKAN —
+   * menawarkan pintu yang mungkin memantul lebih buruk daripada menunggu
+   * satu kedipan.
+   */
+  if (isTenantPermission(permission)) return allowed?.has(permission) ?? false;
   if (allowed) return allowed.has(permission);
   return can({ role: user.role }, permission);
 }

@@ -142,12 +142,14 @@ export const PERMISSION_ROLES = {
   "audit.read": FULL,
   "company_setting.manage": FULL,
   /*
-   * Membuat PERUSAHAAN BARU beserta basis datanya (issue #104). Akses penuh
-   * saja, dan tidak pernah lebih longgar dari itu: yang memegangnya bisa
-   * membuat basis data di server — kemampuan yang bahkan tidak dimiliki
-   * `company_setting.manage` (mengubah identitas perusahaan yang sudah ada).
+   * `company.create` TIDAK lagi di sini (issue #135). Membuat perusahaan baru
+   * adalah kewenangan TENANT, bukan keanggotaan di salah satu PT — menaruhnya
+   * di matriks per-perusahaan melahirkan ayam-dan-telur: untuk membuat
+   * perusahaan perlu keanggotaan, untuk punya keanggotaan perlu perusahaan.
+   * Matriksnya kini `TENANT_PERMISSION_ROLES` di `lib/tenant-authz.ts`,
+   * penjaganya `requireTenantPermission` (lib/tenant-guard.ts) — dan kedua
+   * himpunan kunci izin dibuat saling lepas supaya `tsc` menolak pencampuran.
    */
-  "company.create": FULL,
   // issue #73 — mengubah matriks izin dari UI (/permissions). Anti-lockout:
   // peran berakses penuh tidak pernah bisa kehilangan izin ini
   // (lihat PROTECTED_CELLS di authz-overrides.ts).

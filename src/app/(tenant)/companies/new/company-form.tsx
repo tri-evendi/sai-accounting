@@ -208,7 +208,9 @@ export function CompanyForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Satu kolom: sejak pindah ke kulit AuthShell (issue #135) lebar kartunya
+          max-w-md — dua kolom di ruang itu memotong label & bantuan slug. */}
+      <div className="grid gap-4">
         <div className="space-y-1">
           <Input
             id="company-name"

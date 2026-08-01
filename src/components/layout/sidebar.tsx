@@ -44,7 +44,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import {
   NAV_HOME,
@@ -190,8 +191,9 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
       >
         {/* Logo */}
         <div className="flex h-16 shrink-0 items-center justify-between px-6 border-b border-sidebar-border">
-          <Link href="/dashboard" className="text-lg font-bold">
-            {APP_NAME}
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5 text-lg font-bold">
+            <BrandMark size="sm" />
+            <span className="truncate">{APP_NAME}</span>
           </Link>
           <button
             onClick={onClose}
@@ -265,8 +267,11 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
 
         {/* Version */}
         <div className="shrink-0 border-t border-sidebar-border px-6 py-3">
-          <p className="text-xs text-sidebar-foreground/60">SAI Management</p>
-          <p className="text-xs text-sidebar-foreground/50">v0.1.0</p>
+          <p className="text-xs text-sidebar-foreground/60">{APP_NAME}</p>
+          {/* Dari `package.json` saat build, bukan literal — nomor yang
+              diketik tangan tidak pernah ikut naik saat rilis, dan justru
+              dibaca orang ketika sedang melaporkan masalah. */}
+          <p className="text-xs text-sidebar-foreground/50">v{APP_VERSION}</p>
         </div>
       </aside>
     </>

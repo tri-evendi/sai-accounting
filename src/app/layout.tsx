@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { APP_NAME } from "@/lib/constants";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { colorScheme, themeClass, themeScript } from "@/lib/theme/config";
+import { ThemeProvider } from "@/lib/theme/client";
+import { getTheme } from "@/lib/theme/server";
 
 // Inter (MASTER.md) — dipilih karena dukungan `tabular-nums` untuk angka keuangan.
 const inter = Inter({
@@ -34,7 +38,9 @@ const inter = Inter({
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary(await getLocale());
   return {
-    title: "SAI Management",
+    // Dari konstanta, bukan literal: judul tab adalah permukaan merek juga, dan
+    // literal di sini sudah sekali tertinggal saat produknya berganti nama.
+    title: APP_NAME,
     description: dictionary.app.description,
   };
 }
@@ -50,10 +56,38 @@ export default async function RootLayout({
   // menyeberang ke browser.
   const locale = await getLocale();
   const dictionary = await getDictionary(locale);
+  /*
+   * Tema ikut dibaca DI SERVER, dari cookie yang sama-sama tampilan-saja.
+   * Kelas `.dark` karena itu sudah menempel pada HTML pertama — tidak ada
+   * kedipan terang sebelum hydrate, dan tidak ada ketidakcocokan hydrate yang
+   * lahir dari membaca localStorage setelah render pertama.
+   */
+  const theme = await getTheme();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full`}>
+    <html
+      lang={locale}
+      className={`${inter.variable} h-full ${themeClass(theme)}`}
+      // Ikut mewarnai kontrol BAWAAN peramban (pemilih tanggal wizard, menu
+      // select, bilah geser) — bagian yang tidak kita gambar sendiri dan
+      // karena itu paling sering tertinggal terang di halaman gelap.
+      style={{ colorScheme: colorScheme(theme) }}
+      suppressHydrationWarning={theme === "system"}
+    >
+      <head>
+        {/*
+         * Hanya untuk pilihan "ikut sistem": preferensi OS hidup di browser
+         * dan tak terlihat dari server. Skrip sinkron sebelum cat pertama
+         * adalah satu-satunya cara memasang kelasnya tanpa kedipan. Untuk
+         * pilihan terang/gelap yang eksplisit, tidak ada skrip sama sekali —
+         * kelasnya sudah datang dari server di atas.
+         */}
+        {theme === "system" && (
+          <script dangerouslySetInnerHTML={{ __html: themeScript() }} />
+        )}
+      </head>
       <body className="min-h-full">
+        <ThemeProvider theme={theme}>
         <LocaleProvider locale={locale} dictionary={dictionary}>
           {/* Identitas perusahaan diambil di sisi client (lihat
               company-identity-client.tsx): membacanya di server SINI berarti
@@ -62,6 +96,7 @@ export default async function RootLayout({
               memakai DATABASE_URL placeholder tanpa koneksi. */}
           <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
         </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

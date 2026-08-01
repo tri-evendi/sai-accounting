@@ -2,7 +2,7 @@
 set -e
 
 echo "═══════════════════════════════════════════════"
-echo "  SAI Management — New Environment Setup"
+echo "  SAI Accounting — New Environment Setup"
 echo "═══════════════════════════════════════════════"
 echo ""
 

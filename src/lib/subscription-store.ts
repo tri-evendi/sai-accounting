@@ -52,7 +52,18 @@ export interface BillingOverview {
       dueDate: Date;
       total: string;
       currency: string;
+      /** Instruksi bayar PENDING termuda (issue #141) — VA/QRIS untuk
+       *  ditampilkan ulang sampai lunas/kedaluwarsa. */
+      pendingPayment: {
+        bank: string | null;
+        vaNumber: string | null;
+        qrString: string | null;
+        expiresAt: Date | null;
+        gateway: string | null;
+      } | null;
     }[];
+    /** Profil penagihan (NPWP lawan transaksi) — issue #141. */
+    profile: { npwp: string | null; name: string | null; address: string | null } | null;
   } | null;
 }
 
@@ -105,6 +116,29 @@ export async function billingOverviewForTenant(tenantId: number): Promise<Billin
         currency: true,
       },
     });
+    const pendingPayments = await platformDb.payment.findMany({
+      where: {
+        platformInvoiceId: { in: invoices.map((inv) => inv.id) },
+        status: "pending",
+      },
+      orderBy: { id: "desc" },
+      select: {
+        platformInvoiceId: true,
+        bank: true,
+        vaNumber: true,
+        qrString: true,
+        expiresAt: true,
+        gateway: true,
+      },
+    });
+    const paymentByInvoice = new Map<number, (typeof pendingPayments)[number]>();
+    for (const p of pendingPayments) {
+      if (!paymentByInvoice.has(p.platformInvoiceId)) paymentByInvoice.set(p.platformInvoiceId, p);
+    }
+    const profile = await platformDb.tenantBillingProfile.findUnique({
+      where: { tenantId },
+      select: { npwp: true, name: true, address: true },
+    });
     billing = {
       subscription: subscription
         ? {
@@ -116,7 +150,23 @@ export async function billingOverviewForTenant(tenantId: number): Promise<Billin
           }
         : null,
       plan: subscription?.plan ?? null,
-      invoices: invoices.map((inv) => ({ ...inv, total: inv.total.toString() })),
+      invoices: invoices.map((inv) => {
+        const pending = paymentByInvoice.get(inv.id) ?? null;
+        return {
+          ...inv,
+          total: inv.total.toString(),
+          pendingPayment: pending
+            ? {
+                bank: pending.bank,
+                vaNumber: pending.vaNumber,
+                qrString: pending.qrString,
+                expiresAt: pending.expiresAt,
+                gateway: pending.gateway,
+              }
+            : null,
+        };
+      }),
+      profile,
     };
   } catch (error) {
     /* Penagihan mati ≠ halaman mati — biar bagian kendali tetap tampil. */

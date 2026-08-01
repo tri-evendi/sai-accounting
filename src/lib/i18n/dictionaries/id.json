@@ -3380,5 +3380,26 @@
       "paid": "Lunas",
       "void": "Batal"
     }
+  },
+  "billing": {
+    "payColumn": "Bayar",
+    "payVa": "Buat VA",
+    "payQris": "QRIS",
+    "vaLabel": "VA {bank}:",
+    "payBefore": "bayar sebelum {date}",
+    "qrisHint": "Pindai / salin kode QRIS berikut di aplikasi bank Anda:",
+    "manualFallback": "Transfer manual — hubungi pengelola platform untuk rekening tujuan.",
+    "errPay": "Gagal menyiapkan instruksi bayar",
+    "invoiceNotFound": "Tagihan tidak ditemukan.",
+    "invoiceNotPayable": "Tagihan ini tidak sedang menunggu pembayaran.",
+    "profileHeading": "Profil Pajak (Faktur Pajak)",
+    "profileHint": "NPWP, nama, dan alamat sesuai NPWP — dipakai untuk Faktur Pajak atas tagihan langganan Anda. Kewajiban PPN/e-Faktur langganan sedang dikonfirmasi ke penasihat pajak; data ini menyiapkannya.",
+    "npwp": "NPWP",
+    "npwpName": "Nama sesuai NPWP",
+    "npwpAddress": "Alamat sesuai NPWP",
+    "saveProfile": "Simpan Profil",
+    "savingProfile": "Menyimpan...",
+    "profileSaved": "Profil pajak tersimpan",
+    "errProfile": "Gagal menyimpan profil pajak"
   }
 }

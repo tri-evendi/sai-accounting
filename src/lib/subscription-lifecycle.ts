@@ -30,6 +30,7 @@
 
 import type { SubscriptionStatus } from "@/lib/platform-constants";
 import { SUBSCRIPTION_STATUSES } from "@/lib/platform-constants";
+import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export const SUBSCRIPTION_EVENTS = [
   "payment_received",
@@ -175,6 +176,30 @@ export function pendingReminder(
 
   /* Yang paling mendesak = offset terkecil = elemen terakhir (urutan 7,3,1). */
   return { sendKey: unsent[unsent.length - 1], markKeys: unsent };
+}
+
+/**
+ * Nominal tagihan platform: DPP / PPN / total (issue #141). Tarifnya dari
+ * `lib/tax.ts` — TIDAK PERNAH diketik ulang di sini; kalau tarif hukum
+ * berubah, satu konstanta itu yang berubah dan tagihan platform ikut.
+ *
+ * ⚠ `taxable` datang dari konfigurasi (`PLATFORM_PPN_DISABLED` — bawaan PPN
+ * AKTIF). Ini MEKANISME, bukan pernyataan kebijakan pajak: apakah langganan
+ * SaaS kita benar kena PPN 11% dan wajib e-Faktur harus dikonfirmasi ke
+ * penasihat pajak (docs/MULTI-TENANT.md §10) — sakelarnya ada supaya jawaban
+ * apa pun tinggal dipasang, bukan supaya kami yang menjawabnya.
+ */
+export function platformInvoiceAmounts(
+  price: string | number,
+  taxable: boolean
+): { amount: string; taxAmount: string; total: string; taxRate: number } {
+  const breakdown = computeTax(Number(price), taxable ? DEFAULT_TAX_RATE : 0);
+  return {
+    amount: breakdown.dpp.toFixed(2),
+    taxAmount: breakdown.taxAmount.toFixed(2),
+    total: breakdown.total.toFixed(2),
+    taxRate: breakdown.taxRate,
+  };
 }
 
 /** Nomor tagihan DETERMINISTIK — kunci idempotensi penagihan: nomor unik di

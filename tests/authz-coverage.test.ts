@@ -67,6 +67,10 @@ const TENANT_API_ROUTES = new Set([
   // dibuktikan milik tenant pemanggil di dalam route-nya.
   "tenant/invitations/route.ts",
   "tenant/invitations/[id]/route.ts",
+  // Penagihan pelanggan (issue #141): instruksi bayar & profil NPWP —
+  // kewenangan tenant `tenant.billing` (owner, kontraktual), bukan peran PT.
+  "tenant/billing/pay/route.ts",
+  "tenant/billing/profile/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */
@@ -89,6 +93,11 @@ const API_EXCEPTIONS = new Set([
   // ADA basis data yang lahir sebelum verifikasi + klik "buat perusahaan".
   "auth/register/route.ts",
   "auth/verify-email/route.ts",
+  // publik (issue #141): webhook gerbang pembayaran — pengirimnya server
+  // Midtrans, bukan pengguna. Kredensialnya tanda tangan SHA-512 atas isi
+  // notifikasi (diverifikasi SEBELUM query apa pun; 503 fail-closed bila kunci
+  // tidak terpasang di produksi); idempoten lewat UNIQUE payments.gateway_ref.
+  "billing/webhook/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.

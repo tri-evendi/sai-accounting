@@ -193,6 +193,19 @@ model Payment {
   amount   Decimal @db.Decimal(15, 2)
   currency String  @default("IDR") @db.VarChar(5)
 
+  /// ══ Instruksi bayar (issue #141) — yang DITAMPILKAN ke pelanggan ══════════
+  /// Berlangganan lewat VA = tagih-lalu-ingatkan: nomor VA/string QR dibuat
+  /// saat tagihan terbit atau saat pelanggan menekan "bayar", lalu ditampilkan
+  /// ulang sampai lunas/kedaluwarsa. TIDAK PERNAH ada data kartu di sini —
+  /// kartu murni urusan gerbang (PCI-DSS tidak diseret masuk).
+  /// Bank VA (bca | bni | bri | permata | …) — kosong untuk QRIS/manual.
+  bank     String? @db.VarChar(20)
+  vaNumber String? @map("va_number") @db.VarChar(40)
+  /// Payload QRIS (string EMV yang dirender jadi kode QR di layar).
+  qrString String? @map("qr_string") @db.Text
+  /// Batas bayar instruksi ini menurut gerbang.
+  expiresAt DateTime? @map("expires_at")
+
   paidAt DateTime? @map("paid_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -201,6 +214,29 @@ model Payment {
   @@index([tenantId])
   @@index([status])
   @@map("payments")
+}
+
+/// Profil PENAGIHAN sebuah tenant (issue #141) — identitas lawan transaksi
+/// untuk Faktur Pajak KAMI: NPWP, nama & alamat sesuai NPWP. Hidup di
+/// PLATFORM (data penagihan bisnis kami), bukan di `tenants` kendali — jalur
+/// panas tidak membutuhkannya, dan e-Faktur membacanya dari sini.
+/// `tenant_id` Int biasa TANPA FK (pola #137).
+model TenantBillingProfile {
+  id Int @id @default(autoincrement())
+
+  tenantId Int @unique @map("tenant_id")
+
+  /// NPWP lawan transaksi — WAJIB untuk faktur keluaran domestik; barisnya
+  /// boleh ada tanpa NPWP, tapi ekspor e-Faktur akan menandainya sebagai
+  /// masalah (mesin `buildEfaktur` yang menegakkan, bukan kolom ini).
+  npwp    String? @db.VarChar(25)
+  name    String? @db.VarChar(150)
+  address String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("tenant_billing_profiles")
 }
 
 /// Jejak pengingat yang SUDAH terkirim (issue #140) — kunci idempotensi

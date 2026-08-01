@@ -67,7 +67,7 @@ export async function emailHasAccount(email: string): Promise<boolean> {
 }
 
 export type VerificationResult =
-  | { ok: true; email: string; tenantSlug: string }
+  | { ok: true; email: string; name: string; tenantId: number; tenantSlug: string }
   | { ok: false; reason: "invalid_token" | "already_registered" };
 
 /**
@@ -149,6 +149,12 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
     });
     await tx.registration.update({ where: { id: row.id }, data: { usedAt: now } });
 
-    return { ok: true as const, email: row.email, tenantSlug: slug };
+    return {
+      ok: true as const,
+      email: row.email,
+      name: row.name,
+      tenantId: tenant.id,
+      tenantSlug: slug,
+    };
   });
 }

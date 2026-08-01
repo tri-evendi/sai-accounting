@@ -38,6 +38,7 @@ import { runWithCompany } from "@/lib/company-context";
 import { activeRoleKeys } from "@/lib/roles";
 import { sendMail } from "@/lib/mailer";
 import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
@@ -208,8 +209,20 @@ export async function POST(request: Request) {
         });
       }
 
-      /* Jejak audit di PT tujuan — hasil sebenarnya dicatat DI DALAM (audit
-       * memang boleh tahu); ke luar jawabannya tetap seragam. */
+      /* Jejak audit dua tingkat (issue #142): peristiwa TENANT ("siapa
+       * diundang ke tenant ini") di jejak tenant, konteks PT-nya di jejak PT
+       * tujuan. Hasil sebenarnya dicatat DI DALAM (audit memang boleh tahu);
+       * ke luar jawabannya tetap seragam. */
+      await writeTenantAuditLog({
+        tenantId: result.tenant.tenantId,
+        tenantSlug: result.tenant.tenantSlug,
+        userId: result.session.user.id,
+        username: inviterName,
+        tenantRole,
+        action: "tenant.invitation.create",
+        details: { email, companySlug: company.slug, role: parsed.data.role, outcome: issued.outcome },
+        request,
+      });
       await runWithCompany(
         { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
         () =>

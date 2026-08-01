@@ -13,6 +13,7 @@ import { controlDb } from "@/lib/control-db";
 import { revokeInvitation } from "@/lib/invitation-store";
 import { runWithCompany } from "@/lib/company-context";
 import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 export async function DELETE(
@@ -51,6 +52,17 @@ export async function DELETE(
     return NextResponse.json({ error: t("invitations.notFound") }, { status: 404 });
   }
 
+  // Dua tingkat (issue #142): peristiwa tenant + konteks PT — lihat POST-nya.
+  await writeTenantAuditLog({
+    tenantId: result.tenant.tenantId,
+    tenantSlug: result.tenant.tenantSlug,
+    userId: result.session.user.id,
+    username: result.session.user.name ?? result.session.user.email ?? result.session.user.id,
+    tenantRole: result.tenant.role,
+    action: "tenant.invitation.revoke",
+    details: { invitationId: id, companySlug: company.slug },
+    request,
+  });
   await runWithCompany(
     { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
     () =>

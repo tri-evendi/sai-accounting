@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "合同与库存管理系统 — PT Subur Anugerah Indonesia"
+    "description": "面向印度尼西亚企业的记账与会计系统。"
   },
   "common": {
     "save": "保存",
@@ -238,7 +238,10 @@
     "noTour": "本页暂无导览。首页、录入销售和报表中心提供导览。"
   },
   "auth": {
-    "brandTagline": "面向内部团队的合同与库存管理系统。",
+    "brandTagline": "面向印度尼西亚企业的规范记账。",
+    "brandPoint1": "复式记账与总账，遵循标准会计准则。",
+    "brandPoint2": "支持印尼盾与外币，并记录汇率及本位币金额。",
+    "brandPoint3": "一套系统管理多家公司，账簿彼此完全独立。",
     "setupRequired": {
       "heading": "应用尚未完成初始设置",
       "description": "公司资料尚未填写，应用暂时无法使用。",
@@ -248,7 +251,7 @@
     },
     "login": {
       "heading": "登录",
-      "description": "使用您的公司账户查看仪表板、合同与库存。",
+      "description": "使用您的公司账号进入账簿与日常工作。",
       "username": "用户名",
       "usernamePlaceholder": "您的用户名",
       "password": "密码",
@@ -265,10 +268,13 @@
       "new": "新密码",
       "confirm": "确认新密码",
       "hint": "请至少使用 8 个字符，不要重复使用其他系统的密码。",
+      "ruleLength": "至少 {count} 个字符",
+      "ruleDifferent": "与当前密码不同",
+      "ruleMatch": "两次输入一致",
+      "ruleMet": "已满足",
+      "ruleUnmet": "尚未满足",
       "submit": "保存密码",
       "submitting": "正在保存...",
-      "mismatch": "新密码与确认密码不一致。",
-      "tooShort": "密码至少需要 8 个字符。",
       "failed": "修改密码失败，请重试。"
     },
     "selectCompany": {
@@ -372,10 +378,17 @@
     "example": "示例：",
     "learnMore": "了解更多"
   },
+  "theme": {
+    "label": "外观",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
   "confirm": {
     "retypeLabel": "请重新输入以确认："
   },
   "errors": {
+    "accountParentCycle": "所选上级科目是该科目自身的下级——层级将形成循环。请选择其他上级。",
     "generic": "出现错误，请重试。",
     "network": "无法连接服务器，请检查网络连接。",
     "unauthorized": "您没有访问此页面的权限。",
@@ -456,6 +469,7 @@
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",
     "contractInUse": "该合同已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该合同，以保持单据链完整。",
+    "invoiceInUse": "该发票已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该发票，以保持单据链完整。",
     "contractUsedInvoices": "{count} 张发票",
     "contractUsedDeliveryOrders": "{count} 张送货单",
     "contractUsedBoth": "{invoices} 张发票和 {deliveryOrders} 张送货单",
@@ -483,6 +497,7 @@
     "bookMovementNotFound": "未找到该账簿交易。",
     "bookMovementWrongAccount": "该账簿交易所属的账户或币种与此次对账不符。",
     "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
+    "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
     "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。"
   },
   "contracts": {
@@ -846,6 +861,7 @@
     "confirmLabel": "是，开具"
   },
   "returns": {
+    "statusCanceled": "已作废",
     "title": "退货",
     "description": "退回的货物 — 冲销发票或采购的一部分，连同其库存、应收/应付账款和增值税。",
     "addNew": "新建退货",
@@ -932,6 +948,7 @@
     "activeHint": "已停用的收货人不再出现在合同的选择列表中，但既有合同的关联仍然保留。"
   },
   "customers": {
+    "activeHint": "已停用的客户不再出现在发票的选择列表中，但既有单据的关联仍然保留。",
     "title": "客户（{count}）",
     "addNew": "+ 添加客户",
     "colPic": "负责人",
@@ -956,6 +973,7 @@
     "taxable": "计征增值税（标准）"
   },
   "suppliers": {
+    "activeHint": "已停用的供应商不再出现在采购的选择列表中，但既有单据的关联仍然保留。",
     "title": "供应商（{count}）",
     "description": "打开某个供应商即可记录其采购与付款。",
     "addNew": "+ 添加供应商",
@@ -1185,6 +1203,7 @@
     "saveFailed": "成本中心保存失败",
     "codeTaken": "该成本中心代号已被使用",
     "parentSelf": "成本中心不能作为自身的上级",
+    "parentCycle": "所选上级是该成本中心自身的下级——层级将形成循环。请选择其他上级。",
     "emptyTitle": "尚无成本中心",
     "emptyDescription": "先建立一个成本中心，即可按分公司、部门或项目拆分损益。",
     "filterLabel": "成本中心",
@@ -1460,6 +1479,20 @@
     "title": "报表中心",
     "description": "所有报表集中于此，按类别分组。选择报表、设定期间，然后导出为 PDF 或 Excel。金额以 IDR（总账本位币）表示。",
     "comingSoon": "即将推出",
+    "colCustomer": "客户",
+    "colSupplier": "供应商",
+    "colDocuments": "单据数量",
+    "colGrossSales": "销售额 (IDR)",
+    "colGrossPurchases": "采购额 (IDR)",
+    "colReturns": "退货 (IDR)",
+    "colNet": "净额 (IDR)",
+    "noCustomerLabel": "未关联客户",
+    "noSupplierLabel": "未关联供应商",
+    "salesByCustomerEmpty": "本期没有销售发票。",
+    "purchasesBySupplierEmpty": "本期没有采购记录。",
+    "grossIncludesTaxNote": "金额为含税（PPN）总值；同期退货在单独一栏中扣减。",
+    "rowUnrated": "{count} 张单据缺少汇率",
+    "unratedDocsNote": "{count} 张外币单据缺少可用汇率，未计入合计。",
     "openReport": "打开报表",
     "breadcrumb": "报表中心",
     "asOfWithCurrency": "截至 {date} · 金额以 IDR 表示",
@@ -1478,7 +1511,7 @@
     "sectionLiabilities": "负债",
     "sectionEquity": "所有者权益",
     "sectionTotal": "{section}合计",
-    "currentNetIncome": "本期利润",
+    "currentNetIncome": "累计利润",
     "totalAssets": "资产合计",
     "totalLiabilitiesEquity": "负债与所有者权益合计",
     "incomeStatementTitle": "利润表",
@@ -1541,10 +1574,14 @@
       },
       "pajak": {
         "label": "税务",
-        "description": "销项/进项增值税导出（e-Faktur / CTAS）。"
+        "description": "销项增值税导出（e-Faktur / CTAS）。"
       }
     },
     "catalogReport": {
+      "opname_history": {
+        "title": "库存盘点历史",
+        "description": "各期间的盘点结果：盘盈、盘亏及净差异。"
+      },
       "trial_balance": {
         "title": "试算表",
         "description": "某一日期全部科目的借贷余额——必须平衡。"
@@ -1745,6 +1782,36 @@
     "rateHint": "外币必填——总账中的 IDR 金额由此汇率换算得出。",
     "submit": "保存交易",
     "preparingForm": "正在准备表单..."
+  },
+  "firstSteps": {
+    "title": "第一步",
+    "subtitle": "账簿已建立，但尚未有任何交易。完成以下几项即可投入日常使用。",
+    "progress": "已完成 {done} / {total}",
+    "done": "已完成",
+    "start": "开始",
+    "again": "再次打开",
+    "items": {
+      "pelanggan": {
+        "label": "添加客户",
+        "description": "向您购买的一方。记录销售时从中选择。"
+      },
+      "pemasok": {
+        "label": "添加供应商",
+        "description": "您向其采购的一方。记录采购时从中选择。"
+      },
+      "stok_awal": {
+        "label": "录入期初库存",
+        "description": "今天之前已在仓库中的货物。"
+      },
+      "penjualan": {
+        "label": "录入第一笔销售",
+        "description": "引导流程：客户 → 货物 → 送货单 → 发票。"
+      },
+      "terima_uang": {
+        "label": "收取第一笔款项",
+        "description": "记录进入现金或银行账户的资金。"
+      }
+    }
   },
   "reconciliation": {
     "title": "银行对账",
@@ -1971,12 +2038,12 @@
     "stockIn": "入库",
     "stockOut": "出库",
     "stockProcess": "加工中",
-    "financeDescription": "最近 6 个月各币种的余额与资金变动",
+    "financeDescription": "各币种的历史累计余额与资金变动",
     "financeHrefLabel": "打开现金与银行",
     "netBalance": "净余额 · {currency}",
     "noCashBefore": "暂无资金记录 —",
     "noCashLink": "记录第一笔交易",
-    "balancePerAccount": "各科目余额",
+    "balancePerAccount": "各现金类型余额",
     "cashFlowChartTitle": "资金流入与流出 · {currency}",
     "cashFlowChartDesc": "按月对比（最近 6 个月）",
     "contractsTitle": "销售与合同",
@@ -2167,6 +2234,16 @@
     "errSaveFailed": "期初余额保存失败。",
     "errNetwork": "无法连接服务器。请重试。",
     "toastDone": "设置完成。期初日记账已保存且借贷平衡。",
+    "doneTitle": "设置完成",
+    "doneDescription": "公司账簿已建立。以下是刚刚创建的内容。",
+    "doneBanner": "期初余额已保存为一张平衡的日记账，所有报表均自 {date} 起计算。",
+    "doneViewJournal": "查看日记账 {number}",
+    "doneStartWorking": "开始使用",
+    "introTitle": "此处将要设置的内容",
+    "introPoint1": "公司信息、本位币，以及会计年度的起始日。",
+    "introPoint2": "启用哪些模块——用不到的可以关闭，菜单就不会过于冗长。",
+    "introPoint3": "该日期的期初余额。至少填写一项；其余可以稍后作为普通交易录入。",
+    "draftSaved": "草稿已自动保存",
     "totalAssets": "资产合计（借方）",
     "totalLiabilities": "负债合计（贷方）",
     "equityCredit": "资本/权益（贷方）",
@@ -3007,6 +3084,7 @@
     "passwordMin8": "密码至少 8 个字符",
     "passwordConfirmRequired": "请再次输入新密码",
     "passwordMismatch": "两次输入的密码不一致",
+    "passwordSameAsCurrent": "新密码必须与当前密码不同",
     "tooManyOverrideRows": "覆盖规则行数过多。",
     "companyDatabasePrefix": "数据库名称必须以 \"sai_\" 开头",
     "companySlugInvalid": "标识只能包含小写字母、数字和连字符（例如 pt-bumi-baru）",

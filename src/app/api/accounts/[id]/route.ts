@@ -63,6 +63,27 @@ export async function PUT(
     return NextResponse.json({ error: t("errors.accountOwnParent") }, { status: 400 });
   }
 
+  // ...nor a DESCENDANT of itself: A→B→A detaches the whole branch from the
+  // null root, and the Chart of Accounts (rendered from that root) silently
+  // loses every account in the loop. Walk the candidate parent's ancestor
+  // chain; if it passes through this account, refuse.
+  if (parentId != null) {
+    let cursor: number | null = parentId;
+    const seen = new Set<number>();
+    while (cursor != null && !seen.has(cursor)) {
+      if (cursor === accountId) {
+        const { t } = await getRequestI18n();
+        return NextResponse.json({ error: t("errors.accountParentCycle") }, { status: 400 });
+      }
+      seen.add(cursor);
+      const parent: { parentId: number | null } | null = await prisma.account.findUnique({
+        where: { id: cursor },
+        select: { parentId: true },
+      });
+      cursor = parent?.parentId ?? null;
+    }
+  }
+
   try {
     const account = await prisma.account.update({
       where: { id: accountId },

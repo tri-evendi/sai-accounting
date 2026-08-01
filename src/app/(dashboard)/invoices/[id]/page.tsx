@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/table";
 import { Money, MoneyCell } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatDate, formatCurrency, formatNumber } from "@/lib/utils";
+import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
+import { toBase } from "@/lib/receivables";
 import { PageHeader } from "@/components/ui/page-header";
 import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
@@ -99,10 +100,19 @@ export default async function InvoiceDetailPage({
   const paymentsWithoutRate = invoice.payments.filter(
     (p) => p.baseAmount == null && (p.currency || "IDR") !== "IDR"
   ).length;
-  const totalPaidBase = invoice.payments.reduce((sum, p) => {
-    if (p.baseAmount != null) return sum + Number(p.baseAmount);
-    return (p.currency || "IDR") === "IDR" ? sum + Number(p.amount) : sum;
-  }, 0);
+  // Uang muka yang sudah dikompensasi (issue #26) ikut melunasi faktur ini,
+  // jadi angka "Dibayar" menghitungnya juga — sama seperti /receivables dan
+  // panel uang muka di bawah. Dinilai lewat `toBase` (base_amount dulu, IDR
+  // 1:1, lalu amount×kurs); yang tanpa kurs TIDAK dijumlahkan mentah-mentah,
+  // melainkan masuk hitungan peringatan "belum berkurs".
+  const applicationBases = invoice.advanceApplications.map((a) => toBase(a));
+  const applicationsWithoutRate = applicationBases.filter((b) => b == null).length;
+  const unratedCount = paymentsWithoutRate + applicationsWithoutRate;
+  const totalPaidBase =
+    invoice.payments.reduce((sum, p) => {
+      if (p.baseAmount != null) return sum + Number(p.baseAmount);
+      return (p.currency || "IDR") === "IDR" ? sum + Number(p.amount) : sum;
+    }, 0) + applicationBases.reduce((sum: number, b) => sum + (b ?? 0), 0);
 
   return (
     <div className="w-full">
@@ -175,6 +185,18 @@ export default async function InvoiceDetailPage({
             <div>
               <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
               <dd><StatusBadge status={invoice.status} /></dd>
+            </div>
+            <div>
+              {/* Jatuh tempo — penggerak status "Jatuh Tempo" di /receivables,
+                  jadi ditampilkan juga di sini. NULL = memang belum diisi. */}
+              <dt className="text-sm font-medium text-muted-foreground">{t("common.dueDate")}</dt>
+              <dd className="text-sm text-foreground tabular-nums">
+                {invoice.dueDate ? (
+                  formatDateShort(invoice.dueDate)
+                ) : (
+                  <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">{t("invoices.customer")}</dt>
@@ -326,9 +348,9 @@ export default async function InvoiceDetailPage({
                     })
                   : t("common.paidOnly", { paid: formatCurrency(totalPaidBase, "IDR") })}
               </div>
-              {paymentsWithoutRate > 0 && (
+              {unratedCount > 0 && (
                 <div className="text-xs text-warning-strong">
-                  {t("common.paymentsUnrated", { count: paymentsWithoutRate })}
+                  {t("common.paymentsUnrated", { count: unratedCount })}
                 </div>
               )}
             </div>

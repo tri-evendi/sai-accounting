@@ -90,8 +90,10 @@ export default async function AccountsPage({
 
   return (
     <div>
+      {/* Jumlah di judul = baris yang BENAR-BENAR tampil: saat pencarian
+          aktif, memakai accounts.length akan menyebut total tak tersaring. */}
       <PageHeader
-        title={t("accounts.title", { count: accounts.length })}
+        title={t("accounts.title", { count: rows.length })}
         actions={
           <>
             <Link href="/accounts/import" className="shrink-0">

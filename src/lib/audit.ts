@@ -128,7 +128,13 @@ export type AuditAction =
    * menu itu hilang, dan siapa yang mematikannya". Tidak menyentuh satu baris
    * jurnal pun, dan tidak mengubah izin siapa pun.
    */
-  | "company_setting.modules.update";
+  | "company_setting.modules.update"
+  /**
+   * Unggah dokumen (lampiran kontrak/faktur). Tidak menyentuh jurnal — tapi
+   * menulis berkas ke server, dan setiap route yang menulis wajib meninggalkan
+   * jejak.
+   */
+  | "document.upload";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */
@@ -157,7 +163,9 @@ export type AuditEntity =
   /** Override matriks izin (issue #73). */
   | "role_permission_override"
   /** Izin khusus per pengguna (issue #75). */
-  | "user_permission_override";
+  | "user_permission_override"
+  /** Dokumen unggahan (lampiran). */
+  | "document";
 
 export type AuditLogEntry = {
   id: string;
@@ -265,8 +273,12 @@ export function paginateAuditLines(
   lines: string[],
   options: { page?: number; perPage?: number; action?: string | null }
 ): AuditPage {
-  const page = Math.max(1, options.page ?? 1);
-  const perPage = Math.min(50, Math.max(1, options.perPage ?? 20));
+  // NaN-safe: `Math.max(1, NaN)` tetap NaN dan `slice(NaN, NaN)` mengembalikan
+  // [] — halaman yang tak bisa diurai jatuh ke bawaan, bukan ke daftar kosong.
+  const rawPage = options.page ?? 1;
+  const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+  const rawPerPage = options.perPage ?? 20;
+  const perPage = Number.isFinite(rawPerPage) ? Math.min(50, Math.max(1, rawPerPage)) : 20;
 
   const ordered = [...lines].reverse();
   const entries: AuditLogEntry[] = [];
@@ -296,8 +308,11 @@ export async function readAuditLogs(options: {
     const raw = await readFile((await auditPaths()).file, "utf8");
     lines = raw.trim().split("\n").filter(Boolean);
   } catch {
-    const page = Math.max(1, options.page ?? 1);
-    const perPage = Math.min(50, Math.max(1, options.perPage ?? 20));
+    // Sanitasi sama dengan paginateAuditLines — termasuk aman terhadap NaN.
+    const rawPage = options.page ?? 1;
+    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const rawPerPage = options.perPage ?? 20;
+    const perPage = Number.isFinite(rawPerPage) ? Math.min(50, Math.max(1, rawPerPage)) : 20;
     return { logs: [], page, perPage, totalCount: 0, totalPages: 0 };
   }
   return paginateAuditLines(lines, options);

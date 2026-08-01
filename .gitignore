@@ -47,7 +47,12 @@ next-env.d.ts
 /src/generated/control
 
 # local audit trail (sensitive)
-/data/audit/*.jsonl
+# Sejak #104 jejak audit pindah ke `data/audit/<slug>/audit.jsonl` — satu
+# tingkat lebih dalam, sehingga pola lama `/data/audit/*.jsonl` berhenti cocok
+# dan berkasnya muncul sebagai untracked yang siap ikut ter-commit. Isinya
+# username, peran, dan alamat IP sungguhan. Diabaikan per-folder, bukan
+# per-berkas, supaya penambahan PT berikutnya tidak perlu diingat lagi.
+/data/audit/
 
 # runtime logs
 /logs/
@@ -55,6 +60,10 @@ next-env.d.ts
 # database dumps (never commit production data)
 *.sql
 !prisma/migrations/**/*.sql
+# Sejak #104 ada DUA folder migration. Tanpa baris ini, `*.sql` di atas menelan
+# migration basis data KENDALI: repo mengira dirinya lengkap, lalu
+# `db:migrate:control` di mesin baru berhenti dengan "No migration found".
+!prisma/control/migrations/**/*.sql
 
 # transient agent worktrees
 /.claude/worktrees/

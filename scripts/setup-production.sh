@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "═══════════════════════════════════════════════"
-echo "  SAI Management — Production Setup"
+echo "  SAI Accounting — Production Setup"
 echo "═══════════════════════════════════════════════"
 echo ""
 

@@ -1,5 +1,22 @@
-/** Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI. */
-export const APP_NAME = "SAI Management";
+/**
+ * Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI.
+ *
+ * "Accounting", bukan "Management": nama lama menyebut kontrak & stok — dua
+ * modul dari sekian — sementara yang dijaga aplikasi ini adalah buku besarnya.
+ * `design-system/sai-accounting/MASTER.md` sudah menamainya begitu sejak awal;
+ * konstanta inilah yang tertinggal.
+ */
+export const APP_NAME = "SAI Accounting";
+
+/**
+ * Versi aplikasi, diambil dari `package.json` saat build (lihat `env` di
+ * `next.config.ts`). Aman dipakai di server maupun client.
+ *
+ * Cadangannya `0.0.0` dan itu disengaja: sebuah nomor yang jelas TIDAK MUNGKIN
+ * benar lebih berguna daripada nomor masuk akal yang kebetulan salah. Kalau
+ * ini yang muncul di layar, yang rusak adalah injeksinya — bukan rilisnya.
+ */
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
 
 /**
  * ⚠️ NILAI CADANGAN — JANGAN dipakai langsung untuk menampilkan/mencetak.

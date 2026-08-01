@@ -32,7 +32,8 @@ import {
 import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
-import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@/lib/constants";
+import { getCompanyIdentity } from "@/lib/company-identity";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -169,7 +170,8 @@ export default async function SetupPage() {
   }
 
   // ── First run → the wizard ──
-  const [coaCount, cashAccounts, customers, suppliers] = await Promise.all([
+  const [identity, coaCount, cashAccounts, customers, suppliers] = await Promise.all([
+    getCompanyIdentity(),
     prisma.account.count({ where: { isActive: true } }),
     prisma.account.findMany({
       where: { type: "cash_bank", isActive: true },
@@ -186,8 +188,15 @@ export default async function SetupPage() {
         title={t("setup.wizardTitle")}
         description={t("setup.wizardDescription")}
       />
+      {/* Prefill dari identitas perusahaan AKTIF (setting → nama registry PT
+          ini), BUKAN konstanta pemasang pertama — satu "Lanjut" yang terlalu
+          cepat tidak boleh menulis badan hukum PT lain ke buku PT ini. */}
       <SetupWizard
-        defaults={{ name: COMPANY_NAME, address: COMPANY_ADDRESS, baseCurrency: "IDR" }}
+        defaults={{
+          name: identity.name,
+          address: identity.address,
+          baseCurrency: "IDR",
+        }}
         currencies={[...CURRENCIES]}
         coaCount={coaCount}
         cashAccounts={cashAccounts}

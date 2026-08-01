@@ -43,9 +43,14 @@ export function CompanyIdentityProvider({ children }: { children: React.ReactNod
         if (!active || !data) return;
         const name = typeof data.name === "string" ? data.name.trim() : "";
         const address = typeof data.address === "string" ? data.address.trim() : "";
+        // Jawaban server dipakai APA ADANYA. Server sengaja mengirim alamat
+        // KOSONG saat wizard perusahaan belum diisi (`pickIdentity`): alamat
+        // di dokumen resmi bukan hiasan, dan menambal kekosongan itu dengan
+        // konstanta pemasang pertama akan mencetak alamat PT lain di kepala
+        // faktur PT ini. Cadangan konstanta hanya untuk permintaan yang GAGAL.
         setIdentity({
           name: name || FALLBACK.name,
-          address: address || FALLBACK.address,
+          address,
         });
       })
       .catch(() => {

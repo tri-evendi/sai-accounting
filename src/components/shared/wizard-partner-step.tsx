@@ -15,6 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import {
+  ServerSearchableSelect,
+  type PickerOption,
+} from "@/components/ui/server-searchable-select";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { PartnerDraft } from "@/lib/wizard";
@@ -31,7 +35,19 @@ interface Props {
    * yang dikirim kini KUNCI-nya, dan katanya diambil dari kamus di sini.
    */
   kind: "customer" | "supplier";
-  options: SearchableOption[];
+  /** Mode statis: seluruh opsi dikirim halaman server. Abaikan bila `fetchUrl`
+   *  dipakai. */
+  options?: SearchableOption[];
+  /**
+   * Mode cari-ke-server (audit: pemilih mitra terpotong `take: 500`): endpoint
+   * `{ options }` untuk `ServerSearchableSelect`, mis.
+   * `/api/customers?active=1&picker=1`. Mitra lama ditemukan lewat pencarian,
+   * bukan hilang di balik potongan daftar.
+   */
+  fetchUrl?: string;
+  /** Label mitra yang sudah terpilih (mis. dari draf yang dipulihkan) — hanya
+   *  berarti pada mode `fetchUrl`. */
+  initialOption?: PickerOption | null;
   value: PartnerDraft;
   onChange: (patch: Partial<PartnerDraft>) => void;
   /** Pelanggan membawa PIC, NPWP, dan penanda bebas PPN; pemasok tidak. */
@@ -42,7 +58,9 @@ interface Props {
 
 export function WizardPartnerStep({
   kind,
-  options,
+  options = [],
+  fetchUrl,
+  initialOption,
   value,
   onChange,
   withCustomerFields = false,
@@ -93,7 +111,19 @@ export function WizardPartnerStep({
         </fieldset>
 
         {!isNew &&
-          (options.length === 0 ? (
+          (fetchUrl ? (
+            <ServerSearchableSelect
+              id="partnerId"
+              label={t("wizard.partner.pickLabel", { noun })}
+              placeholder={t("wizard.partner.pickPlaceholder", { noun })}
+              searchPlaceholder={t("wizard.partner.searchPlaceholder", { noun })}
+              emptyText={t("wizard.partner.emptyText", { noun })}
+              fetchUrl={fetchUrl}
+              initialOption={initialOption}
+              value={value.id != null ? String(value.id) : null}
+              onChange={(v) => onChange({ id: v == null ? null : Number(v) })}
+            />
+          ) : options.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
               title={t("wizard.partner.emptyTitle", { noun })}

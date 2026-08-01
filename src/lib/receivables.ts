@@ -29,6 +29,7 @@
  * `overdue`, because we do not know that it is.
  */
 import { prisma } from "@/lib/prisma";
+import { buildContractOutstanding } from "@/lib/document-chain";
 
 /** Half a cent — money is Decimal(15,2), so anything under this is rounding noise. */
 const EPSILON = 0.005;
@@ -446,9 +447,44 @@ export interface ReceivableRow extends OutstandingDocument {
 }
 
 export interface LedgerQuery {
+  /**
+   * Snapshot date. Documents dated after it are not yet claims, and payments /
+   * compensations / returns dated after it have not yet settled anything — both
+   * sides are bounded so the page is a true historical position, not today's
+   * balances wearing an old date label.
+   */
   asOf?: Date;
   /** Keep only documents past their due date. Rows with no due date are excluded. */
   overdueOnly?: boolean;
+}
+
+/**
+ * Keep only settlement rows that exist as of the snapshot date. A row without a
+ * date cannot be shown to be later than the snapshot, so it is kept.
+ */
+function upTo<T extends { date?: Date | null }>(rows: T[], asOf: Date): T[] {
+  return rows.filter((r) => !(r.date instanceof Date) || r.date.getTime() <= asOf.getTime());
+}
+
+/**
+ * A posted return, shaped as the settlement row it economically is: the ledger
+ * credits Piutang (or debits Hutang) for the gross returned value, so AR/AP
+ * must reduce by the same amount or the subledger disagrees with the GL by the
+ * whole return volume. `base_amount` on a return is gross (subtotal + tax).
+ */
+function returnAsSettlement(r: {
+  subtotal: unknown;
+  taxAmount: unknown;
+  currency: string | null;
+  rate: unknown;
+  baseAmount: unknown;
+}): MoneyRow {
+  return {
+    amount: num(r.subtotal) + num(r.taxAmount),
+    currency: r.currency || BASE_CURRENCY,
+    rate: r.rate,
+    baseAmount: r.baseAmount,
+  };
 }
 
 /** Line value of an invoice in its own currency, before tax. */
@@ -472,15 +508,35 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
 
   const [invoices, contracts] = await Promise.all([
     client.invoice.findMany({
-      where: { status: { not: "canceled" } },
+      where: { status: { not: "canceled" }, date: { lte: asOf } },
       // Uang muka compensated into the invoice reduces what the customer still
       // owes exactly as a payment does (issue #26) — see the note in the loop.
-      include: { items: true, payments: true, customer: true, advanceApplications: true },
+      // Retur penjualan reduces it too (issue #27): the ledger already credited
+      // Piutang for the gross returned value.
+      include: {
+        items: true,
+        payments: true,
+        customer: true,
+        advanceApplications: true,
+        salesReturns: true,
+      },
       orderBy: { date: "desc" },
     }),
     client.contract.findMany({
-      where: { status: { not: "canceled" } },
-      include: { items: true, payments: true },
+      where: { status: { not: "canceled" }, date: { lte: asOf } },
+      include: {
+        items: true,
+        payments: true,
+        // Faktur "tarikan" (pola Ambil, issue #15): nilai yang sudah
+        // difakturkan bukan lagi klaim KONTRAK — klaimnya kini hidup di baris
+        // faktur itu sendiri di daftar ini. Tanpa pengurangan ini satu
+        // penjualan tampil dua kali (kontrak penuh + fakturnya) dan total
+        // piutang menggelembung ~2× untuk pasangan kontrak→faktur.
+        invoices: {
+          where: { status: { not: "canceled" }, date: { lte: asOf } },
+          include: { items: true },
+        },
+      },
       orderBy: { date: "desc" },
     }),
   ]);
@@ -501,10 +557,20 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       // customer's money arrived early, and the ledger has already moved it from
       // Uang Muka against Piutang (issue #26). Leaving it out would overstate AR
       // by the whole down-payment, which for SAI's export flow is most of the
-      // invoice. Both are `MoneyRow`s carrying their own currency/rate, so
-      // `toBase` values each at the rate it was actually posted at and an
-      // unrated one is excluded and counted rather than folded in at face value.
-      payments: [...inv.payments, ...(inv.advanceApplications ?? [])],
+      // invoice. A posted retur penjualan settles its slice the same way (the
+      // journal credited Piutang, issue #27). All are `MoneyRow`s carrying their
+      // own currency/rate, so `toBase` values each at the rate it was actually
+      // posted at and an unrated one is excluded and counted rather than folded
+      // in at face value. Every settlement row is bounded by `asOf` so a
+      // historical snapshot does not borrow later settlements.
+      payments: [
+        ...upTo(inv.payments, asOf),
+        ...upTo(inv.advanceApplications ?? [], asOf),
+        ...upTo(
+          (inv.salesReturns ?? []).filter((r) => r.status !== "canceled"),
+          asOf
+        ).map(returnAsSettlement),
+      ],
       asOf,
     });
     rows.push({
@@ -522,6 +588,40 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
   for (const c of contracts) {
     const total = contractSubtotal(c.items);
     if (total <= EPSILON) continue;
+
+    // The invoiced slice of this contract, measured by the SAME per-line
+    // name-matching arithmetic the contract detail page uses. It enters as a
+    // settlement row in the contract's own currency (the chain inherits it on
+    // a pull), valued through `toBase` at the contract's rate — a rate-less
+    // foreign contract already has no IDR value at all, so nothing new leaks.
+    const invoicedValue = buildContractOutstanding({
+      lines: c.items.map((i) => ({
+        itemName: i.itemName ?? "",
+        bags: num(i.bags),
+        kgPerBag: num(i.kgPerBag),
+        pricePerKg: num(i.pricePerKg),
+      })),
+      invoiced: (c.invoices ?? []).flatMap((inv) =>
+        inv.items.map((i) => ({
+          itemName: i.itemName ?? "",
+          quantity: num(i.quantity),
+          price: num(i.price),
+        }))
+      ),
+    }).totals.invoicedValue;
+
+    const settlements: MoneyRow[] = [...upTo(c.payments, asOf)];
+    if (invoicedValue > EPSILON) {
+      settlements.push({
+        // Capped at the contract's own value: over-invoicing must not turn the
+        // row into a negative claim (settleDocument also floors at zero).
+        amount: Math.min(invoicedValue, total),
+        currency: c.currency || BASE_CURRENCY,
+        rate: c.rate,
+        baseAmount: null,
+      });
+    }
+
     // Contracts carry their own rate + IDR base since migration 0008 (issue #36),
     // so a rated foreign contract now counts toward the IDR totals. Legacy rows
     // predate the column and keep a NULL rate: `toBase` returns null for them and
@@ -533,7 +633,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       rate: c.rate == null ? null : num(c.rate),
       date: c.date,
       dueDate: c.dueDate,
-      payments: c.payments,
+      payments: settlements,
       asOf,
     });
     rows.push({
@@ -581,10 +681,20 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
   const asOf = query.asOf ?? new Date();
 
   const transactions = await client.supplierTransaction.findMany({
+    // Snapshot bound: purchases dated after `asOf` are not yet obligations and
+    // payments dated after it have not yet settled anything.
+    where: { date: { lte: asOf } },
     // `advanceApplications` are purchase advances compensated INTO a purchase
     // row (issue #26): money already paid to the supplier before their invoice
     // existed, now settling it. They reduce the payable like any allocation.
-    include: { supplier: true, allocationsMade: true, advanceApplications: true },
+    // `purchaseReturns` reduce it too (issue #27): the return's journal already
+    // debited Hutang Usaha for the gross returned value.
+    include: {
+      supplier: true,
+      allocationsMade: true,
+      advanceApplications: true,
+      purchaseReturns: true,
+    },
     orderBy: { date: "desc" },
   });
 
@@ -640,24 +750,46 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
     // target explicitly, so there is nothing to estimate. The cash they represent
     // left the bank as an `advance_payments` row, not a `supplier_transactions`
     // payment, which is why it is not already in `unallocatedPool` — counting it
-    // in both places would settle each purchase twice.
+    // in both places would settle each purchase twice. Posted purchase returns
+    // (issue #27) enter the same way: the return names the purchase it reverses,
+    // and its journal has already debited Hutang for the gross returned value.
+    // Both are bounded by `asOf` so a snapshot does not borrow later events.
     for (const p of purchases) {
-      for (const a of p.advanceApplications ?? []) {
+      for (const a of upTo(p.advanceApplications ?? [], asOf)) {
         recorded.push({ purchaseId: p.id, base: toBase(a) });
+      }
+      for (const r of upTo(
+        (p.purchaseReturns ?? []).filter((ret) => ret.status !== "canceled"),
+        asOf
+      )) {
+        recorded.push({ purchaseId: p.id, base: toBase(returnAsSettlement(r)) });
       }
     }
 
+    // The obligation is GROSS — net + input VAT, the figure `base_amount`
+    // stores (`createSupplierTransactionInTx`). Valuing the purchase from
+    // `amount` alone would understate a legacy IDR row (whose `base_amount` is
+    // NULL) by its whole VAT, and would show a "purchase value" smaller than
+    // its own outstanding beside it.
+    const grossRow = (p: (typeof purchases)[number]) => ({
+      amount: round2(num(p.amount) + num(p.taxAmount)),
+      currency: p.currency || BASE_CURRENCY,
+      rate: p.rate,
+      baseAmount: p.baseAmount,
+    });
+
     const allocation = allocatePayments(
-      purchases.map((p) => ({ id: p.id, date: p.date, base: toBase(p) })),
+      purchases.map((p) => ({ id: p.id, date: p.date, base: toBase(grossRow(p)) })),
       recorded,
       round2(unallocatedPool)
     );
 
     for (const p of purchases) {
-      const total = num(p.amount);
+      const gross = grossRow(p);
+      const total = gross.amount;
       if (total <= EPSILON) continue;
-      const currency = p.currency || BASE_CURRENCY;
-      const totalBase = toBase(p);
+      const currency = gross.currency;
+      const totalBase = toBase(gross);
       const applied = allocation.applied.get(p.id) ?? 0;
 
       const status = deriveStatus({
@@ -758,12 +890,19 @@ export async function getSupplierPurchaseAllocations(
 ): Promise<PurchaseAllocationState[]> {
   const purchases = await client.supplierTransaction.findMany({
     where: { supplierId, type: "purchase" },
-    include: { allocationsReceived: true, advanceApplications: true },
+    include: { allocationsReceived: true, advanceApplications: true, purchaseReturns: true },
     orderBy: { date: "asc" },
   });
 
   return purchases.map((p) => {
-    const totalBase = toBase(p);
+    // Gross (net + VAT) — the obligation `base_amount` holds; valuing from
+    // `p.amount` alone would understate a legacy IDR row by its VAT.
+    const totalBase = toBase({
+      amount: round2(num(p.amount) + num(p.taxAmount)),
+      currency: p.currency || BASE_CURRENCY,
+      rate: p.rate,
+      baseAmount: p.baseAmount,
+    });
     let allocatedBase = 0;
     for (const a of p.allocationsReceived ?? []) {
       // The payment being edited does not compete with itself for room.
@@ -778,6 +917,13 @@ export async function getSupplierPurchaseAllocations(
     // already covered, and report the same obligation as settled twice.
     for (const a of p.advanceApplications ?? []) {
       const base = toBase(a);
+      if (base != null) allocatedBase += base;
+    }
+    // A posted purchase return settled its slice too (issue #27): the journal
+    // already debited Hutang, so the returned value is no longer room a
+    // payment can be allocated into.
+    for (const r of (p.purchaseReturns ?? []).filter((ret) => ret.status !== "canceled")) {
+      const base = toBase(returnAsSettlement(r));
       if (base != null) allocatedBase += base;
     }
     allocatedBase = round2(allocatedBase);

@@ -1,6 +1,25 @@
+import { createRequire } from "node:module";
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
+
+/*
+ * Versi aplikasi diambil dari `package.json` SAAT BUILD, lalu dititipkan
+ * sebagai variabel lingkungan publik.
+ *
+ * Sebelum ini sidebar mencetak "v0.1.0" sebagai literal. Nomor versi yang
+ * diketik tangan di komponen tidak pernah ikut naik saat rilis — ia hanya
+ * membusuk diam-diam, dan justru dibaca orang ketika sedang melaporkan
+ * masalah ("saya pakai v0.1.0") sehingga menyesatkan tepat pada saat ia paling
+ * dipercaya.
+ *
+ * Diinjeksi lewat `env`, BUKAN diimpor dari komponen: `import pkg from
+ * "../../package.json"` akan menyeret seluruh daftar dependensi ke bundel
+ * client — jejak yang tidak perlu diberikan ke peramban.
+ */
+const { version: appVersion } = createRequire(import.meta.url)("./package.json") as {
+  version: string;
+};
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -39,6 +58,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+  },
   /**
    * Pemeriksaan tipe DIMATIKAN di `next build` — dan itu disengaja, bukan
    * kelalaian. Baca ini sebelum mengembalikannya ke `false`.

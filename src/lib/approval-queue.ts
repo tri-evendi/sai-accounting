@@ -16,7 +16,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { userNamesByIds } from "@/lib/users-directory";
-import type { Role } from "@/lib/constants";
+import { isFullAccessRole, type Role } from "@/lib/constants";
 import {
   countUnreadDecisions,
   type ApprovalDocumentType,
@@ -159,33 +159,59 @@ async function withUserNames(rows: RawRequest[]): Promise<ApprovalRequestView[]>
  * that has been blocked longest is the one holding up the ledger.
  */
 export async function listPendingApprovals(role: Role | string): Promise<ApprovalRequestView[]> {
+  // Peran berakses penuh boleh memutuskan pengajuan mana pun (lihat catatan
+  // panjang di api/approvals/[id]) — maka antreannya juga harus MEMPERLIHATKAN
+  // semuanya. Kuasa memutuskan tanpa daftar yang menampilkannya berarti
+  // pengajuan menggantung tak terlihat begitu penyetujunya cuti atau keluar.
   const rows = await prisma.approvalRequest.findMany({
-    where: { status: "pending_approval", approverRole: role },
+    where: {
+      status: "pending_approval",
+      ...(isFullAccessRole(role) ? {} : { approverRole: role }),
+    },
     orderBy: { createdAt: "asc" },
   });
   return withUserNames(rows);
 }
 
-/** Everything a user has raised, newest first — including decided outcomes. */
+/**
+ * Everything a user has raised, newest first — including decided outcomes.
+ * Optional filters are applied IN the query, before the `limit` — filtering
+ * after a `take` would return matches within the newest N, not the newest N
+ * matches.
+ */
 export async function listMyApprovalRequests(
   userId: number,
-  limit = 50
+  limit = 50,
+  filters: { status?: string; documentType?: string } = {}
 ): Promise<ApprovalRequestView[]> {
   const rows = await prisma.approvalRequest.findMany({
-    where: { requestedById: userId },
+    where: {
+      requestedById: userId,
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.documentType ? { documentType: filters.documentType } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
   return withUserNames(rows);
 }
 
-/** Recently decided requests for this role — the approver's own history. */
+/**
+ * Recently decided requests for this role — the approver's own history.
+ * `userId` (when given) also surfaces decisions this user took by override on
+ * another role's requests; without it those decisions appear in nobody's
+ * history even though the audit trail records them.
+ */
 export async function listDecidedApprovals(
   role: Role | string,
-  limit = 25
+  limit = 25,
+  userId?: number
 ): Promise<ApprovalRequestView[]> {
   const rows = await prisma.approvalRequest.findMany({
-    where: { approverRole: role, status: { in: ["approved", "rejected"] } },
+    where: {
+      status: { in: ["approved", "rejected"] },
+      OR: [{ approverRole: role }, ...(userId != null ? [{ decidedById: userId }] : [])],
+    },
     orderBy: { decidedAt: "desc" },
     take: limit,
   });
@@ -210,19 +236,33 @@ export async function getApprovalCounts(
 ): Promise<ApprovalCounts> {
   const [pending, decidedMine] = await Promise.all([
     prisma.approvalRequest.count({
-      where: { status: "pending_approval", approverRole: role },
-    }),
-    prisma.approvalRequest.findMany({
+      // Sama dengan predikat `listPendingApprovals` — angka lencana harus
+      // sama dengan daftar yang terbuka saat lencananya diklik.
       where: {
-        requestedById: userId,
-        status: { in: ["approved", "rejected"] },
-        readAt: null,
+        status: "pending_approval",
+        ...(isFullAccessRole(role) ? {} : { approverRole: role }),
       },
+    }),
+    // Hanya jendela yang HALAMANNYA tampilkan (50 pengajuan terbaru milik
+    // pengguna): tombol "tandai dibaca" hidup di daftar itu, jadi keputusan
+    // tak terbaca di luar jendela akan menjadi lencana yang tak pernah bisa
+    // dipadamkan.
+    prisma.approvalRequest.findMany({
+      where: { requestedById: userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
       select: { status: true, readAt: true },
     }),
   ]);
 
-  return { pending, unread: countUnreadDecisions(decidedMine) };
+  return {
+    pending,
+    unread: countUnreadDecisions(
+      decidedMine.filter(
+        (r) => (r.status === "approved" || r.status === "rejected") && r.readAt == null
+      )
+    ),
+  };
 }
 
 /** Aturan approval, for the rules screen. */

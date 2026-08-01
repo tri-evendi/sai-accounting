@@ -48,6 +48,17 @@ export async function POST(request: Request) {
 
   const { date, counts } = parsed.data;
   const when = new Date(date);
+  if (Number.isNaN(when.getTime())) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("validation.invalidInput") }, { status: 400 });
+  }
+  // Selisih diukur terhadap saldo buku PER TANGGAL HITUNG, bukan saldo hari
+  // ini: hitungan yang di-backdate ("saya menghitung fisik 30 Juni") harus
+  // dibandingkan dengan buku 30 Juni. Membandingkannya dengan saldo sekarang
+  // lalu menstempel jurnalnya ke tanggal lama diam-diam menulis ulang saldo
+  // awal/akhir periode lama di Kartu Stok.
+  const cutoff = new Date(when);
+  cutoff.setHours(23, 59, 59, 999);
 
   type Adjustment = {
     stockId: number;
@@ -68,7 +79,9 @@ export async function POST(request: Request) {
         });
         if (!item) continue; // barang terhapus di tengah — lewati diam-diam
 
-        const { currentStock } = calculateStockTotals(item.stockMovements);
+        const { currentStock } = calculateStockTotals(
+          item.stockMovements.filter((m) => m.date.getTime() <= cutoff.getTime())
+        );
         const variance = count.physicalQty - currentStock;
         if (variance === 0) continue; // cocok — tak perlu penyesuaian
 
@@ -76,7 +89,10 @@ export async function POST(request: Request) {
         const quantity = Math.abs(variance);
         // Lebih (in) dinilai pada rata-rata pra-penyesuaian agar rata-rata tak
         // bergeser; susut (out) dinilai oleh engine dari rata-rata baris `in`.
-        const avgCost = weightedAverageUnitCost(item.stockMovements);
+        // Rata-ratanya juga PER TANGGAL HITUNG — sama dengan saldo di atas.
+        const avgCost = weightedAverageUnitCost(
+          item.stockMovements.filter((m) => m.date.getTime() <= cutoff.getTime())
+        );
 
         const created = await tx.stockMovement.create({
           data: {

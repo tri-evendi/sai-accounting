@@ -1,6 +1,8 @@
-# SAI Management
+# SAI Accounting
 
-Internal system for **PT Subur Anugerah Indonesia** — contracts, invoices, inventory (stock), finance, suppliers, customers, and documents.
+Bookkeeping and accounting system for businesses in Indonesia — double-entry journals and general ledger, receivables and payables, IDR plus foreign currencies, and the operational documents around them (contracts, invoices, delivery orders, inventory). One installation can hold several companies, each with genuinely separate books.
+
+> The first installation was **PT Subur Anugerah Indonesia**; that name survives only as the fallback in `src/lib/constants.ts` and must never be printed for another tenant — see `docs/MULTI-COMPANY.md` and `tests/company-identity.test.ts`.
 
 ## Stack
 

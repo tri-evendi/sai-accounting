@@ -4,21 +4,55 @@ import { customerSchema } from "@/lib/validations/finance";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import { pickerParams, type PickerOption } from "@/lib/picker";
 
 /**
  * Daftar pelanggan. `?active=1` hanya mengembalikan yang aktif — dipakai pemilih
  * di formulir faktur supaya pelanggan yang sudah dinonaktifkan tidak bisa
  * dipilih untuk dokumen BARU, sementara faktur lama tetap menampilkannya.
+ *
+ * `?search=&take=&picker=1` (audit: pemilih terpotong) — `search` mencocokkan
+ * nama, dapat digabung dengan `active=1`; `picker=1` menjawab `{ options }`
+ * untuk `ServerSearchableSelect`. Tanpa parameter baru, respons lama utuh.
  */
 export async function GET(request: Request) {
   const result = await requireApiPermission("customer.read");
   if (!result.authorized) return result.response;
 
-  const activeOnly = new URL(request.url).searchParams.get("active") === "1";
+  const { searchParams } = new URL(request.url);
+  const activeOnly = searchParams.get("active") === "1";
+  const { picker, search, take } = pickerParams(searchParams);
+
+  const where =
+    activeOnly || search
+      ? {
+          ...(activeOnly ? { isActive: true } : {}),
+          ...(search ? { name: { contains: search } } : {}),
+        }
+      : undefined;
+
+  if (picker) {
+    const customers = await prisma.customer.findMany({
+      where,
+      // Tanpa kata kunci: yang terbaru dulu (dokumen lama dicari, bukan digulir).
+      orderBy: search ? { name: "asc" } : { createdAt: "desc" },
+      take,
+      select: { id: true, name: true, taxExempt: true },
+    });
+    const { t } = await getRequestI18n();
+    return NextResponse.json({
+      options: customers.map((c) => ({
+        value: String(c.id),
+        label: c.name,
+        ...(c.taxExempt ? { hint: t("sales.taxExempt") } : {}),
+      })),
+    } satisfies { options: PickerOption[] });
+  }
 
   const customers = await prisma.customer.findMany({
-    where: activeOnly ? { isActive: true } : undefined,
+    where,
     orderBy: { name: "asc" },
+    take,
   });
 
   return NextResponse.json(customers);

@@ -23,6 +23,12 @@ import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { visibleWorkflows } from "@/lib/workflows";
 import { WorkflowGuide } from "@/components/dashboard/workflow-guide";
+import {
+  isFirstRun,
+  visibleFirstSteps,
+  type FirstStepProgress,
+} from "@/lib/first-steps";
+import { FirstStepsPanel } from "@/components/dashboard/first-steps-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -135,9 +141,87 @@ export default async function DashboardPage() {
   // yang mungkin mati.
   const canCreateContract = allowed.has("contract.write");
 
+  /*
+   * ── Perusahaan yang belum bertransaksi mendapat beranda yang berbeda ──────
+   *
+   * Sampai audit ini, hari pertama sebuah PT terlihat begini: tiga kartu
+   * Ringkasan berisi Rp 0, sembilan kartu angka berisi 0, dan dua empty state
+   * yang terkubur di dalam badan tabel. Yang dibaca pengguna baru dari layar
+   * itu bukan "belum ada apa-apa" melainkan "ada yang rusak" — dan tak satu
+   * pun dari angka nol itu memberitahunya apa yang harus dikerjakan.
+   *
+   * Probe-nya sengaja MURAH dan dijalankan LEBIH DULU: tiga `count()` tanpa
+   * baris. Bila ternyata perusahaan ini baru, seluruh kueri berat di bawah
+   * (ringkasan laba/rugi, piutang, utang, saldo kas, gerakan stok, kontrak)
+   * tidak pernah berjalan — aturan yang sama dengan "kueri seksi tersembunyi
+   * tidak dijalankan" di design-system/sai-accounting/pages/dashboard.md.
+   *
+   * Keputusannya membaca keadaan PERUSAHAAN, bukan keadaan pengguna, jadi
+   * ketiga hitungan berjalan tanpa penyaringan izin — tak satu pun ANGKA-nya
+   * sampai ke layar. Yang disaring izin adalah daftar langkahnya
+   * (`visibleFirstSteps`), sehingga tiap orang hanya diminta mengerjakan yang
+   * memang boleh ia kerjakan.
+   */
+  const [saleCount, cashCount, stockCount] = await Promise.all([
+    prisma.invoice.count(),
+    prisma.cashMovement.count(),
+    prisma.stockMovement.count(),
+  ]);
+
+  const firstStepProgress: FirstStepProgress = {
+    penjualan: saleCount > 0,
+    terima_uang: cashCount > 0,
+    stok_awal: stockCount > 0,
+  };
+  const firstSteps = visibleFirstSteps(role, allowed);
+
+  /*
+   * Peran tanpa satu pun langkah yang boleh dikerjakan (mis. peran baca-saja)
+   * TIDAK dibawa ke sini: panelnya akan kosong dan yang tersisa hanyalah
+   * halaman hampa. Mereka tetap mendapat beranda biasa, yang setidaknya
+   * menjelaskan kekosongannya lewat empty state tiap seksi.
+   */
+  if (isFirstRun(firstStepProgress) && firstSteps.length > 0) {
+    const [customerCount, supplierCount] = await Promise.all([
+      prisma.customer.count(),
+      prisma.supplier.count(),
+    ]);
+
+    return (
+      /*
+       * `data-tour-suppress` mematikan pemutaran OTOMATIS tur Beranda di sini
+       * (lihat `components/help/guided-tour.tsx`). Tur itu menjelaskan
+       * Ringkasan dan seksi-seksi angka yang justru tidak dirender di halaman
+       * ini; memainkannya berarti menyorot kotak yang tidak ada, di atas layar
+       * yang sudah punya penjelasannya sendiri. Pemutaran dari menu Bantuan
+       * tetap bisa dilakukan kapan saja.
+       */
+      <div className="w-full space-y-10" data-tour-suppress="beranda">
+        <PageHeader
+          title={t("nav.items.dashboard")}
+          description={t("dashboard.description", { name: session.user.name })}
+        />
+
+        <QuickActions actions={quickActions} />
+
+        <FirstStepsPanel
+          steps={firstSteps}
+          progress={{
+            ...firstStepProgress,
+            pelanggan: customerCount > 0,
+            pemasok: supplierCount > 0,
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Jumlah tagihan sudah dihitung oleh probe di atas — dihitung ulang di sini
+  // berarti dua kueri identik pada setiap pembukaan beranda.
+  const invoiceCount = canViewContracts ? saleCount : 0;
+
   const [
     contractCount,
-    invoiceCount,
     supplierCount,
     items,
     movementTotals,
@@ -148,7 +232,6 @@ export default async function DashboardPage() {
     latestContracts,
   ] = await Promise.all([
     canViewContracts ? prisma.contract.count() : Promise.resolve(0),
-    canViewContracts ? prisma.invoice.count() : Promise.resolve(0),
     canViewContracts ? prisma.supplier.count() : Promise.resolve(0),
     /*
      * RINGKASAN, BUKAN SELURUH GERAKAN STOK.

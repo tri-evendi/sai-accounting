@@ -23,9 +23,20 @@ export default async function SalesTargetsPage({
   const t = await getT();
   const sp = await searchParams;
   const now = new Date();
-  const year = Number(sp.year) || now.getFullYear();
+  // URL bisa diedit tangan: `Number("abc")` = NaN yang lolos ke periodBounds/
+  // Prisma dan berujung 500. Rentang mengikuti validations/period.ts
+  // (tahun 2000–2100, bulan 1–12); nilai tak sah jatuh ke bawaan halaman
+  // (tahun ini / bulan ini), bulan 0 tetap berarti setahun penuh.
+  const yearRaw = Number(sp.year);
+  const year =
+    Number.isInteger(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : now.getFullYear();
   const monthRaw = sp.month === undefined ? now.getMonth() + 1 : Number(sp.month);
-  const month = monthRaw === 0 ? undefined : monthRaw;
+  const month =
+    monthRaw === 0
+      ? undefined
+      : Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12
+        ? monthRaw
+        : now.getMonth() + 1;
 
   const [customers, items, targets] = await Promise.all([
     // `isActive: true` — target penjualan adalah rencana ke DEPAN, jadi master

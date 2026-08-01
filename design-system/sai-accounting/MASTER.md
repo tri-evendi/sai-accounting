@@ -14,7 +14,7 @@
 ---
 
 ## Prinsip Inti (khusus app akuntansi ramah-amatir)
-1. **Light-first**, tenang, kontras tinggi. Sidebar gelap sebagai aksen (sesuai app saat ini). Dark mode penuh = fase lanjutan, bukan default.
+1. **Light-first**, tenang, kontras tinggi. Sidebar gelap sebagai aksen (sesuai app saat ini). Dark mode **sudah aktif** — pilihan Terang / Gelap / Ikut sistem di menu akun dan di layar pra-aplikasi — tetapi **bawaannya tetap terang**: `DEFAULT_THEME` di `src/lib/theme/config.ts` adalah `light`, dan menjadikannya `system` berarti setiap pengguna ber-OS gelap membuka aplikasi keuangan ini dalam mode yang belum ditinjau halaman demi halaman.
 2. **Semantik warna uang** — hijau = uang masuk/lunas/positif; merah = uang keluar/jatuh tempo/negatif; biru = brand/aksi netral; amber = menunggu/peringatan. **Jangan pernah mengandalkan warna saja** — selalu sertakan tanda (+/−), label, atau ikon.
 3. **Angka rapi & jujur** — gunakan `font-variant-numeric: tabular-nums`, **rata kanan** di tabel, format `id-ID` (mis. `Rp 1.234.567`), nilai negatif merah dengan `(...)` atau tanda minus. Tampilkan **mata uang** eksplisit (IDR/USD/CNY).
 4. **Ramah amatir** — label bahasa tugas (lihat issue #1), target sentuh ≥ 40px, teks dasar 16px, hindari jargon di permukaan (tooltip untuk istilah akuntansi).
@@ -54,7 +54,16 @@ Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk
 
 Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
 
-*Dark mode (fase lanjut):* naikkan surface ke `#0F172A`/`#1E293B`, jaga rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap sudah disiapkan di blok `.dark` (kontras 8,5–10,6:1).
+*Dark mode:* surface naik ke `#0F172A`/`#1E293B`, rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap ada di blok `.dark` (kontras 8,5–10,6:1). Kelas `.dark` dipasang **root layout dari cookie** (`src/lib/theme/`), jadi sudah menempel pada HTML pertama — tidak ada kedipan sebelum hydrate.
+
+**Dua jebakan token yang sudah memakan korban** — palet gelap membuat beberapa token bernilai SAMA, dan komponen yang mengandalkan selisihnya diam-diam runtuh saat tema berganti:
+
+| Token | Terang | Gelap | Akibatnya |
+|-------|--------|-------|-----------|
+| `--muted` / `--secondary` | `#F1F5F9` / `#F1F5F9` | **`#334155` / `#334155`** | Sakelar aktif (varian `secondary`) di atas latar `bg-muted` jadi tak terlihat sama sekali |
+| `--sidebar` / `--background` | `#0F172A` / `#F8FAFC` | **`#0F172A` / `#0F172A`** | Panel gelap melebur dengan halaman; pembagian kolomnya hilang |
+
+Karena itu: **latar halaman memakai `bg-background`, bukan `bg-muted`** (kartu harus lebih terang dari halamannya di kedua tema), dan **batas antar-bidang yang sewarna di tema gelap wajib punya `border`**, bukan hanya mengandalkan beda warna. Tinjau UI baru di KEDUA tema sebelum menyerahkannya.
 
 ---
 
@@ -184,6 +193,8 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
 - [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>`/`<Breadcrumb>` manual); label breadcrumb = label menu samping.
 - [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
+- [ ] **Dilihat di tema TERANG dan GELAP** — lihat dua jebakan token di bagian Color Palette; sewarna-nya `--muted`/`--secondary` dan `--sidebar`/`--background` di tema gelap tidak terlihat dari kode.
+- [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat primitif `Table` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, antar aksi `gap-2`) — penjaga `tests/design-system-primitives.test.ts` hijau.
 - [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

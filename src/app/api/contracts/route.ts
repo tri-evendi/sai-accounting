@@ -9,13 +9,45 @@ import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import { pickerParams, type PickerOption } from "@/lib/picker";
 
-export async function GET() {
+/**
+ * Daftar kontrak. Mendukung `?search=&take=&picker=1` (audit: pemilih dokumen
+ * terpotong) — `search` mencocokkan nomor kontrak ATAU pembeli, `take` dibatasi
+ * 50, dan `picker=1` menjawab kontrak bentuk `{ options }` untuk
+ * `ServerSearchableSelect`. Tanpa parameter itu, respons lama tidak berubah.
+ */
+export async function GET(request: Request) {
   const result = await requireApiPermission("contract.read");
   if (!result.authorized) return result.response;
 
+  const { picker, search, take } = pickerParams(new URL(request.url).searchParams);
+  const searchWhere = search
+    ? { OR: [{ contractNo: { contains: search } }, { buyer: { contains: search } }] }
+    : undefined;
+
+  if (picker) {
+    // Kontrak batal tidak ditawarkan untuk dokumen BARU — filter yang sama
+    // dengan preload statis yang digantikan pemilih ini.
+    const contracts = await prisma.contract.findMany({
+      where: { status: { not: "canceled" }, ...searchWhere },
+      orderBy: { date: "desc" },
+      take,
+      select: { id: true, contractNo: true, buyer: true, currency: true },
+    });
+    return NextResponse.json({
+      options: contracts.map((c) => ({
+        value: String(c.id),
+        label: c.contractNo,
+        hint: `${c.buyer} · ${c.currency || "IDR"}`,
+      })),
+    } satisfies { options: PickerOption[] });
+  }
+
   const contracts = await prisma.contract.findMany({
+    where: searchWhere,
     orderBy: { date: "desc" },
+    take,
     include: { items: true, payments: true },
   });
 

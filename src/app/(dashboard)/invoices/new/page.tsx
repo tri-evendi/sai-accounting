@@ -27,17 +27,23 @@ export default async function NewInvoicePage({
   const t = await getT();
 
   const { contractId } = await searchParams;
-  const [contracts, closedPeriods] = await Promise.all([
-    prisma.contract.findMany({
-      where: { status: { not: "canceled" } },
-      orderBy: { date: "desc" },
-      take: 300,
-      select: { id: true, contractNo: true, buyer: true, currency: true },
-    }),
+  const preselectedRaw = Number(contractId);
+  const preselected =
+    Number.isFinite(preselectedRaw) && preselectedRaw > 0 ? preselectedRaw : null;
+
+  // Daftar kontrak TIDAK lagi dipreload `take: 300` — daftar terpotong membuat
+  // kontrak lama mustahil dipilih (audit). Pemilihnya mencari ke server
+  // (`/api/contracts?picker=1`); yang dibaca di sini hanya kontrak yang sudah
+  // terpilih lewat `?contractId=`, supaya labelnya langsung tampil.
+  const [preselectedContract, closedPeriods] = await Promise.all([
+    preselected != null
+      ? prisma.contract.findUnique({
+          where: { id: preselected },
+          select: { id: true, contractNo: true, buyer: true, currency: true },
+        })
+      : Promise.resolve(null),
     listClosedPeriods(),
   ]);
-
-  const preselected = Number(contractId);
 
   return (
     <div className="w-full">
@@ -60,13 +66,15 @@ export default async function NewInvoicePage({
       />
       <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
       <NewInvoiceForm
-        contracts={contracts.map((c) => ({
-          id: c.id,
-          contractNo: c.contractNo,
-          buyer: c.buyer,
-          currency: c.currency || "IDR",
-        }))}
-        initialContractId={Number.isFinite(preselected) && preselected > 0 ? preselected : null}
+        initialContract={
+          preselectedContract
+            ? {
+                value: String(preselectedContract.id),
+                label: preselectedContract.contractNo,
+                hint: `${preselectedContract.buyer} · ${preselectedContract.currency || "IDR"}`,
+              }
+            : null
+        }
         closedPeriods={closedPeriods}
       />
     </div>

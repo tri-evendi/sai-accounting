@@ -226,6 +226,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.passwordMin8": "Kata sandi minimal 8 karakter",
   "validation.passwordConfirmRequired": "Ulangi kata sandi baru untuk memastikan",
   "validation.passwordMismatch": "Kata sandi tidak sama",
+  "validation.passwordSameAsCurrent":
+    "Kata sandi baru harus berbeda dari kata sandi saat ini",
   "validation.tooManyOverrideRows": "Terlalu banyak baris override.",
   "validation.companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
   "validation.companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",

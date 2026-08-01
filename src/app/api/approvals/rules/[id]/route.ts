@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
+import { activeRoleKeys } from "@/lib/roles";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
@@ -51,6 +52,12 @@ export async function PUT(
     );
   }
   const { documentType, minAmount, approverRole, note, isActive } = parsed.data;
+
+  // Peran harus ada & aktif (peran dinamis) — validasi ke DB, pola /api/users.
+  if (!(await activeRoleKeys()).includes(approverRole)) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.roleUnknownOrInactive") }, { status: 400 });
+  }
 
   const duplicate = await prisma.approvalRule.findFirst({
     where: { documentType, minAmount, isActive: true, id: { not: existing.id } },

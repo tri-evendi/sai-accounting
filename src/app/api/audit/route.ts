@@ -7,8 +7,12 @@ export async function GET(request: Request) {
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const perPage = parseInt(searchParams.get("perPage") || "20");
+  // `parseInt("abc")` adalah NaN, dan NaN yang lolos ke slice() membuat daftar
+  // berisi tampak kosong — URL bisa diedit tangan, jadi disanitasi di sini.
+  const rawPage = parseInt(searchParams.get("page") || "1");
+  const page = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
+  const rawPerPage = parseInt(searchParams.get("perPage") || "20");
+  const perPage = Number.isFinite(rawPerPage) && rawPerPage >= 1 ? rawPerPage : 20;
   const action = searchParams.get("action");
 
   const data = await readAuditLogs({ page, perPage, action });

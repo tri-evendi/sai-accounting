@@ -370,6 +370,12 @@ export interface PurchaseDraft {
     /** PPN Masukan, dalam mata uang dokumen. */
     taxAmount: number;
     note: string;
+    /**
+     * Pusat biaya (issue #91/#98) — id sebagai string, `""` = belum ditetapkan
+     * (nilai yang SAH, bukan isian terlewat). Opsional karena draf tersimpan
+     * dari rilis sebelum kolom ini ada tidak membawanya; keduanya berarti null.
+     */
+    costCenterId?: string;
   };
 }
 
@@ -385,6 +391,7 @@ export function emptyPurchaseDraft(today: string): PurchaseDraft {
       rate: 0,
       taxAmount: 0,
       note: "",
+      costCenterId: "",
     },
   };
 }
@@ -909,6 +916,8 @@ export interface PurchaseWizardPayload {
     rate?: number;
     taxAmount: number;
     note: string;
+    /** Pusat biaya (issue #91) — null = belum ditetapkan / seluruh perusahaan. */
+    costCenterId: number | null;
   };
   receipt: {
     date: string;
@@ -948,6 +957,9 @@ export function buildPurchasePayload(draft: PurchaseDraft): PurchaseWizardPayloa
       rate: draft.purchase.rate > 0 ? draft.purchase.rate : undefined,
       taxAmount: draft.purchase.taxAmount || 0,
       note: purchaseNote(draft),
+      // Bentuk yang sama dengan `costCenterPayload` di formulir pemasok: `""`
+      // (atau draf lama tanpa kolomnya) menjadi null, bukan 0 dan bukan NaN.
+      costCenterId: draft.purchase.costCenterId ? Number(draft.purchase.costCenterId) : null,
     },
     receipt:
       draft.receipt.include && received.length > 0

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import {
   CurrencyRateFields,
   currencyRatePayload,
@@ -36,6 +37,12 @@ export interface PartyOption {
   name: string;
 }
 
+/**
+ * Bentuk lama daftar kontrak preload. Pemilih kontraknya kini mencari ke server
+ * (audit: daftar `take: 200` memotong kontrak lama), jadi prop `contracts`
+ * tidak dipakai lagi — tipenya dipertahankan hanya agar pemanggil tersemat
+ * (`suppliers/[id]/advance-panel.tsx`) tetap terkompilasi tanpa disentuh.
+ */
 export interface ContractOption {
   id: number;
   contractNo: string;
@@ -70,14 +77,14 @@ export interface LockedParty {
 export function AdvanceForm({
   customers = [],
   suppliers = [],
-  contracts,
   locked,
   onSaved,
   onCancel,
 }: {
   customers?: PartyOption[];
   suppliers?: PartyOption[];
-  contracts: ContractOption[];
+  /** Tidak dipakai lagi — lihat catatan pada `ContractOption`. */
+  contracts?: ContractOption[];
   locked?: LockedParty;
   /** Called instead of navigating to /advances. Embedded callers close and refresh. */
   onSaved?: () => void;
@@ -221,18 +228,15 @@ export function AdvanceForm({
           )}
 
           <div>
-            <Select
+            {/* Mencari ke server (audit: daftar statis `take: 200` memotong
+                kontrak lama). Kosong = tidak ditautkan ke kontrak. */}
+            <ServerSearchableSelect
               id="contractId"
               label={t("advances.contractField")}
-              value={contractId}
-              onChange={(e) => setContractId(e.target.value)}
-              options={[
-                { value: "", label: t("advances.noContract") },
-                ...contracts.map((c) => ({
-                  value: String(c.id),
-                  label: `${c.contractNo} · ${c.buyer}`,
-                })),
-              ]}
+              placeholder={t("advances.noContract")}
+              fetchUrl="/api/contracts?picker=1"
+              value={contractId || null}
+              onChange={(v) => setContractId(v ?? "")}
             />
             <p className="mt-1 text-xs text-muted-foreground">
               {t("advances.contractHintBefore")}{" "}

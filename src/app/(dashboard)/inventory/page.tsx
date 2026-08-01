@@ -1,3 +1,4 @@
+import { formatNumber, parsePageParam } from "@/lib/utils";
 import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
@@ -48,7 +49,7 @@ export default async function InventoryPage({
   await requirePagePermission("inventory.read");
   const t = await getT();
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
 
   // Get all items for summary cards
@@ -221,9 +222,9 @@ export default async function InventoryPage({
                 <TableRow key={item.id}>
                   <TableCell className="font-medium text-foreground">{item.name}</TableCell>
                   <TableCell className="text-muted-foreground">{item.unit || "-"}</TableCell>
-                  <TableCell className="text-right text-success tabular-nums">{item.totalIn}</TableCell>
-                  <TableCell className="text-right text-destructive tabular-nums">{item.totalOut}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{item.currentStock}</TableCell>
+                  <TableCell className="text-right text-success tabular-nums">{formatNumber(item.totalIn)}</TableCell>
+                  <TableCell className="text-right text-destructive tabular-nums">{formatNumber(item.totalOut)}</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">{formatNumber(item.currentStock)}</TableCell>
                   <TableCell className="text-right">
                     {item.unitCost !== null ? (
                       <Money value={item.unitCost} currency="IDR" />

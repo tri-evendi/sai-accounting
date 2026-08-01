@@ -512,6 +512,47 @@ describe("getReceivables", () => {
     ...over,
   });
 
+  it("nets the invoiced slice off a contract — a pulled faktur must not double the claim", async () => {
+    // CTR: USD 1,000 (10 bags × 10 kg × $10). A non-canceled faktur pulled from
+    // it invoiced 60 kg of the same item at the same price (USD 600). The
+    // contract's remaining claim is USD 400; the faktur row carries its own.
+    const r = await getReceivables(
+      { asOf },
+      stubClient({
+        contracts: [
+          contract({
+            rate: 16_000,
+            baseAmount: 16_000_000,
+            items: [{ itemName: "Kopi", bags: 10, kgPerBag: 10, pricePerKg: 10 }],
+            invoices: [{ items: [{ itemName: "Kopi", quantity: 60, price: 10 }] }],
+          }),
+        ],
+      })
+    );
+    const row = r.rows[0];
+    expect(row.total).toBe(1_000);
+    // Invoiced USD 600 valued at the contract's own rate: 600 × 16.000.
+    expect(row.paidBase).toBe(9_600_000);
+    expect(row.outstandingBase).toBe(16_000_000 - 9_600_000);
+  });
+
+  it("drops a fully invoiced contract from the ledger entirely", async () => {
+    const r = await getReceivables(
+      { asOf },
+      stubClient({
+        contracts: [
+          contract({
+            currency: "IDR",
+            items: [{ itemName: "Kopi", bags: 10, kgPerBag: 10, pricePerKg: 10_000 }],
+            invoices: [{ items: [{ itemName: "Kopi", quantity: 100, price: 10_000 }] }],
+          }),
+        ],
+      })
+    );
+    // The whole claim now lives on the faktur; the contract row is settled.
+    expect(r.rows).toHaveLength(0);
+  });
+
   it("counts a rated foreign contract toward the IDR totals (issue #36)", async () => {
     const r = await getReceivables(
       { asOf },

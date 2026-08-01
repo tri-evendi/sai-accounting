@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Sistem Manajemen Kontrak & Stok — PT Subur Anugerah Indonesia"
+    "description": "Sistem pembukuan dan akuntansi untuk usaha di Indonesia."
   },
   "common": {
     "save": "Simpan",
@@ -238,7 +238,10 @@
     "noTour": "Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan Pusat Laporan."
   },
   "auth": {
-    "brandTagline": "Pengelolaan kontrak & stok untuk tim internal.",
+    "brandTagline": "Pembukuan baku untuk usaha di Indonesia.",
+    "brandPoint1": "Jurnal & buku besar berpasangan, sesuai kaidah akuntansi baku.",
+    "brandPoint2": "Rupiah dan mata uang asing, lengkap dengan kurs dan nilai dasarnya.",
+    "brandPoint3": "Banyak PT dalam satu pemasangan, dengan buku yang benar-benar terpisah.",
     "setupRequired": {
       "heading": "Aplikasi belum disiapkan",
       "description": "Data perusahaan belum diisi, jadi aplikasi belum bisa dipakai.",
@@ -248,7 +251,7 @@
     },
     "login": {
       "heading": "Masuk",
-      "description": "Gunakan akun perusahaan Anda untuk membuka dasbor, kontrak, dan stok.",
+      "description": "Gunakan akun perusahaan Anda untuk membuka buku dan pekerjaan harian.",
       "username": "Nama Pengguna",
       "usernamePlaceholder": "nama.pengguna",
       "password": "Kata Sandi",
@@ -265,10 +268,13 @@
       "new": "Kata Sandi Baru",
       "confirm": "Ulangi Kata Sandi Baru",
       "hint": "Gunakan minimal 8 karakter. Jangan memakai ulang kata sandi dari sistem lain.",
+      "ruleLength": "Minimal {count} karakter",
+      "ruleDifferent": "Berbeda dari kata sandi saat ini",
+      "ruleMatch": "Ulangannya cocok",
+      "ruleMet": "sudah terpenuhi",
+      "ruleUnmet": "belum terpenuhi",
       "submit": "Simpan Kata Sandi",
       "submitting": "Menyimpan...",
-      "mismatch": "Kata sandi baru dan ulangannya tidak sama.",
-      "tooShort": "Kata sandi minimal 8 karakter.",
       "failed": "Gagal mengganti kata sandi. Silakan coba lagi."
     },
     "selectCompany": {
@@ -372,10 +378,17 @@
     "example": "Contoh:",
     "learnMore": "Pelajari selengkapnya"
   },
+  "theme": {
+    "label": "Tampilan",
+    "light": "Terang",
+    "dark": "Gelap",
+    "system": "Ikut sistem"
+  },
   "confirm": {
     "retypeLabel": "Ketik ulang untuk memastikan:"
   },
   "errors": {
+    "accountParentCycle": "Induk yang dipilih adalah turunan akun ini sendiri — hierarki akan berputar. Pilih induk lain.",
     "generic": "Terjadi kesalahan. Silakan coba lagi.",
     "network": "Gagal menghubungi server. Periksa koneksi Anda.",
     "unauthorized": "Anda tidak punya akses ke halaman ini.",
@@ -456,6 +469,7 @@
     "csvEmpty": "Isi CSV kosong.",
     "csvInvalidRows": "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.",
     "contractInUse": "Kontrak ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontraknya saja agar rantai dokumen tetap utuh.",
+    "invoiceInUse": "Tagihan ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan tagihannya saja agar rantai dokumen tetap utuh.",
     "contractUsedInvoices": "{count} faktur",
     "contractUsedDeliveryOrders": "{count} surat jalan",
     "contractUsedBoth": "{invoices} faktur dan {deliveryOrders} surat jalan",
@@ -483,6 +497,7 @@
     "bookMovementNotFound": "Transaksi buku tidak ditemukan.",
     "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
+    "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
     "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
   },
   "contracts": {
@@ -846,6 +861,7 @@
     "confirmLabel": "Ya, terbitkan"
   },
   "returns": {
+    "statusCanceled": "Dibatalkan",
     "title": "Retur",
     "description": "Barang yang dikembalikan — membalik sebagian faktur/pembelian beserta stok, piutang/utang, dan PPN-nya.",
     "addNew": "Buat Retur",
@@ -932,6 +948,7 @@
     "activeHint": "Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut."
   },
   "customers": {
+    "activeHint": "Pelanggan nonaktif tidak muncul di pilihan Tagihan, tetapi dokumen lama tetap tertaut.",
     "title": "Pelanggan ({count})",
     "addNew": "+ Tambah Pelanggan",
     "colPic": "Penanggung Jawab",
@@ -956,6 +973,7 @@
     "taxable": "Kena PPN (standar)"
   },
   "suppliers": {
+    "activeHint": "Pemasok nonaktif tidak muncul di pilihan Pembelian, tetapi dokumen lama tetap tertaut.",
     "title": "Pemasok ({count})",
     "description": "Buka salah satu pemasok untuk mencatat pembelian dan pembayarannya.",
     "addNew": "+ Tambah Pemasok",
@@ -1185,6 +1203,7 @@
     "saveFailed": "Pusat biaya gagal disimpan",
     "codeTaken": "Kode pusat biaya sudah dipakai",
     "parentSelf": "Pusat biaya tidak boleh menjadi induk dirinya sendiri",
+    "parentCycle": "Induk yang dipilih adalah turunan pusat biaya ini sendiri — hierarki akan berputar. Pilih induk lain.",
     "emptyTitle": "Belum ada pusat biaya",
     "emptyDescription": "Buat satu pusat biaya untuk mulai memilah laba/rugi per cabang, unit, atau proyek.",
     "filterLabel": "Pusat Biaya",
@@ -1460,6 +1479,20 @@
     "title": "Pusat Laporan",
     "description": "Semua laporan dalam satu tempat, dikelompokkan per kategori. Pilih laporan, atur periode, lalu ekspor ke PDF atau Excel. Nilai dalam IDR (nilai dasar buku besar).",
     "comingSoon": "Segera hadir",
+    "colCustomer": "Pelanggan",
+    "colSupplier": "Pemasok",
+    "colDocuments": "Jumlah Dokumen",
+    "colGrossSales": "Penjualan (IDR)",
+    "colGrossPurchases": "Pembelian (IDR)",
+    "colReturns": "Retur (IDR)",
+    "colNet": "Bersih (IDR)",
+    "noCustomerLabel": "Tanpa pelanggan",
+    "noSupplierLabel": "Tanpa pemasok",
+    "salesByCustomerEmpty": "Tidak ada tagihan penjualan pada periode ini.",
+    "purchasesBySupplierEmpty": "Tidak ada pembelian pada periode ini.",
+    "grossIncludesTaxNote": "Nilai kotor termasuk PPN; retur pada periode yang sama dikurangkan di kolomnya sendiri.",
+    "rowUnrated": "{count} dokumen tanpa kurs",
+    "unratedDocsNote": "{count} dokumen valas tanpa kurs tidak ikut dijumlahkan.",
     "openReport": "Buka laporan",
     "breadcrumb": "Pusat Laporan",
     "asOfWithCurrency": "Per {date} · nilai dalam IDR",
@@ -1478,7 +1511,7 @@
     "sectionLiabilities": "Liabilitas",
     "sectionEquity": "Ekuitas",
     "sectionTotal": "Total {section}",
-    "currentNetIncome": "Laba/Rugi Berjalan",
+    "currentNetIncome": "Akumulasi Laba/Rugi",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
     "incomeStatementTitle": "Laba / Rugi",
@@ -1541,10 +1574,14 @@
       },
       "pajak": {
         "label": "Pajak",
-        "description": "Ekspor pajak keluaran/masukan (e-Faktur / CTAS)."
+        "description": "Ekspor pajak keluaran (e-Faktur / CTAS)."
       }
     },
     "catalogReport": {
+      "opname_history": {
+        "title": "Riwayat Hitung Ulang Stok",
+        "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya."
+      },
       "trial_balance": {
         "title": "Neraca Saldo",
         "description": "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang."
@@ -1745,6 +1782,36 @@
     "rateHint": "Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.",
     "submit": "Simpan Transaksi",
     "preparingForm": "Menyiapkan formulir..."
+  },
+  "firstSteps": {
+    "title": "Langkah Pertama",
+    "subtitle": "Bukunya sudah dibuka tapi belum ada transaksi. Beberapa hal ini menyiapkannya untuk dipakai sehari-hari.",
+    "progress": "{done} dari {total} selesai",
+    "done": "Selesai",
+    "start": "Mulai",
+    "again": "Buka lagi",
+    "items": {
+      "pelanggan": {
+        "label": "Tambah Pelanggan",
+        "description": "Siapa yang membeli dari Anda. Dipilih saat mencatat penjualan."
+      },
+      "pemasok": {
+        "label": "Tambah Pemasok",
+        "description": "Dari siapa Anda membeli. Dipilih saat mencatat pembelian."
+      },
+      "stok_awal": {
+        "label": "Catat Stok Awal",
+        "description": "Barang yang sudah ada di gudang sebelum hari ini."
+      },
+      "penjualan": {
+        "label": "Catat Penjualan Pertama",
+        "description": "Dipandu: pelanggan → barang → surat jalan → faktur."
+      },
+      "terima_uang": {
+        "label": "Terima Pembayaran Pertama",
+        "description": "Catat uang yang masuk ke kas atau rekening bank."
+      }
+    }
   },
   "reconciliation": {
     "title": "Cocokkan Rekening Koran",
@@ -1971,12 +2038,12 @@
     "stockIn": "Barang Masuk",
     "stockOut": "Barang Keluar",
     "stockProcess": "Dalam Proses",
-    "financeDescription": "Saldo dan pergerakan uang 6 bulan terakhir per mata uang",
+    "financeDescription": "Saldo dan total pergerakan uang sepanjang waktu, per mata uang",
     "financeHrefLabel": "Buka kas & bank",
     "netBalance": "Saldo bersih · {currency}",
     "noCashBefore": "Belum ada catatan kas —",
     "noCashLink": "catat transaksi pertama",
-    "balancePerAccount": "Saldo per akun",
+    "balancePerAccount": "Saldo per jenis kas",
     "cashFlowChartTitle": "Uang masuk & keluar · {currency}",
     "cashFlowChartDesc": "Perbandingan per bulan (6 bulan terakhir)",
     "contractsTitle": "Penjualan & Kontrak",
@@ -2167,6 +2234,16 @@
     "errSaveFailed": "Gagal menyimpan saldo awal.",
     "errNetwork": "Tidak dapat menghubungi server. Coba lagi.",
     "toastDone": "Setup selesai. Jurnal pembuka tersimpan dan seimbang.",
+    "doneTitle": "Penyiapan Selesai",
+    "doneDescription": "Buku perusahaan sudah dibuka. Berikut yang barusan dibuat.",
+    "doneBanner": "Saldo awal tersimpan sebagai satu jurnal berimbang, dan semua laporan dihitung mulai {date}.",
+    "doneViewJournal": "Lihat jurnal {number}",
+    "doneStartWorking": "Mulai Bekerja",
+    "introTitle": "Yang akan disiapkan di sini",
+    "introPoint1": "Identitas perusahaan, mata uang dasar, dan awal tahun buku.",
+    "introPoint2": "Modul yang dipakai — bagian yang tidak terpakai bisa dimatikan agar menunya tidak penuh.",
+    "introPoint3": "Saldo awal per tanggal itu. Minimal satu isian; sisanya bisa dicatat belakangan sebagai transaksi biasa.",
+    "draftSaved": "Draf tersimpan otomatis",
     "totalAssets": "Total Aset (debit)",
     "totalLiabilities": "Total Kewajiban (kredit)",
     "equityCredit": "Modal/Ekuitas (kredit)",
@@ -3007,6 +3084,7 @@
     "passwordMin8": "Kata sandi minimal 8 karakter",
     "passwordConfirmRequired": "Ulangi kata sandi baru untuk memastikan",
     "passwordMismatch": "Kata sandi tidak sama",
+    "passwordSameAsCurrent": "Kata sandi baru harus berbeda dari kata sandi saat ini",
     "tooManyOverrideRows": "Terlalu banyak baris override.",
     "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
     "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",

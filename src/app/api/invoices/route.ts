@@ -27,13 +27,50 @@ import { writeAuditLog } from "@/lib/audit";
 import { createInvoiceInTx } from "@/lib/document-writes";
 import { OverInvoiceError } from "@/lib/document-chain";
 import { approvalNotice } from "@/lib/approval-requests";
+import { pickerParams, type PickerOption } from "@/lib/picker";
 
-export async function GET() {
+/**
+ * Daftar faktur. Mendukung `?search=&take=&picker=1` (audit: pemilih dokumen
+ * terpotong) — `search` mencocokkan nomor faktur, `take` dibatasi 50, dan
+ * `picker=1` menjawab kontrak bentuk `{ options }` untuk
+ * `ServerSearchableSelect` (dipakai pemilih faktur asal di formulir retur).
+ * Tanpa parameter itu, respons lama tidak berubah.
+ */
+export async function GET(request: Request) {
   const result = await requireApiPermission("invoice.read");
   if (!result.authorized) return result.response;
 
+  const { picker, search, take } = pickerParams(new URL(request.url).searchParams);
+  const searchWhere = search ? { invoiceNo: { contains: search } } : undefined;
+
+  if (picker) {
+    // Faktur batal tidak ditawarkan sebagai asal dokumen baru — filter yang
+    // sama dengan preload statis formulir retur yang digantikan pemilih ini.
+    const invoices = await prisma.invoice.findMany({
+      where: { status: { not: "canceled" }, ...searchWhere },
+      orderBy: { date: "desc" },
+      take,
+      select: {
+        id: true,
+        invoiceNo: true,
+        date: true,
+        currency: true,
+        customer: { select: { name: true } },
+      },
+    });
+    return NextResponse.json({
+      options: invoices.map((i) => ({
+        value: String(i.id),
+        label: i.invoiceNo,
+        hint: `${i.currency} · ${i.customer?.name ?? "—"} · ${i.date.toISOString().slice(0, 10)}`,
+      })),
+    } satisfies { options: PickerOption[] });
+  }
+
   const invoices = await prisma.invoice.findMany({
+    where: searchWhere,
     orderBy: { date: "desc" },
+    take,
     include: { items: true, payments: true },
   });
 

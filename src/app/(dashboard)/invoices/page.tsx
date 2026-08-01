@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Money } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Receipt } from "lucide-react";
@@ -34,7 +35,7 @@ export default async function InvoicesPage({
   const t = await getT();
   const statusLabels = statusFilterLabels(await getDictionary(await getLocale()));
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePageParam(params.page);
   const perPage = 10;
   const where: Record<string, unknown> = {};
 
@@ -50,7 +51,14 @@ export default async function InvoicesPage({
     prisma.invoice.findMany({
       where,
       orderBy: { date: "desc" },
-      include: { items: true, payments: true },
+      include: {
+        items: true,
+        payments: true,
+        // Kompensasi uang muka ikut melunasi faktur (issue #26) — kolom
+        // "Pembayaran" menghitungnya juga, supaya faktur yang lunas lewat
+        // uang muka tidak tampak "0 pembayaran".
+        _count: { select: { advanceApplications: true } },
+      },
       skip: (page - 1) * perPage,
       take: perPage,
     }),
@@ -78,19 +86,43 @@ export default async function InvoicesPage({
       />
       <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
 
-      {/* Filters */}
+      {/* Filters — hrefs membawa `search` yang sedang aktif agar berganti tab
+          tidak diam-diam membuang kata kunci pencarian. `page` sengaja TIDAK
+          dibawa: saringan baru = kembali ke halaman 1. */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {["all", "signed", "pending", "canceled"].map((status) => (
-          <Link key={status} href={`/invoices${status === "all" ? "" : `?status=${status}`}`}>
-            <Button
-              variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
-              size="sm"
-            >
-              {statusLabels[status] ?? status}
-            </Button>
-          </Link>
-        ))}
+        {["all", "signed", "pending", "canceled"].map((status) => {
+          const query = new URLSearchParams();
+          if (status !== "all") query.set("status", status);
+          if (params.search) query.set("search", params.search);
+          const qs = query.toString();
+          return (
+            <Link key={status} href={`/invoices${qs ? `?${qs}` : ""}`}>
+              <Button
+                variant={params.status === status || (!params.status && status === "all") ? "primary" : "secondary"}
+                size="sm"
+              >
+                {statusLabels[status] ?? status}
+              </Button>
+            </Link>
+          );
+        })}
       </div>
+
+      {/* Search — GET form; `status` ikut sebagai hidden input supaya mencari
+          tidak mereset tab status yang sedang aktif. */}
+      <form className="mb-4">
+        {params.status && <input type="hidden" name="status" value={params.status} />}
+        <TextInput
+          type="text"
+          name="search"
+          placeholder={t("searchableSelect.searchPlaceholder")}
+          defaultValue={params.search}
+          className="w-full max-w-md"
+        />
+        <Button type="submit" className="ml-2">
+          {t("common.search")}
+        </Button>
+      </form>
 
       <Card>
         <Table>
@@ -128,7 +160,9 @@ export default async function InvoicesPage({
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(inv.date)}</TableCell>
                     <TableCell className="text-right text-muted-foreground tabular-nums">{inv.items.length}</TableCell>
-                    <TableCell className="text-right text-muted-foreground tabular-nums">{inv.payments.length}</TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">
+                      {inv.payments.length + inv._count.advanceApplications}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Money value={total} currency={inv.currency || "IDR"} />
                     </TableCell>

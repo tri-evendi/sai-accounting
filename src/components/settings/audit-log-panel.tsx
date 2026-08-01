@@ -69,17 +69,26 @@ export function AuditLogPanel() {
     async function load() {
       setLoading(true);
       setError("");
-      const res = await fetch(`/api/audit?page=${page}&perPage=15`);
-      if (cancelled) return;
-      if (!res.ok) {
-        setError(res.status === 403 ? t("audit.accessDenied") : t("audit.loadFailed"));
+      // try/catch: fetch yang gagal di jaringan (bukan status non-OK) dulunya
+      // membuat "Memuat…" tergantung selamanya karena loading tak pernah turun.
+      try {
+        const res = await fetch(`/api/audit?page=${page}&perPage=15`);
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(res.status === 403 ? t("audit.accessDenied") : t("audit.loadFailed"));
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setLogs(data.logs);
+        setTotalPages(data.totalPages);
         setLoading(false);
-        return;
+      } catch {
+        if (cancelled) return;
+        setError(t("audit.loadFailed"));
+        setLoading(false);
       }
-      const data = await res.json();
-      setLogs(data.logs);
-      setTotalPages(data.totalPages);
-      setLoading(false);
     }
 
     void load();

@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Contract & Inventory Management System — PT Subur Anugerah Indonesia"
+    "description": "Bookkeeping and accounting system for businesses in Indonesia."
   },
   "common": {
     "save": "Save",
@@ -238,7 +238,10 @@
     "noTour": "This page has no guided tour yet. Tours are available on Home, Record a Sale, and the Report Centre."
   },
   "auth": {
-    "brandTagline": "Contract & inventory management for internal teams.",
+    "brandTagline": "Standards-based bookkeeping for businesses in Indonesia.",
+    "brandPoint1": "Double-entry journals and a general ledger that follow standard accounting rules.",
+    "brandPoint2": "Rupiah and foreign currencies, each with its rate and base-currency value.",
+    "brandPoint3": "Several companies in one installation, each with genuinely separate books.",
     "setupRequired": {
       "heading": "This app is not set up yet",
       "description": "Company details have not been filled in, so the app cannot be used yet.",
@@ -248,7 +251,7 @@
     },
     "login": {
       "heading": "Sign in",
-      "description": "Use your company account to open dashboards, contracts, and stock.",
+      "description": "Use your company account to open the books and your daily work.",
       "username": "Username",
       "usernamePlaceholder": "your.username",
       "password": "Password",
@@ -265,10 +268,13 @@
       "new": "New password",
       "confirm": "Confirm new password",
       "hint": "Use at least 8 characters. Do not reuse passwords from other systems.",
+      "ruleLength": "At least {count} characters",
+      "ruleDifferent": "Different from your current password",
+      "ruleMatch": "Both new-password entries match",
+      "ruleMet": "requirement met",
+      "ruleUnmet": "requirement not met yet",
       "submit": "Save password",
       "submitting": "Saving...",
-      "mismatch": "The new password and its confirmation do not match.",
-      "tooShort": "Password must be at least 8 characters.",
       "failed": "Could not change the password. Please try again."
     },
     "selectCompany": {
@@ -372,10 +378,17 @@
     "example": "Example:",
     "learnMore": "Learn more"
   },
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match system"
+  },
   "confirm": {
     "retypeLabel": "Retype to confirm:"
   },
   "errors": {
+    "accountParentCycle": "The chosen parent is a descendant of this account — the hierarchy would loop. Pick another parent.",
     "generic": "Something went wrong. Please try again.",
     "network": "Could not reach the server. Check your connection.",
     "unauthorized": "You do not have access to this page.",
@@ -456,6 +469,7 @@
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",
     "contractInUse": "This contract is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the contract so the document chain stays intact.",
+    "invoiceInUse": "This invoice is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the invoice so the document chain stays intact.",
     "contractUsedInvoices": "{count} invoice(s)",
     "contractUsedDeliveryOrders": "{count} delivery order(s)",
     "contractUsedBoth": "{invoices} invoice(s) and {deliveryOrders} delivery order(s)",
@@ -483,6 +497,7 @@
     "bookMovementNotFound": "The book transaction was not found.",
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
+    "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
     "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
   },
   "contracts": {
@@ -846,6 +861,7 @@
     "confirmLabel": "Yes, issue it"
   },
   "returns": {
+    "statusCanceled": "Canceled",
     "title": "Returns",
     "description": "Goods sent back — reversing part of an invoice or purchase along with its stock, receivable/payable, and VAT.",
     "addNew": "Create Return",
@@ -932,6 +948,7 @@
     "activeHint": "An inactive consignee no longer appears in the Contract picker, but existing contracts stay linked."
   },
   "customers": {
+    "activeHint": "An inactive customer no longer appears in the Invoice picker, but existing documents stay linked.",
     "title": "Customers ({count})",
     "addNew": "+ Add Customer",
     "colPic": "Person in Charge",
@@ -956,6 +973,7 @@
     "taxable": "Subject to VAT (standard)"
   },
   "suppliers": {
+    "activeHint": "An inactive supplier no longer appears in the Purchase picker, but existing documents stay linked.",
     "title": "Suppliers ({count})",
     "description": "Open a supplier to record its purchases and payments.",
     "addNew": "+ Add Supplier",
@@ -1185,6 +1203,7 @@
     "saveFailed": "The cost centre could not be saved",
     "codeTaken": "That cost centre code is already in use",
     "parentSelf": "A cost centre cannot be its own parent",
+    "parentCycle": "The chosen parent is a descendant of this cost centre — the hierarchy would loop. Pick another parent.",
     "emptyTitle": "No cost centres yet",
     "emptyDescription": "Create one cost centre to start splitting profit and loss by branch, unit or project.",
     "filterLabel": "Cost Centre",
@@ -1460,6 +1479,20 @@
     "title": "Report Centre",
     "description": "Every report in one place, grouped by category. Pick a report, set the period, then export to PDF or Excel. Figures are in IDR (the ledger base value).",
     "comingSoon": "Coming soon",
+    "colCustomer": "Customer",
+    "colSupplier": "Supplier",
+    "colDocuments": "Documents",
+    "colGrossSales": "Sales (IDR)",
+    "colGrossPurchases": "Purchases (IDR)",
+    "colReturns": "Returns (IDR)",
+    "colNet": "Net (IDR)",
+    "noCustomerLabel": "No customer",
+    "noSupplierLabel": "No supplier",
+    "salesByCustomerEmpty": "No sales invoices in this period.",
+    "purchasesBySupplierEmpty": "No purchases in this period.",
+    "grossIncludesTaxNote": "Gross values include VAT (PPN); returns in the same period are deducted in their own column.",
+    "rowUnrated": "{count} documents missing a rate",
+    "unratedDocsNote": "{count} foreign-currency documents without a usable rate are excluded from the totals.",
     "openReport": "Open report",
     "breadcrumb": "Report Centre",
     "asOfWithCurrency": "As of {date} · figures in IDR",
@@ -1478,7 +1511,7 @@
     "sectionLiabilities": "Liabilities",
     "sectionEquity": "Equity",
     "sectionTotal": "Total {section}",
-    "currentNetIncome": "Current Profit / Loss",
+    "currentNetIncome": "Accumulated Profit / Loss",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "incomeStatementTitle": "Income Statement",
@@ -1541,10 +1574,14 @@
       },
       "pajak": {
         "label": "Tax",
-        "description": "Output/input VAT export (e-Faktur / CTAS)."
+        "description": "Output VAT export (e-Faktur / CTAS)."
       }
     },
     "catalogReport": {
+      "opname_history": {
+        "title": "Stock Count History",
+        "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance."
+      },
       "trial_balance": {
         "title": "Trial Balance",
         "description": "Debit/credit balance of every account on one date — it must balance."
@@ -1745,6 +1782,36 @@
     "rateHint": "Required for a foreign currency — the IDR value in the ledger is computed from this rate.",
     "submit": "Save Transaction",
     "preparingForm": "Preparing the form..."
+  },
+  "firstSteps": {
+    "title": "First Steps",
+    "subtitle": "The books are open but nothing has been recorded yet. These few things get them ready for daily use.",
+    "progress": "{done} of {total} done",
+    "done": "Done",
+    "start": "Start",
+    "again": "Open again",
+    "items": {
+      "pelanggan": {
+        "label": "Add a Customer",
+        "description": "Who buys from you. Picked when you record a sale."
+      },
+      "pemasok": {
+        "label": "Add a Supplier",
+        "description": "Who you buy from. Picked when you record a purchase."
+      },
+      "stok_awal": {
+        "label": "Record Opening Stock",
+        "description": "Goods already in the warehouse before today."
+      },
+      "penjualan": {
+        "label": "Record Your First Sale",
+        "description": "Guided: customer → goods → delivery order → invoice."
+      },
+      "terima_uang": {
+        "label": "Receive Your First Payment",
+        "description": "Record money coming into cash or a bank account."
+      }
+    }
   },
   "reconciliation": {
     "title": "Match Bank Statement",
@@ -1971,12 +2038,12 @@
     "stockIn": "Goods In",
     "stockOut": "Goods Out",
     "stockProcess": "In Processing",
-    "financeDescription": "Balances and money movement over the last 6 months, per currency",
+    "financeDescription": "All-time balances and money movement, per currency",
     "financeHrefLabel": "Open cash & bank",
     "netBalance": "Net balance · {currency}",
     "noCashBefore": "No cash records yet —",
     "noCashLink": "record the first transaction",
-    "balancePerAccount": "Balance per account",
+    "balancePerAccount": "Balance per cash type",
     "cashFlowChartTitle": "Money in & out · {currency}",
     "cashFlowChartDesc": "Month-by-month comparison (last 6 months)",
     "contractsTitle": "Sales & Contracts",
@@ -2167,6 +2234,16 @@
     "errSaveFailed": "The opening balances could not be saved.",
     "errNetwork": "Could not reach the server. Please try again.",
     "toastDone": "Setup complete. The opening journal is saved and balanced.",
+    "doneTitle": "Setup Complete",
+    "doneDescription": "The company's books are open. Here is what was just created.",
+    "doneBanner": "Opening balances were saved as one balanced journal, and every report is calculated from {date} onward.",
+    "doneViewJournal": "View journal {number}",
+    "doneStartWorking": "Start Working",
+    "introTitle": "What you will set up here",
+    "introPoint1": "Company identity, base currency, and the start of the fiscal year.",
+    "introPoint2": "Which modules you use — turn off the ones you do not need so the menu stays short.",
+    "introPoint3": "Opening balances as of that date. At least one entry is required; the rest can be recorded later as ordinary transactions.",
+    "draftSaved": "Draft saved automatically",
     "totalAssets": "Total Assets (debit)",
     "totalLiabilities": "Total Liabilities (credit)",
     "equityCredit": "Capital/Equity (credit)",
@@ -3007,6 +3084,7 @@
     "passwordMin8": "Password must be at least 8 characters",
     "passwordConfirmRequired": "Please confirm your new password",
     "passwordMismatch": "The passwords do not match",
+    "passwordSameAsCurrent": "Your new password must differ from your current one",
     "tooManyOverrideRows": "Too many override rows.",
     "companyDatabasePrefix": "The database name must start with \"sai_\"",
     "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",

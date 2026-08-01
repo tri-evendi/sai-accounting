@@ -153,6 +153,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.accountantMode = next === true || next === false ? next : null;
       }
 
+      /*
+       * ── Kata sandi baru saja diganti — paksa revalidasi SEKARANG ──────────
+       *
+       * `mustChangePassword` hanya disegarkan oleh revalidasi berkala di bawah,
+       * dan jaraknya `SESSION_RECHECK_MS` (60 detik). Tanpa cabang ini, orang
+       * yang BERHASIL mengganti kata sandinya tetap membawa token bertanda
+       * "wajib ganti" sampai satu menit — dan `proxy.ts` memantulkan setiap
+       * tujuan kembali ke `/change-password`. Yang dilihat pengguna baru pada
+       * langkah pertamanya adalah formulir yang menolak keberhasilannya
+       * sendiri, tanpa satu pun pesan galat yang menjelaskan.
+       *
+       * Yang ditulis di sini hanya "sudah lama tidak diperiksa"; nilainya tetap
+       * dibaca dari basis data kendali oleh blok di bawah. Klien tidak pernah
+       * bisa mengumumkan bahwa sandinya sudah berganti — ia hanya bisa meminta
+       * pemeriksaan lebih awal.
+       */
+      if (
+        trigger === "update" &&
+        session &&
+        typeof session === "object" &&
+        "passwordChanged" in session
+      ) {
+        token.checkedAt = 0;
+      }
+
       // ── audit RBAC fase 3 + keanggotaan (#104) — revalidasi berkala ──────
       if (!token.userId) return null;
       if (shouldRecheckSession(token, Date.now())) {

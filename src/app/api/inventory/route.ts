@@ -28,6 +28,9 @@ export async function GET(request: Request) {
 
   const items = await prisma.item.findMany({
     where: activeOnly ? { isActive: true } : undefined,
+    // Urutan yang sama dengan pemilih yang dirender server (nama, A→Z) —
+    // tanpa orderBy, urutannya kebetulan urutan sisip dan bisa berbeda.
+    orderBy: { name: "asc" },
     include: {
       // Empat kolom yang benar-benar dipakai ringkasan & PDF — bukan seluruh
       // baris gerakan (issue #104).

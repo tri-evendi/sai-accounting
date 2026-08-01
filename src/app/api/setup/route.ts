@@ -24,7 +24,8 @@ import {
   OpeningBalanceError,
   type OpeningBalancesInput,
 } from "@/lib/opening-balance";
-import { COMPANY_NAME, COMPANY_ADDRESS, CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@/lib/constants";
+import { getCompanyIdentity } from "@/lib/company-identity";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import {
@@ -53,6 +54,10 @@ export async function GET() {
     prisma.supplier.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
+  // Identitas perusahaan AKTIF (setting → nama registry PT ini), bukan
+  // konstanta pemasang pertama — lihat catatan di halaman wizard.
+  const identity = await getCompanyIdentity();
+
   // On a completed setup, hand back the opening journal for the read-only summary.
   let openingJournal = null;
   if (settings?.isSetup && settings.openingJournalId) {
@@ -67,8 +72,8 @@ export async function GET() {
     settings,
     openingJournal,
     defaults: {
-      name: settings?.name ?? COMPANY_NAME,
-      address: settings?.address ?? COMPANY_ADDRESS,
+      name: settings?.name ?? identity.name,
+      address: settings?.address ?? identity.address,
       baseCurrency: settings?.baseCurrency ?? "IDR",
     },
     currencies: CURRENCIES,

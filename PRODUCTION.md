@@ -1,4 +1,4 @@
-# Production deployment — SAI Management
+# Production deployment — SAI Accounting
 
 > **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `npm run setup:prod`, `npm run start:prod` (no standalone zip).
 

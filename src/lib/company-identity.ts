@@ -23,6 +23,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
 import { getCompanyContext } from "@/lib/company-context";
+import { currentCompany } from "@/lib/current-company";
 import { getCompany } from "@/lib/company-registry";
 
 export interface CompanyIdentity {
@@ -98,10 +99,22 @@ export async function getCompanyIdentity(): Promise<CompanyIdentity> {
 
     // Registry hanya ditanya bila memang dibutuhkan — halaman yang sudah punya
     // setting tidak perlu membayar satu query ke basis data kendali.
+    // Konteks dicari seperti pembaca lain: ALS dulu, lalu SESI —
+    // `enterWith` tidak dijamin merambat di setiap permintaan HTTP
+    // (docs/MULTI-COMPANY.md), dan tanpa fallback sesi perusahaan tanpa wizard
+    // diam-diam jatuh ke konstanta pemasang pertama alih-alih nama registry-nya
+    // sendiri.
     let registryName: string | null = null;
     if (!settings?.name?.trim()) {
-      const context = getCompanyContext();
-      if (context) registryName = (await getCompany(context.companyId))?.name ?? null;
+      let companyId = getCompanyContext()?.companyId ?? null;
+      if (companyId == null) {
+        try {
+          companyId = (await currentCompany()).companyId;
+        } catch {
+          // Belum log in (halaman masuk memakai endpoint ini) — biarkan null.
+        }
+      }
+      if (companyId != null) registryName = (await getCompany(companyId))?.name ?? null;
     }
 
     return pickIdentity({

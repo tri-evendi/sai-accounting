@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -19,27 +20,52 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatNumber, formatDateShort } from "@/lib/utils";
+import { formatNumber, formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { Truck, Plus, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function DeliveryOrdersPage() {
+export default async function DeliveryOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}) {
   await requirePagePermission("delivery_order.read");
   const t = await getT();
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const perPage = 20;
 
-  const orders = await prisma.deliveryOrder.findMany({
-    orderBy: { date: "desc" },
-    include: {
-      items: true,
-      contract: { select: { contractNo: true } },
-      invoice: { select: { invoiceNo: true } },
-      consignee: { select: { name: true } },
-    },
-  });
+  // Pencarian menutup nomor SJ dan nama consignee — dua kolom pengenal yang
+  // benar-benar tampil di daftar (pola /contracts).
+  const where: Record<string, unknown> = {};
+  if (params.search) {
+    where.OR = [
+      { no: { contains: params.search } },
+      { consignee: { name: { contains: params.search } } },
+    ];
+  }
+
+  const [orders, totalCount] = await Promise.all([
+    prisma.deliveryOrder.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: {
+        items: true,
+        contract: { select: { contractNo: true } },
+        invoice: { select: { invoiceNo: true } },
+        consignee: { select: { name: true } },
+      },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.deliveryOrder.count({ where }),
+  ]);
+  const totalPages = Math.ceil(totalCount / perPage);
 
   return (
     <div>
@@ -63,6 +89,20 @@ export default async function DeliveryOrdersPage() {
           {t("deliveryOrders.stockNoteB")}
         </span>
       </p>
+
+      {/* Search — GET form (pola /contracts); saringan baru = kembali ke hal. 1. */}
+      <form className="mb-4">
+        <TextInput
+          type="text"
+          name="search"
+          placeholder={t("common.search")}
+          defaultValue={params.search}
+          className="w-full max-w-md"
+        />
+        <Button type="submit" className="ml-2">
+          {t("common.search")}
+        </Button>
+      </form>
 
       {orders.length === 0 ? (
         <EmptyState
@@ -123,6 +163,12 @@ export default async function DeliveryOrdersPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/delivery-orders"
+            searchParams={params}
+          />
         </Card>
       )}
     </div>

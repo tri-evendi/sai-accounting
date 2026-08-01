@@ -66,6 +66,7 @@ import {
 import { PERMISSION_LABELS, RESOURCE_LABELS } from "@/lib/authz-labels";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
+import { FIRST_STEPS } from "@/lib/first-steps";
 import { WORKFLOWS } from "@/lib/workflows";
 import { PURCHASE_STEPS, SALES_STEPS } from "@/lib/wizard";
 import { TOURS } from "@/lib/tours";
@@ -331,6 +332,13 @@ describe("kamus: bahasa sumber tidak menyimpang dari kode", () => {
           step.description
         );
       }
+    }
+  });
+
+  it("label & penjelasan Langkah Pertama sama persis dengan nilai kamus `id`", () => {
+    for (const step of FIRST_STEPS) {
+      expect(translate(id, step.labelKey), step.key).toBe(step.label);
+      expect(translate(id, step.descriptionKey), step.key).toBe(step.description);
     }
   });
 

@@ -21,9 +21,32 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Building2, Check, ChevronDown, Languages, LogOut, KeyRound, User } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  Languages,
+  LogOut,
+  KeyRound,
+  Monitor,
+  Moon,
+  Palette,
+  Sun,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { useTheme } from "@/lib/theme/client";
+import { THEMES, type Theme } from "@/lib/theme/config";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
+
+const THEME_ICONS: Record<Theme, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
+const THEME_LABELS: Record<Theme, DictionaryKey> = {
+  light: "theme.light",
+  dark: "theme.dark",
+  system: "theme.system",
+};
 import { setLocale } from "@/lib/i18n/actions";
 import { useDictionary, useLocale, useT } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
@@ -63,6 +86,7 @@ export function UserMenu({
   const t = useT();
   const dictionary = useDictionary();
   const activeLocale = useLocale();
+  const { theme, changeTheme } = useTheme();
   const router = useRouter();
   const [switching, startSwitching] = useTransition();
   // Peran kustom (data, tabel `roles`) tidak punya label di kamus — nilai
@@ -222,6 +246,56 @@ export function UserMenu({
                 {t("userMenu.languageSwitching")}
               </p>
             )}
+          </div>
+
+          {/*
+           * Tema — tetangga bahasa, dan itu bukan kebetulan.
+           *
+           * Keduanya preferensi TAMPILAN milik orangnya (bukan milik
+           * perusahaan, bukan data), keduanya disimpan sebagai cookie
+           * tampilan-saja, dan keduanya dicari orang di tempat yang sama:
+           * menu akun. Menaruh tema di ikon lepas pada top bar akan menambah
+           * satu penghuni bar demi sesuatu yang disentuh sekali seumur
+           * pemasangan.
+           *
+           * Bentuknya sama dengan blok bahasa di atas (`menuitemradio` +
+           * `aria-checked`), bukan `ThemeToggle` berikonnya: di dalam dropdown,
+           * baris berteks bisa dijelajahi dengan panah bersama baris lain —
+           * tiga tombol ikon berdampingan justru memutus pola navigasinya.
+           */}
+          <div
+            role="group"
+            aria-label={t("theme.label")}
+            className="border-b border-border p-1"
+          >
+            <p className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Palette className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {t("theme.label")}
+            </p>
+            {THEMES.map((option) => {
+              const active = option === theme;
+              const Icon = THEME_ICONS[option];
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => changeTheme(option)}
+                  className={cn(
+                    itemClass,
+                    "justify-between",
+                    active ? "font-semibold text-primary" : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {t(THEME_LABELS[option])}
+                  </span>
+                  {active && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                </button>
+              );
+            })}
           </div>
 
           {/* Aksi akun */}

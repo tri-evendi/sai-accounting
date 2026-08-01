@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Sistem Manajemen Kontrak & Stok — PT Subur Anugerah Indonesia"
+    "description": "Sistem pembukuan dan akuntansi untuk usaha di Indonesia."
   },
   "common": {
     "save": "Simpan",
@@ -238,7 +238,10 @@
     "noTour": "Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan Pusat Laporan."
   },
   "auth": {
-    "brandTagline": "Pengelolaan kontrak & stok untuk tim internal.",
+    "brandTagline": "Pembukuan baku untuk usaha di Indonesia.",
+    "brandPoint1": "Jurnal & buku besar berpasangan, sesuai kaidah akuntansi baku.",
+    "brandPoint2": "Rupiah dan mata uang asing, lengkap dengan kurs dan nilai dasarnya.",
+    "brandPoint3": "Banyak PT dalam satu pemasangan, dengan buku yang benar-benar terpisah.",
     "setupRequired": {
       "heading": "Aplikasi belum disiapkan",
       "description": "Data perusahaan belum diisi, jadi aplikasi belum bisa dipakai.",
@@ -248,7 +251,7 @@
     },
     "login": {
       "heading": "Masuk",
-      "description": "Gunakan akun perusahaan Anda untuk membuka dasbor, kontrak, dan stok.",
+      "description": "Gunakan akun perusahaan Anda untuk membuka buku dan pekerjaan harian.",
       "username": "Nama Pengguna",
       "usernamePlaceholder": "nama.pengguna",
       "password": "Kata Sandi",
@@ -265,10 +268,13 @@
       "new": "Kata Sandi Baru",
       "confirm": "Ulangi Kata Sandi Baru",
       "hint": "Gunakan minimal 8 karakter. Jangan memakai ulang kata sandi dari sistem lain.",
+      "ruleLength": "Minimal {count} karakter",
+      "ruleDifferent": "Berbeda dari kata sandi saat ini",
+      "ruleMatch": "Ulangannya cocok",
+      "ruleMet": "sudah terpenuhi",
+      "ruleUnmet": "belum terpenuhi",
       "submit": "Simpan Kata Sandi",
       "submitting": "Menyimpan...",
-      "mismatch": "Kata sandi baru dan ulangannya tidak sama.",
-      "tooShort": "Kata sandi minimal 8 karakter.",
       "failed": "Gagal mengganti kata sandi. Silakan coba lagi."
     },
     "selectCompany": {
@@ -371,6 +377,12 @@
     "badge": "Istilah akuntansi",
     "example": "Contoh:",
     "learnMore": "Pelajari selengkapnya"
+  },
+  "theme": {
+    "label": "Tampilan",
+    "light": "Terang",
+    "dark": "Gelap",
+    "system": "Ikut sistem"
   },
   "confirm": {
     "retypeLabel": "Ketik ulang untuk memastikan:"
@@ -1566,7 +1578,10 @@
       }
     },
     "catalogReport": {
-      "opname_history": { "title": "Riwayat Hitung Ulang Stok", "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya." },
+      "opname_history": {
+        "title": "Riwayat Hitung Ulang Stok",
+        "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya."
+      },
       "trial_balance": {
         "title": "Neraca Saldo",
         "description": "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang."
@@ -1767,6 +1782,36 @@
     "rateHint": "Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.",
     "submit": "Simpan Transaksi",
     "preparingForm": "Menyiapkan formulir..."
+  },
+  "firstSteps": {
+    "title": "Langkah Pertama",
+    "subtitle": "Bukunya sudah dibuka tapi belum ada transaksi. Beberapa hal ini menyiapkannya untuk dipakai sehari-hari.",
+    "progress": "{done} dari {total} selesai",
+    "done": "Selesai",
+    "start": "Mulai",
+    "again": "Buka lagi",
+    "items": {
+      "pelanggan": {
+        "label": "Tambah Pelanggan",
+        "description": "Siapa yang membeli dari Anda. Dipilih saat mencatat penjualan."
+      },
+      "pemasok": {
+        "label": "Tambah Pemasok",
+        "description": "Dari siapa Anda membeli. Dipilih saat mencatat pembelian."
+      },
+      "stok_awal": {
+        "label": "Catat Stok Awal",
+        "description": "Barang yang sudah ada di gudang sebelum hari ini."
+      },
+      "penjualan": {
+        "label": "Catat Penjualan Pertama",
+        "description": "Dipandu: pelanggan → barang → surat jalan → faktur."
+      },
+      "terima_uang": {
+        "label": "Terima Pembayaran Pertama",
+        "description": "Catat uang yang masuk ke kas atau rekening bank."
+      }
+    }
   },
   "reconciliation": {
     "title": "Cocokkan Rekening Koran",
@@ -2189,6 +2234,16 @@
     "errSaveFailed": "Gagal menyimpan saldo awal.",
     "errNetwork": "Tidak dapat menghubungi server. Coba lagi.",
     "toastDone": "Setup selesai. Jurnal pembuka tersimpan dan seimbang.",
+    "doneTitle": "Penyiapan Selesai",
+    "doneDescription": "Buku perusahaan sudah dibuka. Berikut yang barusan dibuat.",
+    "doneBanner": "Saldo awal tersimpan sebagai satu jurnal berimbang, dan semua laporan dihitung mulai {date}.",
+    "doneViewJournal": "Lihat jurnal {number}",
+    "doneStartWorking": "Mulai Bekerja",
+    "introTitle": "Yang akan disiapkan di sini",
+    "introPoint1": "Identitas perusahaan, mata uang dasar, dan awal tahun buku.",
+    "introPoint2": "Modul yang dipakai — bagian yang tidak terpakai bisa dimatikan agar menunya tidak penuh.",
+    "introPoint3": "Saldo awal per tanggal itu. Minimal satu isian; sisanya bisa dicatat belakangan sebagai transaksi biasa.",
+    "draftSaved": "Draf tersimpan otomatis",
     "totalAssets": "Total Aset (debit)",
     "totalLiabilities": "Total Kewajiban (kredit)",
     "equityCredit": "Modal/Ekuitas (kredit)",
@@ -3029,6 +3084,7 @@
     "passwordMin8": "Kata sandi minimal 8 karakter",
     "passwordConfirmRequired": "Ulangi kata sandi baru untuk memastikan",
     "passwordMismatch": "Kata sandi tidak sama",
+    "passwordSameAsCurrent": "Kata sandi baru harus berbeda dari kata sandi saat ini",
     "tooManyOverrideRows": "Terlalu banyak baris override.",
     "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
     "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Contract & Inventory Management System — PT Subur Anugerah Indonesia"
+    "description": "Bookkeeping and accounting system for businesses in Indonesia."
   },
   "common": {
     "save": "Save",
@@ -238,7 +238,10 @@
     "noTour": "This page has no guided tour yet. Tours are available on Home, Record a Sale, and the Report Centre."
   },
   "auth": {
-    "brandTagline": "Contract & inventory management for internal teams.",
+    "brandTagline": "Standards-based bookkeeping for businesses in Indonesia.",
+    "brandPoint1": "Double-entry journals and a general ledger that follow standard accounting rules.",
+    "brandPoint2": "Rupiah and foreign currencies, each with its rate and base-currency value.",
+    "brandPoint3": "Several companies in one installation, each with genuinely separate books.",
     "setupRequired": {
       "heading": "This app is not set up yet",
       "description": "Company details have not been filled in, so the app cannot be used yet.",
@@ -248,7 +251,7 @@
     },
     "login": {
       "heading": "Sign in",
-      "description": "Use your company account to open dashboards, contracts, and stock.",
+      "description": "Use your company account to open the books and your daily work.",
       "username": "Username",
       "usernamePlaceholder": "your.username",
       "password": "Password",
@@ -265,10 +268,13 @@
       "new": "New password",
       "confirm": "Confirm new password",
       "hint": "Use at least 8 characters. Do not reuse passwords from other systems.",
+      "ruleLength": "At least {count} characters",
+      "ruleDifferent": "Different from your current password",
+      "ruleMatch": "Both new-password entries match",
+      "ruleMet": "requirement met",
+      "ruleUnmet": "requirement not met yet",
       "submit": "Save password",
       "submitting": "Saving...",
-      "mismatch": "The new password and its confirmation do not match.",
-      "tooShort": "Password must be at least 8 characters.",
       "failed": "Could not change the password. Please try again."
     },
     "selectCompany": {
@@ -371,6 +377,12 @@
     "badge": "Accounting term",
     "example": "Example:",
     "learnMore": "Learn more"
+  },
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match system"
   },
   "confirm": {
     "retypeLabel": "Retype to confirm:"
@@ -1566,7 +1578,10 @@
       }
     },
     "catalogReport": {
-      "opname_history": { "title": "Stock Count History", "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance." },
+      "opname_history": {
+        "title": "Stock Count History",
+        "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance."
+      },
       "trial_balance": {
         "title": "Trial Balance",
         "description": "Debit/credit balance of every account on one date — it must balance."
@@ -1767,6 +1782,36 @@
     "rateHint": "Required for a foreign currency — the IDR value in the ledger is computed from this rate.",
     "submit": "Save Transaction",
     "preparingForm": "Preparing the form..."
+  },
+  "firstSteps": {
+    "title": "First Steps",
+    "subtitle": "The books are open but nothing has been recorded yet. These few things get them ready for daily use.",
+    "progress": "{done} of {total} done",
+    "done": "Done",
+    "start": "Start",
+    "again": "Open again",
+    "items": {
+      "pelanggan": {
+        "label": "Add a Customer",
+        "description": "Who buys from you. Picked when you record a sale."
+      },
+      "pemasok": {
+        "label": "Add a Supplier",
+        "description": "Who you buy from. Picked when you record a purchase."
+      },
+      "stok_awal": {
+        "label": "Record Opening Stock",
+        "description": "Goods already in the warehouse before today."
+      },
+      "penjualan": {
+        "label": "Record Your First Sale",
+        "description": "Guided: customer → goods → delivery order → invoice."
+      },
+      "terima_uang": {
+        "label": "Receive Your First Payment",
+        "description": "Record money coming into cash or a bank account."
+      }
+    }
   },
   "reconciliation": {
     "title": "Match Bank Statement",
@@ -2189,6 +2234,16 @@
     "errSaveFailed": "The opening balances could not be saved.",
     "errNetwork": "Could not reach the server. Please try again.",
     "toastDone": "Setup complete. The opening journal is saved and balanced.",
+    "doneTitle": "Setup Complete",
+    "doneDescription": "The company's books are open. Here is what was just created.",
+    "doneBanner": "Opening balances were saved as one balanced journal, and every report is calculated from {date} onward.",
+    "doneViewJournal": "View journal {number}",
+    "doneStartWorking": "Start Working",
+    "introTitle": "What you will set up here",
+    "introPoint1": "Company identity, base currency, and the start of the fiscal year.",
+    "introPoint2": "Which modules you use — turn off the ones you do not need so the menu stays short.",
+    "introPoint3": "Opening balances as of that date. At least one entry is required; the rest can be recorded later as ordinary transactions.",
+    "draftSaved": "Draft saved automatically",
     "totalAssets": "Total Assets (debit)",
     "totalLiabilities": "Total Liabilities (credit)",
     "equityCredit": "Capital/Equity (credit)",
@@ -3029,6 +3084,7 @@
     "passwordMin8": "Password must be at least 8 characters",
     "passwordConfirmRequired": "Please confirm your new password",
     "passwordMismatch": "The passwords do not match",
+    "passwordSameAsCurrent": "Your new password must differ from your current one",
     "tooManyOverrideRows": "Too many override rows.",
     "companyDatabasePrefix": "The database name must start with \"sai_\"",
     "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",

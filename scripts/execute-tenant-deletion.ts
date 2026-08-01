@@ -3,8 +3,8 @@
  * bergerbang bukti seperti adopsi #134: penghancuran menuntut manusia yang
  * membaca apa yang akan terjadi lalu mengetik ulang nama tenantnya.
  *
- *   npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug>
- *   npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> --drop-ledgers
+ *   bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug>
+ *   bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> --drop-ledgers
  *
  * ══ DUA GERBANG, DUA WAKTU ══════════════════════════════════════════════════
  * EKSEKUSI (tanpa --drop-ledgers) hanya boleh bila ada permintaan `pending`
@@ -96,7 +96,7 @@ async function main() {
   }
   if (!slug) {
     console.error(
-      "Pakai: npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> [--drop-ledgers]"
+      "Pakai: bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> [--drop-ledgers]"
     );
     process.exit(1);
   }
@@ -251,7 +251,7 @@ async function main() {
   console.log(`  retention_until = ${retentionUntil.toISOString()}`);
   console.log(
     "  Penghancuran buku baru bisa SETELAH tanggal itu:\n" +
-      `    npx tsx scripts/execute-tenant-deletion.ts --tenant ${slug} --confirm ${slug} --drop-ledgers`
+      `    bunx tsx scripts/execute-tenant-deletion.ts --tenant ${slug} --confirm ${slug} --drop-ledgers`
   );
 
   await control.$disconnect();

@@ -1,7 +1,7 @@
 /**
  * PEMBUKTIAN adopsi tenant (issue #134) — read-only, exit != 0 bila ada cacat.
  *
- *   npx tsx scripts/prove-tenant-adoption.ts
+ *   bunx tsx scripts/prove-tenant-adoption.ts
  *
  * Berdiri di antara skrip adopsi dan migration 0003 (NOT NULL + unik):
  * migration itu TIDAK BOLEH diterapkan sebelum skrip ini lulus. Ia sengaja
@@ -133,7 +133,7 @@ async function main() {
     `LULUS — ${tenants.length} tenant, ${companies.length} perusahaan, ` +
       `${users.length} pengguna: semua bertaut, semua ber-email, tidak ada kembar.`
   );
-  console.log("Aman menerapkan migration 0003: npm run db:migrate:control");
+  console.log("Aman menerapkan migration 0003: bun run db:migrate:control");
 }
 
 main().catch((error) => {

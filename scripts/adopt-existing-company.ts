@@ -2,7 +2,7 @@
  * Daftarkan pemasangan SATU perusahaan yang sudah berjalan sebagai perusahaan
  * pertama di basis data kendali (issue #104).
  *
- *   npx tsx scripts/adopt-existing-company.ts --slug pt-sai --emails emails.json \
+ *   bunx tsx scripts/adopt-existing-company.ts --slug pt-sai --emails emails.json \
  *       [--name "PT Subur Anugerah"] [--tenant-slug pt-sai] [--owners admin]
  *
  * Sejak issue #134 basis data kendali menuntut setiap akun ber-EMAIL dan
@@ -13,9 +13,9 @@
  * menjadi owner tenant; `--owners` menimpanya.
  *
  * ══ URUTAN YANG WAJIB ══════════════════════════════════════════════════════
- *   1. npm run db:migrate:control          — siapkan basis data kendali
- *   2. npx tsx scripts/adopt-existing-company.ts   ← SKRIP INI
- *   3. npm run db:migrate:companies        — migration 0042 membuang `users`
+ *   1. bun run db:migrate:control          — siapkan basis data kendali
+ *   2. bunx tsx scripts/adopt-existing-company.ts   ← SKRIP INI
+ *   3. bun run db:migrate:companies        — migration 0042 membuang `users`
  *
  * Skrip ini MEMBACA tabel `users` yang dibuang langkah 3. Kalau langkah 3
  * terlanjur jalan lebih dulu, seluruh akun beserta hash kata sandinya hilang
@@ -98,7 +98,7 @@ async function main() {
 
   if (!slug || !/^[a-z0-9][a-z0-9-]{0,49}$/.test(slug) || !emailsPath) {
     console.error(
-      'Usage: npx tsx scripts/adopt-existing-company.ts --slug <slug> --emails <peta.json> [--name "Nama PT"] [--tenant-slug <slug>] [--owners a,b]\n' +
+      'Usage: bunx tsx scripts/adopt-existing-company.ts --slug <slug> --emails <peta.json> [--name "Nama PT"] [--tenant-slug <slug>] [--owners a,b]\n' +
         "  slug: huruf kecil, angka, dan tanda hubung (mis. pt-sai)\n" +
         '  peta.json: { "<username>": "<email>", ... } — disiapkan operator (issue #134)'
     );
@@ -304,7 +304,7 @@ async function main() {
   }
 
   console.log("\nSelesai. Langkah berikutnya:");
-  console.log("  npm run db:migrate:companies    # menerapkan 0042 (membuang tabel users)");
+  console.log("  bun run db:migrate:companies    # menerapkan 0042 (membuang tabel users)");
 
   await control.$disconnect();
   await company.$disconnect();

@@ -1,6 +1,6 @@
 /**
  * PM2 process manager example:
- *   npm run build
+ *   bun run build
  *   pm2 start ecosystem.config.cjs
  *   pm2 save
  */

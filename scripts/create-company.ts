@@ -1,7 +1,7 @@
 /**
  * Buat PERUSAHAAN BARU: basis datanya, skemanya, lalu daftarkan (issue #104).
  *
- *   npx tsx scripts/create-company.ts --slug pt-b --name "PT Bumi Baru" \
+ *   bunx tsx scripts/create-company.ts --slug pt-b --name "PT Bumi Baru" \
  *        [--database sai_pt_b] [--admin budi]
  *
  * Setelah ini, buka aplikasi dan jalankan WIZARD PENYIAPAN untuk perusahaan itu
@@ -79,7 +79,7 @@ async function main() {
   }
   if (!slug || !SLUG.test(slug) || !name) {
     console.error(
-      'Usage: npx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>]\n' +
+      'Usage: bunx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>]\n' +
         "  slug: huruf kecil, angka, tanda hubung (mis. pt-b)"
     );
     process.exit(1);
@@ -118,7 +118,7 @@ async function main() {
   } else if (tenants.length === 0) {
     console.error(
       "ERROR: belum ada tenant di basis data kendali. Jalankan adopsi dulu:\n" +
-        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+        "  bun run adopt-tenant -- --slug <tenant> --emails <peta.json>"
     );
     process.exit(1);
   } else {
@@ -185,7 +185,7 @@ async function main() {
       console.warn(
         `\nCatatan: pengguna "${admin}" belum ada, jadi keanggotaan tidak dibuat.\n` +
           "Buat akunnya sekaligus dengan:\n" +
-          `  npm run create-admin -- --username ${admin} --password '…' --email <email> --company ${slug}`
+          `  bun run create-admin -- --username ${admin} --password '…' --email <email> --company ${slug}`
       );
     } else {
       await control.membership.create({

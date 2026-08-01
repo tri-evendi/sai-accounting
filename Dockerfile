@@ -5,7 +5,8 @@
 #
 # Stages:
 #   base     → node + system libs (openssl for Prisma engines)
-#   deps     → install all npm deps (incl. dev, needed for build)
+#   bunbase  → base + binary bun (HANYA untuk memasang paket & build)
+#   deps     → install all deps via bun (incl. dev, needed for build)
 #   builder  → prisma generate + next build (standalone output)
 #   migrator → runs `prisma migrate deploy` (has full deps + CLI)
 #   runner   → lean production image, runs server.js as non-root
@@ -21,15 +22,34 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 
+# ─── Bun (pemasang paket + peluncur skrip) ───────────────────
+# Binary tunggal disalin dari image resmi — lebih murah daripada curl+unzip, dan
+# versinya terkunci di sini, bukan "apa pun yang terbaru saat build".
+#
+# Bun TIDAK menggantikan Node. Node tetap runtime yang menjalankan `next build`,
+# `tsc`, dan Prisma (semua binary-nya ber-shebang `#!/usr/bin/env node`), dan
+# itulah sebabnya `NODE_OPTIONS=--max-old-space-size=...` di tahap builder MASIH
+# BERLAKU — Bun memakai JavaScriptCore yang mengabaikan flag tersebut. Stage
+# `runner` sengaja TIDAK memuat bun: image produksi cuma perlu `node server.js`.
+#
+# Node di base image WAJIB >= 20.19/22.12/24.0 — skrip preinstall Prisma 7
+# menolak yang lebih tua, dan bun (beda dari npm) tidak menyuntikkan Node-nya
+# sendiri ke depan PATH untuk skrip lifecycle.
+FROM base AS bunbase
+COPY --from=oven/bun:1.3 /usr/local/bin/bun /usr/local/bin/bun
+
+
 # ─── Dependencies ────────────────────────────────────────────
-FROM base AS deps
-COPY package.json package-lock.json ./
+FROM bunbase AS deps
+COPY package.json bun.lock ./
 # Deterministic install of the full dependency set (build needs devDeps).
-RUN npm ci
+# --frozen-lockfile = padanan `npm ci`: menolak build bila bun.lock tidak cocok
+# dengan package.json, bukan diam-diam menyelesaikan ulang versinya.
+RUN bun install --frozen-lockfile
 
 
 # ─── Build ───────────────────────────────────────────────────
-FROM base AS builder
+FROM bunbase AS builder
 ENV NODE_ENV=production
 # Placeholders so module-load code (e.g. src/lib/prisma.ts) doesn't throw while
 # Next collects page/route data at build time. No DB connection is made here,
@@ -49,7 +69,7 @@ COPY . .
 #
 # Dengan batas ini Node memilih GC agresif ketimbang membesar; nilai 768 MB
 # diverifikasi langsung di mesin ini lewat `NODE_OPTIONS=--max-old-space-size=768
-# npx tsc --noEmit` yang lolos, sementara tanpa batas justru dibunuh.
+# bunx tsc --noEmit` yang lolos, sementara tanpa batas justru dibunuh.
 #
 # Beban tipe naik tajam sejak fondasi i18n: kunci kamus adalah dot-path bertipe,
 # jadi TypeScript mengevaluasi union berisi ~2.400 literal string. Itu memang
@@ -63,9 +83,9 @@ COPY . .
 # berhenti dengan "module not found" pada `@/generated/control/client` — dan
 # pesan itu tidak menyebut sama sekali bahwa yang kurang adalah satu perintah
 # generate.
-RUN NODE_OPTIONS="--max-old-space-size=768" npx prisma generate \
-    && NODE_OPTIONS="--max-old-space-size=768" npx prisma generate --config prisma.control.config.ts \
-    && NODE_OPTIONS="--max-old-space-size=768" npm run build
+RUN NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate \
+    && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.control.config.ts \
+    && NODE_OPTIONS="--max-old-space-size=768" bun run build
 
 
 # ─── Migrator (dipakai service `migrate` di compose) ─────────
@@ -89,7 +109,7 @@ RUN NODE_OPTIONS="--max-old-space-size=768" npx prisma generate \
 # dijalankan lebih dulu.
 FROM builder AS migrator
 ENV NODE_ENV=production
-CMD ["npm", "run", "db:migrate:all"]
+CMD ["bun", "run", "db:migrate:all"]
 
 
 # ─── Runtime ─────────────────────────────────────────────────

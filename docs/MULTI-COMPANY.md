@@ -133,7 +133,7 @@ per pengguna, himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
 **Urutannya tidak boleh ditukar.** Langkah 2 membaca tabel `users` yang dibuang
 langkah 3.
 
-> **Di server produksi, perintah `npm run …` di bawah harus dijalankan DI DALAM
+> **Di server produksi, perintah `bun run …` di bawah harus dijalankan DI DALAM
 > container**, bukan di host — dan ini bukan soal selera. Service `db` tidak
 > memublikasikan port ke host sama sekali (lihat `docker-compose.yml`), jadi
 > nama `db` di `DATABASE_URL` hanya bisa diselesaikan dari dalam jaringan
@@ -141,7 +141,7 @@ langkah 3.
 > terdengar seperti kredensial salah. Bungkusnya:
 >
 > ```bash
-> docker compose run --rm migrate npm run <skrip>
+> docker compose run --rm migrate bun run <skrip>
 > ```
 >
 > Service `migrate` memakai image yang sama dengan `web`, `env_file: .env` yang
@@ -173,13 +173,13 @@ docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
 #    tambahkan CONTROL_DATABASE_URL ke .env — kredensial & host SAMA dengan
 #    DATABASE_URL, hanya nama basis datanya yang berbeda.
 docker compose build                                    # image harus ada dulu
-docker compose run --rm migrate npm run db:migrate:control
+docker compose run --rm migrate bun run db:migrate:control
 
 # 2. Daftarkan basis data yang sekarang sebagai perusahaan pertama
 #    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
 #    Sejak issue #134/#136 adopsi juga MEMBUAT TENANT dan menuntut peta email
 #    (JSON {"username": "email"} yang diisi operator — bukan ditebak mesin):
-docker compose run --rm migrate npm run adopt-company -- \
+docker compose run --rm migrate bun run adopt-company -- \
   --slug pt-sai --name "PT Subur Anugerah Indonesia" --emails emails.json
 
 #    BUKTIKAN akunnya sudah pindah SEBELUM langkah 3 — ini titik tak-bisa-balik.
@@ -189,10 +189,10 @@ docker compose run --rm migrate npm run adopt-company -- \
 
 # 3. Migration perusahaan — 0042 membuang tabel `users` dari buku,
 #    0043 menyelaraskan nilai enum-like data legacy (issue #111)
-docker compose run --rm migrate npm run db:migrate:companies
+docker compose run --rm migrate bun run db:migrate:companies
 
 # 4. Buktikan nilai enum-like sudah baku di SETIAP perusahaan
-docker compose run --rm migrate npm run check:legacy-values
+docker compose run --rm migrate bun run check:legacy-values
 
 # 5. Naikkan image baru (skema & kode harus naik bersama)
 docker compose up -d          # image-nya sudah dibangun di langkah 1
@@ -200,7 +200,7 @@ docker compose up -d          # image-nya sudah dibangun di langkah 1
 
 **Dijalankan sungguhan di produksi 2026-07-28** (PT Subur Anugerah Indonesia,
 `sai_production` → `pt-sai`). Yang ditemukan saat itu dan sudah dibetulkan di
-atas: perintah `npm run …` tidak bisa jalan di host (service `db` tanpa port),
+atas: perintah `bun run …` tidak bisa jalan di host (service `db` tanpa port),
 `mysqldump`/`mysql` tidak ada di image `mariadb:11`, dan pemasangan itu ternyata
 masih tertinggal di 0036 — jadi langkah 3 menerapkan 0037→0043 sekaligus, bukan
 hanya migration multi-PT. Hasilnya: 1 pengguna pindah ke basis data kendali,
@@ -283,7 +283,7 @@ sudah diterapkan — dijaga `tests/company-provisioning.test.tsx`.
 **Dari baris perintah** — tetap ada, dan tetap jalan:
 
 ```bash
-docker compose run --rm migrate npm run create-company -- \
+docker compose run --rm migrate bun run create-company -- \
   --slug pt-b --name "PT Bumi Baru" [--admin budi]
 ```
 
@@ -300,7 +300,7 @@ awal, dan modul adalah keputusan akuntansi, bukan argumen baris perintah.
 ### Migration sesudah ini
 
 ```bash
-npm run db:migrate:all      # kendali, lalu SETIAP perusahaan
+bun run db:migrate:all      # kendali, lalu SETIAP perusahaan
 ```
 
 Kegagalan satu perusahaan **tidak menghentikan** yang lain: kalau berhenti di
@@ -352,8 +352,8 @@ mysql sai_gladi < /tmp/full.sql
 | `users.status` (Int) | `users.must_change_password` (Boolean) |
 | FK `periods.closed_by_id → users` | id global tanpa FK; nama dicari, yang hilang tampil "—" |
 | `data/audit/audit.jsonl` | `data/audit/<slug>/audit.jsonl` |
-| `npm run db:migrate` | `npm run db:migrate:all` |
-| `npm run create-admin -- --username …` | `… --company <slug>` (wajib) |
+| `bun run db:migrate` | `bun run db:migrate:all` |
+| `bun run create-admin -- --username …` | `… --company <slug>` (wajib) |
 
 Tabel di basis data perusahaan **tidak boleh** punya foreign key ke pengguna —
 FK tidak bisa menyeberangi basis data. Simpan id global sebagai `Int` biasa dan

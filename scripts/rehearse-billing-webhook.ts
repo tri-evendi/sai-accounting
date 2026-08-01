@@ -6,7 +6,7 @@
  * pembayaran & tagihan latihan.
  *
  *   PLATFORM_DATABASE_URL=… CONTROL_DATABASE_URL=… \
- *     npx tsx scripts/rehearse-billing-webhook.ts
+ *     bunx tsx scripts/rehearse-billing-webhook.ts
  *
  * Prasyarat: migration diterapkan, satu tenant #1 + subscription #1 dengan
  * tagihan `PINV-S1-…` berstatus issued (alur `change-plan` + penjadwal —

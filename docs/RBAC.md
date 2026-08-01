@@ -238,4 +238,4 @@ ditulis ulang oleh migration 0032 — jejak sejarah tidak dipalsukan.
 - [ ] Halaman: `requirePagePermission`; API: `requireApiPermission`; tampilan: `can()`.
 - [ ] Halaman client dipecah server-wrapper + form.
 - [ ] Butuh pengecualian cakupan? Daftarkan di `tests/authz-coverage.test.ts` + alasan.
-- [ ] `npx vitest run tests/authz.test.ts tests/authz-coverage.test.ts` hijau.
+- [ ] `bunx vitest run tests/authz.test.ts tests/authz-coverage.test.ts` hijau.

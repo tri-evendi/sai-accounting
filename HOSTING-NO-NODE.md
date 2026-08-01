@@ -20,10 +20,10 @@ On **your Mac** (you already have Node):
 ```bash
 cd sai-luckyhands
 cp .env.production .env    # production values
-npm ci
-npx prisma generate
-NODE_ENV=production npm run build
-npm run package:standalone
+bun install --frozen-lockfile
+bunx prisma generate
+NODE_ENV=production bun run build
+bun run package:standalone
 ```
 
 Upload the folder **`dist/sai-standalone/`** to the server (FTP / File Manager / rsync).
@@ -73,7 +73,7 @@ Build happens **on their servers** when you push Git — you never install Node 
 
 Only if the host lets you **execute** uploaded programs (not all do).
 
-1. On your Mac: `npm run package:standalone`
+1. On your Mac: `bun run package:standalone`
 2. Download **Linux x64** Node 20 LTS from https://nodejs.org (tar.xz)
 3. Upload `dist/sai-standalone/` **and** extract Node into e.g. `dist/sai-standalone/node/`
 4. On server:
@@ -119,7 +119,7 @@ See **[HOSTING-LOW-MEMORY.md](./HOSTING-LOW-MEMORY.md)** — build on Mac, uploa
    - If **yes** → use [HOSTING.md](./HOSTING.md) or build on Mac + upload standalone.  
    - If **no**, only PHP/static → use **Railway or Render** (Option 2) and keep MySQL where it is (remote `DATABASE_URL`).
 
-2. **Do not** use `npm run setup:prod` on the server if Node is not available — run it on your Mac, then upload the standalone bundle.
+2. **Do not** use `bun run setup:prod` on the server if Node is not available — run it on your Mac, then upload the standalone bundle.
 
 ---
 

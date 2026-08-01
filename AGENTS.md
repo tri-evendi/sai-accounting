@@ -42,5 +42,5 @@ Setiap perubahan model Prisma / migration / tabel **wajib** mengikuti `docs/DATA
 - **Uang = `Decimal(15,2)`, kuantitas `Decimal(15,3)`, kurs `Decimal(18,6)` — JANGAN Float/Int.**
 - Valas simpan `currency` + `rate` + `base_amount` (IDR).
 - Enum-like = `String @db.VarChar` + `z.enum` (nilai `snake_case`); `@unique` untuk code/number; `@@index` untuk FK/date/status.
-- Migration **ditulis tangan** `prisma/migrations/NNNN_<nama>/migration.sql`, diterapkan `npm run db:migrate` (`migrate deploy`); jalankan `npm run db:generate` setelahnya.
+- Migration **ditulis tangan** `prisma/migrations/NNNN_<nama>/migration.sql`, diterapkan `bun run db:migrate` (`migrate deploy`); jalankan `bun run db:generate` setelahnya.
 - Lewati **Checklist tabel baru** di `docs/DATABASE.md` sebelum commit.

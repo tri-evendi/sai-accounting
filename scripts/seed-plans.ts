@@ -1,7 +1,7 @@
 /**
  * Isi/awetkan PAKET bawaan di `sai_platform` (issue #140).
  *
- *   npm run db:seed:plans
+ *   bun run db:seed:plans
  *
  * Upsert berkunci `plans.key` — aman dijalankan berulang; harga & kuota paket
  * yang SUDAH ada tidak ditimpa diam-diam (pemasangan boleh mengubahnya lewat

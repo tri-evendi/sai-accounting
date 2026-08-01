@@ -28,15 +28,17 @@ if grep -q 'AUTH_URL="http://localhost' .env; then
 fi
 
 echo "Installing dependencies..."
-npm ci
+# --frozen-lockfile = padanan `npm ci`: gagal bila bun.lock tidak cocok dengan
+# package.json, alih-alih diam-diam memperbarui kunci di server produksi.
+bun install --frozen-lockfile
 echo ""
 
 echo "Generating Prisma client..."
-npx prisma generate
+bunx prisma generate
 echo ""
 
 echo "Running database migrations (no demo seed)..."
-npx prisma migrate deploy
+bunx prisma migrate deploy
 echo ""
 
 echo "Creating runtime directories..."
@@ -47,15 +49,15 @@ echo "  ✓ public/uploads"
 echo ""
 
 echo "Building production bundle..."
-NODE_ENV=production npm run build
+NODE_ENV=production bun run build
 echo ""
 
 echo "═══════════════════════════════════════════════"
 echo "  Production setup complete"
 echo ""
 echo "  Next steps:"
-echo "    1. Create admin:  npm run create-admin -- --username admin --password 'YOUR_SECURE_PASSWORD'"
-echo "    2. Start server:  npm run start:prod"
+echo "    1. Create admin:  bun run create-admin -- --username admin --password 'YOUR_SECURE_PASSWORD'"
+echo "    2. Start server:  bun run start:prod"
 echo ""
 echo "  Do NOT run db:seed on production."
 echo "═══════════════════════════════════════════════"

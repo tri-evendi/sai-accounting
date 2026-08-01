@@ -1,10 +1,11 @@
 # Production deployment — SAI Accounting
 
-> **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `npm run setup:prod`, `npm run start:prod` (no standalone zip).
+> **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `bun run setup:prod`, `bun run start:prod` (no standalone zip).
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20.19+ / 22.12+ / 24+ (Prisma 7 menolak yang lebih tua)
+- Bun 1.2+ — `curl -fsSL https://bun.sh/install | bash` (pemasang paket & peluncur skrip; Node tetap runtime-nya)
 - MySQL 8+ / MariaDB (private network, not public)
 - HTTPS reverse proxy (nginx, Caddy, or cloud LB)
 - Domain pointed at your server
@@ -30,17 +31,17 @@ Edit `.env`:
 ## 2. Install and build
 
 ```bash
-npm run setup:prod
+bun run setup:prod
 ```
 
-This runs: `npm ci` → Prisma generate → migrations → creates `data/audit` & `public/uploads` → production build.
+This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit` & `public/uploads` → production build.
 
-**Do not run** `npm run db:seed` on production.
+**Do not run** `bun run db:seed` on production.
 
 ## 3. Create the first admin
 
 ```bash
-npm run create-admin -- --username admin --password 'YourSecurePassword12!' --name "Administrator"
+bun run create-admin -- --username admin --password 'YourSecurePassword12!' --name "Administrator"
 ```
 
 - User is created with **status 0** (no forced password change).
@@ -49,12 +50,12 @@ npm run create-admin -- --username admin --password 'YourSecurePassword12!' --na
 ## 4. Start the server
 
 ```bash
-npm run start:prod
+bun run start:prod
 ```
 
 This sets `NODE_ENV=production`, loads `.env`, checks required variables, then starts Next.js.
 
-**Standalone bundle** (after `npm run package:standalone`):
+**Standalone bundle** (after `bun run package:standalone`):
 
 ```bash
 cd /var/www/sai
@@ -66,7 +67,7 @@ Or with PM2:
 
 ```bash
 mkdir -p logs
-npm run build
+bun run build
 pm2 start ecosystem.config.cjs
 pm2 save
 ```
@@ -121,9 +122,9 @@ Back up both with your server backups.
 
 ```bash
 git pull
-npm ci
-npx prisma migrate deploy
-NODE_ENV=production npm run build
+bun install --frozen-lockfile
+bunx prisma migrate deploy
+NODE_ENV=production bun run build
 pm2 restart sai-management   # or restart your process manager
 ```
 
@@ -131,10 +132,10 @@ pm2 restart sai-management   # or restart your process manager
 
 | Task | Development | Production |
 |------|-------------|------------|
-| Setup | `npm run setup` | `npm run setup:prod` |
-| Demo data | `ALLOW_SEED=true npm run db:seed` | **Never** |
-| First user | Seed or create-admin | `npm run create-admin` only |
-| Start | `npm run dev` | `npm run start:prod` |
+| Setup | `bun run setup` | `bun run setup:prod` |
+| Demo data | `ALLOW_SEED=true bun run db:seed` | **Never** |
+| First user | Seed or create-admin | `bun run create-admin` only |
+| Start | `bun run dev` | `bun run start:prod` |
 
 ## Troubleshooting
 

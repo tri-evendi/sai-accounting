@@ -32,6 +32,9 @@ export async function createRegistration(input: {
   name: string;
   passwordHash: string;
   termsAcceptedAt: Date;
+  /** Versi dokumen yang TAMPIL saat kotaknya dicentang (issue #142). */
+  termsVersion: string;
+  privacyVersion: string;
 }): Promise<{ token: string }> {
   const email = input.email.trim().toLowerCase();
   const minted = mintVerificationToken();
@@ -49,6 +52,8 @@ export async function createRegistration(input: {
         tokenHash: minted.tokenHash,
         expiresAt: minted.expiresAt,
         termsAcceptedAt: input.termsAcceptedAt,
+        termsVersion: input.termsVersion,
+        privacyVersion: input.privacyVersion,
       },
     });
   });
@@ -67,7 +72,17 @@ export async function emailHasAccount(email: string): Promise<boolean> {
 }
 
 export type VerificationResult =
-  | { ok: true; email: string; name: string; tenantId: number; tenantSlug: string }
+  | {
+      ok: true;
+      email: string;
+      name: string;
+      tenantId: number;
+      tenantSlug: string;
+      /** Jejak persetujuan yang dibawa dari pendaftaran (issue #142). */
+      termsAcceptedAt: Date;
+      termsVersion: string | null;
+      privacyVersion: string | null;
+    }
   | { ok: false; reason: "invalid_token" | "already_registered" };
 
 /**
@@ -95,6 +110,9 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
         passwordHash: true,
         expiresAt: true,
         usedAt: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
+        privacyVersion: true,
       },
     });
 
@@ -155,6 +173,9 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
       name: row.name,
       tenantId: tenant.id,
       tenantSlug: slug,
+      termsAcceptedAt: row.termsAcceptedAt,
+      termsVersion: row.termsVersion,
+      privacyVersion: row.privacyVersion,
     };
   });
 }

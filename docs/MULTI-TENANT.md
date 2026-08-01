@@ -11,9 +11,12 @@ saling kenal dan mendaftar sendiri.
 > #136 email sebagai pengenal login + mailer + atur-ulang kata sandi mandiri,
 > #137 basis data `sai_platform` terpisah, #138 pendaftaran mandiri /register
 > (verifikasi email sebagai gerbang penyediaan, kuota `max_companies` di
-> server, pembatas laju persisten di basis data kendali). Tahap 6 dst. masih
-> rencana. Keadaan multi-PT yang berlaku tetap di
-> [`MULTI-COMPANY.md`](./MULTI-COMPANY.md).
+> server, pembatas laju persisten di basis data kendali), #139 undangan staf,
+> #140 langganan/suspensi, #142 kepatuhan & siklus hidup akun (ekspor mandiri,
+> jalur penghapusan ber-gerbang retensi, jejak audit tenant, S&K ber-versi —
+> lihat [`COMPLIANCE.md`](./COMPLIANCE.md), termasuk KEPUTUSAN TERBUKA tempat
+> penyimpanan). Tahap #141 (penagihan gateway) menyusul. Keadaan multi-PT yang
+> berlaku tetap di [`MULTI-COMPANY.md`](./MULTI-COMPANY.md).
 
 ---
 

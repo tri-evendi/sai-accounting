@@ -330,7 +330,6 @@
       "description": "Buat akun untuk mulai membukukan usaha Anda. Gratis selama masa uji coba.",
       "name": "Nama Anda",
       "namePlaceholder": "Nama lengkap",
-      "terms": "Saya menyetujui syarat & ketentuan serta kebijakan privasi.",
       "submit": "Daftar",
       "submitting": "Mendaftarkan...",
       "sentTitle": "Periksa kotak masuk Anda",
@@ -346,7 +345,11 @@
       "invalidToken": "Tautan ini tidak berlaku — mungkin sudah dipakai, kedaluwarsa, atau salah salin. Daftar ulang untuk menerima tautan baru.",
       "alreadyRegistered": "Email ini sudah punya akun. Silakan masuk — atau atur ulang kata sandi bila lupa.",
       "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda.",
-      "registerAgain": "Daftar ulang"
+      "registerAgain": "Daftar ulang",
+      "termsPrefix": "Saya menyetujui",
+      "termsLinkLabel": "syarat & ketentuan",
+      "termsAnd": "dan",
+      "privacyLinkLabel": "kebijakan privasi"
     }
   },
   "status": {

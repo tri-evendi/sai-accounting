@@ -32,6 +32,7 @@ import {
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
 import { createRegistration, emailHasAccount } from "@/lib/registration-store";
+import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
 import { sendMail } from "@/lib/mailer";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
@@ -106,7 +107,16 @@ export async function POST(request: Request) {
         return;
       }
 
-      const { token } = await createRegistration({ email, name, passwordHash, termsAcceptedAt });
+      const { token } = await createRegistration({
+        email,
+        name,
+        passwordHash,
+        termsAcceptedAt,
+        // Versi dokumen yang TAMPIL saat mendaftar (issue #142) — bukti
+        // persetujuan tanpa versi tidak membuktikan apa-apa.
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+      });
       const link = `${origin}/verify-email?token=${token}`;
       await sendMail({
         to: email,

@@ -330,7 +330,6 @@
       "description": "Create an account to start keeping books for your business. Free during the trial.",
       "name": "Your Name",
       "namePlaceholder": "Full name",
-      "terms": "I agree to the terms & conditions and the privacy policy.",
       "submit": "Sign Up",
       "submitting": "Signing up...",
       "sentTitle": "Check your inbox",
@@ -346,7 +345,11 @@
       "invalidToken": "This link is not valid — it may have been used, expired, or copied incorrectly. Register again to receive a new link.",
       "alreadyRegistered": "This email already has an account. Sign in — or reset your password if you forgot it.",
       "missingToken": "The link is incomplete. Reopen the link from your email.",
-      "registerAgain": "Register again"
+      "registerAgain": "Register again",
+      "termsPrefix": "I agree to the",
+      "termsLinkLabel": "terms & conditions",
+      "termsAnd": "and the",
+      "privacyLinkLabel": "privacy policy"
     }
   },
   "status": {

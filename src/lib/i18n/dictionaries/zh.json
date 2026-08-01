@@ -330,7 +330,6 @@
       "description": "创建账号，开始为您的企业记账。试用期内免费。",
       "name": "您的姓名",
       "namePlaceholder": "全名",
-      "terms": "我同意条款与条件及隐私政策。",
       "submit": "注册",
       "submitting": "注册中...",
       "sentTitle": "请查收邮箱",
@@ -346,7 +345,11 @@
       "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请重新注册以获取新链接。",
       "alreadyRegistered": "该邮箱已有账号。请直接登录——忘记密码可重置。",
       "missingToken": "链接不完整。请重新打开邮件中的链接。",
-      "registerAgain": "重新注册"
+      "registerAgain": "重新注册",
+      "termsPrefix": "我同意",
+      "termsLinkLabel": "条款与条件",
+      "termsAnd": "及",
+      "privacyLinkLabel": "隐私政策"
     }
   },
   "status": {

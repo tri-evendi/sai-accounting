@@ -74,7 +74,16 @@ export async function POST(request: Request) {
     username: result.email,
     tenantRole: "owner",
     action: "tenant.register",
-    details: { email: result.email, name: result.name },
+    details: {
+      email: result.email,
+      name: result.name,
+      /* Persetujuan S&K + privasi BESERTA VERSINYA (issue #142) — jejak audit
+       * tenant menjadi catatan persetujuan yang bertahan; baris registrations
+       * boleh dibersihkan kapan pun tanpa kehilangan bukti. */
+      termsAcceptedAt: result.termsAcceptedAt.toISOString(),
+      termsVersion: result.termsVersion,
+      privacyVersion: result.privacyVersion,
+    },
     request,
   });
 

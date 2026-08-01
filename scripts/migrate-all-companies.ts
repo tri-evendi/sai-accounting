@@ -2,8 +2,8 @@
  * Terapkan migration basis data PERUSAHAAN ke SETIAP perusahaan terdaftar
  * (issue #104).
  *
- *   npm run db:migrate:companies      # perusahaan saja
- *   npm run db:migrate:all            # kendali dulu, lalu semua perusahaan
+ *   bun run db:migrate:companies      # perusahaan saja
+ *   bun run db:migrate:all            # kendali dulu, lalu semua perusahaan
  *
  * ══ KEGAGALAN SATU PERUSAHAAN TIDAK BOLEH MENGGANTUNG YANG LAIN ════════════
  * Ini persyaratan eksplisit issue #104, dan alasannya konkret: kalau skrip ini
@@ -87,9 +87,9 @@ async function main() {
     console.error(
       "Belum ada perusahaan terdaftar — tidak ada migration perusahaan yang dijalankan.\n\n" +
         "  Pemasangan yang SUDAH berjalan (punya basis data & pengguna):\n" +
-        "    npm run adopt-company -- --slug <slug> --name \"Nama PT\"\n\n" +
+        "    bun run adopt-company -- --slug <slug> --name \"Nama PT\"\n\n" +
         "  Pemasangan BARU:\n" +
-        "    npm run create-company -- --slug <slug> --name \"Nama PT\"\n\n" +
+        "    bun run create-company -- --slug <slug> --name \"Nama PT\"\n\n" +
         "Lihat docs/MULTI-COMPANY.md untuk urutan lengkapnya."
     );
     process.exit(1);
@@ -101,10 +101,21 @@ async function main() {
     const label = `${company.slug} (${company.databaseName})${company.isActive ? "" : " [nonaktif]"}`;
     console.log(`\n── migrate deploy → ${label}`);
 
-    const result = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+    // Tanpa `npx`/`bunx` — node_modules/.bin sudah ada di PATH saat skrip ini
+    // dijalankan lewat `bun run db:migrate:companies`. Lihat catatan serupa di
+    // scripts/migrate-platform.ts.
+    const result = spawnSync("prisma", ["migrate", "deploy"], {
       stdio: "inherit",
       env: { ...process.env, DATABASE_URL: companyUrl(company.databaseName) },
     });
+
+    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+      console.error(
+        "✗ Binary `prisma` tidak ditemukan di PATH. Jalankan lewat package " +
+          "manager: `bun run db:migrate:companies`."
+      );
+      process.exit(1);
+    }
 
     if (result.status !== 0) {
       const detail =

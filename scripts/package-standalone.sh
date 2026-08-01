@@ -10,10 +10,10 @@ STANDALONE="$ROOT/.next/standalone"
 cd "$ROOT"
 
 echo "→ prisma generate"
-npx prisma generate
+bunx prisma generate
 
 echo "→ next build (standalone)"
-NODE_ENV=production npm run build
+NODE_ENV=production bun run build
 
 if [ ! -f "$STANDALONE/server.js" ]; then
   echo "ERROR: .next/standalone/server.js not found. Check output: 'standalone' in next.config.ts"

@@ -2,7 +2,7 @@
  * Ganti PAKET sebuah tenant (issue #140) — dijalankan operator, sampai gateway
  * pembayaran (#141) memberi pelanggan tombolnya sendiri.
  *
- *   npm run change-plan -- --tenant <id|slug> --plan <key>
+ *   bun run change-plan -- --tenant <id|slug> --plan <key>
  *
  * ══ URUTAN TULIS (doktrin #137 — tidak boleh ditukar) ═══════════════════════
  *   1. `sai_platform` DULU: langganan dibuat/dipindah paket, dengan SNAPSHOT
@@ -13,7 +13,7 @@
  *      berjalan), dan `tenants.status` disamakan dengan status langganannya.
  *
  * Crash di antara keduanya meninggalkan langganan platform tanpa salinan
- * kendali — persis arah sisa yang ditemukan `npm run reconcile:platform`
+ * kendali — persis arah sisa yang ditemukan `bun run reconcile:platform`
  * (pemeriksaan "status-tak-serasi"), lalu disembuhkan dengan menjalankan
  * skrip ini lagi. Urutan sebaliknya (kendali dulu) meninggalkan tenant naik
  * kelas tanpa catatan pembayaran — drift yang tidak akan pernah ketahuan.
@@ -55,7 +55,7 @@ async function main() {
   const tenantArg = argValue("--tenant");
   const planKey = argValue("--plan");
   if (!tenantArg || !planKey) {
-    console.error("Pakai: npm run change-plan -- --tenant <id|slug> --plan <key>");
+    console.error("Pakai: bun run change-plan -- --tenant <id|slug> --plan <key>");
     process.exit(1);
   }
 
@@ -80,7 +80,7 @@ async function main() {
   const plan = await platform.plan.findUnique({ where: { key: planKey } });
   if (!plan || !plan.isActive) {
     console.error(
-      `✗ Paket "${planKey}" tidak ada / nonaktif. Jalankan dulu: npm run db:seed:plans`
+      `✗ Paket "${planKey}" tidak ada / nonaktif. Jalankan dulu: bun run db:seed:plans`
     );
     process.exit(1);
   }

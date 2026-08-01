@@ -23,10 +23,10 @@
  * (which reposts the journal via repostForSource).
  *
  * Usage (read-only, safe):
- *   npx tsx scripts/audit-invoice-currency.ts
+ *   bunx tsx scripts/audit-invoice-currency.ts
  *
  * Opt-in repost of specific invoices, after their currency/rate has been fixed:
- *   npx tsx scripts/audit-invoice-currency.ts --repost 12,44,91
+ *   bunx tsx scripts/audit-invoice-currency.ts --repost 12,44,91
  *
  * There is no flag that rewrites invoice currency in bulk. That is on purpose.
  */
@@ -116,7 +116,7 @@ async function report(prisma: PrismaClient) {
     "\nNext step: fix each flagged invoice through the edit form (/invoices/<id>/edit).\n" +
       "Saving there reposts its journal automatically — the original entry is reversed,\n" +
       "never mutated, so the audit trail stays intact.\n" +
-      "To repost without editing: npx tsx scripts/audit-invoice-currency.ts --repost <ids>"
+      "To repost without editing: bunx tsx scripts/audit-invoice-currency.ts --repost <ids>"
   );
 }
 

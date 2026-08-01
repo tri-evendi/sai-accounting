@@ -49,7 +49,7 @@ if (process.env.NODE_ENV !== "production") {
     process.env.NODE_ENV ?? "unset",
     ")"
   );
-  console.error("Add NODE_ENV=production to .env or run: npm run start:prod");
+  console.error("Add NODE_ENV=production to .env or run: bun run start:prod");
   process.exit(1);
 }
 

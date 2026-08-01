@@ -10,7 +10,7 @@
  *   2. Legacy dump imported into LEGACY_DB (same MariaDB server).
  *
  * Usage:
- *   LEGACY_DB=sai_legacy npx tsx scripts/migrate-legacy.ts
+ *   LEGACY_DB=sai_legacy bunx tsx scripts/migrate-legacy.ts
  *   (add --force to wipe already-migrated target tables and re-run)
  *
  * Re-running: without --force it refuses if target tables already have data.

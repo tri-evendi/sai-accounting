@@ -3,7 +3,7 @@
  * dunning, suspensi, pengingat, sinkronisasi pemakaian, rekonsiliasi, dan
  * deteksi penyediaan yatim. Satu putaran per pemanggilan; tidak ada daemon.
  *
- *   npm run scheduler:subscriptions
+ *   bun run scheduler:subscriptions
  *
  * ══ CARA MENJADWALKANNYA ════════════════════════════════════════════════════
  * Aplikasi ini tidak punya (dan belum butuh) antrean kerja. Skrip ini
@@ -12,11 +12,11 @@
  *
  *   • Host (crontab -e), pemasangan compose:
  *       17 * * * *  cd /opt/applications/sai-accounting && \
- *         docker compose run --rm migrate npm run scheduler:subscriptions
+ *         docker compose run --rm migrate bun run scheduler:subscriptions
  *     (service `migrate` = image & env yang sama dengan `web`, dan satu-satunya
  *      cara menjangkau service `db` yang tidak memublikasikan port — alasannya
  *      sama dengan migration, lihat docs/MULTI-COMPANY.md §3.)
- *   • Pemasangan tanpa Docker: `17 * * * * cd <app> && npm run scheduler:subscriptions`
+ *   • Pemasangan tanpa Docker: `17 * * * * cd <app> && bun run scheduler:subscriptions`
  *
  * ══ IDEMPOTEN — DIJALANKAN DUA KALI TIDAK MENAGIH DUA KALI ══════════════════
  * Tiga mekanisme, semuanya di basis data, bukan di memori skrip:
@@ -439,7 +439,7 @@ async function main() {
     if (orphans.length > 0) {
       errors.push(
         `basis data yatim (dibuat tapi tak terdaftar — penyediaan gagal di tengah?): ${orphans.join(", ")} ` +
-          "— daftarkan lewat npm run adopt-company, atau hapus MANUAL setelah diperiksa orang"
+          "— daftarkan lewat bun run adopt-company, atau hapus MANUAL setelah diperiksa orang"
       );
     }
   } catch {

@@ -2,7 +2,7 @@
  * Seed the default Chart of Accounts (trading/export, Indonesia) and the
  * auto-posting account mappings that reference it.
  * Idempotent: existing account codes and mappings are skipped.
- * Run: npx tsx scripts/seed-coa.ts
+ * Run: bunx tsx scripts/seed-coa.ts
  */
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";

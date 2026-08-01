@@ -2,16 +2,16 @@
  * Adopsi TENANT (issue #134, epik #133) — masukkan pemasangan yang sudah
  * berjalan ke dalam SATU tenant di basis data kendali.
  *
- *   npx tsx scripts/adopt-tenant.ts --slug pt-sai --emails emails.json \
+ *   bunx tsx scripts/adopt-tenant.ts --slug pt-sai --emails emails.json \
  *       [--name "PT Subur Anugerah Indonesia"] [--status active]
  *       [--plan-key internal] [--max-companies 10] [--max-users 50]
  *       [--owners "admin,budi"]
  *
  * ══ URUTAN YANG WAJIB (docs/MULTI-TENANT.md §8) ═════════════════════════════
- *   1. npm run db:migrate:control      — migration 0002 (kolom nullable)
+ *   1. bun run db:migrate:control      — migration 0002 (kolom nullable)
  *   2. skrip INI                       — buat Tenant, tautkan, isi email
- *   3. npx tsx scripts/prove-tenant-adoption.ts   — wajib exit 0
- *   4. npm run db:migrate:control      — migration 0003 (NOT NULL + unik)
+ *   3. bunx tsx scripts/prove-tenant-adoption.ts   — wajib exit 0
+ *   4. bun run db:migrate:control      — migration 0003 (NOT NULL + unik)
  *
  * ══ EMAIL DISIAPKAN MANUSIA, TIDAK PERNAH DITEBAK MESIN ═════════════════════
  * `--emails` menunjuk berkas JSON `{ "<username>": "<email>", … }` yang diisi
@@ -63,7 +63,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function usage(): never {
   console.error(
-    "Usage: npx tsx scripts/adopt-tenant.ts --slug <slug> --emails <peta.json>\n" +
+    "Usage: bunx tsx scripts/adopt-tenant.ts --slug <slug> --emails <peta.json>\n" +
       '         [--name "Nama Tenant"] [--status active] [--plan-key internal]\n' +
       "         [--max-companies 10] [--max-users 50] [--owners user1,user2]\n\n" +
       'peta.json: { "<username>": "<email>", ... } — disiapkan operator.'
@@ -252,12 +252,12 @@ async function main() {
   });
 
   console.log("\nSelesai. Langkah berikutnya:");
-  console.log("  npx tsx scripts/prove-tenant-adoption.ts   # wajib exit 0");
+  console.log("  bunx tsx scripts/prove-tenant-adoption.ts   # wajib exit 0");
   console.log(
     "  # bila 0003 pernah gagal saat deploy (pemasangan lama — itu pagarnya):\n" +
-      "  npx prisma migrate resolve --rolled-back 0003_tenants_not_null --config prisma.control.config.ts"
+      "  bunx prisma migrate resolve --rolled-back 0003_tenants_not_null --config prisma.control.config.ts"
   );
-  console.log("  npm run db:migrate:control                 # menerapkan 0003 (NOT NULL + unik)");
+  console.log("  bun run db:migrate:control                 # menerapkan 0003 (NOT NULL + unik)");
 
   await control.$disconnect();
 }

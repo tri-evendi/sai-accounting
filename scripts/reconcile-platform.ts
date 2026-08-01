@@ -1,7 +1,7 @@
 /**
  * REKONSILIASI platform ↔ kendali (issue #137) — KERANGKA.
  *
- *   npm run reconcile:platform
+ *   bun run reconcile:platform
  *
  * ══ KENAPA PEKERJAAN INI ADA ═══════════════════════════════════════════════
  * FK dan transaksi tidak menyeberangi basis data (docs/MULTI-TENANT.md §4A).
@@ -20,7 +20,7 @@
  * Empat pemeriksaan: langganan yatim, tenant berbayar tanpa langganan,
  * kecocokan status tenant ↔ langganan terbarunya (aturannya dari mesin
  * siklus hidup `src/lib/subscription-lifecycle.ts`), dan usage_counters vs
- * jumlah sesungguhnya. Penjadwal (`npm run scheduler:subscriptions`)
+ * jumlah sesungguhnya. Penjadwal (`bun run scheduler:subscriptions`)
  * menjalankannya berkala lewat `runReconciliation` yang diekspor dari sini;
  * pemasangan pra-#134 tetap melewati pemeriksaan lintas-sisi dengan
  * pengumuman — bukan pura-pura hijau.
@@ -229,7 +229,7 @@ async function main() {
   process.exit(1);
 }
 
-/* Hanya berjalan bila dipanggil langsung (npm run reconcile:platform) — bukan
+/* Hanya berjalan bila dipanggil langsung (bun run reconcile:platform) — bukan
  * saat diimpor penjadwal. */
 if (process.argv[1]?.endsWith("reconcile-platform.ts")) {
   main().catch((error) => {

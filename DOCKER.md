@@ -56,7 +56,7 @@ the container `HEALTHCHECK` and Traefik's load-balancer health probe.
 the migrator image (which has the full toolchain):
 
 ```bash
-docker compose run --rm --entrypoint "npx tsx scripts/create-admin.ts" migrate
+docker compose run --rm --entrypoint "bunx tsx scripts/create-admin.ts" migrate
 ```
 
 ## Common commands

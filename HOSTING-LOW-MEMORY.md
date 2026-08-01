@@ -6,12 +6,12 @@ Next.js + database apps need **about 300–450 MB RAM** while running. Many chea
 
 ### 1. Use the smallest deploy (standalone only)
 
-**Never** upload the full repo or run `npm run build` on the server (build uses a lot of RAM).
+**Never** upload the full repo or run `bun run build` on the server (build uses a lot of RAM).
 
 On **your Mac**:
 
 ```bash
-npm run build:upload
+bun run build:upload
 ```
 
 Upload only **`dist/sai-standalone/`** (not the whole project).
@@ -62,7 +62,7 @@ Point your domain to Railway/Render; use remote `DATABASE_URL` to your existing 
 ### 5. Build on a weak Mac
 
 ```bash
-NODE_OPTIONS=--max-old-space-size=2048 npm run build:upload
+NODE_OPTIONS=--max-old-space-size=2048 bun run build:upload
 ```
 
 Build memory is only needed on your computer, not on the server.
@@ -85,6 +85,6 @@ If your panel shows a **128 MB** limit, the app will keep stopping — use an ex
 
 | Command | Use |
 |---------|-----|
-| `npm run build:upload` | Build on Mac → `dist/sai-standalone` |
+| `bun run build:upload` | Build on Mac → `dist/sai-standalone` |
 | `bash scripts/start-low-memory.sh` | Run with memory limits |
 | `pm2 start ecosystem.config.low-memory.cjs` | Same, with auto-restart |

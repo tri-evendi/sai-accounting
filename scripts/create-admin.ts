@@ -1,7 +1,7 @@
 /**
  * Buat akun pengelola pertama untuk produksi.
  *
- *   npm run create-admin -- --username admin --password 'SandiAman123' \
+ *   bun run create-admin -- --username admin --password 'SandiAman123' \
  *                           --name "Administrator" --company pt-a
  *
  * Sejak issue #104 akun hidup di BASIS DATA KENDALI, dan sebuah akun tanpa
@@ -49,7 +49,7 @@ async function main() {
 
   if (!username || !password || !companySlug || !email) {
     console.error(
-      'Usage: npm run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--name "Nama"] [--role ...]\n' +
+      'Usage: bun run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--name "Nama"] [--role ...]\n' +
         "  --email wajib sejak issue #136: email adalah pengenal login dan jalan\n" +
         "  satu-satunya mengatur ulang kata sandi secara mandiri."
     );
@@ -98,7 +98,7 @@ async function main() {
   if (!company.tenantId) {
     console.error(
       `ERROR: perusahaan "${companySlug}" belum bertaut ke tenant. Jalankan dulu:\n` +
-        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+        "  bun run adopt-tenant -- --slug <tenant> --emails <peta.json>"
     );
     process.exit(1);
   }

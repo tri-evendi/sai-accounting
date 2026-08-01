@@ -122,6 +122,12 @@ async function main() {
           plan.trialDays > 0
             ? new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000)
             : null,
+        /* Kunci idempotensi KELAHIRAN (#152): hanya langganan PERTAMA tenant
+         * yang memakai penandanya — berlangganan ulang setelah `cancelled`
+         * membiarkannya NULL supaya tidak menabrak langganan pertamanya.
+         * Balapan dengan putaran adopsi penjadwal menabrak UNIQUE ini, bukan
+         * melahirkan kembar. */
+        initialForTenantId: existing ? null : tenant.id,
       },
     });
     console.log(

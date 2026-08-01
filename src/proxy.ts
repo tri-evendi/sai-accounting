@@ -17,6 +17,8 @@ function isPublicPath(pathname: string): boolean {
   // HANYA dua jalur ini yang dilepas — bukan prefix, supaya halaman publik
   // baru harus disebut namanya di sini (dan di tests/authz-coverage).
   if (pathname === "/register" || pathname === "/verify-email") return true;
+  // issue #142 — dokumen hukum: harus terbaca SEBELUM orang menyetujuinya.
+  if (pathname === "/terms" || pathname === "/privacy") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
   // issue #141 — webhook gerbang pembayaran: pengirimnya server Midtrans,

@@ -26,6 +26,7 @@ import {
 import { controlDb } from "@/lib/control-db";
 import { runWithCompany } from "@/lib/company-context";
 import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
@@ -134,8 +135,25 @@ export async function POST(request: Request) {
   try {
     const company = await controlDb.company.findUnique({
       where: { id: result.companyId },
-      select: { id: true, slug: true, databaseName: true },
+      select: {
+        id: true,
+        slug: true,
+        databaseName: true,
+        tenant: { select: { id: true, slug: true } },
+      },
     });
+    if (company?.tenant) {
+      // Peristiwa TENANT (issue #142): anggota baru bergabung ke tenant.
+      await writeTenantAuditLog({
+        tenantId: company.tenant.id,
+        tenantSlug: company.tenant.slug,
+        userId: String(result.userId),
+        username: parsed.data.username,
+        action: "tenant.invitation.accept",
+        details: { email: result.email, companySlug: company.slug, role: result.companyRole },
+        request,
+      });
+    }
     if (company) {
       await runWithCompany(
         { companyId: company.id, slug: company.slug, databaseName: company.databaseName },

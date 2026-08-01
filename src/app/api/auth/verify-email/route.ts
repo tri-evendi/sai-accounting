@@ -20,6 +20,7 @@ import {
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
 import { consumeVerificationToken } from "@/lib/registration-store";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 function clientIp(request: Request): string {
@@ -62,6 +63,29 @@ export async function POST(request: Request) {
           { status: 400 }
         );
   }
+
+  /*
+   * Kelahiran tenant DICATAT di jejaknya sendiri (issue #142) — peristiwa yang
+   * dulu tidak punya tempat: belum ada satu pun PT, jadi jejak per-PT mustahil.
+   */
+  await writeTenantAuditLog({
+    tenantId: result.tenantId,
+    tenantSlug: result.tenantSlug,
+    username: result.email,
+    tenantRole: "owner",
+    action: "tenant.register",
+    details: {
+      email: result.email,
+      name: result.name,
+      /* Persetujuan S&K + privasi BESERTA VERSINYA (issue #142) — jejak audit
+       * tenant menjadi catatan persetujuan yang bertahan; baris registrations
+       * boleh dibersihkan kapan pun tanpa kehilangan bukti. */
+      termsAcceptedAt: result.termsAcceptedAt.toISOString(),
+      termsVersion: result.termsVersion,
+      privacyVersion: result.privacyVersion,
+    },
+    request,
+  });
 
   return NextResponse.json({ ok: true });
 }

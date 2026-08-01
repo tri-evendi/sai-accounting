@@ -29,6 +29,7 @@ import { PrismaClient as PlatformClient } from "../src/generated/platform/client
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { nextPeriod, tenantStatusForSubscription } from "../src/lib/subscription-lifecycle";
+import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 
 function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl: string): T {
@@ -143,6 +144,20 @@ async function main() {
     `✓ tenant "${tenant.slug}": plan_key=${plan.key}, max_companies=${plan.maxCompanies}, ` +
       `max_users=${plan.maxUsers}, status=${subscription.status} — salinan kendali ditulis TERAKHIR`
   );
+
+  /* Ganti paket = peristiwa TENANT — jejaknya di rumah tenant (issue #142). */
+  await writeTenantAuditLog({
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    username: `operator (${process.env.USER ?? "cli"})`,
+    action: "tenant.plan.change",
+    details: {
+      from: tenant.planKey,
+      to: plan.key,
+      maxCompanies: plan.maxCompanies,
+      maxUsers: plan.maxUsers,
+    },
+  });
 
   await platform.$disconnect();
   await control.$disconnect();

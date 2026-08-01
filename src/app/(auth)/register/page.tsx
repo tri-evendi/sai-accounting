@@ -137,7 +137,23 @@ export default function RegisterPage() {
               htmlFor="terms"
               className="cursor-pointer text-sm leading-snug text-muted-foreground"
             >
-              {t("auth.register.terms")}
+              {t("auth.register.termsPrefix")}{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t("auth.register.termsLinkLabel")}
+              </Link>{" "}
+              {t("auth.register.termsAnd")}{" "}
+              <Link
+                href="/privacy"
+                target="_blank"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t("auth.register.privacyLinkLabel")}
+              </Link>
+              .
             </label>
           </div>
           <Button type="submit" className="w-full" size="lg" disabled={loading || !terms}>

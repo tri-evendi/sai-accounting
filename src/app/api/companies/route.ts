@@ -35,6 +35,7 @@ import { companyCreateSchema } from "@/lib/validations/company";
 import { provisionCompany } from "@/lib/company-provisioning";
 import { ProvisionError, type ProvisionEvent } from "@/lib/company-provisioning-shared";
 import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { runWithCompany } from "@/lib/company-context";
 import { ROLES } from "@/lib/constants";
 import { controlDb } from "@/lib/control-db";
@@ -121,14 +122,23 @@ export async function POST(request: Request) {
         );
 
         /*
-         * Dicatat di jejak audit perusahaan yang BARU DIBUAT — satu-satunya
-         * tempat yang PASTI ada: pembuatnya boleh jadi tidak sedang membuka
-         * perusahaan mana pun (pelanggan baru), jadi "jejak perusahaan yang
-         * sedang dibuka" tidak lagi selalu bermakna. Pertanyaan "siapa yang
-         * membuat PT ini" pun memang paling wajar dicari di PT itu sendiri.
-         * (Jejak TINGKAT TENANT belum punya rumah — pekerjaan tahap #138,
-         * docs/MULTI-TENANT.md §4.7.)
+         * Dicatat DUA KALI dengan sengaja (issue #142), karena pertanyaannya
+         * dua: "siapa yang membuat PT ini" dicari di jejak PT ITU SENDIRI
+         * (satu-satunya jejak per-PT yang pasti ada — pembuatnya boleh jadi
+         * belum membuka perusahaan mana pun); "PT apa saja yang lahir di
+         * tenant ini, kapan" milik jejak TENANT — rumah yang dulu tidak ada
+         * dan kini ada (lib/tenant-audit.ts).
          */
+        await writeTenantAuditLog({
+          tenantId: result.tenant.tenantId,
+          tenantSlug: result.tenant.tenantSlug,
+          userId: session.user.id,
+          username: session.user.name ?? session.user.email ?? session.user.id,
+          tenantRole: result.tenant.role,
+          action: "tenant.company.create",
+          details: { slug: parsed.data.slug, name: parsed.data.name, databaseName },
+          request,
+        });
         await runWithCompany(
           { companyId, slug: parsed.data.slug, databaseName },
           async () => {

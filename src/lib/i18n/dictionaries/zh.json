@@ -330,7 +330,6 @@
       "description": "创建账号，开始为您的企业记账。试用期内免费。",
       "name": "您的姓名",
       "namePlaceholder": "全名",
-      "terms": "我同意条款与条件及隐私政策。",
       "submit": "注册",
       "submitting": "注册中...",
       "sentTitle": "请查收邮箱",
@@ -346,7 +345,11 @@
       "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请重新注册以获取新链接。",
       "alreadyRegistered": "该邮箱已有账号。请直接登录——忘记密码可重置。",
       "missingToken": "链接不完整。请重新打开邮件中的链接。",
-      "registerAgain": "重新注册"
+      "registerAgain": "重新注册",
+      "termsPrefix": "我同意",
+      "termsLinkLabel": "条款与条件",
+      "termsAnd": "及",
+      "privacyLinkLabel": "隐私政策"
     }
   },
   "status": {
@@ -3379,7 +3382,22 @@
       "issued": "已开具",
       "paid": "已付款",
       "void": "作废"
-    }
+    },
+    "privacyHeading": "数据与隐私",
+    "exportBody": "下载您的全部账务数据——每家公司、每张表——打包为 ZIP 压缩包内的 CSV 文件，无需本应用即可在 Excel/LibreOffice 中打开。即使订阅被暂停也始终可用。",
+    "exportButton": "下载全部数据（ZIP）",
+    "exportFailed": "导出生成失败。请重试；若持续失败请联系我们。",
+    "deletionBody": "申请删除账号将在 {days} 天缓冲期后关闭全部访问并匿名化个人数据。账簿不会被删除：印尼税法（UU KUP）要求保存 10 年后方可销毁。",
+    "deletionRequestButton": "申请删除账号",
+    "deletionCancelButton": "取消删除申请",
+    "deletionPending": "删除申请已登记——将于 {date} 之后执行。在此之前您仍可取消。",
+    "deletionConfirmTitle": "确定申请删除账号？",
+    "deletionConfirmBody": "{days} 天缓冲期过后，所有访问将被关闭，个人数据将被匿名化——执行后不可恢复。请先下载您的数据。账簿依 UU KUP 要求保存 10 年。",
+    "deletionRequested": "删除申请已登记。所有所有者均已收到邮件通知。",
+    "deletionCancelled": "删除申请已取消。一切保持不变。",
+    "deletionFailed": "请求处理失败，请重试。",
+    "deletionAlreadyPending": "已有一个待处理的删除申请。",
+    "deletionNonePending": "没有待处理的删除申请。"
   },
   "billing": {
     "payColumn": "支付",

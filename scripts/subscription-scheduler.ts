@@ -58,6 +58,7 @@ import {
   transition,
   type SubscriptionEvent,
 } from "../src/lib/subscription-lifecycle";
+import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
 import { resolvePaymentGateway } from "../src/lib/payment-gateway";
@@ -131,9 +132,19 @@ async function applyEvent(
   });
 
   /* 2 — KENDALI belakangan: salinan status untuk penjaga hanya-baca. */
-  await control.tenant.update({
+  const tenant = await control.tenant.update({
     where: { id: subscription.tenantId },
     data: { status: tenantStatusForSubscription(next) },
+    select: { id: true, slug: true },
+  });
+
+  /* Transisi status adalah peristiwa TENANT — dicatat di jejak tenant (issue
+   * #142); penulisnya "system": tidak ada manusia di kursi penjadwal. */
+  await writeTenantAuditLog({
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    action: "tenant.status.change",
+    details: { from: subscription.status, to: next, event },
   });
 
   return next;

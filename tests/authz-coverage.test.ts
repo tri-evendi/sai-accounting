@@ -71,6 +71,12 @@ const TENANT_API_ROUTES = new Set([
   // kewenangan tenant `tenant.billing` (owner, kontraktual), bukan peran PT.
   "tenant/billing/pay/route.ts",
   "tenant/billing/profile/route.ts",
+  // Kepatuhan (issue #142): ekspor seluruh data tenant & permintaan
+  // penghapusan adalah hak PELANGGAN (owner tenant), berdiri di atas semua
+  // PT-nya — dan ekspor wajib tetap bekerja saat seluruh PT hanya-baca
+  // (suspended), keadaan yang penjaga perusahaan justru tolak.
+  "tenant/export/route.ts",
+  "tenant/deletion-request/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */

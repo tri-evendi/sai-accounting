@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
+import { tenantPermissionsForRole } from "@/lib/tenant-authz";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 /**
@@ -22,7 +24,29 @@ export async function GET() {
     return NextResponse.json({ error: t("errors.sessionExpired") }, { status: 401 });
   }
 
-  const permissions = await effectivePermissionsFor(session.user);
+  /*
+   * Izin per-perusahaan menuntut perusahaan aktif (loader modul/override
+   * membacanya); sesi yang belum memilih PT sah di sini — pemanggilnya
+   * sidebar, dan pengguna tanpa PT tetap butuh item TENANT-nya (mis. "Tambah
+   * Perusahaan" di pemilih).
+   */
+  const permissions =
+    session.user.companyId != null ? await effectivePermissionsFor(session.user) : [];
 
-  return NextResponse.json({ role: session.user.role, permissions });
+  /*
+   * Izin TENANT ikut di set yang sama (issue #135): kunci kedua matriks saling
+   * lepas, jadi satu himpunan string aman — dan sidebar/palet cukup satu
+   * sumber untuk kedua lingkup. TAMPILAN SAJA, seperti seluruh respons route
+   * ini; penegakan tenant tetap `requireTenantPermission` di server.
+   */
+  const userId = Number.parseInt(String(session.user.id), 10);
+  const tenantMembership = Number.isInteger(userId)
+    ? await tenantMembershipForUser(userId)
+    : null;
+  const tenantPermissions = tenantPermissionsForRole(tenantMembership?.role);
+
+  return NextResponse.json({
+    role: session.user.role,
+    permissions: [...permissions, ...tenantPermissions],
+  });
 }

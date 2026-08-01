@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "合同与库存管理系统 — PT Subur Anugerah Indonesia"
+    "description": "面向印度尼西亚企业的记账与会计系统。"
   },
   "common": {
     "save": "保存",
@@ -238,7 +238,10 @@
     "noTour": "本页暂无导览。首页、录入销售和报表中心提供导览。"
   },
   "auth": {
-    "brandTagline": "面向内部团队的合同与库存管理系统。",
+    "brandTagline": "面向印度尼西亚企业的规范记账。",
+    "brandPoint1": "复式记账与总账，遵循标准会计准则。",
+    "brandPoint2": "支持印尼盾与外币，并记录汇率及本位币金额。",
+    "brandPoint3": "一套系统管理多家公司，账簿彼此完全独立。",
     "setupRequired": {
       "heading": "应用尚未完成初始设置",
       "description": "公司资料尚未填写，应用暂时无法使用。",
@@ -248,15 +251,19 @@
     },
     "login": {
       "heading": "登录",
-      "description": "使用您的公司账户查看仪表板、合同与库存。",
+      "description": "使用您的公司账号进入账簿与日常工作。",
       "username": "用户名",
       "usernamePlaceholder": "您的用户名",
+      "identifier": "邮箱或用户名",
+      "identifierPlaceholder": "name@company.com",
       "password": "密码",
       "submit": "登录",
       "submitting": "正在登录...",
       "checkingSession": "正在检查您的登录状态...",
-      "forgotPassword": "忘记密码？请联系系统管理员重置访问权限。",
-      "invalidCredentials": "用户名或密码不正确，请重试。"
+      "forgotPassword": "忘记密码？通过邮箱重置",
+      "invalidCredentials": "用户名或密码不正确，请重试。",
+      "registerPrompt": "还没有账号？",
+      "registerLink": "立即注册"
     },
     "changePassword": {
       "heading": "修改您的密码",
@@ -265,10 +272,13 @@
       "new": "新密码",
       "confirm": "确认新密码",
       "hint": "请至少使用 8 个字符，不要重复使用其他系统的密码。",
+      "ruleLength": "至少 {count} 个字符",
+      "ruleDifferent": "与当前密码不同",
+      "ruleMatch": "两次输入一致",
+      "ruleMet": "已满足",
+      "ruleUnmet": "尚未满足",
       "submit": "保存密码",
       "submitting": "正在保存...",
-      "mismatch": "新密码与确认密码不一致。",
-      "tooShort": "密码至少需要 8 个字符。",
       "failed": "修改密码失败，请重试。"
     },
     "selectCompany": {
@@ -283,7 +293,63 @@
       "switchLabel": "切换公司",
       "currentLabel": "当前打开",
       "signOut": "退出登录",
-      "signedInAs": "当前登录"
+      "signedInAs": "当前登录",
+      "noCompanyYetHeading": "尚无公司",
+      "noCompanyYetBody": "您的租户还没有任何公司。创建第一家公司即可开始记账。",
+      "noCompanyYetOwner": "每家公司都有自己独立的账簿——发票、日记账和库存完全分开。创建后，请运行设置向导以完成公司信息、会计科目表和期初余额。"
+    },
+    "forgotPassword": {
+      "heading": "忘记密码",
+      "description": "请输入账号邮箱。如果该邮箱已注册，我们会发送设置新密码的链接。",
+      "email": "邮箱",
+      "emailPlaceholder": "name@company.com",
+      "submit": "发送链接",
+      "submitting": "发送中...",
+      "sentTitle": "请查收邮箱",
+      "sentBody": "如果该邮箱已注册，重置链接已发送，60 分钟内有效。没有收到？请检查垃圾邮件文件夹，或确认邮箱地址是否正确。",
+      "tooMany": "请求过于频繁。请稍等几分钟后再试。",
+      "failed": "请求处理失败，请重试。",
+      "backToLogin": "返回登录"
+    },
+    "resetPassword": {
+      "heading": "设置新密码",
+      "description": "为您的账号选择新密码。该链接仅可使用一次。",
+      "newPassword": "新密码",
+      "confirm": "再次输入新密码",
+      "submit": "保存密码",
+      "submitting": "保存中...",
+      "successTitle": "密码已保存",
+      "successBody": "密码已更改，所有旧会话已退出。请使用新密码登录。",
+      "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请在忘记密码页面重新申请链接。",
+      "missingToken": "链接不完整。请重新打开邮件中的链接，或申请新链接。",
+      "goLogin": "立即登录",
+      "requestNew": "申请新链接"
+    },
+    "register": {
+      "heading": "注册",
+      "description": "创建账号，开始为您的企业记账。试用期内免费。",
+      "name": "您的姓名",
+      "namePlaceholder": "全名",
+      "submit": "注册",
+      "submitting": "注册中...",
+      "sentTitle": "请查收邮箱",
+      "sentBody": "如果该地址可以注册，验证邮件已发送，24 小时内有效。打开链接即可激活账号。没有收到？请检查垃圾邮件文件夹。",
+      "haveAccount": "已有账号？登录",
+      "verifyHeading": "激活账号",
+      "verifyDescription": "再点一下——以免链接扫描机器人悄悄激活（或作废）您的账号。",
+      "verifyButton": "激活我的账号",
+      "verifying": "激活中...",
+      "verifiedTitle": "您的账号已激活",
+      "verifiedBody": "邮箱已验证，账号已就绪。请登录并创建您的第一家公司——每家公司都拥有完全独立的账簿。",
+      "verifiedCta": "登录并创建第一家公司",
+      "invalidToken": "此链接无效——可能已被使用、已过期或复制不完整。请重新注册以获取新链接。",
+      "alreadyRegistered": "该邮箱已有账号。请直接登录——忘记密码可重置。",
+      "missingToken": "链接不完整。请重新打开邮件中的链接。",
+      "registerAgain": "重新注册",
+      "termsPrefix": "我同意",
+      "termsLinkLabel": "条款与条件",
+      "termsAnd": "及",
+      "privacyLinkLabel": "隐私政策"
     }
   },
   "status": {
@@ -372,6 +438,12 @@
     "example": "示例：",
     "learnMore": "了解更多"
   },
+  "theme": {
+    "label": "外观",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
   "confirm": {
     "retypeLabel": "请重新输入以确认："
   },
@@ -425,6 +497,9 @@
     "accountCodeTaken": "该科目代码已被使用。",
     "accountOwnParent": "会计科目不能作为自身的上级科目。",
     "usernameTaken": "该用户名已被使用。",
+    "emailTaken": "该邮箱已被其他账号使用。",
+    "companyQuotaReached": "您的套餐公司配额已用完。升级套餐即可添加更多公司。",
+    "tenantNotActive": "您的订阅当前未生效，无法创建新公司。请联系我们重新激活。",
     "assetCategoryNameTaken": "该类别名称已被使用。",
     "roleKeyTaken": "键“{key}”已被使用。",
     "approvalRuleDuplicate": "已存在单据类型和金额门槛相同的启用规则。",
@@ -486,7 +561,8 @@
     "bookMovementWrongAccount": "该账簿交易所属的账户或币种与此次对账不符。",
     "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
     "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
-    "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。"
+    "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。",
+    "selectCompanyFirst": "请先选择公司。"
   },
   "contracts": {
     "title": "合同（{count}）",
@@ -1566,7 +1642,10 @@
       }
     },
     "catalogReport": {
-      "opname_history": { "title": "库存盘点历史", "description": "各期间的盘点结果：盘盈、盘亏及净差异。" },
+      "opname_history": {
+        "title": "库存盘点历史",
+        "description": "各期间的盘点结果：盘盈、盘亏及净差异。"
+      },
       "trial_balance": {
         "title": "试算表",
         "description": "某一日期全部科目的借贷余额——必须平衡。"
@@ -1767,6 +1846,36 @@
     "rateHint": "外币必填——总账中的 IDR 金额由此汇率换算得出。",
     "submit": "保存交易",
     "preparingForm": "正在准备表单..."
+  },
+  "firstSteps": {
+    "title": "第一步",
+    "subtitle": "账簿已建立，但尚未有任何交易。完成以下几项即可投入日常使用。",
+    "progress": "已完成 {done} / {total}",
+    "done": "已完成",
+    "start": "开始",
+    "again": "再次打开",
+    "items": {
+      "pelanggan": {
+        "label": "添加客户",
+        "description": "向您购买的一方。记录销售时从中选择。"
+      },
+      "pemasok": {
+        "label": "添加供应商",
+        "description": "您向其采购的一方。记录采购时从中选择。"
+      },
+      "stok_awal": {
+        "label": "录入期初库存",
+        "description": "今天之前已在仓库中的货物。"
+      },
+      "penjualan": {
+        "label": "录入第一笔销售",
+        "description": "引导流程：客户 → 货物 → 送货单 → 发票。"
+      },
+      "terima_uang": {
+        "label": "收取第一笔款项",
+        "description": "记录进入现金或银行账户的资金。"
+      }
+    }
   },
   "reconciliation": {
     "title": "银行对账",
@@ -2189,6 +2298,16 @@
     "errSaveFailed": "期初余额保存失败。",
     "errNetwork": "无法连接服务器。请重试。",
     "toastDone": "设置完成。期初日记账已保存且借贷平衡。",
+    "doneTitle": "设置完成",
+    "doneDescription": "公司账簿已建立。以下是刚刚创建的内容。",
+    "doneBanner": "期初余额已保存为一张平衡的日记账，所有报表均自 {date} 起计算。",
+    "doneViewJournal": "查看日记账 {number}",
+    "doneStartWorking": "开始使用",
+    "introTitle": "此处将要设置的内容",
+    "introPoint1": "公司信息、本位币，以及会计年度的起始日。",
+    "introPoint2": "启用哪些模块——用不到的可以关闭，菜单就不会过于冗长。",
+    "introPoint3": "该日期的期初余额。至少填写一项；其余可以稍后作为普通交易录入。",
+    "draftSaved": "草稿已自动保存",
     "totalAssets": "资产合计（借方）",
     "totalLiabilities": "负债合计（贷方）",
     "equityCredit": "资本/权益（贷方）",
@@ -2332,8 +2451,7 @@
     "company_setting": "公司资料",
     "authz": "访问权限",
     "glossary": "术语表",
-    "settings": "设置",
-    "company": "公司"
+    "settings": "设置"
   },
   "permission": {
     "approval_view": "查看审批队列",
@@ -2393,8 +2511,7 @@
     "company_setting_manage": "修改公司资料",
     "authz_manage": "配置访问权限（本页）",
     "glossary_read": "打开术语表",
-    "settings_view": "打开设置页面",
-    "company_create": "创建拥有独立数据库的新公司——账簿与其他公司完全隔离。"
+    "settings_view": "打开设置页面"
   },
   "users": {
     "title": "用户管理",
@@ -2459,7 +2576,20 @@
     "choiceNotAllowed": "禁止",
     "choiceAlwaysAllow": "始终允许",
     "choiceAlwaysDeny": "始终禁止",
-    "lockedShort": "已锁定"
+    "lockedShort": "已锁定",
+    "inviteUser": "邀请用户",
+    "inviteTitle": "邀请新用户",
+    "inviteHint": "输入邮箱和角色。对方将收到链接并自行设置密码——您无需(也无法)替任何人输入密码。",
+    "inviting": "发送中...",
+    "sendInvite": "发送邀请",
+    "errInvite": "发送邀请失败",
+    "pendingInvites": "待处理邀请",
+    "inviteExpires": "有效期至",
+    "revokeInvite": "撤销",
+    "revokeInviteTitle": "撤销邀请",
+    "revokeInviteMessage": "撤销发给 {email} 的邀请?邮件中的链接将失效。",
+    "inviteRevoked": "邀请已撤销",
+    "errRevokeInvite": "撤销邀请失败"
   },
   "permissions": {
     "errNoPermission": "您没有管理访问权限的权限。",
@@ -3023,12 +3153,15 @@
     "advanceUsedTwice": "同一笔预付款被重复抵扣。",
     "compensationExceedsAdvance": "抵扣金额（{amount} {currency}）超过预付款余额（{remaining} {currency}）。",
     "rejectionNoteRequired": "请填写拒绝理由（至少 5 个字符）。",
-    "usernameRequired": "请填写用户名",
+    "identifierRequired": "请输入邮箱或用户名",
+    "nameRequired": "请输入姓名",
+    "termsRequired": "您必须同意条款与条件",
     "passwordRequired": "请填写密码",
     "currentPasswordRequired": "请填写当前密码",
     "passwordMin8": "密码至少 8 个字符",
     "passwordConfirmRequired": "请再次输入新密码",
     "passwordMismatch": "两次输入的密码不一致",
+    "passwordSameAsCurrent": "新密码必须与当前密码不同",
     "tooManyOverrideRows": "覆盖规则行数过多。",
     "companyDatabasePrefix": "数据库名称必须以 \"sai_\" 开头",
     "companySlugInvalid": "标识只能包含小写字母、数字和连字符（例如 pt-bumi-baru）",
@@ -3193,5 +3326,98 @@
     "stepDatabase": "创建数据库",
     "stepMigrate": "应用数据库架构",
     "stepRegister": "注册公司"
+  },
+  "invitations": {
+    "sent": "邀请已发送。",
+    "tooMany": "尝试次数过多,请稍后再试。",
+    "quotaExceeded": "您套餐的用户配额已满——请撤销待处理的邀请或升级套餐。",
+    "quotaExceededAccept": "该订阅的用户配额已满,请联系邀请您的人。",
+    "invalidToken": "该邀请链接无效——可能已过期、已被使用或复制有误。请向邀请人重新索取邀请。",
+    "notFound": "未找到该邀请。",
+    "goLogin": "前往登录",
+    "checking": "正在检查邀请...",
+    "acceptHeading": "接受邀请",
+    "acceptDescription": "您受邀加入 {company}。",
+    "acceptAs": "此邀请发给 {email}。请在下方完善您的账户。",
+    "username": "用户名(用于显示)",
+    "choosePassword": "您的密码(至少 8 个字符)",
+    "submitting": "正在创建账户...",
+    "submit": "创建账户并加入",
+    "successTitle": "您的账户已就绪。",
+    "successBody": "使用您的邮箱和刚设置的密码登录,然后选择公司。"
+  },
+  "tenantSettings": {
+    "title": "订阅与套餐",
+    "description": "您的套餐、用量与账单历史。",
+    "planHeading": "套餐",
+    "statusLabel": "状态",
+    "trialEndsAt": "试用截止",
+    "usageHeading": "用量",
+    "usageCompanies": "公司",
+    "usageUsers": "用户",
+    "usageOf": "{used} / {max}",
+    "billingHeading": "账单历史",
+    "billingUnavailable": "计费数据库暂时无法访问。登录与账簿不受影响——请稍后再试。",
+    "noSubscription": "该租户尚无订阅记录。",
+    "noInvoices": "暂无账单。",
+    "invoiceNumber": "编号",
+    "invoiceDue": "到期日",
+    "invoiceTotal": "合计",
+    "period": "当前周期至 {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "月",
+    "cycleYearly": "年",
+    "planChangeNote": "更换套餐与在线支付将随支付网关一同推出。目前请联系平台运营方。",
+    "readOnlyNote": "订阅已暂停:账簿为只读。您的数据不会被删除;仍可查看与导出。",
+    "status": {
+      "pending_verification": "待验证",
+      "trialing": "试用中",
+      "active": "生效中",
+      "past_due": "已逾期",
+      "suspended": "已暂停(只读)",
+      "cancelled": "已终止"
+    },
+    "invoiceStatus": {
+      "draft": "草稿",
+      "issued": "已开具",
+      "paid": "已付款",
+      "void": "作废"
+    },
+    "privacyHeading": "数据与隐私",
+    "exportBody": "下载您的全部账务数据——每家公司、每张表——打包为 ZIP 压缩包内的 CSV 文件，无需本应用即可在 Excel/LibreOffice 中打开。即使订阅被暂停也始终可用。",
+    "exportButton": "下载全部数据（ZIP）",
+    "exportFailed": "导出生成失败。请重试；若持续失败请联系我们。",
+    "deletionBody": "申请删除账号将在 {days} 天缓冲期后关闭全部访问并匿名化个人数据。账簿不会被删除：印尼税法（UU KUP）要求保存 10 年后方可销毁。",
+    "deletionRequestButton": "申请删除账号",
+    "deletionCancelButton": "取消删除申请",
+    "deletionPending": "删除申请已登记——将于 {date} 之后执行。在此之前您仍可取消。",
+    "deletionConfirmTitle": "确定申请删除账号？",
+    "deletionConfirmBody": "{days} 天缓冲期过后，所有访问将被关闭，个人数据将被匿名化——执行后不可恢复。请先下载您的数据。账簿依 UU KUP 要求保存 10 年。",
+    "deletionRequested": "删除申请已登记。所有所有者均已收到邮件通知。",
+    "deletionCancelled": "删除申请已取消。一切保持不变。",
+    "deletionFailed": "请求处理失败，请重试。",
+    "deletionAlreadyPending": "已有一个待处理的删除申请。",
+    "deletionNonePending": "没有待处理的删除申请。"
+  },
+  "billing": {
+    "payColumn": "支付",
+    "payVa": "创建 VA",
+    "payQris": "QRIS",
+    "vaLabel": "{bank} 虚拟账号:",
+    "payBefore": "请在 {date} 前支付",
+    "qrisHint": "请在您的银行应用中扫描/复制以下 QRIS 代码:",
+    "manualFallback": "手动转账——请联系平台运营方获取收款账户。",
+    "errPay": "无法生成支付指引",
+    "invoiceNotFound": "未找到该账单。",
+    "invoiceNotPayable": "该账单当前无需支付。",
+    "profileHeading": "税务资料(税务发票)",
+    "profileHint": "NPWP、名称与注册地址——用于订阅账单的税务发票。订阅的增值税/e-Faktur 义务正在与税务顾问确认;此数据为其做准备。",
+    "npwp": "NPWP",
+    "npwpName": "NPWP 登记名称",
+    "npwpAddress": "NPWP 登记地址",
+    "saveProfile": "保存资料",
+    "savingProfile": "保存中...",
+    "profileSaved": "税务资料已保存",
+    "errProfile": "保存税务资料失败"
   }
 }

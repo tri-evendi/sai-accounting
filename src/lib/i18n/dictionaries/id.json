@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Sistem Manajemen Kontrak & Stok — PT Subur Anugerah Indonesia"
+    "description": "Sistem pembukuan dan akuntansi untuk usaha di Indonesia."
   },
   "common": {
     "save": "Simpan",
@@ -238,7 +238,10 @@
     "noTour": "Halaman ini belum punya tur panduan. Tur tersedia di Beranda, Catat Penjualan, dan Pusat Laporan."
   },
   "auth": {
-    "brandTagline": "Pengelolaan kontrak & stok untuk tim internal.",
+    "brandTagline": "Pembukuan baku untuk usaha di Indonesia.",
+    "brandPoint1": "Jurnal & buku besar berpasangan, sesuai kaidah akuntansi baku.",
+    "brandPoint2": "Rupiah dan mata uang asing, lengkap dengan kurs dan nilai dasarnya.",
+    "brandPoint3": "Banyak PT dalam satu pemasangan, dengan buku yang benar-benar terpisah.",
     "setupRequired": {
       "heading": "Aplikasi belum disiapkan",
       "description": "Data perusahaan belum diisi, jadi aplikasi belum bisa dipakai.",
@@ -248,15 +251,19 @@
     },
     "login": {
       "heading": "Masuk",
-      "description": "Gunakan akun perusahaan Anda untuk membuka dasbor, kontrak, dan stok.",
+      "description": "Gunakan akun perusahaan Anda untuk membuka buku dan pekerjaan harian.",
       "username": "Nama Pengguna",
       "usernamePlaceholder": "nama.pengguna",
+      "identifier": "Email atau Nama Pengguna",
+      "identifierPlaceholder": "nama@perusahaan.co.id",
       "password": "Kata Sandi",
       "submit": "Masuk",
       "submitting": "Sedang masuk...",
       "checkingSession": "Memeriksa sesi Anda...",
-      "forgotPassword": "Lupa kata sandi? Hubungi admin sistem untuk mengatur ulang akses.",
-      "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi."
+      "forgotPassword": "Lupa kata sandi? Atur ulang lewat email",
+      "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi.",
+      "registerPrompt": "Belum punya akun?",
+      "registerLink": "Daftar sekarang"
     },
     "changePassword": {
       "heading": "Ganti Kata Sandi Anda",
@@ -265,10 +272,13 @@
       "new": "Kata Sandi Baru",
       "confirm": "Ulangi Kata Sandi Baru",
       "hint": "Gunakan minimal 8 karakter. Jangan memakai ulang kata sandi dari sistem lain.",
+      "ruleLength": "Minimal {count} karakter",
+      "ruleDifferent": "Berbeda dari kata sandi saat ini",
+      "ruleMatch": "Ulangannya cocok",
+      "ruleMet": "sudah terpenuhi",
+      "ruleUnmet": "belum terpenuhi",
       "submit": "Simpan Kata Sandi",
       "submitting": "Menyimpan...",
-      "mismatch": "Kata sandi baru dan ulangannya tidak sama.",
-      "tooShort": "Kata sandi minimal 8 karakter.",
       "failed": "Gagal mengganti kata sandi. Silakan coba lagi."
     },
     "selectCompany": {
@@ -283,7 +293,63 @@
       "switchLabel": "Ganti perusahaan",
       "currentLabel": "Sedang dibuka",
       "signOut": "Keluar",
-      "signedInAs": "Masuk sebagai"
+      "signedInAs": "Masuk sebagai",
+      "noCompanyYetHeading": "Belum ada perusahaan",
+      "noCompanyYetBody": "Tenant Anda belum punya satu pun perusahaan. Buat yang pertama untuk mulai membuka buku.",
+      "noCompanyYetOwner": "Setiap perusahaan mendapat bukunya sendiri — faktur, jurnal, dan stok yang terpisah penuh. Setelah dibuat, jalankan wizard penyiapan untuk identitas, bagan akun, dan saldo awal."
+    },
+    "forgotPassword": {
+      "heading": "Lupa Kata Sandi",
+      "description": "Masukkan email akun Anda. Kalau terdaftar, kami kirimkan tautan untuk membuat kata sandi baru.",
+      "email": "Email",
+      "emailPlaceholder": "nama@perusahaan.co.id",
+      "submit": "Kirim Tautan",
+      "submitting": "Mengirim...",
+      "sentTitle": "Periksa kotak masuk Anda",
+      "sentBody": "Kalau email itu terdaftar, tautan atur-ulang sudah dikirim dan berlaku 60 menit. Tidak menerima apa pun? Periksa folder spam, atau pastikan emailnya benar.",
+      "tooMany": "Terlalu banyak permintaan. Tunggu beberapa menit, lalu coba lagi.",
+      "failed": "Permintaan gagal diproses. Silakan coba lagi.",
+      "backToLogin": "Kembali ke halaman masuk"
+    },
+    "resetPassword": {
+      "heading": "Buat Kata Sandi Baru",
+      "description": "Pilih kata sandi baru untuk akun Anda. Tautan ini sekali pakai.",
+      "newPassword": "Kata Sandi Baru",
+      "confirm": "Ulangi Kata Sandi Baru",
+      "submit": "Simpan Kata Sandi",
+      "submitting": "Menyimpan...",
+      "successTitle": "Kata sandi tersimpan",
+      "successBody": "Kata sandi Anda sudah diganti dan seluruh sesi lama dikeluarkan. Silakan masuk dengan kata sandi baru.",
+      "invalidToken": "Tautan ini tidak berlaku — mungkin sudah dipakai, kedaluwarsa, atau salah salin. Minta tautan baru dari halaman lupa kata sandi.",
+      "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda, atau minta tautan baru.",
+      "goLogin": "Masuk sekarang",
+      "requestNew": "Minta tautan baru"
+    },
+    "register": {
+      "heading": "Daftar",
+      "description": "Buat akun untuk mulai membukukan usaha Anda. Gratis selama masa uji coba.",
+      "name": "Nama Anda",
+      "namePlaceholder": "Nama lengkap",
+      "submit": "Daftar",
+      "submitting": "Mendaftarkan...",
+      "sentTitle": "Periksa kotak masuk Anda",
+      "sentBody": "Kalau alamat itu bisa didaftarkan, surel verifikasi sudah dikirim dan berlaku 24 jam. Buka tautannya untuk mengaktifkan akun. Tidak menerima apa pun? Periksa folder spam.",
+      "haveAccount": "Sudah punya akun? Masuk",
+      "verifyHeading": "Aktifkan Akun",
+      "verifyDescription": "Satu tekanan tombol lagi — supaya robot pemindai tautan tidak mengaktifkan (atau menghanguskan) akun Anda diam-diam.",
+      "verifyButton": "Aktifkan akun saya",
+      "verifying": "Mengaktifkan...",
+      "verifiedTitle": "Akun Anda aktif",
+      "verifiedBody": "Email terverifikasi dan akun Anda siap. Masuk, lalu buat perusahaan pertama Anda — setiap perusahaan mendapat buku yang terpisah penuh.",
+      "verifiedCta": "Masuk & buat perusahaan pertama",
+      "invalidToken": "Tautan ini tidak berlaku — mungkin sudah dipakai, kedaluwarsa, atau salah salin. Daftar ulang untuk menerima tautan baru.",
+      "alreadyRegistered": "Email ini sudah punya akun. Silakan masuk — atau atur ulang kata sandi bila lupa.",
+      "missingToken": "Tautan tidak lengkap. Buka kembali tautan dari email Anda.",
+      "registerAgain": "Daftar ulang",
+      "termsPrefix": "Saya menyetujui",
+      "termsLinkLabel": "syarat & ketentuan",
+      "termsAnd": "dan",
+      "privacyLinkLabel": "kebijakan privasi"
     }
   },
   "status": {
@@ -372,6 +438,12 @@
     "example": "Contoh:",
     "learnMore": "Pelajari selengkapnya"
   },
+  "theme": {
+    "label": "Tampilan",
+    "light": "Terang",
+    "dark": "Gelap",
+    "system": "Ikut sistem"
+  },
   "confirm": {
     "retypeLabel": "Ketik ulang untuk memastikan:"
   },
@@ -425,6 +497,9 @@
     "accountCodeTaken": "Kode perkiraan itu sudah dipakai.",
     "accountOwnParent": "Akun perkiraan tidak boleh menjadi induk dirinya sendiri.",
     "usernameTaken": "Nama pengguna itu sudah dipakai.",
+    "emailTaken": "Email itu sudah dipakai akun lain.",
+    "companyQuotaReached": "Kuota perusahaan paket Anda sudah terpakai penuh. Naikkan paket untuk menambah perusahaan.",
+    "tenantNotActive": "Langganan Anda sedang tidak aktif, jadi perusahaan baru tidak bisa dibuat. Hubungi kami untuk mengaktifkannya kembali.",
     "assetCategoryNameTaken": "Nama kategori itu sudah dipakai.",
     "roleKeyTaken": "Kunci “{key}” sudah dipakai.",
     "approvalRuleDuplicate": "Sudah ada aturan aktif dengan jenis dokumen dan ambang yang sama.",
@@ -486,7 +561,8 @@
     "bookMovementWrongAccount": "Transaksi buku bukan milik rekening atau mata uang rekonsiliasi ini.",
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
     "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
-    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan."
+    "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan.",
+    "selectCompanyFirst": "Pilih perusahaan terlebih dahulu."
   },
   "contracts": {
     "title": "Kontrak ({count})",
@@ -1566,7 +1642,10 @@
       }
     },
     "catalogReport": {
-      "opname_history": { "title": "Riwayat Hitung Ulang Stok", "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya." },
+      "opname_history": {
+        "title": "Riwayat Hitung Ulang Stok",
+        "description": "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya."
+      },
       "trial_balance": {
         "title": "Neraca Saldo",
         "description": "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang."
@@ -1767,6 +1846,36 @@
     "rateHint": "Wajib untuk mata uang asing — nilai IDR di buku besar dihitung dari kurs ini.",
     "submit": "Simpan Transaksi",
     "preparingForm": "Menyiapkan formulir..."
+  },
+  "firstSteps": {
+    "title": "Langkah Pertama",
+    "subtitle": "Bukunya sudah dibuka tapi belum ada transaksi. Beberapa hal ini menyiapkannya untuk dipakai sehari-hari.",
+    "progress": "{done} dari {total} selesai",
+    "done": "Selesai",
+    "start": "Mulai",
+    "again": "Buka lagi",
+    "items": {
+      "pelanggan": {
+        "label": "Tambah Pelanggan",
+        "description": "Siapa yang membeli dari Anda. Dipilih saat mencatat penjualan."
+      },
+      "pemasok": {
+        "label": "Tambah Pemasok",
+        "description": "Dari siapa Anda membeli. Dipilih saat mencatat pembelian."
+      },
+      "stok_awal": {
+        "label": "Catat Stok Awal",
+        "description": "Barang yang sudah ada di gudang sebelum hari ini."
+      },
+      "penjualan": {
+        "label": "Catat Penjualan Pertama",
+        "description": "Dipandu: pelanggan → barang → surat jalan → faktur."
+      },
+      "terima_uang": {
+        "label": "Terima Pembayaran Pertama",
+        "description": "Catat uang yang masuk ke kas atau rekening bank."
+      }
+    }
   },
   "reconciliation": {
     "title": "Cocokkan Rekening Koran",
@@ -2189,6 +2298,16 @@
     "errSaveFailed": "Gagal menyimpan saldo awal.",
     "errNetwork": "Tidak dapat menghubungi server. Coba lagi.",
     "toastDone": "Setup selesai. Jurnal pembuka tersimpan dan seimbang.",
+    "doneTitle": "Penyiapan Selesai",
+    "doneDescription": "Buku perusahaan sudah dibuka. Berikut yang barusan dibuat.",
+    "doneBanner": "Saldo awal tersimpan sebagai satu jurnal berimbang, dan semua laporan dihitung mulai {date}.",
+    "doneViewJournal": "Lihat jurnal {number}",
+    "doneStartWorking": "Mulai Bekerja",
+    "introTitle": "Yang akan disiapkan di sini",
+    "introPoint1": "Identitas perusahaan, mata uang dasar, dan awal tahun buku.",
+    "introPoint2": "Modul yang dipakai — bagian yang tidak terpakai bisa dimatikan agar menunya tidak penuh.",
+    "introPoint3": "Saldo awal per tanggal itu. Minimal satu isian; sisanya bisa dicatat belakangan sebagai transaksi biasa.",
+    "draftSaved": "Draf tersimpan otomatis",
     "totalAssets": "Total Aset (debit)",
     "totalLiabilities": "Total Kewajiban (kredit)",
     "equityCredit": "Modal/Ekuitas (kredit)",
@@ -2332,8 +2451,7 @@
     "company_setting": "Profil Perusahaan",
     "authz": "Hak Akses",
     "glossary": "Kamus Istilah",
-    "settings": "Pengaturan",
-    "company": "Perusahaan"
+    "settings": "Pengaturan"
   },
   "permission": {
     "approval_view": "Melihat antrean persetujuan",
@@ -2393,8 +2511,7 @@
     "company_setting_manage": "Mengubah profil perusahaan",
     "authz_manage": "Mengatur hak akses (halaman ini)",
     "glossary_read": "Membuka kamus istilah",
-    "settings_view": "Membuka halaman pengaturan",
-    "company_create": "Membuat perusahaan baru beserta basis datanya — buku yang terpisah penuh dari perusahaan lain."
+    "settings_view": "Membuka halaman pengaturan"
   },
   "users": {
     "title": "Manajemen Pengguna",
@@ -2459,7 +2576,20 @@
     "choiceNotAllowed": "Tidak",
     "choiceAlwaysAllow": "Selalu boleh",
     "choiceAlwaysDeny": "Selalu tidak",
-    "lockedShort": "terkunci"
+    "lockedShort": "terkunci",
+    "inviteUser": "Undang Pengguna",
+    "inviteTitle": "Undang Pengguna Baru",
+    "inviteHint": "Masukkan email dan peran. Penerima akan mendapat tautan untuk menentukan kata sandinya sendiri — Anda tidak perlu (dan tidak bisa) mengetikkan kata sandi siapa pun.",
+    "inviting": "Mengirim...",
+    "sendInvite": "Kirim Undangan",
+    "errInvite": "Gagal mengirim undangan",
+    "pendingInvites": "Undangan Menunggu",
+    "inviteExpires": "Berlaku sampai",
+    "revokeInvite": "Cabut",
+    "revokeInviteTitle": "Cabut Undangan",
+    "revokeInviteMessage": "Cabut undangan untuk {email}? Tautan di surelnya berhenti bekerja.",
+    "inviteRevoked": "Undangan dicabut",
+    "errRevokeInvite": "Gagal mencabut undangan"
   },
   "permissions": {
     "errNoPermission": "Anda tidak punya izin mengelola hak akses.",
@@ -3023,12 +3153,15 @@
     "advanceUsedTwice": "Uang muka yang sama dikompensasi lebih dari sekali.",
     "compensationExceedsAdvance": "Kompensasi ({amount} {currency}) melebihi sisa uang muka ({remaining} {currency}).",
     "rejectionNoteRequired": "Alasan penolakan wajib diisi (minimal 5 karakter).",
-    "usernameRequired": "Nama pengguna wajib diisi",
+    "identifierRequired": "Email atau nama pengguna wajib diisi",
+    "nameRequired": "Nama wajib diisi",
+    "termsRequired": "Anda harus menyetujui syarat & ketentuan",
     "passwordRequired": "Kata sandi wajib diisi",
     "currentPasswordRequired": "Kata sandi saat ini wajib diisi",
     "passwordMin8": "Kata sandi minimal 8 karakter",
     "passwordConfirmRequired": "Ulangi kata sandi baru untuk memastikan",
     "passwordMismatch": "Kata sandi tidak sama",
+    "passwordSameAsCurrent": "Kata sandi baru harus berbeda dari kata sandi saat ini",
     "tooManyOverrideRows": "Terlalu banyak baris override.",
     "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
     "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",
@@ -3193,5 +3326,98 @@
     "stepDatabase": "Membuat basis data",
     "stepMigrate": "Menerapkan skema",
     "stepRegister": "Mendaftarkan perusahaan"
+  },
+  "invitations": {
+    "sent": "Undangan sudah dikirim.",
+    "tooMany": "Terlalu banyak percobaan. Coba lagi nanti.",
+    "quotaExceeded": "Kuota pengguna paket Anda sudah penuh — cabut undangan yang menunggu atau naikkan paket.",
+    "quotaExceededAccept": "Kuota pengguna langganan ini sudah penuh. Hubungi pengundang Anda.",
+    "invalidToken": "Tautan undangan tidak berlaku — mungkin kedaluwarsa, sudah dipakai, atau salah salin. Minta undangan baru kepada pengundang Anda.",
+    "notFound": "Undangan tidak ditemukan.",
+    "goLogin": "Ke halaman masuk",
+    "checking": "Memeriksa undangan...",
+    "acceptHeading": "Terima Undangan",
+    "acceptDescription": "Anda diundang bergabung ke {company}.",
+    "acceptAs": "Undangan ini untuk {email}. Lengkapi akun Anda di bawah.",
+    "username": "Nama Pengguna (untuk tampilan)",
+    "choosePassword": "Kata Sandi Anda (minimal 8 karakter)",
+    "submitting": "Membuat akun...",
+    "submit": "Buat Akun & Bergabung",
+    "successTitle": "Akun Anda siap.",
+    "successBody": "Masuk dengan email dan kata sandi yang baru Anda buat, lalu pilih perusahaannya."
+  },
+  "tenantSettings": {
+    "title": "Langganan & Paket",
+    "description": "Paket, pemakaian, dan riwayat tagihan langganan Anda.",
+    "planHeading": "Paket",
+    "statusLabel": "Status",
+    "trialEndsAt": "Uji coba berakhir",
+    "usageHeading": "Pemakaian",
+    "usageCompanies": "Perusahaan",
+    "usageUsers": "Pengguna",
+    "usageOf": "{used} dari {max}",
+    "billingHeading": "Riwayat Tagihan",
+    "billingUnavailable": "Basis data penagihan sedang tidak terjangkau. Masuk dan buku besar tidak terpengaruh — coba lagi nanti.",
+    "noSubscription": "Belum ada langganan tercatat untuk tenant ini.",
+    "noInvoices": "Belum ada tagihan.",
+    "invoiceNumber": "Nomor",
+    "invoiceDue": "Jatuh Tempo",
+    "invoiceTotal": "Total",
+    "period": "Periode berjalan sampai {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "bulan",
+    "cycleYearly": "tahun",
+    "planChangeNote": "Ganti paket & pembayaran daring menyusul bersama gateway pembayaran. Untuk saat ini hubungi pengelola platform.",
+    "readOnlyNote": "Langganan ditangguhkan: buku besar HANYA-BACA. Data Anda tidak dihapus; membaca dan mengekspor tetap bisa.",
+    "status": {
+      "pending_verification": "Menunggu Verifikasi",
+      "trialing": "Masa Uji Coba",
+      "active": "Aktif",
+      "past_due": "Menunggak",
+      "suspended": "Ditangguhkan (hanya-baca)",
+      "cancelled": "Berhenti"
+    },
+    "invoiceStatus": {
+      "draft": "Draf",
+      "issued": "Terbit",
+      "paid": "Lunas",
+      "void": "Batal"
+    },
+    "privacyHeading": "Data & Privasi",
+    "exportBody": "Unduh seluruh data pembukuan Anda — semua perusahaan, semua tabel — sebagai arsip ZIP berisi berkas CSV yang terbuka di Excel/LibreOffice tanpa aplikasi ini. Tetap tersedia walau langganan ditangguhkan.",
+    "exportButton": "Unduh Semua Data (ZIP)",
+    "exportFailed": "Ekspor gagal dibuat. Coba lagi, atau hubungi kami bila berulang.",
+    "deletionBody": "Meminta penghapusan akun menutup seluruh akses dan menganonimkan data pribadi setelah masa tenggang {days} hari. Buku pembukuan TIDAK ikut terhapus: UU KUP mewajibkannya disimpan 10 tahun sebelum boleh dihancurkan.",
+    "deletionRequestButton": "Minta Penghapusan Akun",
+    "deletionCancelButton": "Batalkan Permintaan Penghapusan",
+    "deletionPending": "Permintaan penghapusan tercatat — dieksekusi setelah {date}. Sampai saat itu Anda masih bisa membatalkannya.",
+    "deletionConfirmTitle": "Minta penghapusan akun?",
+    "deletionConfirmBody": "Setelah masa tenggang {days} hari, seluruh akses ditutup dan data pribadi dianonimkan — tidak bisa dibatalkan setelah dieksekusi. Unduh data Anda terlebih dahulu. Buku pembukuan disimpan 10 tahun sesuai UU KUP.",
+    "deletionRequested": "Permintaan penghapusan tercatat. Seluruh owner diberi tahu lewat email.",
+    "deletionCancelled": "Permintaan penghapusan dibatalkan. Tidak ada yang berubah.",
+    "deletionFailed": "Permintaan gagal diproses. Silakan coba lagi.",
+    "deletionAlreadyPending": "Sudah ada permintaan penghapusan yang menunggu.",
+    "deletionNonePending": "Tidak ada permintaan penghapusan yang menunggu."
+  },
+  "billing": {
+    "payColumn": "Bayar",
+    "payVa": "Buat VA",
+    "payQris": "QRIS",
+    "vaLabel": "VA {bank}:",
+    "payBefore": "bayar sebelum {date}",
+    "qrisHint": "Pindai / salin kode QRIS berikut di aplikasi bank Anda:",
+    "manualFallback": "Transfer manual — hubungi pengelola platform untuk rekening tujuan.",
+    "errPay": "Gagal menyiapkan instruksi bayar",
+    "invoiceNotFound": "Tagihan tidak ditemukan.",
+    "invoiceNotPayable": "Tagihan ini tidak sedang menunggu pembayaran.",
+    "profileHeading": "Profil Pajak (Faktur Pajak)",
+    "profileHint": "NPWP, nama, dan alamat sesuai NPWP — dipakai untuk Faktur Pajak atas tagihan langganan Anda. Kewajiban PPN/e-Faktur langganan sedang dikonfirmasi ke penasihat pajak; data ini menyiapkannya.",
+    "npwp": "NPWP",
+    "npwpName": "Nama sesuai NPWP",
+    "npwpAddress": "Alamat sesuai NPWP",
+    "saveProfile": "Simpan Profil",
+    "savingProfile": "Menyimpan...",
+    "profileSaved": "Profil pajak tersimpan",
+    "errProfile": "Gagal menyimpan profil pajak"
   }
 }

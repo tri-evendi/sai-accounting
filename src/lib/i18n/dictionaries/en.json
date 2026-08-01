@@ -1,6 +1,6 @@
 {
   "app": {
-    "description": "Contract & Inventory Management System — PT Subur Anugerah Indonesia"
+    "description": "Bookkeeping and accounting system for businesses in Indonesia."
   },
   "common": {
     "save": "Save",
@@ -238,7 +238,10 @@
     "noTour": "This page has no guided tour yet. Tours are available on Home, Record a Sale, and the Report Centre."
   },
   "auth": {
-    "brandTagline": "Contract & inventory management for internal teams.",
+    "brandTagline": "Standards-based bookkeeping for businesses in Indonesia.",
+    "brandPoint1": "Double-entry journals and a general ledger that follow standard accounting rules.",
+    "brandPoint2": "Rupiah and foreign currencies, each with its rate and base-currency value.",
+    "brandPoint3": "Several companies in one installation, each with genuinely separate books.",
     "setupRequired": {
       "heading": "This app is not set up yet",
       "description": "Company details have not been filled in, so the app cannot be used yet.",
@@ -248,15 +251,19 @@
     },
     "login": {
       "heading": "Sign in",
-      "description": "Use your company account to open dashboards, contracts, and stock.",
+      "description": "Use your company account to open the books and your daily work.",
       "username": "Username",
       "usernamePlaceholder": "your.username",
+      "identifier": "Email or Username",
+      "identifierPlaceholder": "name@company.com",
       "password": "Password",
       "submit": "Sign in",
       "submitting": "Signing in...",
       "checkingSession": "Checking your session...",
-      "forgotPassword": "Forgotten your password? Contact your system administrator to reset access.",
-      "invalidCredentials": "Invalid username or password. Please try again."
+      "forgotPassword": "Forgot your password? Reset it via email",
+      "invalidCredentials": "Invalid username or password. Please try again.",
+      "registerPrompt": "No account yet?",
+      "registerLink": "Sign up now"
     },
     "changePassword": {
       "heading": "Change your password",
@@ -265,10 +272,13 @@
       "new": "New password",
       "confirm": "Confirm new password",
       "hint": "Use at least 8 characters. Do not reuse passwords from other systems.",
+      "ruleLength": "At least {count} characters",
+      "ruleDifferent": "Different from your current password",
+      "ruleMatch": "Both new-password entries match",
+      "ruleMet": "requirement met",
+      "ruleUnmet": "requirement not met yet",
       "submit": "Save password",
       "submitting": "Saving...",
-      "mismatch": "The new password and its confirmation do not match.",
-      "tooShort": "Password must be at least 8 characters.",
       "failed": "Could not change the password. Please try again."
     },
     "selectCompany": {
@@ -283,7 +293,63 @@
       "switchLabel": "Switch company",
       "currentLabel": "Currently open",
       "signOut": "Sign out",
-      "signedInAs": "Signed in as"
+      "signedInAs": "Signed in as",
+      "noCompanyYetHeading": "No company yet",
+      "noCompanyYetBody": "Your tenant does not have a company yet. Create the first one to start keeping books.",
+      "noCompanyYetOwner": "Every company gets its own books — invoices, journals, and stock fully separated. After creating it, run the setup wizard for identity, chart of accounts, and opening balances."
+    },
+    "forgotPassword": {
+      "heading": "Forgot Password",
+      "description": "Enter your account email. If it is registered, we will send a link to set a new password.",
+      "email": "Email",
+      "emailPlaceholder": "name@company.com",
+      "submit": "Send Link",
+      "submitting": "Sending...",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If that email is registered, a reset link has been sent and is valid for 60 minutes. Nothing arrived? Check your spam folder, or make sure the address is correct.",
+      "tooMany": "Too many requests. Wait a few minutes, then try again.",
+      "failed": "The request could not be processed. Please try again.",
+      "backToLogin": "Back to sign in"
+    },
+    "resetPassword": {
+      "heading": "Set a New Password",
+      "description": "Choose a new password for your account. This link is single-use.",
+      "newPassword": "New Password",
+      "confirm": "Repeat New Password",
+      "submit": "Save Password",
+      "submitting": "Saving...",
+      "successTitle": "Password saved",
+      "successBody": "Your password has been changed and all old sessions were signed out. Sign in with your new password.",
+      "invalidToken": "This link is not valid — it may have been used, expired, or copied incorrectly. Request a new link from the forgot-password page.",
+      "missingToken": "The link is incomplete. Reopen the link from your email, or request a new one.",
+      "goLogin": "Sign in now",
+      "requestNew": "Request a new link"
+    },
+    "register": {
+      "heading": "Sign Up",
+      "description": "Create an account to start keeping books for your business. Free during the trial.",
+      "name": "Your Name",
+      "namePlaceholder": "Full name",
+      "submit": "Sign Up",
+      "submitting": "Signing up...",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If that address can be registered, a verification email has been sent and is valid for 24 hours. Open the link to activate your account. Nothing arrived? Check your spam folder.",
+      "haveAccount": "Already have an account? Sign in",
+      "verifyHeading": "Activate Account",
+      "verifyDescription": "One more click — so link-scanning robots cannot silently activate (or burn) your account.",
+      "verifyButton": "Activate my account",
+      "verifying": "Activating...",
+      "verifiedTitle": "Your account is active",
+      "verifiedBody": "Your email is verified and your account is ready. Sign in, then create your first company — every company gets fully separate books.",
+      "verifiedCta": "Sign in & create your first company",
+      "invalidToken": "This link is not valid — it may have been used, expired, or copied incorrectly. Register again to receive a new link.",
+      "alreadyRegistered": "This email already has an account. Sign in — or reset your password if you forgot it.",
+      "missingToken": "The link is incomplete. Reopen the link from your email.",
+      "registerAgain": "Register again",
+      "termsPrefix": "I agree to the",
+      "termsLinkLabel": "terms & conditions",
+      "termsAnd": "and the",
+      "privacyLinkLabel": "privacy policy"
     }
   },
   "status": {
@@ -372,6 +438,12 @@
     "example": "Example:",
     "learnMore": "Learn more"
   },
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match system"
+  },
   "confirm": {
     "retypeLabel": "Retype to confirm:"
   },
@@ -425,6 +497,9 @@
     "accountCodeTaken": "That account code is already in use.",
     "accountOwnParent": "An account cannot be its own parent.",
     "usernameTaken": "That username is already taken.",
+    "emailTaken": "That email is already in use by another account.",
+    "companyQuotaReached": "Your plan's company quota is fully used. Upgrade your plan to add more companies.",
+    "tenantNotActive": "Your subscription is not active, so new companies cannot be created. Contact us to reactivate it.",
     "assetCategoryNameTaken": "That category name is already in use.",
     "roleKeyTaken": "The key “{key}” is already in use.",
     "approvalRuleDuplicate": "An active rule with the same document type and threshold already exists.",
@@ -486,7 +561,8 @@
     "bookMovementWrongAccount": "That book transaction belongs to a different account or currency than this reconciliation.",
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
     "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
-    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched."
+    "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched.",
+    "selectCompanyFirst": "Select a company first."
   },
   "contracts": {
     "title": "Contracts ({count})",
@@ -1566,7 +1642,10 @@
       }
     },
     "catalogReport": {
-      "opname_history": { "title": "Stock Count History", "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance." },
+      "opname_history": {
+        "title": "Stock Count History",
+        "description": "Stock-take (opname) results per period: surplus, shrinkage, and the net variance."
+      },
       "trial_balance": {
         "title": "Trial Balance",
         "description": "Debit/credit balance of every account on one date — it must balance."
@@ -1767,6 +1846,36 @@
     "rateHint": "Required for a foreign currency — the IDR value in the ledger is computed from this rate.",
     "submit": "Save Transaction",
     "preparingForm": "Preparing the form..."
+  },
+  "firstSteps": {
+    "title": "First Steps",
+    "subtitle": "The books are open but nothing has been recorded yet. These few things get them ready for daily use.",
+    "progress": "{done} of {total} done",
+    "done": "Done",
+    "start": "Start",
+    "again": "Open again",
+    "items": {
+      "pelanggan": {
+        "label": "Add a Customer",
+        "description": "Who buys from you. Picked when you record a sale."
+      },
+      "pemasok": {
+        "label": "Add a Supplier",
+        "description": "Who you buy from. Picked when you record a purchase."
+      },
+      "stok_awal": {
+        "label": "Record Opening Stock",
+        "description": "Goods already in the warehouse before today."
+      },
+      "penjualan": {
+        "label": "Record Your First Sale",
+        "description": "Guided: customer → goods → delivery order → invoice."
+      },
+      "terima_uang": {
+        "label": "Receive Your First Payment",
+        "description": "Record money coming into cash or a bank account."
+      }
+    }
   },
   "reconciliation": {
     "title": "Match Bank Statement",
@@ -2189,6 +2298,16 @@
     "errSaveFailed": "The opening balances could not be saved.",
     "errNetwork": "Could not reach the server. Please try again.",
     "toastDone": "Setup complete. The opening journal is saved and balanced.",
+    "doneTitle": "Setup Complete",
+    "doneDescription": "The company's books are open. Here is what was just created.",
+    "doneBanner": "Opening balances were saved as one balanced journal, and every report is calculated from {date} onward.",
+    "doneViewJournal": "View journal {number}",
+    "doneStartWorking": "Start Working",
+    "introTitle": "What you will set up here",
+    "introPoint1": "Company identity, base currency, and the start of the fiscal year.",
+    "introPoint2": "Which modules you use — turn off the ones you do not need so the menu stays short.",
+    "introPoint3": "Opening balances as of that date. At least one entry is required; the rest can be recorded later as ordinary transactions.",
+    "draftSaved": "Draft saved automatically",
     "totalAssets": "Total Assets (debit)",
     "totalLiabilities": "Total Liabilities (credit)",
     "equityCredit": "Capital/Equity (credit)",
@@ -2332,8 +2451,7 @@
     "company_setting": "Company Profile",
     "authz": "Access Rights",
     "glossary": "Glossary",
-    "settings": "Settings",
-    "company": "Company"
+    "settings": "Settings"
   },
   "permission": {
     "approval_view": "View the approval queue",
@@ -2393,8 +2511,7 @@
     "company_setting_manage": "Edit the company profile",
     "authz_manage": "Configure access rights (this page)",
     "glossary_read": "Open the glossary",
-    "settings_view": "Open the settings page",
-    "company_create": "Create a new company with its own database — books fully separate from every other company."
+    "settings_view": "Open the settings page"
   },
   "users": {
     "title": "User Management",
@@ -2459,7 +2576,20 @@
     "choiceNotAllowed": "Not allowed",
     "choiceAlwaysAllow": "Always allow",
     "choiceAlwaysDeny": "Always deny",
-    "lockedShort": "locked"
+    "lockedShort": "locked",
+    "inviteUser": "Invite User",
+    "inviteTitle": "Invite a New User",
+    "inviteHint": "Enter an email address and a role. The recipient gets a link to set their own password — you never type anyone's password.",
+    "inviting": "Sending...",
+    "sendInvite": "Send Invitation",
+    "errInvite": "Failed to send the invitation",
+    "pendingInvites": "Pending Invitations",
+    "inviteExpires": "Valid until",
+    "revokeInvite": "Revoke",
+    "revokeInviteTitle": "Revoke Invitation",
+    "revokeInviteMessage": "Revoke the invitation for {email}? The link in the email stops working.",
+    "inviteRevoked": "Invitation revoked",
+    "errRevokeInvite": "Failed to revoke the invitation"
   },
   "permissions": {
     "errNoPermission": "You do not have permission to manage access rights.",
@@ -3023,12 +3153,15 @@
     "advanceUsedTwice": "The same advance is offset more than once.",
     "compensationExceedsAdvance": "The offset ({amount} {currency}) is more than the advance has left ({remaining} {currency}).",
     "rejectionNoteRequired": "Give a reason for the rejection (at least 5 characters).",
-    "usernameRequired": "Username is required",
+    "identifierRequired": "Email or username is required",
+    "nameRequired": "Name is required",
+    "termsRequired": "You must agree to the terms & conditions",
     "passwordRequired": "Password is required",
     "currentPasswordRequired": "Enter your current password",
     "passwordMin8": "Password must be at least 8 characters",
     "passwordConfirmRequired": "Please confirm your new password",
     "passwordMismatch": "The passwords do not match",
+    "passwordSameAsCurrent": "Your new password must differ from your current one",
     "tooManyOverrideRows": "Too many override rows.",
     "companyDatabasePrefix": "The database name must start with \"sai_\"",
     "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",
@@ -3193,5 +3326,98 @@
     "stepDatabase": "Creating the database",
     "stepMigrate": "Applying the schema",
     "stepRegister": "Registering the company"
+  },
+  "invitations": {
+    "sent": "The invitation has been sent.",
+    "tooMany": "Too many attempts. Try again later.",
+    "quotaExceeded": "Your plan's user quota is full — revoke a pending invitation or upgrade the plan.",
+    "quotaExceededAccept": "This subscription's user quota is full. Contact the person who invited you.",
+    "invalidToken": "This invitation link is not valid — it may have expired, been used already, or been copied incorrectly. Ask for a new invitation.",
+    "notFound": "Invitation not found.",
+    "goLogin": "Go to sign in",
+    "checking": "Checking the invitation...",
+    "acceptHeading": "Accept Invitation",
+    "acceptDescription": "You have been invited to join {company}.",
+    "acceptAs": "This invitation is for {email}. Complete your account below.",
+    "username": "Username (for display)",
+    "choosePassword": "Your Password (min. 8 characters)",
+    "submitting": "Creating account...",
+    "submit": "Create Account & Join",
+    "successTitle": "Your account is ready.",
+    "successBody": "Sign in with your email and the password you just created, then pick the company."
+  },
+  "tenantSettings": {
+    "title": "Subscription & Plan",
+    "description": "Your plan, usage, and billing history.",
+    "planHeading": "Plan",
+    "statusLabel": "Status",
+    "trialEndsAt": "Trial ends",
+    "usageHeading": "Usage",
+    "usageCompanies": "Companies",
+    "usageUsers": "Users",
+    "usageOf": "{used} of {max}",
+    "billingHeading": "Billing History",
+    "billingUnavailable": "The billing database is currently unreachable. Sign-in and the ledgers are unaffected — try again later.",
+    "noSubscription": "No subscription is recorded for this tenant yet.",
+    "noInvoices": "No invoices yet.",
+    "invoiceNumber": "Number",
+    "invoiceDue": "Due Date",
+    "invoiceTotal": "Total",
+    "period": "Current period runs until {date}",
+    "price": "{amount} / {cycle}",
+    "cycleMonthly": "month",
+    "cycleYearly": "year",
+    "planChangeNote": "Plan changes and online payment arrive with the payment gateway. For now, contact the platform operator.",
+    "readOnlyNote": "The subscription is suspended: the ledgers are READ-ONLY. Your data is not deleted; reading and exporting still work.",
+    "status": {
+      "pending_verification": "Pending Verification",
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Past Due",
+      "suspended": "Suspended (read-only)",
+      "cancelled": "Cancelled"
+    },
+    "invoiceStatus": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "paid": "Paid",
+      "void": "Void"
+    },
+    "privacyHeading": "Data & Privacy",
+    "exportBody": "Download all your bookkeeping data — every company, every table — as a ZIP archive of CSV files that open in Excel/LibreOffice without this app. Remains available even while the subscription is suspended.",
+    "exportButton": "Download All Data (ZIP)",
+    "exportFailed": "The export could not be built. Try again, or contact us if it keeps failing.",
+    "deletionBody": "Requesting account deletion closes all access and anonymizes personal data after a {days}-day grace period. The ledgers are NOT deleted: Indonesian tax law (UU KUP) requires keeping them for 10 years before they may be destroyed.",
+    "deletionRequestButton": "Request Account Deletion",
+    "deletionCancelButton": "Cancel Deletion Request",
+    "deletionPending": "A deletion request is on record — it will be executed after {date}. Until then you can still cancel it.",
+    "deletionConfirmTitle": "Request account deletion?",
+    "deletionConfirmBody": "After the {days}-day grace period, all access is closed and personal data is anonymized — irreversible once executed. Download your data first. Ledgers are kept for 10 years as required by UU KUP.",
+    "deletionRequested": "The deletion request is on record. All owners have been notified by email.",
+    "deletionCancelled": "The deletion request was cancelled. Nothing has changed.",
+    "deletionFailed": "The request could not be processed. Please try again.",
+    "deletionAlreadyPending": "A deletion request is already pending.",
+    "deletionNonePending": "There is no pending deletion request."
+  },
+  "billing": {
+    "payColumn": "Pay",
+    "payVa": "Create VA",
+    "payQris": "QRIS",
+    "vaLabel": "{bank} VA:",
+    "payBefore": "pay before {date}",
+    "qrisHint": "Scan / copy this QRIS code in your banking app:",
+    "manualFallback": "Manual transfer — contact the platform operator for the destination account.",
+    "errPay": "Failed to prepare payment instructions",
+    "invoiceNotFound": "Invoice not found.",
+    "invoiceNotPayable": "This invoice is not awaiting payment.",
+    "profileHeading": "Tax Profile (Faktur Pajak)",
+    "profileHint": "NPWP, name, and address as registered — used for the tax invoice on your subscription bills. The VAT/e-Faktur obligation for subscriptions is being confirmed with a tax advisor; this data prepares for it.",
+    "npwp": "NPWP",
+    "npwpName": "Name as per NPWP",
+    "npwpAddress": "Address as per NPWP",
+    "saveProfile": "Save Profile",
+    "savingProfile": "Saving...",
+    "profileSaved": "Tax profile saved",
+    "errProfile": "Failed to save the tax profile"
   }
 }

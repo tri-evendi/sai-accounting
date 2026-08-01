@@ -99,6 +99,15 @@ export type AuditAction =
   | "user.update"
   | "user.delete"
   /**
+   * Undangan staf (issue #139). `user.invite` mencatat email + peran + HASIL
+   * SEBENARNYA (`outcome`) — jawaban HTTP-nya seragam demi anti-enumerasi,
+   * jejak audit justru tempat kebenarannya boleh (dan harus) tinggal.
+   * Tidak pernah ada token di jejak — hanya keberadaannya.
+   */
+  | "user.invite"
+  | "user.invite_revoked"
+  | "user.invite_accepted"
+  /**
    * Matriks izin dikonfigurasi dari UI (issue #73). `authz.override.update`
    * mencatat set override yang DISIMPAN (peran × izin × boleh/tidak — tidak
    * pernah ada rahasia di sini); `authz.override.reset` = kembali persis ke
@@ -144,6 +153,8 @@ export type AuditEntity =
   | "item"
   | "supplier_transaction"
   | "user"
+  /** Baris `invitations` di basis data kendali (issue #139). */
+  | "invitation"
   | "role"
   | "period"
   | "advance_payment"

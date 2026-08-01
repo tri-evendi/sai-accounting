@@ -26,6 +26,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 
+import { BrandMark } from "@/components/ui/brand-mark";
 import { UserMenu } from "@/components/layout/user-menu";
 import { PageLoader } from "@/components/ui/loading";
 import { APP_NAME } from "@/lib/constants";
@@ -49,12 +50,7 @@ export function SetupShell({ children }: { children: React.ReactNode }) {
       <header className="border-b border-border bg-sidebar">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground"
-              aria-hidden="true"
-            >
-              SAI
-            </span>
+            <BrandMark size="sm" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-sidebar-foreground">
                 {APP_NAME}

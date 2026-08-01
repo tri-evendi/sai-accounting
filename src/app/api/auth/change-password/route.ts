@@ -67,7 +67,21 @@ export async function POST(request: Request) {
   const valid = await bcrypt.compare(currentPassword, user.password);
   if (!valid) {
     const { t } = await getRequestI18n();
-    return NextResponse.json({ error: t("errors.currentPasswordWrong") }, { status: 400 });
+    /*
+     * Dikirim sebagai galat FIELD, bukan hanya `error` telanjang.
+     *
+     * Bentuknya sengaja sama dengan `translateFieldErrors` supaya form memakai
+     * satu jalur pemetaan untuk semua penolakan server (MASTER.md §Konvensi
+     * Form aturan 7): pesannya mendarat tepat di bawah "Kata Sandi Saat Ini",
+     * bukan sebagai pita merah di kepala kartu yang membiarkan pembacanya
+     * menebak field mana yang salah — padahal di sinilah satu-satunya field
+     * yang mungkin salah. `error` tetap diisi untuk pemanggil non-form.
+     */
+    const message = t("errors.currentPasswordWrong");
+    return NextResponse.json(
+      { error: message, details: { fieldErrors: { currentPassword: [message] } } },
+      { status: 400 }
+    );
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);

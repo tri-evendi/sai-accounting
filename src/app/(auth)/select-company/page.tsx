@@ -19,14 +19,14 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Plus } from "lucide-react";
+import { Building2, CreditCard, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
-import { enterCompanyFromSession } from "@/lib/company-session";
-import { canEffective } from "@/lib/authz-effective";
+import { tenantCan } from "@/lib/tenant-authz";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { CompanyChoices, SignedInAs } from "./company-choices";
@@ -38,7 +38,22 @@ export default async function SelectCompanyPage() {
   if (!session?.user?.id) redirect("/login");
 
   const t = await getT();
-  const companies = await companiesForUser(Number.parseInt(session.user.id, 10));
+  const userId = Number.parseInt(session.user.id, 10);
+  const companies = await companiesForUser(userId);
+
+  /*
+   * "Tambah Perusahaan" — izin TINGKAT TENANT (issue #135), dijawab
+   * keanggotaan tenant si pengguna, TANPA menuntut perusahaan aktif. Inilah
+   * yang memecah ayam-dan-telur yang dulu tercatat di komentar halaman ini:
+   * izin lama milik keanggotaan di satu PT, jadi tautannya baru muncul setelah
+   * ada perusahaan aktif — padahal pemilik tenant TANPA satu pun PT justru
+   * orang yang paling membutuhkan pintunya.
+   */
+  const tenantMembership = await tenantMembershipForUser(userId);
+  const canCreate = tenantCan(tenantMembership, "company.create");
+  /* Pengaturan langganan (issue #140) — halaman tingkat tenant, owner saja;
+   * pintunya di sini karena layar inilah "rumah" di antara buku-buku. */
+  const canManageTenant = tenantCan(tenantMembership, "tenant.settings");
 
   // Bukan jalan buntu ke arah mana pun:
   //  • satu perusahaan → tidak ada yang perlu dipilih, langsung buka;
@@ -51,39 +66,43 @@ export default async function SelectCompanyPage() {
   if (companies.length === 0) {
     return (
       <AuthShell
-        heading={t("auth.selectCompany.noAccessHeading")}
-        description={t("auth.selectCompany.noAccessBody")}
+        heading={t(
+          canCreate
+            ? "auth.selectCompany.noCompanyYetHeading"
+            : "auth.selectCompany.noAccessHeading"
+        )}
+        description={t(
+          canCreate ? "auth.selectCompany.noCompanyYetBody" : "auth.selectCompany.noAccessBody"
+        )}
         icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
         footer={<SignedInAs name={session.user.name} />}
       >
-        {/* Keadaan ini hampir selalu berarti akses baru saja dicabut: masuk
-            tanpa satu pun keanggotaan sudah ditahan lebih awal di `authorize()`.
-            Jadi yang dibutuhkan pembacanya bukan penjelasan tambahan,
-            melainkan cara keluar untuk mencoba akun yang lain. */}
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("auth.selectCompany.noAccessNext")}
-        </p>
+        {/* Untuk pengguna BIASA keadaan ini hampir selalu berarti akses baru
+            saja dicabut (masuk tanpa satu pun keanggotaan sudah ditahan lebih
+            awal di `authorize()`), jadi yang ia butuhkan adalah jalan keluar.
+            Untuk OWNER/ADMIN TENANT (issue #135) keadaan yang sama berarti
+            hal lain: belum ada PT sama sekali — dan jalan keluarnya adalah
+            MEMBUAT yang pertama, bukan menghubungi siapa-siapa. */}
+        {canCreate ? (
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t("auth.selectCompany.noCompanyYetOwner")}
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/companies/new">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {t("companies.newTitle")}
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t("auth.selectCompany.noAccessNext")}
+          </p>
+        )}
       </AuthShell>
     );
   }
-
-  /*
-   * "Tambah Perusahaan" DI PEMILIH — tapi hanya bila memang bisa ditekan.
-   *
-   * Halaman pembuatannya hidup di dalam dasbor dan dijaga `company.create`,
-   * dan penjaga itu menuntut KONTEKS PERUSAHAAN: izin adalah milik keanggotaan
-   * di satu perusahaan, bukan milik akun. Karena itu tautannya baru muncul
-   * setelah ada perusahaan aktif — yaitu ketika pengguna datang untuk BERPINDAH,
-   * bukan saat ia baru masuk dan belum memilih apa pun. Pada keadaan itu
-   * tautannya pasti memantul, dan menawarkan pintu yang menutup sendiri lebih
-   * buruk daripada tidak menawarkannya.
-   *
-   * Izinnya diperiksa dengan `canEffective` — matriks EFEKTIF, termasuk
-   * override yang dikelola dari /permissions. Memakai matriks bawaan di sini
-   * akan menyembunyikan tautannya dari orang yang justru sudah diberi izin itu.
-   */
-  const entered = await enterCompanyFromSession(session);
-  const canCreate = entered.ok && (await canEffective(session.user, "company.create"));
 
   return (
     <AuthShell
@@ -111,6 +130,14 @@ export default async function SelectCompanyPage() {
               <Link href="/companies/new">
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {t("companies.newTitle")}
+              </Link>
+            </Button>
+          )}
+          {canManageTenant && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/tenant">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+                {t("tenantSettings.title")}
               </Link>
             </Button>
           )}

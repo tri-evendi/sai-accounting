@@ -1,5 +1,22 @@
-/** Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI. */
-export const APP_NAME = "SAI Management";
+/**
+ * Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI.
+ *
+ * "Accounting", bukan "Management": nama lama menyebut kontrak & stok — dua
+ * modul dari sekian — sementara yang dijaga aplikasi ini adalah buku besarnya.
+ * `design-system/sai-accounting/MASTER.md` sudah menamainya begitu sejak awal;
+ * konstanta inilah yang tertinggal.
+ */
+export const APP_NAME = "SAI Accounting";
+
+/**
+ * Versi aplikasi, diambil dari `package.json` saat build (lihat `env` di
+ * `next.config.ts`). Aman dipakai di server maupun client.
+ *
+ * Cadangannya `0.0.0` dan itu disengaja: sebuah nomor yang jelas TIDAK MUNGKIN
+ * benar lebih berguna daripada nomor masuk akal yang kebetulan salah. Kalau
+ * ini yang muncul di layar, yang rusak adalah injeksinya — bukan rilisnya.
+ */
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
 
 /**
  * ⚠️ NILAI CADANGAN — JANGAN dipakai langsung untuk menampilkan/mencetak.
@@ -102,6 +119,48 @@ export const ROLE_LABELS: Record<string, string> = {
   warehouse_head: "Kepala Gudang",
   administrator: "Administrator Sistem",
 };
+
+/**
+ * ── Multi-tenant (issue #134, epik #133) ─────────────────────────────────────
+ *
+ * Status TENANT (pelanggan platform) di `tenants.status` basis data kendali.
+ * Enum-like docs/DATABASE.md: `String @db.VarChar` di skema + daftar nilai di
+ * SATU tempat (di sini) yang dipakai z.enum, skrip adopsi, dan penjaga.
+ */
+export const TENANT_STATUSES = [
+  "pending_verification",
+  "trialing",
+  "active",
+  "past_due",
+  "suspended",
+  "cancelled",
+] as const;
+export type TenantStatus = (typeof TENANT_STATUSES)[number];
+
+/**
+ * Peran TINGKAT TENANT (`tenant_memberships.role`) — menjawab "boleh membuat
+ * perusahaan? boleh menyentuh penagihan?", pertanyaan yang harus terjawab TANPA
+ * perusahaan aktif. BUKAN peran akuntansi: peran per-PT tetap milik
+ * `memberships` dan `ROLES` di atas, dan keduanya tidak pernah dicampur.
+ *
+ * Matriks izinnya di `src/lib/tenant-authz.ts` (issue #135):
+ *   owner  — semuanya, termasuk penagihan; minimal satu per tenant,
+ *            yang terakhir tidak bisa dihapus (anti-lockout)
+ *   admin  — buat perusahaan, undang orang; TANPA penagihan
+ *   member — tidak ada izin tenant; aksesnya murni dari keanggotaan per-PT
+ */
+export const TENANT_ROLES = {
+  OWNER: "owner",
+  ADMIN: "admin",
+  MEMBER: "member",
+} as const;
+
+export const TENANT_ROLE_VALUES = [
+  TENANT_ROLES.OWNER,
+  TENANT_ROLES.ADMIN,
+  TENANT_ROLES.MEMBER,
+] as const;
+export type TenantRole = (typeof TENANT_ROLE_VALUES)[number];
 
 export const CURRENCIES = ["USD", "CNY", "IDR"] as const;
 export type Currency = (typeof CURRENCIES)[number];

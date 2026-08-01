@@ -13,6 +13,13 @@
  * pun. Galat pun dikirim sebagai baris, bukan sebagai status HTTP — pada saat
  * kegagalan terjadi, status 200 sudah terlanjur terkirim bersama byte pertama.
  *
+ * ══ PENJAGANYA TINGKAT TENANT (issue #135) ═════════════════════════════════
+ * `company.create` pindah ke matriks tenant: membuat PT adalah kewenangan
+ * pelanggan (owner/admin tenant), bukan peran di salah satu PT — dan pemilik
+ * tenant TANPA satu pun perusahaan justru pemakai terpenting route ini.
+ * `requireTenantApiPermission` karena itu TIDAK menuntut konteks perusahaan,
+ * dan tenant pemilik perusahaan baru diambil dari keanggotaan PEMBUATNYA.
+ *
  * ══ KENAPA TANPA PEKERJA LATAR ═════════════════════════════════════════════
  * Lihat catatan panjang di `lib/company-provisioning.ts`: prosesnya server Node
  * yang hidup terus (tidak ada batas waktu yang memutus), pekerjaannya puluhan
@@ -21,17 +28,56 @@
  */
 import { NextResponse } from "next/server";
 
-import { requireApiPermission } from "@/lib/auth-guard";
+import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { companyCreateSchema } from "@/lib/validations/company";
 import { provisionCompany } from "@/lib/company-provisioning";
 import { ProvisionError, type ProvisionEvent } from "@/lib/company-provisioning-shared";
 import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { runWithCompany } from "@/lib/company-context";
+import { ROLES } from "@/lib/constants";
+import { controlDb } from "@/lib/control-db";
+import { refuseProvisioning } from "@/lib/registration";
 
 export async function POST(request: Request) {
-  const result = await requireApiPermission("company.create");
+  const result = await requireTenantApiPermission("company.create");
   if (!result.authorized) return result.response;
+
+  /*
+   * ══ GERBANG KUOTA & STATUS — DI SERVER, SEBELUM SATU BYTE PUN DIALIRKAN ══
+   * (issue #138, §9). Dengan pendaftaran mandiri, siapa pun yang lolos
+   * verifikasi bisa meminta pembuatan SEBUAH BASIS DATA — dan `db:migrate:all`
+   * menyusuri semuanya pada setiap rilis. Kuota `max_companies` adalah
+   * snapshot di baris tenant (#134); status di luar trialing/active tidak
+   * boleh menumbuhkan buku baru (suspended = hanya-baca, §7.4). Keputusannya
+   * murni (`refuseProvisioning`, teruji); jumlah dihitung DI SINI supaya UI
+   * yang menyembunyikan tombol tidak pernah dianggap pagar.
+   */
+  const [tenantRow, companyCount] = await Promise.all([
+    controlDb.tenant.findUnique({
+      where: { id: result.tenant.tenantId },
+      select: { status: true, maxCompanies: true },
+    }),
+    controlDb.company.count({ where: { tenantId: result.tenant.tenantId } }),
+  ]);
+  const refusal = tenantRow
+    ? refuseProvisioning({ ...tenantRow, companyCount })
+    : "tenant_not_active";
+  if (refusal) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      {
+        error:
+          refusal === "company_quota_reached"
+            ? t("errors.companyQuotaReached")
+            : t("errors.tenantNotActive"),
+        code: refusal,
+      },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = companyCreateSchema.safeParse(body);
@@ -61,36 +107,57 @@ export async function POST(request: Request) {
             databaseName: parsed.data.databaseName,
             createdByUserId: userId,
             /*
-             * Pembuatnya menjadi anggota dengan perannya SENDIRI di perusahaan
-             * yang sedang ia buka. Tanpa keanggotaan, perusahaan yang baru
-             * dibuat tidak akan muncul di pemilih milik orang yang membuatnya —
-             * ia harus mendaftarkan dirinya lewat jalur lain hanya untuk masuk
-             * ke perusahaan yang baru saja ia buat sendiri.
+             * Pembuatnya menjadi Direktur Utama di perusahaan yang BARU LAHIR —
+             * bukan lagi "perannya di perusahaan yang sedang dibuka"
+             * (`session.user.role!` yang lama): pelanggan yang membuat PT
+             * pertamanya tidak punya peran per-PT sama sekali, dan tanda seru
+             * itu bohong untuknya (issue #135). Nilainya dari konstanta
+             * `ROLES`, bukan perbandingan string peran.
              */
-            role: session.user.role!,
+            role: ROLES.MANAGING_DIRECTOR,
+            /* Tenant pemilik = tenant PEMBUATNYA, dari penjaga — bukan input. */
+            tenantId: result.tenant.tenantId,
           },
           send
         );
 
         /*
-         * Dicatat di jejak audit perusahaan yang SEDANG DIBUKA pembuatnya —
-         * di sanalah pertanyaan "siapa yang membuat PT ini, dan kapan" akan
-         * dicari. Perusahaan yang baru lahir belum punya jejak apa pun.
+         * Dicatat DUA KALI dengan sengaja (issue #142), karena pertanyaannya
+         * dua: "siapa yang membuat PT ini" dicari di jejak PT ITU SENDIRI
+         * (satu-satunya jejak per-PT yang pasti ada — pembuatnya boleh jadi
+         * belum membuka perusahaan mana pun); "PT apa saja yang lahir di
+         * tenant ini, kapan" milik jejak TENANT — rumah yang dulu tidak ada
+         * dan kini ada (lib/tenant-audit.ts).
          */
-        await writeAuditLog({
+        await writeTenantAuditLog({
+          tenantId: result.tenant.tenantId,
+          tenantSlug: result.tenant.tenantSlug,
           userId: session.user.id,
-          username: session.user.email,
-          role: session.user.role,
-          action: "company.create",
-          entity: "company",
-          entityId: companyId,
-          details: {
-            slug: parsed.data.slug,
-            name: parsed.data.name,
-            databaseName,
-          },
+          username: session.user.name ?? session.user.email ?? session.user.id,
+          tenantRole: result.tenant.role,
+          action: "tenant.company.create",
+          details: { slug: parsed.data.slug, name: parsed.data.name, databaseName },
           request,
         });
+        await runWithCompany(
+          { companyId, slug: parsed.data.slug, databaseName },
+          async () => {
+            await writeAuditLog({
+              userId: session.user.id,
+              username: session.user.name ?? session.user.email ?? session.user.id,
+              role: result.tenant.role,
+              action: "company.create",
+              entity: "company",
+              entityId: companyId,
+              details: {
+                slug: parsed.data.slug,
+                name: parsed.data.name,
+                databaseName,
+              },
+              request,
+            });
+          }
+        );
       } catch (error) {
         const message =
           error instanceof ProvisionError

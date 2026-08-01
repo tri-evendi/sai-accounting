@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { signIn, getSession, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -13,16 +14,26 @@ import { useT, type TranslateFn } from "@/lib/i18n/client";
 function resolvePostLoginPath(
   mustChangePassword: boolean | undefined,
   companyId: number | null | undefined,
+  companyCount: number | null | undefined,
   callbackUrl: string | null
 ) {
   if (mustChangePassword) return "/change-password";
-  /*
-   * Belum ada perusahaan aktif = pengguna memegang lebih dari satu PT dan
-   * belum memilih (issue #104). Dikirim langsung ke pemilihnya, bukan ke
-   * beranda: penjaga halaman toh akan memantulkannya ke sana, dan pantulan itu
-   * hanya menambah satu layar berkedip sebelum pertanyaan yang sebenarnya.
-   */
-  if (companyId == null) return "/select-company";
+  if (companyId == null) {
+    /*
+     * NOL perusahaan (issue #138) = pelanggan baru yang baru memverifikasi
+     * emailnya: tujuannya layar BUAT PERUSAHAAN PERTAMA, bukan pemilih —
+     * /select-company mengasumsikan ada sesuatu untuk dipilih. Penjaga
+     * /companies/new yang memutuskan haknya; anggota tanpa izin dipantulkan
+     * ke /select-company yang menjelaskan keadaannya.
+     */
+    if (companyCount === 0) return "/companies/new";
+    /*
+     * Lebih dari satu PT dan belum memilih (issue #104): langsung ke
+     * pemilihnya — penjaga halaman toh akan memantulkannya ke sana, dan
+     * pantulan itu hanya menambah satu layar berkedip.
+     */
+    return "/select-company";
+  }
   if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
     return callbackUrl;
   }
@@ -81,6 +92,7 @@ function LoginForm() {
       const destination = resolvePostLoginPath(
         session?.user?.mustChangePassword,
         session?.user?.companyId,
+        session?.user?.companyCount,
         callbackUrl
       );
       router.replace(destination);
@@ -94,7 +106,7 @@ function LoginForm() {
 
     const formData = new FormData(e.currentTarget);
     const result = await signIn("credentials", {
-      username: formData.get("username"),
+      identifier: formData.get("identifier"),
       password: formData.get("password"),
       redirect: false,
     });
@@ -110,6 +122,7 @@ function LoginForm() {
       resolvePostLoginPath(
         session?.user?.mustChangePassword,
         session?.user?.companyId,
+        session?.user?.companyCount,
         callbackUrl
       )
     );
@@ -137,17 +150,38 @@ function LoginForm() {
       error={error}
       icon={<LogIn className="h-5 w-5" aria-hidden />}
       footer={
-        <p className="text-center text-xs text-muted-foreground">
-          {t("auth.login.forgotPassword")}
-        </p>
+        /* Tautan SUNGGUHAN sejak issue #136 — dulu kalimat "hubungi admin
+           sistem", jalan buntu bagi pelanggan yang justru dirinya adminnya.
+           Sejak #138 ada pintu kedua: mendaftar sendiri. */
+        <div className="space-y-2 text-center text-xs text-muted-foreground">
+          <p>
+            <Link
+              href="/forgot-password"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {t("auth.login.forgotPassword")}
+            </Link>
+          </p>
+          <p>
+            {t("auth.login.registerPrompt")}{" "}
+            <Link
+              href="/register"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {t("auth.login.registerLink")}
+            </Link>
+          </p>
+        </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email = pengenal resmi (issue #136); username lama tetap diterima
+            selama masa peralihan — lihat authorize() di lib/auth.ts. */}
         <Input
-          id="username"
-          name="username"
-          label={t("auth.login.username")}
-          placeholder={t("auth.login.usernamePlaceholder")}
+          id="identifier"
+          name="identifier"
+          label={t("auth.login.identifier")}
+          placeholder={t("auth.login.identifierPlaceholder")}
           autoComplete="username"
           required
           autoFocus

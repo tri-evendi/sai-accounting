@@ -118,6 +118,14 @@ export interface ProvisionInput {
   createdByUserId: number;
   /** Peran yang diberikan ke pembuatnya di perusahaan baru. */
   role: string;
+  /**
+   * Tenant PEMILIK perusahaan baru (issue #135) — WAJIB: sejak migration 0003
+   * basis data menolak perusahaan tanpa tenant, dan menebak tenant adalah
+   * dosa yang sama dengan menebak perusahaan (#104). Nilainya datang dari
+   * keanggotaan tenant PEMBUATNYA (`requireTenantPermission`), tidak pernah
+   * dari input klien.
+   */
+  tenantId: number;
 }
 
 /**
@@ -234,6 +242,7 @@ export async function provisionCompany(
         slug,
         name,
         databaseName,
+        tenantId: input.tenantId,
         isActive: true,
         memberships: {
           create: {

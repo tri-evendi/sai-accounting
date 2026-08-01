@@ -4,6 +4,14 @@ Issue #104. Dokumen ini menjelaskan **bentuknya**, **cara memindahkan pemasangan
 yang sudah berjalan**, dan **aturan yang tidak boleh dilanggar** saat menulis
 kode baru.
 
+> **Lingkupnya: SATU GRUP USAHA yang memegang beberapa PT** — bukan platform
+> berlangganan dengan pelanggan yang tidak saling kenal. Rencana menjadikannya
+> multi-pelanggan ada di [`MULTI-TENANT.md`](./MULTI-TENANT.md); tahap 1–3-nya
+> (#134 skema `tenants` di basis data kendali, #135 izin lingkup TENANT —
+> `company.create` kini milik keanggotaan tenant, bukan keanggotaan PT —, #136
+> email sebagai pengenal login + atur-ulang kata sandi mandiri) SUDAH
+> diimplementasikan. Aturan multi-PT di dokumen ini tetap berlaku penuh.
+
 ---
 
 ## 1. Bentuknya
@@ -169,8 +177,10 @@ docker compose run --rm migrate npm run db:migrate:control
 
 # 2. Daftarkan basis data yang sekarang sebagai perusahaan pertama
 #    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
+#    Sejak issue #134/#136 adopsi juga MEMBUAT TENANT dan menuntut peta email
+#    (JSON {"username": "email"} yang diisi operator — bukan ditebak mesin):
 docker compose run --rm migrate npm run adopt-company -- \
-  --slug pt-sai --name "PT Subur Anugerah Indonesia"
+  --slug pt-sai --name "PT Subur Anugerah Indonesia" --emails emails.json
 
 #    BUKTIKAN akunnya sudah pindah SEBELUM langkah 3 — ini titik tak-bisa-balik.
 #    Yang dicari: jumlah pengguna DAN keanggotaan di basis data kendali > 0.
@@ -213,6 +223,29 @@ hanya menyentuh perusahaan yang **sudah terdaftar**; registry yang masih kosong
 membuatnya berhenti dengan kode bukan-nol dan menyebutkan perintah yang harus
 dijalankan lebih dulu, sehingga `web` pun tidak ikut naik.
 
+### Bila pemasangannya masih di bawah 0032, PERIKSA `memberships.role`
+
+Adopsi menyalin `users.role` apa adanya ke `memberships.role` di basis data
+kendali, dan itu terjadi **sebelum** langkah 3. Migration `0032` mengganti nama
+kunci peran (`bos → managing_director`, `core → finance_manager`,
+`ptg → warehouse_head`) — tapi ia hanya menyentuh basis data PERUSAHAAN, tempat
+kuncinya sudah tidak lagi tinggal. Akibatnya, pada pemasangan yang diadopsi saat
+masih di bawah 0032, `memberships.role` tertinggal memakai kunci lama sementara
+tabel `roles` dan kode sudah memakai kunci baru: setiap pengguna kehilangan
+SELURUH izinnya, tanpa satu pun galat — sekadar aplikasi yang kosong.
+
+Produksi tidak mengalaminya karena sudah di 0036 saat diadopsi. Pemasangan yang
+lebih tua harus diperbaiki sesudah langkah 3:
+
+```sql
+UPDATE memberships SET role='managing_director' WHERE role='bos';
+UPDATE memberships SET role='finance_manager'   WHERE role='core';
+UPDATE memberships SET role='warehouse_head'    WHERE role='ptg';
+```
+
+Cara memeriksanya: setiap nilai `memberships.role` di basis data kendali harus
+ada di `roles.key` basis data perusahaannya.
+
 Skrip adopsi membaca skema LAMA (kolomnya masih `users.status`, bukan
 `must_change_password`) — ia mendeteksi mana yang ada, jadi urutan di atas benar
 apa adanya. Ia juga **menolak berjalan** bila tabel `users` sudah hilang, jadi
@@ -221,8 +254,9 @@ lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
 
 ### Perusahaan berikutnya
 
-**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`,
-izin `company.create`, akses penuh saja). Ia mengerjakan hal yang sama dengan
+**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`;
+sejak issue #135 izinnya `company.create` di matriks TENANT — owner/admin
+tenant, tanpa menuntut perusahaan aktif). Ia mengerjakan hal yang sama dengan
 skrip di bawah — buat basis data, terapkan skema, daftarkan — sambil
 mengalirkan kemajuannya tahap demi tahap.
 

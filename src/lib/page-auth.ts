@@ -6,6 +6,8 @@ import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
 import { enterCompanyFromSession } from "@/lib/company-session";
+import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { tenantStateForCompany } from "@/lib/tenant-state";
 import { redirect } from "next/navigation";
 
 /**
@@ -88,6 +90,20 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
 
   if (ACCOUNTING_PERMISSIONS.has(permission) && !effectiveAccountantMode(session.user)) {
     redirect("/dashboard");
+  }
+
+  /*
+   * Gerbang HANYA-BACA saat langganan ditangguhkan (issue #140) — cerminan
+   * gerbang yang sama di `auth-guard.ts`: halaman ber-izin TULIS dipantulkan
+   * ke beranda selama tenant `suspended`/`cancelled`; halaman baca & ekspor
+   * tetap terbuka (kewajiban retensi pelanggan tidak boleh terhalang tagihan).
+   * Status dari basis data KENDALI (cache per-perusahaan) — bukan platform.
+   */
+  if (isWritePermission(permission)) {
+    const tenantState = await tenantStateForCompany(company.companyId);
+    if (readOnlyRefusal(tenantState?.status, permission)) {
+      redirect("/dashboard");
+    }
   }
 
   /*

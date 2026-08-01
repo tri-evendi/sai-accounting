@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { controlDb } from "@/lib/control-db";
 import { companiesForUser, membershipFor } from "@/lib/company-registry";
+import { tenantCan } from "@/lib/tenant-authz";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { loginSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { evaluateSession, shouldRecheckSession } from "@/lib/session-guard";
@@ -41,22 +43,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        username: {},
+        identifier: {},
         password: {},
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        // Rate limit by username
-        const rateCheck = checkRateLimit(`login:${parsed.data.username}`, RATE_LIMITS.login);
+        const identifier = parsed.data.identifier.toLowerCase();
+
+        // Rate limit per pengenal (email/username), sebelum menyentuh DB.
+        const rateCheck = checkRateLimit(`login:${identifier}`, RATE_LIMITS.login);
         if (!rateCheck.allowed) {
           throw new Error("Too many login attempts. Please try again later.");
         }
 
-        const user = await controlDb.user.findUnique({
-          where: { username: parsed.data.username },
-        });
+        /*
+         * ── Pengenal login = EMAIL (issue #136), username sebagai peralihan ──
+         *
+         * Berisi `@` → dicari lewat `users.email` (unik sejak migration 0003).
+         * Tanpa `@` → username LAMA: dicari `findMany take 2`, dan HANYA
+         * diterima bila hasilnya persis satu. Sejak 0004 username tidak lagi
+         * unik se-pemasangan; nama yang kembar (dua tenant, dua `budi`) tidak
+         * bisa dijawab tanpa menebak pemiliknya, jadi ia ditolak sebagai
+         * kredensial salah — pemiliknya masuk dengan email, pengenal yang
+         * memang tidak pernah ambigu. Jalur username sengaja TIDAK dibuang:
+         * pengguna pt-sai belum tentu tahu email yang didaftarkan untuknya,
+         * dan mengunci mereka semua pada hari rilis bukan migrasi, melainkan
+         * pemadaman.
+         */
+        const user = identifier.includes("@")
+          ? await controlDb.user.findUnique({ where: { email: identifier } })
+          : await (async () => {
+              const matches = await controlDb.user.findMany({
+                where: { username: parsed.data.identifier },
+                take: 2,
+              });
+              return matches.length === 1 ? matches[0] : null;
+            })();
 
         if (!user) return null;
 
@@ -64,12 +88,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordMatch) return null;
 
-        // Perusahaan yang boleh dibukanya. Kosong = akunnya sah tapi belum
-        // diberi akses ke PT mana pun; katakan itu apa adanya, jangan biarkan
-        // ia masuk ke aplikasi yang setiap halamannya akan menolak.
+        /*
+         * Perusahaan yang boleh dibukanya. KOSONG punya dua arti sejak issue
+         * #138, dan keduanya diperlakukan berbeda:
+         *   • pemegang izin tenant `company.create` (owner/admin) — keadaan
+         *     yang SAH dan diharapkan: pelanggan baru yang barusan
+         *     memverifikasi emailnya memang belum punya PT, dan justru sedang
+         *     menuju layar pembuatannya. Ia boleh masuk; alur pasca-masuk
+         *     membawanya ke /companies/new.
+         *   • selainnya — akunnya sah tapi tidak diberi akses ke PT mana pun
+         *     dan tidak bisa membuat sendiri; katakan itu apa adanya, jangan
+         *     biarkan ia masuk ke aplikasi yang setiap halamannya menolak.
+         */
         const companies = await companiesForUser(user.id);
         if (companies.length === 0) {
-          throw new Error("NoCompanyAccess");
+          const membership = await tenantMembershipForUser(user.id);
+          if (!tenantCan(membership, "company.create")) {
+            throw new Error("NoCompanyAccess");
+          }
         }
 
         // Satu perusahaan = tidak ada yang perlu dipilih. Lebih dari satu =
@@ -80,7 +116,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: String(user.id),
           name: user.name || user.username,
-          email: user.username,
+          /*
+           * AKHIRNYA email sungguhan (issue #136) — bukan lagi username yang
+           * dialiaskan. NULL hanya mungkin di tengah masa adopsi #134
+           * (sebelum migration 0003); username menjadi pengisi supaya audit
+           * yang mencatat kolom ini tidak pernah kosong.
+           */
+          email: user.email ?? user.username,
           mustChangePassword: user.mustChangePassword,
           sessionVersion: user.sessionVersion,
           companyId: only?.companyId ?? null,
@@ -151,6 +193,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       ) {
         const next = (session as { accountantMode?: boolean | null }).accountantMode;
         token.accountantMode = next === true || next === false ? next : null;
+      }
+
+      /*
+       * ── Kata sandi baru saja diganti — paksa revalidasi SEKARANG ──────────
+       *
+       * `mustChangePassword` hanya disegarkan oleh revalidasi berkala di bawah,
+       * dan jaraknya `SESSION_RECHECK_MS` (60 detik). Tanpa cabang ini, orang
+       * yang BERHASIL mengganti kata sandinya tetap membawa token bertanda
+       * "wajib ganti" sampai satu menit — dan `proxy.ts` memantulkan setiap
+       * tujuan kembali ke `/change-password`. Yang dilihat pengguna baru pada
+       * langkah pertamanya adalah formulir yang menolak keberhasilannya
+       * sendiri, tanpa satu pun pesan galat yang menjelaskan.
+       *
+       * Yang ditulis di sini hanya "sudah lama tidak diperiksa"; nilainya tetap
+       * dibaca dari basis data kendali oleh blok di bawah. Klien tidak pernah
+       * bisa mengumumkan bahwa sandinya sudah berganti — ia hanya bisa meminta
+       * pemeriksaan lebih awal.
+       */
+      if (
+        trigger === "update" &&
+        session &&
+        typeof session === "object" &&
+        "passwordChanged" in session
+      ) {
+        token.checkedAt = 0;
       }
 
       // ── audit RBAC fase 3 + keanggotaan (#104) — revalidasi berkala ──────

@@ -34,6 +34,17 @@ const API_DIR = join(APP_DIR, "api");
  */
 const GUARDED_PAGE_GROUPS = ["(dashboard)", "(setup)"];
 
+/**
+ * Grup rute TINGKAT TENANT (issue #135): halamannya wajib memanggil
+ * `requireTenantPagePermission` — penjaga yang bekerja TANPA perusahaan aktif.
+ * Sengaja dipisah dari `GUARDED_PAGE_GROUPS`: memakai penjaga perusahaan di
+ * sini justru salah (ayam-dan-telur #135), dan sebaliknya penjaga tenant tidak
+ * boleh menggantikan penjaga perusahaan di dasbor. Kedua himpunan kunci izinnya
+ * saling lepas, jadi salah matriks sudah ditolak `tsc`; tes ini menjaga yang
+ * tak terlihat kompiler — halaman TANPA penjaga sama sekali.
+ */
+const TENANT_PAGE_GROUPS = ["(tenant)"];
+
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
   // Beranda terbuka untuk semua peran; menjaga sendiri dengan auth() dan
@@ -41,10 +52,58 @@ const PAGE_EXCEPTIONS = new Set([
   "(dashboard)/dashboard/page.tsx",
 ]);
 
+/**
+ * Route API bertingkat TENANT (issue #135): wajib `requireTenantApiPermission`.
+ * Setiap permukaan tenant BARU (penagihan, undangan, pengaturan tenant) wajib
+ * didaftarkan di sini — tanpa ini permukaan penagihan lahir tanpa pagar.
+ */
+const TENANT_API_ROUTES = new Set([
+  // Membuat perusahaan = kewenangan tenant; pemilik tenant tanpa satu pun PT
+  // adalah pemanggil yang sah, jadi penjaga perusahaan tidak bisa dipakai.
+  "companies/route.ts",
+  // Undangan staf (issue #139): mengundang orang ke tenant = kewenangan tenant
+  // (`tenant.member.invite`, owner/admin) — bukan `user.manage` di salah satu
+  // PT. PT tujuan dipakai sebagai KONTEKS (validasi peran, jejak audit) dan
+  // dibuktikan milik tenant pemanggil di dalam route-nya.
+  "tenant/invitations/route.ts",
+  "tenant/invitations/[id]/route.ts",
+  // Penagihan pelanggan (issue #141): instruksi bayar & profil NPWP —
+  // kewenangan tenant `tenant.billing` (owner, kontraktual), bukan peran PT.
+  "tenant/billing/pay/route.ts",
+  "tenant/billing/profile/route.ts",
+  // Kepatuhan (issue #142): ekspor seluruh data tenant & permintaan
+  // penghapusan adalah hak PELANGGAN (owner tenant), berdiri di atas semua
+  // PT-nya — dan ekspor wajib tetap bekerja saat seluruh PT hanya-baca
+  // (suspended), keadaan yang penjaga perusahaan justru tolak.
+  "tenant/export/route.ts",
+  "tenant/deletion-request/route.ts",
+]);
+
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */
 const API_EXCEPTIONS = new Set([
   "auth/[...nextauth]/route.ts", // handler NextAuth
   "auth/change-password/route.ts", // self-scoped: auth() + target selalu diri sendiri
+  // publik (issue #136): alur atur-ulang kata sandi berjalan justru TANPA
+  // sesi. Kredensialnya token sekali-pakai ter-hash; jawabannya seragam
+  // (anti-enumerasi) dan keduanya dibatasi laju per-IP/per-email.
+  "auth/forgot-password/route.ts",
+  "auth/reset-password/route.ts",
+  // publik (issue #139): penerimaan undangan berjalan justru TANPA sesi —
+  // penerimanya belum punya akun. Kredensialnya token sekali-pakai ter-hash
+  // berbatas waktu; dibatasi laju per-IP; kegagalan token dijawab seragam.
+  "auth/accept-invitation/route.ts",
+  // publik (issue #138): pendaftaran mandiri & verifikasi email adalah
+  // keadaan PRA-akun. Jawaban /register seragam (anti-enumerasi), verifikasi
+  // memakai token acak sekali-pakai lewat POST (bukan GET — pemindai tautan),
+  // keduanya dibatasi laju PERSISTEN (rate-limit-persistent.ts), dan TIDAK
+  // ADA basis data yang lahir sebelum verifikasi + klik "buat perusahaan".
+  "auth/register/route.ts",
+  "auth/verify-email/route.ts",
+  // publik (issue #141): webhook gerbang pembayaran — pengirimnya server
+  // Midtrans, bukan pengguna. Kredensialnya tanda tangan SHA-512 atas isi
+  // notifikasi (diverifikasi SEBELUM query apa pun; 503 fail-closed bila kunci
+  // tidak terpasang di produksi); idempoten lewat UNIQUE payments.gateway_ref.
+  "billing/webhook/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
@@ -69,6 +128,31 @@ function filesNamed(dir: string, filename: string): string[] {
     return entry.name === filename ? [full] : [];
   });
 }
+
+describe("cakupan penjaga halaman tenant (issue #135)", () => {
+  const pages = TENANT_PAGE_GROUPS.flatMap((group) =>
+    existsSync(join(APP_DIR, group)) ? filesNamed(join(APP_DIR, group), "page.tsx") : []
+  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
+
+  it("grup (tenant) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages).toContain("(tenant)/companies/new/page.tsx");
+  });
+
+  it("setiap halaman tenant memakai requireTenantPagePermission — BUKAN penjaga perusahaan", () => {
+    for (const rel of pages) {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireTenantPagePermission`).toContain(
+        "requireTenantPagePermission("
+      );
+      // Penjaga perusahaan menuntut konteks perusahaan — di halaman tenant ia
+      // memantulkan justru pengguna yang paling sah (pemilik tenant tanpa PT).
+      expect(src, `${rel} memanggil penjaga perusahaan`).not.toContain(
+        "requirePagePermission("
+      );
+    }
+  });
+});
 
 describe("cakupan penjaga halaman aplikasi", () => {
   const pages = GUARDED_PAGE_GROUPS.flatMap((group) =>
@@ -120,9 +204,22 @@ describe("cakupan penjaga API route", () => {
   it("setiap route mendeklarasikan izinnya (requireApiPermission)", () => {
     const offenders = routes
       .map((f) => relative(API_DIR, f))
-      .filter((rel) => !API_EXCEPTIONS.has(rel))
+      .filter((rel) => !API_EXCEPTIONS.has(rel) && !TENANT_API_ROUTES.has(rel))
       .filter((rel) => !readFileSync(join(API_DIR, rel), "utf8").includes("requireApiPermission("));
     expect(offenders).toEqual([]);
+  });
+
+  it("route bertingkat tenant memakai requireTenantApiPermission — BUKAN penjaga perusahaan (issue #135)", () => {
+    expect(TENANT_API_ROUTES.size).toBeGreaterThan(0);
+    for (const rel of TENANT_API_ROUTES) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireTenantApiPermission`).toContain(
+        "requireTenantApiPermission("
+      );
+      // `requireApiPermission(` juga cocok dengan nama panjangnya, jadi cek
+      // impornya: route tenant tidak boleh menyentuh penjaga perusahaan.
+      expect(src, `${rel} mengimpor penjaga perusahaan`).not.toContain("@/lib/auth-guard");
+    }
   });
 
   it("requireAuth generasi lama tidak muncul lagi di route", () => {

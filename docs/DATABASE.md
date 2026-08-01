@@ -6,6 +6,11 @@
 > (`prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
 > `docs/MULTI-COMPANY.md` — terutama: **tidak ada FK ke `users` dari basis data
 > perusahaan**, dan migration diterapkan dengan `npm run db:migrate:all`.
+>
+> **Basis data platform (issue #137).** Sejak #137 ada skema KETIGA:
+> `prisma/platform/schema.prisma` → basis data `sai_platform` (langganan &
+> penagihan SaaS — data bisnis KAMI, bukan buku pelanggan). Ia **opsional**
+> untuk pemasangan multi-PT satu grup usaha. Aturan operasionalnya di §11.
 
 Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). Tujuan: konsisten, aman untuk data keuangan, dan mudah dipelihara. Standar ini mengodifikasikan konvensi yang **sudah** dipakai di `prisma/schema.prisma` + menutup celah.
 
@@ -174,3 +179,89 @@ Seluruh deviasi yang pernah tercatat di sini sudah ditutup pada issue #104, tepa
 - **Entri audit lama** tetap menyebut `cash_account`/`stock`. Log adalah catatan tentang apa yang benar SAAT ITU; menulis ulang isinya justru merusak nilainya sebagai jejak.
 
 > Prinsip: **jangan hard-delete master yang direferensikan** — nonaktifkan (`is_active = false`). Route DELETE master (`consignees`, `suppliers`, `customers`) menghapus HANYA bila baris itu belum pernah dipakai; selebihnya menonaktifkan dan mengembalikan `{ deactivated: true }`. `items` tidak punya DELETE sama sekali: menghapusnya akan menghapus gerakan stoknya (FK CASCADE), yaitu dasar HPP yang sudah masuk laporan.
+
+---
+
+## 11. Basis data platform `sai_platform` (issue #137) — operasional
+
+Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
+`docs/MULTI-TENANT.md` §4A). Isinya `plans`, `subscriptions`, `payments`,
+`platform_invoices`, `usage_counters` — **data bisnis penyedia SaaS**, nol angka
+akuntansi pelanggan. Skema: `prisma/platform/schema.prisma` → klien
+`src/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
+`src/lib/platform-db.ts`.
+
+**Menyediakannya (opsional — pemasangan multi-PT satu grup usaha tidak butuh):**
+
+```sql
+CREATE DATABASE sai_platform DEFAULT CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+CREATE USER 'sai_billing'@'%' IDENTIFIED BY '<sandi-tersendiri>';
+GRANT ALL PRIVILEGES ON `sai_platform`.* TO 'sai_billing'@'%';
+FLUSH PRIVILEGES;
+```
+
+lalu set `PLATFORM_DATABASE_URL` di `.env` (lihat `.env.docker.example`) dan
+jalankan `npm run db:migrate:platform` (atau `db:migrate:all`, yang sudah
+menyertakannya di antara kendali dan perusahaan).
+
+**Aturan yang tidak boleh dilanggar:**
+
+- **Pengguna basis data aplikasi tidak menyentuh `sai_platform` di jalur
+  permintaan biasa.** Karena GRANT pola `sai\_%` (docs/MULTI-COMPANY.md §3) ikut
+  mencakup nama `sai_platform`, pisahkan di sisi KREDENSIAL:
+  `PLATFORM_DATABASE_URL` memakai pengguna tersendiri (`sai_billing`) yang hanya
+  berhak atas `sai_platform` — bukan pengguna `sai` milik buku besar.
+- **Tidak ada FK lintas-basis-data.** Kolom `tenant_id` di setiap tabel platform
+  adalah `Int` biasa tanpa FK — persis pola `periods.closed_by_id`.
+- **Urutan tulis:** alur yang menulis platform DAN kendali menulis ke
+  **platform dulu**, kendali belakangan; selisihnya ditemukan
+  `npm run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
+  termasuk kecocokan status dan usage_counters).
+- **Penagihan mati ≠ login mati.** `src/lib/platform-db.ts` malas (lazy) dan
+  hanya boleh diimpor kode penagihan — jangan pernah dari penjaga, sesi, atau
+  jalur lain yang berjalan pada setiap permintaan. `db:migrate:all` melewati
+  platform dengan peringatan bila `PLATFORM_DATABASE_URL` tidak diset
+  (`scripts/migrate-platform.ts`) — tapi GAGAL bila diset dan migrationnya
+  gagal.
+- **Cache data platform dikunci per `tenant_id`** — aturan cache #104 diperluas;
+  pakai `TenantKeyedCache` (`src/lib/tenant-cache.ts`).
+
+**Siklus hidup langganan (issue #140).** Mesin keputusannya MURNI di
+`src/lib/subscription-lifecycle.ts` (teruji tuntas); `suspended`/`cancelled`
+membuat buku besar **HANYA-BACA di lapisan penjaga** — setiap izin tulis
+ditolak, baca & ekspor tetap jalan, TIDAK ADA data yang dihapus otomatis pada
+keadaan mana pun. Penjaga membaca status dari **salinan di `tenants`**
+(kendali) lewat cache per-perusahaan (`src/lib/tenant-state.ts`) — tidak
+pernah dari `sai_platform` di jalur permintaan.
+
+**Penjadwal.** `npm run scheduler:subscriptions` — satu putaran: trial habis
+(+ tagihan pertama), dunning, suspensi setelah tenggang, pengingat H-7/H-3/H-1,
+sinkronisasi `usage_counters`, deteksi basis data yatim (lapor saja), dan
+rekonsiliasi. **Idempoten** (nomor tagihan deterministik + `reminder_logs`
+unik): dijalankan dua kali tidak menagih/mengirim dua kali. Jadwalkan lewat
+cron host — pemasangan compose:
+
+```cron
+17 * * * *  \
+  docker compose run --rm migrate npm run scheduler:subscriptions
+```
+
+Paket bawaan: `npm run db:seed:plans`; ganti paket sebuah tenant (operator,
+sampai gateway #141): `npm run change-plan -- --tenant <slug> --plan <key>` —
+kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.
+
+**Penagihan Indonesia (issue #141).** Gerbang pembayaran di
+`src/lib/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
+`manual` bawaan; transport `mock` di luar produksi (nol jaringan, VA
+deterministik) — kredensial real HANYA lewat env (`PAYMENT_GATEWAY`,
+`MIDTRANS_SERVER_KEY`, lihat `.env.docker.example`; bawaan TIDAK terpasang).
+Webhook `/api/billing/webhook`: tanda tangan SHA-512 diverifikasi (503
+fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
+`payments.gateway_ref`, menulis platform DULU lalu kendali; gagal bayar →
+`past_due`, tidak pernah langsung `suspended`. PPN tagihan platform dihitung
+lewat `src/lib/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
+keputusan penasihat pajak); e-Faktur: `npm run efaktur:platform` memakai mesin
+`src/lib/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
+pelanggan di /tenant). **TIDAK ADA data kartu yang disimpan** — hanya
+referensi gerbang, nomor VA, dan payload QR.

@@ -14,7 +14,7 @@
  * sandinya tidak diubah, hanya keanggotaannya yang bertambah.
  */
 import "dotenv/config";
-import { ROLES, ROLE_VALUES } from "../src/lib/constants";
+import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
@@ -41,15 +41,24 @@ async function main() {
   const {
     username,
     password,
+    email,
     name,
     company: companySlug,
     role = ROLES.MANAGING_DIRECTOR,
   } = parseArgs(process.argv.slice(2));
 
-  if (!username || !password || !companySlug) {
+  if (!username || !password || !companySlug || !email) {
     console.error(
-      'Usage: npm run create-admin -- --username <user> --password <pass> --company <slug> [--name "Nama"] [--role ...]'
+      'Usage: npm run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--name "Nama"] [--role ...]\n' +
+        "  --email wajib sejak issue #136: email adalah pengenal login dan jalan\n" +
+        "  satu-satunya mengatur ulang kata sandi secara mandiri."
     );
+    process.exit(1);
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    console.error(`ERROR: "${email}" tidak berbentuk alamat email.`);
     process.exit(1);
   }
 
@@ -82,7 +91,21 @@ async function main() {
     process.exit(1);
   }
 
-  const existing = await controlDb.user.findUnique({ where: { username } });
+  /*
+   * Tenant pemilik akun = tenant perusahaan tujuan (issue #134/#136): sejak
+   * migration 0003 akun tanpa tenant ditolak basis data.
+   */
+  if (!company.tenantId) {
+    console.error(
+      `ERROR: perusahaan "${companySlug}" belum bertaut ke tenant. Jalankan dulu:\n` +
+        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+    );
+    process.exit(1);
+  }
+  const tenantId = company.tenantId;
+
+  // Username tidak lagi unik global (#136) — pencariannya per tenant ini.
+  const existing = await controlDb.user.findFirst({ where: { username, tenantId } });
 
   if (existing) {
     // Akun yang sudah ada TIDAK dibuat ulang: satu orang = satu akun dengan
@@ -100,13 +123,21 @@ async function main() {
     return;
   }
 
+  const emailOwner = await controlDb.user.findUnique({ where: { email: normalizedEmail } });
+  if (emailOwner) {
+    console.error(`ERROR: email "${normalizedEmail}" sudah dipakai akun "${emailOwner.username}".`);
+    process.exit(1);
+  }
+
   const hashed = await bcrypt.hash(password, 12);
   const user = await controlDb.$transaction(async (tx) => {
     const created = await tx.user.create({
       data: {
         username,
+        email: normalizedEmail,
         password: hashed,
         name: name || username,
+        tenantId,
         mustChangePassword: false,
       },
       select: { id: true, username: true, name: true },
@@ -114,11 +145,24 @@ async function main() {
     await tx.membership.create({
       data: { userId: created.id, companyId: company.id, role },
     });
+    /*
+     * Keanggotaan tenant ikut lahir (issue #135). Peran berakses penuh dibuat
+     * `owner` — skrip ini dipakai membuat pengelola pertama, dan tenant tanpa
+     * owner tidak bisa dikelola siapa pun; selainnya `member`.
+     */
+    await tx.tenantMembership.create({
+      data: {
+        tenantId,
+        userId: created.id,
+        role: isFullAccessRole(role) ? TENANT_ROLES.OWNER : TENANT_ROLES.MEMBER,
+      },
+    });
     return created;
   });
 
   console.log("Administrator created successfully:");
   console.log(`  Username:   ${user.username}`);
+  console.log(`  Email:      ${normalizedEmail}`);
   console.log(`  Name:       ${user.name}`);
   console.log(`  Perusahaan: ${company.name} (${company.slug})`);
   console.log(`  Peran:      ${role}`);

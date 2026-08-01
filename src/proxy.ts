@@ -5,8 +5,26 @@ import { getToken } from "next-auth/jwt";
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  // issue #136 — alur atur-ulang kata sandi mandiri: orang yang lupa kata
+  // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
+  // `/api/auth/*` di bawah.
+  if (pathname === "/forgot-password" || pathname === "/reset-password") return true;
+  // issue #139 — penerimaan undangan staf: penerimanya BELUM punya akun, jadi
+  // jelas belum punya sesi. Kredensialnya token sekali-pakai dari surel; API
+  // pasangannya sudah tercakup `/api/auth/*` di bawah.
+  if (pathname === "/accept-invitation") return true;
+  // issue #138 — pendaftaran mandiri + verifikasi email: keduanya PRA-akun.
+  // HANYA dua jalur ini yang dilepas — bukan prefix, supaya halaman publik
+  // baru harus disebut namanya di sini (dan di tests/authz-coverage).
+  if (pathname === "/register" || pathname === "/verify-email") return true;
+  // issue #142 — dokumen hukum: harus terbaca SEBELUM orang menyetujuinya.
+  if (pathname === "/terms" || pathname === "/privacy") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
+  // issue #141 — webhook gerbang pembayaran: pengirimnya server Midtrans,
+  // tanpa sesi. JALUR PERSIS, bukan prefix; kredensialnya tanda tangan
+  // SHA-512 yang diverifikasi di route-nya (fail-closed tanpa kunci).
+  if (pathname === "/api/billing/webhook") return true;
   if (pathname.startsWith("/api/auth/")) {
     return !pathname.startsWith("/api/auth/change-password");
   }
@@ -57,7 +75,9 @@ export async function proxy(request: NextRequest) {
     secureCookie: useSecureCookies,
   });
 
-  if (pathname === "/login" && token) {
+  // /register ikut: orang yang sudah masuk tidak sedang mendaftar — form yang
+  // dibiarkan terbuka hanya melahirkan pendaftaran yatim atas nama orang lain.
+  if ((pathname === "/login" || pathname === "/register") && token) {
     const destination =
       token.mustChangePassword ? "/change-password" : "/dashboard";
     return NextResponse.redirect(new URL(destination, request.url));

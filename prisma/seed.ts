@@ -76,26 +76,38 @@ async function main() {
   // ═══════════════════════════════════════════════
   // USERS
   // ═══════════════════════════════════════════════
+  // Email pengenal login (issue #136) — alamat contoh @example.test: TLD
+  // .test dicadangkan RFC 2606, tidak pernah bisa menerima surel sungguhan.
   const users = [
-    { username: "admin", password: "admin123", name: "Administrator Sistem", role: "administrator", mustChangePassword: false },
-    { username: "staff", password: "staff123", name: "Staff User", role: "finance_manager", mustChangePassword: false },
-    { username: "ptg", password: "ptg123", name: "PTG User", role: "warehouse_head", mustChangePassword: false },
-    { username: "erwin", password: "erwin123", name: "Erwin Saputra", role: "managing_director", mustChangePassword: false },
-    { username: "sari", password: "sari1234", name: "Sari Dewi", role: "finance_manager", mustChangePassword: false },
+    { username: "admin", email: "admin@example.test", password: "admin123", name: "Administrator Sistem", role: "administrator", mustChangePassword: false },
+    { username: "staff", email: "staff@example.test", password: "staff123", name: "Staff User", role: "finance_manager", mustChangePassword: false },
+    { username: "ptg", email: "ptg@example.test", password: "ptg123", name: "PTG User", role: "warehouse_head", mustChangePassword: false },
+    { username: "erwin", email: "erwin@example.test", password: "erwin123", name: "Erwin Saputra", role: "managing_director", mustChangePassword: false },
+    { username: "sari", email: "sari@example.test", password: "sari1234", name: "Sari Dewi", role: "finance_manager", mustChangePassword: false },
   ];
 
   // Pengguna + keanggotaannya di perusahaan ini (issue #104): identitas di
-  // basis data kendali, peran menempel pada keanggotaan.
+  // basis data kendali, peran menempel pada keanggotaan. Sejak issue #134
+  // setiap akun juga wajib ber-tenant + ber-email — tenantnya milik perusahaan
+  // yang sedang di-seed.
   const company = await seedCompany();
+  if (!company.tenantId) {
+    throw new Error(
+      `Perusahaan "${company.slug}" belum bertaut ke tenant (issue #134). Jalankan dulu:\n` +
+        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+    );
+  }
   for (const user of users) {
     const hashed = await bcrypt.hash(user.password, 12);
     const created = await controlDb.user.upsert({
-      where: { username: user.username },
+      where: { email: user.email },
       update: {},
       create: {
         username: user.username,
+        email: user.email,
         password: hashed,
         name: user.name,
+        tenantId: company.tenantId,
         mustChangePassword: user.mustChangePassword,
       },
     });
@@ -103,6 +115,15 @@ async function main() {
       where: { userId_companyId: { userId: created.id, companyId: company.id } },
       create: { userId: created.id, companyId: company.id, role: user.role },
       update: { role: user.role, isActive: true },
+    });
+    // Keanggotaan tenant (issue #135): akses penuh = owner, selainnya member.
+    const tenantRole = ["administrator", "managing_director"].includes(user.role)
+      ? "owner"
+      : "member";
+    await controlDb.tenantMembership.upsert({
+      where: { tenantId_userId: { tenantId: company.tenantId, userId: created.id } },
+      create: { tenantId: company.tenantId, userId: created.id, role: tenantRole },
+      update: {},
     });
   }
   console.log(`  ✓ 5 users created (anggota ${company.name})`);
@@ -556,16 +577,16 @@ async function main() {
   console.log("\n══════════════════════════════════════════");
   console.log("  Demo seed completed successfully!");
   console.log("══════════════════════════════════════════\n");
-  console.log("Login credentials:");
-  console.log("┌──────────┬──────────┬─────────────────────────────────┐");
-  console.log("│ Username │ Password │ Role                            │");
-  console.log("├──────────┼──────────┼─────────────────────────────────┤");
-  console.log("│ admin    │ admin123 │ Administrator (administrator)   │");
-  console.log("│ staff    │ staff123 │ Manajer Keuangan (finance_mgr)  │");
-  console.log("│ ptg      │ ptg123   │ Kepala Gudang (warehouse_head)  │");
-  console.log("│ erwin    │ erwin123 │ Direktur Utama (managing_dir.)  │");
-  console.log("│ sari     │ sari1234 │ Manajer Keuangan (finance_mgr)  │");
-  console.log("└──────────┴──────────┴─────────────────────────────────┘");
+  console.log("Login credentials (masuk dengan EMAIL atau username — issue #136):");
+  console.log("┌────────────────────────┬──────────┬─────────────────────────────────┐");
+  console.log("│ Email                  │ Password │ Role                            │");
+  console.log("├────────────────────────┼──────────┼─────────────────────────────────┤");
+  console.log("│ admin@example.test     │ admin123 │ Administrator (administrator)   │");
+  console.log("│ staff@example.test     │ staff123 │ Manajer Keuangan (finance_mgr)  │");
+  console.log("│ ptg@example.test       │ ptg123   │ Kepala Gudang (warehouse_head)  │");
+  console.log("│ erwin@example.test     │ erwin123 │ Direktur Utama (managing_dir.)  │");
+  console.log("│ sari@example.test      │ sari1234 │ Manajer Keuangan (finance_mgr)  │");
+  console.log("└────────────────────────┴──────────┴─────────────────────────────────┘");
   console.log("\nDemo data summary:");
   console.log("  • 5 users (4 roles)");
   console.log("  • 10 inventory items with stock movements");

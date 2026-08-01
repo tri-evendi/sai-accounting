@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
-import { createCompanyUser, findUserByUsername, listCompanyUsers } from "@/lib/users-directory";
+import { listCompanyUsers } from "@/lib/users-directory";
 import { requireApiPermission } from "@/lib/auth-guard";
-import { z } from "zod";
-import { activeRoleKeys } from "@/lib/roles";
-import { ROLES } from "@/lib/constants";
-import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
 
-// Peran kini DATA (tabel roles), jadi bentuknya string; keberadaan & keaktifan
-// peran divalidasi terhadap DB setelah parse (bukan enum tetap).
-const createUserSchema = z.object({
-  username: z.string().min(1).max(50).trim(),
-  password: z.string().min(8).max(128),
-  name: z.string().max(100).trim().optional(),
-  role: z.string().trim().min(1).max(20).default(ROLES.FINANCE_MANAGER),
-});
+/*
+ * ── POST (buat akun + kata sandi yang diketik admin) DIHAPUS — issue #139 ──
+ *
+ * Alur "admin mengetik kata sandi staf lalu mengirimkannya lewat WhatsApp"
+ * adalah kata sandi yang bocor sebelum dipakai. Penggantinya UNDANGAN:
+ * `POST /api/tenant/invitations` (penjaga tenant `tenant.member.invite`) —
+ * penerima menentukan kata sandinya SENDIRI di /accept-invitation. Route itu
+ * juga menjawab SERAGAM apa pun keadaan emailnya, menutup kebocoran enumerasi
+ * yang dulu hidup di 409 `username_taken` + userId di sini (§4.4).
+ * Pembuatan akun dari CLI (scripts/create-admin.ts) tidak berubah.
+ */
 
 export async function GET() {
   const result = await requireApiPermission("user.manage");
@@ -41,70 +37,4 @@ export async function GET() {
   return NextResponse.json(
     users.map((user) => ({ ...user, overrideCount: countByUser.get(user.id) ?? 0 }))
   );
-}
-
-export async function POST(request: Request) {
-  const result = await requireApiPermission("user.manage");
-  if (!result.authorized) return result.response;
-
-  const body = await request.json();
-  const parsed = createUserSchema.safeParse(body);
-
-  if (!parsed.success) {
-    // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
-    // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
-    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
-    // Route handler boleh membaca cookie bahasa persis seperti server component,
-    // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
-    const { dictionary, t } = await getRequestI18n();
-    return NextResponse.json(
-      {
-        error: t("validation.invalidInput"),
-        details: translateFieldErrors(parsed.error, dictionary),
-      },
-      { status: 400 }
-    );
-  }
-
-  // Peran harus ada & aktif (peran dinamis) — validasi ke DB.
-  if (!(await activeRoleKeys()).includes(parsed.data.role)) {
-    const { t } = await getRequestI18n();
-    return NextResponse.json({ error: t("errors.roleUnknownOrInactive") }, { status: 400 });
-  }
-
-  // Username unik untuk SELURUH pemasangan, bukan per perusahaan: satu orang =
-  // satu akun, berapa pun PT yang dipegangnya (issue #104). Kalau namanya sudah
-  // dipakai, yang benar bukan membuat akun kedua melainkan menambahkan orang
-  // yang sudah ada itu sebagai anggota — jadi pesannya menyebutkan hal itu.
-  const existing = await findUserByUsername(parsed.data.username);
-  if (existing) {
-    const { t } = await getRequestI18n();
-    return NextResponse.json(
-      { error: t("errors.usernameTaken"), code: "username_taken", userId: existing.id },
-      { status: 409 }
-    );
-  }
-
-  const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
-
-  const user = await createCompanyUser({
-    username: parsed.data.username,
-    passwordHash: hashedPassword,
-    name: parsed.data.name,
-    role: parsed.data.role,
-  });
-
-  // audit RBAC fase 3 — pemberian akun (dan perannya) kini terekam.
-  await writeAuditLog({
-    userId: result.session.user.id,
-    username: result.session.user.name,
-    role: result.session.user.role,
-    action: "user.create",
-    entity: "user",
-    entityId: user.id,
-    details: { username: user.username, role: user.role },
-    request,
-  });
-
-  return NextResponse.json(user, { status: 201 });
 }

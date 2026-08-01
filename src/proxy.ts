@@ -13,6 +13,10 @@ function isPublicPath(pathname: string): boolean {
   // jelas belum punya sesi. Kredensialnya token sekali-pakai dari surel; API
   // pasangannya sudah tercakup `/api/auth/*` di bawah.
   if (pathname === "/accept-invitation") return true;
+  // issue #138 — pendaftaran mandiri + verifikasi email: keduanya PRA-akun.
+  // HANYA dua jalur ini yang dilepas — bukan prefix, supaya halaman publik
+  // baru harus disebut namanya di sini (dan di tests/authz-coverage).
+  if (pathname === "/register" || pathname === "/verify-email") return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
   if (pathname.startsWith("/api/auth/")) {
@@ -65,7 +69,9 @@ export async function proxy(request: NextRequest) {
     secureCookie: useSecureCookies,
   });
 
-  if (pathname === "/login" && token) {
+  // /register ikut: orang yang sudah masuk tidak sedang mendaftar — form yang
+  // dibiarkan terbuka hanya melahirkan pendaftaran yatim atas nama orang lain.
+  if ((pathname === "/login" || pathname === "/register") && token) {
     const destination =
       token.mustChangePassword ? "/change-password" : "/dashboard";
     return NextResponse.redirect(new URL(destination, request.url));

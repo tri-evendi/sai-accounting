@@ -145,8 +145,8 @@ describe("penerimaan undangan — kegagalan token dijawab satu kalimat", () => {
     expect(src).toMatch(/case "not_found":\s*\n\s*case "used":\s*\n\s*case "expired":/);
   });
 
-  it("route-nya dibatasi laju per-IP — token 256-bit tidak boleh jadi sasaran tebak murah", () => {
-    expect(src).toContain("checkRateLimit(");
-    expect(src).toContain("invitationAccept");
+  it("route-nya dibatasi laju per-IP PERSISTEN (aturan #138 — endpoint publik)", () => {
+    expect(src).toContain("checkPersistentRateLimit(");
+    expect(src).toContain("invitationAcceptIp");
   });
 });

@@ -19,7 +19,10 @@
 import { NextResponse } from "next/server";
 
 import { forgotPasswordSchema } from "@/lib/validations/auth";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  PERSISTENT_RATE_LIMITS,
+  checkPersistentRateLimit,
+} from "@/lib/rate-limit-persistent";
 import { issueResetTokenForEmail } from "@/lib/password-reset-store";
 import { sendMail } from "@/lib/mailer";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -50,8 +53,19 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase();
 
-  const perIp = checkRateLimit(`pwreset:ip:${clientIp(request)}`, RATE_LIMITS.passwordResetIp);
-  const perEmail = checkRateLimit(`pwreset:email:${email}`, RATE_LIMITS.passwordResetEmail);
+  /*
+   * Pembatas laju PERSISTEN (issue #138 — yang di #136 masih memori dan
+   * memang dijanjikan diganti di sini): endpoint ini terbuka ke internet,
+   * penghitungnya harus selamat dari restart dan terbagi antar-instance.
+   */
+  const perIp = await checkPersistentRateLimit(
+    `pwreset:ip:${clientIp(request)}`,
+    PERSISTENT_RATE_LIMITS.passwordResetIp
+  );
+  const perEmail = await checkPersistentRateLimit(
+    `pwreset:email:${email}`,
+    PERSISTENT_RATE_LIMITS.passwordResetEmail
+  );
   if (!perIp.allowed || !perEmail.allowed) {
     return NextResponse.json({ error: t("auth.forgotPassword.tooMany") }, { status: 429 });
   }

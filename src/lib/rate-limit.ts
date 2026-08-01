@@ -14,25 +14,23 @@ const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
   maxAttempts: 10,
 };
 
+/*
+ * HANYA untuk permukaan internal (login, ganti kata sandi milik sesi sendiri).
+ * Endpoint yang TERBUKA KE INTERNET — /register, verifikasi email, atur-ulang
+ * kata sandi — memakai penghitung PERSISTEN di `rate-limit-persistent.ts`
+ * (issue #138): penghitung memori hilang saat restart dan tidak terbagi
+ * antar-instance.
+ */
 export const RATE_LIMITS = {
   login: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
   changePassword: { windowMs: 15 * 60 * 1000, maxAttempts: 5 },
   /*
-   * Atur-ulang kata sandi (issue #136): dibatasi per-EMAIL (spam ke satu kotak
-   * masuk) DAN per-IP (menyisir banyak alamat). Masih penghitung di memori —
-   * cukup selama endpointnya belum terbuka ke pendaftaran publik; penghitung
-   * persisten adalah pekerjaan #138 dan disebut di sana.
-   */
-  passwordResetEmail: { windowMs: 15 * 60 * 1000, maxAttempts: 3 },
-  passwordResetIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
-  /*
-   * Undangan staf (issue #139): penerbitan dibatasi per-PENGUNDANG (undangan
-   * mengirim surel atas nama pemasangan ini — akun admin yang dibajak tidak
-   * boleh menjadi meriam spam), penerimaan per-IP (route publik bertoken;
-   * pembatasnya menahan penebakan token, bukan pemakaian wajar).
+   * Penerbitan undangan staf (issue #139): per-PENGUNDANG — permukaan
+   * TERAUTENTIKASI (akun admin yang dibajak tidak boleh jadi meriam spam),
+   * jadi penghitung memori cukup; penerimaan undangan yang PUBLIK memakai
+   * penghitung persisten (`rate-limit-persistent.ts`, aturan #138).
    */
   invitation: { windowMs: 15 * 60 * 1000, maxAttempts: 20 },
-  invitationAccept: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
 } as const;
 
 export function checkRateLimit(

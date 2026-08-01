@@ -19,7 +19,10 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { acceptInvitation, invitationInfoByToken } from "@/lib/invitation-store";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  PERSISTENT_RATE_LIMITS,
+  checkPersistentRateLimit,
+} from "@/lib/rate-limit-persistent";
 import { controlDb } from "@/lib/control-db";
 import { runWithCompany } from "@/lib/company-context";
 import { writeAuditLog } from "@/lib/audit";
@@ -44,7 +47,10 @@ function clientIp(request: Request): string {
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
 
-  const limit = checkRateLimit(`invite-info:ip:${clientIp(request)}`, RATE_LIMITS.invitationAccept);
+  const limit = await checkPersistentRateLimit(
+    `invite-info:ip:${clientIp(request)}`,
+    PERSISTENT_RATE_LIMITS.invitationAcceptIp
+  );
   if (!limit.allowed) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }
@@ -68,7 +74,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { t, dictionary } = await getRequestI18n();
 
-  const limit = checkRateLimit(`invite-accept:ip:${clientIp(request)}`, RATE_LIMITS.invitationAccept);
+  const limit = await checkPersistentRateLimit(
+    `invite-accept:ip:${clientIp(request)}`,
+    PERSISTENT_RATE_LIMITS.invitationAcceptIp
+  );
   if (!limit.allowed) {
     return NextResponse.json({ error: t("invitations.tooMany") }, { status: 429 });
   }

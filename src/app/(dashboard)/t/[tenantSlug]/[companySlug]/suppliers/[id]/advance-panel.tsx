@@ -46,7 +46,7 @@ import {
 import {
   AdvanceForm,
   type ContractOption,
-} from "@/app/(dashboard)/advances/new/advance-form";
+} from "@/app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { ArrowUpFromLine, HandCoins, Info, Plus, X } from "lucide-react";

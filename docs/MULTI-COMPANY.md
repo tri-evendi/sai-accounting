@@ -65,10 +65,50 @@ pernah menjadi jawaban.
 
 | Jalur kode | Cara mendapat konteks |
 |---|---|
-| Halaman `(dashboard)` / `(setup)` | `requirePagePermission()` — otomatis |
-| Route API | `requireApiPermission()` — otomatis |
+| Halaman `/t/{tenant}/{company}/…` | `requirePagePermission(izin, params)` — dari **URL** |
+| Halaman `(setup)` | `requirePagePermission()` — dari sesi |
+| Route API | `requireApiPermission()` — dari sesi (sampai #158) |
 | Skrip, cron, seed, pekerjaan latar | **`runWithCompany(ctx, fn)` — wajib eksplisit** |
 | Halaman `(auth)` (masuk, pilih perusahaan) | tidak punya, dan memang tidak boleh menyentuh buku besar |
+
+### Sejak issue #157: konteks halaman datang dari URL
+
+Halaman dasbor hidup di `/t/{tenantSlug}/{companySlug}/…`. Perusahaannya
+diambil dari jalur, bukan dari sesi, dan **keanggotaannya diverifikasi ulang
+setiap permintaan** (`enterCompanyFromRoute`, `lib/company-route.ts`).
+
+Sebabnya bukan estetika URL. Cookie sesi satu untuk SELURUH TAB: berganti
+perusahaan di tab sebelah membuat tab ini menampilkan buku PT lama sambil
+menulis ke PT baru — kegagalan yang dilarang di atas, hanya saja ia masuk lewat
+antarmuka, bukan lewat lapisan basis data. Akibat kedua, tautan dalam
+`/invoices/12` menunjuk faktur yang berbeda bagi setiap penerimanya.
+
+Yang berlaku sekarang:
+
+* **Sesi turun pangkat.** `session.user.companyId` berarti "yang TERAKHIR
+  dibuka" — untuk menjawab `/dashboard` telanjang dan menandai pilihan di
+  `/select-company`. Ia **bukan** sumber kebenaran otorisasi. Peran pun tidak
+  diambil dari sesi: JWT menyimpan peran di perusahaan terakhir, dan memakainya
+  di halaman perusahaan lain berarti memberi hak PT A di buku PT B.
+* **Gagal apa pun = 404.** Slug tak ada, PT nonaktif, bukan anggota, tenant
+  lain — satu jawaban yang sama. 403 mengakui "ini ada tapi bukan hakmu", dan
+  pengakuan itu sendiri sudah kebocoran enumerasi (§4.4 docs/MULTI-TENANT.md).
+* **`currentCompany()` punya tiga sumber:** konteks ALS → **jalur** → sesi.
+  Sumber tengah ada supaya kegagalan rambatan `enterWith` tidak berujung jatuh
+  ke perusahaan di sesi.
+* **Slug perusahaan TETAP.** Ia ikut menyusun nama basis data DAN kini ada di
+  URL; menggantinya mematikan setiap tautan yang pernah dibagikan tanpa satu pun
+  galat. Nama perusahaan tetap bebas berubah.
+* **Jalur lama masih hidup**, dipantulkan 307 oleh `src/proxy.ts` menurut
+  `MIGRATED_ROOT_SEGMENTS` di `lib/tenant-routes.ts`. Satu-satunya berkas yang
+  sengaja tinggal di jalur lama adalah `/dashboard` telanjang — pengarah tanpa
+  query, karena proxy tidak bisa memantulkan token yang belum membawa slug.
+* **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
+  `components/ui/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
+  `usePathname()` — bukan dari sesi, sebab sesi dibagi seluruh tab.
+* **Sampai #158, route API masih membaca sesi.** `CompanySessionSync` menahan
+  permukaan interaktif sampai cookie menunjuk perusahaan yang sama dengan
+  jalur; tanpa itu halaman bisa MENAMPILKAN buku PT A sambil menyimpan ke PT B.
 
 ### Bagaimana klien diselesaikan
 

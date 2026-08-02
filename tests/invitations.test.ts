@@ -17,6 +17,7 @@ import {
   INVITATION_TTL_MS,
   decideInvitationOutcome,
   hashInvitationToken,
+  invitationUsernameCandidates,
   invitationVerdict,
   mintInvitationToken,
   userQuotaExceeded,
@@ -134,6 +135,43 @@ describe("POST /api/tenant/invitations — struktur anti-enumerasi", () => {
   });
 });
 
+/*
+ * ── Username diturunkan dari email undangan (#159 temuan 4) ────────────────
+ *
+ * Desain #139 menjadikan email pengenal; formulir penerimaan tidak lagi
+ * menanyakan username. Berbeda dengan pendaftaran mandiri (tenant baru,
+ * mustahil kembar), penerima undangan masuk ke tenant BERISI orang — dan
+ * username unik per tenant (#136) — jadi tabrakan diselesaikan deterministik.
+ */
+describe("invitationUsernameCandidates — username dari email, tabrakan deterministik", () => {
+  it("basis dari bagian lokal email; berikutnya -2…-9; terakhir akhiran acak", () => {
+    const candidates = invitationUsernameCandidates("Budi.Santoso@contoh.co.id", "abc123");
+    expect(candidates[0]).toBe("budi.santoso");
+    expect(candidates[1]).toBe("budi.santoso-2");
+    expect(candidates[8]).toBe("budi.santoso-9");
+    expect(candidates[9]).toBe("budi.santoso-abc123");
+    expect(candidates).toHaveLength(10);
+  });
+
+  it("dua email berbeda dengan bagian lokal SAMA saling menghindar lewat kandidat berikutnya", () => {
+    const a = invitationUsernameCandidates("budi@a.com", "x1");
+    const b = invitationUsernameCandidates("budi@b.co.id", "y2");
+    expect(a[0]).toBe(b[0]); // tabrakan nyata di kandidat pertama…
+    expect(a[1]).toBe("budi-2"); // …kandidat kedua yang menyelesaikannya, tanpa acak.
+  });
+
+  it("kandidat terpanjang tetap muat kolom VarChar(50)", () => {
+    const longLocal = `${"a".repeat(80)}@contoh.co.id`;
+    for (const candidate of invitationUsernameCandidates(longLocal)) {
+      expect(candidate.length).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it("email tanpa bagian lokal terpakai jatuh ke 'pengguna'", () => {
+    expect(invitationUsernameCandidates("@contoh.co.id", "s")[0]).toBe("pengguna");
+  });
+});
+
 describe("penerimaan undangan — kegagalan token dijawab satu kalimat", () => {
   const src = readFileSync(
     join(__dirname, "..", "src", "app", "api", "auth", "accept-invitation", "route.ts"),
@@ -148,5 +186,20 @@ describe("penerimaan undangan — kegagalan token dijawab satu kalimat", () => {
   it("route-nya dibatasi laju per-IP PERSISTEN (aturan #138 — endpoint publik)", () => {
     expect(src).toContain("checkPersistentRateLimit(");
     expect(src).toContain("invitationAcceptIp");
+  });
+
+  it("username TIDAK lagi ditanya (#159 temuan 4) — skema tanpa username, tanpa jawaban username_taken", () => {
+    expect(src).not.toMatch(/username:\s*z\./);
+    expect(src).not.toContain("username_taken");
+  });
+
+  it("store menurunkan username lewat kandidat deterministik", () => {
+    const storeSrc = readFileSync(
+      join(__dirname, "..", "src", "lib", "invitation-store.ts"),
+      "utf8"
+    );
+    expect(storeSrc).toContain("invitationUsernameCandidates(row.email)");
+    // Aturan lama "penerima mengetik username" tidak boleh hidup kembali.
+    expect(storeSrc).not.toContain("input.username");
   });
 });

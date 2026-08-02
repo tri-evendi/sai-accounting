@@ -74,9 +74,10 @@ function AcceptInvitationForm() {
       const res = await fetch("/api/auth/accept-invitation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        /* Tanpa `username` (#159 temuan 4): server menurunkannya dari email
+         * undangan — satu isian lebih sedikit untuk dipikirkan penerima. */
         body: JSON.stringify({
           token,
-          username: String(formData.get("username") ?? ""),
           name: String(formData.get("name") ?? "") || undefined,
           password,
         }),
@@ -140,18 +141,10 @@ function AcceptInvitationForm() {
             {t("invitations.acceptAs", { email: info.email })}
           </p>
           <Input
-            id="username"
-            name="username"
-            label={t("invitations.username")}
-            required
-            autoFocus
-            maxLength={50}
-            disabled={loading}
-          />
-          <Input
             id="name"
             name="name"
             label={t("users.displayName")}
+            autoFocus
             maxLength={100}
             disabled={loading}
           />

@@ -3339,7 +3339,6 @@
     "acceptHeading": "Terima Undangan",
     "acceptDescription": "Anda diundang bergabung ke {company}.",
     "acceptAs": "Undangan ini untuk {email}. Lengkapi akun Anda di bawah.",
-    "username": "Nama Pengguna (untuk tampilan)",
     "choosePassword": "Kata Sandi Anda (minimal 8 karakter)",
     "submitting": "Membuat akun...",
     "submit": "Buat Akun & Bergabung",

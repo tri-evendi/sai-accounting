@@ -37,6 +37,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # sendiri ke depan PATH untuk skrip lifecycle.
 FROM base AS bunbase
 COPY --from=oven/bun:1.3 /usr/local/bin/bun /usr/local/bin/bun
+# `bunx` adalah bun yang dipanggil dengan nama lain — di image oven/bun ia
+# TAUTAN, bukan biner tersendiri, jadi menyalin `bun` saja tidak membawanya.
+# Tanpa baris ini setiap `bunx …` di tahap build mati dengan `bunx: not found`
+# (exit 127) — dan itu terjadi sejak perpindahan ke bun (#160): image produksi
+# yang sedang berjalan dibangun SEBELUM perpindahan itu, jadi tidak ada yang
+# pernah membangun ulang dan menemukannya sampai penggelaran #151.
+RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
 
 
 # ─── Dependencies ────────────────────────────────────────────

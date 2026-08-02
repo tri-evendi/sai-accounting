@@ -76,15 +76,24 @@ COPY . .
 # mahal di memori — jangan heran kalau batas ini perlu ditinjau lagi saat kamus
 # bertambah besar.
 #
-# DUA klien Prisma di-generate, dan keduanya wajib (issue #104): skema
-# PERUSAHAAN (`prisma/schema.prisma` → src/generated/prisma) dan skema KENDALI
-# (`prisma/control/schema.prisma` → src/generated/control). Keduanya
-# gitignored, jadi keduanya lahir di sini. Tanpa yang kedua, `next build`
-# berhenti dengan "module not found" pada `@/generated/control/client` — dan
-# pesan itu tidak menyebut sama sekali bahwa yang kurang adalah satu perintah
-# generate.
+# TIGA klien Prisma di-generate, dan ketiganya wajib: skema PERUSAHAAN
+# (`prisma/schema.prisma` → src/generated/prisma, issue #104), skema KENDALI
+# (`prisma/control/schema.prisma` → src/generated/control, issue #104), dan
+# skema PLATFORM (`prisma/platform/schema.prisma` → src/generated/platform,
+# issue #137). Ketiganya gitignored, jadi ketiganya lahir di sini. Tanpa salah
+# satunya `next build` berhenti dengan "module not found" pada
+# `@/generated/<yang-kurang>/client` — dan pesan itu tidak menyebut sama sekali
+# bahwa yang kurang adalah satu perintah generate.
+#
+# Klien PLATFORM sempat tertinggal di sini padahal kodenya sudah mengimpornya:
+# `src/lib/platform-db.ts` dipakai webhook pembayaran, penagihan tenant, dan
+# konsol operator — semuanya ikut dikompilasi `next build`, jadi build gagal
+# SEBELUM satu baris pun dijalankan. Basis data platform boleh TIDAK ADA saat
+# runtime (penagihan mati ≠ aplikasi mati), tetapi KLIEN-nya tetap wajib ada
+# saat build; keduanya hal yang berbeda dan mudah tertukar.
 RUN NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate \
     && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.control.config.ts \
+    && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.platform.config.ts \
     && NODE_OPTIONS="--max-old-space-size=768" bun run build
 
 

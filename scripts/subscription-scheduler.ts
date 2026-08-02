@@ -3,7 +3,7 @@
  * dunning, suspensi, pengingat, sinkronisasi pemakaian, rekonsiliasi, dan
  * deteksi penyediaan yatim. Satu putaran per pemanggilan; tidak ada daemon.
  *
- *   npm run scheduler:subscriptions
+ *   bun run scheduler:subscriptions
  *
  * ══ CARA MENJADWALKANNYA ════════════════════════════════════════════════════
  * Aplikasi ini tidak punya (dan belum butuh) antrean kerja. Skrip ini
@@ -12,11 +12,11 @@
  *
  *   • Host (crontab -e), pemasangan compose:
  *       17 * * * *  cd /opt/applications/sai-accounting && \
- *         docker compose run --rm migrate npm run scheduler:subscriptions
+ *         docker compose run --rm migrate bun run scheduler:subscriptions
  *     (service `migrate` = image & env yang sama dengan `web`, dan satu-satunya
  *      cara menjangkau service `db` yang tidak memublikasikan port — alasannya
  *      sama dengan migration, lihat docs/MULTI-COMPANY.md §3.)
- *   • Pemasangan tanpa Docker: `17 * * * * cd <app> && npm run scheduler:subscriptions`
+ *   • Pemasangan tanpa Docker: `17 * * * * cd <app> && bun run scheduler:subscriptions`
  *
  * ══ IDEMPOTEN — DIJALANKAN DUA KALI TIDAK MENAGIH DUA KALI ══════════════════
  * Tiga mekanisme, semuanya di basis data, bukan di memori skrip:
@@ -53,6 +53,7 @@ import {
   pendingReminder,
   planDunning,
   planGraceExpiries,
+  planOrphanSubscriptionAdoptions,
   planTrialExpiries,
   tenantStatusForSubscription,
   transition,
@@ -169,6 +170,92 @@ async function main() {
   const now = new Date();
   const errors: string[] = [];
 
+  /* Ringkasan putaran untuk `scheduler_runs` (issue #154): baris-baris yang
+   * selama ini hanya tercetak di stdout dikumpulkan juga di sini, supaya
+   * "apa yang terbit, apa yang diingatkan, apa yang gagal pada putaran
+   * terakhir?" terjawab dari konsol operator tanpa SSH. */
+  const summary = {
+    issued: [] as string[],
+    reminders: [] as string[],
+    transitions: [] as string[],
+    adoptions: [] as string[],
+  };
+
+  /* ── 0. Adopsi langganan YATIM (issue #152): tenant berbayar di kendali
+   * TANPA satu pun langganan di platform tidak pernah masuk siklus tagih —
+   * trial tak berujung, tagihan tak pernah terbit, tanpa galat. Sumbernya:
+   * pendaftaran saat `sai_platform` mati/belum di-seed, pemasangan pra-#152
+   * (pt-sai lewat adopt-tenant), atau crash di antara dua tulisan. Putaran ini
+   * melahirkan langganannya dari `tenants.plan_key`, dengan `trial_ends_at`
+   * KENDALI apa adanya — adopsi tidak pernah memperpanjang trial diam-diam.
+   * Idempoten: putaran kedua melihat langganan hasil putaran pertama; putaran
+   * KEMBAR ditahan UNIQUE `subscriptions.initial_for_tenant_id` (P2002 =
+   * mundur dengan tenang), bukan periksa-lalu-tulis.
+   * `pending_verification` TIDAK diadopsi — keadaan pra-langganan yang sah. */
+  try {
+    const tenants = await control.tenant.findMany({
+      select: { id: true, slug: true, status: true, planKey: true, trialEndsAt: true },
+    });
+    const covered = await platform.subscription.findMany({ select: { tenantId: true } });
+    const plans = await platform.plan.findMany({ where: { isActive: true } });
+    const planByKey = new Map(plans.map((p) => [p.key, p]));
+    const slugById = new Map(tenants.map((t) => [t.id, t.slug]));
+    for (const orphan of planOrphanSubscriptionAdoptions(tenants, covered, now)) {
+      const plan = planByKey.get(orphan.planKey);
+      if (!plan) {
+        errors.push(
+          `adopsi-yatim tenant #${orphan.tenantId}: paket "${orphan.planKey}" tidak ada/` +
+            "nonaktif di plans — jalankan bun run db:seed:plans, atau pindahkan paketnya " +
+            "lewat bun run change-plan"
+        );
+        continue;
+      }
+      try {
+        const period = nextPeriod("monthly", now);
+        const created = await platform.subscription.create({
+          data: {
+            tenantId: orphan.tenantId,
+            planId: plan.id,
+            status: orphan.status,
+            billingCycle: "monthly",
+            /* SNAPSHOT harga (§5) — bukan rujukan ke `plans`. */
+            price: plan.priceMonthly,
+            currency: plan.currency,
+            currentPeriodStart: period.start,
+            currentPeriodEnd: period.end,
+            trialEndsAt: orphan.trialEndsAt,
+            pastDueSince: orphan.pastDueSince,
+            initialForTenantId: orphan.tenantId,
+          },
+          select: { id: true },
+        });
+        console.log(
+          `+ adopsi yatim: tenant #${orphan.tenantId} → subscription #${created.id} ` +
+            `(${orphan.status}, paket "${plan.key}")`
+        );
+        summary.adoptions.push(
+          `tenant #${orphan.tenantId} → subscription #${created.id} (${orphan.status}, paket "${plan.key}")`
+        );
+        await writeTenantAuditLog({
+          tenantId: orphan.tenantId,
+          tenantSlug: slugById.get(orphan.tenantId) ?? String(orphan.tenantId),
+          action: "tenant.subscription.adopt",
+          details: { subscriptionId: created.id, planKey: plan.key, status: orphan.status },
+        });
+      } catch (e) {
+        if ((e as { code?: string }).code === "P2002") {
+          console.log(
+            `= adopsi yatim tenant #${orphan.tenantId}: langganannya sudah lahir di tangan lain`
+          );
+        } else {
+          errors.push(`adopsi-yatim tenant #${orphan.tenantId}: ${e}`);
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(`adopsi-yatim: ${e}`);
+  }
+
   const subscriptions = await platform.subscription.findMany({
     where: { status: { not: "cancelled" } },
     select: {
@@ -191,6 +278,7 @@ async function main() {
       const period = nextPeriod(sub.billingCycle === "yearly" ? "yearly" : "monthly", now);
       const applied = await applyEvent(platform, control, sub, "trial_expired", now);
       if (applied === null) continue;
+      summary.transitions.push(`sub #${sub.id}: trialing → ${applied} (trial habis)`);
       await platform.subscription.update({
         where: { id: sub.id },
         data: { currentPeriodStart: period.start, currentPeriodEnd: period.end },
@@ -224,6 +312,7 @@ async function main() {
           `+ trial habis: sub #${sub.id} → active, tagihan ${number} terbit ` +
             `(DPP ${amounts.amount} + PPN ${amounts.taxAmount} = ${amounts.total})`
         );
+        summary.issued.push(`${number} (sub #${sub.id}, total ${amounts.total})`);
 
         /* Tagih-lalu-ingatkan (bukan auto-debit): instruksi bayar (VA) dibuat
          * BERSAMA tagihannya bila gerbang terpasang — surel pengingat H-x
@@ -289,6 +378,7 @@ async function main() {
       if (applied) {
         sub.status = applied;
         console.log(`~ dunning: sub #${subId} → past_due (tenggang ${GRACE_PERIOD_DAYS} hari)`);
+        summary.transitions.push(`sub #${subId}: → ${applied} (lewat jatuh tempo)`);
       }
     }
   } catch (e) {
@@ -303,6 +393,7 @@ async function main() {
       if (applied) {
         sub.status = applied;
         console.log(`~ tenggang habis: sub #${id} → suspended (buku jadi hanya-baca)`);
+        summary.transitions.push(`sub #${id}: → ${applied} (masa tenggang habis)`);
       }
     } catch (e) {
       errors.push(`grace-expiry sub #${id}: ${e}`);
@@ -387,6 +478,7 @@ async function main() {
         });
       }
       console.log(`✉ pengingat ${kind} ${due.sendKey} → sub #${sub.id} (${recipients.length} owner)`);
+      summary.reminders.push(`${kind} ${due.sendKey} → sub #${sub.id} (${recipients.length} owner)`);
     }
   } catch (e) {
     errors.push(`pengingat: ${e}`);
@@ -439,7 +531,7 @@ async function main() {
     if (orphans.length > 0) {
       errors.push(
         `basis data yatim (dibuat tapi tak terdaftar — penyediaan gagal di tengah?): ${orphans.join(", ")} ` +
-          "— daftarkan lewat npm run adopt-company, atau hapus MANUAL setelah diperiksa orang"
+          "— daftarkan lewat bun run adopt-company, atau hapus MANUAL setelah diperiksa orang"
       );
     }
   } catch {
@@ -457,6 +549,28 @@ async function main() {
     }
   } catch (e) {
     errors.push(`rekonsiliasi: ${e}`);
+  }
+
+  /* ── 8. Catat ringkasan putaran (issue #154, tabel `scheduler_runs`) ─────
+   * Gagal MENCATAT tidak menggagalkan putarannya: ringkasan adalah laporan,
+   * bukan gerbang — dan pemasangan yang belum memigrasikan 0005 tidak boleh
+   * kehilangan penagihannya hanya karena riwayatnya belum punya tabel. */
+  try {
+    await platform.schedulerRun.create({
+      data: {
+        startedAt: now,
+        finishedAt: new Date(),
+        status: errors.length > 0 ? "error" : "ok",
+        invoicesIssued: summary.issued.length,
+        remindersSent: summary.reminders.length,
+        statusChanges: summary.transitions.length,
+        adoptions: summary.adoptions.length,
+        errorCount: errors.length,
+        details: JSON.stringify({ ...summary, errors }),
+      },
+    });
+  } catch (e) {
+    console.error("⚠ ringkasan putaran gagal dicatat ke scheduler_runs (migration 0005 sudah diterapkan?):", e);
   }
 
   await platform.$disconnect();

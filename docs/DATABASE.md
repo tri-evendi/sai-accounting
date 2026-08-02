@@ -5,7 +5,7 @@
 > Pengguna/perusahaan/keanggotaan hidup di skema terpisah
 > (`prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
 > `docs/MULTI-COMPANY.md` — terutama: **tidak ada FK ke `users` dari basis data
-> perusahaan**, dan migration diterapkan dengan `npm run db:migrate:all`.
+> perusahaan**, dan migration diterapkan dengan `bun run db:migrate:all`.
 >
 > **Basis data platform (issue #137).** Sejak #137 ada skema KETIGA:
 > `prisma/platform/schema.prisma` → basis data `sai_platform` (langganan &
@@ -73,7 +73,7 @@ Aturannya:
 - Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
   nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah
   tanpa jejak.
-- Memeriksa data yang sudah ada: `npm run check:legacy-values` (BINARY, jadi
+- Memeriksa data yang sudah ada: `bun run check:legacy-values` (BINARY, jadi
   perbedaan huruf besar/kecil terlihat) — jalankan pada gladi resik rilis.
 
 ---
@@ -133,7 +133,7 @@ Aturannya:
 - **Tidak** memakai `prisma migrate dev`. Migration **ditulis tangan** sebagai folder berurutan: `prisma/migrations/NNNN_<nama>/migration.sql` (mis. `0002_add_accounts`).
 - Diterapkan via **`prisma migrate deploy`** (lihat `package.json`: `db:migrate`).
 - Gaya DDL (ikuti `0001_init`): `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`, `DATETIME(3)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... ON DELETE ... ON UPDATE ...`.
-- Setelah menulis model + SQL: jalankan `npm run db:generate` (Prisma client). Update `prisma/seed.ts` bila perlu data awal.
+- Setelah menulis model + SQL: jalankan `bun run db:generate` (Prisma client). Update `prisma/seed.ts` bila perlu data awal.
 
 ---
 
@@ -155,7 +155,7 @@ Aturannya:
 - [ ] `onDelete`: Cascade (lines), Restrict (master).
 - [ ] Migration `NNNN_<nama>/migration.sql` ditulis (gaya utf8mb4/DATETIME(3)/ALTER FK).
 - [ ] Skema Zod mencerminkan constraint DB (panjang, required, enum).
-- [ ] `npm run db:generate` dijalankan.
+- [ ] `bun run db:generate` dijalankan.
 
 ---
 
@@ -202,7 +202,7 @@ FLUSH PRIVILEGES;
 ```
 
 lalu set `PLATFORM_DATABASE_URL` di `.env` (lihat `.env.docker.example`) dan
-jalankan `npm run db:migrate:platform` (atau `db:migrate:all`, yang sudah
+jalankan `bun run db:migrate:platform` (atau `db:migrate:all`, yang sudah
 menyertakannya di antara kendali dan perusahaan).
 
 **Aturan yang tidak boleh dilanggar:**
@@ -216,7 +216,7 @@ menyertakannya di antara kendali dan perusahaan).
   adalah `Int` biasa tanpa FK — persis pola `periods.closed_by_id`.
 - **Urutan tulis:** alur yang menulis platform DAN kendali menulis ke
   **platform dulu**, kendali belakangan; selisihnya ditemukan
-  `npm run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
+  `bun run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
   termasuk kecocokan status dan usage_counters).
 - **Penagihan mati ≠ login mati.** `src/lib/platform-db.ts` malas (lazy) dan
   hanya boleh diimpor kode penagihan — jangan pernah dari penjaga, sesi, atau
@@ -235,7 +235,7 @@ keadaan mana pun. Penjaga membaca status dari **salinan di `tenants`**
 (kendali) lewat cache per-perusahaan (`src/lib/tenant-state.ts`) — tidak
 pernah dari `sai_platform` di jalur permintaan.
 
-**Penjadwal.** `npm run scheduler:subscriptions` — satu putaran: trial habis
+**Penjadwal.** `bun run scheduler:subscriptions` — satu putaran: trial habis
 (+ tagihan pertama), dunning, suspensi setelah tenggang, pengingat H-7/H-3/H-1,
 sinkronisasi `usage_counters`, deteksi basis data yatim (lapor saja), dan
 rekonsiliasi. **Idempoten** (nomor tagihan deterministik + `reminder_logs`
@@ -244,11 +244,11 @@ cron host — pemasangan compose:
 
 ```cron
 17 * * * *  \
-  docker compose run --rm migrate npm run scheduler:subscriptions
+  docker compose run --rm migrate bun run scheduler:subscriptions
 ```
 
-Paket bawaan: `npm run db:seed:plans`; ganti paket sebuah tenant (operator,
-sampai gateway #141): `npm run change-plan -- --tenant <slug> --plan <key>` —
+Paket bawaan: `bun run db:seed:plans`; ganti paket sebuah tenant (operator,
+sampai gateway #141): `bun run change-plan -- --tenant <slug> --plan <key>` —
 kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.
 
 **Penagihan Indonesia (issue #141).** Gerbang pembayaran di
@@ -261,7 +261,7 @@ fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
 `payments.gateway_ref`, menulis platform DULU lalu kendali; gagal bayar →
 `past_due`, tidak pernah langsung `suspended`. PPN tagihan platform dihitung
 lewat `src/lib/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
-keputusan penasihat pajak); e-Faktur: `npm run efaktur:platform` memakai mesin
+keputusan penasihat pajak); e-Faktur: `bun run efaktur:platform` memakai mesin
 `src/lib/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
 pelanggan di /tenant). **TIDAK ADA data kartu yang disimpan** — hanya
 referensi gerbang, nomor VA, dan payload QR.

@@ -196,5 +196,5 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - [ ] **Dilihat di tema TERANG dan GELAP** — lihat dua jebakan token di bagian Color Palette; sewarna-nya `--muted`/`--secondary` dan `--sidebar`/`--background` di tema gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat primitif `Table` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, antar aksi `gap-2`) — penjaga `tests/design-system-primitives.test.ts` hijau.
-- [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `npm run lint` hijau (penjaga token menolaknya).
+- [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `bun run lint` hijau (penjaga token menolaknya).
 - [ ] Empty state bermakna + aksi.

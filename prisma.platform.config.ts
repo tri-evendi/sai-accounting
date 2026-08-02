@@ -4,8 +4,8 @@
 // `prisma.control.config.ts` (basis data kendali). Tiga skema, tiga klien,
 // tiga folder migration — dijalankan lewat `--config`:
 //
-//   npm run db:generate:platform   → klien ke src/generated/platform
-//   npm run db:migrate:platform    → migrate deploy ke PLATFORM_DATABASE_URL
+//   bun run db:generate:platform   → klien ke src/generated/platform
+//   bun run db:migrate:platform    → migrate deploy ke PLATFORM_DATABASE_URL
 //
 // `db:migrate:platform` dibungkus `scripts/migrate-platform.ts`: pemasangan
 // yang belum menyediakan `sai_platform` (belum ada PLATFORM_DATABASE_URL)

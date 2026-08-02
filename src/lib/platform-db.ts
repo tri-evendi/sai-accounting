@@ -19,7 +19,7 @@
  * FK dan transaksi tidak menyeberangi basis data. Setiap alur yang menulis ke
  * platform DAN kendali wajib menulis ke PLATFORM DULU, kendali belakangan —
  * kegagalan di tengah lalu meninggalkan pembayaran tercatat tanpa tenant naik
- * kelas (bisa direkonsiliasi: `npm run reconcile:platform`), bukan tenant naik
+ * kelas (bisa direkonsiliasi: `bun run reconcile:platform`), bukan tenant naik
  * kelas tanpa pembayaran (tidak akan pernah ketahuan).
  *
  * ══ CACHE ══════════════════════════════════════════════════════════════════

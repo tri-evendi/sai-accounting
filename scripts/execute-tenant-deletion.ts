@@ -3,8 +3,8 @@
  * bergerbang bukti seperti adopsi #134: penghancuran menuntut manusia yang
  * membaca apa yang akan terjadi lalu mengetik ulang nama tenantnya.
  *
- *   npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug>
- *   npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> --drop-ledgers
+ *   bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> --reason "<alasan>"
+ *   bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> --drop-ledgers
  *
  * ══ DUA GERBANG, DUA WAKTU ══════════════════════════════════════════════════
  * EKSEKUSI (tanpa --drop-ledgers) hanya boleh bila ada permintaan `pending`
@@ -18,35 +18,38 @@
  *     termuda di seluruh bukunya (atau sejak eksekusi, mana yang lebih lambat).
  * BUKU BESAR TIDAK DISENTUH — satu byte pun.
  *
+ * Sejak #155 gerbang 1 ini adalah PEMBUNGKUS TIPIS di atas
+ * `executeTenantDeletion` (`src/lib/operator/writes.ts`) yang juga menyalakan
+ * tombolnya di konsol operator — satu logika, dua permukaan. Skripnya tetap
+ * ada sebagai jalur pemulihan saat konsolnya sendiri tak bisa dibuka, dan
+ * kewajibannya sama: `--reason` WAJIB, aktornya tercatat sebagai `cli:<user>`.
+ *
  * PENGHANCURAN BUKU (--drop-ledgers) adalah gerbang KEDUA yang dalam praktik
  * baru terbuka bertahun-tahun kemudian: ia menolak (`ledgerDropVerdict`)
- * sebelum permintaan berstatus `executed` DAN `retention_until` lewat. Inilah
- * kebijakan retensi yang "ditegakkan di kode": tidak ada jalur lain yang
- * menghapus basis data perusahaan.
+ * sebelum permintaan berstatus `executed` DAN `retention_until` lewat. Gerbang
+ * ini SENGAJA tidak diberi tombol konsol (#155): ia sah hanya sekali dalam
+ * sepuluh tahun, dan gesekan command-line-nya justru yang diinginkan.
  */
 
 import "dotenv/config";
-import { randomBytes } from "node:crypto";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { createPool } from "mariadb";
 
-import {
-  anonymizedUserFields,
-  executionVerdict,
-  ledgerDropVerdict,
-  retentionUntilFrom,
-} from "../src/lib/tenant-deletion";
+import { ledgerDropVerdict } from "../src/lib/tenant-deletion";
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
+import {
+  executeTenantDeletion,
+  makeLatestJournalDateReader,
+} from "../src/lib/operator/writes";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function controlClient(raw: string): ControlClient {
+function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, raw: string): T {
   const url = new URL(raw);
-  return new ControlClient({
+  return new Ctor({
     adapter: new PrismaMariaDb({
       host: url.hostname,
       port: Number(url.port) || 3306,
@@ -58,35 +61,14 @@ function controlClient(raw: string): ControlClient {
   });
 }
 
-/** Tanggal jurnal termuda sebuah buku — jangkar retensi UU KUP. Buku yang tak
- *  terjangkau TIDAK menggagalkan eksekusi: retensi jatuh ke jangkar paling
- *  konservatif (sekarang) dan itu tercetak. */
-async function latestJournalDate(controlUrl: string, databaseName: string): Promise<Date | null> {
-  const url = new URL(controlUrl);
-  const pool = createPool({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: databaseName,
-    connectionLimit: 1,
-  });
-  try {
-    const rows = (await pool.query("SELECT MAX(`date`) AS latest FROM journals")) as {
-      latest: Date | null;
-    }[];
-    return rows[0]?.latest ?? null;
-  } catch (error) {
-    console.warn(`  ⚠ ${databaseName}: tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`);
-    return null;
-  } finally {
-    await pool.end();
-  }
-}
+const USAGE =
+  "Pakai: bunx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> " +
+  '--reason "<alasan>" [--drop-ledgers]';
 
 async function main() {
   const slug = argValue("--tenant");
   const confirm = argValue("--confirm");
+  const reason = argValue("--reason")?.trim() ?? "";
   const dropLedgers = process.argv.includes("--drop-ledgers");
 
   const controlUrl = process.env.CONTROL_DATABASE_URL;
@@ -95,13 +77,11 @@ async function main() {
     process.exit(1);
   }
   if (!slug) {
-    console.error(
-      "Pakai: npx tsx scripts/execute-tenant-deletion.ts --tenant <slug> --confirm <slug> [--drop-ledgers]"
-    );
+    console.error(USAGE);
     process.exit(1);
   }
 
-  const control = controlClient(controlUrl);
+  const control = clientFor(ControlClient, controlUrl);
   const tenant = await control.tenant.findUnique({
     where: { slug },
     select: { id: true, slug: true, name: true, status: true },
@@ -155,7 +135,8 @@ async function main() {
     await writeTenantAuditLog({
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
-      username: `operator (${process.env.USER ?? "cli"})`,
+      userId: `cli:${process.env.USER ?? "unknown"}`,
+      username: `cli:${process.env.USER ?? "unknown"}`,
       action: "tenant.deletion.execute",
       details: { phase: "drop_ledgers", requestId: executed!.id, companies: companies.map((c) => c.slug) },
     });
@@ -164,25 +145,11 @@ async function main() {
     return;
   }
 
-  /* ── Gerbang 1: eksekusi (nonaktif + anonimisasi) ──────────────────────── */
-  const request = await control.tenantDeletionRequest.findFirst({
-    where: { tenantId: tenant.id, status: "pending" },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, status: true, graceEndsAt: true, requestedByUserId: true },
-  });
-  if (!request) {
+  /* ── Gerbang 1: eksekusi (nonaktif + anonimisasi) — lewat inti bersama ── */
+  if (reason.length < 5) {
     console.error(
-      "DITOLAK: tidak ada permintaan penghapusan berstatus pending untuk tenant ini.\n" +
-        "Penghapusan HANYA berjalan atas permintaan eksplisit pemiliknya (UU PDP) —\n" +
-        "tidak ada jalur lain, dan memang tidak boleh ada."
-    );
-    process.exit(1);
-  }
-  const verdict = executionVerdict(request);
-  if (verdict === "grace_active") {
-    console.error(
-      `DITOLAK: masa tenggang belum lewat (sampai ${request.graceEndsAt.toISOString()}).\n` +
-        "Pemilik masih boleh berubah pikiran; kembalilah setelah tanggal itu."
+      "DITOLAK: --reason WAJIB (minimal 5 karakter) — alasannya ikut tercatat di jejak audit.\n" +
+        USAGE
     );
     process.exit(1);
   }
@@ -190,71 +157,52 @@ async function main() {
   console.log(`Eksekusi penghapusan tenant "${tenant.name}" (${tenant.slug}):`);
   console.log(`  ${companies.length} PT dinonaktifkan (bukunya TIDAK disentuh)`);
   console.log(`  ${users.length} akun dianonimkan (UU PDP)`);
-  if (confirm !== slug) {
-    console.error(`\nDITOLAK: baca daftar di atas, lalu ketik ulang: --confirm ${slug}`);
-    process.exit(1);
-  }
 
-  // Jangkar retensi: entri jurnal termuda di seluruh buku.
-  let latest: Date | null = null;
-  for (const company of companies) {
-    const d = await latestJournalDate(controlUrl, company.databaseName);
-    if (d && (!latest || d.getTime() > latest.getTime())) latest = d;
-  }
-  const retentionUntil = retentionUntilFrom(latest);
-
-  await control.$transaction(async (tx) => {
-    await tx.tenant.update({ where: { id: tenant.id }, data: { status: "cancelled" } });
-    await tx.company.updateMany({ where: { tenantId: tenant.id }, data: { isActive: false } });
-    await tx.membership.updateMany({
-      where: { userId: { in: users.map((u) => u.id) } },
-      data: { isActive: false },
-    });
-    for (const user of users) {
-      await tx.user.update({
-        where: { id: user.id },
-        data: {
-          ...anonymizedUserFields(user.id),
-          password: randomBytes(32).toString("hex"), // bukan hash bcrypt yang sah → tak ada kata sandi yang cocok
-          mustChangePassword: true,
-          sessionVersion: { increment: 1 },
-        },
-      });
-      await tx.passwordResetToken.deleteMany({ where: { userId: user.id } });
+  const result = await executeTenantDeletion(
+    { control, latestJournalDate: makeLatestJournalDateReader(controlUrl) },
+    {
+      tenantSlug: slug,
+      confirmSlug: confirm ?? "",
+      actor: { operator: `cli:${process.env.USER ?? "unknown"}`, reason },
     }
-    await tx.registration.deleteMany({
-      where: { email: { in: users.map((u) => u.email).filter((e): e is string => Boolean(e)) } },
-    });
-    await tx.tenantDeletionRequest.update({
-      where: { id: request.id },
-      data: { status: "executed", executedAt: new Date(), retentionUntil },
-    });
-  });
-
-  await writeTenantAuditLog({
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    username: `operator (${process.env.USER ?? "cli"})`,
-    action: "tenant.deletion.execute",
-    details: {
-      phase: "deactivate_anonymize",
-      requestId: request.id,
-      companies: companies.map((c) => c.slug),
-      users: users.length,
-      retentionUntil: retentionUntil.toISOString(),
-    },
-  });
-
-  console.log("\n✓ Selesai. Yang terjadi:");
-  console.log("  tenant → cancelled; PT nonaktif; akses & sesi seluruh akun dicabut;");
-  console.log("  data pribadi dianonimkan; buku besar TETAP tersimpan.");
-  console.log(`  retention_until = ${retentionUntil.toISOString()}`);
-  console.log(
-    "  Penghancuran buku baru bisa SETELAH tanggal itu:\n" +
-      `    npx tsx scripts/execute-tenant-deletion.ts --tenant ${slug} --confirm ${slug} --drop-ledgers`
   );
 
   await control.$disconnect();
+
+  switch (result.outcome) {
+    case "executed":
+      console.log("\n✓ Selesai. Yang terjadi:");
+      console.log("  tenant → cancelled; PT nonaktif; akses & sesi seluruh akun dicabut;");
+      console.log("  data pribadi dianonimkan; buku besar TETAP tersimpan.");
+      console.log(`  retention_until = ${result.retentionUntil.toISOString()}`);
+      console.log(
+        "  Penghancuran buku baru bisa SETELAH tanggal itu:\n" +
+          `    bunx tsx scripts/execute-tenant-deletion.ts --tenant ${slug} --confirm ${slug} --drop-ledgers`
+      );
+      return;
+    case "grace_active":
+      console.error(
+        `DITOLAK: masa tenggang belum lewat (sampai ${result.graceEndsAt.toISOString()}).\n` +
+          "Pemilik masih boleh berubah pikiran; kembalilah setelah tanggal itu."
+      );
+      process.exit(1);
+      return;
+    case "no_pending_request":
+      console.error(
+        "DITOLAK: tidak ada permintaan penghapusan berstatus pending untuk tenant ini.\n" +
+          "Penghapusan HANYA berjalan atas permintaan eksplisit pemiliknya (UU PDP) —\n" +
+          "tidak ada jalur lain, dan memang tidak boleh ada."
+      );
+      process.exit(1);
+      return;
+    case "confirm_mismatch":
+      console.error(`\nDITOLAK: baca daftar di atas, lalu ketik ulang: --confirm ${slug}`);
+      process.exit(1);
+      return;
+    case "tenant_not_found":
+      console.error(`ERROR: tenant "${slug}" tidak ada.`);
+      process.exit(1);
+  }
 }
 
 main().catch((error) => {

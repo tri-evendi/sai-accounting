@@ -2,16 +2,16 @@
  * Adopsi TENANT (issue #134, epik #133) — masukkan pemasangan yang sudah
  * berjalan ke dalam SATU tenant di basis data kendali.
  *
- *   npx tsx scripts/adopt-tenant.ts --slug pt-sai --emails emails.json \
+ *   bunx tsx scripts/adopt-tenant.ts --slug pt-sai --emails emails.json \
  *       [--name "PT Subur Anugerah Indonesia"] [--status active]
  *       [--plan-key internal] [--max-companies 10] [--max-users 50]
  *       [--owners "admin,budi"]
  *
  * ══ URUTAN YANG WAJIB (docs/MULTI-TENANT.md §8) ═════════════════════════════
- *   1. npm run db:migrate:control      — migration 0002 (kolom nullable)
+ *   1. bun run db:migrate:control      — migration 0002 (kolom nullable)
  *   2. skrip INI                       — buat Tenant, tautkan, isi email
- *   3. npx tsx scripts/prove-tenant-adoption.ts   — wajib exit 0
- *   4. npm run db:migrate:control      — migration 0003 (NOT NULL + unik)
+ *   3. bunx tsx scripts/prove-tenant-adoption.ts   — wajib exit 0
+ *   4. bun run db:migrate:control      — migration 0003 (NOT NULL + unik)
  *
  * ══ EMAIL DISIAPKAN MANUSIA, TIDAK PERNAH DITEBAK MESIN ═════════════════════
  * `--emails` menunjuk berkas JSON `{ "<username>": "<email>", … }` yang diisi
@@ -40,6 +40,7 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { PrismaClient } from "../src/generated/control/client.js";
+import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import {
   isFullAccessRole,
@@ -47,6 +48,10 @@ import {
   TENANT_STATUSES,
   type TenantStatus,
 } from "../src/lib/constants";
+import {
+  nextPeriod,
+  planOrphanSubscriptionAdoptions,
+} from "../src/lib/subscription-lifecycle";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -63,7 +68,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function usage(): never {
   console.error(
-    "Usage: npx tsx scripts/adopt-tenant.ts --slug <slug> --emails <peta.json>\n" +
+    "Usage: bunx tsx scripts/adopt-tenant.ts --slug <slug> --emails <peta.json>\n" +
       '         [--name "Nama Tenant"] [--status active] [--plan-key internal]\n' +
       "         [--max-companies 10] [--max-users 50] [--owners user1,user2]\n\n" +
       'peta.json: { "<username>": "<email>", ... } — disiapkan operator.'
@@ -233,31 +238,114 @@ async function main() {
   console.log(`  ${companies.length} perusahaan, ${users.length} pengguna, ${ownerUsernames.length} owner:`);
   console.log(`    owner: ${ownerUsernames.map((u) => u.username).join(", ")}`);
 
-  await control.$transaction(async (tx) => {
-    const tenant = await tx.tenant.create({
+  const tenant = await control.$transaction(async (tx) => {
+    const created = await tx.tenant.create({
       data: { slug, name: tenantName, status, planKey, maxCompanies, maxUsers },
     });
 
-    await tx.company.updateMany({ data: { tenantId: tenant.id } });
+    await tx.company.updateMany({ data: { tenantId: created.id } });
 
     for (const user of users) {
       await tx.user.update({
         where: { id: user.id },
-        data: { tenantId: tenant.id, email: normalized.get(user.id) },
+        data: { tenantId: created.id, email: normalized.get(user.id) },
       });
       await tx.tenantMembership.create({
-        data: { tenantId: tenant.id, userId: user.id, role: tenantRoleFor(user) },
+        data: { tenantId: created.id, userId: user.id, role: tenantRoleFor(user) },
       });
     }
+
+    return created;
   });
 
+  /* ── Langganan lahir BERSAMA tenant (issue #152) — juga saat adopsi ─────────
+   * Tenant berstatus berbayar tanpa baris `subscriptions` tidak pernah masuk
+   * siklus tagih (bug #152). Langkah ini BEST-EFFORT: platform mati / belum
+   * di-seed tidak menggagalkan adopsi yang kendalinya sudah sukses — putaran
+   * adopsi yatim penjadwal yang menyembuhkan. Aturannya dari fungsi murni yang
+   * sama dengan penjadwal: `pending_verification` tidak dilahirkan langganan. */
+  const platformUrl = process.env.PLATFORM_DATABASE_URL?.trim();
+  if (!platformUrl) {
+    console.warn(
+      "⚠ PLATFORM_DATABASE_URL belum diset — langganan belum dibuat; putaran " +
+        "adopsi penjadwal (bun run scheduler:subscriptions) yang menyembuhkan."
+    );
+  } else {
+    const purl = new URL(platformUrl);
+    const platform = new PlatformClient({
+      adapter: new PrismaMariaDb({
+        host: purl.hostname,
+        port: Number(purl.port) || 3306,
+        user: decodeURIComponent(purl.username),
+        password: decodeURIComponent(purl.password),
+        database: purl.pathname.slice(1),
+        connectionLimit: 1,
+      }),
+    });
+    try {
+      const now = new Date();
+      const [spec] = planOrphanSubscriptionAdoptions(
+        [{ id: tenant.id, status, planKey, trialEndsAt: tenant.trialEndsAt }],
+        [],
+        now
+      );
+      if (!spec) {
+        console.log(
+          `⏭ status "${status}" tidak dilahirkan langganan (pra-langganan / keputusan orang).`
+        );
+      } else {
+        const plan = await platform.plan.findUnique({ where: { key: planKey } });
+        if (!plan || !plan.isActive) {
+          console.warn(
+            `⚠ paket "${planKey}" tidak ada/nonaktif di plans — jalankan bun run ` +
+              "db:seed:plans; putaran adopsi penjadwal yang menyembuhkan setelahnya."
+          );
+        } else {
+          const period = nextPeriod("monthly", now);
+          const subscription = await platform.subscription.create({
+            data: {
+              tenantId: tenant.id,
+              planId: plan.id,
+              status: spec.status,
+              billingCycle: "monthly",
+              /* SNAPSHOT harga (§5) — bukan rujukan ke `plans`. */
+              price: plan.priceMonthly,
+              currency: plan.currency,
+              currentPeriodStart: period.start,
+              currentPeriodEnd: period.end,
+              trialEndsAt: spec.trialEndsAt,
+              pastDueSince: spec.pastDueSince,
+              /* Kunci idempotensi kelahiran (#152) — balapan menabrak UNIQUE. */
+              initialForTenantId: tenant.id,
+            },
+            select: { id: true },
+          });
+          console.log(
+            `+ subscription #${subscription.id} (${spec.status}, paket "${plan.key}") lahir bersama tenant.`
+          );
+        }
+      }
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2002") {
+        console.log("= langganan tenant ini sudah ada — tidak dibuat dua kali.");
+      } else {
+        console.warn(
+          "⚠ pembuatan langganan gagal — adopsi kendali TETAP sah; putaran " +
+            `adopsi penjadwal yang menyembuhkan: ${String(error)}`
+        );
+      }
+    } finally {
+      await platform.$disconnect();
+    }
+  }
+
   console.log("\nSelesai. Langkah berikutnya:");
-  console.log("  npx tsx scripts/prove-tenant-adoption.ts   # wajib exit 0");
+  console.log("  bunx tsx scripts/prove-tenant-adoption.ts   # wajib exit 0");
   console.log(
     "  # bila 0003 pernah gagal saat deploy (pemasangan lama — itu pagarnya):\n" +
-      "  npx prisma migrate resolve --rolled-back 0003_tenants_not_null --config prisma.control.config.ts"
+      "  bunx prisma migrate resolve --rolled-back 0003_tenants_not_null --config prisma.control.config.ts"
   );
-  console.log("  npm run db:migrate:control                 # menerapkan 0003 (NOT NULL + unik)");
+  console.log("  bun run db:migrate:control                 # menerapkan 0003 (NOT NULL + unik)");
 
   await control.$disconnect();
 }

@@ -5,7 +5,7 @@
  * lokal, validasi NPWP wajib, kolom & CSV satu sumber. Ironi §10 ditunaikan:
  * mesin e-Faktur yang kita bangun untuk pelanggan kini menagihkan kita.
  *
- *   npm run efaktur:platform -- --from 2026-08-01 --to 2026-08-31 [--out f.csv]
+ *   bun run efaktur:platform -- --from 2026-08-01 --to 2026-08-31 [--out f.csv]
  *
  * Identitas PENJUAL dari env (PLATFORM_SELLER_NPWP / PLATFORM_SELLER_NAME) —
  * identitas bisnis KAMI, bukan CompanySetting milik buku pelanggan mana pun.

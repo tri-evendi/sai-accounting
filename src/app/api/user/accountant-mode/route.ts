@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { enterCompanyFromRequest } from "@/lib/company-request";
 import { setAccountantMode } from "@/lib/users-directory";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
@@ -24,6 +25,23 @@ export async function PATCH(request: Request) {
   if (!session?.user?.id) {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.sessionExpired") }, { status: 401 });
+  }
+
+  /*
+   * Preferensinya milik KEANGGOTAAN, jadi ia butuh tahu keanggotaan di
+   * perusahaan MANA — dan sejak #158 jawabannya datang dari permintaan, bukan
+   * dari sesi (issue #158). Tanpa lingkup: ditolak, bukan ditulis ke PT yang
+   * terakhir dibuka di tab sebelah.
+   */
+  const scoped = await enterCompanyFromRequest(session.user.id);
+  if (!scoped.ok) {
+    const { t } = await getRequestI18n();
+    return scoped.reason === "no-scope"
+      ? NextResponse.json(
+          { error: t("errors.selectCompanyFirst"), code: "company_required" },
+          { status: 409 }
+        )
+      : NextResponse.json({ error: t("errors.notFound") }, { status: 404 });
   }
 
   let body: unknown;

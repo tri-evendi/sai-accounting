@@ -15,7 +15,7 @@
  * bersih" untuk data yang justru sedang rusak — jadi seluruh perbandingan di
  * sini dilakukan BINARY, sama seperti `===` di JavaScript yang menghitung saldo.
  *
- *   npm run check:legacy-values
+ *   bun run check:legacy-values
  *
  * Read-only: tidak ada satu pun UPDATE. Exit code bukan nol bila ada nilai yang
  * tidak baku, supaya bisa dipakai sebagai penjaga di gladi resik rilis.
@@ -133,7 +133,7 @@ async function main() {
         "Nilai seperti ini TIDAK menimbulkan galat — ia menghasilkan angka yang salah:\n" +
         "  * gerakan stok di luar in/out/process → saldo barang terbaca nol;\n" +
         "  * jenis kas di luar bank/kas_besar/kas_kecil → jurnal memakai akun kas bawaan.\n" +
-        "Terapkan migration 0043 (`npm run db:migrate:all`); bila masih tersisa, nilainya\n" +
+        "Terapkan migration 0043 (`bun run db:migrate:all`); bila masih tersisa, nilainya\n" +
         "belum punya pemetaan — putuskan artinya lalu tambahkan di src/lib/legacy-values.ts."
     );
     process.exit(1);

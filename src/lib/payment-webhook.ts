@@ -59,13 +59,34 @@ function methodFromPaymentType(paymentType: string | undefined): PaymentMethod |
 }
 
 /**
+ * Asal pembayaran NON-Midtrans (issue #155) — penyelesaian TRANSFER MANUAL
+ * oleh operator memakai INTI YANG SAMA dengan webhook, bukan implementasi
+ * kedua yang pelan-pelan menyimpang: idempotensi `gateway_ref` UNIQUE,
+ * `paid` yang tak pernah diturunkan, transisi langganan lewat mesin siklus
+ * hidup, dan urutan tulis §4A — semuanya satu jalur. Yang berbeda hanya
+ * label sumbernya (gateway/method) dan tanggal bayar sesungguhnya (tanggal
+ * transfer di rekening koran, bukan saat operator mengetik).
+ */
+export interface PaymentSourceOverride {
+  /** Nilai `payments.gateway` — mis. "manual". */
+  gateway: string;
+  /** Nilai `payments.method` — mis. "manual_transfer". */
+  method: PaymentMethod | null;
+  /** Tanggal bayar sesungguhnya; tanpa ini memakai `now`. */
+  paidAt?: Date;
+}
+
+/**
  * Proses satu notifikasi YANG SUDAH LOLOS verifikasi tanda tangan (verifikasi
  * milik route — ia yang memegang kunci; inti ini tidak menyentuh env).
+ * `source` (opsional, #155): label asal pembayaran non-Midtrans — lihat
+ * `PaymentSourceOverride`.
  */
 export async function processPaymentNotification(
   deps: WebhookDeps,
   notification: MidtransNotification,
-  now: Date = new Date()
+  now: Date = new Date(),
+  source?: PaymentSourceOverride
 ): Promise<{ outcome: WebhookOutcome; subscriptionStatus?: string }> {
   const { platform, control } = deps;
 
@@ -94,10 +115,11 @@ export async function processPaymentNotification(
 
   /* ── 1. PLATFORM dulu: payment (+invoice bila lunas) ────────────────────── */
   try {
+    const paidAt = source?.paidAt ?? now;
     if (existing) {
       await platform.payment.update({
         where: { id: existing.id },
-        data: { status: newStatus, ...(newStatus === "paid" ? { paidAt: now } : {}) },
+        data: { status: newStatus, ...(newStatus === "paid" ? { paidAt } : {}) },
       });
     } else {
       await platform.payment.create({
@@ -105,12 +127,12 @@ export async function processPaymentNotification(
           tenantId: invoice.tenantId,
           platformInvoiceId: invoice.id,
           status: newStatus,
-          method: methodFromPaymentType(notification.payment_type),
-          gateway: "midtrans",
+          method: source ? source.method : methodFromPaymentType(notification.payment_type),
+          gateway: source?.gateway ?? "midtrans",
           gatewayRef: notification.transaction_id,
           amount: notification.gross_amount,
           currency: "IDR",
-          ...(newStatus === "paid" ? { paidAt: now } : {}),
+          ...(newStatus === "paid" ? { paidAt } : {}),
         },
       });
     }

@@ -1,8 +1,8 @@
 /**
  * Terapkan migration basis data PLATFORM (`sai_platform`, issue #137).
  *
- *   npm run db:migrate:platform   # platform saja
- *   npm run db:migrate:all        # kendali → platform → semua perusahaan
+ *   bun run db:migrate:platform   # platform saja
+ *   bun run db:migrate:all        # kendali → platform → semua perusahaan
  *
  * ══ KENAPA DIBUNGKUS, BUKAN `prisma migrate deploy` LANGSUNG ═══════════════
  * `db:migrate:all` berjalan di service `migrate` compose, dan `web` dirantai
@@ -38,16 +38,30 @@ if (!url) {
       "  Pemasangan ini berjalan tanpa data langganan/penagihan (issue #137).\n" +
       "  Untuk menyediakannya: buat basis data `sai_platform`, set " +
       "PLATFORM_DATABASE_URL di .env (lihat .env.docker.example), lalu jalankan " +
-      "`npm run db:migrate:platform`."
+      "`bun run db:migrate:platform`."
   );
   process.exit(0);
 }
 
+// `prisma` dipanggil polos, bukan lewat `npx`/`bunx`: setiap package manager
+// menaruh node_modules/.bin di depan PATH saat menjalankan skrip package.json,
+// jadi ini bekerja di bawah bun MAUPUN npm dan melewatkan satu proses perantara.
+// Konsekuensinya skrip ini WAJIB dijalankan lewat `bun run db:migrate:platform`,
+// bukan `tsx scripts/migrate-platform.ts` langsung — lihat penanganan ENOENT.
 const result = spawnSync(
-  "npx",
-  ["prisma", "migrate", "deploy", "--config", "prisma.platform.config.ts"],
+  "prisma",
+  ["migrate", "deploy", "--config", "prisma.platform.config.ts"],
   { stdio: "inherit" }
 );
+
+if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+  console.error(
+    "✗ Binary `prisma` tidak ditemukan di PATH. Jalankan lewat package manager " +
+      "supaya node_modules/.bin masuk PATH:\n" +
+      "    bun run db:migrate:platform"
+  );
+  process.exit(1);
+}
 
 if (result.status !== 0) {
   console.error(

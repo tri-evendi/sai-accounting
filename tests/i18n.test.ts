@@ -207,6 +207,19 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // tanda pisah. Tidak ada satu kata pun di dalamnya, dan tanggalnya sendiri
     // sudah diformat id-ID oleh `formatDate` sebelum disisipkan.
     "stockMovement.periodRange",
+    // Konsol operator (issue #154) — serapan/istilah yang identik di kedua
+    // bahasa: "Status", "Slug" (istilah URL, lihat companies.slugLabel di
+    // atas), "Total", dan nama diri "NPWP" (lihat billing.npwp).
+    "operator.tenants.statusLabel",
+    "operator.tenants.colSlug",
+    "operator.tenants.colStatus",
+    "operator.tenant.statusLabel",
+    "operator.tenant.colTotal",
+    "operator.tenant.colStatus",
+    "operator.tenant.npwp",
+    "operator.tenant.colCompanySlug",
+    "operator.tenant.colCompanyActive",
+    "operator.scheduler.colStatus",
   ]),
   zh: new Set([
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
@@ -217,6 +230,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Nama diri standar Indonesia (issue #141) — lihat catatan di daftar en.
     "billing.payQris",
     "billing.npwp",
+    // Nama diri yang sama di konsol operator (issue #154).
+    "operator.tenant.npwp",
   ]),
 };
 

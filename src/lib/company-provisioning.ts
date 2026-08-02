@@ -54,9 +54,10 @@ import { controlDb } from "@/lib/control-db";
 import { invalidateCompany } from "@/lib/company-registry";
 import {
   assertSafeDatabaseName,
-  databaseNameForSlug,
+  firstConflict,
   normalizeSlug,
   ProvisionError,
+  resolveDatabaseName,
   type ProvisionEvent,
 } from "@/lib/company-provisioning-shared";
 
@@ -138,7 +139,9 @@ export async function provisionCompany(
 ): Promise<{ companyId: number; databaseName: string }> {
   const slug = normalizeSlug(input.slug);
   const name = input.name.trim();
-  const databaseName = input.databaseName?.trim() || databaseNameForSlug(slug);
+  // Turunan memuat id tenant (`sai_t{tenantId}_{slug}`, issue #153); eksplisit
+  // (jalur adopsi pemasangan lama) dipakai apa adanya.
+  const databaseName = resolveDatabaseName(input.tenantId, slug, input.databaseName);
 
   const emit = async (event: ProvisionEvent) => {
     await onProgress(event);
@@ -151,13 +154,24 @@ export async function provisionCompany(
   if (!name) throw new ProvisionError("Nama perusahaan tidak boleh kosong.", "validate");
   assertSafeDatabaseName(databaseName);
 
-  const existing = await controlDb.company.findFirst({
+  /*
+   * ── Ketersediaan nama (issue #153) ────────────────────────
+   * Query-nya SATU dan bentuknya sama apa pun kenyataannya — slug bebas, slug
+   * milik tenant lain, atau slug kembar di tenant sendiri — supaya waktu
+   * respons tidak membedakan ketiganya. KEPUTUSANNYA murni (`firstConflict`,
+   * teruji): slug hanya berbenturan di dalam tenant pemanggil; slug tenant
+   * lain tak terlihat dan penyediaan berjalan seperti biasa (nama basis
+   * datanya toh berbeda — id tenant ada di awalan). Nama basis data tetap
+   * dijaga GLOBAL: ia ruang nama fisik server.
+   */
+  const existing = await controlDb.company.findMany({
     where: { OR: [{ slug }, { databaseName }] },
-    select: { slug: true, databaseName: true },
+    select: { tenantId: true, slug: true, databaseName: true },
   });
-  if (existing) {
+  const conflict = firstConflict(existing, { tenantId: input.tenantId, slug, databaseName });
+  if (conflict) {
     throw new ProvisionError(
-      existing.slug === slug
+      conflict === "slug"
         ? `Slug "${slug}" sudah dipakai perusahaan lain.`
         : `Basis data "${databaseName}" sudah terdaftar untuk perusahaan lain.`,
       "validate"

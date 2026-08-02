@@ -117,6 +117,17 @@ model Subscription {
   pastDueSince DateTime? @map("past_due_since")
   cancelledAt  DateTime? @map("cancelled_at")
 
+  /// Penanda "langganan PERTAMA tenant ini" (issue #152) — kunci idempotensi
+  /// KELAHIRAN langganan. Diisi `tenant_id` oleh setiap jalur yang melahirkan
+  /// langganan pertama sebuah tenant (verifikasi email, putaran adopsi
+  /// penjadwal, adopt-tenant, change-plan tanpa langganan lama); NULL untuk
+  /// langganan lanjutan (berlangganan ulang setelah `cancelled`). UNIQUE +
+  /// nullable (MySQL mengizinkan banyak NULL): dua penulis yang berlomba
+  /// menabrak constraint (P2002) dan mundur — bukan melahirkan langganan
+  /// kembar. Pola yang sama dengan nomor tagihan deterministik (#140):
+  /// idempotensi ditegakkan basis data, bukan periksa-lalu-tulis.
+  initialForTenantId Int? @unique @map("initial_for_tenant_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -261,6 +272,42 @@ model ReminderLog {
 
   @@unique([subscriptionId, kind, dueKey])
   @@map("reminder_logs")
+}
+
+/// Ringkasan SATU putaran penjadwal langganan (issue #154) — sebelum ini hasil
+/// putaran hanya hidup di stdout cron, dan "apa yang terjadi pada putaran
+/// terakhir?" menuntut sesi SSH. Ditulis `scripts/subscription-scheduler.ts`
+/// di akhir setiap putaran; dibaca konsol operator (`lib/operator/store.ts`).
+/// Gagal MENCATAT tidak menggagalkan putarannya — ringkasan adalah laporan
+/// tentang yang terjadi, bukan gerbang.
+model SchedulerRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — `error` = ada butir yang menuntut tindakan orang
+  /// (rinciannya di `details.errors`). String + union TS, konvensi
+  /// docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  invoicesIssued Int @default(0) @map("invoices_issued")
+  remindersSent  Int @default(0) @map("reminders_sent")
+  statusChanges  Int @default(0) @map("status_changes")
+  adoptions      Int @default(0)
+  errorCount     Int @default(0) @map("error_count")
+
+  /// JSON `{issued, reminders, transitions, adoptions, errors}` — masing-masing
+  /// daftar string BARIS LAPORAN (bukan struktur yang di-query), persis kalimat
+  /// yang dulu hanya tercetak di stdout. Dibiarkan Text: isi lama tidak perlu
+  /// bermigrasi saat bentuk barisnya berubah.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startedAt])
+  @@map("scheduler_runs")
 }
 
 /// Penghitung pemakaian per tenant — dasar penegakan kuota & penagihan berbasis

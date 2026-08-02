@@ -60,8 +60,8 @@ async function main() {
     console.error("════════════════════════════════════════════════════════");
     console.error("  Seed blocked — demo data is for development only.");
     console.error("");
-    console.error("  To seed locally:  ALLOW_SEED=true npm run db:seed");
-    console.error("  For production:   npm run create-admin -- --username ... --password ...");
+    console.error("  To seed locally:  ALLOW_SEED=true bun run db:seed");
+    console.error("  For production:   bun run create-admin -- --username ... --password ...");
     console.error("════════════════════════════════════════════════════════");
     process.exit(1);
   }
@@ -94,7 +94,7 @@ async function main() {
   if (!company.tenantId) {
     throw new Error(
       `Perusahaan "${company.slug}" belum bertaut ke tenant (issue #134). Jalankan dulu:\n` +
-        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+        "  bun run adopt-tenant -- --slug <tenant> --emails <peta.json>"
     );
   }
   for (const user of users) {

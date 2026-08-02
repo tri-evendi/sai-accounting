@@ -3,8 +3,8 @@
 // Berdampingan dengan `prisma.config.ts` (basis data perusahaan). Dua skema,
 // dua klien, dua folder migration — dijalankan lewat `--config`:
 //
-//   npm run db:generate:control    → klien ke src/generated/control
-//   npm run db:migrate:control     → migrate deploy ke CONTROL_DATABASE_URL
+//   bun run db:generate:control    → klien ke src/generated/control
+//   bun run db:migrate:control     → migrate deploy ke CONTROL_DATABASE_URL
 //
 // Basis data PERUSAHAAN tetap memakai `prisma.config.ts`; migration-nya kini
 // harus diputar di SETIAP perusahaan — lihat `scripts/migrate-all-companies.ts`.

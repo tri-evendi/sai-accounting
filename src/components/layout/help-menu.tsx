@@ -11,7 +11,7 @@
  * ditutup oleh Escape maupun klik di luar.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { HelpCircle, BookMarked, Compass } from "lucide-react";

@@ -74,11 +74,11 @@ const nextConfig: NextConfig = {
    *     dan fase itu berjalan >1 jam tanpa selesai (terukur, 2026-07-27).
    *
    * Pemeriksaannya sendiri tidak hilang, hanya pindah ke tempat yang mampu
-   * menjalankannya: `npm run typecheck` (tsc --noEmit dengan batas heap yang
+   * menjalankannya: `bun run typecheck` (tsc --noEmit dengan batas heap yang
    * sama) selesai dalam hitungan menit di host. Dokumentasi Next memang
    * mensyaratkan itu — "be sure you are running type checks as part of your
    * build or deploy process" — jadi gerbangnya sekarang eksplisit sebagai
-   * `npm run verify` (typecheck + lint + test) dan WAJIB hijau sebelum deploy.
+   * `bun run verify` (typecheck + lint + test) dan WAJIB hijau sebelum deploy.
    *
    * Beban tipe melonjak sejak fondasi i18n: kunci kamus adalah dot-path
    * bertipe, sehingga TypeScript mengevaluasi union berisi ~2.400 literal

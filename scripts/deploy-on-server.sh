@@ -14,18 +14,18 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-echo "→ npm ci"
-npm ci
+echo "→ bun install --frozen-lockfile"
+bun install --frozen-lockfile
 
 echo "→ Prisma generate + migrate"
-npx prisma generate
-npx prisma migrate deploy
+bunx prisma generate
+bunx prisma migrate deploy
 
 echo "→ Runtime directories"
 node scripts/ensure-runtime-dirs.mjs
 
 echo "→ Production build"
-npm run build
+bun run build
 
 echo "→ Environment check"
 node scripts/check-env.mjs
@@ -36,7 +36,7 @@ if command -v pm2 >/dev/null 2>&1 && pm2 describe sai-management >/dev/null 2>&1
 else
   echo ""
   echo "Build complete. Start with:"
-  echo "  npm run start:prod"
+  echo "  bun run start:prod"
   echo "Or install PM2 once:"
   echo "  pm2 start ecosystem.config.cjs && pm2 save"
 fi

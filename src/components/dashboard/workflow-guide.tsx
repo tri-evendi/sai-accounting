@@ -10,7 +10,7 @@
  * Warna nada (masuk/keluar/netral) hanya aksen; makna dibawa NOMOR + LABEL,
  * jadi tak melanggar aturan "jangan warna saja" MASTER.md.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import {
   Route,
   ChevronRight,

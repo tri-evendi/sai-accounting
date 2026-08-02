@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 
 import {
   Command,
@@ -48,7 +48,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ role, accountantMode, companyCount }: CommandPaletteProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
 

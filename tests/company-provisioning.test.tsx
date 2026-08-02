@@ -24,9 +24,13 @@ import {
   assertSafeDatabaseName,
   COMPANY_DATABASE_PREFIX,
   databaseNameForSlug,
+  firstConflict,
+  MAX_DATABASE_NAME_LENGTH,
   normalizeSlug,
   ProvisionError,
+  resolveDatabaseName,
 } from "@/lib/company-provisioning-shared";
+import { proveCompanySlugScope } from "@/lib/company-slug-proof";
 import { migrationChecksum } from "@/lib/company-provisioning";
 import {
   ProvisionProgress,
@@ -38,9 +42,9 @@ import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
 
 describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
-  it("selalu berawalan sai_ (pola yang sama dengan hak akses di server)", () => {
-    expect(databaseNameForSlug("pt-bumi-baru")).toBe("sai_pt_bumi_baru");
-    expect(databaseNameForSlug("pt-bumi-baru").startsWith(COMPANY_DATABASE_PREFIX)).toBe(true);
+  it("selalu berawalan sai_ (pola yang sama dengan hak akses di server), dengan id tenant di awalan (issue #153)", () => {
+    expect(databaseNameForSlug("pt-bumi-baru", 7)).toBe("sai_t7_pt_bumi_baru");
+    expect(databaseNameForSlug("pt-bumi-baru", 7).startsWith(COMPANY_DATABASE_PREFIX)).toBe(true);
   });
 
   it("membuang apa pun yang bisa keluar dari nama di dalam SQL", () => {
@@ -50,7 +54,7 @@ describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
       "pt/../etc",
       "PT Besar   Sekali",
     ]) {
-      const name = databaseNameForSlug(hostile);
+      const name = databaseNameForSlug(hostile, 3);
       expect(name).toMatch(/^[a-z0-9_]+$/);
       expect(() => assertSafeDatabaseName(name)).not.toThrow();
     }
@@ -67,14 +71,140 @@ describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
     expect(() => assertSafeDatabaseName("sai_A")).toThrow(ProvisionError);
   });
 
-  it("menolak nama yang terlalu panjang", () => {
+  it("menegakkan batas 64 karakter — batas identifier MySQL/MariaDB, bukan pilihan", () => {
+    expect(MAX_DATABASE_NAME_LENGTH).toBe(64);
     expect(() => assertSafeDatabaseName("sai_" + "a".repeat(80))).toThrow(ProvisionError);
-    // …dan penurunan dari slug tidak pernah menghasilkan yang terlalu panjang.
-    expect(databaseNameForSlug("x".repeat(200)).length).toBeLessThanOrEqual(60);
+    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(61))).toThrow(ProvisionError); // 65
+    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(60))).not.toThrow(); // tepat 64
+    // …dan penurunan dari slug + awalan tenant tidak pernah melewatinya,
+    // bahkan dengan id tenant terbesar dan slug terpanjang.
+    expect(databaseNameForSlug("x".repeat(200), 2147483647).length).toBeLessThanOrEqual(64);
+    expect(() =>
+      assertSafeDatabaseName(databaseNameForSlug("x".repeat(200), 2147483647))
+    ).not.toThrow();
+  });
+
+  it("pemotongan memakan EKOR slug, tidak pernah id tenant di awalan", () => {
+    const name = databaseNameForSlug("x".repeat(200), 2147483647);
+    expect(name.startsWith("sai_t2147483647_")).toBe(true);
   });
 
   it("slug dinormalkan sama di formulir dan di server", () => {
     expect(normalizeSlug("  PT Bumi Baru!  ")).toBe("pt-bumi-baru");
+  });
+});
+
+describe("slug unik per TENANT (issue #153) — bukan lagi se-pemasangan", () => {
+  const registry = [
+    { tenantId: 1, slug: "cv-maju", databaseName: "sai_cv_maju" }, // warisan, nama lama
+    { tenantId: 1, slug: "pt-lama", databaseName: "sai_t1_pt_lama" },
+  ];
+
+  it("dua tenant memilih slug sama: keduanya lolos, tiap-tiap ke basis datanya sendiri", () => {
+    const a = { tenantId: 1, slug: "pusat", databaseName: databaseNameForSlug("pusat", 1) };
+    const b = { tenantId: 2, slug: "pusat", databaseName: databaseNameForSlug("pusat", 2) };
+    expect(firstConflict(registry, a)).toBeNull();
+    expect(firstConflict([...registry, { ...a }], b)).toBeNull();
+    expect(a.databaseName).toBe("sai_t1_pusat");
+    expect(b.databaseName).toBe("sai_t2_pusat");
+    expect(a.databaseName).not.toBe(b.databaseName);
+  });
+
+  it("slug kembar DI DALAM satu tenant ditolak — dengan pesan yang jelas", () => {
+    expect(
+      firstConflict(registry, {
+        tenantId: 1,
+        slug: "cv-maju",
+        databaseName: databaseNameForSlug("cv-maju", 1),
+      })
+    ).toBe("slug");
+    // Kolasi registry case-insensitive — keputusannya harus ikut.
+    expect(
+      firstConflict(registry, {
+        tenantId: 1,
+        slug: "CV-MAJU",
+        databaseName: "sai_t1_cv_maju",
+      })
+    ).toBe("slug");
+  });
+
+  it("slug milik TENANT LAIN tak bisa dibedakan dari slug bebas — jawabannya identik", () => {
+    // "cv-maju" milik tenant 1. Bagi tenant 2 ia HARUS tampak persis seperti
+    // slug yang belum pernah dipakai siapa pun: keputusan yang sama (null),
+    // jadi jalur kode, pesan, status, dan waktu responsnya juga sama.
+    const takenElsewhere = firstConflict(registry, {
+      tenantId: 2,
+      slug: "cv-maju",
+      databaseName: databaseNameForSlug("cv-maju", 2),
+    });
+    const genuinelyFree = firstConflict(registry, {
+      tenantId: 2,
+      slug: "belum-pernah-ada",
+      databaseName: databaseNameForSlug("belum-pernah-ada", 2),
+    });
+    expect(takenElsewhere).toBeNull();
+    expect(takenElsewhere).toBe(genuinelyFree);
+  });
+
+  it("nama basis data tetap dijaga GLOBAL — ruang nama fisik server", () => {
+    expect(
+      firstConflict(registry, {
+        tenantId: 2,
+        slug: "apa-saja",
+        databaseName: "sai_cv_maju", // eksplisit, kebetulan milik tenant 1
+      })
+    ).toBe("database");
+  });
+
+  it("nama eksplisit (--database, jalur adopsi) dipakai apa adanya; tanpa itu diturunkan", () => {
+    expect(resolveDatabaseName(9, "pt-baru", "sai_warisan_lama")).toBe("sai_warisan_lama");
+    expect(resolveDatabaseName(9, "pt-baru", "  sai_warisan_lama  ")).toBe("sai_warisan_lama");
+    expect(resolveDatabaseName(9, "pt-baru", undefined)).toBe("sai_t9_pt_baru");
+    expect(resolveDatabaseName(9, "pt-baru", "")).toBe("sai_t9_pt_baru");
+  });
+});
+
+describe("pembuktian lingkup slug (scripts/prove-company-slug-scope.ts) — gerbang migration 0009", () => {
+  const clean = [
+    { id: 1, slug: "pt-sai", databaseName: "sai_dev", tenantId: 1 },
+    { id: 2, slug: "cv-maju", databaseName: "sai_cv_maju", tenantId: 2 },
+    // Slug sama di tenant BERBEDA justru keadaan yang disahkan #153.
+    { id: 3, slug: "cv-maju", databaseName: "sai_t1_cv_maju", tenantId: 1 },
+  ];
+
+  it("data bersih → tanpa cacat (slug kembar lintas tenant BUKAN cacat)", () => {
+    expect(proveCompanySlugScope(clean)).toEqual([]);
+  });
+
+  it("slug kembar di SATU tenant tertangkap — dan barisnya disebut", () => {
+    const failures = proveCompanySlugScope([
+      ...clean,
+      { id: 4, slug: "pt-sai", databaseName: "sai_t1_pt_sai", tenantId: 1 },
+    ]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain('slug "pt-sai" kembar di tenant 1');
+    expect(failures[0]).toContain("#1");
+    expect(failures[0]).toContain("#4");
+  });
+
+  it("perusahaan tanpa tenant tertangkap — indeks komposit tidak menjaga NULL", () => {
+    const failures = proveCompanySlugScope([
+      { id: 9, slug: "yatim", databaseName: "sai_yatim", tenantId: null },
+    ]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain("tenant_id kosong");
+    expect(failures[0]).toContain("#9");
+  });
+
+  it("database_name kembar tertangkap — dua baris registry menunjuk buku yang sama", () => {
+    const failures = proveCompanySlugScope([
+      ...clean,
+      { id: 5, slug: "pt-lain", databaseName: "SAI_DEV", tenantId: 2 }, // kolasi ci
+    ]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain("database_name");
+    expect(failures[0]).toContain("#1");
+    expect(failures[0]).toContain("#5");
   });
 });
 

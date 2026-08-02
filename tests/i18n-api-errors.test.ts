@@ -132,6 +132,10 @@ const ERROR_LITERAL_ALLOWED: ReadonlySet<string> = new Set([
   "billing/webhook/route.ts: Gateway webhook is not configured.",
   "billing/webhook/route.ts: Malformed notification.",
   "billing/webhook/route.ts: Invalid signature.",
+  // Lingkup perusahaan tidak dibawa permintaan (issue #158). Pembacanya
+  // `CompanyIdentityProvider`, yang hanya memeriksa `res.ok` lalu memakai nilai
+  // cadangannya; kalimat ini tidak pernah sampai ke layar mana pun.
+  "company/identity/route.ts: Company scope required",
 ]);
 
 /** Setiap `error:` yang nilainya dimulai dengan literal teks. */

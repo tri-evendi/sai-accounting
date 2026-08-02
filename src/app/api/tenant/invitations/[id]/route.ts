@@ -8,8 +8,8 @@
 import { NextResponse } from "next/server";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { auth } from "@/lib/auth";
 import { controlDb } from "@/lib/control-db";
+import { companyScopeFromRequest } from "@/lib/company-request";
 import { revokeInvitation } from "@/lib/invitation-store";
 import { runWithCompany } from "@/lib/company-context";
 import { writeAuditLog } from "@/lib/audit";
@@ -29,16 +29,21 @@ export async function DELETE(
     return NextResponse.json({ error: t("validation.invalidInput") }, { status: 400 });
   }
 
-  const session = await auth();
-  const companyId = session?.user?.companyId;
-  const company =
-    typeof companyId === "number"
-      ? await controlDb.company.findUnique({
-          where: { id: companyId },
-          select: { id: true, slug: true, databaseName: true, isActive: true, tenantId: true },
-        })
-      : null;
-  if (!company || !company.isActive || company.tenantId !== result.tenant.tenantId) {
+  /* PT yang sedang dibuka datang dari PERMINTAAN (issue #158), dan `tenantId`
+   * ikut ke dalam WHERE — slug perusahaan hanya unik di dalam tenant (#153),
+   * jadi baris pelanggan lain tidak boleh pernah terbaca. */
+  const scope = await companyScopeFromRequest();
+  const company = scope
+    ? await controlDb.company.findFirst({
+        where: {
+          slug: scope.companySlug,
+          tenantId: result.tenant.tenantId,
+          tenant: { slug: scope.tenantSlug },
+        },
+        select: { id: true, slug: true, databaseName: true, isActive: true, tenantId: true },
+      })
+    : null;
+  if (!company || !company.isActive) {
     return NextResponse.json(
       { error: t("errors.selectCompanyFirst"), code: "company_required" },
       { status: 409 }

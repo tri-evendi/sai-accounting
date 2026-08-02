@@ -37,6 +37,7 @@ import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 import { formatCurrency } from "@/lib/utils";
 import { Info, Users, ReceiptText, Ship } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface CustomerOption {
   id: number;
@@ -77,7 +78,7 @@ export function useInvoiceCustomers(): CustomerOption[] {
       // `active=1`: pelanggan yang dinonaktifkan tidak boleh muncul sebagai
       // pilihan untuk faktur BARU (issue #104). Faktur lama tetap menampilkan
       // namanya — relasinya tidak disentuh.
-      const res = await fetch("/api/customers?active=1");
+      const res = await apiFetch("/api/customers?active=1");
       if (!res.ok || cancelled) return;
       const data: CustomerOption[] = await res.json();
       if (!cancelled) setCustomers(data);

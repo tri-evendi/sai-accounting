@@ -16,9 +16,12 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Link } from "@/components/ui/app-link";
 import { BellRing } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
+import { parseTenantPath } from "@/lib/tenant-routes";
 
 interface Counts {
   pending: number;
@@ -28,6 +31,12 @@ interface Counts {
 export function ApprovalBadge() {
   const t = useT();
   const [counts, setCounts] = useState<Counts>({ pending: 0, unread: 0 });
+  const pathname = usePathname();
+  const parsed = pathname ? parseTenantPath(pathname) : null;
+  /* Angkanya milik SATU perusahaan, dan navbar-nya bertahan lintas navigasi
+   * klien — tanpa `scope` di kebergantungan, jumlah persetujuan PT lama tetap
+   * menyala di atas buku PT baru (issue #158). */
+  const scope = parsed ? `${parsed.tenantSlug}/${parsed.companySlug}` : "";
 
   useEffect(() => {
     // State is only ever set from the fetch's own callback — the "subscribe to
@@ -36,7 +45,7 @@ export function ApprovalBadge() {
     let active = true;
 
     const load = () => {
-      fetch("/api/approvals/summary")
+      apiFetch("/api/approvals/summary")
         .then((res) => (res.ok ? (res.json() as Promise<Counts>) : null))
         .then((data) => {
           if (!active || !data) return;
@@ -53,7 +62,7 @@ export function ApprovalBadge() {
       active = false;
       window.removeEventListener("focus", load);
     };
-  }, []);
+  }, [scope]);
 
   const total = counts.pending + counts.unread;
   if (total === 0) return null;

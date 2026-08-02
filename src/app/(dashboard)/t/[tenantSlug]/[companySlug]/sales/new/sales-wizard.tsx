@@ -1,0 +1,1257 @@
+"use client";
+
+/**
+ * Wizard "Penjualan Baru" (issue #5) — sisi peramban.
+ *
+ * Lima langkah: pelanggan → barang & harga → (opsional) surat jalan → tagihan →
+ * ringkasan. Tidak satu pun dari empat langkah pertama menyentuh server: semua
+ * isian hidup di draf (`useWizardDraft`), dan seluruhnya baru dikirim SEKALI ke
+ * `POST /api/wizard/sales` yang menulisnya dalam satu `prisma.$transaction`.
+ *
+ * Aturan main, penjaga, dan aritmetikanya bukan milik berkas ini:
+ *   • urutan langkah + penjaga  → `@/lib/wizard` (murni, diuji di tests/);
+ *   • sisa & pola "Ambil"       → `@/lib/document-chain` (#15), dipakai apa adanya
+ *     atas baris draf, bukan versi kedua yang ditulis ulang;
+ *   • periode tertutup & stok   → `@/lib/form-guards` + `@/lib/delivery-orders`;
+ *   • pemetaan galat → bagian   → `@/lib/form-sections` (#4).
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@/components/ui/app-link";
+import { useAppRouter } from "@/components/ui/app-link";
+import { Button } from "@/components/ui/button";
+import { Input, TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
+import { DisclosureSection } from "@/components/ui/disclosure-section";
+import { EmptyState } from "@/components/ui/empty-state";
+import { TermTooltip } from "@/components/ui/term-tooltip";
+import { DueDateField } from "@/components/shared/due-date-field";
+import { Wizard, WizardSummaryRow } from "@/components/shared/wizard";
+import { WizardPartnerStep } from "@/components/shared/wizard-partner-step";
+import { useWizardDraft } from "@/components/shared/use-wizard-draft";
+import { formatCurrency, formatNumber } from "@/lib/utils";
+import { humanizeFieldMessage } from "@/lib/form-guards";
+import type { ClosedPeriodRef } from "@/lib/form-guards";
+import { resolveSubmitFailure } from "@/lib/form-sections";
+import { defaultInvoiceTax } from "@/lib/tax";
+import { normalizeItemName, type ContractLineOutstanding } from "@/lib/document-chain";
+import {
+  SALES_STEPS,
+  applySalesPull,
+  buildSalesPayload,
+  emptySalesDraft,
+  emptySalesLine,
+  fillDeliveryFromOrder,
+  salesInvoiceSubtotal,
+  salesInvoiceTax,
+  salesInvoiceTotal,
+  salesOrderValue,
+  shipKg,
+  validateSalesStep,
+  type SalesDraft,
+  type SalesLineDraft,
+  type SalesStepId,
+} from "@/lib/wizard";
+import { useT } from "@/lib/i18n/client";
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Package,
+  Plus,
+  Trash2,
+  Truck,
+} from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
+
+// ── Data yang disiapkan server shell ──────────────────────────────────────
+// Pelanggan / kontrak / penerima tidak lagi dikirim sebagai daftar statis
+// (audit: `take: 500/300/300` memotong daftar — baris lama tak terpilih).
+// Pemilihnya mencari ke server; detail baris terpilih (bebas-PPN, sisa
+// kontrak, label) dibaca dari endpoint detail masing-masing.
+export interface ItemOption {
+  id: number;
+  name: string;
+  unit: string | null;
+  currentStock: number;
+}
+
+/** Bentuk `GET /api/contracts/[id]/outstanding` — sama dengan formulir faktur. */
+interface OutstandingResponse {
+  contract: { id: number; contractNo: string; buyer: string; currency: string };
+  lines: ContractLineOutstanding[];
+  pull: { contract: { itemName: string; quantity: number; price: number; unit: string }[] };
+}
+
+interface SalesResult {
+  customerId: number;
+  customerName: string | null;
+  deliveryOrder: { id: number; no: string } | null;
+  invoice: { id: number; invoiceNo: string };
+  approval: { message: string } | null;
+}
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+export function SalesWizard({
+  items,
+  closedPeriods,
+  canUpdateStock,
+}: {
+  items: ItemOption[];
+  closedPeriods: ClosedPeriodRef[];
+  /** Modul `inventory` aktif DAN pengguna boleh menulisnya (issue #103) —
+   *  dihitung di server; tanpa itu ajakan "Tambah/Kurangi Stok" memantul. */
+  canUpdateStock: boolean;
+}) {
+  const router = useAppRouter();
+  const t = useT();
+  const { draft, setDraft, clear, ready, notice, dismissNotice } = useWizardDraft<SalesDraft>(
+    "sales",
+    () => emptySalesDraft(todayISO())
+  );
+  const [stepId, setStepId] = useState<SalesStepId>("pelanggan");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [outstanding, setOutstanding] = useState<OutstandingResponse | null>(null);
+  const [pullNote, setPullNote] = useState("");
+  const [result, setResult] = useState<SalesResult | null>(null);
+  // Detail baris yang terpilih di pemilih cari-ke-server: nama (label ringkasan
+  // & label pemilih saat draf dipulihkan) dan bebas-PPN pelanggan. Diisi dari
+  // endpoint detail, bukan dari daftar statis yang sudah tidak ada lagi.
+  const [customerInfo, setCustomerInfo] = useState<
+    Record<number, { name: string; taxExempt: boolean }>
+  >({});
+  const [consigneeInfo, setConsigneeInfo] = useState<
+    Record<number, { name: string; country: string | null }>
+  >({});
+  /** Pelanggan yang BARU dipilih dan defaults pajaknya masih menunggu detail
+   *  bebas-PPN — draf yang dipulihkan tidak boleh ikut ditimpa. */
+  const pendingTaxCustomerId = useRef<number | null>(null);
+
+  const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const stockByItem = useMemo(() => new Map(items.map((i) => [i.id, i.currentStock])), [items]);
+  const contractRemainingKg = useMemo(
+    () => (outstanding ? new Map(outstanding.lines.map((l) => [l.key, l.remainingKg])) : undefined),
+    [outstanding]
+  );
+
+  const guardContext = useMemo(
+    () => ({ closedPeriods, stockByItem, contractRemainingKg }),
+    [closedPeriods, stockByItem, contractRemainingKg]
+  );
+  const blockers = validateSalesStep(draft, stepId, guardContext);
+
+  const patch = useCallback(
+    (updater: (prev: SalesDraft) => SalesDraft) => setDraft(updater),
+    [setDraft]
+  );
+  const updateLine = useCallback(
+    (index: number, values: Partial<SalesLineDraft>) =>
+      patch((d) => ({
+        ...d,
+        lines: d.lines.map((l, i) => (i === index ? { ...l, ...values } : l)),
+      })),
+    [patch]
+  );
+
+  // Sisa kontrak sumber — satu-satunya panggilan jaringan sebelum "Selesai", dan
+  // ia hanya MEMBACA. Tidak ada dokumen yang lahir karenanya.
+  useEffect(() => {
+    const contractId = draft.contractId;
+    let cancelled = false;
+    // Semua perubahan state terjadi di dalam callback async — badan efeknya
+    // sendiri tidak pernah memanggil setState (lihat `/invoices/new`).
+    (async () => {
+      if (contractId == null) {
+        if (!cancelled) setOutstanding(null);
+        return;
+      }
+      const res = await apiFetch(`/api/contracts/${contractId}/outstanding`);
+      if (cancelled) return;
+      if (!res.ok) {
+        setError(t("sales.outstandingLoadFailed"));
+        return;
+      }
+      const data = (await res.json()) as OutstandingResponse;
+      if (!cancelled) setOutstanding(data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.contractId, t]);
+
+  // Detail pelanggan terpilih — nama untuk label/ringkasan, bebas-PPN untuk
+  // default pajak. Saat cache siap DAN pemilihan baru saja terjadi, default
+  // pajaknya diterapkan; draf yang dipulihkan hanya mendapat labelnya.
+  useEffect(() => {
+    const id = draft.customer.mode === "existing" ? draft.customer.id : null;
+    if (id == null) return;
+    const cached = customerInfo[id];
+    if (cached) {
+      if (pendingTaxCustomerId.current === id) {
+        pendingTaxCustomerId.current = null;
+        patch((d) => {
+          if (d.customer.mode !== "existing" || d.customer.id !== id) return d;
+          const tax = defaultInvoiceTax({
+            currency: d.invoice.currency,
+            customerTaxExempt: cached.taxExempt,
+          });
+          return { ...d, invoice: { ...d.invoice, taxable: tax.taxable, taxRate: tax.taxRate } };
+        });
+      }
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await apiFetch(`/api/customers/${id}`);
+      if (!res.ok || cancelled) return;
+      const c = (await res.json()) as { name: string; taxExempt?: boolean };
+      if (cancelled) return;
+      setCustomerInfo((m) => ({
+        ...m,
+        [id]: { name: c.name, taxExempt: Boolean(c.taxExempt) },
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.customer.mode, draft.customer.id, customerInfo, patch]);
+
+  // Label penerima barang terpilih — untuk pemilih & draf yang dipulihkan.
+  useEffect(() => {
+    const id = draft.delivery.consigneeId;
+    if (id == null || consigneeInfo[id]) return;
+    let cancelled = false;
+    (async () => {
+      const res = await apiFetch(`/api/consignees/${id}`);
+      if (!res.ok || cancelled) return;
+      const c = (await res.json()) as { name: string; country: string | null };
+      if (cancelled) return;
+      setConsigneeInfo((m) => ({ ...m, [id]: { name: c.name, country: c.country ?? null } }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.delivery.consigneeId, consigneeInfo]);
+
+  const selectedCustomerId =
+    draft.customer.mode === "existing" ? draft.customer.id : null;
+  const selectedCustomer =
+    selectedCustomerId != null ? customerInfo[selectedCustomerId] : undefined;
+  const selectedConsignee =
+    draft.delivery.consigneeId != null
+      ? consigneeInfo[draft.delivery.consigneeId]
+      : undefined;
+
+  const itemOptions: SearchableOption[] = items.map((i) => ({
+    value: String(i.id),
+    label: i.name,
+    description: t("common.stockOption", { qty: formatNumber(i.currentStock), unit: i.unit || "kg" }),
+  }));
+
+  const currency = draft.invoice.currency;
+
+  /** Ambil baris dari sisa kontrak sumber (#15) — bukan diketik ulang. */
+  function pullFromContract() {
+    if (!outstanding) return;
+    const lines = outstanding.pull.contract;
+    if (lines.length === 0) {
+      setPullNote(t("sales.pullNoneContract"));
+      return;
+    }
+    const byName = new Map(items.map((i) => [normalizeItemName(i.name), i]));
+    patch((d) => ({
+      ...d,
+      lines: lines.map((l) => {
+        const master = byName.get(normalizeItemName(l.itemName));
+        return {
+          ...emptySalesLine(),
+          itemId: master?.id ?? null,
+          itemName: l.itemName,
+          quantity: l.quantity,
+          price: l.price,
+          unit: l.unit || master?.unit || "kg",
+        };
+      }),
+      invoice: { ...d.invoice, currency: outstanding.contract.currency },
+    }));
+    setPullNote(
+      t("sales.pullNote", {
+        count: lines.length,
+        contractNo: outstanding.contract.contractNo,
+      })
+    );
+  }
+
+  async function finish() {
+    setBusy(true);
+    setError(null);
+    const res = await apiFetch("/api/wizard/sales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildSalesPayload(draft)),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as
+        | { error?: string; step?: SalesStepId; details?: unknown }
+        | null;
+      // Galat lapangan dimanusiakan lewat mesin yang sama dengan formulir biasa
+      // (#4) — `details` dari server memang berbentuk `z.flatten()`. Lompatan ke
+      // langkah yang benar datang dari `step`, bukan dari peta bagian formulir.
+      const failure = resolveSubmitFailure(
+        "faktur",
+        data,
+        humanizeFieldMessage(null, data?.error ?? t("sales.saveFailed"))
+      );
+      setError(failure.message);
+      setBusy(false);
+      if (data?.step) setStepId(data.step);
+      return;
+    }
+
+    const created = (await res.json()) as SalesResult;
+    clear();
+    setResult(created);
+    setBusy(false);
+    router.refresh();
+  }
+
+  function cancel() {
+    clear();
+    router.push("/invoices");
+  }
+
+  // ── Layar selesai ────────────────────────────────────────────────────────
+  if (result) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-success-strong" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-foreground">{t("sales.savedTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("sales.savedHint")}</p>
+              <dl className="mt-4 divide-y divide-border">
+                {result.customerName && (
+                  <WizardSummaryRow label={t("sales.rowCustomer")} value={result.customerName} />
+                )}
+                {result.deliveryOrder && (
+                  <WizardSummaryRow
+                    label={t("sales.rowDeliveryOrder")}
+                    value={
+                      <Link
+                        href={`/delivery-orders/${result.deliveryOrder.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {result.deliveryOrder.no}
+                      </Link>
+                    }
+                  />
+                )}
+                <WizardSummaryRow
+                  label={t("sales.rowInvoice")}
+                  value={
+                    <Link
+                      href={`/invoices/${result.invoice.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {result.invoice.invoiceNo}
+                    </Link>
+                  }
+                  strong
+                />
+              </dl>
+              {result.approval && (
+                <p
+                  role="status"
+                  className="mt-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong"
+                >
+                  {result.approval.message}
+                </p>
+              )}
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href={`/invoices/${result.invoice.id}`}>
+                  <Button className="cursor-pointer">{t("sales.viewInvoice")}</Button>
+                </Link>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setResult(null);
+                    setStepId("pelanggan");
+                    setDraft(emptySalesDraft(todayISO()));
+                    setOutstanding(null);
+                    setPullNote("");
+                  }}
+                >
+                  {t("sales.recordAnother")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!ready) {
+    return <p className="text-sm text-muted-foreground">{t("common.preparingForm")}</p>;
+  }
+
+  return (
+    <Wizard
+      steps={SALES_STEPS}
+      currentId={stepId}
+      onNavigate={(id) => {
+        dismissNotice();
+        setStepId(id as SalesStepId);
+      }}
+      blockers={blockers}
+      onFinish={finish}
+      onCancel={cancel}
+      busy={busy}
+      error={error}
+      notice={notice}
+      finishLabel={t("common.finishAndSave")}
+    >
+      {/* ── 1. Pelanggan ──────────────────────────────────────────────── */}
+      {stepId === "pelanggan" && (
+        <WizardPartnerStep
+          kind="customer"
+          fetchUrl="/api/customers?active=1&picker=1"
+          initialOption={
+            selectedCustomerId != null && selectedCustomer
+              ? {
+                  value: String(selectedCustomerId),
+                  label: selectedCustomer.name,
+                  ...(selectedCustomer.taxExempt ? { hint: t("sales.taxExempt") } : {}),
+                }
+              : null
+          }
+          value={draft.customer}
+          withCustomerFields
+          manageHref="/customers"
+          onChange={(values) => {
+            // Bebas-PPN pelanggan yang baru dipilih datang menyusul dari
+            // endpoint detail — efek `customerInfo` yang menerapkannya.
+            if (values.id !== undefined) pendingTaxCustomerId.current = values.id;
+            patch((d) => {
+              const customer = { ...d.customer, ...values };
+              // Pelanggan bebas PPN → tagihannya default tanpa PPN (#16).
+              const exempt =
+                customer.mode === "new"
+                  ? customer.taxExempt
+                  : customer.id != null
+                    ? (customerInfo[customer.id]?.taxExempt ?? false)
+                    : false;
+              const tax = defaultInvoiceTax({
+                currency: d.invoice.currency,
+                customerTaxExempt: exempt,
+              });
+              return {
+                ...d,
+                customer,
+                invoice: { ...d.invoice, taxable: tax.taxable, taxRate: tax.taxRate },
+              };
+            });
+          }}
+        />
+      )}
+
+      {/* ── 2. Barang & harga ─────────────────────────────────────────── */}
+      {stepId === "barang" && (
+        <>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>
+                <TermTooltip term="kontrak">{t("sales.pullTitle")}</TermTooltip>
+              </CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{t("sales.pullDescription")}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Mencari ke server (audit: daftar statis `take: 300`).
+                    Sisa & label kontrak terpilih datang dari endpoint
+                    `outstanding` yang sama seperti sebelumnya. */}
+                <ServerSearchableSelect
+                  id="contractId"
+                  label={t("sales.contractSource")}
+                  placeholder={t("invoices.pickContract")}
+                  searchPlaceholder={t("invoices.searchContract")}
+                  emptyText={t("invoices.noContractMatch")}
+                  fetchUrl="/api/contracts?picker=1"
+                  initialOption={
+                    outstanding != null &&
+                    draft.contractId != null &&
+                    outstanding.contract.id === draft.contractId
+                      ? {
+                          value: String(outstanding.contract.id),
+                          label: outstanding.contract.contractNo,
+                          hint: `${outstanding.contract.buyer} · ${outstanding.contract.currency}`,
+                        }
+                      : null
+                  }
+                  value={draft.contractId != null ? String(draft.contractId) : null}
+                  onChange={(v) => {
+                    setPullNote("");
+                    patch((d) => ({ ...d, contractId: v == null ? null : Number(v) }));
+                  }}
+                />
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="cursor-pointer"
+                    disabled={!outstanding || outstanding.pull.contract.length === 0}
+                    onClick={pullFromContract}
+                  >
+                    <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
+                    {t("invoices.pullContractRemainder")}
+                  </Button>
+                </div>
+              </div>
+              {pullNote && <p className="mt-3 text-xs text-muted-foreground">{pullNote}</p>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t("sales.goodsSoldTitle")}</CardTitle>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => patch((d) => ({ ...d, lines: [...d.lines, emptySalesLine()] }))}
+                >
+                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.addItemLower")}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {draft.lines.map((line, i) => {
+                const sisa = contractRemainingKg?.get(normalizeItemName(line.itemName));
+                const over = sisa != null && line.quantity > sisa;
+                return (
+                  <div key={i} className="rounded-md border border-border p-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <SearchableSelect
+                        label={t("common.itemFromStockList")}
+                        placeholder={t("common.pickItem")}
+                        searchPlaceholder={t("common.searchItem")}
+                        emptyText={t("common.noItemMatch")}
+                        options={itemOptions}
+                        value={line.itemId != null ? String(line.itemId) : null}
+                        onChange={(v) => {
+                          const master = v == null ? null : itemById.get(Number(v));
+                          updateLine(i, {
+                            itemId: master?.id ?? null,
+                            itemName: master?.name ?? line.itemName,
+                            unit: master?.unit || line.unit || "kg",
+                          });
+                        }}
+                      />
+                      <Input
+                        id={`itemName-${i}`}
+                        label={t("common.itemNameOnDocument")}
+                        value={line.itemName}
+                        onChange={(e) => updateLine(i, { itemName: e.target.value })}
+                        maxLength={100}
+                        required
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-end gap-3">
+                      <div className="w-32">
+                        <label
+                          htmlFor={`quantity-${i}`}
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
+                        >
+                          {t("sales.quantityKg")}
+                        </label>
+                        <TextInput
+                          id={`quantity-${i}`}
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          className="text-right tabular-nums"
+                          value={line.quantity}
+                          onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="w-40">
+                        <label
+                          htmlFor={`price-${i}`}
+                          className="mb-1 block text-xs font-medium text-muted-foreground"
+                        >
+                          {t("sales.pricePerKgCurrency", { currency })}
+                        </label>
+                        <TextInput
+                          id={`price-${i}`}
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="text-right tabular-nums"
+                          value={line.price}
+                          onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="ml-auto text-right">
+                        <span className="block text-xs text-muted-foreground">{t("common.lineValue")}</span>
+                        <span className="block text-sm font-medium tabular-nums text-foreground">
+                          {formatCurrency(line.quantity * line.price, currency)}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          patch((d) => ({
+                            ...d,
+                            lines:
+                              d.lines.length > 1 ? d.lines.filter((_, x) => x !== i) : d.lines,
+                          }))
+                        }
+                        disabled={draft.lines.length === 1}
+                        aria-label={t("common.removeItemRow", { n: i + 1 })}
+                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs">
+                      {line.itemId == null ? (
+                        <span className="text-warning-strong">{t("sales.lineNoStockItem")}</span>
+                      ) : (
+                        <span className={over ? "font-medium text-destructive-strong" : "text-muted-foreground"}>
+                          {sisa == null
+                            ? t("sales.lineStock", {
+                                stock: formatNumber(itemById.get(line.itemId)?.currentStock ?? 0),
+                              })
+                            : over
+                              ? t("sales.lineStockAndRemainingOver", {
+                                  stock: formatNumber(
+                                    itemById.get(line.itemId)?.currentStock ?? 0
+                                  ),
+                                  remaining: formatNumber(sisa),
+                                })
+                              : t("sales.lineStockAndRemaining", {
+                                  stock: formatNumber(
+                                    itemById.get(line.itemId)?.currentStock ?? 0
+                                  ),
+                                  remaining: formatNumber(sisa),
+                                })}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                );
+              })}
+
+              <dl className="border-t border-border pt-3">
+                <WizardSummaryRow
+                  label={t("sales.orderValue")}
+                  value={formatCurrency(salesOrderValue(draft), currency)}
+                  strong
+                />
+              </dl>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* ── 3. Surat jalan (opsional) ─────────────────────────────────── */}
+      {stepId === "pengiriman" && (
+        <Card>
+          <CardContent className="space-y-4 py-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
+              <Checkbox
+                className="mt-1"
+                checked={draft.delivery.include}
+                onCheckedChange={(v) =>
+                  patch((d) => {
+                    const checked = v === true;
+                    const next = {
+                      ...d,
+                      delivery: { ...d.delivery, include: checked },
+                    };
+                    return checked ? fillDeliveryFromOrder(next) : next;
+                  })
+                }
+              />
+              <span className="text-sm">
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  {t("sales.shipCheckboxA")}{" "}
+                  <TermTooltip term="surat_jalan">{t("sales.shipTerm")}</TermTooltip>
+                </span>
+                <span className="mt-0.5 block text-muted-foreground">
+                  {t("sales.shipCheckboxHint")}
+                </span>
+              </span>
+            </label>
+
+            {draft.delivery.include && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    id="deliveryDate"
+                    type="date"
+                    label={t("sales.shipDate")}
+                    value={draft.delivery.date}
+                    onChange={(e) =>
+                      patch((d) => ({ ...d, delivery: { ...d.delivery, date: e.target.value } }))
+                    }
+                    required
+                  />
+                  <ServerSearchableSelect
+                    id="consigneeId"
+                    label={t("sales.consigneeOptional")}
+                    placeholder={t("sales.pickConsignee")}
+                    searchPlaceholder={t("sales.searchConsignee")}
+                    emptyText={t("sales.noConsigneeMatch")}
+                    fetchUrl="/api/consignees?active=1&picker=1"
+                    initialOption={
+                      draft.delivery.consigneeId != null && selectedConsignee
+                        ? {
+                            value: String(draft.delivery.consigneeId),
+                            label: selectedConsignee.name,
+                            hint: selectedConsignee.country ?? undefined,
+                          }
+                        : null
+                    }
+                    value={
+                      draft.delivery.consigneeId != null
+                        ? String(draft.delivery.consigneeId)
+                        : null
+                    }
+                    onChange={(v) =>
+                      patch((d) => ({
+                        ...d,
+                        delivery: {
+                          ...d.delivery,
+                          consigneeId: v == null ? null : Number(v),
+                        },
+                      }))
+                    }
+                  />
+                </div>
+
+                {items.length === 0 ? (
+                  <EmptyState
+                    icon={<Package className="h-12 w-12" />}
+                    title={t("common.emptyStockTitle")}
+                    description={t("sales.emptyStockDescription")}
+                    actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
+                    actionHref={canUpdateStock ? "/inventory/update" : undefined}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {draft.lines.map((line, i) => {
+                      const master = line.itemId != null ? itemById.get(line.itemId) : null;
+                      const kg = shipKg(line);
+                      const overOrder = kg > line.quantity;
+                      const overStock = master != null && kg > master.currentStock;
+                      return (
+                        <div key={i} className="rounded-md border border-border p-3">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={line.ship}
+                              disabled={line.itemId == null}
+                              onCheckedChange={(v) =>
+                                updateLine(i, {
+                                  ship: v === true,
+                                  shipKgPerBag:
+                                    line.shipKgPerBag > 0 ? line.shipKgPerBag : line.quantity,
+                                  shipBags: line.shipBags > 0 ? line.shipBags : 1,
+                                })
+                              }
+                            />
+                            <span className="font-medium text-foreground">
+                              {line.itemName || t("common.rowN", { n: i + 1 })}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {t("sales.ordered", { qty: formatNumber(line.quantity) })}
+                            </span>
+                            {line.itemId == null && (
+                              <Badge variant="warning">{t("common.notInStockList")}</Badge>
+                            )}
+                          </label>
+
+                          {line.ship && (
+                            <>
+                              <div className="mt-3 flex flex-wrap items-end gap-3">
+                                <div className="w-28">
+                                  <label
+                                    htmlFor={`shipBags-${i}`}
+                                    className="mb-1 block text-xs font-medium text-muted-foreground"
+                                  >
+                                    {t("sales.shipBags")}
+                                  </label>
+                                  <TextInput
+                                    id={`shipBags-${i}`}
+                                    type="number"
+                                    min={0}
+                                    className="text-right tabular-nums"
+                                    value={line.shipBags}
+                                    onChange={(e) =>
+                                      updateLine(i, { shipBags: Number(e.target.value) })
+                                    }
+                                  />
+                                </div>
+                                <div className="w-32">
+                                  <label
+                                    htmlFor={`shipKgPerBag-${i}`}
+                                    className="mb-1 block text-xs font-medium text-muted-foreground"
+                                  >
+                                    {t("sales.shipKgPerBag")}
+                                  </label>
+                                  <TextInput
+                                    id={`shipKgPerBag-${i}`}
+                                    type="number"
+                                    min={0}
+                                    step="0.001"
+                                    className="text-right tabular-nums"
+                                    value={line.shipKgPerBag}
+                                    onChange={(e) =>
+                                      updateLine(i, { shipKgPerBag: Number(e.target.value) })
+                                    }
+                                  />
+                                </div>
+                                <div className="ml-auto text-right">
+                                  <span className="block text-xs text-muted-foreground">
+                                    {t("sales.totalShipped")}
+                                  </span>
+                                  <span className="block text-sm font-medium tabular-nums text-foreground">
+                                    {formatNumber(kg)} kg
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="mt-2 text-xs">
+                                <span
+                                  className={
+                                    overOrder || overStock
+                                      ? "font-medium text-destructive-strong"
+                                      : "text-muted-foreground"
+                                  }
+                                >
+                                  {overStock && overOrder
+                                    ? t("sales.shipStockOverBoth", {
+                                        stock: formatNumber(master?.currentStock ?? 0),
+                                      })
+                                    : overStock
+                                      ? t("sales.shipStockOverStock", {
+                                          stock: formatNumber(master?.currentStock ?? 0),
+                                        })
+                                      : overOrder
+                                        ? t("sales.shipStockOverOrder", {
+                                            stock: formatNumber(master?.currentStock ?? 0),
+                                          })
+                                        : t("sales.lineStock", {
+                                            stock: formatNumber(master?.currentStock ?? 0),
+                                          })}
+                                </span>
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <DisclosureSection
+                  description={t("sales.deliveryAdvancedDescription")}
+                  summary={
+                    [draft.delivery.vehicleNo, draft.delivery.containerNo]
+                      .filter(Boolean)
+                      .join(" · ") || t("common.notEntered")
+                  }
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      id="vehicleNo"
+                      label={t("sales.vehicleNo")}
+                      value={draft.delivery.vehicleNo}
+                      onChange={(e) =>
+                        patch((d) => ({
+                          ...d,
+                          delivery: { ...d.delivery, vehicleNo: e.target.value },
+                        }))
+                      }
+                      maxLength={50}
+                    />
+                    <Input
+                      id="containerNo"
+                      label={t("sales.containerNo")}
+                      value={draft.delivery.containerNo}
+                      onChange={(e) =>
+                        patch((d) => ({
+                          ...d,
+                          delivery: { ...d.delivery, containerNo: e.target.value },
+                        }))
+                      }
+                      maxLength={50}
+                    />
+                    <div className="sm:col-span-2">
+                      <Input
+                        id="deliveryNotes"
+                        label={t("common.notes")}
+                        value={draft.delivery.notes}
+                        onChange={(e) =>
+                          patch((d) => ({
+                            ...d,
+                            delivery: { ...d.delivery, notes: e.target.value },
+                          }))
+                        }
+                        maxLength={2000}
+                      />
+                    </div>
+                  </div>
+                </DisclosureSection>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── 4. Tagihan ────────────────────────────────────────────────── */}
+      {stepId === "faktur" && (
+        <>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>
+                <TermTooltip term="faktur">{t("sales.invoiceIdentityTitle")}</TermTooltip>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  id="invoiceNo"
+                  label={t("sales.invoiceNo")}
+                  value={draft.invoice.invoiceNo}
+                  onChange={(e) =>
+                    patch((d) => ({ ...d, invoice: { ...d.invoice, invoiceNo: e.target.value } }))
+                  }
+                  maxLength={50}
+                  required
+                />
+                <Input
+                  id="date"
+                  type="date"
+                  label={t("sales.invoiceDate")}
+                  value={draft.invoice.date}
+                  onChange={(e) =>
+                    patch((d) => ({ ...d, invoice: { ...d.invoice, date: e.target.value } }))
+                  }
+                  required
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle>{t("sales.billedTitle")}</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="cursor-pointer"
+                    onClick={() => patch((d) => applySalesPull(d, "order"))}
+                  >
+                    <Download className="mr-1 h-4 w-4" aria-hidden="true" /> {t("sales.pullAll")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="cursor-pointer"
+                    disabled={!draft.delivery.include}
+                    onClick={() => patch((d) => applySalesPull(d, "delivery"))}
+                  >
+                    <Download className="mr-1 h-4 w-4" aria-hidden="true" /> {t("sales.pullShipped")}
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t("sales.billedHint")}</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {draft.lines.map((line, i) => (
+                <div
+                  key={i}
+                  className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3"
+                >
+                  <div className="min-w-40 flex-1">
+                    <span className="block text-sm font-medium text-foreground">
+                      {line.itemName || t("common.rowN", { n: i + 1 })}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {t("sales.lineOrderedShipped", {
+                        ordered: formatNumber(line.quantity),
+                        shipped: formatNumber(shipKg(line)),
+                        price: formatCurrency(line.price, currency),
+                      })}
+                    </span>
+                  </div>
+                  <div className="w-36">
+                    <label
+                      htmlFor={`billQuantity-${i}`}
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
+                    >
+                      {t("sales.billedKg")}
+                    </label>
+                    <TextInput
+                      id={`billQuantity-${i}`}
+                      type="number"
+                      min={0}
+                      step="0.001"
+                      className="text-right tabular-nums"
+                      value={line.billQuantity}
+                      onChange={(e) => updateLine(i, { billQuantity: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="w-32 text-right">
+                    <span className="block text-xs text-muted-foreground">{t("sales.lineValueShort")}</span>
+                    <span className="block text-sm font-medium tabular-nums text-foreground">
+                      {formatCurrency(line.billQuantity * line.price, currency)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <dl className="border-t border-border pt-3">
+                <WizardSummaryRow
+                  label={t("sales.subtotalDpp")}
+                  value={formatCurrency(salesInvoiceSubtotal(draft), currency)}
+                />
+                <WizardSummaryRow
+                  label={<TermTooltip term="ppn">{t("common.vat")}</TermTooltip>}
+                  value={formatCurrency(salesInvoiceTax(draft), currency)}
+                />
+                <WizardSummaryRow
+                  label={t("sales.invoiceTotal")}
+                  value={formatCurrency(salesInvoiceTotal(draft), currency)}
+                  strong
+                />
+              </dl>
+            </CardContent>
+          </Card>
+
+          <DisclosureSection
+            description={t("sales.invoiceAdvancedDescription")}
+            summary={[
+              currency === "IDR"
+                ? t("common.rupiahIdr")
+                : t("invoices.advCurrencyForeign", {
+                    currency,
+                    rate: draft.invoice.rate > 0 ? draft.invoice.rate : t("common.notEntered"),
+                  }),
+              draft.invoice.taxable
+                ? t("invoices.advTaxOn", { rate: draft.invoice.taxRate })
+                : t("invoices.advTaxOff"),
+              draft.invoice.dueDate
+                ? t("invoices.advDueDate", { date: draft.invoice.dueDate })
+                : t("invoices.advNoDueDate"),
+            ].join(" · ")}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DueDateField
+                value={draft.invoice.dueDate}
+                onChange={(v) => patch((d) => ({ ...d, invoice: { ...d.invoice, dueDate: v } }))}
+              />
+              <div>
+                <label
+                  htmlFor="currency"
+                  className="mb-1 block text-sm font-medium text-foreground"
+                >
+                  {t("common.currencyField")}
+                </label>
+                <NativeSelect
+                  id="currency"
+                  options={[
+                    { value: "IDR", label: "IDR (Rupiah)" },
+                    { value: "USD", label: "USD" },
+                    { value: "CNY", label: "CNY" },
+                  ]}
+                  value={currency}
+                  onChange={(e) =>
+                    patch((d) => {
+                      const next = e.target.value;
+                      const tax = defaultInvoiceTax({ currency: next });
+                      return {
+                        ...d,
+                        invoice: {
+                          ...d.invoice,
+                          currency: next,
+                          taxable: tax.taxable,
+                          taxRate: tax.taxRate,
+                        },
+                      };
+                    })
+                  }
+                />
+              </div>
+              {currency !== "IDR" && (
+                <div>
+                  <label htmlFor="rate" className="mb-1 block text-sm font-medium text-foreground">
+                    <TermTooltip term="kurs">{t("common.rateTerm")}</TermTooltip> 1 {currency}{" "}
+                    {t("common.rateTo")}
+                  </label>
+                  <TextInput
+                    id="rate"
+                    type="number"
+                    min={0}
+                    step="0.000001"
+                    className="text-right tabular-nums"
+                    value={draft.invoice.rate || ""}
+                    onChange={(e) =>
+                      patch((d) => ({
+                        ...d,
+                        invoice: { ...d.invoice, rate: Number(e.target.value) },
+                      }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("common.rateRequiredHint")}
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                  <Checkbox
+                    checked={draft.invoice.taxable}
+                    onCheckedChange={(v) =>
+                      patch((d) => ({
+                        ...d,
+                        invoice: { ...d.invoice, taxable: v === true },
+                      }))
+                    }
+                  />
+                  {t("sales.vatChargeable")} <TermTooltip term="ppn">{t("common.vat")}</TermTooltip>
+                </label>
+                {draft.invoice.taxable && (
+                  <div className="mt-2 w-32">
+                    <label
+                      htmlFor="taxRate"
+                      className="mb-1 block text-xs font-medium text-muted-foreground"
+                    >
+                      {t("common.taxRatePercent")}
+                    </label>
+                    <TextInput
+                      id="taxRate"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      className="text-right tabular-nums"
+                      value={draft.invoice.taxRate}
+                      onChange={(e) =>
+                        patch((d) => ({
+                          ...d,
+                          invoice: { ...d.invoice, taxRate: Number(e.target.value) },
+                        }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </DisclosureSection>
+        </>
+      )}
+
+      {/* ── 5. Ringkasan ──────────────────────────────────────────────── */}
+      {stepId === "ringkasan" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("common.checkBeforeSaving")}</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("common.checkBeforeSavingHint")}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <dl className="divide-y divide-border">
+              <WizardSummaryRow
+                label={t("sales.rowCustomer")}
+                value={
+                  draft.customer.mode === "new"
+                    ? t("sales.summaryNew", { name: draft.customer.name })
+                    : (selectedCustomer?.name ?? "—")
+                }
+              />
+              {draft.contractId != null && (
+                <WizardSummaryRow
+                  label={t("sales.summaryContract")}
+                  value={
+                    outstanding?.contract.id === draft.contractId
+                      ? outstanding.contract.contractNo
+                      : `#${draft.contractId}`
+                  }
+                />
+              )}
+              <WizardSummaryRow
+                label={t("sales.summaryGoods")}
+                value={t("common.rowCount", {
+                  count: draft.lines.filter((l) => l.itemName.trim()).length,
+                })}
+                hint={draft.lines
+                  .filter((l) => l.itemName.trim())
+                  .map((l) => `${l.itemName} ${formatNumber(l.quantity)} kg`)
+                  .join(" · ")}
+              />
+              <WizardSummaryRow
+                label={t("sales.rowDeliveryOrder")}
+                value={
+                  draft.delivery.include ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      {formatNumber(draft.lines.reduce((s, l) => s + shipKg(l), 0))} kg
+                    </span>
+                  ) : (
+                    t("sales.deliveryNotCreated")
+                  )
+                }
+                hint={
+                  draft.delivery.include
+                    ? t("sales.deliveryHint", { date: draft.delivery.date })
+                    : t("common.stockUnchanged")
+                }
+              />
+              <WizardSummaryRow
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    {t("sales.summaryInvoice", { no: draft.invoice.invoiceNo })}
+                  </span>
+                }
+                value={formatCurrency(salesInvoiceTotal(draft), currency)}
+                hint={t("sales.invoiceHint", {
+                  date: draft.invoice.date,
+                  dpp: formatCurrency(salesInvoiceSubtotal(draft), currency),
+                  tax: formatCurrency(salesInvoiceTax(draft), currency),
+                })}
+                strong
+              />
+            </dl>
+            <p className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+              {t("sales.summaryFooter")}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </Wizard>
+  );
+}

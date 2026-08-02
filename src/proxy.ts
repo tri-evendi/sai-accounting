@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { legacyTenantScopedPath, tenantPath } from "@/lib/tenant-routes";
+
+import {
+  clientIpFrom,
+  configuredOperatorHost,
+  decideOperatorRouting,
+  ipAllowed,
+  normalizeHost,
+  operatorCookieName,
+} from "@/lib/operator/plane";
+
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
@@ -59,6 +70,61 @@ function isPublicPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  /*
+   * ── Bidang OPERATOR (issue #154) — tembok terluar pemisahan bidang ────────
+   *
+   * Konsol operator hidup di hostname sendiri (`OPERATOR_HOST`), di luar
+   * lingkup cookie aplikasi pelanggan. Logika keputusannya MURNI di
+   * `lib/operator/plane.ts` (aman-edge — tanpa Prisma, tanpa platform-db;
+   * doktrin #137 tetap berlaku di proxy) dan GAGAL-TERTUTUP:
+   *
+   *   • `OPERATOR_HOST` tidak diset → /operator = 404 di semua host.
+   *   • Host pelanggan → /operator = 404; host operator → rute pelanggan
+   *     (login, dasbor, API) = 404. Sesi pelanggan tidak pernah sampai ke
+   *     konsol, sesi operator tidak pernah sampai ke aplikasi pelanggan.
+   *   • `OPERATOR_IP_ALLOWLIST` kosong → semua IP ditolak (`/api/health`
+   *     dikecualikan — probe load-balancer bukan permukaan konsol).
+   *
+   * Proxy di sini hanya tembok + redirect login (memeriksa ADA-nya cookie);
+   * verifikasi kriptografis sesi operator terjadi di `requireOperatorPage()`
+   * pada setiap halaman — pola yang sama dengan penjaga izin pelanggan
+   * (issue #73: proxy = jaring pengaman, keputusan akhirnya di penjaga).
+   */
+  const operatorHost = configuredOperatorHost();
+  const operatorDecision = decideOperatorRouting(
+    request.headers.get("host"),
+    pathname,
+    operatorHost
+  );
+  if (operatorDecision.kind === "blocked") {
+    // Akar host operator dipulangkan ke konsolnya; sisanya 404 polos.
+    if (pathname === "/" && normalizeHost(request.headers.get("host")) === operatorHost) {
+      return NextResponse.redirect(new URL("/operator", request.url));
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return new NextResponse(null, { status: 404 });
+  }
+  if (operatorDecision.kind === "operator" || operatorDecision.kind === "operator-public") {
+    if (
+      pathname !== "/api/health" &&
+      !ipAllowed(clientIpFrom(request.headers), process.env.OPERATOR_IP_ALLOWLIST)
+    ) {
+      return new NextResponse(null, { status: 404 });
+    }
+    if (operatorDecision.kind === "operator") {
+      const hasOperatorCookie =
+        request.cookies.has(operatorCookieName(true)) ||
+        request.cookies.has(operatorCookieName(false));
+      if (!hasOperatorCookie) {
+        return NextResponse.redirect(new URL("/operator/login", request.url));
+      }
+    }
+    // Bidang operator TIDAK menjalani alur sesi pelanggan di bawah.
+    return NextResponse.next();
+  }
+
   // Auth.js names the session cookie `__Secure-authjs.session-token` (and salts
   // the JWT with that name) whenever the effective auth URL is HTTPS. getToken
   // defaults secureCookie to false, so behind a TLS-terminating proxy (Traefik)
@@ -106,6 +172,38 @@ export async function proxy(request: NextRequest) {
       );
     }
     return NextResponse.redirect(new URL("/change-password", request.url));
+  }
+
+  /*
+   * ── Jalur LAMA → jalur kanonik `/t/{tenant}/{company}/…` (issue #157) ──────
+   *
+   * 307 (bukan 308/301): permanen akan tersimpan di cache peramban selamanya,
+   * dan perusahaan tujuan di sini bergantung pada SESI — orang yang sama, PT
+   * terakhir yang berbeda, jawaban yang berbeda. Pantulan yang di-cache akan
+   * membawa pengguna ke buku PT lain berbulan-bulan setelah kejadiannya.
+   * 307 juga mempertahankan metode & bodi, jadi POST tidak berubah menjadi GET.
+   *
+   * Hanya jalur yang segmen akarnya SUDAH dimigrasikan yang dipantulkan
+   * (`legacyTenantScopedPath`); sisanya tetap dilayani halaman lama. Tanpa
+   * slug di token — sesi lama, atau pengguna yang belum memilih PT — TIDAK ada
+   * pantulan: penjaga halaman yang mengarahkannya ke /select-company atau
+   * /companies/new, satu-satunya tempat aturan itu ditulis.
+   *
+   * Ini murni pantulan kenyamanan. Otorisasinya tetap di `requirePagePermission`
+   * di jalur tujuan — proxy tidak pernah membuktikan keanggotaan.
+   */
+  if (
+    request.method === "GET" &&
+    !pathname.startsWith("/api/") &&
+    legacyTenantScopedPath(pathname)
+  ) {
+    const tenantSlug = typeof token.tenantSlug === "string" ? token.tenantSlug : null;
+    const companySlug = typeof token.companySlug === "string" ? token.companySlug : null;
+    if (tenantSlug && companySlug) {
+      const target = request.nextUrl.clone();
+      target.pathname = tenantPath(tenantSlug, companySlug, pathname);
+      return NextResponse.redirect(target, 307);
+    }
   }
 
   return NextResponse.next();

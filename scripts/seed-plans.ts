@@ -1,7 +1,7 @@
 /**
  * Isi/awetkan PAKET bawaan di `sai_platform` (issue #140).
  *
- *   npm run db:seed:plans
+ *   bun run db:seed:plans
  *
  * Upsert berkunci `plans.key` — aman dijalankan berulang; harga & kuota paket
  * yang SUDAH ada tidak ditimpa diam-diam (pemasangan boleh mengubahnya lewat
@@ -19,6 +19,20 @@ import { PrismaClient as PlatformClient } from "../src/generated/platform/client
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 const DEFAULT_PLANS = [
+  {
+    /* Paket pemakaian INTERNAL penyedia (pt-sai lewat adopt-tenant, yang
+     * plan_key bawaannya "internal"). Harga 0 dan trial 0: langganannya lahir
+     * langsung `active` tanpa pernah menerbitkan tagihan bernominal — tanpa
+     * baris paket ini, putaran adopsi yatim (#152) tidak pernah bisa
+     * menyembuhkan tenant internal dan berbunyi galat di setiap putaran. */
+    key: "internal",
+    name: "Internal",
+    description: "Pemakaian internal penyedia — tanpa tagihan.",
+    priceMonthly: "0.00",
+    maxCompanies: 10,
+    maxUsers: 50,
+    trialDays: 0,
+  },
   {
     key: "trial",
     name: "Trial",

@@ -5,6 +5,7 @@
  */
 import "./load-env.mjs";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
 const required = ["DATABASE_URL", "AUTH_SECRET"];
@@ -43,13 +44,41 @@ if (warnings.length > 0) {
   console.warn("Set AUTH_URL to your public HTTPS URL, e.g. https://inventory.example.com");
 }
 
+/*
+ * nodemailer tercantum di package.json tapi node_modules bisa saja lebih tua
+ * dari package.json (#159 temuan 6) — dan ketiadaannya SENYAP sampai gagal:
+ * di produksi ber-SMTP surel berhenti terkirim; di pengembangan bahkan lebih
+ * buruk, Turbopack tetap me-resolve `await import("nodemailer")` di
+ * src/lib/mailer-core.ts walau cabang smtp tidak pernah jalan, sehingga
+ * /api/auth/register menjawab 500. Obatnya selalu sama: `bun install`.
+ */
+const require = createRequire(import.meta.url);
+let mailerInstalled = true;
+try {
+  require.resolve("nodemailer");
+} catch {
+  mailerInstalled = false;
+}
+if (!mailerInstalled) {
+  const message =
+    "nodemailer tidak ditemukan di node_modules padahal tercantum di package.json — " +
+    "node_modules Anda lebih tua dari package.json. Jalankan: bun install";
+  if (process.env.MAIL_TRANSPORT === "smtp") {
+    // Transport smtp MEMBUTUHKANNYA di jalur kirim — gagal cepat di sini,
+    // bukan 500 pertama saat orang mengatur ulang kata sandinya.
+    console.error("ERROR:", message);
+    process.exit(1);
+  }
+  console.warn("WARNING:", message);
+}
+
 if (process.env.NODE_ENV !== "production") {
   console.error(
     "ERROR: NODE_ENV must be 'production' for this app (current:",
     process.env.NODE_ENV ?? "unset",
     ")"
   );
-  console.error("Add NODE_ENV=production to .env or run: npm run start:prod");
+  console.error("Add NODE_ENV=production to .env or run: bun run start:prod");
   process.exit(1);
 }
 

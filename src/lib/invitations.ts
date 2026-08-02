@@ -32,6 +32,8 @@
 
 import { createHash, randomBytes } from "node:crypto";
 
+import { usernameFromEmail } from "@/lib/registration";
+
 /** Umur undangan: 7 hari. */
 export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -105,4 +107,25 @@ export function userQuotaExceeded(input: {
   maxUsers: number;
 }): boolean {
   return input.currentUsers + input.pendingInvitations >= input.maxUsers;
+}
+
+/**
+ * Kandidat username untuk PENERIMA undangan (#159 temuan 4) — MURNI.
+ *
+ * Desain #139 menjadikan email pengenal; meminta username lagi di formulir
+ * penerimaan menghidupkan kembali ruang nama yang §4.3 ingin pensiunkan.
+ * Username DITURUNKAN dari email undangan (`usernameFromEmail`, aturan yang
+ * sama dengan pendaftaran mandiri #138) — tapi berbeda dengan pendaftaran
+ * (tenant baru, mustahil kembar), penerima undangan masuk ke tenant yang
+ * SUDAH berisi orang, dan username unik per tenant (#136, lapisan aplikasi).
+ * Dua email berbeda bisa menurunkan bagian lokal yang sama
+ * (`budi@a.com` / `budi@b.co.id`), jadi tabrakannya diselesaikan
+ * DETERMINISTIK: `budi`, `budi-2` … `budi-9`, lalu akhiran acak — pola yang
+ * sama dengan `tenantSlugCandidates`. Basis dipangkas 43 huruf supaya
+ * kandidat terpanjang (basis + "-" + 6 hex) tetap muat VarChar(50).
+ */
+export function invitationUsernameCandidates(email: string, randomSuffix?: string): string[] {
+  const base = usernameFromEmail(email).slice(0, 43).replace(/[-._]+$/g, "") || "pengguna";
+  const suffix = randomSuffix ?? randomBytes(3).toString("hex");
+  return [base, ...Array.from({ length: 8 }, (_, i) => `${base}-${i + 2}`), `${base}-${suffix}`];
 }

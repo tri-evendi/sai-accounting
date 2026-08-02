@@ -1,7 +1,7 @@
 /**
  * REKONSILIASI platform ↔ kendali (issue #137) — KERANGKA.
  *
- *   npm run reconcile:platform
+ *   bun run reconcile:platform
  *
  * ══ KENAPA PEKERJAAN INI ADA ═══════════════════════════════════════════════
  * FK dan transaksi tidak menyeberangi basis data (docs/MULTI-TENANT.md §4A).
@@ -20,7 +20,7 @@
  * Empat pemeriksaan: langganan yatim, tenant berbayar tanpa langganan,
  * kecocokan status tenant ↔ langganan terbarunya (aturannya dari mesin
  * siklus hidup `src/lib/subscription-lifecycle.ts`), dan usage_counters vs
- * jumlah sesungguhnya. Penjadwal (`npm run scheduler:subscriptions`)
+ * jumlah sesungguhnya. Penjadwal (`bun run scheduler:subscriptions`)
  * menjalankannya berkala lewat `runReconciliation` yang diekspor dari sini;
  * pemasangan pra-#134 tetap melewati pemeriksaan lintas-sisi dengan
  * pengumuman — bukan pura-pura hijau.
@@ -113,11 +113,17 @@ export async function runReconciliation(
       }
     }
 
-    // 2. Arah yang TIDAK BOLEH terjadi: tenant yang statusnya berbayar di
-    //    kendali tanpa satu pun langganan di platform. Urutan tulis yang
-    //    ditaati tidak akan pernah menghasilkan ini — kemunculannya berarti
-    //    ada kode yang menulis kendali lebih dulu, dan itu bug yang harus
-    //    dicari, bukan sekadar baris yang harus dibetulkan.
+    // 2. Tenant berstatus berbayar di kendali tanpa satu pun langganan di
+    //    platform. Sejak issue #152 keadaan ini SENGAJA bisa terjadi sebentar:
+    //    kelahiran tenant wajib atomik di kendali (§4A), langganannya menyusul
+    //    tepat sesudahnya — dan bila `sai_platform` sedang mati/belum di-seed,
+    //    tenant tetap lahir. Penyembuhnya otomatis: putaran adopsi yatim
+    //    penjadwal (`bun run scheduler:subscriptions`, berjalan SEBELUM
+    //    rekonsiliasi pada putaran yang sama). Temuan yang BERTAHAN di sini
+    //    berarti adopsinya sendiri gagal — paket `plans` hilang/nonaktif
+    //    (jalankan `bun run db:seed:plans`), atau status `suspended` yang
+    //    memang tidak diadopsi mesin: melahirkan langganan langsung mati
+    //    adalah keputusan uang yang harus diambil orang (change-plan).
     const PAID_TENANT_STATUSES = new Set(["trialing", "active", "past_due", "suspended"]);
     for (const tenant of tenants) {
       if (PAID_TENANT_STATUSES.has(tenant.status) && !subsByTenant.has(tenant.id)) {
@@ -125,7 +131,9 @@ export async function runReconciliation(
           check: "tenant-tanpa-langganan",
           detail:
             `tenant #${tenant.id} berstatus \`${tenant.status}\` di kendali tanpa ` +
-            "langganan apa pun di platform — arah drift yang seharusnya mustahil",
+            "langganan apa pun di platform — putaran adopsi yatim (#152) seharusnya " +
+            "menyembuhkan ini; bila bertahan, periksa paket di `plans` " +
+            "(bun run db:seed:plans) atau putuskan lewat bun run change-plan",
         });
       }
     }
@@ -229,7 +237,7 @@ async function main() {
   process.exit(1);
 }
 
-/* Hanya berjalan bila dipanggil langsung (npm run reconcile:platform) — bukan
+/* Hanya berjalan bila dipanggil langsung (bun run reconcile:platform) — bukan
  * saat diimpor penjadwal. */
 if (process.argv[1]?.endsWith("reconcile-platform.ts")) {
   main().catch((error) => {

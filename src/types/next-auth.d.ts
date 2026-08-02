@@ -10,7 +10,13 @@ declare module "next-auth" {
     accountantMode?: boolean | null;
     // audit RBAC fase 3 — versi sesi untuk pencabutan.
     sessionVersion?: number;
-    /** Perusahaan yang sedang dibuka. NULL = pengguna belum memilih (#104). */
+    /**
+     * Slug TENANT pemilik akun ini (issue #157) — bagian pertama jalur kanonik
+     * `/t/{tenantSlug}/{companySlug}/…`. Tetap selama sesi hidup: satu pengguna
+     * milik tepat satu tenant. NULL hanya di sisa masa adopsi #134.
+     */
+    tenantSlug?: string | null;
+    /** Perusahaan yang TERAKHIR dibuka. NULL = pengguna belum memilih (#104). */
     companyId?: number | null;
     companySlug?: string | null;
     /**
@@ -37,7 +43,16 @@ declare module "next-auth" {
       mustChangePassword: boolean;
       // issue #11 — raw preference; effectiveAccountantMode() derives the boolean.
       accountantMode?: boolean | null;
-      // issue #104 — perusahaan yang sedang dibuka sesi ini.
+      // issue #157 — tenant pemilik akun; bagian pertama jalur kanonik.
+      tenantSlug: string | null;
+      /*
+       * issue #104, turun pangkat di #157 — perusahaan yang TERAKHIR DIBUKA.
+       * Bukan lagi sumber kebenaran otorisasi: halaman bertenant mengambil
+       * perusahaannya dari URL dan memverifikasi keanggotaan setiap permintaan.
+       * Yang tersisa untuk nilai ini: menjawab `/dashboard` telanjang, menandai
+       * pilihan aktif di /select-company, dan (sampai #158) memberi konteks
+       * pada route API yang belum berjalur.
+       */
       companyId: number | null;
       companySlug: string | null;
       companyName: string | null;
@@ -56,7 +71,9 @@ declare module "next-auth/jwt" {
     // audit RBAC fase 3 — versi sesi + stempel revalidasi terakhir (ms epoch).
     sessionVersion?: number;
     checkedAt?: number;
-    // issue #104 — perusahaan yang sedang dibuka token ini.
+    // issue #157 — slug tenant pemilik akun (tetap selama sesi hidup).
+    tenantSlug?: string | null;
+    // issue #104 — perusahaan yang TERAKHIR dibuka token ini.
     companyId?: number | null;
     companySlug?: string | null;
     companyName?: string | null;

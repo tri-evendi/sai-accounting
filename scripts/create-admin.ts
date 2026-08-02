@@ -1,7 +1,7 @@
 /**
  * Buat akun pengelola pertama untuk produksi.
  *
- *   npm run create-admin -- --username admin --password 'SandiAman123' \
+ *   bun run create-admin -- --username admin --password 'SandiAman123' \
  *                           --name "Administrator" --company pt-a
  *
  * Sejak issue #104 akun hidup di BASIS DATA KENDALI, dan sebuah akun tanpa
@@ -15,6 +15,7 @@
  */
 import "dotenv/config";
 import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
+import { userQuotaExceeded } from "../src/lib/invitations";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
@@ -44,14 +45,16 @@ async function main() {
     email,
     name,
     company: companySlug,
+    tenant: tenantSlug,
     role = ROLES.MANAGING_DIRECTOR,
   } = parseArgs(process.argv.slice(2));
 
   if (!username || !password || !companySlug || !email) {
     console.error(
-      'Usage: npm run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--name "Nama"] [--role ...]\n' +
+      'Usage: bun run create-admin -- --username <user> --password <pass> --email <email> --company <slug> [--tenant <slug-tenant>] [--name "Nama"] [--role ...]\n' +
         "  --email wajib sejak issue #136: email adalah pengenal login dan jalan\n" +
-        "  satu-satunya mengatur ulang kata sandi secara mandiri."
+        "  satu-satunya mengatur ulang kata sandi secara mandiri.\n" +
+        "  --tenant wajib hanya bila slug perusahaan ada di lebih dari satu tenant (#153)."
     );
     process.exit(1);
   }
@@ -82,14 +85,37 @@ async function main() {
   });
   const controlDb = new PrismaClient({ adapter });
 
-  const company = await controlDb.company.findUnique({ where: { slug: companySlug } });
-  if (!company) {
+  /*
+   * Slug perusahaan unik PER TENANT sejak issue #153, jadi satu slug bisa
+   * menunjuk perusahaan di dua tenant yang berbeda. Yang ambigu harus
+   * ditanyakan, bukan dipilihkan (pola #104): bila kembar, `--tenant
+   * <slug-tenant>` wajib disebut.
+   */
+  const candidates = await controlDb.company.findMany({
+    where: { slug: companySlug },
+    include: { tenant: { select: { slug: true } } },
+  });
+  const matches = tenantSlug
+    ? candidates.filter((c) => c.tenant?.slug === tenantSlug)
+    : candidates;
+  if (matches.length === 0) {
     console.error(
-      `ERROR: perusahaan dengan slug "${companySlug}" tidak ada. Daftarkan dulu ` +
-        "(scripts/adopt-existing-company.ts untuk pemasangan yang sudah berjalan)."
+      tenantSlug
+        ? `ERROR: perusahaan "${companySlug}" tidak ada di tenant "${tenantSlug}".`
+        : `ERROR: perusahaan dengan slug "${companySlug}" tidak ada. Daftarkan dulu ` +
+            "(scripts/adopt-existing-company.ts untuk pemasangan yang sudah berjalan)."
     );
     process.exit(1);
   }
+  if (matches.length > 1) {
+    console.error(
+      `ERROR: slug "${companySlug}" ada di ${matches.length} tenant ` +
+        `(${matches.map((c) => c.tenant?.slug ?? `#${c.tenantId}`).join(", ")}) — ` +
+        "sebutkan pemiliknya lewat --tenant <slug-tenant>."
+    );
+    process.exit(1);
+  }
+  const company = matches[0];
 
   /*
    * Tenant pemilik akun = tenant perusahaan tujuan (issue #134/#136): sejak
@@ -98,7 +124,7 @@ async function main() {
   if (!company.tenantId) {
     console.error(
       `ERROR: perusahaan "${companySlug}" belum bertaut ke tenant. Jalankan dulu:\n` +
-        "  npm run adopt-tenant -- --slug <tenant> --emails <peta.json>"
+        "  bun run adopt-tenant -- --slug <tenant> --emails <peta.json>"
     );
     process.exit(1);
   }
@@ -128,6 +154,25 @@ async function main() {
     console.error(`ERROR: email "${normalizedEmail}" sudah dipakai akun "${emailOwner.username}".`);
     process.exit(1);
   }
+
+  /*
+   * Kuota `max_users` (#159 temuan 2): skrip operator SENGAJA tidak memblokir —
+   * kadang operator memang harus melampaui kuota (akun darurat, masa
+   * peralihan). Yang tidak boleh adalah kelebihannya SENYAP: tanpa baris ini
+   * tidak ada satu tempat pun yang menandai tenant yang kursinya lewat.
+   * Undangan yang masih menunggu ikut dihitung — aturan kursi yang sama dengan
+   * alur undangan (src/lib/invitations.ts). Menampilkan kelebihan kuota di
+   * ringkasan tenant adalah pekerjaan issue #154.
+   */
+  const [tenant, currentUsers, pendingInvitations] = await Promise.all([
+    controlDb.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, maxUsers: true } }),
+    controlDb.user.count({ where: { tenantId } }),
+    controlDb.invitation.count({
+      where: { tenantId, usedAt: null, expiresAt: { gt: new Date() } },
+    }),
+  ]);
+  const maxUsers = tenant?.maxUsers ?? 0;
+  const willExceedQuota = userQuotaExceeded({ currentUsers, pendingInvitations, maxUsers });
 
   const hashed = await bcrypt.hash(password, 12);
   const user = await controlDb.$transaction(async (tx) => {
@@ -167,6 +212,16 @@ async function main() {
   console.log(`  Perusahaan: ${company.name} (${company.slug})`);
   console.log(`  Peran:      ${role}`);
   console.log("  Status:     Aktif (tidak dipaksa ganti kata sandi)");
+
+  if (willExceedQuota) {
+    console.warn(
+      `\nPERINGATAN: tenant "${tenant?.slug ?? tenantId}" kini memakai ${currentUsers + 1} akun` +
+        (pendingInvitations > 0 ? ` (+ ${pendingInvitations} undangan menunggu)` : "") +
+        ` dari kuota max_users=${maxUsers} paketnya — MELEBIHI KUOTA.\n` +
+        "Akun tetap dibuat (skrip operator tidak memblokir), tapi selaraskan paketnya:\n" +
+        "  bun run change-plan -- --slug <tenant> --plan <paket>"
+    );
+  }
 
   await controlDb.$disconnect();
 }

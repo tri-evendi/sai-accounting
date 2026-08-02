@@ -1,0 +1,161 @@
+"use client";
+
+/**
+ * Kategori aset tetap — buat kategori dengan default metode, umur, & akun (issue #28).
+ */
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import { Loader2 } from "lucide-react";
+import type { AccountOption } from "../new/asset-form";
+import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
+
+export function CategoryForm({
+  assetAccounts,
+  accumulatedAccounts,
+  expenseAccounts,
+  defaults,
+}: {
+  assetAccounts: AccountOption[];
+  accumulatedAccounts: AccountOption[];
+  expenseAccounts: AccountOption[];
+  defaults: { assetAccountId?: number; accumulatedAccountId?: number; expenseAccountId?: number };
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const t = useT();
+
+  const [name, setName] = useState("");
+  const [months, setMonths] = useState("");
+  const [assetAccountId, setAssetAccountId] = useState(
+    defaults.assetAccountId ? String(defaults.assetAccountId) : ""
+  );
+  const [accumulatedAccountId, setAccumulatedAccountId] = useState(
+    defaults.accumulatedAccountId ? String(defaults.accumulatedAccountId) : ""
+  );
+  const [expenseAccountId, setExpenseAccountId] = useState(
+    defaults.expenseAccountId ? String(defaults.expenseAccountId) : ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const acctOptions = (opts: AccountOption[]) =>
+    opts.map((a) => ({ value: String(a.id), label: `${a.code} · ${a.name}` }));
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/fixed-assets/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          defaultMethod: "straight_line",
+          defaultUsefulLifeMonths: Number(months),
+          assetAccountId: Number(assetAccountId),
+          accumulatedAccountId: Number(accumulatedAccountId),
+          expenseAccountId: Number(expenseAccountId),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
+        const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
+        setError(first ?? data?.error ?? t("fixedAssets.saveCategoryFailed"));
+        return;
+      }
+      toast(t("fixedAssets.categorySaved"), "success");
+      setName("");
+      setMonths("");
+      router.refresh();
+    } catch {
+      setError(t("fixedAssets.networkFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{t("fixedAssets.newCategory")}</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            id="cat-name"
+            label={t("fixedAssets.categoryNameField")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("fixedAssets.categoryNamePlaceholder")}
+            required
+          />
+          <Input
+            id="cat-months"
+            type="number"
+            min="1"
+            step="1"
+            className="text-right tabular-nums"
+            label={t("fixedAssets.defaultLifeField")}
+            value={months}
+            onChange={(e) => setMonths(e.target.value)}
+            required
+          />
+          <Select
+            id="cat-method"
+            label={t("fixedAssets.defaultMethodField")}
+            value="straight_line"
+            disabled
+            onChange={() => {}}
+            options={[
+              { value: "straight_line", label: t("depreciationMethod.straight_line") },
+            ]}
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Select
+            id="cat-asset"
+            label={t("fixedAssets.assetAccountField")}
+            value={assetAccountId}
+            onChange={(e) => setAssetAccountId(e.target.value)}
+            options={acctOptions(assetAccounts)}
+            placeholder={t("fixedAssets.pickAccount")}
+            required
+          />
+          <Select
+            id="cat-accum"
+            label={t("fixedAssets.accumulatedAccountField")}
+            value={accumulatedAccountId}
+            onChange={(e) => setAccumulatedAccountId(e.target.value)}
+            options={acctOptions(accumulatedAccounts)}
+            placeholder={t("fixedAssets.pickAccount")}
+            required
+          />
+          <Select
+            id="cat-expense"
+            label={t("fixedAssets.expenseAccountField")}
+            value={expenseAccountId}
+            onChange={(e) => setExpenseAccountId(e.target.value)}
+            options={acctOptions(expenseAccounts)}
+            placeholder={t("fixedAssets.pickAccount")}
+            required
+          />
+        </div>
+        {error && (
+          <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={saving} className="cursor-pointer">
+          {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+          {t("fixedAssets.saveCategory")}
+        </Button>
+      </form>
+    </Card>
+  );
+}

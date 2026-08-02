@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AuditEntry {
   id: number;
@@ -72,7 +73,7 @@ export function AuditLogPanel() {
       // try/catch: fetch yang gagal di jaringan (bukan status non-OK) dulunya
       // membuat "Memuat…" tergantung selamanya karena loading tak pernah turun.
       try {
-        const res = await fetch(`/api/audit?page=${page}&perPage=15`);
+        const res = await apiFetch(`/api/audit?page=${page}&perPage=15`);
         if (cancelled) return;
         if (!res.ok) {
           setError(res.status === 403 ? t("audit.accessDenied") : t("audit.loadFailed"));

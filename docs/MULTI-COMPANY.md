@@ -65,10 +65,82 @@ pernah menjadi jawaban.
 
 | Jalur kode | Cara mendapat konteks |
 |---|---|
-| Halaman `(dashboard)` / `(setup)` | `requirePagePermission()` — otomatis |
-| Route API | `requireApiPermission()` — otomatis |
+| Halaman `/t/{tenant}/{company}/…` (termasuk wizard `(setup)`) | `requirePagePermission(izin, params)` — dari **URL** |
+| Route API | `requireApiPermission(izin)` — dari **permintaan** (header `x-tenant-slug`/`x-company-slug`) |
+| Route API unduhan `/api/t/{tenant}/{company}/…` | `requireApiPermission(izin, ctx.params)` — dari **jalur** |
+| Route self-scoped tanpa izin (`/api/user/permissions`, …) | `enterCompanyFromRequest()` — dari **permintaan** |
 | Skrip, cron, seed, pekerjaan latar | **`runWithCompany(ctx, fn)` — wajib eksplisit** |
 | Halaman `(auth)` (masuk, pilih perusahaan) | tidak punya, dan memang tidak boleh menyentuh buku besar |
+
+### Sejak issue #157: konteks halaman datang dari URL
+
+Halaman dasbor hidup di `/t/{tenantSlug}/{companySlug}/…`. Perusahaannya
+diambil dari jalur, bukan dari sesi, dan **keanggotaannya diverifikasi ulang
+setiap permintaan** (`enterCompanyFromRoute`, `lib/company-route.ts`).
+
+Sebabnya bukan estetika URL. Cookie sesi satu untuk SELURUH TAB: berganti
+perusahaan di tab sebelah membuat tab ini menampilkan buku PT lama sambil
+menulis ke PT baru — kegagalan yang dilarang di atas, hanya saja ia masuk lewat
+antarmuka, bukan lewat lapisan basis data. Akibat kedua, tautan dalam
+`/invoices/12` menunjuk faktur yang berbeda bagi setiap penerimanya.
+
+Yang berlaku sekarang:
+
+* **Sesi turun pangkat.** `session.user.companyId` berarti "yang TERAKHIR
+  dibuka" — untuk menjawab `/dashboard` telanjang dan menandai pilihan di
+  `/select-company`. Ia **bukan** sumber kebenaran otorisasi. Peran pun tidak
+  diambil dari sesi: JWT menyimpan peran di perusahaan terakhir, dan memakainya
+  di halaman perusahaan lain berarti memberi hak PT A di buku PT B.
+* **Gagal apa pun = 404.** Slug tak ada, PT nonaktif, bukan anggota, tenant
+  lain — satu jawaban yang sama. 403 mengakui "ini ada tapi bukan hakmu", dan
+  pengakuan itu sendiri sudah kebocoran enumerasi (§4.4 docs/MULTI-TENANT.md).
+* **`currentCompany()` punya dua sumber:** konteks ALS → penyimpan
+  per-permintaan (ditulis penjaga). Setelah itu **melempar** — sumber ketiga
+  (sesi) dihapus di #158; lihat di bawah.
+* **Slug perusahaan TETAP.** Ia ikut menyusun nama basis data DAN kini ada di
+  URL; menggantinya mematikan setiap tautan yang pernah dibagikan tanpa satu pun
+  galat. Nama perusahaan tetap bebas berubah.
+* **Jalur lama masih hidup**, dipantulkan 307 oleh `src/proxy.ts` menurut
+  `MIGRATED_ROOT_SEGMENTS` di `lib/tenant-routes.ts`. Satu-satunya berkas yang
+  sengaja tinggal di jalur lama adalah `/dashboard` telanjang — pengarah tanpa
+  query, karena proxy tidak bisa memantulkan token yang belum membawa slug.
+* **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
+  `components/ui/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
+  `usePathname()` — bukan dari sesi, sebab sesi dibagi seluruh tab.
+* **`CompanySessionSync` tidak menahan apa pun lagi.** Di #157 ia menahan
+  permukaan interaktif sampai cookie menyusul — perlu, selama route API masih
+  membaca sesi. Sejak #158 ia hanya mencatat "yang terakhir dibuka" di latar.
+
+### Sejak issue #158: konteks API datang dari permintaan, dan sesi DIHAPUS
+
+#157 memindahkan halaman; route API masih menanyakan perusahaan kepada sesi.
+Selama itu benar, `/t/acme/cv-maju/invoices` menampilkan buku CV Maju sambil
+menulis ke PT yang tertulis di cookie — bahayanya tidak hilang, ia hanya turun
+satu lapis dan menjadi lebih sulit terlihat karena URL-nya terlihat meyakinkan.
+
+* **Bentuknya HEADER.** `apiFetch()` (`lib/api-fetch.ts`) menyuntikkan
+  `x-tenant-slug` + `x-company-slug` dari `window.location.pathname` — satu
+  tempat, bukan 67 pemanggil. Setiap `fetch("/api/…")` telanjang ditolak sebuah
+  tes pemindai di `tests/authz-coverage.test.ts`.
+* **Jalur untuk yang tidak bisa berheader.** Unduhan `<a href download>` tidak
+  melewati `apiFetch`, jadi dua route tinggal di `/api/t/{tenant}/{company}/…`
+  (template Daftar Akun, ekspor e-Faktur). Bila keduanya dikirim sekaligus,
+  jalur menang.
+* **Header adalah masukan pengguna.** Penjaga hanya memakainya untuk bertanya
+  "perusahaan mana", lalu membaca ulang keanggotaan pemanggil ke basis data
+  kendali pada permintaan itu juga. Gagal apa pun → 404 yang byte-nya sama
+  dengan slug fiktif; tidak ada satu pun gerbang berikutnya yang berjalan.
+* **Peran dari keanggotaan, bukan JWT** — sama seperti di halaman.
+* **Tidak ada cadangan sesi.** `enterCompanyFromSession` dihapus seluruhnya, dan
+  `currentCompany()` kehilangan sumber ketiganya. Permintaan tanpa lingkup
+  dijawab **409 `company_required`**, bukan dilayani dengan perusahaan yang
+  terakhir dibuka. Inilah inti perubahannya: doktrin di atas berhenti menjadi
+  kedisiplinan yang harus diingat setiap penulis route dan menjadi sifat
+  strukturnya — tidak ada perusahaan bawaan untuk didarati.
+* **Route publik & tingkat tenant tidak ikut.** `/api/auth/*`,
+  `/api/billing/webhook`, `/api/health`, dan seluruh `/api/tenant/*` +
+  `/api/companies` memang bekerja tanpa perusahaan; daftarnya di
+  `tests/authz-coverage.test.ts`.
 
 ### Bagaimana klien diselesaikan
 
@@ -76,14 +148,20 @@ Semua kode server bertanya lewat `currentCompany()` (`lib/current-company.ts`),
 dan `prisma` memakainya **saat query dipanggil**:
 
 1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / penjaga), lalu
-2. sesi permintaan (`companyId` di JWT → registry → nama basis data), lalu
+2. penyimpan per-permintaan yang ditulis penjaga (`setRouteCompany`), lalu
 3. **melempar**.
 
-**Kenapa sesi perlu jadi sumber kedua.** Tidak semua jalur melewati penjaga, dan
-yang tidak melewatinya bukan kasus pinggiran: `/api/user/permissions` (penyusun
-menu) dan `/api/user/companies` (pemilih perusahaan) sengaja self-scoped —
-`auth()` saja, tanpa `requireApiPermission`. Tanpa sumber kedua, sidebar setiap
-pengguna kosong dan pemilih perusahaannya gagal persis saat paling dibutuhkan.
+**Kenapa sumber kedua ada** padahal penjaga juga memanggil
+`enterCompanyContext()`: rambatan `enterWith` adalah jalan pintas, bukan
+jaminan (lihat bagian berikutnya). Penjaga menulis ke keduanya lalu **membaca
+kembali** untuk membuktikan konteksnya mendarat — kalau tidak, ia melempar
+sebelum satu query pun berjalan.
+
+**Route self-scoped menyebut perusahaannya sendiri.** `/api/user/permissions`,
+`/api/user/accountant-mode`, dan `/api/company/identity` sengaja tanpa
+`requireApiPermission`, tapi mereka tetap butuh konteks — sejak #158 mereka
+memanggil `enterCompanyFromRequest()` (`lib/company-request.ts`), yang
+memverifikasi keanggotaan persis seperti penjaga.
 
 **Kenapa penyelesaiannya saat dipanggil, bukan saat akses properti.** Membaca
 sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
@@ -133,7 +211,7 @@ per pengguna, himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
 **Urutannya tidak boleh ditukar.** Langkah 2 membaca tabel `users` yang dibuang
 langkah 3.
 
-> **Di server produksi, perintah `npm run …` di bawah harus dijalankan DI DALAM
+> **Di server produksi, perintah `bun run …` di bawah harus dijalankan DI DALAM
 > container**, bukan di host — dan ini bukan soal selera. Service `db` tidak
 > memublikasikan port ke host sama sekali (lihat `docker-compose.yml`), jadi
 > nama `db` di `DATABASE_URL` hanya bisa diselesaikan dari dalam jaringan
@@ -141,7 +219,7 @@ langkah 3.
 > terdengar seperti kredensial salah. Bungkusnya:
 >
 > ```bash
-> docker compose run --rm migrate npm run <skrip>
+> docker compose run --rm migrate bun run <skrip>
 > ```
 >
 > Service `migrate` memakai image yang sama dengan `web`, `env_file: .env` yang
@@ -173,13 +251,13 @@ docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
 #    tambahkan CONTROL_DATABASE_URL ke .env — kredensial & host SAMA dengan
 #    DATABASE_URL, hanya nama basis datanya yang berbeda.
 docker compose build                                    # image harus ada dulu
-docker compose run --rm migrate npm run db:migrate:control
+docker compose run --rm migrate bun run db:migrate:control
 
 # 2. Daftarkan basis data yang sekarang sebagai perusahaan pertama
 #    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
 #    Sejak issue #134/#136 adopsi juga MEMBUAT TENANT dan menuntut peta email
 #    (JSON {"username": "email"} yang diisi operator — bukan ditebak mesin):
-docker compose run --rm migrate npm run adopt-company -- \
+docker compose run --rm migrate bun run adopt-company -- \
   --slug pt-sai --name "PT Subur Anugerah Indonesia" --emails emails.json
 
 #    BUKTIKAN akunnya sudah pindah SEBELUM langkah 3 — ini titik tak-bisa-balik.
@@ -189,10 +267,10 @@ docker compose run --rm migrate npm run adopt-company -- \
 
 # 3. Migration perusahaan — 0042 membuang tabel `users` dari buku,
 #    0043 menyelaraskan nilai enum-like data legacy (issue #111)
-docker compose run --rm migrate npm run db:migrate:companies
+docker compose run --rm migrate bun run db:migrate:companies
 
 # 4. Buktikan nilai enum-like sudah baku di SETIAP perusahaan
-docker compose run --rm migrate npm run check:legacy-values
+docker compose run --rm migrate bun run check:legacy-values
 
 # 5. Naikkan image baru (skema & kode harus naik bersama)
 docker compose up -d          # image-nya sudah dibangun di langkah 1
@@ -200,7 +278,7 @@ docker compose up -d          # image-nya sudah dibangun di langkah 1
 
 **Dijalankan sungguhan di produksi 2026-07-28** (PT Subur Anugerah Indonesia,
 `sai_production` → `pt-sai`). Yang ditemukan saat itu dan sudah dibetulkan di
-atas: perintah `npm run …` tidak bisa jalan di host (service `db` tanpa port),
+atas: perintah `bun run …` tidak bisa jalan di host (service `db` tanpa port),
 `mysqldump`/`mysql` tidak ada di image `mariadb:11`, dan pemasangan itu ternyata
 masih tertinggal di 0036 — jadi langkah 3 menerapkan 0037→0043 sekaligus, bukan
 hanya migration multi-PT. Hasilnya: 1 pengguna pindah ke basis data kendali,
@@ -283,7 +361,7 @@ sudah diterapkan — dijaga `tests/company-provisioning.test.tsx`.
 **Dari baris perintah** — tetap ada, dan tetap jalan:
 
 ```bash
-docker compose run --rm migrate npm run create-company -- \
+docker compose run --rm migrate bun run create-company -- \
   --slug pt-b --name "PT Bumi Baru" [--admin budi]
 ```
 
@@ -300,7 +378,7 @@ awal, dan modul adalah keputusan akuntansi, bukan argumen baris perintah.
 ### Migration sesudah ini
 
 ```bash
-npm run db:migrate:all      # kendali, lalu SETIAP perusahaan
+bun run db:migrate:all      # kendali, lalu SETIAP perusahaan
 ```
 
 Kegagalan satu perusahaan **tidak menghentikan** yang lain: kalau berhenti di
@@ -352,8 +430,8 @@ mysql sai_gladi < /tmp/full.sql
 | `users.status` (Int) | `users.must_change_password` (Boolean) |
 | FK `periods.closed_by_id → users` | id global tanpa FK; nama dicari, yang hilang tampil "—" |
 | `data/audit/audit.jsonl` | `data/audit/<slug>/audit.jsonl` |
-| `npm run db:migrate` | `npm run db:migrate:all` |
-| `npm run create-admin -- --username …` | `… --company <slug>` (wajib) |
+| `bun run db:migrate` | `bun run db:migrate:all` |
+| `bun run create-admin -- --username …` | `… --company <slug>` (wajib) |
 
 Tabel di basis data perusahaan **tidak boleh** punya foreign key ke pengguna —
 FK tidak bisa menyeberangi basis data. Simpan id global sebagai `Int` biasa dan

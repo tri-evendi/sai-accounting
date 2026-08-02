@@ -10,10 +10,13 @@
 
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 import { controlDb } from "@/lib/control-db";
 import {
   decideInvitationOutcome,
   hashInvitationToken,
+  invitationUsernameCandidates,
   invitationVerdict,
   mintInvitationToken,
   userQuotaExceeded,
@@ -171,12 +174,13 @@ export type AcceptResult =
   | {
       status: "accepted";
       userId: number;
+      username: string;
       companyId: number;
       tenantId: number;
       email: string;
       companyRole: string;
     }
-  | { status: "not_found" | "used" | "expired" | "username_taken" | "email_taken" | "quota_exceeded" };
+  | { status: "not_found" | "used" | "expired" | "email_taken" | "quota_exceeded" };
 
 /**
  * Terima sebuah undangan: buat `User` + `Membership` (PT tujuan) +
@@ -186,14 +190,14 @@ export type AcceptResult =
  *
  * Kata sandinya DIPILIH penerimanya sendiri → `mustChangePassword: false`;
  * emailnya TERBUKTI miliknya (ia memegang token dari kotak masuk itu) →
- * `emailVerifiedAt` langsung terisi.
+ * `emailVerifiedAt` langsung terisi. Username TIDAK ditanya (#159 temuan 4):
+ * ia diturunkan dari email undangan — lihat `invitationUsernameCandidates`.
  */
 export async function acceptInvitation(
   token: string,
-  input: { username: string; name?: string | null; passwordHash: string }
+  input: { name?: string | null; passwordHash: string }
 ): Promise<AcceptResult> {
   const tokenHash = hashInvitationToken(token);
-  const username = input.username.trim();
 
   return controlDb.$transaction(async (tx) => {
     const row = await tx.invitation.findUnique({
@@ -237,15 +241,25 @@ export async function acceptInvitation(
     if (await tx.user.findUnique({ where: { email: row.email }, select: { id: true } })) {
       return { status: "email_taken" };
     }
-    /* Username unik PER TENANT (issue #136) — ditegakkan lapisan aplikasi. */
-    if (
-      await tx.user.findFirst({
-        where: { username, tenantId: row.tenantId },
-        select: { id: true },
-      })
-    ) {
-      return { status: "username_taken" };
-    }
+    /*
+     * Username diturunkan dari email undangan (#159 temuan 4) — penerima tidak
+     * ditanya. Unik PER TENANT (issue #136, ditegakkan lapisan aplikasi):
+     * kandidat deterministik dicek sekali, yang pertama bebas dipakai. Cabang
+     * `??` praktis tak tergapai — kandidat terakhir berakhiran acak — dan
+     * hanya penjaga bila SEMUA kandidat kebetulan terpakai.
+     */
+    const candidates = invitationUsernameCandidates(row.email);
+    const occupied = new Set(
+      (
+        await tx.user.findMany({
+          where: { tenantId: row.tenantId, username: { in: candidates } },
+          select: { username: true },
+        })
+      ).map((u) => u.username)
+    );
+    const username =
+      candidates.find((candidate) => !occupied.has(candidate)) ??
+      `${candidates[0]}-${randomBytes(4).toString("hex")}`;
 
     const user = await tx.user.create({
       data: {
@@ -271,6 +285,7 @@ export async function acceptInvitation(
     return {
       status: "accepted",
       userId: user.id,
+      username,
       companyId: row.companyId,
       tenantId: row.tenantId,
       email: row.email,

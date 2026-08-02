@@ -15,6 +15,11 @@
  *   suspended ──(bayar)──> active
  *   suspended ──(berhenti)──> cancelled    [buku besar TIDAK PERNAH dihapus]
  *
+ * Ditambah dua event OPERATOR (issue #155, di luar siklus dunning):
+ *
+ *   trialing/active/past_due ──(operator_suspend)──> suspended
+ *   suspended ──(operator_restore)──> active
+ *
  * "Trial habis → active" bukan hadiah: aktif berarti SIKLUS TAGIH DIMULAI —
  * tagihan pertama terbit pada saat itu juga, dan bila tidak dibayar, jalur
  * gagal-bayar yang biasa (past_due → suspended) yang bekerja.
@@ -38,6 +43,13 @@ export const SUBSCRIPTION_EVENTS = [
   "trial_expired",
   "grace_expired",
   "cancel",
+  /* Dua event OPERATOR (issue #155) — suspensi/pemulihan MANUAL di luar
+   * siklus dunning (permintaan pelanggan, penyalahgunaan). Tetap lewat mesin
+   * ini, BUKAN UPDATE status langsung: konsol operator dan penjadwal harus
+   * membaca satu tabel kebenaran yang sama. Keduanya menuntut alasan yang
+   * diketik operator dan tercatat di jejak audit tenant (aturan #155). */
+  "operator_suspend",
+  "operator_restore",
 ] as const;
 export type SubscriptionEvent = (typeof SUBSCRIPTION_EVENTS)[number];
 
@@ -55,22 +67,29 @@ const TRANSITIONS: Record<
     payment_received: "active",
     /* Trial habis = siklus tagih dimulai; tagihan pertama terbit bersamanya. */
     trial_expired: "active",
+    operator_suspend: "suspended",
   },
   active: {
     /* Pembayaran perpanjangan — keadaan tidak berubah, tapi SAH (bukan null):
      * pembayaran pada langganan aktif adalah kejadian normal setiap bulan. */
     payment_received: "active",
     payment_failed: "past_due",
+    operator_suspend: "suspended",
   },
   past_due: {
     payment_received: "active",
     grace_expired: "suspended",
+    operator_suspend: "suspended",
   },
   suspended: {
     payment_received: "active",
     /* Berhenti hanya dari suspended — persis diagram. Pelanggan aktif yang
      * ingin berhenti membiarkan tagihannya jatuh tempo; jalur itu sudah ada. */
     cancel: "cancelled",
+    /* Pemulihan manual (#155) mendarat di tempat yang sama dengan pembayaran:
+     * `active`. Suspensi manual atas tenant menunggak yang dipulihkan tanpa
+     * bayar adalah keputusan operator — alasannya wajib dan tercatat. */
+    operator_restore: "active",
   },
   /* Keadaan akhir. TIDAK ADA jalan keluar — dan TIDAK ADA penghapusan data. */
   cancelled: {},
@@ -218,6 +237,92 @@ export function nextPeriod(
   if (cycle === "yearly") end.setUTCFullYear(end.getUTCFullYear() + 1);
   else end.setUTCMonth(end.getUTCMonth() + 1);
   return { start: from, end };
+}
+
+/* ── Kelahiran langganan (issue #152): fungsi MURNI-nya ────────────────────── */
+
+/**
+ * Bentuk langganan PERTAMA sebuah tenant dari sebuah paket — logika yang sama
+ * dengan cabang "belum punya langganan" di `scripts/change-tenant-plan.ts`,
+ * kini di satu tempat: `trial_days > 0` → `trialing` dengan `trial_ends_at`
+ * dihitung dari paket; `trial_days = 0` → langsung `active`, dan tagihan
+ * pertamanya diterbitkan penjadwal pada putaran berikutnya. Harga TIDAK ikut
+ * di sini — pemanggil menyalinnya sendiri dari `plans.price_monthly`
+ * (snapshot §5), karena Decimal bukan urusan modul murni ini.
+ */
+export function initialSubscriptionFromPlan(
+  plan: { trialDays: number },
+  now: Date
+): {
+  status: Extract<SubscriptionStatus, "trialing" | "active">;
+  trialEndsAt: Date | null;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+} {
+  const period = nextPeriod("monthly", now);
+  return {
+    status: plan.trialDays > 0 ? "trialing" : "active",
+    trialEndsAt:
+      plan.trialDays > 0 ? new Date(now.getTime() + plan.trialDays * DAY_MS) : null,
+    currentPeriodStart: period.start,
+    currentPeriodEnd: period.end,
+  };
+}
+
+/**
+ * Status tenant yang BERHAK diadopsikan langganan oleh penjadwal (#152):
+ * status berbayar yang masih hidup. `pending_verification` TIDAK — itu keadaan
+ * PRA-langganan yang sah (tenant buatan operator yang pemiliknya belum
+ * memverifikasi). `suspended`/`cancelled` juga tidak: melahirkan langganan
+ * langsung dalam keadaan mati adalah keputusan uang yang harus diambil orang —
+ * rekonsiliasi tetap melaporkannya, penjadwal tidak mengarangnya.
+ */
+export const ORPHAN_ADOPTABLE_TENANT_STATUSES = ["trialing", "active", "past_due"] as const;
+
+export interface OrphanSubscriptionSpec {
+  tenantId: number;
+  planKey: string;
+  status: (typeof ORPHAN_ADOPTABLE_TENANT_STATUSES)[number];
+  /** Dari `tenants.trial_ends_at` KENDALI apa adanya — adopsi TIDAK PERNAH
+   *  memperpanjang trial diam-diam. Tenant `trialing` tanpa tanggal (data
+   *  cacat) dianggap trialnya berakhir SEKARANG: putaran berikutnya memulai
+   *  siklus tagih, bukan trial abadi yang bisu — persis bug yang disembuhkan
+   *  #152. */
+  trialEndsAt: Date | null;
+  pastDueSince: Date | null;
+}
+
+/**
+ * Tenant di kendali yang statusnya berbayar tetapi TANPA satu pun langganan di
+ * platform → langganan yang harus dilahirkan (issue #152). Murni dan idempoten:
+ * putaran kedua melihat langganan hasil putaran pertama dan mengembalikan
+ * kosong; balapan antar-putaran ditahan constraint
+ * `subscriptions.initial_for_tenant_id` UNIQUE, bukan oleh fungsi ini.
+ */
+export function planOrphanSubscriptionAdoptions(
+  tenants: readonly { id: number; status: string; planKey: string; trialEndsAt: Date | null }[],
+  subscriptions: readonly { tenantId: number }[],
+  now: Date
+): OrphanSubscriptionSpec[] {
+  const covered = new Set(subscriptions.map((s) => s.tenantId));
+  return tenants
+    .filter(
+      (t) =>
+        (ORPHAN_ADOPTABLE_TENANT_STATUSES as readonly string[]).includes(t.status) &&
+        !covered.has(t.id)
+    )
+    .map((t) => {
+      const status = t.status as OrphanSubscriptionSpec["status"];
+      return {
+        tenantId: t.id,
+        planKey: t.planKey,
+        status,
+        trialEndsAt: status === "trialing" ? (t.trialEndsAt ?? now) : null,
+        /* Menunggak sejak kapan tidak tercatat di kendali — tenggang dihitung
+         * dari SEKARANG (arah murah hati; yang penting jalurnya jalan). */
+        pastDueSince: status === "past_due" ? now : null,
+      };
+    });
 }
 
 export interface PlannableSubscription {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ConsigneeOption {
   id: number;
@@ -49,7 +50,7 @@ export function ConsigneeSelect({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/consignees?active=1")
+    apiFetch("/api/consignees?active=1")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ConsigneeOption[]) => {
         if (!cancelled) setConsignees(Array.isArray(data) ? data : []);

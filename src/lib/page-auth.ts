@@ -5,10 +5,11 @@ import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
-import { enterCompanyFromSession } from "@/lib/company-session";
+import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
-import { redirect } from "next/navigation";
+import { tenantPath } from "@/lib/tenant-routes";
+import { notFound, redirect } from "next/navigation";
 
 /**
  * SATU-SATUNYA penjaga halaman dashboard (audit RBAC fase 1–4; lihat
@@ -28,7 +29,31 @@ export type PageSession = Omit<Session, "user"> & {
   user: NonNullable<Session["user"]> & { role: string };
 };
 
-export async function requirePagePermission(permission: Permission): Promise<PageSession> {
+/**
+ * Argumen KEDUA penjaga (issue #157) — WAJIB sejak #158.
+ *
+ * Halaman di bawah `/t/[tenantSlug]/[companySlug]/…` cukup meneruskan prop
+ * `params` miliknya sendiri — Next mengoper SEMUA segmen dinamis leluhur ke
+ * setiap halaman di bawahnya, jadi `params` sebuah halaman `[id]` pun sudah
+ * memuat kedua slug ini. Diterima dalam bentuk Promise maupun objek biasa
+ * supaya penjaga tidak memaksa pemanggilnya meng-`await` lebih dulu.
+ *
+ * Selama migrasi #157 argumen ini opsional, dan halaman yang belum pindah tetap
+ * mengambil perusahaannya dari sesi. Sejak SETIAP halaman berizin hidup di
+ * jalur bertenant (#158, termasuk wizard penyiapan), pilihan itu ditutup: bukan
+ * karena tidak ada yang memakainya lagi, melainkan supaya tidak ada yang BISA
+ * memakainya lagi — halaman baru yang lupa meneruskan `params` ditolak `tsc`,
+ * bukan diam-diam dilayani dengan perusahaan yang terakhir dibuka.
+ */
+export type PageRouteParams =
+  | TenantRouteParams
+  | Promise<TenantRouteParams>
+  | Promise<{ tenantSlug: string; companySlug: string } & Record<string, unknown>>;
+
+export async function requirePagePermission(
+  permission: Permission,
+  route: PageRouteParams
+): Promise<PageSession> {
   const session = await auth();
 
   if (!session?.user) {
@@ -36,18 +61,75 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
   }
 
   /*
-   * Konteks perusahaan (issue #104) — DI SINI, sebelum gerbang mana pun.
+   * Konteks perusahaan — DI SINI, sebelum gerbang mana pun.
    *
    * Tanpa ini setiap query di halaman akan melempar: sejak buku besar menjadi
    * satu basis data per PT, `prisma` menolak menebak perusahaan mana yang
-   * dimaksud. Ketiga kegagalannya dibedakan dengan sengaja — orang yang belum
-   * MEMILIH perusahaan tidak sedang punya masalah kredensial, jadi ia tidak
-   * dilempar ke halaman masuk untuk mengetik ulang kata sandinya.
+   * dimaksud.
+   *
+   * Perusahaan datang dari URL dan keanggotaannya dibaca ULANG dari basis data
+   * kendali pada permintaan ini. Gagal apa pun — slug tak ada, PT nonaktif,
+   * bukan anggota, tenant lain — dijawab 404 yang sama persis; lihat
+   * `company-route.ts`. Sesi tidak lagi punya suara di sini (#158).
    */
-  const company = await enterCompanyFromSession(session);
-  if (!company.ok) {
-    redirect(company.reason === "no-session" ? "/login" : "/select-company");
+  const params = await route;
+  const scoped = await enterCompanyFromRoute({
+    tenantSlug: params.tenantSlug,
+    companySlug: params.companySlug,
+    userId: session.user.id,
+  });
+  if (!scoped.ok) {
+    if (scoped.reason === "no-session") redirect("/login");
+    notFound();
   }
+
+  /*
+   * Sesi DITIMPA oleh kebenaran jalur — untuk permintaan ini saja, di memori.
+   *
+   * Bukan kosmetik: `canEffective`, Mode Akuntan, dan seluruh tampilan di
+   * bawah halaman ini membaca `session.user.role`, dan peran di JWT adalah
+   * peran di perusahaan yang TERAKHIR dibuka. Membiarkannya lewat berarti
+   * seorang `finance_manager` di PT A membuka buku PT B — tempat ia hanya
+   * `staff` — dengan hak PT A.
+   */
+  const patched = {
+    ...session,
+    user: {
+      ...session.user,
+      role: scoped.role,
+      accountantMode: scoped.accountantMode,
+      companyId: scoped.companyId,
+      companySlug: scoped.companySlug,
+      companyName: scoped.companyName,
+    },
+  } as PageSession;
+
+  return gateAfterCompany(patched, permission, scoped.companyId, {
+    tenantSlug: scoped.tenantSlug,
+    companySlug: scoped.companySlug,
+  });
+}
+
+/**
+ * Gerbang-gerbang SESUDAH perusahaan diketahui.
+ *
+ * Dipisah dari penyelesaian perusahaan bukan untuk kerapian melainkan supaya
+ * urutannya terbaca sebagai satu daftar: gerbang yang lupa dipasang adalah
+ * bentuk lubang yang paling mudah lahir dari migrasi bertahap.
+ *
+ * `home` menentukan ke mana penolakan dipantulkan, dan sejak #158 ia SELALU
+ * ada. Halaman dipantulkan ke berandanya SENDIRI — memantulkannya ke
+ * `/dashboard` telanjang akan memindahkan orang ke perusahaan lain (yang
+ * terakhir dibuka) sebagai jawaban atas "Anda tidak punya izin di sini", dan
+ * itu jauh lebih membingungkan daripada penolakannya sendiri.
+ */
+async function gateAfterCompany(
+  session: PageSession,
+  permission: Permission,
+  companyId: number,
+  home: { tenantSlug: string; companySlug: string }
+): Promise<PageSession> {
+  const homePath = tenantPath(home.tenantSlug, home.companySlug, "/dashboard");
 
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).
@@ -65,8 +147,17 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
    * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
    */
   if (permission !== "setup.manage" && !(await isSetupDone())) {
+    /*
+     * Wizard-nya ikut bertenant sejak #158, jadi tujuannya harus disusun dari
+     * perusahaan YANG SEDANG DIBUKA. Memantulkan ke `/setup` telanjang akan
+     * membuat proxy menyusun jalurnya dari SESI — dan orang yang membuka buku
+     * PT A lewat tautan dalam akan mendarat di wizard PT B, tempat ia mungkin
+     * menuliskan saldo awal yang salah kamar.
+     */
     redirect(
-      (await canEffective(session.user, "setup.manage")) ? "/setup" : "/setup-required"
+      (await canEffective(session.user, "setup.manage"))
+        ? tenantPath(home.tenantSlug, home.companySlug, "/setup")
+        : "/setup-required"
     );
   }
 
@@ -85,11 +176,11 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
   }
 
   if (!(await canEffective(session.user, permission))) {
-    redirect("/dashboard");
+    redirect(homePath);
   }
 
   if (ACCOUNTING_PERMISSIONS.has(permission) && !effectiveAccountantMode(session.user)) {
-    redirect("/dashboard");
+    redirect(homePath);
   }
 
   /*
@@ -100,9 +191,9 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
    * Status dari basis data KENDALI (cache per-perusahaan) — bukan platform.
    */
   if (isWritePermission(permission)) {
-    const tenantState = await tenantStateForCompany(company.companyId);
+    const tenantState = await tenantStateForCompany(companyId);
     if (readOnlyRefusal(tenantState?.status, permission)) {
-      redirect("/dashboard");
+      redirect(homePath);
     }
   }
 

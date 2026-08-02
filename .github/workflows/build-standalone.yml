@@ -13,20 +13,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node TETAP dibutuhkan meski paket dipasang oleh bun: `next build`, `tsc`,
+      # dan Prisma dijalankan Node lewat shebang binary-nya. Versinya harus
+      # 20.19+ — Prisma 7 menolak yang lebih lama di skrip preinstall-nya.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: package-lock.json
+          node-version: "22"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
+        # Padanan `npm ci`: gagal bila bun.lock tidak sinkron dengan package.json.
+        run: bun install --frozen-lockfile
 
       - name: Prisma generate
-        run: npx prisma generate
+        run: bunx prisma generate
 
       - name: Build standalone
-        run: npm run package:standalone
+        run: bun run package:standalone
         env:
           NODE_ENV: production
           # Placeholder for build; real secrets go in server .env

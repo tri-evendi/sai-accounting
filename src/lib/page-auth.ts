@@ -8,6 +8,7 @@ import { isSetupDone } from "@/lib/setup-gate";
 import { enterCompanyFromSession } from "@/lib/company-session";
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
+import { resolvePostLoginPath } from "@/lib/post-login";
 import { redirect } from "next/navigation";
 
 /**
@@ -46,7 +47,23 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
    */
   const company = await enterCompanyFromSession(session);
   if (!company.ok) {
-    redirect(company.reason === "no-session" ? "/login" : "/select-company");
+    if (company.reason === "no-session") redirect("/login");
+    /*
+     * Tanpa perusahaan aktif, arahnya SATU aturan dengan pasca-masuk (#159
+     * temuan 3): NOL perusahaan → /companies/new (pelanggan baru yang belum
+     * membuat PT pertamanya), selainnya → /select-company. Dulu keduanya
+     * dipukul rata ke /select-company; dan karena arah baru datang dari
+     * server, halaman tidak lagi menjawab 200 berisi kerangka "Memuat sesi…"
+     * yang menunggu klien menemukan arahnya sendiri.
+     */
+    redirect(
+      resolvePostLoginPath(
+        session.user.mustChangePassword,
+        null,
+        session.user.companyCount,
+        null
+      )
+    );
   }
 
   /*

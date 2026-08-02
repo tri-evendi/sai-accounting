@@ -10,35 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
-
-function resolvePostLoginPath(
-  mustChangePassword: boolean | undefined,
-  companyId: number | null | undefined,
-  companyCount: number | null | undefined,
-  callbackUrl: string | null
-) {
-  if (mustChangePassword) return "/change-password";
-  if (companyId == null) {
-    /*
-     * NOL perusahaan (issue #138) = pelanggan baru yang baru memverifikasi
-     * emailnya: tujuannya layar BUAT PERUSAHAAN PERTAMA, bukan pemilih —
-     * /select-company mengasumsikan ada sesuatu untuk dipilih. Penjaga
-     * /companies/new yang memutuskan haknya; anggota tanpa izin dipantulkan
-     * ke /select-company yang menjelaskan keadaannya.
-     */
-    if (companyCount === 0) return "/companies/new";
-    /*
-     * Lebih dari satu PT dan belum memilih (issue #104): langsung ke
-     * pemilihnya — penjaga halaman toh akan memantulkannya ke sana, dan
-     * pantulan itu hanya menambah satu layar berkedip.
-     */
-    return "/select-company";
-  }
-  if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
-    return callbackUrl;
-  }
-  return "/dashboard";
-}
+// Aturan arah pasca-masuk hidup di satu tempat (#159 temuan 3): penjaga
+// halaman server memakai fungsi yang sama — jangan menyalinnya ke sini lagi.
+import { resolvePostLoginPath } from "@/lib/post-login";
 
 /**
  * Pesan gagal masuk. Hanya galat kredensial baku yang diterjemahkan: sisanya

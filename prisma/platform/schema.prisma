@@ -274,6 +274,42 @@ model ReminderLog {
   @@map("reminder_logs")
 }
 
+/// Ringkasan SATU putaran penjadwal langganan (issue #154) — sebelum ini hasil
+/// putaran hanya hidup di stdout cron, dan "apa yang terjadi pada putaran
+/// terakhir?" menuntut sesi SSH. Ditulis `scripts/subscription-scheduler.ts`
+/// di akhir setiap putaran; dibaca konsol operator (`lib/operator/store.ts`).
+/// Gagal MENCATAT tidak menggagalkan putarannya — ringkasan adalah laporan
+/// tentang yang terjadi, bukan gerbang.
+model SchedulerRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — `error` = ada butir yang menuntut tindakan orang
+  /// (rinciannya di `details.errors`). String + union TS, konvensi
+  /// docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  invoicesIssued Int @default(0) @map("invoices_issued")
+  remindersSent  Int @default(0) @map("reminders_sent")
+  statusChanges  Int @default(0) @map("status_changes")
+  adoptions      Int @default(0)
+  errorCount     Int @default(0) @map("error_count")
+
+  /// JSON `{issued, reminders, transitions, adoptions, errors}` — masing-masing
+  /// daftar string BARIS LAPORAN (bukan struktur yang di-query), persis kalimat
+  /// yang dulu hanya tercetak di stdout. Dibiarkan Text: isi lama tidak perlu
+  /// bermigrasi saat bentuk barisnya berubah.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startedAt])
+  @@map("scheduler_runs")
+}
+
 /// Penghitung pemakaian per tenant — dasar penegakan kuota & penagihan berbasis
 /// pemakaian. SATU baris per (tenant, kunci); nilainya disinkronkan dari basis
 /// data kendali oleh pekerjaan berkala (#140), BUKAN sumber kebenaran — sumber

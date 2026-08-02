@@ -123,8 +123,25 @@ RUN NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate \
 # yang belum diadopsi tidak punya satu pun perusahaan terdaftar, jadi tidak ada
 # yang disentuh — skripnya berhenti dan menyebutkan perintah adopsi yang harus
 # dijalankan lebih dulu.
-FROM builder AS migrator
+# ══ KENAPA BUKAN `FROM builder` (ditemukan saat menggelar #151) ═════════════
+# Migrator hanya butuh dependensi, sumber, skema, migration, dan KLIEN Prisma.
+# Ia tidak pernah menyentuh keluaran `next build` — tetapi mewarisi `builder`
+# berarti ikut menanggung build itu: ~10 menit di mesin ini, dan pada mesin
+# 1,9 GB yang sedang melayani produksi ia justru THRASHING sampai setengah jam
+# tanpa keluaran. Akibatnya satu-satunya image yang benar-benar butuh berkas
+# migration adalah image yang paling mahal dibuat — persis terbalik.
+#
+# Dengan `FROM bunbase` + node_modules dari `deps`, migrator lahir dalam
+# hitungan menit dan bisa dibangun ulang kapan pun tanpa menyentuh build web.
+FROM bunbase AS migrator
 ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# Skrip migration & operator mengimpor ketiga klien Prisma (lihat komentar
+# tahap `builder`); ketiganya gitignored, jadi ketiganya lahir di sini juga.
+RUN NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate \
+    && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.control.config.ts \
+    && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.platform.config.ts
 CMD ["bun", "run", "db:migrate:all"]
 
 

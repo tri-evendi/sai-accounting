@@ -57,6 +57,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Keluaran package-standalone.sh (#159 temuan 5) — hasil build, bukan
+    // sumber. Tanpa ini `bun run lint` tenggelam dalam ±950 galat bundel
+    // ter-minify dan gerbang lint kehilangan artinya.
+    "dist/**",
     // Agent tooling scripts, not application source.
     ".claude/**",
   ]),

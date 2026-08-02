@@ -185,7 +185,6 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
  * (summable, exact) number cells rather than pre-formatted strings.
  */
 export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
-  const company = useCompanyIdentity();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();

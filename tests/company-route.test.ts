@@ -53,18 +53,31 @@ const controlDb = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
 }));
 const membershipFor = vi.hoisted(() => vi.fn());
+/**
+ * Penyimpan per-permintaan dipalsukan dengan penyimpan biasa: penjaga MEMBACA
+ * kembali apa yang baru ia tulis (pembuktian "konteksnya benar-benar mendarat"),
+ * jadi tiruan yang hanya mencatat panggilan akan membuatnya melempar.
+ */
+const routeSlot = vi.hoisted(() => ({ value: null as unknown }));
 const setRouteCompany = vi.hoisted(() => vi.fn());
+const routeCompany = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/control-db", () => ({ controlDb }));
 vi.mock("@/lib/company-registry", () => ({ membershipFor }));
-vi.mock("@/lib/current-company", () => ({ setRouteCompany }));
+vi.mock("@/lib/current-company", () => ({ setRouteCompany, routeCompany }));
 
 import { enterCompanyFromRoute, routeForCompany } from "@/lib/company-route";
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.resetModules();
+
+  routeSlot.value = null;
+  setRouteCompany.mockImplementation((ctx: unknown) => {
+    routeSlot.value = ctx;
+  });
+  routeCompany.mockImplementation(() => routeSlot.value);
 
   controlDb.company.findFirst.mockImplementation(
     async ({ where }: { where: { slug: string; tenant: { slug: string } } }) => {

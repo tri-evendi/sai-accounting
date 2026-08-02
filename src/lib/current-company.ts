@@ -98,6 +98,18 @@ export function setRouteCompany(context: CompanyContext): void {
   routeCompanyHolder().value = context;
 }
 
+/**
+ * Perusahaan dari jalur permintaan ini, atau `null`.
+ *
+ * Diekspor untuk SATU pemakai: penjaga jalur, yang membacanya kembali segera
+ * setelah menulisnya untuk membuktikan tulisannya mendarat. Kode halaman tidak
+ * pernah memanggil ini — pertanyaan "perusahaan mana?" hanya punya satu jawaban,
+ * dan jawabannya `currentCompany()`.
+ */
+export function routeCompany(): CompanyContext | null {
+  return routeCompanyHolder().value;
+}
+
 /** Konteks perusahaan yang berlaku sekarang — atau melempar. */
 export async function currentCompany(): Promise<CompanyContext> {
   const fromContext = getCompanyContext();

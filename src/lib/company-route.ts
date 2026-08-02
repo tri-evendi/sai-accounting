@@ -39,8 +39,8 @@
 
 import "server-only";
 
-import { enterCompanyContext } from "@/lib/company-context";
-import { setRouteCompany } from "@/lib/current-company";
+import { enterCompanyContext, getCompanyContext } from "@/lib/company-context";
+import { routeCompany, setRouteCompany } from "@/lib/current-company";
 import { controlDb } from "@/lib/control-db";
 import { membershipFor } from "@/lib/company-registry";
 import { isValidSlug } from "@/lib/tenant-routes";
@@ -215,6 +215,28 @@ export async function enterCompanyFromRoute(params: {
   };
   enterCompanyContext(context);
   setRouteCompany(context);
+
+  /*
+   * DIBUKTIKAN, bukan diasumsikan.
+   *
+   * Dua sabuk dipasang di atas — konteks ALS dan penyimpan per-permintaan — dan
+   * masing-masing punya cara gagal yang SUNYI: rambatan `enterWith` disebut
+   * jalan pintas (bukan jaminan) oleh `company-context.ts`, dan `cache()` React
+   * hanya mengingat di dalam lingkup permintaan. Bila KEDUANYA gagal,
+   * `currentCompany()` jatuh ke perusahaan di sesi — dan halaman ini akan
+   * menampilkan judul CV Maju sambil membaca buku PT lain, tanpa satu pun galat.
+   *
+   * Satu pembacaan murah di sini mengubah kegagalan itu dari sunyi menjadi
+   * berisik: halaman gagal terbuka hari ini, alih-alih pembukuan tercampur yang
+   * baru ketahuan berbulan-bulan kemudian (doktrin docs/MULTI-COMPANY.md §2).
+   */
+  const planted = getCompanyContext() ?? routeCompany();
+  if (planted?.companyId !== context.companyId) {
+    throw new Error(
+      `Konteks perusahaan dari jalur gagal ditanam (${params.tenantSlug}/${params.companySlug}). ` +
+        "Query dibatalkan sebelum satu pun berjalan — lihat lib/company-route.ts."
+    );
+  }
 
   return {
     ok: true,

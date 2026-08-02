@@ -170,6 +170,17 @@ async function main() {
   const now = new Date();
   const errors: string[] = [];
 
+  /* Ringkasan putaran untuk `scheduler_runs` (issue #154): baris-baris yang
+   * selama ini hanya tercetak di stdout dikumpulkan juga di sini, supaya
+   * "apa yang terbit, apa yang diingatkan, apa yang gagal pada putaran
+   * terakhir?" terjawab dari konsol operator tanpa SSH. */
+  const summary = {
+    issued: [] as string[],
+    reminders: [] as string[],
+    transitions: [] as string[],
+    adoptions: [] as string[],
+  };
+
   /* ── 0. Adopsi langganan YATIM (issue #152): tenant berbayar di kendali
    * TANPA satu pun langganan di platform tidak pernah masuk siklus tagih —
    * trial tak berujung, tagihan tak pernah terbit, tanpa galat. Sumbernya:
@@ -222,6 +233,9 @@ async function main() {
           `+ adopsi yatim: tenant #${orphan.tenantId} → subscription #${created.id} ` +
             `(${orphan.status}, paket "${plan.key}")`
         );
+        summary.adoptions.push(
+          `tenant #${orphan.tenantId} → subscription #${created.id} (${orphan.status}, paket "${plan.key}")`
+        );
         await writeTenantAuditLog({
           tenantId: orphan.tenantId,
           tenantSlug: slugById.get(orphan.tenantId) ?? String(orphan.tenantId),
@@ -264,6 +278,7 @@ async function main() {
       const period = nextPeriod(sub.billingCycle === "yearly" ? "yearly" : "monthly", now);
       const applied = await applyEvent(platform, control, sub, "trial_expired", now);
       if (applied === null) continue;
+      summary.transitions.push(`sub #${sub.id}: trialing → ${applied} (trial habis)`);
       await platform.subscription.update({
         where: { id: sub.id },
         data: { currentPeriodStart: period.start, currentPeriodEnd: period.end },
@@ -297,6 +312,7 @@ async function main() {
           `+ trial habis: sub #${sub.id} → active, tagihan ${number} terbit ` +
             `(DPP ${amounts.amount} + PPN ${amounts.taxAmount} = ${amounts.total})`
         );
+        summary.issued.push(`${number} (sub #${sub.id}, total ${amounts.total})`);
 
         /* Tagih-lalu-ingatkan (bukan auto-debit): instruksi bayar (VA) dibuat
          * BERSAMA tagihannya bila gerbang terpasang — surel pengingat H-x
@@ -362,6 +378,7 @@ async function main() {
       if (applied) {
         sub.status = applied;
         console.log(`~ dunning: sub #${subId} → past_due (tenggang ${GRACE_PERIOD_DAYS} hari)`);
+        summary.transitions.push(`sub #${subId}: → ${applied} (lewat jatuh tempo)`);
       }
     }
   } catch (e) {
@@ -376,6 +393,7 @@ async function main() {
       if (applied) {
         sub.status = applied;
         console.log(`~ tenggang habis: sub #${id} → suspended (buku jadi hanya-baca)`);
+        summary.transitions.push(`sub #${id}: → ${applied} (masa tenggang habis)`);
       }
     } catch (e) {
       errors.push(`grace-expiry sub #${id}: ${e}`);
@@ -460,6 +478,7 @@ async function main() {
         });
       }
       console.log(`✉ pengingat ${kind} ${due.sendKey} → sub #${sub.id} (${recipients.length} owner)`);
+      summary.reminders.push(`${kind} ${due.sendKey} → sub #${sub.id} (${recipients.length} owner)`);
     }
   } catch (e) {
     errors.push(`pengingat: ${e}`);
@@ -530,6 +549,28 @@ async function main() {
     }
   } catch (e) {
     errors.push(`rekonsiliasi: ${e}`);
+  }
+
+  /* ── 8. Catat ringkasan putaran (issue #154, tabel `scheduler_runs`) ─────
+   * Gagal MENCATAT tidak menggagalkan putarannya: ringkasan adalah laporan,
+   * bukan gerbang — dan pemasangan yang belum memigrasikan 0005 tidak boleh
+   * kehilangan penagihannya hanya karena riwayatnya belum punya tabel. */
+  try {
+    await platform.schedulerRun.create({
+      data: {
+        startedAt: now,
+        finishedAt: new Date(),
+        status: errors.length > 0 ? "error" : "ok",
+        invoicesIssued: summary.issued.length,
+        remindersSent: summary.reminders.length,
+        statusChanges: summary.transitions.length,
+        adoptions: summary.adoptions.length,
+        errorCount: errors.length,
+        details: JSON.stringify({ ...summary, errors }),
+      },
+    });
+  } catch (e) {
+    console.error("⚠ ringkasan putaran gagal dicatat ke scheduler_runs (migration 0005 sudah diterapkan?):", e);
   }
 
   await platform.$disconnect();

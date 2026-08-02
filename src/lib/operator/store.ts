@@ -34,8 +34,18 @@ import { platformDb } from "@/lib/platform-db";
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
 import { runReconciliation, type ReconciliationReport } from "@/lib/platform-reconciliation";
+import {
+  mailSettingsView,
+  readMailSettings,
+  type MailSettingsClient,
+  type MailSettingsView,
+  type MailTransport,
+} from "@/lib/mail-settings";
+import { resolveMailConfig, type MailConfigSource } from "@/lib/mailer-core";
+import { encryptionKeyAvailable } from "@/lib/settings-crypto";
 
 export type { ReconciliationReport };
+export type { MailSettingsView };
 
 type ControlClient = typeof controlDb;
 type PlatformClient = typeof platformDb;
@@ -407,6 +417,61 @@ export async function reconciliationForOperator(
     console.error("[operator-store] rekonsiliasi gagal berjalan:", error);
     return null;
   }
+}
+
+/* ────────────────────────── Pengaturan surel (#169) ──────────────────────── */
+
+export interface OperatorMailSettings {
+  /** false = `sai_platform` tak terjangkau — layar berkata jujur, tidak 500,
+   *  dan pengirim surel sementara memakai environment. */
+  available: boolean;
+  /** `null` = belum pernah disimpan dari konsol (env yang berlaku). */
+  settings: MailSettingsView | null;
+  /** Apa yang BENAR-BENAR dipakai pengirim saat ini — sumber, transport, dan
+   *  alamat pengirimnya. Tidak pernah memuat kata sandi. */
+  effective: {
+    source: MailConfigSource;
+    transport: MailTransport;
+    requestedTransport: MailTransport;
+    from: string;
+  };
+  /** `SETTINGS_ENCRYPTION_KEY` layak? Layar memberitahukannya SEBELUM operator
+   *  mengetik kata sandi, bukan sesudah penyimpanannya ditolak. */
+  encryptionKeyAvailable: boolean;
+}
+
+/**
+ * Pengaturan surel untuk konsol operator. KATA SANDI TIDAK PERNAH IKUT: yang
+ * keluar dari sini hanya `hasPassword` (layar menampilkan `••••`).
+ */
+export async function mailSettingsForOperator(
+  deps: { platform: PlatformClient } = { platform: platformDb }
+): Promise<OperatorMailSettings> {
+  const client = deps.platform as unknown as MailSettingsClient;
+
+  let available = true;
+  let settings: MailSettingsView | null = null;
+  try {
+    const row = await readMailSettings(client);
+    settings = row ? mailSettingsView(row) : null;
+  } catch (error) {
+    console.error("[operator-store] pengaturan surel tak terbaca:", error);
+    available = false;
+  }
+
+  const config = await resolveMailConfig(client);
+
+  return {
+    available,
+    settings,
+    effective: {
+      source: config.source,
+      transport: config.transport,
+      requestedTransport: config.requestedTransport,
+      from: config.from,
+    },
+    encryptionKeyAvailable: encryptionKeyAvailable(),
+  };
 }
 
 /* ─────────────────────────── Riwayat putaran penjadwal ───────────────────── */

@@ -220,6 +220,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "operator.tenant.colCompanySlug",
     "operator.tenant.colCompanyActive",
     "operator.scheduler.colStatus",
+    // "SMTP" adalah nama protokol, dan "Port" adalah serapan yang ejaannya
+    // identik di kedua bahasa — sama seperti "Status" di atas (issue #169).
+    "operator.mail.transportSmtp",
+    "operator.mail.portLabel",
   ]),
   zh: new Set([
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
@@ -232,6 +236,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "billing.npwp",
     // Nama diri yang sama di konsol operator (issue #154).
     "operator.tenant.npwp",
+    // "SMTP" adalah nama protokol — sama di semua bahasa (issue #169).
+    "operator.mail.transportSmtp",
   ]),
 };
 

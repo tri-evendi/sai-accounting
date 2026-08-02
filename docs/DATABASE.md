@@ -186,8 +186,9 @@ Seluruh deviasi yang pernah tercatat di sini sudah ditutup pada issue #104, tepa
 
 Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
 `docs/MULTI-TENANT.md` §4A). Isinya `plans`, `subscriptions`, `payments`,
-`platform_invoices`, `usage_counters` — **data bisnis penyedia SaaS**, nol angka
-akuntansi pelanggan. Skema: `prisma/platform/schema.prisma` → klien
+`platform_invoices`, `usage_counters`, `scheduler_runs`, `mail_settings` —
+**data bisnis penyedia SaaS**, nol angka akuntansi pelanggan. Skema:
+`prisma/platform/schema.prisma` → klien
 `src/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
 `src/lib/platform-db.ts`.
 
@@ -225,7 +226,17 @@ menyertakannya di antara kendali dan perusahaan).
   (`scripts/migrate-platform.ts`) — tapi GAGAL bila diset dan migrationnya
   gagal.
 - **Cache data platform dikunci per `tenant_id`** — aturan cache #104 diperluas;
-  pakai `TenantKeyedCache` (`src/lib/tenant-cache.ts`).
+  pakai `TenantKeyedCache` (`src/lib/tenant-cache.ts`). Pengecualian yang
+  dinyatakan: `mail_settings` (#169) adalah singleton milik PENYEDIA, bukan
+  milik satu tenant, jadi cache-nya (`src/lib/mail-settings.ts`, TTL 60 detik)
+  memang tunggal.
+- **Rahasia di basis data: hanya `mail_settings.password_ciphertext` (#169).**
+  Doktrin "kredensial hidup di environment" tetap berlaku untuk yang lain;
+  satu pengecualian ini disegel AES-256-GCM dengan kunci yang TETAP di env
+  (`SETTINGS_ENCRYPTION_KEY`, 64 karakter hex). Kunci hilang/salah bentuk →
+  penyimpanan kata sandi DITOLAK, tidak pernah disimpan mentah. Pengaturan
+  surel dibaca `mailer-core` dengan urutan **basis data → environment →
+  `file`**: platform mati tidak boleh mematikan undangan & atur-ulang sandi.
 
 **Siklus hidup langganan (issue #140).** Mesin keputusannya MURNI di
 `src/lib/subscription-lifecycle.ts` (teruji tuntas); `suspended`/`cancelled`

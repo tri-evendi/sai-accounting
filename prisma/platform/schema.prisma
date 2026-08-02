@@ -333,3 +333,60 @@ model UsageCounter {
   @@unique([tenantId, key])
   @@map("usage_counters")
 }
+
+/// PENGATURAN SUREL PENYEDIA (issue #169) — SATU baris untuk seluruh pemasangan
+/// (singleton, dikunci `singleton UNIQUE = 1`).
+///
+/// KENAPA DI SINI, BUKAN DI `company_settings`: surel dipakai justru ketika
+/// TIDAK ADA konteks perusahaan — verifikasi pendaftaran, undangan staf, atur
+/// ulang kata sandi. Menaruhnya di basis data perusahaan berarti setiap
+/// pelanggan mengonfigurasi server surel MILIK PENYEDIA. Ini urusan penyedia,
+/// sama seperti penagihan, jadi rumahnya `sai_platform` dan layarnya konsol
+/// operator.
+///
+/// KATA SANDI TIDAK PERNAH TERSIMPAN MENTAH: hanya sandi-teks AES-256-GCM +
+/// IV + tag (`lib/settings-crypto.ts`); kuncinya tetap di environment
+/// (`SETTINGS_ENCRYPTION_KEY`). Kunci hilang → penyimpanan kata sandi DITOLAK.
+model MailSetting {
+  id Int @id @default(autoincrement())
+
+  /// Penanda SINGLETON — selalu 1. Constraint UNIQUE-lah yang menjamin tidak
+  /// pernah lahir baris kedua (dua baris = dua kebenaran tentang server surel
+  /// yang sama); `upsert` memakainya sebagai kunci.
+  singleton Int @unique @default(1)
+
+  /// file | smtp — enum-like `String @db.VarChar` + `z.enum`, konvensi
+  /// docs/DATABASE.md. `file` = surel ditangkap ke berkas .eml (mode aman).
+  transport String @db.VarChar(10)
+
+  host     String? @db.VarChar(191)
+  port     Int?
+  username String? @db.VarChar(191)
+
+  /// Alamat pengirim (header From) — mis. "SAI Accounting <no-reply@contoh.id>".
+  fromAddress String @map("from_address") @db.VarChar(191)
+
+  /// Segel AES-256-GCM kata sandi SMTP. Ketiganya kosong = tidak ada kata sandi
+  /// tersimpan (relai yang mengautentikasi lewat IP juga sah).
+  passwordCiphertext String? @map("password_ciphertext") @db.VarChar(512)
+  passwordIv         String? @map("password_iv") @db.VarChar(64)
+  passwordTag        String? @map("password_tag") @db.VarChar(64)
+
+  /// Hasil UJI KIRIM terakhir — konfigurasi surel yang tidak bisa diuji adalah
+  /// konfigurasi yang baru ketahuan salah saat pelanggan pertama mendaftar.
+  /// `last_test_status`: ok | error. Pesannya kalimat untuk manusia, TIDAK
+  /// pernah memuat kata sandi.
+  lastTestAt      DateTime? @map("last_test_at")
+  lastTestTo      String?   @map("last_test_to") @db.VarChar(191)
+  lastTestStatus  String?   @map("last_test_status") @db.VarChar(10)
+  lastTestMessage String?   @map("last_test_message") @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan — jejaknya sendiri ada di
+  /// `data/audit/operators/audit.jsonl`; kolom ini yang tampil di layar.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mail_settings")
+}

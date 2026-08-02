@@ -8,23 +8,37 @@
  * pustaka surel di package.json, dan setiap alur yang menuntut surel
  * (atur-ulang kata sandi, kelak verifikasi & undangan #138/#139) mustahil.
  *
- * ══ BENTUKNYA: SATU ANTARMUKA, TRANSPORT DIPILIH ENVIRONMENT ════════════════
+ * ══ BENTUKNYA: SATU ANTARMUKA, TRANSPORT DIPILIH KONFIGURASI ════════════════
  * Pemakai hanya mengenal `sendMail(message)`. Transportnya:
  *
- *   MAIL_TRANSPORT=file  (BAWAAN) — surel DITANGKAP ke berkas
+ *   file  (BAWAAN) — surel DITANGKAP ke berkas
  *       `data/mail-outbox/<waktu>-<penerima>.eml`, tidak pernah meninggalkan
  *       mesin. Inilah mode pengembangan: AC issue #136 menuntut surel TIDAK
  *       PERNAH terkirim sungguhan di lingkungan pengembangan, dan berkas .eml
  *       bisa dibuka klien surel mana pun untuk memeriksa isinya.
  *
- *   MAIL_TRANSPORT=smtp — kirim lewat SMTP (nodemailer; penyedia Indonesia
- *       mana pun yang berbicara SMTP: Mailtrap/SES/Resend/Postmark/dsb.).
- *       Konfigurasi: SMTP_URL (mis. smtp://user:pass@smtp.host:587) + MAIL_FROM.
+ *   smtp — kirim lewat SMTP (nodemailer; penyedia Indonesia mana pun yang
+ *       berbicara SMTP: Mailtrap/SES/Resend/Postmark/dsb.).
  *
- * Pengaman ganda: transport `smtp` hanya dihormati bila NODE_ENV=production.
- * Di luar itu ia jatuh ke `file` dengan peringatan — salah set satu variabel
- * environment di laptop tidak boleh mengirim surel percobaan ke alamat orang
- * sungguhan.
+ * ══ URUTAN SUMBER (issue #169): BASIS DATA → ENVIRONMENT → `file` ═══════════
+ * Sejak #169 pengaturan surel bisa diubah dari konsol operator TANPA SSH, dan
+ * pengaturan itu tinggal di `sai_platform` (`lib/mail-settings.ts`). Urutannya
+ * — dan ketiganya penting:
+ *
+ *   1. BASIS DATA. Ada baris `mail_settings` → dialah kebenarannya.
+ *   2. ENVIRONMENT. Tidak ada baris, ATAU `sai_platform` tak terjangkau →
+ *      `MAIL_TRANSPORT` + `SMTP_URL` + `MAIL_FROM` seperti sebelum #169.
+ *      Inilah doktrin "penagihan mati ≠ aplikasi mati" yang berlaku juga di
+ *      sini: basis data penagihan yang tumbang TIDAK BOLEH mematikan undangan
+ *      staf dan atur-ulang kata sandi selama env masih terisi.
+ *   3. `file`. Keduanya kosong → surel ditangkap ke berkas, tidak hilang
+ *      tanpa jejak.
+ *
+ * Pengaman ganda yang LAMA tetap berdiri, apa pun sumbernya: transport `smtp`
+ * hanya dihormati bila NODE_ENV=production. Di luar itu ia jatuh ke `file`
+ * dengan peringatan — salah set satu variabel environment (atau satu baris
+ * basis data yang tersalin dari produksi) di laptop tidak boleh mengirim surel
+ * percobaan ke alamat orang sungguhan.
  *
  * ══ KENAPA NODEMAILER ═══════════════════════════════════════════════════════
  * Ia juga peer-dependency opsional next-auth (provider email bawaannya), jadi
@@ -34,6 +48,15 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import {
+  cachedMailSettings,
+  normalizeTransport,
+  storedMailPassword,
+  type MailSettingsClient,
+  type MailSettingsRow,
+  type MailTransport,
+} from "@/lib/mail-settings";
 
 export interface MailMessage {
   to: string;
@@ -49,30 +72,119 @@ export interface MailResult {
   detail: string;
 }
 
+/** Dari mana konfigurasi yang benar-benar dipakai berasal. */
+export type MailConfigSource = "database" | "env" | "default";
+
+export interface MailConfig {
+  /** Transport EFEKTIF — sudah memperhitungkan pengaman non-produksi. */
+  transport: MailTransport;
+  /** Transport yang DIMINTA sumbernya, sebelum pengaman. */
+  requestedTransport: MailTransport;
+  source: MailConfigSource;
+  from: string;
+  /** Jalur env: URL SMTP apa adanya. Jalur basis data: `null`. */
+  smtpUrl: string | null;
+  /** Jalur basis data: bagian-bagiannya. Jalur env: `null`. */
+  smtp: {
+    host: string;
+    port: number;
+    /** 465 = TLS implisit; selain itu STARTTLS — turunan port, bukan kolom
+     *  sendiri: satu isian yang bisa salah lebih sedikit. */
+    secure: boolean;
+    user: string | null;
+    pass: string | null;
+  } | null;
+}
+
 /** Bisa dialihkan lewat env — tes menulis ke direktori sementaranya sendiri. */
 function outboxDir(): string {
   return process.env.MAIL_OUTBOX_DIR ?? path.join(process.cwd(), "data", "mail-outbox");
 }
 
-function fromAddress(): string {
+function envFromAddress(): string {
   return process.env.MAIL_FROM ?? "SAI Accounting <no-reply@localhost>";
 }
 
-/** Transport efektif — `smtp` menuntut produksi DAN SMTP_URL. */
-function resolveTransport(): "file" | "smtp" {
-  const requested = process.env.MAIL_TRANSPORT ?? "file";
+/** Pengaman non-produksi — satu tempat, dipakai sumber mana pun. */
+function guardNonProduction(requested: MailTransport, source: MailConfigSource): MailTransport {
   if (requested !== "smtp") return "file";
   if (process.env.NODE_ENV !== "production") {
     console.warn(
-      "[mailer] MAIL_TRANSPORT=smtp diabaikan di luar produksi — surel ditangkap ke berkas."
+      `[mailer] transport smtp (sumber: ${source}) diabaikan di luar produksi — surel ditangkap ke berkas.`
     );
     return "file";
   }
-  if (!process.env.SMTP_URL) {
-    console.warn("[mailer] MAIL_TRANSPORT=smtp tanpa SMTP_URL — surel ditangkap ke berkas.");
-    return "file";
-  }
   return "smtp";
+}
+
+/** Konfigurasi dari SATU baris `mail_settings`, atau `null` bila barisnya tak
+ *  layak pakai (smtp tanpa host — pengaturan setengah jadi bukan konfigurasi). */
+function configFromRow(row: MailSettingsRow): MailConfig | null {
+  const requested = normalizeTransport(row.transport);
+  if (requested === "smtp" && !row.host) {
+    console.warn("[mailer] mail_settings transport=smtp tanpa host — jatuh ke environment.");
+    return null;
+  }
+
+  return {
+    transport: guardNonProduction(requested, "database"),
+    requestedTransport: requested,
+    source: "database",
+    from: row.fromAddress,
+    smtpUrl: null,
+    smtp:
+      requested === "smtp"
+        ? {
+            host: row.host as string,
+            port: row.port ?? 587,
+            secure: (row.port ?? 587) === 465,
+            user: row.username,
+            pass: storedMailPassword(row),
+          }
+        : null,
+  };
+}
+
+/** Konfigurasi dari environment — perilaku persis sebelum #169. */
+function configFromEnv(): MailConfig {
+  const requested: MailTransport = process.env.MAIL_TRANSPORT === "smtp" ? "smtp" : "file";
+  const url = process.env.SMTP_URL;
+
+  if (requested === "smtp" && !url) {
+    console.warn("[mailer] MAIL_TRANSPORT=smtp tanpa SMTP_URL — surel ditangkap ke berkas.");
+    return {
+      transport: "file",
+      requestedTransport: "file",
+      source: "default",
+      from: envFromAddress(),
+      smtpUrl: null,
+      smtp: null,
+    };
+  }
+
+  return {
+    transport: guardNonProduction(requested, requested === "smtp" ? "env" : "default"),
+    requestedTransport: requested,
+    source: requested === "smtp" ? "env" : "default",
+    from: envFromAddress(),
+    smtpUrl: url ?? null,
+    smtp: null,
+  };
+}
+
+/**
+ * Konfigurasi EFEKTIF: basis data → environment → `file`.
+ *
+ * `client` hanya disuntikkan tes; pemanggil nyata membiarkannya kosong dan
+ * mendapat `platformDb` lewat impor dinamis di `lib/mail-settings.ts`.
+ */
+export async function resolveMailConfig(client?: MailSettingsClient): Promise<MailConfig> {
+  const row = await cachedMailSettings(client);
+  if (row) {
+    const fromDb = configFromRow(row);
+    if (fromDb) return fromDb;
+  }
+  return configFromEnv();
 }
 
 /** Nama berkas aman dari alamat penerima. */
@@ -80,7 +192,7 @@ function safeName(value: string): string {
   return value.replace(/[^a-zA-Z0-9.@_-]/g, "_").slice(0, 80);
 }
 
-async function sendToFile(message: MailMessage): Promise<MailResult> {
+async function sendToFile(message: MailMessage, config: MailConfig): Promise<MailResult> {
   const dir = outboxDir();
   await mkdir(dir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -88,7 +200,7 @@ async function sendToFile(message: MailMessage): Promise<MailResult> {
 
   // RFC 5322 sederhana — cukup untuk dibuka klien surel / dibaca mata.
   const eml =
-    `From: ${fromAddress()}\r\n` +
+    `From: ${config.from}\r\n` +
     `To: ${message.to}\r\n` +
     `Subject: ${message.subject}\r\n` +
     `Date: ${new Date().toUTCString()}\r\n` +
@@ -100,13 +212,25 @@ async function sendToFile(message: MailMessage): Promise<MailResult> {
   return { transport: "file", detail: file };
 }
 
-async function sendViaSmtp(message: MailMessage): Promise<MailResult> {
+async function sendViaSmtp(message: MailMessage, config: MailConfig): Promise<MailResult> {
   // Impor dinamis: jalur file (pengembangan, tes) tidak perlu memuat
   // nodemailer sama sekali.
   const { createTransport } = await import("nodemailer");
-  const transporter = createTransport(process.env.SMTP_URL);
+  const transporter = config.smtp
+    ? createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.secure,
+        /* Tanpa nama pengguna = relai yang mengautentikasi lewat IP; itu sah,
+         * dan memaksa objek `auth` kosong justru membuat nodemailer gagal. */
+        ...(config.smtp.user
+          ? { auth: { user: config.smtp.user, pass: config.smtp.pass ?? "" } }
+          : {}),
+      })
+    : createTransport(config.smtpUrl ?? undefined);
+
   const info = await transporter.sendMail({
-    from: fromAddress(),
+    from: config.from,
     to: message.to,
     subject: message.subject,
     text: message.text,
@@ -120,8 +244,12 @@ async function sendViaSmtp(message: MailMessage): Promise<MailResult> {
  *
  * Pemanggil TIDAK menangani perbedaan transport — alur atur-ulang kata sandi
  * sama persis di laptop dan di produksi; yang berbeda hanya ke mana byte-nya
- * pergi.
+ * pergi. `config` boleh disuntikkan (uji kirim konsol operator sudah
+ * memegang konfigurasinya; tidak perlu diselesaikan dua kali).
  */
-export async function sendMail(message: MailMessage): Promise<MailResult> {
-  return resolveTransport() === "smtp" ? sendViaSmtp(message) : sendToFile(message);
+export async function sendMail(message: MailMessage, config?: MailConfig): Promise<MailResult> {
+  const effective = config ?? (await resolveMailConfig());
+  return effective.transport === "smtp"
+    ? sendViaSmtp(message, effective)
+    : sendToFile(message, effective);
 }

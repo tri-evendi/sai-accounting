@@ -8,4 +8,11 @@
 
 import "server-only";
 
-export { sendMail, type MailMessage, type MailResult } from "@/lib/mailer-core";
+export {
+  resolveMailConfig,
+  sendMail,
+  type MailConfig,
+  type MailConfigSource,
+  type MailMessage,
+  type MailResult,
+} from "@/lib/mailer-core";

@@ -81,6 +81,11 @@ export default async function OperatorLayout({ children }: { children: React.Rea
                   label: t("operator.nav.scheduler"),
                   activePrefixes: ["/operator/scheduler"],
                 },
+                {
+                  href: "/operator/mail",
+                  label: t("operator.nav.mail"),
+                  activePrefixes: ["/operator/mail"],
+                },
               ]}
             />
           </div>

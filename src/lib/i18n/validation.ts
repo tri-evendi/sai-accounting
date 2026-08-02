@@ -295,4 +295,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.bankRefRequired": "Referensi bank wajib diisi (minimal 3 karakter)",
   "validation.planRequired": "Paket wajib dipilih",
   "validation.confirmSlugRequired": "Ketik ulang slug tenant untuk melanjutkan",
+  "validation.mailFromRequired": "Alamat pengirim wajib diisi",
+  "validation.mailHostRequired": "Host SMTP wajib diisi untuk transport SMTP",
+  "validation.mailPortRequired": "Port SMTP wajib diisi untuk transport SMTP",
+  "validation.mailPortInvalid": "Port harus angka 1–65535",
 };

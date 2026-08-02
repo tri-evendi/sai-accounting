@@ -72,6 +72,29 @@ if (!mailerInstalled) {
   console.warn("WARNING:", message);
 }
 
+/*
+ * SETTINGS_ENCRYPTION_KEY (#169) — kunci AES-256 untuk kata sandi SMTP yang
+ * disimpan dari konsol operator. TIDAK wajib: tanpa kunci, pengaturan surel
+ * tetap berjalan dari environment seperti sebelumnya; yang ditolak hanyalah
+ * MENYIMPAN kata sandi dari layar (gagal-tertutup — tidak pernah tersimpan
+ * mentah). Kunci yang SALAH BENTUK adalah cerita lain: ia terlihat benar
+ * sampai seseorang mencoba menyimpan, jadi disuarakan di sini.
+ */
+const settingsKey = process.env.SETTINGS_ENCRYPTION_KEY?.trim();
+if (!settingsKey) {
+  console.warn(
+    "WARNING: SETTINGS_ENCRYPTION_KEY belum diset — pengaturan surel di /operator/mail " +
+      "akan MENOLAK menyimpan kata sandi SMTP (surel tetap jalan lewat env). " +
+      "Buat kunci dengan: openssl rand -hex 32"
+  );
+} else if (!/^[0-9a-fA-F]{64}$/.test(settingsKey)) {
+  console.error(
+    "ERROR: SETTINGS_ENCRYPTION_KEY harus 64 karakter heksadesimal (32 byte). " +
+      "Buat dengan: openssl rand -hex 32"
+  );
+  process.exit(1);
+}
+
 if (process.env.NODE_ENV !== "production") {
   console.error(
     "ERROR: NODE_ENV must be 'production' for this app (current:",

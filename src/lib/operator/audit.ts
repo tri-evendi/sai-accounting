@@ -21,7 +21,12 @@ import path from "node:path";
 export type OperatorAuditAction =
   | "operator.login"
   | "operator.login.failed"
-  | "operator.logout";
+  | "operator.logout"
+  /* Pengaturan surel penyedia (#169) — perubahan & uji kirim. `details`-nya
+   * memuat host/port/nama pengguna/alamat pengirim dan penanda "kata sandi
+   * berganti", TIDAK PERNAH kata sandinya sendiri. */
+  | "operator.mail.update"
+  | "operator.mail.test";
 
 export interface OperatorAuditEntry {
   id: string;

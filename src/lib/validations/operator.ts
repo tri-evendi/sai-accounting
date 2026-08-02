@@ -72,3 +72,68 @@ export const deletionExecuteSchema = z.object({
   reason: operatorReasonField,
 });
 export type DeletionExecuteFormInput = z.infer<typeof deletionExecuteSchema>;
+
+/* ── 5. Pengaturan surel penyedia (#169) ───────────────────────────────────── */
+
+/**
+ * Port SMTP. Kosong DIPERBOLEHKAN oleh field-nya sendiri (transport `file`
+ * tidak butuh port); kewajibannya untuk transport `smtp` ditegakkan
+ * `superRefine` di bawah — satu tempat, bukan dua aturan yang bisa menyimpang.
+ */
+const mailPortField = z
+  .union([
+    z.literal(""),
+    z.coerce
+      .number()
+      .int()
+      .min(1, vmsg("validation.mailPortInvalid"))
+      .max(65535, vmsg("validation.mailPortInvalid")),
+  ])
+  .optional();
+
+/**
+ * Pengaturan surel. `reason` TIDAK diminta di sini — berbeda dari empat aksi
+ * tenant di atas, ini konfigurasi milik penyedia sendiri, bukan tindakan
+ * terhadap data pelanggan; jejaknya tetap tercatat lengkap dengan aktornya.
+ *
+ * KATA SANDI: `password` kosong berarti PERTAHANKAN yang tersimpan — layar
+ * hanya pernah melihat `••••`, jadi "simpan" tidak boleh berarti "kosongkan".
+ * Menghapus kata sandi adalah permintaan EKSPLISIT lewat `clearPassword`.
+ */
+export const mailSettingsSchema = z
+  .object({
+    transport: z.enum(["file", "smtp"]),
+    host: z.string().trim().max(191).optional(),
+    port: mailPortField,
+    username: z.string().trim().max(191).optional(),
+    /** Header From — boleh "Nama <alamat@contoh.id>", jadi bukan `z.email()`. */
+    fromAddress: z.string().trim().min(1, vmsg("validation.mailFromRequired")).max(191),
+    password: z.string().max(200).optional(),
+    clearPassword: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.transport !== "smtp") return;
+    if (!value.host?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["host"],
+        message: vmsg("validation.mailHostRequired"),
+      });
+    }
+    if (value.port === "" || value.port === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["port"],
+        message: vmsg("validation.mailPortRequired"),
+      });
+    }
+  });
+export type MailSettingsFormInput = z.infer<typeof mailSettingsSchema>;
+
+/** Uji kirim — satu alamat yang diketik operator. Konfigurasi surel yang tak
+ *  bisa diuji adalah konfigurasi yang baru ketahuan salah saat pelanggan
+ *  pertama mendaftar. */
+export const mailTestSchema = z.object({
+  to: z.email(vmsg("validation.emailInvalid")).max(191).trim(),
+});
+export type MailTestFormInput = z.infer<typeof mailTestSchema>;

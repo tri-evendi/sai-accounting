@@ -51,6 +51,19 @@ docker-compose*.yml
 # Karena itu polanya kini SELURUH `.sql` di mana pun, dengan satu pengecualian
 # yang memang wajib ada di image: SQL migration. Bentuknya sengaja disamakan
 # dengan `.gitignore`, yang sejak awal sudah benar.
+# ⚠️ KETIGA pohon migration wajib disebut satu per satu. Pengecualian ini dulu
+# hanya menyebut `prisma/migrations` — pohon migration PERUSAHAAN — sementara
+# sejak #104/#134/#137 ada dua pohon lagi: KENDALI dan PLATFORM. Keduanya ikut
+# tersaring `**/*.sql`, jadi direktori migration-nya masuk ke image dalam
+# keadaan KOSONG: `migrate deploy` menemukan 9 migration lalu berhenti dengan
+# P3015 "Could not find the migration file at migration.sql".
+#
+# Kegagalannya berisik, bukan senyap — tapi hanya muncul saat menggelar, dan
+# tidak ada build produksi yang berhasil sejak #160, jadi tidak ada yang pernah
+# melihatnya sampai penggelaran #151. Menambah pohon migration keempat berarti
+# menambah barisnya di sini juga.
 **/*.sql
 !prisma/migrations/**/*.sql
+!prisma/control/migrations/**/*.sql
+!prisma/platform/migrations/**/*.sql
 backups/

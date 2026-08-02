@@ -65,7 +65,11 @@ function LoginForm() {
     getSession().then((session) => {
       const destination = resolvePostLoginPath(
         session?.user?.mustChangePassword,
-        session?.user?.companyId,
+        {
+          companyId: session?.user?.companyId,
+          tenantSlug: session?.user?.tenantSlug,
+          companySlug: session?.user?.companySlug,
+        },
         session?.user?.companyCount,
         callbackUrl
       );
@@ -95,7 +99,11 @@ function LoginForm() {
     router.push(
       resolvePostLoginPath(
         session?.user?.mustChangePassword,
-        session?.user?.companyId,
+        {
+          companyId: session?.user?.companyId,
+          tenantSlug: session?.user?.tenantSlug,
+          companySlug: session?.user?.companySlug,
+        },
         session?.user?.companyCount,
         callbackUrl
       )

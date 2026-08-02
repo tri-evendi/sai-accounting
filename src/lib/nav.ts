@@ -24,6 +24,7 @@
  */
 
 import { can, type Permission } from "@/lib/authz";
+import { appPath } from "@/lib/tenant-routes";
 import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import type { TermKey } from "@/lib/labels";
@@ -306,9 +307,17 @@ export function visibleNavHrefs(
  * satu kelompok berisi menu yang saling berawalan sama.
  */
 export function activeNavHref(pathname: string, hrefs: string[]): string | null {
+  /*
+   * Awalan `/t/{tenant}/{company}` dibuang lebih dulu (issue #157): tabel menu
+   * di berkas ini ditulis dalam jalur lama, dan menuliskannya ulang dalam
+   * bentuk bertenant mustahil — slugnya baru diketahui saat permintaan
+   * berjalan. Tanpa langkah ini menu tidak pernah tersorot di halaman mana pun,
+   * dan "tidak ada yang tersorot" terbaca sebagai tersesat.
+   */
+  const path = appPath(pathname);
   let best: string | null = null;
   for (const href of hrefs) {
-    if (pathname === href || pathname.startsWith(`${href}/`)) {
+    if (path === href || path.startsWith(`${href}/`)) {
       if (!best || href.length > best.length) best = href;
     }
   }

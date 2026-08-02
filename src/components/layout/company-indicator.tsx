@@ -34,7 +34,7 @@
  * tautan ke pemilihnya.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { Building2, ChevronsUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";

@@ -24,6 +24,7 @@ import { Building2, Check, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+import { tenantPath } from "@/lib/tenant-routes";
 
 /**
  * Jalan keluar dari layar "belum ada perusahaan untuk akun ini".
@@ -87,15 +88,25 @@ export function CompanyChoices({
   activeId: number | null;
 }) {
   const t = useT();
-  const { update } = useSession();
+  const { data: session, update } = useSession();
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  async function open(companyId: number) {
+  async function open(companyId: number, companySlug: string) {
     setBusyId(companyId);
     // Keanggotaannya diperiksa ULANG di server (lihat callback `jwt` di
     // lib/auth.ts) — angka yang dikirim dari sini tidak pernah dipercaya.
     await update({ companyId });
-    window.location.assign("/dashboard");
+    /*
+     * Langsung ke jalur kanonik bila slug tenantnya ada (issue #157): lewat
+     * `/dashboard` pun sampai, tapi itu satu pantulan tambahan tepat pada
+     * langkah yang paling sering diulang orang bermulti-PT. Tanpa slug tenant
+     * — sesi terbitan sebelum #157 — jalur lama tetap benar; pengarah
+     * `/dashboard` yang mencarikan slugnya ke basis data.
+     */
+    const tenantSlug = session?.user?.tenantSlug;
+    window.location.assign(
+      tenantSlug ? tenantPath(tenantSlug, companySlug, "/dashboard") : "/dashboard"
+    );
   }
 
   return (
@@ -126,7 +137,7 @@ export function CompanyChoices({
                   size="sm"
                   className="shrink-0 cursor-pointer"
                   disabled={busyId !== null}
-                  onClick={() => void open(company.id)}
+                  onClick={() => void open(company.id, company.slug)}
                 >
                   {busyId === company.id
                     ? t("auth.selectCompany.switching")

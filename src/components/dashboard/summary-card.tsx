@@ -19,7 +19,7 @@
  * sentence is *also* set as the heading's `title`, so the hover affordance the
  * issue asked for exists too — it is just not the only way to get the sentence.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 import {

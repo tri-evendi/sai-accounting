@@ -90,8 +90,17 @@ const UNGUARDED_PAGE_GROUPS = ["(auth)"];
 
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
-  // Beranda terbuka untuk semua peran; menjaga sendiri dengan auth() dan
-  // menyusun isinya per peran di server.
+  // Beranda terbuka untuk semua peran, jadi tidak ada satu izin yang bisa ia
+  // deklarasikan. Ia menjaga diri dengan auth() + `enterCompanyFromRoute`
+  // (konteks perusahaan dari JALUR, keanggotaan diverifikasi permintaan ini,
+  // gagal = 404) dan menyusun isinya per peran di server.
+  "(dashboard)/t/[tenantSlug]/[companySlug]/dashboard/page.tsx",
+  // `/dashboard` TELANJANG (issue #157): bukan halaman, melainkan pengarah.
+  // Tidak ada query di dalamnya — hanya auth() lalu `resolvePostLoginPath`.
+  // Ia tinggal di jalur lama karena `/dashboard` adalah tujuan bawaan seluruh
+  // aplikasi DAN karena proxy tidak bisa memantulkan token tanpa slug: yang
+  // belum memilih PT, yang belum punya PT, dan sesi terbitan sebelum #157
+  // justru rombongan yang paling butuh jawaban benar.
   "(dashboard)/dashboard/page.tsx",
 ]);
 
@@ -378,9 +387,10 @@ describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
     "(auth)/select-company/page.tsx", // pemilih perusahaan itu sendiri
     "(auth)/feature-inactive/page.tsx",
     "(auth)/setup-required/page.tsx",
-    // Beranda telanjang /dashboard: terbuka untuk semua peran (lihat
-    // PAGE_EXCEPTIONS), menjaga diri dengan auth() dan memantulkan sesi tanpa
-    // perusahaan ke /select-company — pembacaan untuk PANTULAN, bukan query.
+    // `/dashboard` TELANJANG (#157): pengarah tanpa satu pun query. companyId
+    // dibaca HANYA untuk memilih tujuan pantulan — dan slug jalurnya dicari ke
+    // basis data, tidak ditebak dari sesi. Beranda sungguhannya sudah pindah ke
+    // /t/{tenant}/{company}/dashboard dan mengambil perusahaannya dari JALUR.
     "(dashboard)/dashboard/page.tsx",
     // Self-scoped: daftar PT milik pemanggil + PT aktifnya, untuk pemilih &
     // penukar perusahaan — dipanggil justru saat konteks BELUM ada.

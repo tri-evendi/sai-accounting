@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { BellRing } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 

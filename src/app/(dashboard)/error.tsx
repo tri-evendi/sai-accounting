@@ -11,7 +11,7 @@
  * mencoba lagi (`reset()`) atau pindah halaman tanpa kehilangan konteks.
  */
 import { useEffect } from "react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

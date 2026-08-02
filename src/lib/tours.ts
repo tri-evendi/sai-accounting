@@ -34,6 +34,7 @@
 
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
+import { appPath } from "@/lib/tenant-routes";
 export interface TourStep {
   /** Judul langkah dalam bahasa SUMBER (dipakai tes; layar memakai kuncinya). */
   title: string;
@@ -220,7 +221,10 @@ export const TOURS: TourDef[] = [
 
 /** Tur untuk sebuah path, atau `null` bila halaman itu belum punya tur. */
 export function tourForPath(pathname: string): TourDef | null {
-  return TOURS.find((tour) => tour.path === pathname) ?? null;
+  // Jalur bertenant (#157) dilucuti awalannya lebih dulu — `path` di tabel tur
+  // ditulis dalam bentuk lama, dan slugnya baru ada saat permintaan berjalan.
+  const path = appPath(pathname);
+  return TOURS.find((tour) => tour.path === path) ?? null;
 }
 
 /**

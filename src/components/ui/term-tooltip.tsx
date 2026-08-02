@@ -27,7 +27,7 @@
  *     pembukaan via hover TIDAK mencuri fokus keyboard.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 import { useRef, useState } from "react";
 import { HelpCircle, ArrowRight } from "lucide-react";

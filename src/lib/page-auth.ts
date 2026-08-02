@@ -6,10 +6,12 @@ import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
 import { enterCompanyFromSession } from "@/lib/company-session";
+import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import { resolvePostLoginPath } from "@/lib/post-login";
-import { redirect } from "next/navigation";
+import { tenantPath } from "@/lib/tenant-routes";
+import { notFound, redirect } from "next/navigation";
 
 /**
  * SATU-SATUNYA penjaga halaman dashboard (audit RBAC fase 1–4; lihat
@@ -29,7 +31,28 @@ export type PageSession = Omit<Session, "user"> & {
   user: NonNullable<Session["user"]> & { role: string };
 };
 
-export async function requirePagePermission(permission: Permission): Promise<PageSession> {
+/**
+ * Argumen KEDUA penjaga (issue #157): parameter jalur halaman bertenant.
+ *
+ * Halaman di bawah `/t/[tenantSlug]/[companySlug]/…` cukup meneruskan prop
+ * `params` miliknya sendiri — Next mengoper SEMUA segmen dinamis leluhur ke
+ * setiap halaman di bawahnya, jadi `params` sebuah halaman `[id]` pun sudah
+ * memuat kedua slug ini. Diterima dalam bentuk Promise maupun objek biasa
+ * supaya penjaga tidak memaksa pemanggilnya meng-`await` lebih dulu.
+ *
+ * Halaman yang BELUM dimigrasikan memanggil penjaga tanpa argumen ini dan tetap
+ * mengambil perusahaannya dari sesi — itulah yang membuat migrasi bisa berjalan
+ * sebatch demi sebatch tanpa satu pun halaman mati di tengah jalan.
+ */
+export type PageRouteParams =
+  | TenantRouteParams
+  | Promise<TenantRouteParams>
+  | Promise<{ tenantSlug: string; companySlug: string } & Record<string, unknown>>;
+
+export async function requirePagePermission(
+  permission: Permission,
+  route?: PageRouteParams
+): Promise<PageSession> {
   const session = await auth();
 
   if (!session?.user) {
@@ -37,14 +60,64 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
   }
 
   /*
-   * Konteks perusahaan (issue #104) — DI SINI, sebelum gerbang mana pun.
+   * Konteks perusahaan — DI SINI, sebelum gerbang mana pun.
    *
    * Tanpa ini setiap query di halaman akan melempar: sejak buku besar menjadi
    * satu basis data per PT, `prisma` menolak menebak perusahaan mana yang
-   * dimaksud. Ketiga kegagalannya dibedakan dengan sengaja — orang yang belum
-   * MEMILIH perusahaan tidak sedang punya masalah kredensial, jadi ia tidak
-   * dilempar ke halaman masuk untuk mengetik ulang kata sandinya.
+   * dimaksud.
+   *
+   * DUA JALAN, dan bedanya bukan gaya (issue #157):
+   *
+   *   • dengan `route` — perusahaan datang dari URL dan keanggotaannya dibaca
+   *     ULANG dari basis data kendali pada permintaan ini. Gagal apa pun
+   *     (slug tak ada, nonaktif, bukan anggota, tenant lain) = 404 yang sama
+   *     persis; lihat `company-route.ts`.
+   *   • tanpa `route` — jalur lama: perusahaan dari sesi. Ketiga kegagalannya
+   *     dibedakan dengan sengaja — orang yang belum MEMILIH perusahaan tidak
+   *     sedang punya masalah kredensial, jadi ia tidak dilempar ke halaman
+   *     masuk untuk mengetik ulang kata sandinya.
    */
+  if (route) {
+    const params = await route;
+    const scoped = await enterCompanyFromRoute({
+      tenantSlug: params.tenantSlug,
+      companySlug: params.companySlug,
+      userId: session.user.id,
+    });
+    if (!scoped.ok) {
+      if (scoped.reason === "no-session") redirect("/login");
+      notFound();
+    }
+
+    /*
+     * Sesi DITIMPA oleh kebenaran jalur — untuk permintaan ini saja, di memori.
+     *
+     * Bukan kosmetik: `canEffective`, Mode Akuntan, dan seluruh tampilan di
+     * bawah halaman ini membaca `session.user.role`, dan peran di JWT adalah
+     * peran di perusahaan yang TERAKHIR dibuka. Membiarkannya lewat berarti
+     * seorang `finance_manager` di PT A membuka buku PT B — tempat ia hanya
+     * `staff` — dengan hak PT A. Cookie-nya sendiri disamakan di klien (lihat
+     * `CompanySessionSync`); yang di sini menjaga render SERVER-nya benar sejak
+     * milidetik pertama, tanpa menunggu sinkronisasi itu selesai.
+     */
+    const patched = {
+      ...session,
+      user: {
+        ...session.user,
+        role: scoped.role,
+        accountantMode: scoped.accountantMode,
+        companyId: scoped.companyId,
+        companySlug: scoped.companySlug,
+        companyName: scoped.companyName,
+      },
+    } as PageSession;
+
+    return gateAfterCompany(patched, permission, scoped.companyId, {
+      tenantSlug: scoped.tenantSlug,
+      companySlug: scoped.companySlug,
+    });
+  }
+
   const company = await enterCompanyFromSession(session);
   if (!company.ok) {
     if (company.reason === "no-session") redirect("/login");
@@ -65,6 +138,30 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
       )
     );
   }
+
+  return gateAfterCompany(session as PageSession, permission, company.companyId, null);
+}
+
+/**
+ * Gerbang-gerbang SESUDAH perusahaan diketahui — satu untuk kedua jalan masuk.
+ *
+ * Dipisah bukan untuk kerapian melainkan supaya kedua jalur (URL & sesi) tidak
+ * bisa menyimpang: satu gerbang yang lupa disalin ke jalur baru adalah persis
+ * bentuk lubang yang lahir dari migrasi bertahap.
+ *
+ * `home` menentukan ke mana penolakan dipantulkan. Halaman bertenant dipantulkan
+ * ke berandanya SENDIRI — memantulkannya ke `/dashboard` telanjang akan
+ * memindahkan orang ke perusahaan lain (yang terakhir dibuka) sebagai jawaban
+ * atas "Anda tidak punya izin di sini", dan itu jauh lebih membingungkan
+ * daripada penolakannya sendiri.
+ */
+async function gateAfterCompany(
+  session: PageSession,
+  permission: Permission,
+  companyId: number,
+  home: { tenantSlug: string; companySlug: string } | null
+): Promise<PageSession> {
+  const homePath = home ? tenantPath(home.tenantSlug, home.companySlug, "/dashboard") : "/dashboard";
 
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).
@@ -102,11 +199,11 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
   }
 
   if (!(await canEffective(session.user, permission))) {
-    redirect("/dashboard");
+    redirect(homePath);
   }
 
   if (ACCOUNTING_PERMISSIONS.has(permission) && !effectiveAccountantMode(session.user)) {
-    redirect("/dashboard");
+    redirect(homePath);
   }
 
   /*
@@ -117,9 +214,9 @@ export async function requirePagePermission(permission: Permission): Promise<Pag
    * Status dari basis data KENDALI (cache per-perusahaan) — bukan platform.
    */
   if (isWritePermission(permission)) {
-    const tenantState = await tenantStateForCompany(company.companyId);
+    const tenantState = await tenantStateForCompany(companyId);
     if (readOnlyRefusal(tenantState?.status, permission)) {
-      redirect("/dashboard");
+      redirect(homePath);
     }
   }
 

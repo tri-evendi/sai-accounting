@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { legacyTenantScopedPath, tenantPath } from "@/lib/tenant-routes";
+
 import {
   clientIpFrom,
   configuredOperatorHost,
@@ -170,6 +172,38 @@ export async function proxy(request: NextRequest) {
       );
     }
     return NextResponse.redirect(new URL("/change-password", request.url));
+  }
+
+  /*
+   * ── Jalur LAMA → jalur kanonik `/t/{tenant}/{company}/…` (issue #157) ──────
+   *
+   * 307 (bukan 308/301): permanen akan tersimpan di cache peramban selamanya,
+   * dan perusahaan tujuan di sini bergantung pada SESI — orang yang sama, PT
+   * terakhir yang berbeda, jawaban yang berbeda. Pantulan yang di-cache akan
+   * membawa pengguna ke buku PT lain berbulan-bulan setelah kejadiannya.
+   * 307 juga mempertahankan metode & bodi, jadi POST tidak berubah menjadi GET.
+   *
+   * Hanya jalur yang segmen akarnya SUDAH dimigrasikan yang dipantulkan
+   * (`legacyTenantScopedPath`); sisanya tetap dilayani halaman lama. Tanpa
+   * slug di token — sesi lama, atau pengguna yang belum memilih PT — TIDAK ada
+   * pantulan: penjaga halaman yang mengarahkannya ke /select-company atau
+   * /companies/new, satu-satunya tempat aturan itu ditulis.
+   *
+   * Ini murni pantulan kenyamanan. Otorisasinya tetap di `requirePagePermission`
+   * di jalur tujuan — proxy tidak pernah membuktikan keanggotaan.
+   */
+  if (
+    request.method === "GET" &&
+    !pathname.startsWith("/api/") &&
+    legacyTenantScopedPath(pathname)
+  ) {
+    const tenantSlug = typeof token.tenantSlug === "string" ? token.tenantSlug : null;
+    const companySlug = typeof token.companySlug === "string" ? token.companySlug : null;
+    if (tenantSlug && companySlug) {
+      const target = request.nextUrl.clone();
+      target.pathname = tenantPath(tenantSlug, companySlug, pathname);
+      return NextResponse.redirect(target, 307);
+    }
   }
 
   return NextResponse.next();

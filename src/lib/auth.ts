@@ -113,6 +113,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const only = companies.length === 1 ? companies[0] : null;
         const membership = only ? await membershipFor(user.id, only.companyId) : null;
 
+        /*
+         * Slug tenant (issue #157) — dibaca SEKALI, di sini.
+         *
+         * Ia dibutuhkan untuk menyusun jalur kanonik `/t/{tenant}/{company}/…`
+         * di tempat-tempat yang tidak punya akses basis data: `proxy.ts` (Edge)
+         * yang memantulkan jalur lama, dan halaman /login yang mengarahkan
+         * setelah sesi terbit. Satu pengguna milik TEPAT SATU tenant dan FK-nya
+         * `Restrict` — nilai ini tidak bisa berubah selama sesi hidup, jadi ia
+         * tidak ikut revalidasi berkala di bawah. NULL hanya mungkin di sisa
+         * masa adopsi #134; yang membacanya wajib menyiapkan jalur lama.
+         */
+        const tenant =
+          user.tenantId == null
+            ? null
+            : await controlDb.tenant.findUnique({
+                where: { id: user.tenantId },
+                select: { slug: true },
+              });
+
         return {
           id: String(user.id),
           name: user.name || user.username,
@@ -125,6 +144,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email ?? user.username,
           mustChangePassword: user.mustChangePassword,
           sessionVersion: user.sessionVersion,
+          tenantSlug: tenant?.slug ?? null,
           companyId: only?.companyId ?? null,
           companySlug: only?.slug ?? null,
           companyName: only?.name ?? null,
@@ -141,6 +161,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const u = user as {
           mustChangePassword?: boolean;
           sessionVersion?: number;
+          tenantSlug?: string | null;
           companyId?: number | null;
           companySlug?: string | null;
           companyName?: string | null;
@@ -151,6 +172,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.userId = user.id;
         token.mustChangePassword = u.mustChangePassword ?? false;
         token.sessionVersion = u.sessionVersion ?? 1;
+        token.tenantSlug = u.tenantSlug ?? null;
         token.companyId = u.companyId ?? null;
         token.companySlug = u.companySlug ?? null;
         token.companyName = u.companyName ?? null;
@@ -271,6 +293,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.mustChangePassword === true;
         (session.user as { accountantMode?: boolean | null }).accountantMode =
           (token.accountantMode as boolean | null | undefined) ?? null;
+        (session.user as { tenantSlug: string | null }).tenantSlug =
+          (token.tenantSlug as string | null | undefined) ?? null;
         (session.user as { companyId: number | null }).companyId =
           (token.companyId as number | null | undefined) ?? null;
         (session.user as { companySlug: string | null }).companySlug =

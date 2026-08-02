@@ -15,6 +15,7 @@
  */
 import "dotenv/config";
 import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
+import { userQuotaExceeded } from "../src/lib/invitations";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
@@ -129,6 +130,25 @@ async function main() {
     process.exit(1);
   }
 
+  /*
+   * Kuota `max_users` (#159 temuan 2): skrip operator SENGAJA tidak memblokir —
+   * kadang operator memang harus melampaui kuota (akun darurat, masa
+   * peralihan). Yang tidak boleh adalah kelebihannya SENYAP: tanpa baris ini
+   * tidak ada satu tempat pun yang menandai tenant yang kursinya lewat.
+   * Undangan yang masih menunggu ikut dihitung — aturan kursi yang sama dengan
+   * alur undangan (src/lib/invitations.ts). Menampilkan kelebihan kuota di
+   * ringkasan tenant adalah pekerjaan issue #154.
+   */
+  const [tenant, currentUsers, pendingInvitations] = await Promise.all([
+    controlDb.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, maxUsers: true } }),
+    controlDb.user.count({ where: { tenantId } }),
+    controlDb.invitation.count({
+      where: { tenantId, usedAt: null, expiresAt: { gt: new Date() } },
+    }),
+  ]);
+  const maxUsers = tenant?.maxUsers ?? 0;
+  const willExceedQuota = userQuotaExceeded({ currentUsers, pendingInvitations, maxUsers });
+
   const hashed = await bcrypt.hash(password, 12);
   const user = await controlDb.$transaction(async (tx) => {
     const created = await tx.user.create({
@@ -167,6 +187,16 @@ async function main() {
   console.log(`  Perusahaan: ${company.name} (${company.slug})`);
   console.log(`  Peran:      ${role}`);
   console.log("  Status:     Aktif (tidak dipaksa ganti kata sandi)");
+
+  if (willExceedQuota) {
+    console.warn(
+      `\nPERINGATAN: tenant "${tenant?.slug ?? tenantId}" kini memakai ${currentUsers + 1} akun` +
+        (pendingInvitations > 0 ? ` (+ ${pendingInvitations} undangan menunggu)` : "") +
+        ` dari kuota max_users=${maxUsers} paketnya — MELEBIHI KUOTA.\n` +
+        "Akun tetap dibuat (skrip operator tidak memblokir), tapi selaraskan paketnya:\n" +
+        "  bun run change-plan -- --slug <tenant> --plan <paket>"
+    );
+  }
 
   await controlDb.$disconnect();
 }

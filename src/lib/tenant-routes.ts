@@ -95,6 +95,9 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "returns",
   "sales",
   "settings",
+  // Tinggal di grup rute `(setup)`, bukan `(dashboard)` — grup rute tidak
+  // mengubah URL, jadi segmennya tetap milik ruang nama yang sama (#158).
+  "setup",
   "suppliers",
   "tax",
   "users",
@@ -109,6 +112,22 @@ const MIGRATED = new Set(MIGRATED_ROOT_SEGMENTS);
 export function tenantPath(tenantSlug: string, companySlug: string, path: string): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
   return `${TENANT_ROUTE_PREFIX}/${tenantSlug}/${companySlug}${suffix}`;
+}
+
+/**
+ * Awalan API bertenant (issue #158) — `/api/t/{tenant}/{company}/…`.
+ *
+ * Dipakai OLEH SANGAT SEDIKIT route, dan itu disengaja: bentuk baku lingkup
+ * perusahaan adalah HEADER yang disuntikkan `apiFetch()` (lihat
+ * `lib/company-scope.ts`). Jalur dipakai hanya di tempat header mustahil —
+ * berkas yang diunduh lewat `<a href download>`, yang tidak melewati satu pun
+ * kode kita sebelum permintaannya terkirim.
+ */
+export const TENANT_API_PREFIX = "/api/t";
+
+export function tenantApiPath(tenantSlug: string, companySlug: string, path: string): string {
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${TENANT_API_PREFIX}/${tenantSlug}/${companySlug}${suffix}`;
 }
 
 /** Sudah berbentuk `/t/…`? */

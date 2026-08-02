@@ -67,6 +67,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 // ── Data yang disiapkan server shell ──────────────────────────────────────
 // Pelanggan / kontrak / penerima tidak lagi dikirim sebagai daftar statis
@@ -171,7 +172,7 @@ export function SalesWizard({
         if (!cancelled) setOutstanding(null);
         return;
       }
-      const res = await fetch(`/api/contracts/${contractId}/outstanding`);
+      const res = await apiFetch(`/api/contracts/${contractId}/outstanding`);
       if (cancelled) return;
       if (!res.ok) {
         setError(t("sales.outstandingLoadFailed"));
@@ -208,7 +209,7 @@ export function SalesWizard({
     }
     let cancelled = false;
     (async () => {
-      const res = await fetch(`/api/customers/${id}`);
+      const res = await apiFetch(`/api/customers/${id}`);
       if (!res.ok || cancelled) return;
       const c = (await res.json()) as { name: string; taxExempt?: boolean };
       if (cancelled) return;
@@ -228,7 +229,7 @@ export function SalesWizard({
     if (id == null || consigneeInfo[id]) return;
     let cancelled = false;
     (async () => {
-      const res = await fetch(`/api/consignees/${id}`);
+      const res = await apiFetch(`/api/consignees/${id}`);
       if (!res.ok || cancelled) return;
       const c = (await res.json()) as { name: string; country: string | null };
       if (cancelled) return;
@@ -291,7 +292,7 @@ export function SalesWizard({
   async function finish() {
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/wizard/sales", {
+    const res = await apiFetch("/api/wizard/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildSalesPayload(draft)),

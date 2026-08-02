@@ -51,6 +51,7 @@ import { setLocale } from "@/lib/i18n/actions";
 import { useDictionary, useLocale, useT } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import type { SystemRole } from "@/lib/constants";
+import { apiFetch } from "@/lib/api-fetch";
 
 /** Inisial dari nama untuk avatar (maks 2 huruf), fallback ikon bila kosong. */
 function initials(name: string): string {
@@ -97,7 +98,7 @@ export function UserMenu({
   useEffect(() => {
     if (!open || companies !== null) return;
     let cancelled = false;
-    void fetch("/api/user/companies")
+    void apiFetch("/api/user/companies")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { activeId: number | null; companies: { id: number; name: string }[] } | null) => {
         if (cancelled || !data) return;

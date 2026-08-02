@@ -5,11 +5,9 @@ import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
-import { enterCompanyFromSession } from "@/lib/company-session";
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
-import { resolvePostLoginPath } from "@/lib/post-login";
 import { tenantPath } from "@/lib/tenant-routes";
 import { notFound, redirect } from "next/navigation";
 
@@ -32,7 +30,7 @@ export type PageSession = Omit<Session, "user"> & {
 };
 
 /**
- * Argumen KEDUA penjaga (issue #157): parameter jalur halaman bertenant.
+ * Argumen KEDUA penjaga (issue #157) — WAJIB sejak #158.
  *
  * Halaman di bawah `/t/[tenantSlug]/[companySlug]/…` cukup meneruskan prop
  * `params` miliknya sendiri — Next mengoper SEMUA segmen dinamis leluhur ke
@@ -40,9 +38,12 @@ export type PageSession = Omit<Session, "user"> & {
  * memuat kedua slug ini. Diterima dalam bentuk Promise maupun objek biasa
  * supaya penjaga tidak memaksa pemanggilnya meng-`await` lebih dulu.
  *
- * Halaman yang BELUM dimigrasikan memanggil penjaga tanpa argumen ini dan tetap
- * mengambil perusahaannya dari sesi — itulah yang membuat migrasi bisa berjalan
- * sebatch demi sebatch tanpa satu pun halaman mati di tengah jalan.
+ * Selama migrasi #157 argumen ini opsional, dan halaman yang belum pindah tetap
+ * mengambil perusahaannya dari sesi. Sejak SETIAP halaman berizin hidup di
+ * jalur bertenant (#158, termasuk wizard penyiapan), pilihan itu ditutup: bukan
+ * karena tidak ada yang memakainya lagi, melainkan supaya tidak ada yang BISA
+ * memakainya lagi — halaman baru yang lupa meneruskan `params` ditolak `tsc`,
+ * bukan diam-diam dilayani dengan perusahaan yang terakhir dibuka.
  */
 export type PageRouteParams =
   | TenantRouteParams
@@ -51,7 +52,7 @@ export type PageRouteParams =
 
 export async function requirePagePermission(
   permission: Permission,
-  route?: PageRouteParams
+  route: PageRouteParams
 ): Promise<PageSession> {
   const session = await auth();
 
@@ -66,102 +67,69 @@ export async function requirePagePermission(
    * satu basis data per PT, `prisma` menolak menebak perusahaan mana yang
    * dimaksud.
    *
-   * DUA JALAN, dan bedanya bukan gaya (issue #157):
-   *
-   *   • dengan `route` — perusahaan datang dari URL dan keanggotaannya dibaca
-   *     ULANG dari basis data kendali pada permintaan ini. Gagal apa pun
-   *     (slug tak ada, nonaktif, bukan anggota, tenant lain) = 404 yang sama
-   *     persis; lihat `company-route.ts`.
-   *   • tanpa `route` — jalur lama: perusahaan dari sesi. Ketiga kegagalannya
-   *     dibedakan dengan sengaja — orang yang belum MEMILIH perusahaan tidak
-   *     sedang punya masalah kredensial, jadi ia tidak dilempar ke halaman
-   *     masuk untuk mengetik ulang kata sandinya.
+   * Perusahaan datang dari URL dan keanggotaannya dibaca ULANG dari basis data
+   * kendali pada permintaan ini. Gagal apa pun — slug tak ada, PT nonaktif,
+   * bukan anggota, tenant lain — dijawab 404 yang sama persis; lihat
+   * `company-route.ts`. Sesi tidak lagi punya suara di sini (#158).
    */
-  if (route) {
-    const params = await route;
-    const scoped = await enterCompanyFromRoute({
-      tenantSlug: params.tenantSlug,
-      companySlug: params.companySlug,
-      userId: session.user.id,
-    });
-    if (!scoped.ok) {
-      if (scoped.reason === "no-session") redirect("/login");
-      notFound();
-    }
+  const params = await route;
+  const scoped = await enterCompanyFromRoute({
+    tenantSlug: params.tenantSlug,
+    companySlug: params.companySlug,
+    userId: session.user.id,
+  });
+  if (!scoped.ok) {
+    if (scoped.reason === "no-session") redirect("/login");
+    notFound();
+  }
 
-    /*
-     * Sesi DITIMPA oleh kebenaran jalur — untuk permintaan ini saja, di memori.
-     *
-     * Bukan kosmetik: `canEffective`, Mode Akuntan, dan seluruh tampilan di
-     * bawah halaman ini membaca `session.user.role`, dan peran di JWT adalah
-     * peran di perusahaan yang TERAKHIR dibuka. Membiarkannya lewat berarti
-     * seorang `finance_manager` di PT A membuka buku PT B — tempat ia hanya
-     * `staff` — dengan hak PT A. Cookie-nya sendiri disamakan di klien (lihat
-     * `CompanySessionSync`); yang di sini menjaga render SERVER-nya benar sejak
-     * milidetik pertama, tanpa menunggu sinkronisasi itu selesai.
-     */
-    const patched = {
-      ...session,
-      user: {
-        ...session.user,
-        role: scoped.role,
-        accountantMode: scoped.accountantMode,
-        companyId: scoped.companyId,
-        companySlug: scoped.companySlug,
-        companyName: scoped.companyName,
-      },
-    } as PageSession;
-
-    return gateAfterCompany(patched, permission, scoped.companyId, {
-      tenantSlug: scoped.tenantSlug,
+  /*
+   * Sesi DITIMPA oleh kebenaran jalur — untuk permintaan ini saja, di memori.
+   *
+   * Bukan kosmetik: `canEffective`, Mode Akuntan, dan seluruh tampilan di
+   * bawah halaman ini membaca `session.user.role`, dan peran di JWT adalah
+   * peran di perusahaan yang TERAKHIR dibuka. Membiarkannya lewat berarti
+   * seorang `finance_manager` di PT A membuka buku PT B — tempat ia hanya
+   * `staff` — dengan hak PT A.
+   */
+  const patched = {
+    ...session,
+    user: {
+      ...session.user,
+      role: scoped.role,
+      accountantMode: scoped.accountantMode,
+      companyId: scoped.companyId,
       companySlug: scoped.companySlug,
-    });
-  }
+      companyName: scoped.companyName,
+    },
+  } as PageSession;
 
-  const company = await enterCompanyFromSession(session);
-  if (!company.ok) {
-    if (company.reason === "no-session") redirect("/login");
-    /*
-     * Tanpa perusahaan aktif, arahnya SATU aturan dengan pasca-masuk (#159
-     * temuan 3): NOL perusahaan → /companies/new (pelanggan baru yang belum
-     * membuat PT pertamanya), selainnya → /select-company. Dulu keduanya
-     * dipukul rata ke /select-company; dan karena arah baru datang dari
-     * server, halaman tidak lagi menjawab 200 berisi kerangka "Memuat sesi…"
-     * yang menunggu klien menemukan arahnya sendiri.
-     */
-    redirect(
-      resolvePostLoginPath(
-        session.user.mustChangePassword,
-        null,
-        session.user.companyCount,
-        null
-      )
-    );
-  }
-
-  return gateAfterCompany(session as PageSession, permission, company.companyId, null);
+  return gateAfterCompany(patched, permission, scoped.companyId, {
+    tenantSlug: scoped.tenantSlug,
+    companySlug: scoped.companySlug,
+  });
 }
 
 /**
- * Gerbang-gerbang SESUDAH perusahaan diketahui — satu untuk kedua jalan masuk.
+ * Gerbang-gerbang SESUDAH perusahaan diketahui.
  *
- * Dipisah bukan untuk kerapian melainkan supaya kedua jalur (URL & sesi) tidak
- * bisa menyimpang: satu gerbang yang lupa disalin ke jalur baru adalah persis
- * bentuk lubang yang lahir dari migrasi bertahap.
+ * Dipisah dari penyelesaian perusahaan bukan untuk kerapian melainkan supaya
+ * urutannya terbaca sebagai satu daftar: gerbang yang lupa dipasang adalah
+ * bentuk lubang yang paling mudah lahir dari migrasi bertahap.
  *
- * `home` menentukan ke mana penolakan dipantulkan. Halaman bertenant dipantulkan
- * ke berandanya SENDIRI — memantulkannya ke `/dashboard` telanjang akan
- * memindahkan orang ke perusahaan lain (yang terakhir dibuka) sebagai jawaban
- * atas "Anda tidak punya izin di sini", dan itu jauh lebih membingungkan
- * daripada penolakannya sendiri.
+ * `home` menentukan ke mana penolakan dipantulkan, dan sejak #158 ia SELALU
+ * ada. Halaman dipantulkan ke berandanya SENDIRI — memantulkannya ke
+ * `/dashboard` telanjang akan memindahkan orang ke perusahaan lain (yang
+ * terakhir dibuka) sebagai jawaban atas "Anda tidak punya izin di sini", dan
+ * itu jauh lebih membingungkan daripada penolakannya sendiri.
  */
 async function gateAfterCompany(
   session: PageSession,
   permission: Permission,
   companyId: number,
-  home: { tenantSlug: string; companySlug: string } | null
+  home: { tenantSlug: string; companySlug: string }
 ): Promise<PageSession> {
-  const homePath = home ? tenantPath(home.tenantSlug, home.companySlug, "/dashboard") : "/dashboard";
+  const homePath = tenantPath(home.tenantSlug, home.companySlug, "/dashboard");
 
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).
@@ -179,8 +147,17 @@ async function gateAfterCompany(
    * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
    */
   if (permission !== "setup.manage" && !(await isSetupDone())) {
+    /*
+     * Wizard-nya ikut bertenant sejak #158, jadi tujuannya harus disusun dari
+     * perusahaan YANG SEDANG DIBUKA. Memantulkan ke `/setup` telanjang akan
+     * membuat proxy menyusun jalurnya dari SESI — dan orang yang membuka buku
+     * PT A lewat tautan dalam akan mendarat di wizard PT B, tempat ia mungkin
+     * menuliskan saldo awal yang salah kamar.
+     */
     redirect(
-      (await canEffective(session.user, "setup.manage")) ? "/setup" : "/setup-required"
+      (await canEffective(session.user, "setup.manage"))
+        ? tenantPath(home.tenantSlug, home.companySlug, "/setup")
+        : "/setup-required"
     );
   }
 

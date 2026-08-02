@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function NewConsigneeForm() {
   const router = useAppRouter();
@@ -29,7 +30,7 @@ export function NewConsigneeForm() {
       notes: formData.get("notes"),
     };
 
-    const res = await fetch("/api/consignees", {
+    const res = await apiFetch("/api/consignees", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

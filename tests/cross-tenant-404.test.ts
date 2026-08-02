@@ -46,7 +46,13 @@ const state = vi.hoisted(() => ({
   }>,
   invitations: [] as Array<{ id: number; companyId: number; usedAt: Date | null }>,
   payments: [] as Array<Record<string, unknown>>,
+  /** Lingkup perusahaan yang dibawa permintaan — pengganti companyId di sesi. */
+  scopeTenantSlug: null as string | null,
+  scopeCompanySlug: null as string | null,
 }));
+
+/** id tenant → slugnya di alamat. */
+const TENANT_SLUGS: Record<number, string> = { 1: "tenant-a", 2: "tenant-b" };
 
 vi.mock("@/lib/auth", () => ({
   auth: async () => state.session,
@@ -95,6 +101,23 @@ vi.mock("@/lib/control-db", () => ({
         const row = state.companies.get(where.id);
         return row ? { id: where.id, ...row } : null;
       },
+      /* Kunci yang TIDAK dikirim = tanpa penyaring — lihat catatan di
+       * platformInvoice.findFirst. Route undangan menyaring `tenantId` DI
+       * DALAM where sejak #158; kalau saringan itu hilang, fake ini
+       * mengembalikan PT pelanggan lain dan tesnya merah. */
+      findFirst: async ({
+        where,
+      }: {
+        where: { slug: string; tenantId?: number; tenant?: { slug: string } };
+      }) => {
+        for (const [id, row] of state.companies) {
+          if (row.slug !== where.slug) continue;
+          if (where.tenantId !== undefined && row.tenantId !== where.tenantId) continue;
+          if (where.tenant && TENANT_SLUGS[row.tenantId] !== where.tenant.slug) continue;
+          return { id, ...row };
+        }
+        return null;
+      },
     },
     invitation: {
       /* Kunci yang tidak dikirim = tanpa penyaring — lihat catatan di
@@ -121,6 +144,20 @@ vi.mock("@/lib/control-db", () => ({
   },
 }));
 
+/* Lingkup perusahaan dibawa PERMINTAAN sejak #158 (header yang disuntikkan
+ * `apiFetch` dari alamat yang sedang dibuka). Di luar lingkup permintaan Next,
+ * `headers()` melempar — jadi ia dipalsukan, bukan dilewati. */
+vi.mock("next/headers", () => ({
+  headers: async () => ({
+    get: (name: string) =>
+      name === "x-tenant-slug"
+        ? state.scopeTenantSlug
+        : name === "x-company-slug"
+          ? state.scopeCompanySlug
+          : null,
+  }),
+}));
+
 /* Jejak audit menulis ke basis data (platform & PT) — di tes ini cukup
  * dibuktikan TIDAK menghalangi jalur 404/409; isinya urusan tes lain. */
 vi.mock("@/lib/audit", () => ({ writeAuditLog: vi.fn(async () => {}) }));
@@ -135,9 +172,19 @@ const TENANT_B = 2;
 const COMPANY_A = 11; // milik tenant A — PT pemanggil
 const COMPANY_B = 22; // milik tenant B — PT asing
 
+/**
+ * Pemilik tenant A, membuka alamat sebuah PT — atau tidak satu pun.
+ *
+ * `companyId` di sesi sengaja SELALU `null` sejak #158: perusahaan tidak lagi
+ * hidup di cookie, dan menaruhnya di sini akan membuat tes ini lulus
+ * seandainya sebuah route diam-diam membacanya kembali.
+ */
 function openOwnerSession(companyId: number | null): void {
+  const row = companyId === null ? null : state.companies.get(companyId);
+  state.scopeCompanySlug = row?.slug ?? null;
+  state.scopeTenantSlug = row ? TENANT_SLUGS[row.tenantId] : null;
   state.session = {
-    user: { id: "1", name: "Pemilik A", email: "pemilik@tenant-a.test", companyId },
+    user: { id: "1", name: "Pemilik A", email: "pemilik@tenant-a.test", companyId: null },
   };
   state.membership = {
     tenantId: TENANT_A,
@@ -175,6 +222,8 @@ beforeEach(() => {
   state.session = null;
   state.membership = null;
   state.payments = [];
+  state.scopeTenantSlug = null;
+  state.scopeCompanySlug = null;
   state.companies = new Map([
     [
       COMPANY_A,
@@ -242,11 +291,12 @@ describe("undangan — DELETE /api/tenant/invitations/[id]", () => {
   });
 });
 
-describe("perusahaan tenant LAIN sebagai konteks sesi — jawaban SERAGAM dengan 'belum memilih PT'", () => {
-  it("GET undangan dengan companyId milik tenant B ≡ tanpa perusahaan sama sekali (409 company_required)", async () => {
-    // Sesi bisa menunjuk perusahaan apa pun; baris registry yang membuktikan
-    // PT itu milik tenant siapa. PT asing TIDAK dijawab "bukan punyamu" —
-    // kalimat itu sendiri sudah membocorkan bahwa PT-nya ada.
+describe("perusahaan tenant LAIN sebagai lingkup permintaan — jawaban SERAGAM dengan 'belum memilih PT'", () => {
+  it("GET undangan dengan lingkup milik tenant B ≡ tanpa perusahaan sama sekali (409 company_required)", async () => {
+    // Header lingkup bisa menyebut perusahaan apa pun; `tenantId` di dalam
+    // WHERE-lah yang membuat baris pelanggan lain tidak pernah terbaca. PT
+    // asing TIDAK dijawab "bukan punyamu" — kalimat itu sendiri sudah
+    // membocorkan bahwa PT-nya ada.
     openOwnerSession(COMPANY_B);
     const foreignContext = await invitationsGet();
     openOwnerSession(null);

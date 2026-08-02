@@ -13,7 +13,8 @@
  * on the server, rather than valued 1:1.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
+import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -93,7 +94,7 @@ export function SetupWizard({
   suppliers: Party[];
 }) {
   const t = useT();
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
 
   /**
@@ -342,7 +343,7 @@ export function SetupWizard({
     };
 
     try {
-      const res = await fetch("/api/setup", {
+      const res = await apiFetch("/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -48,13 +48,25 @@ describe("resolvePostLoginPath", () => {
 describe("kedua pintu memakai aturan yang sama — tanpa salinan", () => {
   const read = (...parts: string[]) => readFileSync(join(__dirname, "..", ...parts), "utf8");
 
-  it("penjaga halaman server mengarahkan lewat resolvePostLoginPath", () => {
+  it("penjaga halaman TIDAK LAGI memutuskan tujuan pasca-masuk — perusahaannya dari URL (issue #158)", () => {
+    /*
+     * Sampai #158 penjaga halaman punya cabang "sesi tanpa perusahaan aktif"
+     * dan memantulkannya lewat `resolvePostLoginPath`. Cabang itu hilang
+     * bersama perusahaan-dari-sesi: setiap halaman berizin kini hidup di
+     * `/t/{tenant}/{company}/…`, jadi keadaan "belum memilih PT" tidak bisa
+     * lagi terjadi DI DALAM sebuah halaman — ia hanya ada sebelum masuk ke
+     * jalur bertenant, dan di sanalah aturannya tinggal (/login dan /dashboard
+     * telanjang, dua tes di bawah).
+     *
+     * Aturan lama "semua tanpa perusahaan → /select-company" tetap tidak boleh
+     * hidup kembali sebagai literal di penjaga.
+     */
     const src = read("src", "lib", "page-auth.ts");
-    expect(src).toContain('from "@/lib/post-login"');
-    expect(src).toContain("resolvePostLoginPath(");
-    // Aturan lama "semua tanpa perusahaan → /select-company" tidak boleh
-    // hidup kembali sebagai literal di penjaga.
-    expect(src).not.toMatch(/redirect\(\s*company\.reason === "no-session"[^)]*"\/select-company"/);
+    expect(src).not.toContain("resolvePostLoginPath(");
+    expect(src).not.toContain('"/select-company"');
+    // Dan penjaga tidak boleh punya jalan masuk kedua yang mengambil
+    // perusahaan dari sesi.
+    expect(src).not.toContain("enterCompanyFromSession");
   });
 
   it("halaman /login mengimpor, bukan mendefinisikan ulang", () => {

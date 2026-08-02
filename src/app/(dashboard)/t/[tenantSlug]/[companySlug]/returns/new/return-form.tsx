@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { Loader2, Info, Trash2, Plus } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ItemOption {
   id: number;
@@ -103,14 +104,14 @@ export function ReturnForm({
     setInvoiceDetail(null);
     setSalesLines({});
     if (!id) return;
-    const res = await fetch(`/api/returns/sales?invoiceId=${id}`);
+    const res = await apiFetch(`/api/returns/sales?invoiceId=${id}`);
     if (res.ok) setInvoiceDetail(await res.json());
   }, []);
 
   const loadPurchase = useCallback(async (id: string) => {
     setPurchaseDetail(null);
     if (!id) return;
-    const res = await fetch(`/api/returns/purchase?purchaseId=${id}`);
+    const res = await apiFetch(`/api/returns/purchase?purchaseId=${id}`);
     if (res.ok) setPurchaseDetail(await res.json());
   }, []);
 

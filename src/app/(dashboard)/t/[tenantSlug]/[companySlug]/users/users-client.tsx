@@ -22,6 +22,7 @@ import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
 import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface User {
   id: number;
@@ -66,7 +67,7 @@ export function UsersClient({
   const { toast } = useToast();
 
   async function fetchUsers() {
-    const res = await fetch("/api/users");
+    const res = await apiFetch("/api/users");
     if (res.ok) {
       setUsers(await res.json());
     } else if (res.status === 403) {
@@ -77,7 +78,7 @@ export function UsersClient({
 
   async function fetchInvitations() {
     if (!canInvite) return;
-    const res = await fetch("/api/tenant/invitations");
+    const res = await apiFetch("/api/tenant/invitations");
     if (res.ok) setInvitations(await res.json());
   }
 
@@ -85,7 +86,7 @@ export function UsersClient({
     let cancelled = false;
 
     async function load() {
-      const res = await fetch("/api/users");
+      const res = await apiFetch("/api/users");
       if (cancelled) return;
       if (res.ok) {
         setUsers(await res.json());
@@ -95,7 +96,7 @@ export function UsersClient({
       setLoading(false);
 
       if (canInvite) {
-        const inv = await fetch("/api/tenant/invitations");
+        const inv = await apiFetch("/api/tenant/invitations");
         if (!cancelled && inv.ok) setInvitations(await inv.json());
       }
     }
@@ -118,7 +119,7 @@ export function UsersClient({
     setError("");
 
     const formData = new FormData(e.currentTarget);
-    const res = await fetch("/api/tenant/invitations", {
+    const res = await apiFetch("/api/tenant/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -141,7 +142,7 @@ export function UsersClient({
   }
 
   async function handleRevokeInvitation(id: number) {
-    const res = await fetch(`/api/tenant/invitations/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/tenant/invitations/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast(t("users.inviteRevoked"));
       await fetchInvitations();
@@ -152,7 +153,7 @@ export function UsersClient({
   }
 
   async function handleDelete(userId: number) {
-    const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/users/${userId}`, { method: "DELETE" });
     if (res.ok) {
       toast(t("users.deleted"));
       if (permissionsFor === userId) setPermissionsFor(null);
@@ -164,7 +165,7 @@ export function UsersClient({
   }
 
   async function handleResetPassword(userId: number) {
-    const res = await fetch(`/api/users/${userId}`, {
+    const res = await apiFetch(`/api/users/${userId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: "changeme123" }),

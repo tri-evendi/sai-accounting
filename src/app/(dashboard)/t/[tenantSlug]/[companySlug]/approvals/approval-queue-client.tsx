@@ -49,6 +49,7 @@ import type { ApprovalRequestView } from "@/lib/approval-queue";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import type { ColumnDef } from "@tanstack/react-table";
+import { apiFetch } from "@/lib/api-fetch";
 
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
 function StatusBadge({ status, label }: { status: string; label: string }) {
@@ -193,7 +194,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   async function decide(row: ApprovalRequestView, decision: "approve" | "reject") {
     setBusyId(row.id);
     try {
-      const res = await fetch(`/api/approvals/${row.id}`, {
+      const res = await apiFetch(`/api/approvals/${row.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision, note: notes[row.id]?.trim() || null }),
@@ -224,7 +225,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   async function resubmit(row: ApprovalRequestView) {
     setBusyId(row.id);
     try {
-      const res = await fetch(`/api/approvals/${row.id}/resubmit`, {
+      const res = await apiFetch(`/api/approvals/${row.id}/resubmit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: notes[row.id]?.trim() || null }),
@@ -247,7 +248,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   async function markRead(row: ApprovalRequestView) {
     setBusyId(row.id);
     try {
-      const res = await fetch(`/api/approvals/${row.id}`, { method: "PATCH" });
+      const res = await apiFetch(`/api/approvals/${row.id}`, { method: "PATCH" });
       if (!res.ok) {
         toast(t("approvals.errMarkRead"), "error");
         return;

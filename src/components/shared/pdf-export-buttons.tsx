@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@/lib/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ContractPDFData {
   contractNo: string;
@@ -192,7 +193,7 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
   async function handleExport() {
     setLoading(true);
     try {
-      const res = await fetch("/api/reports/export", {
+      const res = await apiFetch("/api/reports/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

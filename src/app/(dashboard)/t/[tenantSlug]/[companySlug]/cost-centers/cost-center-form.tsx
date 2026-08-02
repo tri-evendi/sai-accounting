@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { costCenterSchema, type CostCenterInput } from "@/lib/validations/cost-center";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface CostCenterFormValues extends CostCenterInput {
   id?: number;
@@ -68,7 +69,7 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
   useEffect(() => {
     // Hanya yang AKTIF yang boleh jadi induk baru — cabang yang sudah
     // dipensiunkan tidak menerima anak baru (pola journal-form).
-    fetch("/api/cost-centers?activeOnly=1")
+    apiFetch("/api/cost-centers?activeOnly=1")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: ParentOption[]) => setParents(data))
       .catch(() => setParents([]));

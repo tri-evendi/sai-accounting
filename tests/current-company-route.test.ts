@@ -1,25 +1,25 @@
 /**
- * DUA TAB, DUA PERUSAHAAN — kegagalan yang issue #157 hapus, dibuktikan di
- * tempat kegagalannya benar-benar terjadi: `currentCompany()`.
+ * DUA TAB, DUA PERUSAHAAN — kegagalan yang issue #157 hapus dan #158 tutup,
+ * dibuktikan di tempat kegagalannya benar-benar terjadi: `currentCompany()`.
  *
- * ══ KEADAAN LAMA, DITIRUKAN LEBIH DULU ═════════════════════════════════════
- * Sebelum issue ini, satu-satunya jawaban selain konteks ALS adalah SESI. Cookie
- * sesi dibagi seluruh tab, jadi urutannya begini: tab A membuka buku PT A; tab B
- * berganti ke PT B dan menulis ulang cookie-nya; tab A — yang masih memperlihatkan
- * PT A di layar — menjalankan query berikutnya dan mendapat PT B. Tidak ada galat.
- * Tes pertama di bawah MENIRUKAN keadaan itu: tanpa konteks jalur, jawabannya
- * memang perusahaan di sesi, siapa pun yang sedang tampil di layar.
+ * ══ KEADAAN LAMA ═══════════════════════════════════════════════════════════
+ * Sampai #158, jawaban terakhir `currentCompany()` adalah SESI. Cookie sesi
+ * dibagi seluruh tab, jadi urutannya begini: tab A membuka buku PT A; tab B
+ * berganti ke PT B dan menulis ulang cookie-nya; tab A — yang masih
+ * memperlihatkan PT A di layar — menjalankan query berikutnya dan mendapat
+ * PT B. Tidak ada galat, tidak ada jejak.
  *
  * ══ APA YANG BERUBAH ═══════════════════════════════════════════════════════
- * Penjaga halaman kini menuliskan perusahaan DARI JALUR ke penyimpan yang
- * lingkupnya satu permintaan, dan `currentCompany()` membacanya SEBELUM sesi.
- * Sejak itu, halaman `/t/acme/cv-maju/…` menjalankan querynya di buku CV Maju
- * walaupun cookie di tab sebelah sudah berpindah ke PT lain.
+ * Penjaga menuliskan perusahaan DARI PERMINTAAN ke penyimpan yang lingkupnya
+ * satu permintaan, dan sejak #158 sesi TIDAK LAGI menjadi jawaban cadangan sama
+ * sekali. Permintaan tanpa konteks tidak jatuh ke perusahaan mana pun — ia
+ * MELEMPAR. Tes pertama di bawah mengunci justru itu: bukan "jawabannya benar",
+ * melainkan "tidak ada jawaban yang bisa diarang".
  *
  * Kenapa penyimpan itu perlu padahal penjaga juga memanggil `enterCompanyContext`:
  * `company-context.ts` menyebut rambatan `enterWith` sebagai JALAN PINTAS, bukan
- * jaminan. Di jalur yang rambatannya gagal, tanpa penyimpan ini `currentCompany()`
- * akan jatuh ke sesi — yaitu tepat kembali ke kegagalan lama.
+ * jaminan. Sabuk kedua ini yang membuat kegagalan rambatan berbunyi keras
+ * alih-alih diam-diam menjawab dengan perusahaan lain.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -84,9 +84,21 @@ beforeEach(() => {
 });
 
 describe("dua tab, dua perusahaan", () => {
-  it("KEADAAN LAMA: tanpa jalur, query mengikuti cookie — termasuk yang ditulis tab lain", async () => {
-    const answer = await runWithoutCompany(() => currentCompany());
-    expect(answer.companyId).toBe(SESSION_COMPANY.companyId);
+  it("tanpa konteks apa pun: MELEMPAR — sesi tidak lagi punya suara (issue #158)", async () => {
+    /*
+     * Inilah hadiah sesungguhnya dari Fase 2. Selama sesi masih menjawab di
+     * sini, setiap jalur yang lupa membawa perusahaannya TETAP BEKERJA — dengan
+     * PT yang kebetulan terakhir dibuka di tab mana pun — dan bekerja dengan
+     * diam adalah cara kesalahan ini bertahan hidup. Sekarang tidak ada
+     * perusahaan bawaan untuk didarati, jadi tidak bisa ada pendaratan yang
+     * salah.
+     */
+    await expect(runWithoutCompany(() => currentCompany())).rejects.toThrow(
+      /Konteks perusahaan tidak ada/
+    );
+    // Dan sesi tidak sempat dibaca sama sekali: jawaban yang tidak pernah
+    // diminta tidak bisa bocor.
+    expect(auth).not.toHaveBeenCalled();
   });
 
   it("SEKARANG: jalur menang atas cookie, jadi tiap tab menulis ke bukunya sendiri", async () => {
@@ -96,8 +108,8 @@ describe("dua tab, dua perusahaan", () => {
     });
 
     expect(answer).toEqual(ROUTE_COMPANY);
-    // Sesi tidak dibaca sama sekali begitu jalurnya menjawab — bukan sekadar
-    // "dikalahkan": jawaban yang tidak pernah diminta tidak bisa bocor.
+    // Sesi tidak dibaca sama sekali — dan sejak #158 tidak ada lagi kode yang
+    // bisa membacanya dari sini.
     expect(auth).not.toHaveBeenCalled();
   });
 

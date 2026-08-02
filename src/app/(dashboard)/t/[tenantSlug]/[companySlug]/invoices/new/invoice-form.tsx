@@ -63,6 +63,7 @@ import {
 import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
 import { Trash2, Plus, Download, Info, Loader2, AlertCircle, Lock } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface InvoiceItem {
   itemName: string;
@@ -171,7 +172,7 @@ export function NewInvoiceForm({
     if (contractId == null) return;
     let cancelled = false;
     (async () => {
-      const res = await fetch(`/api/contracts/${contractId}/outstanding`);
+      const res = await apiFetch(`/api/contracts/${contractId}/outstanding`);
       if (cancelled) return;
       setLoadingOutstanding(false);
       if (!res.ok) {
@@ -291,7 +292,7 @@ export function NewInvoiceForm({
       items,
     };
 
-    const res = await fetch("/api/invoices", {
+    const res = await apiFetch("/api/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

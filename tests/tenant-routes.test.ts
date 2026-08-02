@@ -35,7 +35,18 @@ import { tourForPath } from "@/lib/tours";
 
 const SRC = join(__dirname, "..", "src");
 const DASHBOARD_DIR = join(SRC, "app", "(dashboard)");
-const SCOPED_DIR = join(DASHBOARD_DIR, "t", "[tenantSlug]", "[companySlug]");
+/**
+ * Direktori bertenant ada di DUA grup rute, dan itu disengaja: wizard penyiapan
+ * tinggal di `(setup)` demi kerangkanya sendiri (issue #103), lalu ikut pindah
+ * ke jalur bertenant di #158 supaya `/api/setup` — satu-satunya route TULIS
+ * yang tersisa di luar jalur — berhenti mengambil perusahaannya dari sesi.
+ * Grup rute tidak mengubah URL, jadi keduanya menyumbang ke ruang nama segmen
+ * akar yang SAMA.
+ */
+const SCOPED_DIRS = [
+  join(DASHBOARD_DIR, "t", "[tenantSlug]", "[companySlug]"),
+  join(SRC, "app", "(setup)", "t", "[tenantSlug]", "[companySlug]"),
+];
 
 function directoriesIn(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -93,8 +104,9 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
    * halaman yang sudah pindah tapi tidak didaftarkan = tautan lama & bookmark
    * mati diam-diam. Keduanya merah di sini.
    */
-  it("sama persis dengan direktori di bawah (dashboard)/t/[tenantSlug]/[companySlug]", () => {
-    expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(directoriesIn(SCOPED_DIR));
+  it("sama persis dengan direktori bertenant sungguhan di semua grup rute", () => {
+    const actual = [...new Set(SCOPED_DIRS.flatMap(directoriesIn))].sort();
+    expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(actual);
   });
 
   it("halaman DIPINDAHKAN, bukan digandakan — yang tersisa di jalur lama hanya pengarah", () => {
@@ -239,20 +251,28 @@ describe("penjaga membaca URL, bukan sesi", () => {
   it("konteks perusahaan dari jalur ditanam DUA kali — ALS dan penyimpan per-permintaan", () => {
     /*
      * `company-context.ts` menyebut rambatan `enterWith` sebagai JALAN PINTAS,
-     * bukan jaminan; dan `current-company.ts` jatuh ke SESI bila konteksnya
-     * tidak terlihat. Di halaman bertenant, "jatuh ke sesi" berarti menulis ke
-     * perusahaan yang salah tanpa galat — persis yang issue ini hapus.
+     * bukan jaminan. Sabuk kedua inilah yang membuat kegagalan rambatan
+     * berbunyi keras alih-alih diam.
      */
     expect(guard).toContain("enterCompanyContext(");
     expect(guard).toContain("setRouteCompany(");
+  });
 
+  it("`currentCompany()` TIDAK PUNYA jawaban cadangan dari sesi (issue #158)", () => {
+    /*
+     * Selama sesi masih menjawab di sana, setiap jalur yang lupa membawa
+     * perusahaannya tetap BEKERJA — dengan PT yang kebetulan terakhir dibuka —
+     * dan bekerja dengan diam adalah cara kesalahan ini bertahan hidup. Yang
+     * dikunci di sini bukan urutan sumber melainkan KETIADAAN sumber ketiga:
+     * setelah ALS dan penyimpan per-permintaan, satu-satunya kelanjutan adalah
+     * melempar.
+     */
     const current = readFileSync(join(SRC, "lib", "current-company.ts"), "utf8");
-    const routeAt = current.indexOf("routeCompanyHolder().value");
-    const sessionAt = current.indexOf("await companyFromSession()");
-    expect(routeAt).toBeGreaterThan(-1);
-    expect(sessionAt).toBeGreaterThan(-1);
-    // Jalur HARUS dibaca sebelum sesi — kalau tidak, urutannya tidak menjaga apa pun.
-    expect(routeAt).toBeLessThan(sessionAt);
+    expect(current).toContain("routeCompanyHolder().value");
+    expect(current).toContain("throw new MissingCompanyContextError()");
+    expect(current).not.toContain("companyFromSession");
+    // Sesi tidak boleh masuk kembali lewat pintu belakang.
+    expect(current).not.toContain("@/lib/auth");
   });
 });
 
@@ -270,32 +290,44 @@ describe("jalur lama tetap hidup selama migrasi", () => {
     expect(proxy).toMatch(/if \(tenantSlug && companySlug\)/);
   });
 
-  it("penjaga halaman masih menerima pemanggilan TANPA params (halaman belum pindah)", () => {
+  it("penjaga halaman MENUNTUT params — jalan sesi ditutup, bukan sekadar tak dipakai (issue #158)", () => {
+    /*
+     * Selama migrasi #157 argumennya opsional dan halaman yang belum pindah
+     * tetap mengambil perusahaannya dari sesi. Sejak seluruh halaman berizin
+     * hidup di jalur bertenant, pilihan itu ditutup di TIPENYA: halaman baru
+     * yang lupa meneruskan `params` ditolak `tsc`, bukan diam-diam dilayani
+     * dengan perusahaan yang terakhir dibuka.
+     */
     const pageAuth = readFileSync(join(SRC, "lib", "page-auth.ts"), "utf8");
-    expect(pageAuth).toContain("enterCompanyFromSession");
-    expect(pageAuth).toMatch(/route\?:\s*PageRouteParams/);
+    expect(pageAuth).not.toContain("enterCompanyFromSession");
+    expect(pageAuth).toMatch(/route:\s*PageRouteParams/);
   });
 });
 
-describe("sesi & URL tetap sejalan sampai #158", () => {
+describe("sesi turun pangkat menjadi catatan 'yang terakhir dibuka' (#157 → #158)", () => {
   const sync = readFileSync(
     join(SRC, "components", "layout", "company-session-sync.tsx"),
     "utf8"
   );
-  const layout = readFileSync(join(SCOPED_DIR, "layout.tsx"), "utf8");
+  const layout = readFileSync(join(SCOPED_DIRS[0], "layout.tsx"), "utf8");
 
-  it("tata letak bertenant memasang penyelaras sesi", () => {
+  it("tata letak bertenant tetap mencatat perusahaan yang sedang dibuka", () => {
     expect(layout).toContain("CompanySessionSync");
   });
 
-  it("isi halaman DITAHAN sampai cookie menunjuk perusahaan yang sama dengan jalur", () => {
+  it("pencatatan itu TIDAK menahan permukaan halaman lagi (issue #158)", () => {
     /*
-     * Sampai #158, `/api/invoices` masih mengambil perusahaannya dari sesi.
-     * Menampilkan spanduk peringatan tidak cukup — peringatan bisa diabaikan,
-     * tombol yang tidak dirender tidak bisa ditekan.
+     * Di #157 komponen ini menahan seluruh isi halaman sampai cookie menyusul,
+     * dan itu benar selama route API masih mengambil perusahaannya dari sesi.
+     * Sejak setiap panggilan membawa perusahaannya sendiri dan penjaga API
+     * memvalidasinya, penahanan itu tidak menjaga apa pun — ia hanya
+     * memperlambat setiap perpindahan perusahaan. Yang dikunci: ia mencatat,
+     * dan ia tidak merender apa pun.
      */
-    expect(sync).toMatch(/if \(!synced\) return <PageLoader/);
     expect(sync).toContain("update({ companyId })");
+    expect(sync).toMatch(/return null;/);
+    expect(sync).not.toContain("PageLoader");
+    expect(sync).not.toContain("children");
   });
 
   it("permintaan penyelarasan tidak pernah berulang tanpa henti", () => {

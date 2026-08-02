@@ -1,6 +1,7 @@
 /**
- * Dari URL ke KONTEKS PERUSAHAAN (issue #157) — pengganti
- * `enterCompanyFromSession` di jalur halaman.
+ * Dari URL ke KONTEKS PERUSAHAAN (issue #157) — pengganti perusahaan-dari-sesi
+ * di jalur halaman, dan sejak #158 juga di jalur API (lewat
+ * `lib/company-request.ts`).
  *
  * ══ MASALAH YANG DISELESAIKAN ══════════════════════════════════════════════
  * Sampai issue ini, perusahaan yang sedang dibuka hidup di SESI (cookie JWT),
@@ -223,8 +224,10 @@ export async function enterCompanyFromRoute(params: {
    * masing-masing punya cara gagal yang SUNYI: rambatan `enterWith` disebut
    * jalan pintas (bukan jaminan) oleh `company-context.ts`, dan `cache()` React
    * hanya mengingat di dalam lingkup permintaan. Bila KEDUANYA gagal,
-   * `currentCompany()` jatuh ke perusahaan di sesi — dan halaman ini akan
-   * menampilkan judul CV Maju sambil membaca buku PT lain, tanpa satu pun galat.
+   * `currentCompany()` melempar — dan sejak #158 itu memang satu-satunya
+   * kelanjutannya, sebab tidak ada lagi perusahaan sesi untuk dijatuhi. Yang
+   * dijaga di sini adalah membuat kegagalan itu terjadi DI PENJAGA, sebelum
+   * satu query pun berjalan, bukan di tengah-tengah sebuah transaksi.
    *
    * Satu pembacaan murah di sini mengubah kegagalan itu dari sunyi menjadi
    * berisik: halaman gagal terbuka hari ini, alih-alih pembukuan tercampur yang

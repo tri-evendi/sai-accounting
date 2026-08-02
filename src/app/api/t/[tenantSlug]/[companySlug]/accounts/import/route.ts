@@ -8,18 +8,26 @@
  * - GET: unduh template `.xlsx` (judul kolom + contoh + legenda kode tipe).
  *
  * RBAC: `account.manage` — sama dengan membuat akun manual.
+ *
+ * ══ KENAPA PERUSAHAAN ADA DI JALUR, BUKAN DI HEADER (issue #158) ═══════════
+ * Route ini punya satu pemanggil yang TIDAK BISA mengirim header: template
+ * diambil lewat `<a href download>` biasa, dan sebuah tautan tidak melewati
+ * `apiFetch()`. Menyisakan satu route yang perusahaannya "kadang dari header,
+ * kadang dari sesi" berarti menyisakan persis lubang yang issue ini tutup.
+ * Karena itu SELURUH route ini (unggah maupun template) tinggal di
+ * `/api/t/{tenant}/{company}/…`: satu sumber lingkup untuk kedua metodenya.
  */
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
-import { requireApiPermission } from "@/lib/auth-guard";
+import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import { parseCoaRows, ACCURATE_TYPE_LEGEND, MAX_IMPORT_ROWS } from "@/lib/coa-import";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { getRequestI18n } from "@/lib/i18n/server";
 
-export async function POST(request: Request) {
-  const result = await requireApiPermission("account.manage");
+export async function POST(request: Request, ctx: TenantApiContext) {
+  const result = await requireApiPermission("account.manage", ctx.params);
   if (!result.authorized) return result.response;
 
   let file: File | null = null;
@@ -100,8 +108,8 @@ export async function POST(request: Request) {
   });
 }
 
-export async function GET() {
-  const result = await requireApiPermission("account.manage");
+export async function GET(_request: Request, ctx: TenantApiContext) {
+  const result = await requireApiPermission("account.manage", ctx.params);
   if (!result.authorized) return result.response;
 
   const wb = new ExcelJS.Workbook();

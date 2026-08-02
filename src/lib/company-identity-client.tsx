@@ -20,8 +20,11 @@
  */
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
+import { apiFetch } from "@/lib/api-fetch";
+import { parseTenantPath } from "@/lib/tenant-routes";
 
 export interface CompanyIdentity {
   name: string;
@@ -34,10 +37,22 @@ const CompanyIdentityContext = createContext<CompanyIdentity>(FALLBACK);
 
 export function CompanyIdentityProvider({ children }: { children: React.ReactNode }) {
   const [identity, setIdentity] = useState<CompanyIdentity>(FALLBACK);
+  const pathname = usePathname();
+  const parsed = pathname ? parseTenantPath(pathname) : null;
+  const scope = parsed ? `${parsed.tenantSlug}/${parsed.companySlug}` : "";
 
+  /*
+   * Dibaca ulang setiap kali PERUSAHAAN di alamat berganti (issue #158).
+   *
+   * Provider ini terpasang di tata letak, dan tata letak bertahan lintas
+   * navigasi klien — dengan `[]` sebagai kebergantungan, nama & alamat PT yang
+   * pertama dibuka akan tercetak di kepala dokumen PT berikutnya. Itu bukan
+   * kesalahan tampilan: kepala surat yang salah pada faktur adalah dokumen yang
+   * salah.
+   */
   useEffect(() => {
     let active = true;
-    fetch("/api/company/identity")
+    apiFetch("/api/company/identity")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!active || !data) return;
@@ -59,7 +74,7 @@ export function CompanyIdentityProvider({ children }: { children: React.ReactNod
     return () => {
       active = false;
     };
-  }, []);
+  }, [scope]);
 
   return (
     <CompanyIdentityContext.Provider value={identity}>

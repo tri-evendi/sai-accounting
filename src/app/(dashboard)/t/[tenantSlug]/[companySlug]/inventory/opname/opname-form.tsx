@@ -26,6 +26,7 @@ import {
 import { formatNumber } from "@/lib/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface OpnameItem {
   id: number;
@@ -82,7 +83,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
   async function submit() {
     setSubmitting(true);
     try {
-      const res = await fetch("/api/inventory/opname", {
+      const res = await apiFetch("/api/inventory/opname", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
+import { companyScopeFromRequest } from "@/lib/company-request";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 /**
@@ -27,8 +28,27 @@ export async function GET() {
 
   const companies = await companiesForUser(Number.parseInt(session.user.id, 10));
 
+  /*
+   * "Yang sedang dibuka" menurut PERMINTAAN lebih dulu, sesi belakangan
+   * (issue #158).
+   *
+   * Penukar perusahaan hidup di navbar SETIAP tab. Menandai yang aktif dari
+   * cookie berarti tab yang membuka PT A menyorot PT B beberapa saat setelah
+   * tab sebelah berpindah — tanda centang yang berbohong tentang buku mana yang
+   * sedang dilihat. Slugnya dicocokkan ke daftar keanggotaan yang baru dibaca,
+   * jadi header karangan tidak bisa menyorot apa pun yang bukan milik pemanggil.
+   *
+   * Sesi tetap menjadi jawaban CADANGAN, dan hanya di situ: `/select-company`
+   * dan `/dashboard` telanjang memang tidak punya perusahaan di alamatnya, dan
+   * "yang terakhir dibuka" adalah persis yang ingin mereka tampilkan.
+   */
+  const scope = await companyScopeFromRequest();
+  const fromRequest = scope
+    ? (companies.find((c) => c.slug === scope.companySlug)?.companyId ?? null)
+    : null;
+
   return NextResponse.json({
-    activeId: session.user.companyId ?? null,
+    activeId: fromRequest ?? session.user.companyId ?? null,
     companies: companies.map((c) => ({ id: c.companyId, name: c.name, slug: c.slug })),
   });
 }

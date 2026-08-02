@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function EditCustomerForm() {
   const router = useAppRouter();
@@ -30,7 +31,7 @@ export function EditCustomerForm() {
   });
 
   useEffect(() => {
-    fetch(`/api/customers/${params.id}`)
+    apiFetch(`/api/customers/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error(t("customers.loadFailed"));
         return res.json();
@@ -59,7 +60,7 @@ export function EditCustomerForm() {
     setError("");
     setLoading(true);
 
-    const res = await fetch(`/api/customers/${params.id}`, {
+    const res = await apiFetch(`/api/customers/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

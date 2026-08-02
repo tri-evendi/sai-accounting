@@ -18,6 +18,7 @@
  * mengizinkan halaman lain, dan tautan yang memantul justru jebakan yang sama.
  */
 import { requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,15 +36,19 @@ import { getCompanySettings } from "@/lib/opening-balance";
 import { CURRENCIES } from "@/lib/constants";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { SetupWizard } from "./setup-wizard";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function SetupPage() {
-  await requirePagePermission("setup.manage");
+export default async function SetupPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  await requirePagePermission("setup.manage", params);
   const t = await getT();
 
   const settings = await getCompanySettings();

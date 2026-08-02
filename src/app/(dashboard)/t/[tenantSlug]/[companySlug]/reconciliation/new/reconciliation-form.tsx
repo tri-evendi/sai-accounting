@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Info } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function NewReconciliationForm() {
   const router = useAppRouter();
@@ -32,7 +33,7 @@ export function NewReconciliationForm() {
       note: form.get("note") || undefined,
     };
 
-    const res = await fetch("/api/reconciliation", {
+    const res = await apiFetch("/api/reconciliation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

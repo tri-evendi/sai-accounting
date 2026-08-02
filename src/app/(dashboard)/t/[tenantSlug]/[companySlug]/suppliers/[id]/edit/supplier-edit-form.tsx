@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function EditSupplierForm() {
   const router = useAppRouter();
@@ -21,7 +22,7 @@ export function EditSupplierForm() {
   const [form, setForm] = useState({ name: "", address: "", phone: "", email: "", isActive: true });
 
   useEffect(() => {
-    fetch(`/api/suppliers/${params.id}`)
+    apiFetch(`/api/suppliers/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error(t("suppliers.loadFailed"));
         return res.json();
@@ -47,7 +48,7 @@ export function EditSupplierForm() {
     setError("");
     setLoading(true);
 
-    const res = await fetch(`/api/suppliers/${params.id}`, {
+    const res = await apiFetch(`/api/suppliers/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

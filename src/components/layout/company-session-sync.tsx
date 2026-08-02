@@ -1,65 +1,49 @@
 "use client";
 
 /**
- * MENJAGA SESI SEJALAN DENGAN URL (issue #157) — dan kenapa ia harus ada
- * SEKARANG, bukan nanti bersama #158.
+ * MENCATAT PERUSAHAAN YANG TERAKHIR DIBUKA ke sesi (issue #157, disusutkan #158).
  *
- * Setelah issue ini, HALAMAN mengambil perusahaannya dari jalur URL. ROUTE API
- * belum: `/api/invoices` masih menanyakannya ke sesi, dan itu baru berubah di
- * #158. Selama jeda itu ada satu keadaan yang berbahaya justru karena ia tidak
- * terlihat:
+ * ══ APA YANG DULU IA KERJAKAN, DAN KENAPA TIDAK LAGI ═══════════════════════
+ * Di #157 komponen ini adalah PENAHAN: selama cookie sesi belum menunjuk
+ * perusahaan yang sama dengan jalur, ia tidak merender isi halaman sama sekali.
+ * Alasannya nyata — route API waktu itu masih mengambil perusahaannya dari
+ * sesi, jadi halaman `/t/acme/cv-maju/invoices` yang dibuka lewat tautan dalam
+ * bisa MENAMPILKAN buku CV Maju sementara tombol "Simpan"-nya menulis ke PT
+ * yang terakhir dibuka. Menahan tombolnya adalah satu-satunya cara jujur
+ * menutup jeda itu: peringatan bisa diabaikan, tombol yang tidak ada tidak
+ * bisa ditekan.
  *
- *   Halaman `/t/acme/cv-maju/invoices` dibuka lewat tautan yang dibagikan,
- *   sementara sesi orang itu terakhir membuka `pt-sejahtera`. Yang TERBACA di
- *   layar adalah buku CV Maju — server merendernya dari jalur, dan itu benar.
- *   Tapi tombol "Simpan" di halaman yang sama memanggil `/api/invoices`, yang
- *   membaca sesi, dan menulis ke buku PT Sejahtera.
+ * Sejak #158 jedanya tidak ada lagi. Setiap panggilan API membawa perusahaannya
+ * sendiri (`apiFetch` → header, atau jalur untuk unduhan), penjaga API
+ * memvalidasinya ke keanggotaan pada permintaan itu juga, dan sesi TIDAK punya
+ * suara sama sekali tentang buku mana yang ditulis. Menahan permukaan halaman
+ * karena sebuah cookie belum menyusul kini hanya memperlambat setiap
+ * perpindahan perusahaan demi keamanan yang sudah dijamin di tempat lain — dan
+ * "loader sepersekian detik yang tidak menjaga apa-apa" adalah biaya yang
+ * dibayar pengguna untuk ketenangan yang tidak ia butuhkan.
  *
- * Itu persis kegagalan yang dilarang docs/MULTI-COMPANY.md — hanya saja ia
- * masuk lewat antarmuka. MEMINDAHKAN perusahaan ke URL tanpa menutup jeda ini
- * bukan perbaikan, melainkan pemindahan letak salahnya.
- *
- * ══ CARANYA: MENAHAN, BUKAN MEMPERINGATKAN ═════════════════════════════════
- * Komponen ini menyamakan cookie sesi dengan perusahaan di jalur, dan SELAMA
- * keduanya belum sama ia TIDAK MERENDER isi halaman. Bukan spanduk peringatan,
- * bukan tulisan kecil: tidak ada tombol, tidak ada formulir, tidak ada satu pun
- * elemen yang bisa ditekan sebelum sesinya benar. Peringatan bisa diabaikan;
- * tombol yang tidak ada tidak bisa ditekan.
- *
- * Render SERVER halaman ini tidak menunggu apa pun — penjaga sudah menambal
- * peran & konteks dari jalur (`page-auth.ts`), jadi yang tertahan hanyalah
- * kemunculan permukaan INTERAKTIF-nya, sepersekian detik sekali per perpindahan.
- *
- * ══ KENAPA DI SINI, DI `src/components` ════════════════════════════════════
- * Ia membaca `session.user.companyId` — satu-satunya pembacaan yang justru
- * TUGASNYA membandingkan sesi dengan kebenaran, bukan mempercayainya. Ia tidak
- * pernah dipakai untuk query; nilainya hanya dibandingkan dengan angka dari
- * jalur, lalu ditimpa.
- *
- * Setelah #158 mendarat (route API mengambil perusahaan dari jalurnya sendiri),
- * penahanan ini tidak lagi menjaga apa-apa dan komponen ini boleh menyusut
- * menjadi penyegar cookie biasa — atau hilang sama sekali.
+ * ══ YANG TERSISA, DAN KENAPA MASIH ADA ═════════════════════════════════════
+ * Sesi turun pangkat menjadi CATATAN "yang terakhir dibuka", dan catatan itu
+ * masih dipakai tiga pihak yang tidak punya perusahaan di alamatnya:
+ *   • `/dashboard` telanjang — tujuan bawaan seluruh aplikasi, yang harus
+ *     memilih perusahaan mana yang dibuka;
+ *   • `proxy.ts` — memantulkan jalur lama ke jalur kanonik dengan slug dari
+ *     token (tanpa slug, tidak ada pantulan);
+ *   • `/select-company` — menandai yang terakhir dibuka.
+ * Karena itu komponen ini tetap menyamakan cookie dengan jalur — DIAM-DIAM, di
+ * latar, tanpa menahan apa pun. Bila permintaannya diabaikan server (sesi untuk
+ * PT yang bukan haknya), yang terjadi hanyalah catatan itu tidak diperbarui;
+ * halamannya sendiri sudah dijaga 404 oleh `requirePagePermission`.
  */
 
 import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 
-import { PageLoader } from "@/components/ui/loading";
-import { useT } from "@/lib/i18n/client";
-
-export function CompanySessionSync({
-  companyId,
-  children,
-}: {
-  companyId: number;
-  children: React.ReactNode;
-}) {
+export function CompanySessionSync({ companyId }: { companyId: number }) {
   const { data: session, status, update } = useSession();
-  const t = useT();
   const requested = useRef<number | null>(null);
 
-  const active = session?.user?.companyId ?? null;
-  const synced = active === companyId;
+  const synced = (session?.user?.companyId ?? null) === companyId;
 
   useEffect(() => {
     if (status !== "authenticated" || synced) return;
@@ -68,16 +52,12 @@ export function CompanySessionSync({
      * menerbitkan sesi baru akan memicu efek ini lagi, dan seterusnya — dan
      * bila keanggotaannya DITOLAK di server (callback `jwt` mengabaikan
      * permintaan untuk PT yang bukan haknya), sesi tidak akan pernah cocok:
-     * loop tak berujung yang membombardir server. Kalau permintaannya diabaikan,
-     * yang benar adalah tetap menahan — halaman itu memang bukan haknya, dan
-     * penjaga server sudah menjawabnya 404 pada muat berikutnya.
+     * loop tak berujung yang membombardir server.
      */
     if (requested.current === companyId) return;
     requested.current = companyId;
     void update({ companyId });
   }, [status, synced, companyId, update]);
 
-  if (!synced) return <PageLoader message={t("common.enteringCompany")} />;
-
-  return <>{children}</>;
+  return null;
 }

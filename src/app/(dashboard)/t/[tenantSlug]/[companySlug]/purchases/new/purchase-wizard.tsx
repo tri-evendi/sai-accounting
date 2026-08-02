@@ -50,6 +50,7 @@ import {
 } from "@/lib/wizard";
 import { useT } from "@/lib/i18n/client";
 import { CheckCircle2, PackagePlus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 // Pemasok tidak lagi dikirim sebagai daftar statis (audit: `take: 500`
 // memotong daftar — pemasok lama tak terpilih). Pemilihnya mencari ke server;
@@ -119,7 +120,7 @@ export function PurchaseWizard({
     if (id == null || supplierInfo[id]) return;
     let cancelled = false;
     (async () => {
-      const res = await fetch(`/api/suppliers/${id}`);
+      const res = await apiFetch(`/api/suppliers/${id}`);
       if (!res.ok || cancelled) return;
       const s = (await res.json()) as { name: string };
       if (cancelled) return;
@@ -146,7 +147,7 @@ export function PurchaseWizard({
   async function finish() {
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/wizard/purchase", {
+    const res = await apiFetch("/api/wizard/purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildPurchasePayload(draft)),

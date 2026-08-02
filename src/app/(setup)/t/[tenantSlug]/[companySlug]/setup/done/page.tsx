@@ -21,11 +21,12 @@
  * ke depan, tanpa ~40 menu yang belum ada isinya. Tombol utamanya adalah pintu
  * keluar dari kerangka itu.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { redirect } from "next/navigation";
 import { ArrowRight, BookOpenCheck, CheckCircle2, Scale } from "lucide-react";
 
 import { requirePagePermission } from "@/lib/page-auth";
+import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
@@ -36,14 +37,20 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
-export default async function SetupDonePage() {
-  await requirePagePermission("setup.manage");
+export default async function SetupDonePage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  await requirePagePermission("setup.manage", params);
+  const { tenantSlug, companySlug } = await params;
 
   const settings = await getCompanySettings();
 
   // Belum disiapkan = layar ini tidak punya apa pun untuk dinyatakan. Bukan
-  // jalan buntu: kirim ke wizard yang memang belum dijalankan.
-  if (!settings?.isSetup) redirect("/setup");
+  // jalan buntu: kirim ke wizard yang memang belum dijalankan — di jalur
+  // perusahaan ini, bukan jalur lama yang akan dipantulkan ke PT di sesi.
+  if (!settings?.isSetup) redirect(tenantPath(tenantSlug, companySlug, "/setup"));
 
   const t = await getT();
 

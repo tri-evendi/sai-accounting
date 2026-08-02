@@ -9,6 +9,7 @@
  * ada dilewati — ringkasannya ditampilkan.
  */
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Download, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
 import { useDictionary, useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
+import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
 
 interface RowError {
   row: number;
@@ -50,6 +53,19 @@ export function ImportAccountsForm() {
   const [rowErrors, setRowErrors] = useState<RowError[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
 
+  /*
+   * Alamat route-nya menyebut perusahaan (issue #158). Bukan gaya: tombol
+   * "Unduh template" adalah `<a href download>` biasa, dan sebuah tautan tidak
+   * melewati `apiFetch()` — tidak ada tempat menyisipkan header lingkup di
+   * sana. Unggahannya memakai alamat yang SAMA, supaya tidak pernah ada dua
+   * jawaban berbeda tentang "perusahaan mana" di satu layar.
+   */
+  const pathname = usePathname();
+  const scope = pathname ? parseTenantPath(pathname) : null;
+  const endpoint = scope
+    ? tenantApiPath(scope.tenantSlug, scope.companySlug, "/accounts/import")
+    : "";
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -62,7 +78,7 @@ export function ImportAccountsForm() {
     setLoading(true);
     const formData = new FormData();
     formData.set("file", file);
-    const res = await fetch("/api/accounts/import", { method: "POST", body: formData });
+    const res = await apiFetch(endpoint, { method: "POST", body: formData });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
 
@@ -120,7 +136,7 @@ export function ImportAccountsForm() {
               </div>
             ))}
           </div>
-          <a href="/api/accounts/import" download>
+          <a href={endpoint} download>
             <Button variant="secondary" type="button" className="mt-2">
               <Download className="mr-2 h-4 w-4" aria-hidden="true" />
               {t("accounts.downloadTemplate")}

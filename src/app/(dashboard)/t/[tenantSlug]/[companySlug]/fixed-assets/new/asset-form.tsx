@@ -19,6 +19,7 @@ import { formatCurrency } from "@/lib/utils";
 import { straightLineMonthly } from "@/lib/depreciation";
 import { useT } from "@/lib/i18n/client";
 import { Info, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface AccountOption {
   id: number;
@@ -108,7 +109,7 @@ export function AssetForm({
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/fixed-assets", {
+      const res = await apiFetch("/api/fixed-assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

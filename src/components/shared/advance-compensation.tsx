@@ -41,6 +41,7 @@ import { useT } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { Loader2, HandCoins, Info, Trash2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface AdvanceOption {
   id: number;
@@ -136,7 +137,7 @@ export function AdvanceCompensationSection({
     setSaving(true);
 
     try {
-      const response = await fetch("/api/advances/applications", {
+      const response = await apiFetch("/api/advances/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 /** Pusat biaya aktif, sebagaimana dikembalikan `GET /api/cost-centers`. */
 export interface CostCenterOption {
@@ -46,7 +47,7 @@ export function useCostCenters(): CostCenterOption[] {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const res = await fetch("/api/cost-centers?activeOnly=1");
+      const res = await apiFetch("/api/cost-centers?activeOnly=1");
       if (!res.ok || cancelled) return;
       const data = (await res.json()) as CostCenterOption[];
       if (!cancelled) setCostCenters(data);

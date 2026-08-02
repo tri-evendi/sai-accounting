@@ -5,12 +5,12 @@
  * palet perintah — tetap milik `(dashboard)/layout.tsx` di atasnya, dan
  * menyalinnya ke sini akan melahirkan dua kerangka yang perlahan berbeda.
  *
- * Yang ditambahkannya cuma satu, dan justru itu yang tidak boleh hilang:
- * MENAHAN permukaan interaktif sampai cookie sesi menunjuk perusahaan yang sama
- * dengan yang ada di jalur. Alasan lengkapnya ada di `CompanySessionSync` —
- * ringkasnya: sampai #158, route API masih mengambil perusahaannya dari sesi,
- * jadi halaman yang dibuka lewat tautan dalam bisa MENAMPILKAN buku PT A
- * sementara tombolnya menulis ke buku PT B.
+ * Yang ditambahkannya cuma satu, dan sejak #158 ia tidak lagi menahan apa pun:
+ * mencatat perusahaan yang sedang dibuka ke sesi, di latar, sebagai "yang
+ * terakhir dibuka". Alasan lengkapnya ada di `CompanySessionSync`. Sampai #158
+ * ia MENAHAN permukaan interaktif sampai cookie menyusul — perlu waktu itu,
+ * sebab route API masih mengambil perusahaannya dari sesi; tidak perlu lagi
+ * sekarang, sebab setiap panggilan membawa perusahaannya sendiri.
  *
  * Slug yang tidak menunjuk perusahaan mana pun dijawab 404 di sini, sehingga
  * seluruh cabangnya ikut 404 sekaligus. Itu BUKAN pemeriksaan izin: keanggotaan
@@ -34,5 +34,10 @@ export default async function TenantScopedLayout({
   const companyId = await companyIdForRoute(tenantSlug, companySlug);
   if (companyId == null) notFound();
 
-  return <CompanySessionSync companyId={companyId}>{children}</CompanySessionSync>;
+  return (
+    <>
+      <CompanySessionSync companyId={companyId} />
+      {children}
+    </>
+  );
 }

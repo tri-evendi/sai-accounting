@@ -63,7 +63,9 @@ import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
 import { resolvePaymentGateway } from "../src/lib/payment-gateway";
-import { runReconciliation } from "./reconcile-platform";
+/* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
+ * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
+import { runReconciliation } from "../src/lib/platform-reconciliation";
 
 function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

@@ -30,10 +30,10 @@ import "server-only";
 
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
-import {
-  runReconciliation,
-  type ReconciliationReport,
-} from "../../../scripts/reconcile-platform";
+/* Inti rekonsiliasi tinggal di `src/lib/`, BUKAN di `scripts/`: mengimpor skrip
+ * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
+ * `next build` (ditemukan saat penggelaran #151). */
+import { runReconciliation, type ReconciliationReport } from "@/lib/platform-reconciliation";
 
 export type { ReconciliationReport };
 

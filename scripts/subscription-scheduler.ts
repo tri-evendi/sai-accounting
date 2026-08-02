@@ -53,6 +53,7 @@ import {
   pendingReminder,
   planDunning,
   planGraceExpiries,
+  planOrphanSubscriptionAdoptions,
   planTrialExpiries,
   tenantStatusForSubscription,
   transition,
@@ -168,6 +169,78 @@ async function main() {
   const control = clientFor(ControlClient, controlUrl);
   const now = new Date();
   const errors: string[] = [];
+
+  /* ── 0. Adopsi langganan YATIM (issue #152): tenant berbayar di kendali
+   * TANPA satu pun langganan di platform tidak pernah masuk siklus tagih —
+   * trial tak berujung, tagihan tak pernah terbit, tanpa galat. Sumbernya:
+   * pendaftaran saat `sai_platform` mati/belum di-seed, pemasangan pra-#152
+   * (pt-sai lewat adopt-tenant), atau crash di antara dua tulisan. Putaran ini
+   * melahirkan langganannya dari `tenants.plan_key`, dengan `trial_ends_at`
+   * KENDALI apa adanya — adopsi tidak pernah memperpanjang trial diam-diam.
+   * Idempoten: putaran kedua melihat langganan hasil putaran pertama; putaran
+   * KEMBAR ditahan UNIQUE `subscriptions.initial_for_tenant_id` (P2002 =
+   * mundur dengan tenang), bukan periksa-lalu-tulis.
+   * `pending_verification` TIDAK diadopsi — keadaan pra-langganan yang sah. */
+  try {
+    const tenants = await control.tenant.findMany({
+      select: { id: true, slug: true, status: true, planKey: true, trialEndsAt: true },
+    });
+    const covered = await platform.subscription.findMany({ select: { tenantId: true } });
+    const plans = await platform.plan.findMany({ where: { isActive: true } });
+    const planByKey = new Map(plans.map((p) => [p.key, p]));
+    const slugById = new Map(tenants.map((t) => [t.id, t.slug]));
+    for (const orphan of planOrphanSubscriptionAdoptions(tenants, covered, now)) {
+      const plan = planByKey.get(orphan.planKey);
+      if (!plan) {
+        errors.push(
+          `adopsi-yatim tenant #${orphan.tenantId}: paket "${orphan.planKey}" tidak ada/` +
+            "nonaktif di plans — jalankan bun run db:seed:plans, atau pindahkan paketnya " +
+            "lewat bun run change-plan"
+        );
+        continue;
+      }
+      try {
+        const period = nextPeriod("monthly", now);
+        const created = await platform.subscription.create({
+          data: {
+            tenantId: orphan.tenantId,
+            planId: plan.id,
+            status: orphan.status,
+            billingCycle: "monthly",
+            /* SNAPSHOT harga (§5) — bukan rujukan ke `plans`. */
+            price: plan.priceMonthly,
+            currency: plan.currency,
+            currentPeriodStart: period.start,
+            currentPeriodEnd: period.end,
+            trialEndsAt: orphan.trialEndsAt,
+            pastDueSince: orphan.pastDueSince,
+            initialForTenantId: orphan.tenantId,
+          },
+          select: { id: true },
+        });
+        console.log(
+          `+ adopsi yatim: tenant #${orphan.tenantId} → subscription #${created.id} ` +
+            `(${orphan.status}, paket "${plan.key}")`
+        );
+        await writeTenantAuditLog({
+          tenantId: orphan.tenantId,
+          tenantSlug: slugById.get(orphan.tenantId) ?? String(orphan.tenantId),
+          action: "tenant.subscription.adopt",
+          details: { subscriptionId: created.id, planKey: plan.key, status: orphan.status },
+        });
+      } catch (e) {
+        if ((e as { code?: string }).code === "P2002") {
+          console.log(
+            `= adopsi yatim tenant #${orphan.tenantId}: langganannya sudah lahir di tangan lain`
+          );
+        } else {
+          errors.push(`adopsi-yatim tenant #${orphan.tenantId}: ${e}`);
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(`adopsi-yatim: ${e}`);
+  }
 
   const subscriptions = await platform.subscription.findMany({
     where: { status: { not: "cancelled" } },

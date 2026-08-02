@@ -39,6 +39,9 @@ export type TenantAuditAction =
   | "tenant.invitation.revoke"
   /** Ganti paket (skrip operator #140). */
   | "tenant.plan.change"
+  /** Langganan yatim diadopsikan penjadwal / adopt-tenant (#152) — tenant
+   *  berbayar yang belum punya baris `subscriptions` dilahirkan langganannya. */
+  | "tenant.subscription.adopt"
   /** Transisi status langganan (penjadwal #140): trialing→past_due, dst. */
   | "tenant.status.change"
   /** Ekspor data mandiri (#142) — hak akses UU PDP; siapa & kapan tercatat. */

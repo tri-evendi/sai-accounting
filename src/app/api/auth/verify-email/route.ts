@@ -20,6 +20,7 @@ import {
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
 import { consumeVerificationToken } from "@/lib/registration-store";
+import { createInitialSubscription } from "@/lib/subscription-store";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 
@@ -86,6 +87,25 @@ export async function POST(request: Request) {
     },
     request,
   });
+
+  /*
+   * Langganan lahir BERSAMA tenant (issue #152): tanpa baris `subscriptions`
+   * di platform, penjadwal tidak pernah melihat tenant ini — trial tak pernah
+   * berakhir, tagihan pertama tak pernah terbit, tanpa galat di mana pun.
+   * Helper-nya tidak pernah melempar (penagihan mati ≠ pendaftaran mati);
+   * try/catch di sini pagar kedua — apa pun yang terjadi, jawabannya tetap
+   * 200: tenant sudah lahir, dan putaran adopsi yatim penjadwal (#152)
+   * menyembuhkan langganan yang belum sempat lahir.
+   */
+  try {
+    await createInitialSubscription(result.tenantId);
+  } catch (error) {
+    console.error(
+      `[verify-email] kelahiran langganan tenant #${result.tenantId} gagal — ` +
+        "tenant tetap lahir; putaran adopsi penjadwal yang menyembuhkan:",
+      error
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

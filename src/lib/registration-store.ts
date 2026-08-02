@@ -91,6 +91,11 @@ export type VerificationResult =
  * tidak pernah menyisakan akun tanpa tenant atau tenant setengah jadi), tandai
  * pendaftarannya terpakai, dan JANGAN sentuh basis data perusahaan mana pun.
  *
+ * Langganan platform-nya (issue #152) lahir SESUDAH transaksi ini, di route
+ * verifikasi lewat `createInitialSubscription` (`subscription-store.ts`) —
+ * modul ini tetap murni kendali, dan `sai_platform` yang mati tidak pernah
+ * menggagalkan verifikasi.
+ *
  * Kegagalan token (tak dikenal / kedaluwarsa / sudah dipakai) dijawab SATU
  * sebab `invalid_token` — membedakannya memberi penyisir konfirmasi gratis.
  * `already_registered` sengaja DIBEDAKAN: yang membacanya adalah pemilik email

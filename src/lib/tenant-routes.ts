@@ -95,6 +95,9 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "returns",
   "sales",
   "settings",
+  // Tinggal di grup rute `(setup)`, bukan `(dashboard)` — grup rute tidak
+  // mengubah URL, jadi segmennya tetap milik ruang nama yang sama (#158).
+  "setup",
   "suppliers",
   "tax",
   "users",

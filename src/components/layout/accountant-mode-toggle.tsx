@@ -9,6 +9,7 @@ import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { ROLES, isFullAccessRole } from "@/lib/constants";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 /**
  * Mode Akuntan toggle (issue #11) — the primary surface for the preference.
@@ -50,7 +51,7 @@ export function AccountantModeToggle() {
     const next = !isOn;
     setSaving(true);
     try {
-      const res = await fetch("/api/user/accountant-mode", {
+      const res = await apiFetch("/api/user/accountant-mode", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountantMode: next }),

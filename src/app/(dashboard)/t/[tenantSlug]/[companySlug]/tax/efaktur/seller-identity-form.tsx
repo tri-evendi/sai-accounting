@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Save } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function SellerIdentityForm({
   initial,
@@ -30,7 +31,7 @@ export function SellerIdentityForm({
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch("/api/company-settings", {
+      const res = await apiFetch("/api/company-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ npwp, taxName, taxAddress }),

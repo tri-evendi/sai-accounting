@@ -51,6 +51,7 @@ import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/bus
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { Lock, RotateCcw, Save, X } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface UserPermissionsResponse {
   user: { id: number; username: string; name: string | null; role: string };
@@ -122,7 +123,7 @@ export function UserPermissionsPanel({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/users/${userId}/permissions`)
+    apiFetch(`/api/users/${userId}/permissions`)
       .then(async (res) => {
         if (!res.ok) {
           throw new Error(
@@ -192,7 +193,7 @@ export function UserPermissionsPanel({
   async function submit(overrides: UserPermissionOverrideRow[], successMessage: string) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/users/${userId}/permissions`, {
+      const res = await apiFetch(`/api/users/${userId}/permissions`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ overrides }),

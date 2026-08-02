@@ -39,6 +39,7 @@ import {
 } from "@/lib/form-guards";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { Trash2, Plus, AlertCircle, Lock } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ContractItem {
   itemName: string;
@@ -144,7 +145,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       items,
     };
 
-    const res = await fetch("/api/contracts", {
+    const res = await apiFetch("/api/contracts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

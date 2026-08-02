@@ -47,6 +47,7 @@ import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/bus
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
 import { Lock, PackageX, RotateCcw, Save } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface OverridesResponse {
   baseline: Record<string, string[]>;
@@ -125,7 +126,7 @@ export function PermissionsClient() {
 
   const loadOverrides = useCallback(async () => {
     try {
-      const res = await fetch("/api/authz/overrides");
+      const res = await apiFetch("/api/authz/overrides");
       if (!res.ok) {
         throw new Error(
           res.status === 403 ? t("permissions.errNoPermission") : t("permissions.errLoad")
@@ -190,7 +191,7 @@ export function PermissionsClient() {
   async function submit(overrides: PermissionOverride[], successMessage: string) {
     setSaving(true);
     try {
-      const res = await fetch("/api/authz/overrides", {
+      const res = await apiFetch("/api/authz/overrides", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ overrides }),

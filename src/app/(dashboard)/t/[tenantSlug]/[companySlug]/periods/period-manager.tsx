@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface PeriodRow {
   year: number;
@@ -86,7 +87,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/periods/summary?year=${year}&month=${month}`);
+      const res = await apiFetch(`/api/periods/summary?year=${year}&month=${month}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error || t("periods.summaryLoadFailed"));

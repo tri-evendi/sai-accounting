@@ -23,6 +23,7 @@ import {
 } from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface InvoiceItem {
   itemName: string;
@@ -65,7 +66,7 @@ export function EditInvoiceForm() {
   const subtotal = invoiceSubtotal(items);
 
   useEffect(() => {
-    fetch(`/api/invoices/${params.id}`)
+    apiFetch(`/api/invoices/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error(t("invoices.loadFailed"));
         return res.json();
@@ -151,7 +152,7 @@ export function EditInvoiceForm() {
       items,
     };
 
-    const res = await fetch(`/api/invoices/${params.id}`, {
+    const res = await apiFetch(`/api/invoices/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

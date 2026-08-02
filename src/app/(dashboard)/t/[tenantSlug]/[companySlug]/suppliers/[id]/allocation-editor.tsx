@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { Link2, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
 
@@ -103,7 +104,7 @@ export function AllocationEditor({
     if (!open) return;
     let alive = true;
 
-    fetch(`/api/suppliers/${supplierId}/transactions?allocations=1&paymentId=${paymentId}`)
+    apiFetch(`/api/suppliers/${supplierId}/transactions?allocations=1&paymentId=${paymentId}`)
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -150,7 +151,7 @@ export function AllocationEditor({
     setSaving(true);
     setError("");
 
-    const res = await fetch(`/api/suppliers/${supplierId}/transactions`, {
+    const res = await apiFetch(`/api/suppliers/${supplierId}/transactions`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transactionId: paymentId, allocations: next }),

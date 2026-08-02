@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { customerSchema, type CustomerInput } from "@/lib/validations/finance";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function NewCustomerForm() {
   const router = useAppRouter();
@@ -57,7 +58,7 @@ export function NewCustomerForm() {
   });
 
   async function onSubmit(values: CustomerInput) {
-    const res = await fetch("/api/customers", {
+    const res = await apiFetch("/api/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),

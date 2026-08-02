@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
 import { useDictionary, useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface RowError {
   row: number;
@@ -62,7 +63,7 @@ export function ImportAccountsForm() {
     setLoading(true);
     const formData = new FormData();
     formData.set("file", file);
-    const res = await fetch("/api/accounts/import", { method: "POST", body: formData });
+    const res = await apiFetch("/api/accounts/import", { method: "POST", body: formData });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
 

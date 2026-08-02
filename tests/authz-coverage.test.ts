@@ -301,7 +301,7 @@ describe("cakupan penjaga halaman aplikasi", () => {
         `grup rute ${group} tidak berisi satu pun page.tsx`
       ).toBe(true);
     }
-    expect(pages).toContain("(setup)/setup/page.tsx");
+    expect(pages).toContain("(setup)/t/[tenantSlug]/[companySlug]/setup/page.tsx");
   });
 
   it("setiap halaman mendeklarasikan izinnya (requirePagePermission)", () => {
@@ -418,6 +418,64 @@ describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
       expect(
         readers,
         `${rel} tidak lagi membaca companyId dari sesi — hapus dari SESSION_COMPANY_EXCEPTIONS`
+      ).toContain(rel);
+    }
+  });
+});
+
+/**
+ * Setiap panggilan ke `/api/…` MENYEBUTKAN perusahaannya (issue #158).
+ *
+ * `apiFetch()` menyuntikkan `x-tenant-slug`/`x-company-slug` dari ALAMAT yang
+ * sedang dibuka. `fetch()` telanjang tidak — dan sejak penjaga API berhenti
+ * menebak dari sesi, panggilan telanjang dari halaman bertenant tidak "diam-diam
+ * salah perusahaan" melainkan DITOLAK. Tesnya tetap perlu: penolakan itu baru
+ * terlihat saat seseorang menekan tombolnya, sedangkan tes ini terlihat saat
+ * kodenya ditulis.
+ *
+ * Pengecualiannya BERALASAN: permukaan PRA-aplikasi dan permukaan TINGKAT
+ * TENANT memang bekerja tanpa perusahaan — memaksa mereka mengirim lingkup
+ * berarti memaksa lingkup yang tidak ada.
+ */
+describe("panggilan API membawa perusahaannya (issue #158)", () => {
+  /** Berkas yang SAH memanggil `fetch("/api/…")` telanjang, beserta alasannya. */
+  const BARE_FETCH_EXCEPTIONS = new Set([
+    // Grup (auth): keadaan PRA-akun/PRA-sesi — /api/auth/* memang route publik
+    // yang terdaftar di API_EXCEPTIONS di atas. Tidak ada perusahaan untuk
+    // disebut, dan alamatnya pun tidak bertenant.
+    "app/(auth)/accept-invitation/page.tsx",
+    "app/(auth)/change-password/page.tsx",
+    "app/(auth)/forgot-password/page.tsx",
+    "app/(auth)/register/page.tsx",
+    "app/(auth)/reset-password/page.tsx",
+    "app/(auth)/verify-email/page.tsx",
+    // Grup (tenant): route TINGKAT TENANT (#135) — pemilik tenant tanpa satu
+    // pun PT adalah pemanggil yang sah, jadi menuntut perusahaan di sini
+    // justru menutup permukaan yang dibuat untuk berdiri tanpanya.
+    "app/(tenant)/companies/new/company-form.tsx",
+    "app/(tenant)/tenant/billing-actions.tsx",
+    "app/(tenant)/tenant/privacy-section.tsx",
+    // Pembungkusnya sendiri.
+    "lib/api-fetch.ts",
+  ]);
+
+  const SRC_DIR = join(__dirname, "..", "src");
+  /** `fetch("/api/…")` / `fetch(`/api/…`)` — TIDAK cocok dengan `apiFetch(`. */
+  const BARE_FETCH = /(?<![\w.])fetch\(["`]\/api\//;
+
+  const offenders = sourceFiles(SRC_DIR)
+    .map((f) => relative(SRC_DIR, f).split(sep).join("/"))
+    .filter((rel) => BARE_FETCH.test(readFileSync(join(SRC_DIR, rel), "utf8")));
+
+  it("tidak ada fetch() telanjang ke /api di luar daftar pengecualian", () => {
+    expect(offenders.filter((rel) => !BARE_FETCH_EXCEPTIONS.has(rel))).toEqual([]);
+  });
+
+  it("daftar pengecualiannya tidak basi — berkas yang berhenti melakukannya wajib dihapus", () => {
+    for (const rel of BARE_FETCH_EXCEPTIONS) {
+      expect(
+        offenders,
+        `${rel} tidak lagi memanggil fetch() telanjang ke /api — hapus dari BARE_FETCH_EXCEPTIONS`
       ).toContain(rel);
     }
   });

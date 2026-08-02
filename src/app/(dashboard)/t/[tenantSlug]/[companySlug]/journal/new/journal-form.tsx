@@ -21,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CURRENCIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AccountOption {
   id: number;
@@ -75,13 +76,13 @@ export function NewJournalForm() {
   const [lines, setLines] = useState<LineRow[]>([emptyLine(), emptyLine()]);
 
   useEffect(() => {
-    fetch("/api/accounts")
+    apiFetch("/api/accounts")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: AccountOption[]) => setAccounts(data.filter((a) => a.isActive)))
       .catch(() => setAccounts([]));
     // Hanya yang aktif: yang sudah dinonaktifkan tak boleh bisa DIPILIH lagi,
     // walau namanya tetap terbaca pada jurnal lama yang menyebutnya.
-    fetch("/api/cost-centers?activeOnly=1")
+    apiFetch("/api/cost-centers?activeOnly=1")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: CostCenterOption[]) => setCostCenters(data))
       .catch(() => setCostCenters([]));
@@ -139,7 +140,7 @@ export function NewJournalForm() {
     }
 
     setLoading(true);
-    const res = await fetch("/api/journals", {
+    const res = await apiFetch("/api/journals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

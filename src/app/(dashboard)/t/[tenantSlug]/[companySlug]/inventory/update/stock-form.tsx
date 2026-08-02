@@ -41,6 +41,7 @@ import {
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface StockItemOption {
   id: number;
@@ -100,7 +101,7 @@ export function StockUpdateForm({
   async function refreshItems() {
     // `active=1`: barang yang dinonaktifkan tidak ditawarkan untuk gerakan BARU
     // (issue #104); saldo & riwayatnya tetap tampil di laporan stok.
-    const res = await fetch("/api/inventory?active=1");
+    const res = await apiFetch("/api/inventory?active=1");
     if (!res.ok) return;
     const data: { id: number; name: string; unit: string | null; currentStock: number }[] =
       await res.json();
@@ -117,7 +118,7 @@ export function StockUpdateForm({
   async function handleCreateItem(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await fetch("/api/inventory", {
+    const res = await apiFetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "create_item", name: newItemName, unit: newItemUnit }),
@@ -140,7 +141,7 @@ export function StockUpdateForm({
 
   async function send(body: StockPayload) {
     setLoading(true);
-    const res = await fetch("/api/inventory", {
+    const res = await apiFetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -26,6 +26,7 @@ import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { SalesTargetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, Target } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface NamedOption {
   id: number;
@@ -66,7 +67,7 @@ export function SalesTargetClient({
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/budget/targets", {
+      const res = await apiFetch("/api/budget/targets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,7 +98,7 @@ export function SalesTargetClient({
   async function handleDelete(id: number) {
     setDeleting(id);
     try {
-      const res = await fetch(`/api/budget/targets/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/budget/targets/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast(data?.error ?? translate("budget.deleteTargetFailed"), "error");

@@ -35,7 +35,18 @@ import { tourForPath } from "@/lib/tours";
 
 const SRC = join(__dirname, "..", "src");
 const DASHBOARD_DIR = join(SRC, "app", "(dashboard)");
-const SCOPED_DIR = join(DASHBOARD_DIR, "t", "[tenantSlug]", "[companySlug]");
+/**
+ * Direktori bertenant ada di DUA grup rute, dan itu disengaja: wizard penyiapan
+ * tinggal di `(setup)` demi kerangkanya sendiri (issue #103), lalu ikut pindah
+ * ke jalur bertenant di #158 supaya `/api/setup` — satu-satunya route TULIS
+ * yang tersisa di luar jalur — berhenti mengambil perusahaannya dari sesi.
+ * Grup rute tidak mengubah URL, jadi keduanya menyumbang ke ruang nama segmen
+ * akar yang SAMA.
+ */
+const SCOPED_DIRS = [
+  join(DASHBOARD_DIR, "t", "[tenantSlug]", "[companySlug]"),
+  join(SRC, "app", "(setup)", "t", "[tenantSlug]", "[companySlug]"),
+];
 
 function directoriesIn(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -93,8 +104,9 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
    * halaman yang sudah pindah tapi tidak didaftarkan = tautan lama & bookmark
    * mati diam-diam. Keduanya merah di sini.
    */
-  it("sama persis dengan direktori di bawah (dashboard)/t/[tenantSlug]/[companySlug]", () => {
-    expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(directoriesIn(SCOPED_DIR));
+  it("sama persis dengan direktori bertenant sungguhan di semua grup rute", () => {
+    const actual = [...new Set(SCOPED_DIRS.flatMap(directoriesIn))].sort();
+    expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(actual);
   });
 
   it("halaman DIPINDAHKAN, bukan digandakan — yang tersisa di jalur lama hanya pengarah", () => {
@@ -282,7 +294,7 @@ describe("sesi & URL tetap sejalan sampai #158", () => {
     join(SRC, "components", "layout", "company-session-sync.tsx"),
     "utf8"
   );
-  const layout = readFileSync(join(SCOPED_DIR, "layout.tsx"), "utf8");
+  const layout = readFileSync(join(SCOPED_DIRS[0], "layout.tsx"), "utf8");
 
   it("tata letak bertenant memasang penyelaras sesi", () => {
     expect(layout).toContain("CompanySessionSync");

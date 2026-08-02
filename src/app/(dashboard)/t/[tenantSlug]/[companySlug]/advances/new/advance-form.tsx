@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2, Info } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export interface PartyOption {
   id: number;
@@ -121,7 +122,7 @@ export function AdvanceForm({
     setSaving(true);
 
     try {
-      const response = await fetch("/api/advances", {
+      const response = await apiFetch("/api/advances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

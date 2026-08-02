@@ -179,8 +179,16 @@ async function gateAfterCompany(
    * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
    */
   if (permission !== "setup.manage" && !(await isSetupDone())) {
+    /*
+     * Wizard-nya ikut bertenant sejak #158, jadi tujuannya harus disusun dari
+     * perusahaan YANG SEDANG DIBUKA. Memantulkan ke `/setup` telanjang akan
+     * membuat proxy menyusun jalurnya dari SESI — dan orang yang membuka buku
+     * PT A lewat tautan dalam akan mendarat di wizard PT B, tempat ia mungkin
+     * menuliskan saldo awal yang salah kamar.
+     */
+    const wizardPath = home ? tenantPath(home.tenantSlug, home.companySlug, "/setup") : "/setup";
     redirect(
-      (await canEffective(session.user, "setup.manage")) ? "/setup" : "/setup-required"
+      (await canEffective(session.user, "setup.manage")) ? wizardPath : "/setup-required"
     );
   }
 

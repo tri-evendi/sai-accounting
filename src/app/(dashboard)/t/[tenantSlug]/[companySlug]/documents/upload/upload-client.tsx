@@ -10,6 +10,7 @@ import { DOCUMENT_TYPES } from "@/lib/constants";
 import { Upload } from "lucide-react";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ContractOption {
   id: number;
@@ -26,7 +27,7 @@ export function UploadClient() {
   const [contracts, setContracts] = useState<ContractOption[]>([]);
 
   useEffect(() => {
-    fetch("/api/contracts")
+    apiFetch("/api/contracts")
       .then((res) => res.json())
       .then((data) => {
         setContracts(
@@ -53,7 +54,7 @@ export function UploadClient() {
     const formData = new FormData(e.currentTarget);
     formData.set("file", file);
 
-    const res = await fetch("/api/upload", {
+    const res = await apiFetch("/api/upload", {
       method: "POST",
       body: formData,
     });

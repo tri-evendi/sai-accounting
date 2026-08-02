@@ -17,6 +17,7 @@ import { formatCurrency } from "@/lib/utils";
 import { CalendarClock, Loader2 } from "lucide-react";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function RunDepreciation() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function RunDepreciation() {
     setError(null);
     setRunning(true);
     try {
-      const res = await fetch("/api/fixed-assets/depreciation", {
+      const res = await apiFetch("/api/fixed-assets/depreciation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ year: Number(year), month: Number(month) }),

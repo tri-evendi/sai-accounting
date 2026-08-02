@@ -27,6 +27,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface RoleRow {
   key: string;
@@ -45,7 +46,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
   const [deleteTarget, setDeleteTarget] = useState<RoleRow | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/roles");
+    const res = await apiFetch("/api/roles");
     if (res.ok) setRoles((await res.json()) as RoleRow[]);
   }, []);
 
@@ -62,7 +63,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await fetch("/api/roles", {
+      const res = await apiFetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: newKey, label: newLabel }),
@@ -84,7 +85,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
   async function patch(role: RoleRow, body: { label?: string; isActive?: boolean }) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/roles/${role.key}`, {
+      const res = await apiFetch(`/api/roles/${role.key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -104,7 +105,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
   async function remove(role: RoleRow) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/roles/${role.key}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/roles/${role.key}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast(data.error || t("permissions.errDeleteRole"), "error");

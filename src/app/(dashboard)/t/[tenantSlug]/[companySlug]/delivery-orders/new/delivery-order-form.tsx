@@ -23,6 +23,7 @@ import {
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
 import { AlertCircle, Lock, Package, Trash2, Plus } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ContractOption {
   id: number;
@@ -157,7 +158,7 @@ export function DeliveryOrderForm({
 
   async function send(body: DeliveryPayload) {
     setLoading(true);
-    const res = await fetch("/api/delivery-orders", {
+    const res = await apiFetch("/api/delivery-orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

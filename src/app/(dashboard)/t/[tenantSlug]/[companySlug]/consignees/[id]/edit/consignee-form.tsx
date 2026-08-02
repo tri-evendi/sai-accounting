@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function EditConsigneeForm() {
   const router = useAppRouter();
@@ -29,7 +30,7 @@ export function EditConsigneeForm() {
   });
 
   useEffect(() => {
-    fetch(`/api/consignees/${params.id}`)
+    apiFetch(`/api/consignees/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error(t("consignees.loadFailed"));
         return res.json();
@@ -56,7 +57,7 @@ export function EditConsigneeForm() {
     setError("");
     setLoading(true);
 
-    const res = await fetch(`/api/consignees/${params.id}`, {
+    const res = await apiFetch(`/api/consignees/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

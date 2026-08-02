@@ -36,6 +36,7 @@ import {
 } from "@/lib/business-modules";
 import { useT } from "@/lib/i18n/client";
 import { Save } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ModulesResponse {
   businessCategory: string | null;
@@ -56,7 +57,7 @@ export function ModuleSettingsPanel() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/company-settings/modules");
+      const res = await apiFetch("/api/company-settings/modules");
       if (!res.ok) throw new Error(t("modules.errLoad"));
       const json = (await res.json()) as ModulesResponse;
       setSaved(json);
@@ -107,7 +108,7 @@ export function ModuleSettingsPanel() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/company-settings/modules", {
+      const res = await apiFetch("/api/company-settings/modules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessCategory: category || null, modules: chosen }),

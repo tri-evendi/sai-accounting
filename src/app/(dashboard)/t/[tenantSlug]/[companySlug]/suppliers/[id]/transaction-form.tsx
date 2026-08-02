@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { ArrowDownLeft, ArrowUpRight, Link2, Plus } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
 
@@ -73,7 +74,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
     setLoadingPurchases(true);
     setPurchasesError(false);
     try {
-      const res = await fetch(`/api/suppliers/${supplierId}/transactions?outstanding=1`);
+      const res = await apiFetch(`/api/suppliers/${supplierId}/transactions?outstanding=1`);
       if (!res.ok) throw new Error();
       setPurchases(await res.json());
     } catch {
@@ -140,7 +141,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
       costCenterId: costCenterPayload(costCenterId),
     };
 
-    const res = await fetch(`/api/suppliers/${supplierId}/transactions`, {
+    const res = await apiFetch(`/api/suppliers/${supplierId}/transactions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

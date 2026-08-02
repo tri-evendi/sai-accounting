@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { Loader2 } from "lucide-react";
 import type { AccountOption } from "../new/asset-form";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function CategoryForm({
   assetAccounts,
@@ -51,7 +52,7 @@ export function CategoryForm({
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/fixed-assets/categories", {
+      const res = await apiFetch("/api/fixed-assets/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

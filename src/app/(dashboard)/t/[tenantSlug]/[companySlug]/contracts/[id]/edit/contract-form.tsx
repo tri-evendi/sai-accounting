@@ -17,6 +17,7 @@ import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface ContractItem {
   itemName: string;
@@ -63,7 +64,7 @@ export function EditContractForm() {
   const [consigneeId, setConsigneeId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`/api/contracts/${params.id}`)
+    apiFetch(`/api/contracts/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error(t("contracts.loadFailed"));
         return res.json();
@@ -125,7 +126,7 @@ export function EditContractForm() {
       items,
     };
 
-    const res = await fetch(`/api/contracts/${params.id}`, {
+    const res = await apiFetch(`/api/contracts/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

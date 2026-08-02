@@ -31,6 +31,7 @@ import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { approvalDocumentTypeLabels } from "@/lib/i18n/labels";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function ApprovalRules({
   rules,
@@ -63,7 +64,7 @@ export function ApprovalRules({
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await fetch("/api/approvals/rules", {
+      const res = await apiFetch("/api/approvals/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,7 +93,7 @@ export function ApprovalRules({
   async function deactivate(rule: ApprovalRuleView) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/approvals/rules/${rule.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/approvals/rules/${rule.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast(data.error || t("approvals.errDeactivate"), "error");

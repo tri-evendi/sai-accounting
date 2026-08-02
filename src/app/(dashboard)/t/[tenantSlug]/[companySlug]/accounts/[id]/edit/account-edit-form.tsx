@@ -13,6 +13,7 @@ import { ACCOUNT_TYPES } from "@/lib/accounting";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { accountTypeLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AccountOption {
   id: number;
@@ -51,8 +52,8 @@ export function EditAccountForm() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/accounts/${id}`).then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/accounts").then((r) => (r.ok ? r.json() : [])),
+      apiFetch(`/api/accounts/${id}`).then((r) => (r.ok ? r.json() : null)),
+      apiFetch("/api/accounts").then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([acc, all]: [AccountData | null, AccountOption[]]) => {
         if (acc) {
@@ -79,7 +80,7 @@ export function EditAccountForm() {
     setError("");
     setLoading(true);
 
-    const res = await fetch(`/api/accounts/${id}`, {
+    const res = await apiFetch(`/api/accounts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -39,6 +39,7 @@ import { useT } from "@/lib/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 import { BASE_CURRENCY, CURRENCY_VALUES } from "@/lib/validations/fx";
 import { DollarSign } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface PaymentFormProps {
   entityType: "contracts" | "invoices";
@@ -73,7 +74,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
   const isForeign = currency !== BASE_CURRENCY;
 
   async function onSubmit(values: PaymentFormInput) {
-    const res = await fetch(`/api/${entityType}/${entityId}/payments`, {
+    const res = await apiFetch(`/api/${entityType}/${entityId}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

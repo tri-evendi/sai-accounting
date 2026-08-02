@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { ArrowRightLeft, Banknote, Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 function todayISO() {
   const d = new Date();
@@ -53,7 +54,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
     setDError(null);
     setDisposing(true);
     try {
-      const res = await fetch(`/api/fixed-assets/${assetId}/dispose`, {
+      const res = await apiFetch(`/api/fixed-assets/${assetId}/dispose`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: dDate, proceeds: Number(proceeds) || 0, note: dNote || undefined }),
@@ -77,7 +78,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
     setTError(null);
     setMoving(true);
     try {
-      const res = await fetch(`/api/fixed-assets/${assetId}/transfer`, {
+      const res = await apiFetch(`/api/fixed-assets/${assetId}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: tDate, toLocation, note: tNote || undefined }),

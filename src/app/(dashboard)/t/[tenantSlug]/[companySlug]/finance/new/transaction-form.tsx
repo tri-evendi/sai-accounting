@@ -42,6 +42,7 @@ import { resolveSubmitFailure } from "@/lib/form-sections";
 import { closedPeriodIssue, negativeValueIssue, type ClosedPeriodRef } from "@/lib/form-guards";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { cashTypeLabels } from "@/lib/i18n/labels";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AccountOption {
   id: number;
@@ -130,7 +131,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     let cancelled = false;
 
     async function loadAccounts() {
-      const res = await fetch("/api/accounts");
+      const res = await apiFetch("/api/accounts");
       if (!res.ok || cancelled) return;
       const data: AccountOption[] = await res.json();
       setAccounts(data.filter((a) => a.isActive));
@@ -228,7 +229,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       costCenterId: costCenterId ? Number(costCenterId) : null,
     };
 
-    const res = await fetch("/api/finance", {
+    const res = await apiFetch("/api/finance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

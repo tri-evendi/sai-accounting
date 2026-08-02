@@ -26,6 +26,7 @@ import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { Loader2, Trash2, ClipboardList } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AccountOption {
   id: number;
@@ -64,7 +65,7 @@ export function BudgetAccountsClient({
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/budget", {
+      const res = await apiFetch("/api/budget", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -95,7 +96,7 @@ export function BudgetAccountsClient({
   async function handleDelete(id: number) {
     setDeleting(id);
     try {
-      const res = await fetch(`/api/budget/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/budget/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast(data?.error ?? t("budget.deleteBudgetFailed"), "error");

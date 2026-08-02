@@ -12,6 +12,7 @@ import { useT } from "@/lib/i18n/client";
 import { useDictionary } from "@/lib/i18n/client";
 import { accountTypeLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface AccountOption {
   id: number;
@@ -35,7 +36,7 @@ export function NewAccountForm() {
   });
 
   useEffect(() => {
-    fetch("/api/accounts")
+    apiFetch("/api/accounts")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: AccountOption[]) => setParents(data))
       .catch(() => setParents([]));
@@ -46,7 +47,7 @@ export function NewAccountForm() {
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/accounts", {
+    const res = await apiFetch("/api/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

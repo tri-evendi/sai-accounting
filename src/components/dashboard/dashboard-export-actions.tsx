@@ -28,6 +28,7 @@ import { useT } from "@/lib/i18n/client";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import { apiFetch } from "@/lib/api-fetch";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -41,7 +42,7 @@ export function InventoryExportAction() {
       title="Laporan Stok"
       filename={`Stock_Report_${today()}.pdf`}
       generate={async () => {
-        const res = await fetch("/api/inventory");
+        const res = await apiFetch("/api/inventory");
         if (!res.ok) throw new Error("inventory fetch failed");
         const items: ClientInventoryItem[] = await res.json();
         const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
@@ -61,7 +62,7 @@ export function FinanceExportAction() {
       title="Laporan Kas & Bank"
       filename={`Finance_Report_${today()}.pdf`}
       generate={async () => {
-        const res = await fetch("/api/finance");
+        const res = await apiFetch("/api/finance");
         if (!res.ok) throw new Error("finance fetch failed");
         const data: { balances: FinanceBalanceRow[]; transactions: FinanceReportRow[] } =
           await res.json();

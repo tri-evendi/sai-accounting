@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function ReverseButton({ journalId }: { journalId: number }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function ReverseButton({ journalId }: { journalId: number }) {
 
   async function onConfirm() {
     setError("");
-    const res = await fetch(`/api/journals/${journalId}/reverse`, { method: "POST" });
+    const res = await apiFetch(`/api/journals/${journalId}/reverse`, { method: "POST" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error || t("journal.reverseFailed"));

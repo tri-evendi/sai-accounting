@@ -42,7 +42,16 @@ import {
 
 const IDLE: ProvisionState = { current: null, completed: new Set() };
 
-export function CompanyForm() {
+export function CompanyForm({
+  /**
+   * Tenant pemilik — hanya untuk PRATINJAU nama basis data: sejak issue #153
+   * nama turunannya `sai_t{tenantId}_{slug}`, jadi pratinjau tanpa id tenant
+   * akan menjanjikan nama yang bukan yang sebenarnya dibuat server.
+   */
+  tenantId,
+}: {
+  tenantId: number;
+}) {
   const t = useT();
   const router = useRouter();
 
@@ -62,7 +71,7 @@ export function CompanyForm() {
    * bukan yang ia maksud.
    */
   const effectiveSlug = slugTouched ? normalizeSlug(slug) : normalizeSlug(name);
-  const previewDatabase = effectiveSlug ? databaseNameForSlug(effectiveSlug) : "";
+  const previewDatabase = effectiveSlug ? databaseNameForSlug(effectiveSlug, tenantId) : "";
 
   /**
    * Menerapkan satu peristiwa ke keadaan tahap.

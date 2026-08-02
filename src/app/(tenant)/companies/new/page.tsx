@@ -24,7 +24,7 @@ import { CompanyForm } from "./company-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewCompanyPage() {
-  await requireTenantPagePermission("company.create");
+  const { tenant } = await requireTenantPagePermission("company.create");
   const t = await getT();
 
   return (
@@ -45,7 +45,10 @@ export default async function NewCompanyPage() {
         <p>{t("companies.explainNextStep")}</p>
       </div>
 
-      <CompanyForm />
+      {/* `tenantId` hanya untuk PRATINJAU nama basis data (`sai_t{id}_{slug}`,
+          issue #153) — nilai yang dipakai server tetap datang dari penjaga
+          `requireTenantApiPermission`, tidak pernah dari klien. */}
+      <CompanyForm tenantId={tenant.tenantId} />
     </AuthShell>
   );
 }

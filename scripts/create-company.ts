@@ -29,6 +29,7 @@ import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -85,14 +86,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Nama basis data diturunkan dari slug bila tidak disebut: tanda hubung tidak
-  // sah di identifier MySQL tanpa backtick, jadi diganti garis bawah.
-  const databaseName = database ?? `sai_${slug.replace(/-/g, "_")}`;
-  if (!DB_NAME.test(databaseName)) {
-    console.error(`ERROR: nama basis data tidak sah: ${databaseName}`);
-    process.exit(1);
-  }
-
   const control = controlClient(controlUrl);
 
   /*
@@ -128,12 +121,35 @@ async function main() {
     process.exit(1);
   }
 
-  const clash = await control.company.findFirst({
+  /*
+   * Nama basis data diturunkan SETELAH tenant diketahui: sejak issue #153
+   * bentuk turunannya `sai_t{tenantId}_{slug}` — id tenant di awalan membuat
+   * tabrakan lintas tenant mustahil secara struktur. `--database` eksplisit
+   * (jalur pemasangan yang basis datanya dibuat manual) tetap dipakai apa
+   * adanya.
+   */
+  const databaseName = resolveDatabaseName(tenantId, slug, database);
+  if (!DB_NAME.test(databaseName)) {
+    console.error(`ERROR: nama basis data tidak sah: ${databaseName}`);
+    process.exit(1);
+  }
+
+  /*
+   * Lingkup pemeriksaannya mengikuti aturan #153 (`firstConflict`, sama dengan
+   * penyedia web): slug hanya berbenturan DI DALAM tenant pemiliknya — tenant
+   * lain boleh punya slug yang sama; nama basis data berbenturan GLOBAL (ruang
+   * nama fisik server).
+   */
+  const existing = await control.company.findMany({
     where: { OR: [{ slug }, { databaseName }] },
+    select: { tenantId: true, slug: true, databaseName: true },
   });
-  if (clash) {
+  const conflict = firstConflict(existing, { tenantId, slug, databaseName });
+  if (conflict) {
     console.error(
-      `ERROR: sudah ada perusahaan dengan slug "${clash.slug}" / basis data "${clash.databaseName}".`
+      conflict === "slug"
+        ? `ERROR: slug "${slug}" sudah dipakai perusahaan lain di tenant ini.`
+        : `ERROR: basis data "${databaseName}" sudah terdaftar untuk perusahaan lain.`
     );
     process.exit(1);
   }

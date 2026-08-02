@@ -1,0 +1,22 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Slug perusahaan unik PER TENANT (issue #153) — langkah 3 dari 3: buang
+-- keunikan global.
+--
+-- ⚠️  JANGAN diterapkan sebelum BUKTINYA lulus. Urutannya (pola #134):
+--   1. migration 0008 (indeks komposit, berdampingan dengan yang global)
+--   2. npx tsx scripts/prove-company-slug-scope.ts   ← WAJIB exit 0 lebih dulu
+--   3. migration INI
+--
+-- Skrip pembuktian menjamin: tidak ada (tenant_id, slug) kembar, setiap
+-- perusahaan ber-tenant, tidak ada database_name kembar. Ia read-only dan
+-- menyebut baris yang cacat — galat yang bisa dijelaskan, bukan galat indeks
+-- yang tidak menyebut baris mana yang salah.
+--
+-- Setelah migration ini, slug yang sama boleh hidup di dua tenant yang
+-- berbeda; di dalam satu tenant tetap ditolak `companies_tenant_id_slug_key`
+-- (lahir di 0008). Keunikan `database_name` TIDAK disentuh — nama basis data
+-- adalah ruang nama fisik server, tenant mana pun pemiliknya.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- DropIndex
+DROP INDEX `companies_slug_key` ON `companies`;

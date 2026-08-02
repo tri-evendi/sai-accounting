@@ -391,13 +391,53 @@ trialing ──(bayar)──> active ──(gagal bayar)──> past_due ──(
     └──(trial habis)─────┘                          └──(bayar)──> active
                                                           
 suspended ──(berhenti)──> cancelled          [buku besar TIDAK PERNAH dihapus otomatis]
+
+trialing/active/past_due ──(operator_suspend)──> suspended     [manual, issue #155]
+suspended ──(operator_restore)──> active                       [manual, issue #155]
 ```
+
+Dua perpindahan terakhir adalah tindakan MANUAL operator di luar siklus
+dunning (permintaan pelanggan, penyalahgunaan) — tetap lewat mesin siklus
+hidup, wajib beralasan, dan tercatat di jejak audit tenant dengan operator
+sebagai aktornya.
 
 **`suspended` berarti HANYA-BACA, bukan terkunci dan bukan terhapus.** Ini
 bukan kemurahan hati, melainkan keharusan: pelanggan yang berhenti membayar
 tetap wajib menyimpan pembukuannya (§10) dan tetap harus bisa mengunduhnya.
 Mengunci buku besar seseorang karena tagihan tertunggak berarti menghalangi
 kewajiban hukumnya.
+
+### 7.4a Tindakan TULIS konsol operator (issue #155)
+
+Konsol operator (#154) mula-mula hanya membaca — dan itu bisa dirilis tanpa
+risiko. Tindakan tulisnya tidak: setiap tombol memindahkan uang, mencabut
+akses, atau menghancurkan data. Karena itu keempatnya tunduk pada empat aturan
+yang sama, ditegakkan di INTI (`src/lib/operator/writes.ts`), bukan
+diserahkan ke pemanggil:
+
+1. **satu baris jejak audit tenant per tindakan sukses**, dengan OPERATOR
+   sebagai aktor (`operator:<nama>` dari sesi konsol, `cli:<user>` dari skrip)
+   — bukan atas nama pengguna pelanggan;
+2. **alasan yang diketik operator WAJIB** (minimal 5 karakter) dan tersimpan
+   apa adanya di jejak — tindakan tanpa alasan tidak bisa ditinjau ulang;
+3. **urutan tulis §4A**: `sai_platform` DULU, `sai_control` BELAKANGAN;
+4. **cache status tenant dijatuhkan** (`invalidateTenantState()`) oleh server
+   action begitu tindakannya berhasil — suspensi terasa SEKETIKA, bukan
+   setelah TTL 60 detik.
+
+Keempat tindakannya:
+
+| Tindakan | Inti | Catatan |
+| --- | --- | --- |
+| Tandai tagihan lunas (transfer manual) | `recordManualPayment` | `PAYMENT_GATEWAY=manual` adalah BAWAAN; sebelum #155 pelunasan dilakukan `UPDATE` SQL langsung di produksi. Memakai `processPaymentNotification` yang SAMA dengan webhook — satu jalur transisi status, bukan dua yang menyimpang. Referensi bank menjadi `gateway_ref` yang UNIQUE: transfer yang sama tidak bisa tercatat dua kali, juga saat operator & penjadwal bergerak bersamaan (P2002 → duplikat, bukan pembayaran kedua). |
+| Ganti paket | `changeTenantPlan` | Menggantikan `bun run change-plan`; skripnya kini pembungkus tipis atas inti yang sama. Kuota baru yang lebih kecil dari pemakaian nyata adalah **peringatan, bukan penghalang** — turun paket keputusan yang sah — dan konsekuensinya ikut tercatat di jejak. Tenant `suspended` **tidak** dipulihkan oleh ganti paket: pemulihan keputusan terpisah dengan alasannya sendiri. |
+| Tangguhkan / pulihkan | `setTenantSuspension` | Lewat mesin siklus hidup (`operator_suspend` / `operator_restore`), bukan `UPDATE` status langsung. Layar menyatakan gamblang: `suspended` = HANYA-BACA, bukan terkunci dan bukan terhapus. |
+| Eksekusi penghapusan | `executeTenantDeletion` | Hanya atas permintaan `pending` yang masa tenggangnya SUDAH lewat (§10). Konfirmasi dengan **mengetik ulang slug tenant**, bukan "Ya". Layar menyebut apa yang TIDAK dihapus dan kenapa. Gerbang kedua (`--drop-ledgers`) sengaja TIDAK diberi tombol konsol. |
+
+Skrip CLI-nya **tetap ada** sebagai jalur pemulihan saat konsolnya sendiri
+tidak bisa dibuka (host salah konfigurasi, IP belum di-allowlist, Next mati) —
+tetapi kini pembungkus tipis atas inti yang sama, dan `--reason` wajib di sana
+persis seperti di konsol.
 
 ### 7.5 Berhenti dan menghapus akun
 

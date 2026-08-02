@@ -3221,7 +3221,12 @@
     "partnerPickOrCreate": "Pick a partner from the list, or fill in a new one.",
     "partnerNameRequired": "A new partner needs a name.",
     "receiptQuantityPositive": "The incoming quantity must be greater than 0",
-    "receiptDateRequired": "The goods-received date is required"
+    "receiptDateRequired": "The goods-received date is required",
+    "operatorReasonRequired": "A reason is required (at least 5 characters)",
+    "invoiceRequired": "An invoice must be selected",
+    "bankRefRequired": "A bank reference is required (at least 3 characters)",
+    "planRequired": "A plan must be selected",
+    "confirmSlugRequired": "Retype the tenant slug to continue"
   },
   "modules": {
     "sectionTitle": "Business Modules",
@@ -3421,8 +3426,7 @@
   },
   "operator": {
     "consoleTitle": "Operator Console",
-    "readOnlyBadge": "Read-only",
-    "readOnlyNote": "This console only reads. Write actions (plan changes, marking payments) are not available here yet.",
+    "auditedBadge": "Actions are logged",
     "nav": {
       "tenants": "Tenants",
       "reconciliation": "Reconciliation",
@@ -3537,6 +3541,89 @@
       "listAdoptions": "Orphan subscription adoptions",
       "listErrors": "Issues",
       "listEmpty": "none"
+    },
+    "actions": {
+      "heading": "Operator actions",
+      "note": "Every action requires a typed reason and is recorded in the tenant audit trail — who, when, why. Changes take effect immediately: the tenant state cache is dropped, not left to expire.",
+      "denied": "Operator session is not valid — reload the page and sign in again.",
+      "reasonLabel": "Reason (required, recorded)",
+      "reasonHint": "An action without a reason cannot be reviewed. Reference a ticket/evidence where available.",
+      "billingDown": "The billing database is unreachable — billing actions are disabled until it returns.",
+      "markPaid": {
+        "title": "Mark invoice paid (manual transfer)",
+        "description": "For installations without a payment gateway: record a bank-transfer settlement of an issued invoice. The bank reference is the anti-duplicate key — the same transfer can never be recorded twice.",
+        "invoiceLabel": "Issued invoice",
+        "invoiceOption": "{number} — due {date} — total {total}",
+        "amountLabel": "Amount received (IDR)",
+        "amountHint": "The amount that actually arrived in the account. Invoice total: {total}.",
+        "dateLabel": "Transfer date",
+        "refLabel": "Bank reference",
+        "refHint": "The transfer reference/memo from the bank statement.",
+        "submit": "Mark paid",
+        "confirmTitle": "Record manual payment?",
+        "confirmBody": "{number} will be marked paid with a manual transfer payment of {amount}. The subscription status follows the lifecycle engine.",
+        "empty": "No issued invoices are awaiting settlement.",
+        "success": "Payment recorded; invoice {number} is paid.",
+        "successStatus": "Subscription status is now: {status}.",
+        "errDuplicate": "Rejected as a DUPLICATE: this bank reference is already recorded, or the invoice is already paid — no second payment is created.",
+        "errNotIssued": "Rejected: the invoice is not in issued status.",
+        "errNotFound": "Invoice not found."
+      },
+      "plan": {
+        "title": "Change plan",
+        "description": "The subscription moves to another plan with a price snapshot; control quotas are re-copied. Replaces the change-plan script — the script remains as a recovery path.",
+        "current": "Current plan: {plan}",
+        "planLabel": "New plan",
+        "option": "{name} — {price}/mo — {companies} companies · {users} users",
+        "quotaWarningTitle": "The new plan's quota is below actual usage",
+        "quotaWarningCompanies": "{used} companies in use, new quota {max}",
+        "quotaWarningUsers": "{used} users in use, new quota {max}",
+        "quotaWarningNote": "Downgrading is still allowed — a legitimate decision — but the tenant cannot add more until back under quota, and this consequence is recorded in the audit trail.",
+        "suspendedNote": "This tenant is suspended: changing the plan does NOT restore access. Use the Restore action.",
+        "submit": "Change plan",
+        "confirmTitle": "Change plan?",
+        "confirmBody": "{tenant}: {from} → {to}. Price is snapshotted; control quotas are re-copied.",
+        "success": "Plan changed: {from} → {to}.",
+        "errPlan": "Plan not found or inactive.",
+        "errRace": "Collided with a scheduler round — the subscription was just born elsewhere. Reload the page and try again."
+      },
+      "suspension": {
+        "title": "Suspend / restore",
+        "description": "Manual suspension outside the dunning cycle (customer request, abuse) — through the lifecycle engine, not a direct status UPDATE.",
+        "readOnlyExplain": "Suspended means READ-ONLY — not locked and not deleted: the books stay readable and exportable (the customer's legal right under the 10-year retention law). Writing reopens on restore.",
+        "restoreExplain": "Restore returns the subscription to active through the lifecycle engine; old arrears no longer anchor the grace period.",
+        "suspendSubmit": "Suspend tenant",
+        "restoreSubmit": "Restore tenant",
+        "confirmSuspendTitle": "Suspend this tenant?",
+        "confirmSuspendBody": "{tenant} becomes READ-ONLY immediately: writes are refused, reading & exporting still work. No data is deleted.",
+        "confirmRestoreTitle": "Restore this tenant?",
+        "confirmRestoreBody": "{tenant} becomes active again immediately and the billing cycle resumes.",
+        "success": "Status moved: {from} → {to}.",
+        "errNoSubscription": "This tenant has no subscription yet — set a plan first.",
+        "errNotApplicable": "The lifecycle engine refused: current status is {status}."
+      },
+      "deletion": {
+        "title": "Execute account deletion",
+        "noRequest": "No pending deletion request. Deletion ONLY runs on the owner's explicit request (personal data protection law) — there is no other path, and there must not be.",
+        "graceActive": "Request #{id} is still in its grace period until {date} — the owner may still change their mind; execution is refused before that date.",
+        "ready": "Request #{id} passed its grace period on {date}. Execution may now proceed.",
+        "ownerNote": "Owner's note: {note}",
+        "willHeading": "What happens on execution",
+        "willCancel": "The tenant becomes cancelled; all companies are deactivated; all memberships and sessions are revoked.",
+        "willAnonymize": "PERSONAL data is anonymised (privacy law): email, name and username are replaced; passwords are scrambled.",
+        "willRetention": "The retention deadline is computed and recorded: 10 years from the youngest journal entry.",
+        "keptHeading": "What is NOT deleted — and why",
+        "keptBody": "The ledgers and bookkeeping records are not touched — not one byte: tax law requires 10 years of retention. What is anonymised is personal data, not the bookkeeping. Destroying the books is a second gate (CLI, --drop-ledgers) that only opens after the retention period has passed.",
+        "confirmLabel": "Retype the tenant slug",
+        "confirmHint": "Not just “Yes” — retyping {slug} forces reading which tenant is being deleted.",
+        "submit": "Execute deletion",
+        "confirmTitle": "Execute the deletion now?",
+        "confirmBody": "Tenant {slug} will be cancelled, every company deactivated, and its personal data anonymised — this cannot be undone. The ledgers stay stored for the statutory retention period.",
+        "success": "Execution complete: {companies} companies deactivated, {users} accounts anonymised. Books retained until {date}.",
+        "errGrace": "Refused: the grace period has not passed (until {date}).",
+        "errNoRequest": "Refused: there is no pending deletion request.",
+        "errConfirm": "The typed slug does not match — read again which tenant is being deleted."
+      }
     }
   }
 }

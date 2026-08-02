@@ -3221,7 +3221,12 @@
     "partnerPickOrCreate": "Pilih mitra dari daftar, atau isi data mitra baru.",
     "partnerNameRequired": "Nama wajib diisi untuk mitra baru.",
     "receiptQuantityPositive": "Jumlah barang masuk harus lebih besar dari 0",
-    "receiptDateRequired": "Tanggal barang masuk wajib diisi"
+    "receiptDateRequired": "Tanggal barang masuk wajib diisi",
+    "operatorReasonRequired": "Alasan wajib diisi (minimal 5 karakter)",
+    "invoiceRequired": "Tagihan wajib dipilih",
+    "bankRefRequired": "Referensi bank wajib diisi (minimal 3 karakter)",
+    "planRequired": "Paket wajib dipilih",
+    "confirmSlugRequired": "Ketik ulang slug tenant untuk melanjutkan"
   },
   "modules": {
     "sectionTitle": "Modul Usaha",
@@ -3421,8 +3426,7 @@
   },
   "operator": {
     "consoleTitle": "Konsol Operator",
-    "readOnlyBadge": "Hanya-baca",
-    "readOnlyNote": "Konsol ini hanya membaca. Tindakan tulis (ganti paket, tandai lunas) belum tersedia dari sini.",
+    "auditedBadge": "Tindakan tercatat",
     "nav": {
       "tenants": "Tenant",
       "reconciliation": "Rekonsiliasi",
@@ -3537,6 +3541,89 @@
       "listAdoptions": "Adopsi langganan yatim",
       "listErrors": "Masalah",
       "listEmpty": "tidak ada"
+    },
+    "actions": {
+      "heading": "Tindakan operator",
+      "note": "Setiap tindakan menuntut alasan yang diketik dan tercatat di jejak audit tenant — siapa, kapan, kenapa. Perubahan terasa seketika: cache status tenant dijatuhkan, bukan menunggu TTL.",
+      "denied": "Sesi operator tidak sah — muat ulang halaman dan masuk lagi.",
+      "reasonLabel": "Alasan (wajib, ikut tercatat)",
+      "reasonHint": "Tindakan tanpa alasan tidak bisa ditinjau ulang. Sebut rujukan tiket/bukti bila ada.",
+      "billingDown": "Basis data penagihan tidak terjangkau — tindakan penagihan dimatikan sampai basisnya kembali.",
+      "markPaid": {
+        "title": "Tandai tagihan lunas (transfer manual)",
+        "description": "Jalur pemasangan tanpa gerbang pembayaran: catat pelunasan transfer bank atas tagihan terbit. Referensi bank menjadi kunci anti-duplikat — transfer yang sama tidak bisa tercatat dua kali.",
+        "invoiceLabel": "Tagihan terbit",
+        "invoiceOption": "{number} — jatuh tempo {date} — total {total}",
+        "amountLabel": "Jumlah diterima (IDR)",
+        "amountHint": "Nominal yang benar-benar masuk rekening. Total tagihan: {total}.",
+        "dateLabel": "Tanggal transfer",
+        "refLabel": "Referensi bank",
+        "refHint": "Nomor referensi/berita transfer dari rekening koran.",
+        "submit": "Tandai lunas",
+        "confirmTitle": "Catat pembayaran manual?",
+        "confirmBody": "{number} akan ditandai lunas dengan pembayaran transfer manual sebesar {amount}. Status langganan mengikuti mesin siklus hidup.",
+        "empty": "Tidak ada tagihan terbit yang menunggu pelunasan.",
+        "success": "Pembayaran tercatat; tagihan {number} lunas.",
+        "successStatus": "Status langganan kini: {status}.",
+        "errDuplicate": "Ditolak sebagai DUPLIKAT: referensi bank ini sudah tercatat, atau tagihannya sudah lunas — tidak ada pembayaran kedua.",
+        "errNotIssued": "Ditolak: tagihan tidak berstatus terbit.",
+        "errNotFound": "Tagihan tidak ditemukan."
+      },
+      "plan": {
+        "title": "Ganti paket",
+        "description": "Langganan pindah paket dengan snapshot harga; kuota kendali disalin ulang. Menggantikan skrip change-plan — skripnya tetap ada sebagai jalur pemulihan.",
+        "current": "Paket saat ini: {plan}",
+        "planLabel": "Paket baru",
+        "option": "{name} — {price}/bln — {companies} PT · {users} pengguna",
+        "quotaWarningTitle": "Kuota paket baru lebih kecil dari pemakaian",
+        "quotaWarningCompanies": "{used} PT terpakai, kuota baru {max}",
+        "quotaWarningUsers": "{used} pengguna terpakai, kuota baru {max}",
+        "quotaWarningNote": "Turun paket tetap boleh — keputusan yang sah — tetapi tenant tidak bisa menambah sampai kembali di bawah kuota, dan konsekuensi ini ikut tercatat di jejak audit.",
+        "suspendedNote": "Tenant sedang ditangguhkan: ganti paket TIDAK memulihkan akses. Gunakan tindakan Pulihkan.",
+        "submit": "Ganti paket",
+        "confirmTitle": "Ganti paket?",
+        "confirmBody": "{tenant}: {from} → {to}. Harga di-snapshot; kuota kendali disalin ulang.",
+        "success": "Paket berganti: {from} → {to}.",
+        "errPlan": "Paket tidak ditemukan atau nonaktif.",
+        "errRace": "Bentrok dengan putaran penjadwal — langganan baru saja lahir di tangan lain. Muat ulang halaman dan coba lagi."
+      },
+      "suspension": {
+        "title": "Tangguhkan / pulihkan",
+        "description": "Suspensi manual di luar siklus dunning (permintaan pelanggan, penyalahgunaan) — lewat mesin siklus hidup, bukan UPDATE status langsung.",
+        "readOnlyExplain": "Ditangguhkan berarti HANYA-BACA — bukan terkunci, bukan terhapus: pembukuan tetap terbaca dan tetap bisa diekspor (hak hukum pelanggan, retensi UU KUP). Menulis kembali terbuka saat dipulihkan.",
+        "restoreExplain": "Pulihkan mengembalikan langganan ke aktif lewat mesin siklus hidup; tunggakan lama tidak lagi menjadi jangkar masa tenggang.",
+        "suspendSubmit": "Tangguhkan tenant",
+        "restoreSubmit": "Pulihkan tenant",
+        "confirmSuspendTitle": "Tangguhkan tenant ini?",
+        "confirmSuspendBody": "{tenant} menjadi HANYA-BACA seketika: menulis ditolak, membaca & mengekspor tetap bisa. Tidak ada data yang dihapus.",
+        "confirmRestoreTitle": "Pulihkan tenant ini?",
+        "confirmRestoreBody": "{tenant} kembali aktif seketika dan siklus tagih berjalan lagi.",
+        "success": "Status berpindah: {from} → {to}.",
+        "errNoSubscription": "Tenant belum punya langganan — atur paket lebih dulu.",
+        "errNotApplicable": "Mesin siklus hidup menolak: status sekarang {status}."
+      },
+      "deletion": {
+        "title": "Eksekusi penghapusan akun",
+        "noRequest": "Tidak ada permintaan penghapusan pending. Penghapusan HANYA berjalan atas permintaan eksplisit pemilik (UU PDP) — tidak ada jalur lain, dan memang tidak boleh ada.",
+        "graceActive": "Permintaan #{id} masih dalam masa tenggang sampai {date} — pemilik masih boleh berubah pikiran; eksekusi ditolak sebelum tanggal itu.",
+        "ready": "Permintaan #{id} melewati masa tenggang pada {date}. Eksekusi boleh dijalankan.",
+        "ownerNote": "Catatan pemilik: {note}",
+        "willHeading": "Yang terjadi saat eksekusi",
+        "willCancel": "Tenant menjadi berhenti; seluruh PT dinonaktifkan; semua keanggotaan dan sesi dicabut.",
+        "willAnonymize": "Data PRIBADI dianonimkan (UU PDP): email, nama, dan nama pengguna diganti; kata sandi diacak.",
+        "willRetention": "Batas retensi dihitung dan dicatat: 10 tahun sejak entri jurnal termuda.",
+        "keptHeading": "Yang TIDAK dihapus — dan alasannya",
+        "keptBody": "Buku besar dan catatan pembukuan TIDAK disentuh satu byte pun: UU KUP mewajibkan penyimpanan 10 tahun. Yang dianonimkan adalah data pribadi, bukan pembukuan. Penghancuran buku adalah gerbang kedua (CLI, --drop-ledgers) yang baru terbuka setelah masa retensi lewat.",
+        "confirmLabel": "Ketik ulang slug tenant",
+        "confirmHint": "Bukan sekadar “Ya” — mengetik ulang {slug} memaksa membaca tenant mana yang sedang dihapus.",
+        "submit": "Eksekusi penghapusan",
+        "confirmTitle": "Eksekusi penghapusan sekarang?",
+        "confirmBody": "Tenant {slug} akan menjadi berhenti, seluruh PT dinonaktifkan, dan data pribadinya dianonimkan — tidak bisa dibatalkan. Buku besar tetap tersimpan sesuai retensi UU KUP.",
+        "success": "Eksekusi selesai: {companies} PT dinonaktifkan, {users} akun dianonimkan. Buku tersimpan sampai {date}.",
+        "errGrace": "Ditolak: masa tenggang belum lewat (sampai {date}).",
+        "errNoRequest": "Ditolak: tidak ada permintaan penghapusan pending.",
+        "errConfirm": "Slug yang diketik tidak cocok — baca lagi tenant mana yang sedang dihapus."
+      }
     }
   }
 }

@@ -1,36 +1,33 @@
 /**
- * Ganti PAKET sebuah tenant (issue #140) — dijalankan operator, sampai gateway
- * pembayaran (#141) memberi pelanggan tombolnya sendiri.
+ * Ganti PAKET sebuah tenant — JALUR PEMULIHAN command-line (issue #140,
+ * dijadikan pembungkus tipis di #155).
  *
- *   bun run change-plan -- --tenant <id|slug> --plan <key>
+ *   bun run change-plan -- --tenant <id|slug> --plan <key> --reason "<alasan>"
  *
- * ══ URUTAN TULIS (doktrin #137 — tidak boleh ditukar) ═══════════════════════
- *   1. `sai_platform` DULU: langganan dibuat/dipindah paket, dengan SNAPSHOT
- *      harga (`subscriptions.price` disalin dari `plans`, bukan dirujuk).
- *   2. `sai_control` BELAKANGAN: `tenants.plan_key` + kuota `max_companies`/
- *      `max_users` DISALIN dari paket (pola snapshot docs/MULTI-TENANT.md §5 —
- *      menaikkan harga/kuota paket tidak boleh diam-diam mengubah pelanggan
- *      berjalan), dan `tenants.status` disamakan dengan status langganannya.
+ * ══ PEMBUNGKUS, BUKAN IMPLEMENTASI KEDUA ════════════════════════════════════
+ * Sejak #155 logikanya hidup di `src/lib/operator/writes.ts` dan dipakai
+ * BERSAMA oleh konsol operator. Skrip ini tinggal tiga hal: merakit klien,
+ * membaca argumen, mencetak hasil. Kalau kedua jalur punya salinan logikanya
+ * sendiri, salah satunya akan menyimpang diam-diam — dan yang menyimpang
+ * selalu ketahuan terlambat, dari tenant yang kuotanya salah.
  *
- * Crash di antara keduanya meninggalkan langganan platform tanpa salinan
- * kendali — persis arah sisa yang ditemukan `bun run reconcile:platform`
- * (pemeriksaan "status-tak-serasi"), lalu disembuhkan dengan menjalankan
- * skrip ini lagi. Urutan sebaliknya (kendali dulu) meninggalkan tenant naik
- * kelas tanpa catatan pembayaran — drift yang tidak akan pernah ketahuan.
+ * Skripnya TETAP ADA dengan sengaja: saat konsol operator sendiri mati (host
+ * salah konfigurasi, IP belum di-allowlist, Next tidak menyala), pemulihan
+ * tidak boleh ikut mati. Yang tidak berubah adalah kewajibannya — `--reason`
+ * WAJIB di sini persis seperti di konsol: tindakan tanpa alasan tidak bisa
+ * ditinjau ulang, siapa pun yang menjalankannya.
  *
- * Tenant yang BELUM punya langganan memulai `trialing` dengan
- * `trial_ends_at = sekarang + plans.trial_days`; `trial_days` 0 → langsung
- * `active`, dan tagihan pertamanya diterbitkan penjadwal pada putaran
- * berikutnya.
+ * Urutan tulis #137 (platform DULU, kendali BELAKANGAN), snapshot harga &
+ * kuota, dan jejak audit tenant beraktor+beralasan semuanya milik inti — lihat
+ * dokumentasinya di `writes.ts`.
  */
 
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { nextPeriod, tenantStatusForSubscription } from "../src/lib/subscription-lifecycle";
-import { writeTenantAuditLog } from "../src/lib/tenant-audit";
-import type { SubscriptionStatus } from "../src/lib/platform-constants";
+
+import { changeTenantPlan } from "../src/lib/operator/writes";
 
 function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);
@@ -51,11 +48,22 @@ function argValue(flag: string): string | null {
   return index >= 0 ? (process.argv[index + 1] ?? null) : null;
 }
 
+const USAGE =
+  'Pakai: bun run change-plan -- --tenant <id|slug> --plan <key> --reason "<alasan>"';
+
 async function main() {
   const tenantArg = argValue("--tenant");
   const planKey = argValue("--plan");
+  const reason = argValue("--reason")?.trim() ?? "";
   if (!tenantArg || !planKey) {
-    console.error("Pakai: bun run change-plan -- --tenant <id|slug> --plan <key>");
+    console.error(USAGE);
+    process.exit(1);
+  }
+  if (reason.length < 5) {
+    console.error(
+      "✗ --reason WAJIB (minimal 5 karakter) — alasannya ikut tercatat di jejak audit tenant.\n" +
+        USAGE
+    );
     process.exit(1);
   }
 
@@ -69,104 +77,56 @@ async function main() {
   const platform = clientFor(PlatformClient, platformUrl);
   const control = clientFor(ControlClient, controlUrl);
 
-  const tenant = /^\d+$/.test(tenantArg)
-    ? await control.tenant.findUnique({ where: { id: Number(tenantArg) } })
-    : await control.tenant.findUnique({ where: { slug: tenantArg } });
-  if (!tenant) {
-    console.error(`✗ Tenant "${tenantArg}" tidak ditemukan di basis data kendali.`);
-    process.exit(1);
-  }
-
-  const plan = await platform.plan.findUnique({ where: { key: planKey } });
-  if (!plan || !plan.isActive) {
-    console.error(
-      `✗ Paket "${planKey}" tidak ada / nonaktif. Jalankan dulu: bun run db:seed:plans`
-    );
-    process.exit(1);
-  }
-
-  const now = new Date();
-
-  /* ── 1. PLATFORM dulu ─────────────────────────────────────────────────── */
-  const existing = await platform.subscription.findFirst({
-    where: { tenantId: tenant.id },
-    orderBy: { id: "desc" },
-  });
-
-  let subscription;
-  if (existing && existing.status !== "cancelled") {
-    subscription = await platform.subscription.update({
-      where: { id: existing.id },
-      data: {
-        planId: plan.id,
-        /* SNAPSHOT harga — harga paket boleh naik besok; langganan ini tidak. */
-        price: plan.priceMonthly,
-        currency: plan.currency,
-      },
-    });
-    console.log(`~ subscription #${subscription.id} pindah ke paket "${plan.key}"`);
-  } else {
-    const status = plan.trialDays > 0 ? "trialing" : "active";
-    const period = nextPeriod("monthly", now);
-    subscription = await platform.subscription.create({
-      data: {
-        tenantId: tenant.id,
-        planId: plan.id,
-        status,
-        billingCycle: "monthly",
-        price: plan.priceMonthly,
-        currency: plan.currency,
-        currentPeriodStart: period.start,
-        currentPeriodEnd: period.end,
-        trialEndsAt:
-          plan.trialDays > 0
-            ? new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000)
-            : null,
-        /* Kunci idempotensi KELAHIRAN (#152): hanya langganan PERTAMA tenant
-         * yang memakai penandanya — berlangganan ulang setelah `cancelled`
-         * membiarkannya NULL supaya tidak menabrak langganan pertamanya.
-         * Balapan dengan putaran adopsi penjadwal menabrak UNIQUE ini, bukan
-         * melahirkan kembar. */
-        initialForTenantId: existing ? null : tenant.id,
-      },
-    });
-    console.log(
-      `+ subscription #${subscription.id} (${status}) dibuat untuk tenant "${tenant.slug}"`
-    );
-  }
-
-  /* ── 2. KENDALI belakangan: salin kuota + status (snapshot) ───────────── */
-  await control.tenant.update({
-    where: { id: tenant.id },
-    data: {
-      planKey: plan.key,
-      maxCompanies: plan.maxCompanies,
-      maxUsers: plan.maxUsers,
-      trialEndsAt: subscription.trialEndsAt,
-      status: tenantStatusForSubscription(subscription.status as SubscriptionStatus),
-    },
-  });
-  console.log(
-    `✓ tenant "${tenant.slug}": plan_key=${plan.key}, max_companies=${plan.maxCompanies}, ` +
-      `max_users=${plan.maxUsers}, status=${subscription.status} — salinan kendali ditulis TERAKHIR`
+  const result = await changeTenantPlan(
+    { platform, control },
+    {
+      tenantRef: /^\d+$/.test(tenantArg) ? { id: Number(tenantArg) } : { slug: tenantArg },
+      planKey,
+      /* Aktor CLI ditandai sebagai CLI — jejak harus bisa membedakan tindakan
+       * konsol dari tindakan shell tanpa menebak. */
+      actor: { operator: `cli:${process.env.USER ?? "unknown"}`, reason },
+    }
   );
-
-  /* Ganti paket = peristiwa TENANT — jejaknya di rumah tenant (issue #142). */
-  await writeTenantAuditLog({
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    username: `operator (${process.env.USER ?? "cli"})`,
-    action: "tenant.plan.change",
-    details: {
-      from: tenant.planKey,
-      to: plan.key,
-      maxCompanies: plan.maxCompanies,
-      maxUsers: plan.maxUsers,
-    },
-  });
 
   await platform.$disconnect();
   await control.$disconnect();
+
+  switch (result.outcome) {
+    case "changed": {
+      console.log(
+        `✓ tenant "${result.tenantSlug}": ${result.fromPlanKey} → ${result.toPlanKey} ` +
+          `(subscription #${result.subscriptionId}, status=${result.subscriptionStatus}) — ` +
+          "salinan kendali ditulis TERAKHIR"
+      );
+      if (result.quotaWarning) {
+        const { companies, users } = result.quotaWarning;
+        console.warn("⚠ Kuota paket baru DI BAWAH pemakaian nyata:");
+        if (companies) console.warn(`  PT: ${companies.used} terpakai, kuota baru ${companies.max}`);
+        if (users) console.warn(`  Pengguna: ${users.used} terpakai, kuota baru ${users.max}`);
+        console.warn(
+          "  Turun paket tetap sah — tenant tidak bisa menambah sampai kembali di bawah\n" +
+            "  kuota. Konsekuensi ini ikut tercatat di jejak audit."
+        );
+      }
+      return;
+    }
+    case "tenant_not_found":
+      console.error(`✗ Tenant "${tenantArg}" tidak ditemukan di basis data kendali.`);
+      process.exit(1);
+      return;
+    case "plan_not_found":
+      console.error(
+        `✗ Paket "${planKey}" tidak ada / nonaktif. Jalankan dulu: bun run db:seed:plans`
+      );
+      process.exit(1);
+      return;
+    case "race_lost":
+      console.error(
+        "✗ Bentrok dengan putaran penjadwal: langganan pertama tenant ini baru saja lahir\n" +
+          "  di tangan lain (UNIQUE initial_for_tenant_id). Jalankan ulang perintah yang sama."
+      );
+      process.exit(1);
+  }
 }
 
 main().catch((error) => {

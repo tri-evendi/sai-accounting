@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  listPlansForOperator,
   listTenantsForOperator,
   reconciliationForOperator,
   schedulerRunsForOperator,
@@ -64,6 +65,9 @@ function fakeControl() {
     membership: {
       groupBy: vi.fn(async () => [{ companyId: 21, _count: { _all: 3 } }]),
     },
+    tenantDeletionRequest: {
+      findFirst: vi.fn(async () => null),
+    },
   } as unknown as NonNullable<Deps>["control"];
 }
 
@@ -114,6 +118,24 @@ describe("tenantDetailForOperator — platform mati ≠ halaman mati", () => {
     expect(detail!.companies[0].userCount).toBe(3);
     expect(detail!.companies[1].userCount).toBe(0);
     expect(detail!.billing).toBeNull();
+  });
+
+  it("permintaan penghapusan pending ikut terbaca dari kendali", async () => {
+    const control = fakeControl();
+    const request = {
+      id: 5,
+      graceEndsAt: new Date("2026-09-01T00:00:00Z"),
+      note: "pindah sistem",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+    };
+    (
+      (control as unknown as { tenantDeletionRequest: { findFirst: ReturnType<typeof vi.fn> } })
+        .tenantDeletionRequest.findFirst
+    ).mockResolvedValue(request);
+    const detail = await silenced(() =>
+      tenantDetailForOperator(7, { control, platform: deadPlatform() })
+    );
+    expect(detail!.deletionRequest).toEqual(request);
   });
 
   it("tenant tidak ada → null (404), bukan galat", async () => {
@@ -206,6 +228,43 @@ describe("reconciliationForOperator", () => {
     } as unknown as NonNullable<Deps>["platform"];
     const report = await reconciliationForOperator({ control, platform });
     expect(report).toEqual({ findings: [], skipped: [], subscriptionsChecked: 0 });
+  });
+});
+
+describe("listPlansForOperator", () => {
+  it("platform mati → null (panel ganti paket mati dengan tenang), bukan 500", async () => {
+    const plans = await silenced(() => listPlansForOperator({ platform: deadPlatform() }));
+    expect(plans).toBeNull();
+  });
+
+  it("paket aktif → baris dengan harga string, terurut dari termurah", async () => {
+    const platform = {
+      plan: {
+        findMany: vi.fn(async () => [
+          {
+            key: "trial",
+            name: "Trial",
+            priceMonthly: { toString: () => "0.00" },
+            currency: "IDR",
+            maxCompanies: 1,
+            maxUsers: 3,
+            trialDays: 14,
+          },
+        ]),
+      },
+    } as unknown as NonNullable<Parameters<typeof listPlansForOperator>[0]>["platform"];
+    const plans = await listPlansForOperator({ platform });
+    expect(plans).toEqual([
+      {
+        key: "trial",
+        name: "Trial",
+        priceMonthly: "0.00",
+        currency: "IDR",
+        maxCompanies: 1,
+        maxUsers: 3,
+        trialDays: 14,
+      },
+    ]);
   });
 });
 

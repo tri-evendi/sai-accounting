@@ -3221,7 +3221,12 @@
     "partnerPickOrCreate": "请从列表中选择往来单位，或填写新的往来单位。",
     "partnerNameRequired": "新的往来单位必须填写名称。",
     "receiptQuantityPositive": "入库数量必须大于 0",
-    "receiptDateRequired": "请填写入库日期"
+    "receiptDateRequired": "请填写入库日期",
+    "operatorReasonRequired": "必须填写理由（至少 5 个字符）",
+    "invoiceRequired": "必须选择账单",
+    "bankRefRequired": "必须填写银行参考号（至少 3 个字符）",
+    "planRequired": "必须选择套餐",
+    "confirmSlugRequired": "重新输入租户 slug 以继续"
   },
   "modules": {
     "sectionTitle": "业务模块",
@@ -3421,8 +3426,7 @@
   },
   "operator": {
     "consoleTitle": "运营控制台",
-    "readOnlyBadge": "只读",
-    "readOnlyNote": "此控制台仅供查看。写入操作（更换套餐、标记付款）暂不可用。",
+    "auditedBadge": "操作留痕",
     "nav": {
       "tenants": "租户",
       "reconciliation": "对账",
@@ -3537,6 +3541,89 @@
       "listAdoptions": "孤儿订阅认领",
       "listErrors": "问题",
       "listEmpty": "无"
+    },
+    "actions": {
+      "heading": "运营者操作",
+      "note": "每项操作都必须填写理由，并记录在租户审计日志中——谁、何时、为什么。更改立即生效：租户状态缓存会被清除，而不是等待过期。",
+      "denied": "运营者会话无效——请刷新页面并重新登录。",
+      "reasonLabel": "理由（必填，将被记录）",
+      "reasonHint": "没有理由的操作无法复查。如有工单/凭证请注明。",
+      "billingDown": "计费数据库不可达——计费操作已暂时停用，待其恢复。",
+      "markPaid": {
+        "title": "标记账单已付（手动转账）",
+        "description": "适用于未接入支付网关的部署：登记已开具账单的银行转账付款。银行参考号是防重复键——同一笔转账不可能被记录两次。",
+        "invoiceLabel": "已开具账单",
+        "invoiceOption": "{number} — 到期 {date} — 合计 {total}",
+        "amountLabel": "实收金额（IDR）",
+        "amountHint": "实际到账的金额。账单合计：{total}。",
+        "dateLabel": "转账日期",
+        "refLabel": "银行参考号",
+        "refHint": "银行对账单上的转账参考号/附言。",
+        "submit": "标记已付",
+        "confirmTitle": "登记手动付款？",
+        "confirmBody": "{number} 将以 {amount} 的手动转账付款标记为已付。订阅状态由生命周期引擎决定。",
+        "empty": "没有等待结清的已开具账单。",
+        "success": "付款已登记；账单 {number} 已付清。",
+        "successStatus": "订阅状态现为：{status}。",
+        "errDuplicate": "已作为重复拒绝：该银行参考号已登记，或账单已付清——不会产生第二笔付款。",
+        "errNotIssued": "已拒绝：该账单不是已开具状态。",
+        "errNotFound": "未找到账单。"
+      },
+      "plan": {
+        "title": "更换套餐",
+        "description": "订阅以价格快照迁移到新套餐；控制库配额重新复制。取代 change-plan 脚本——脚本保留作为恢复通道。",
+        "current": "当前套餐：{plan}",
+        "planLabel": "新套餐",
+        "option": "{name} — {price}/月 — {companies} 家公司 · {users} 位用户",
+        "quotaWarningTitle": "新套餐配额低于实际用量",
+        "quotaWarningCompanies": "已使用 {used} 家公司，新配额 {max}",
+        "quotaWarningUsers": "已使用 {used} 位用户，新配额 {max}",
+        "quotaWarningNote": "仍然允许降级——这是正当决定——但在回到配额以内之前租户无法新增，且该后果会记入审计日志。",
+        "suspendedNote": "该租户已被暂停：更换套餐不会恢复访问。请使用恢复操作。",
+        "submit": "更换套餐",
+        "confirmTitle": "更换套餐？",
+        "confirmBody": "{tenant}：{from} → {to}。价格将快照；控制库配额重新复制。",
+        "success": "套餐已更换：{from} → {to}。",
+        "errPlan": "套餐不存在或已停用。",
+        "errRace": "与调度器执行冲突——订阅刚在别处创建。请刷新页面后重试。"
+      },
+      "suspension": {
+        "title": "暂停 / 恢复",
+        "description": "催收周期之外的手动暂停（客户请求、滥用）——经由生命周期引擎，而不是直接改状态。",
+        "readOnlyExplain": "暂停意味着只读——不是锁定，也不是删除：账簿仍可阅读和导出（这是客户依 10 年保存法的法定权利）。恢复后即可再次写入。",
+        "restoreExplain": "恢复通过生命周期引擎将订阅带回活跃；旧欠款不再作为宽限期的锚点。",
+        "suspendSubmit": "暂停租户",
+        "restoreSubmit": "恢复租户",
+        "confirmSuspendTitle": "暂停该租户？",
+        "confirmSuspendBody": "{tenant} 将立即变为只读：写入被拒绝，阅读和导出仍可用。不会删除任何数据。",
+        "confirmRestoreTitle": "恢复该租户？",
+        "confirmRestoreBody": "{tenant} 将立即恢复活跃，计费周期重新运转。",
+        "success": "状态已变更：{from} → {to}。",
+        "errNoSubscription": "该租户还没有订阅——请先设置套餐。",
+        "errNotApplicable": "生命周期引擎拒绝：当前状态为 {status}。"
+      },
+      "deletion": {
+        "title": "执行账户删除",
+        "noRequest": "没有待处理的删除请求。删除只在所有者明确请求下执行（个人数据保护法）——没有其他途径，也不该有。",
+        "graceActive": "请求 #{id} 仍在宽限期内，至 {date}——所有者仍可反悔；在该日期之前拒绝执行。",
+        "ready": "请求 #{id} 已于 {date} 过宽限期。现在可以执行。",
+        "ownerNote": "所有者备注：{note}",
+        "willHeading": "执行时会发生什么",
+        "willCancel": "租户变为已注销；所有公司停用；所有成员资格和会话被吊销。",
+        "willAnonymize": "个人数据被匿名化（个人数据保护法）：邮箱、姓名、用户名被替换；密码被打乱。",
+        "willRetention": "保存期限将被计算并记录：自最新日记账分录起 10 年。",
+        "keptHeading": "不会删除的内容——以及原因",
+        "keptBody": "账簿和会计记录一个字节都不会动：税法要求保存 10 年。被匿名化的是个人数据，不是账务。销毁账簿是第二道闸门（CLI，--drop-ledgers），只在保存期限过后才开启。",
+        "confirmLabel": "重新输入租户 slug",
+        "confirmHint": "不只是“是”——重新输入 {slug} 迫使确认正在删除哪个租户。",
+        "submit": "执行删除",
+        "confirmTitle": "现在执行删除？",
+        "confirmBody": "租户 {slug} 将被取消，所有公司停用，个人数据匿名化——不可撤销。账簿仍按法定保存期限保留。",
+        "success": "执行完成：{companies} 家公司停用，{users} 个账户匿名化。账簿保存至 {date}。",
+        "errGrace": "已拒绝：宽限期尚未结束（至 {date}）。",
+        "errNoRequest": "已拒绝：没有待处理的删除请求。",
+        "errConfirm": "输入的 slug 不匹配——请再确认正在删除哪个租户。"
+      }
     }
   }
 }

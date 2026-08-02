@@ -1,11 +1,16 @@
 /**
- * Rincian TENANT — konsol operator (issue #154).
+ * Rincian TENANT — konsol operator (issue #154), dan sejak #155 juga
+ * PERMUKAAN TINDAKANNYA: panel tulis (`TenantActions`) berdiri di halaman
+ * yang sama dengan faktanya, karena tombol yang memindahkan uang harus
+ * berdiri persis di sebelah angka yang menjadi alasannya.
  *
  * Dua sumber, dua nasib — dan keduanya jujur di layar:
  *   • Bagian KENDALI (paket ter-snapshot, kuota, pemakaian, daftar PT) selalu
  *     tampil, juga saat `sai_platform` mati.
  *   • Bagian PLATFORM (langganan, tagihan + pembayarannya, profil pajak)
- *     jatuh ke "penagihan tidak terjangkau" — bukan 500.
+ *     jatuh ke "penagihan tidak terjangkau" — bukan 500. Saat itu terjadi,
+ *     tindakan penagihan (lunas/paket/suspensi) ikut MATI di layar: menawarkan
+ *     tombol yang pasti gagal adalah kebohongan kecil yang mahal.
  *
  * Halaman ini TIDAK PERNAH membuka basis data perusahaan tenant: operator
  * melihat metadata langganan, bukan pembukuan pelanggan (batas #154 —
@@ -28,8 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TenantActions } from "@/components/operator/tenant-actions";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { tenantDetailForOperator } from "@/lib/operator/store";
+import { listPlansForOperator, tenantDetailForOperator } from "@/lib/operator/store";
+import { executionVerdict } from "@/lib/tenant-deletion";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -67,7 +74,11 @@ export default async function OperatorTenantDetailPage({
   if (!detail) notFound();
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
-  const { tenant, usage, companies, billing } = detail;
+  const { tenant, usage, companies, billing, deletionRequest } = detail;
+
+  /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
+   * tanpanya panel ganti paket memang tidak boleh muncul. */
+  const plans = billing === null ? null : await listPlansForOperator();
 
   return (
     <div className="space-y-8">
@@ -308,6 +319,44 @@ export default async function OperatorTenantDetailPage({
           {t("operator.tenant.booksNote")}
         </p>
       </section>
+
+      {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,
+          tombolnya belakangan; yang paling merusak paling jauh dari jalur
+          baca. Semua nilai sudah diserialkan di sini (tanggal jadi label,
+          Decimal jadi string) — komponen client tidak menerima Date/Decimal. */}
+      <TenantActions
+        tenantId={tenant.id}
+        tenantSlug={tenant.slug}
+        tenantName={tenant.name}
+        tenantStatus={tenant.status}
+        subscriptionStatus={billing?.subscription?.status ?? null}
+        usage={usage}
+        currentPlanKey={tenant.planKey}
+        billingAvailable={billing !== null}
+        issuedInvoices={(billing?.invoices ?? [])
+          .filter((invoice) => invoice.status === "issued")
+          .map((invoice) => ({
+            number: invoice.number,
+            total: invoice.total,
+            currency: invoice.currency,
+            dueDateLabel: formatDate(invoice.dueDate),
+          }))}
+        plans={plans}
+        deletionRequest={
+          deletionRequest
+            ? {
+                id: deletionRequest.id,
+                graceEndsAtLabel: formatDate(deletionRequest.graceEndsAt),
+                /* Vonis yang SAMA dengan yang dipakai inti tulis — layar dan
+                 * server tidak boleh berbeda pendapat soal tenggang. */
+                pastGrace:
+                  executionVerdict({ status: "pending", graceEndsAt: deletionRequest.graceEndsAt }) ===
+                  "executable",
+                note: deletionRequest.note,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

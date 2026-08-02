@@ -290,4 +290,9 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.partnerNameRequired": "Nama wajib diisi untuk mitra baru.",
   "validation.receiptQuantityPositive": "Jumlah barang masuk harus lebih besar dari 0",
   "validation.receiptDateRequired": "Tanggal barang masuk wajib diisi",
+  "validation.operatorReasonRequired": "Alasan wajib diisi (minimal 5 karakter)",
+  "validation.invoiceRequired": "Tagihan wajib dipilih",
+  "validation.bankRefRequired": "Referensi bank wajib diisi (minimal 3 karakter)",
+  "validation.planRequired": "Paket wajib dipilih",
+  "validation.confirmSlugRequired": "Ketik ulang slug tenant untuk melanjutkan",
 };

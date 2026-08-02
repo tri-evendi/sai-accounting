@@ -37,8 +37,14 @@ export type TenantAuditAction =
   | "tenant.invitation.create"
   | "tenant.invitation.accept"
   | "tenant.invitation.revoke"
-  /** Ganti paket (skrip operator #140). */
+  /** Ganti paket (skrip operator #140; konsol operator #155). */
   | "tenant.plan.change"
+  /** Pembayaran transfer manual dicatat operator (#155) — jalur
+   *  PAYMENT_GATEWAY=manual; aktornya operator, alasannya wajib. */
+  | "tenant.payment.manual"
+  /** Suspensi/pemulihan MANUAL oleh operator (#155) — di luar siklus dunning. */
+  | "tenant.suspend"
+  | "tenant.restore"
   /** Langganan yatim diadopsikan penjadwal / adopt-tenant (#152) — tenant
    *  berbayar yang belum punya baris `subscriptions` dilahirkan langganannya. */
   | "tenant.subscription.adopt"

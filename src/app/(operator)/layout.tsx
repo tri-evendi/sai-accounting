@@ -36,7 +36,10 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         <div className="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-2">
           <ShieldCheck className="h-5 w-5 shrink-0 text-primary-foreground/90" aria-hidden="true" />
           <span className="text-sm font-semibold tracking-tight">{t("operator.consoleTitle")}</span>
-          <Badge variant="warning">{t("operator.readOnlyBadge")}</Badge>
+          {/* Sejak #155 konsol ini MENULIS — penandanya berganti dari
+              "hanya-baca" menjadi peringatan bahwa setiap tindakan terekam
+              atas nama operator yang sedang masuk. */}
+          <Badge variant="warning">{t("operator.auditedBadge")}</Badge>
           {session && (
             <div className="ml-auto flex items-center gap-3">
               <span className="hidden text-xs text-sidebar-foreground/70 sm:inline">

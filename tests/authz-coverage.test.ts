@@ -45,6 +45,26 @@ const GUARDED_PAGE_GROUPS = ["(dashboard)", "(setup)"];
  */
 const TENANT_PAGE_GROUPS = ["(tenant)"];
 
+/**
+ * Grup rute yang halamannya SAH tanpa penjaga izin, beserta alasannya —
+ * pasangan eksplisit dari daftar-daftar berpenjaga di atas, dipakai tes
+ * "inventaris grup rute" di bawah (issue #156).
+ *
+ * `(auth)`: keadaan PRA-aplikasi (masuk, ganti kata sandi, pilih perusahaan,
+ * layar penjelasan) — memanggil penjaga izin di sana justru memantul tanpa
+ * henti (lihat komentar `GUARDED_PAGE_GROUPS`).
+ *
+ * ── Untuk #154/#155 (konsol operator) dan #157 (rute ber-slug tenant) ──────
+ * Grup rute BARU apa pun membuat tes inventaris MERAH sampai didaftarkan:
+ *   • #154: tambahkan `"(operator)"` ke daftar grup BARU miliknya sendiri
+ *     (mis. `OPERATOR_PAGE_GROUPS`) + satu describe yang mewajibkan penjaga
+ *     operator di setiap halamannya — meniru pola describe `(tenant)` di
+ *     bawah; JANGAN memasukkannya ke daftar tanpa-penjaga ini.
+ *   • #157: grup baru berisi halaman ber-izin perusahaan cukup ditambahkan ke
+ *     `GUARDED_PAGE_GROUPS`; yang ber-izin tenant ke `TENANT_PAGE_GROUPS`.
+ */
+const UNGUARDED_PAGE_GROUPS = ["(auth)"];
+
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
   // Beranda terbuka untuk semua peran; menjaga sendiri dengan auth() dan
@@ -128,6 +148,39 @@ function filesNamed(dir: string, filename: string): string[] {
     return entry.name === filename ? [full] : [];
   });
 }
+
+/** Semua berkas sumber (.ts/.tsx) di bawah sebuah direktori. */
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full);
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
+  });
+}
+
+describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)", () => {
+  it("setiap direktori di bawah src/app terdaftar di salah satu himpunan di atas", () => {
+    // Penutup lubang yang membuat daftar-daftar di atas bisa dilewati begitu
+    // saja: grup rute baru — `(operator)` milik #154, grup ber-slug milik
+    // #157, atau grup apa pun sesudahnya — TIDAK tersentuh satu pun telusur
+    // sampai seseorang mendaftarkannya, dan grup rute tidak mengubah URL, jadi
+    // halaman tanpa penjaga di dalamnya tidak meninggalkan jejak. Tes ini
+    // membuat "lupa mendaftar" mustahil sunyi: direktori yang tak dikenal =
+    // merah, dan yang mendaftarkannya wajib memilih himpunan (berpenjaga
+    // perusahaan / tenant / tanpa-penjaga beralasan / describe baru miliknya).
+    const known = new Set([
+      "api", // route API — cakupannya dijaga describe "cakupan penjaga API route"
+      ...GUARDED_PAGE_GROUPS,
+      ...TENANT_PAGE_GROUPS,
+      ...UNGUARDED_PAGE_GROUPS,
+    ]);
+    const unregistered = readdirSync(APP_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => !known.has(name));
+    expect(unregistered).toEqual([]);
+  });
+});
 
 describe("cakupan penjaga halaman tenant (issue #135)", () => {
   const pages = TENANT_PAGE_GROUPS.flatMap((group) =>
@@ -227,6 +280,72 @@ describe("cakupan penjaga API route", () => {
       .map((f) => relative(API_DIR, f))
       .filter((rel) => readFileSync(join(API_DIR, rel), "utf8").includes("requireAuth("));
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * Konteks perusahaan TIDAK dibaca dari sesi (issue #156 — pagar jalan #157).
+ *
+ * Aturannya: halaman & route menerima konteks perusahaan DARI PENJAGANYA
+ * (`requirePagePermission`/`requireApiPermission` menanamkannya lewat
+ * `enterCompanyFromSession`), bukan membaca `session.user.companyId` sendiri.
+ * Tanpa pagar ini, migrasi #157 (konteks dari slug URL, bukan dari sesi) akan
+ * bocor balik satu berkas demi satu berkas selama berminggu-minggu — dan
+ * pembaca sesi yang lolos adalah persis jalur yang menulis ke buku PT yang
+ * salah tanpa galat dan tanpa jejak.
+ *
+ * Pengecualiannya BERALASAN, bukan sunyi — dan begitu #157 memindahkan sebuah
+ * entri ke konteks-dari-penjaga, tes "tidak basi" di bawah memaksa entrinya
+ * dihapus dari daftar ini.
+ */
+describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
+  /* Menangkap `user.companyId` dan `user?.companyId` — termasuk bentuk
+   * `session.user.companyId` / `session?.user?.companyId` / `token.user…`.
+   * Regex, bukan parser: cukup untuk menolak pola yang dilarang ditulis; cara
+   * membaca sesi yang lebih akrobatik tidak akan lolos review manusia. */
+  const SESSION_COMPANY_PATTERN = /\buser\??\.companyId\b/;
+
+  const SESSION_COMPANY_EXCEPTIONS = new Set([
+    // ── grup (auth): keadaan PRA-aplikasi — belum ada penjaga yang bisa
+    //    memberi konteks; companyId dipakai HANYA untuk memilih tujuan
+    //    pantulan (/select-company vs /dashboard), tidak pernah untuk query.
+    "(auth)/login/page.tsx",
+    "(auth)/change-password/page.tsx",
+    "(auth)/select-company/page.tsx", // pemilih perusahaan itu sendiri
+    "(auth)/feature-inactive/page.tsx",
+    "(auth)/setup-required/page.tsx",
+    // Beranda telanjang /dashboard: terbuka untuk semua peran (lihat
+    // PAGE_EXCEPTIONS), menjaga diri dengan auth() dan memantulkan sesi tanpa
+    // perusahaan ke /select-company — pembacaan untuk PANTULAN, bukan query.
+    "(dashboard)/dashboard/page.tsx",
+    // Self-scoped: daftar PT milik pemanggil + PT aktifnya, untuk pemilih &
+    // penukar perusahaan — dipanggil justru saat konteks BELUM ada.
+    "api/user/companies/route.ts",
+    // Self-scoped: izin efektif peran sendiri untuk penyaringan menu; tanpa
+    // perusahaan aktif jawabannya daftar kosong, bukan galat.
+    "api/user/permissions/route.ts",
+    // Route tenant (#139): PT aktif dipakai sebagai KONTEKS undangan dan
+    // DIBUKTIKAN milik tenant pemanggil (companyOfTenant) sebelum dipakai.
+    // #157 memindahkan pembacaan ini ke penjaga tenant — lalu entri ini hapus.
+    "api/tenant/invitations/route.ts",
+    "api/tenant/invitations/[id]/route.ts",
+  ]);
+
+  const readers = sourceFiles(APP_DIR)
+    .map((f) => relative(APP_DIR, f).split(sep).join("/"))
+    .filter((rel) => SESSION_COMPANY_PATTERN.test(readFileSync(join(APP_DIR, rel), "utf8")));
+
+  it("berkas BARU yang membaca companyId dari sesi tertangkap otomatis", () => {
+    expect(readers.filter((rel) => !SESSION_COMPANY_EXCEPTIONS.has(rel))).toEqual([]);
+  });
+
+  it("daftar pengecualiannya tidak basi — entri yang berhenti membaca sesi wajib dihapus", () => {
+    for (const rel of SESSION_COMPANY_EXCEPTIONS) {
+      expect(
+        readers,
+        `${rel} tidak lagi membaca companyId dari sesi — hapus dari SESSION_COMPANY_EXCEPTIONS`
+      ).toContain(rel);
+    }
   });
 });
 

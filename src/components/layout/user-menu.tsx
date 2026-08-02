@@ -18,7 +18,7 @@
  * `role="menuitemradio"` + `aria-checked`: satu pilihan aktif dari tiga,
  * terbaca pembaca layar, dan tetap `<button>` sungguhan (bisa Tab & Enter).
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {

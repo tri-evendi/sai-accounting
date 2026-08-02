@@ -5,7 +5,7 @@
  * dokumen sumber (kontrak/faktur) dan consignee, membawa total kuantitas (kg),
  * dan menautkan ke detail + cetak PDF. Kuantitas rata-kanan & tabular per MASTER.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";

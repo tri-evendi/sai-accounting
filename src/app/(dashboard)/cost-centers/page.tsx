@@ -23,7 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { Split } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";

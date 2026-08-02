@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";

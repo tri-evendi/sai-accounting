@@ -10,7 +10,7 @@
  * the same cap is re-enforced server-side.
  */
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,7 +77,7 @@ export function ReturnForm({
   initialType: "sales" | "purchase";
   items: ItemOption[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
 

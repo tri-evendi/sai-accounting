@@ -15,7 +15,7 @@
 import { useEffect, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/select";
@@ -46,7 +46,7 @@ interface ParentOption {
 }
 
 export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
   const [parents, setParents] = useState<ParentOption[]>([]);

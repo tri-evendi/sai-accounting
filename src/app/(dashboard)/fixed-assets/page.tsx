@@ -6,7 +6,7 @@
  * control (D: Beban Penyusutan / K: Akumulasi Penyusutan); disposal and location
  * moves live on each asset's detail page.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getFixedAssets, summarizeFixedAssets, getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";

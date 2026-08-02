@@ -17,7 +17,7 @@ import { accountTypeLabel } from "@/lib/i18n/labels";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListTree } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";

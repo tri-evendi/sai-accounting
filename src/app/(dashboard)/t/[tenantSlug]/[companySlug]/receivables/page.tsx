@@ -5,7 +5,8 @@
  * source documents via `@/lib/receivables`, whose header explains why every
  * cross-document total is expressed in IDR base.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getReceivables } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
@@ -34,11 +35,13 @@ function todayISO() {
 }
 
 export default async function ReceivablesPage({
+  params,
   searchParams,
 }: {
+  params: Promise<TenantScopedParams>;
   searchParams: Promise<{ asOf?: string; overdue?: string }>;
 }) {
-  await requirePagePermission("receivable.read");
+  await requirePagePermission("receivable.read", params);
   const t = await getT();
   const sp = await searchParams;
   // `asOf` sampah dari URL yang diedit tangan menghasilkan Invalid Date, yang

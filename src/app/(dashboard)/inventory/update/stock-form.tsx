@@ -13,7 +13,7 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -68,7 +68,7 @@ export function StockUpdateForm({
   closedPeriods: ClosedPeriodRef[];
 }) {
   const t = useT();
-  const router = useRouter();
+  const router = useAppRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

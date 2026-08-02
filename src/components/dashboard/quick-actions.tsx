@@ -9,7 +9,7 @@
  * warna saja, sesuai aturan semantik uang di MASTER.md.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import {
   Receipt,
   ShoppingCart,

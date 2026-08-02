@@ -6,7 +6,7 @@
  * origin document and carries a nota-retur PDF. Values are shown in the return's
  * own currency (inherited from the origin), right-aligned and tabular, per MASTER.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";

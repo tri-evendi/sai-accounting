@@ -29,6 +29,19 @@
  * Cache slug→perusahaan di `company-route.ts` berdiri di atas keputusan ini.
  */
 
+/**
+ * Segmen dinamis yang dibawa SETIAP halaman di bawah `/t/…`.
+ *
+ * Next mengoper seluruh segmen dinamis leluhur ke setiap halaman di bawahnya,
+ * jadi halaman `[id]` pun menerima kedua slug ini di `params`-nya — itulah
+ * sebabnya penjaga cukup diberi `params` apa adanya, tanpa satu pun halaman
+ * perlu membaca URL sendiri.
+ */
+export interface TenantScopedParams {
+  tenantSlug: string;
+  companySlug: string;
+}
+
 /** Awalan jalur bertenant. Tidak pernah ditulis harfiah di tempat lain. */
 export const TENANT_ROUTE_PREFIX = "/t";
 
@@ -53,7 +66,19 @@ export function isValidSlug(slug: string | null | undefined): slug is string {
  * lamanya tetap hidup di jalur lama dan tetap mengambil perusahaan dari sesi.
  * Menambahkan segmen ke sini = menyatakan "jalur barunya sudah ada".
  */
-export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [];
+export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
+  "glossary",
+  "ledger",
+  "payables",
+  "periods",
+  "permissions",
+  "purchases",
+  "receivables",
+  "sales",
+  "settings",
+  "tax",
+  "users",
+];
 
 const MIGRATED = new Set(MIGRATED_ROOT_SEGMENTS);
 

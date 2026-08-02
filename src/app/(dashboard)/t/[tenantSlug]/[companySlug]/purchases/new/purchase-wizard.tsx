@@ -17,8 +17,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@/components/ui/app-link";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/select";
@@ -77,7 +77,7 @@ export function PurchaseWizard({
   items: ItemOption[];
   closedPeriods: ClosedPeriodRef[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const { draft, setDraft, clear, ready, notice, dismissNotice } = useWizardDraft<PurchaseDraft>(
     "purchase",

@@ -16,7 +16,7 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
@@ -57,7 +57,7 @@ const statusLabels = (t: TranslateFn): Record<string, string> => ({
 });
 
 export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

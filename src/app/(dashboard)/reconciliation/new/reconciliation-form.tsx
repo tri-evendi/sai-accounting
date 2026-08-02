@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -11,7 +11,7 @@ import { Info } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 
 export function NewReconciliationForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

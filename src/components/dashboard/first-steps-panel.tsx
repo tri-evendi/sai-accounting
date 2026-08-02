@@ -11,7 +11,7 @@
  * "Selesai"; yang belum membawa nomor urut dan ajakan bertindak.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import {
   ArrowDownLeft,
   ArrowRight,

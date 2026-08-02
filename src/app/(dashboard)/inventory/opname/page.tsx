@@ -8,7 +8,7 @@ import {
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";

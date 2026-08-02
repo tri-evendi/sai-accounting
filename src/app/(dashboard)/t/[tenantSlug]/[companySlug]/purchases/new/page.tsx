@@ -1,4 +1,5 @@
 import { requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -15,8 +16,12 @@ export const dynamic = "force-dynamic";
  * Hanya MEMBACA daftar pemasok, barang, dan periode tertutup. Penulisan terjadi
  * sekali saja, lewat `POST /api/wizard/purchase` di langkah terakhir.
  */
-export default async function NewPurchaseWizardPage() {
-  await requirePagePermission("purchase.write");
+export default async function NewPurchaseWizardPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  await requirePagePermission("purchase.write", params);
   const t = await getT();
 
   // Pemasok TIDAK lagi dipreload `take: 500` — daftar terpotong membuat pemasok

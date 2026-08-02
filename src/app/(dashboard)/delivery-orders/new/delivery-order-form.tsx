@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useAppRouter } from "@/components/ui/app-link";
+import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,7 +87,7 @@ export function DeliveryOrderForm({
   closedPeriods,
   canUpdateStock,
 }: Props) {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

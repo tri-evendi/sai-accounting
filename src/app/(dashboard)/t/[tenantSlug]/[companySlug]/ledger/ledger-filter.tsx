@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export function LedgerFilter({
   costCenterOptions,
   costCenter,
 }: Props) {
-  const router = useRouter();
+  const router = useAppRouter();
   const translate = useT();
   const [acc, setAcc] = useState(accountId);
   const [f, setF] = useState(from);

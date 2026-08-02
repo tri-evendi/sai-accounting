@@ -9,7 +9,7 @@
  * added, which is what the summary tiles use. An advance with no rate has no
  * IDR value at all and is labelled as such rather than folded in at 1:1.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";

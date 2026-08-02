@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { BookText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

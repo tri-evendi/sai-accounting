@@ -19,7 +19,7 @@
  * client lewat `term-tooltip.tsx` yang dipakai di form-form yang sama.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";

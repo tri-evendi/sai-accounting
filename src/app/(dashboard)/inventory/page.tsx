@@ -1,5 +1,5 @@
 import { formatNumber, parsePageParam } from "@/lib/utils";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import {

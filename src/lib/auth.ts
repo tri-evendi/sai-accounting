@@ -279,6 +279,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          */
         token.companyCount = (await companiesForUser(userId)).length;
 
+        /*
+         * Slug tenant SUSULAN (issue #157) — hanya bila belum ada.
+         *
+         * Sesi yang terbit SEBELUM issue ini tidak membawanya, dan tanpa
+         * nilai itu `proxy.ts` tidak bisa memantulkan jalur lama: setiap
+         * bookmark lama menjadi 404 sampai orangnya masuk ulang. Diisi di
+         * revalidasi berkala — yang toh sudah menyentuh basis data kendali —
+         * sehingga jendela kerusakannya paling lama satu siklus (60 detik),
+         * bukan satu masa sesi (24 jam). Sesudah token terisi, cabang ini
+         * tidak pernah berjalan lagi: nilainya tetap seumur hidup akun.
+         */
+        if (token.tenantSlug == null) {
+          const owner = await controlDb.user.findUnique({
+            where: { id: userId },
+            select: { tenant: { select: { slug: true } } },
+          });
+          token.tenantSlug = owner?.tenant?.slug ?? null;
+        }
+
         token.mustChangePassword = dbUser!.mustChangePassword;
         token.sessionVersion = dbUser!.sessionVersion;
         token.checkedAt = Date.now();

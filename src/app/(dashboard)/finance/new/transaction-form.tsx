@@ -13,7 +13,8 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,7 @@ const ARAH_HEADING_KEYS = {
 } as const;
 
 function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const searchParams = useSearchParams();
   const arahParam = searchParams.get("arah");
   const arah = arahParam === "masuk" || arahParam === "keluar" ? arahParam : null;

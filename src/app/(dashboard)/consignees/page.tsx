@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { Ship } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 
 export const dynamic = "force-dynamic";
 

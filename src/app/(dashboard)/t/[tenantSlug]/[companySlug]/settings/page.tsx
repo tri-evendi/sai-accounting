@@ -7,14 +7,19 @@
  * client dan API-nya tetap ber-gate peran masing-masing.
  */
 import { requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { canEffective, getEnabledModules } from "@/lib/authz-effective";
 import { BUSINESS_MODULES, isModuleEnabled } from "@/lib/business-modules";
 import { SettingsClient } from "./settings-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
-  const session = await requirePagePermission("settings.view");
+export default async function SettingsPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  const session = await requirePagePermission("settings.view", params);
   // issue #73 — keputusan tampilan dihitung terhadap matriks EFEKTIF di server
   // dan diturunkan sebagai boolean; komponen client tidak lagi membaca matriks
   // bawaan dari bundle. API audit tetap ber-gate `audit.read` (pertahanan asli).

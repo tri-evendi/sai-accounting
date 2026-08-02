@@ -1,4 +1,5 @@
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { getAccountLedger } from "@/lib/ledger";
 import { Card } from "@/components/ui/card";
@@ -21,16 +22,18 @@ import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-cente
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 
 export const dynamic = "force-dynamic";
 
 export default async function LedgerPage({
+  params,
   searchParams,
 }: {
+  params: Promise<TenantScopedParams>;
   searchParams: Promise<{ accountId?: string; from?: string; to?: string; costCenter?: string }>;
 }) {
-  const session = await requirePagePermission("ledger.read");
+  const session = await requirePagePermission("ledger.read", params);
   // issue #103 — "Catat transaksi" menunjuk ke /finance/new, milik modul
   // `cash_bank`. Buku besar sendiri modul INTI, jadi halaman ini tetap ada
   // saat kas/bank dimatikan; ajakannya yang tidak boleh ikut bertahan.

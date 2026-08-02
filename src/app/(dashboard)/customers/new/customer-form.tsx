@@ -14,7 +14,7 @@
 
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,7 +33,7 @@ import { customerSchema, type CustomerInput } from "@/lib/validations/finance";
 import { useT } from "@/lib/i18n/client";
 
 export function NewCustomerForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
 

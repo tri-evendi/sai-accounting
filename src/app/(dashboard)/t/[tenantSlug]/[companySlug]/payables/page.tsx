@@ -9,7 +9,8 @@
  * shown as fact. The per-supplier total is exact either way — see
  * `allocatePayments`.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getPayables } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
@@ -41,11 +42,13 @@ function todayISO() {
 }
 
 export default async function PayablesPage({
+  params,
   searchParams,
 }: {
+  params: Promise<TenantScopedParams>;
   searchParams: Promise<{ asOf?: string; overdue?: string }>;
 }) {
-  await requirePagePermission("payable.read");
+  await requirePagePermission("payable.read", params);
   const t = await getT();
   const sp = await searchParams;
   // `asOf` sampah dari URL yang diedit tangan menghasilkan Invalid Date, yang

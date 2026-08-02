@@ -71,7 +71,7 @@ const RAW_BUTTON_ALLOWLIST = new Set([
   "components/shared/wizard.tsx",
   // Grup chip filter `aria-pressed`: semantik toggle, belum ada primitifnya
   // (tidak ada `ToggleGroup` di src/components/ui).
-  "app/(dashboard)/glossary/glossary-browser.tsx",
+  "app/(dashboard)/t/[tenantSlug]/[companySlug]/glossary/glossary-browser.tsx",
 ]);
 
 function tsxFiles(dir: string): string[] {

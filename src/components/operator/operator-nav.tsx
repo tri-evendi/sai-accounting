@@ -9,7 +9,7 @@
  * tidak boleh menyeret chrome (menu, sesi, izin) aplikasi pelanggan.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 

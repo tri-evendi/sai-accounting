@@ -8,7 +8,7 @@
  * Komponen ini hanya menyaring dan menggambar.
  */
 
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { useMemo, useState } from "react";
 import { Search, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";

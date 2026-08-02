@@ -6,11 +6,16 @@
  * `/api/authz/overrides`, yang ber-gate izin yang sama — pertahanan berlapis.
  */
 import { requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { PermissionsClient } from "./permissions-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function PermissionsPage() {
-  await requirePagePermission("authz.manage");
+export default async function PermissionsPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  await requirePagePermission("authz.manage", params);
   return <PermissionsClient />;
 }

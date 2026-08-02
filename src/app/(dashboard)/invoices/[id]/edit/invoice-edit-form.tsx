@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -31,7 +32,7 @@ interface InvoiceItem {
 }
 
 export function EditInvoiceForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const params = useParams();
   const t = useT();
   const [loading, setLoading] = useState(false);

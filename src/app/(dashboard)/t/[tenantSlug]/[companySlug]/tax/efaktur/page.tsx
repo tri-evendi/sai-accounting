@@ -11,6 +11,7 @@
  * schema before production filing (see `@/lib/efaktur`).
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,21 +57,23 @@ function parseDate(value: string | undefined): Date | null {
 }
 
 export default async function EfakturPage({
+  params,
   searchParams,
 }: {
+  params: Promise<TenantScopedParams>;
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const session = await requirePagePermission("tax.read");
+  const session = await requirePagePermission("tax.read", params);
   // issue #103 — "Buat tagihan pertama" menunjuk ke /invoices/new, milik modul
   // `sales`. Pajak (`tax_id`) dan penjualan dua sakelar terpisah: perusahaan
   // yang mematikan salah satunya tidak boleh diajak ke halaman yang memantul.
   const canCreateInvoice = await canOpenPage(session.user, "invoice.write");
   const t = await getT();
-  const params = await searchParams;
+  const filters = await searchParams;
 
   const defaults = currentMonthRange();
-  const fromStr = params.from || defaults.from;
-  const toStr = params.to || defaults.to;
+  const fromStr = filters.from || defaults.from;
+  const toStr = filters.to || defaults.to;
   const from = parseDate(fromStr) ?? new Date(defaults.from);
   const to = parseDate(toStr) ?? new Date(defaults.to);
 

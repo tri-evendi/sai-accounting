@@ -93,11 +93,19 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
     expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(directoriesIn(SCOPED_DIR));
   });
 
-  it("setiap segmen yang didaftarkan masih punya halaman lamanya — pantulannya butuh asal", () => {
+  it("halaman DIPINDAHKAN, bukan digandakan — jalur lamanya harus hilang", () => {
+    /*
+     * Menyisakan salinan di jalur lama akan membuat `/invoices` tetap menjawab
+     * 200 dengan perusahaan dari SESI — persis kebiasaan yang issue ini hapus,
+     * hanya kini bersembunyi di balik jalur yang terlihat usang. Yang boleh
+     * tinggal di jalur lama hanyalah pantulan 307 milik proxy, dan pantulan itu
+     * tidak butuh berkas apa pun.
+     */
     for (const segment of MIGRATED_ROOT_SEGMENTS) {
-      expect(existsSync(join(DASHBOARD_DIR, segment)), `${segment} tidak ada di jalur lama`).toBe(
-        true
-      );
+      expect(
+        existsSync(join(DASHBOARD_DIR, segment)),
+        `${segment} masih punya salinan di jalur lama`
+      ).toBe(false);
     }
   });
 

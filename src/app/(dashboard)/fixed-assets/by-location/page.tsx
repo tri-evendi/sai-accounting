@@ -2,7 +2,7 @@
  * Aset per lokasi (issue #28) — active assets grouped by location, with cost,
  * accumulated depreciation and book value per location.
  */
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getFixedAssets, groupByLocation } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";

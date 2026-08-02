@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { EmptyState } from "@/components/ui/empty-state";

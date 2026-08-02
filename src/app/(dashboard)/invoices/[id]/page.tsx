@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
 import { canEffective } from "@/lib/authz-effective";

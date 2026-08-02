@@ -1,7 +1,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import {
   BookText,
   TrendingUp,

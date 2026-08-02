@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import {
   countStockHealth,

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { AlertTriangle } from "lucide-react";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";

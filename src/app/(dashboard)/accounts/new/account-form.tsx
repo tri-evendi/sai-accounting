@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,7 +20,7 @@ interface AccountOption {
 }
 
 export function NewAccountForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const typeLabels = accountTypeLabels(useDictionary());
   const [loading, setLoading] = useState(false);

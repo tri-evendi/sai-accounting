@@ -1,4 +1,5 @@
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
@@ -18,8 +19,12 @@ export const dynamic = "force-dynamic";
  * itu baru terjadi pada satu panggilan `POST /api/wizard/sales` di langkah
  * terakhir.
  */
-export default async function NewSaleWizardPage() {
-  const session = await requirePagePermission("invoice.write");
+export default async function NewSaleWizardPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  const session = await requirePagePermission("invoice.write", params);
   /*
    * issue #103 — empty state stok mengajak ke /inventory/update, milik modul
    * `inventory`. Halaman ini milik modul lain, dan preset "Jasa" (sales tanpa

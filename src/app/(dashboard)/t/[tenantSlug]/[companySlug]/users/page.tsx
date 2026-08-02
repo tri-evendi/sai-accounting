@@ -9,6 +9,7 @@
  * sama sekali.
  */
 import { requirePagePermission } from "@/lib/page-auth";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
@@ -16,8 +17,12 @@ import { UsersClient } from "./users-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function UsersPage() {
-  const session = await requirePagePermission("user.manage");
+export default async function UsersPage({
+  params,
+}: {
+  params: Promise<TenantScopedParams>;
+}) {
+  const session = await requirePagePermission("user.manage", params);
   // Daftar peran dari DB (termasuk peran kustom) untuk pemilih peran.
   const roles = await getActiveRoles();
 

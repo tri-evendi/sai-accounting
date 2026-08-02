@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +63,7 @@ const todayISO = () => {
 const base = (amount: string, rate: string) => (Number(amount) || 0) * (Number(rate) || 1);
 
 export function NewJournalForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

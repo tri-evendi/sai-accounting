@@ -7,7 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { Card } from "@/components/ui/card";
 import { ClipboardList, Target, GaugeCircle } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

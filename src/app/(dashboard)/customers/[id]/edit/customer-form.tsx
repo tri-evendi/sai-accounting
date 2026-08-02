@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useT } from "@/lib/i18n/client";
 
 export function EditCustomerForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const params = useParams();
   const t = useT();
   const [loading, setLoading] = useState(false);

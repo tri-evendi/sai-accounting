@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -95,7 +95,7 @@ export function NewInvoiceForm({
   closedPeriods: ClosedPeriodRef[];
 }) {
   const initialContractId = initialContract ? Number(initialContract.value) : null;
-  const router = useRouter();
+  const router = useAppRouter();
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

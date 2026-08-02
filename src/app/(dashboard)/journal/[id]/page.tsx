@@ -15,7 +15,7 @@ import {
 import { Money, MoneyCell } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import Link from "next/link";
+import { Link } from "@/components/ui/app-link";
 import { ReverseButton } from "./reverse-button";
 import { getT } from "@/lib/i18n/server";
 

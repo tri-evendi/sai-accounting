@@ -9,7 +9,7 @@
  * Registrasi TIDAK memposting jurnal — penyusutan & pelepasan yang menjurnal.
  */
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ export function AssetForm({
   accumulatedAccounts: AccountOption[];
   expenseAccounts: AccountOption[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
 

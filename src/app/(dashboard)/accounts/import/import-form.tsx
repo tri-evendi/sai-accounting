@@ -9,7 +9,7 @@
  * ada dilewati — ringkasannya ditampilkan.
  */
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/ui/app-link";
 import { Download, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ interface ImportResult {
 }
 
 export function ImportAccountsForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
   // Legenda kode tipe Accurate: kodenya dari `lib/coa-import.ts`, artinya dari

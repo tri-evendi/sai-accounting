@@ -15,6 +15,11 @@
  *   suspended ──(bayar)──> active
  *   suspended ──(berhenti)──> cancelled    [buku besar TIDAK PERNAH dihapus]
  *
+ * Ditambah dua event OPERATOR (issue #155, di luar siklus dunning):
+ *
+ *   trialing/active/past_due ──(operator_suspend)──> suspended
+ *   suspended ──(operator_restore)──> active
+ *
  * "Trial habis → active" bukan hadiah: aktif berarti SIKLUS TAGIH DIMULAI —
  * tagihan pertama terbit pada saat itu juga, dan bila tidak dibayar, jalur
  * gagal-bayar yang biasa (past_due → suspended) yang bekerja.
@@ -38,6 +43,13 @@ export const SUBSCRIPTION_EVENTS = [
   "trial_expired",
   "grace_expired",
   "cancel",
+  /* Dua event OPERATOR (issue #155) — suspensi/pemulihan MANUAL di luar
+   * siklus dunning (permintaan pelanggan, penyalahgunaan). Tetap lewat mesin
+   * ini, BUKAN UPDATE status langsung: konsol operator dan penjadwal harus
+   * membaca satu tabel kebenaran yang sama. Keduanya menuntut alasan yang
+   * diketik operator dan tercatat di jejak audit tenant (aturan #155). */
+  "operator_suspend",
+  "operator_restore",
 ] as const;
 export type SubscriptionEvent = (typeof SUBSCRIPTION_EVENTS)[number];
 
@@ -55,22 +67,29 @@ const TRANSITIONS: Record<
     payment_received: "active",
     /* Trial habis = siklus tagih dimulai; tagihan pertama terbit bersamanya. */
     trial_expired: "active",
+    operator_suspend: "suspended",
   },
   active: {
     /* Pembayaran perpanjangan — keadaan tidak berubah, tapi SAH (bukan null):
      * pembayaran pada langganan aktif adalah kejadian normal setiap bulan. */
     payment_received: "active",
     payment_failed: "past_due",
+    operator_suspend: "suspended",
   },
   past_due: {
     payment_received: "active",
     grace_expired: "suspended",
+    operator_suspend: "suspended",
   },
   suspended: {
     payment_received: "active",
     /* Berhenti hanya dari suspended — persis diagram. Pelanggan aktif yang
      * ingin berhenti membiarkan tagihannya jatuh tempo; jalur itu sudah ada. */
     cancel: "cancelled",
+    /* Pemulihan manual (#155) mendarat di tempat yang sama dengan pembayaran:
+     * `active`. Suspensi manual atas tenant menunggak yang dipulihkan tanpa
+     * bayar adalah keputusan operator — alasannya wajib dan tercatat. */
+    operator_restore: "active",
   },
   /* Keadaan akhir. TIDAK ADA jalan keluar — dan TIDAK ADA penghapusan data. */
   cancelled: {},

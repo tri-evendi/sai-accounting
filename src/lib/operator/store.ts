@@ -5,9 +5,9 @@
  * penjaga (`lib/operator/guard.ts`) atau proxy.
  *
  * ══ HANYA-BACA ══════════════════════════════════════════════════════════════
- * Tidak satu pun fungsi di sini menulis apa pun — konsol #154 memang dibangun
- * tanpa aksi tulis (menyusul di #155) supaya pengirimannya tanpa risiko salah
- * tindak.
+ * Tidak satu pun fungsi di sini menulis apa pun — aksi TULIS konsol (#155)
+ * hidup terpisah di `lib/operator/writes.ts` (tanpa `server-only`, klien
+ * disuntikkan) supaya skrip CLI pemulihan memakai inti yang sama.
  *
  * ══ TAHAN MATI (pola `billingOverviewForTenant`) ════════════════════════════
  * Bagian KENDALI (daftar tenant, kuota, pemakaian, daftar PT) selalu tampil;
@@ -134,6 +134,15 @@ export interface OperatorTenantDetail {
     createdAt: Date;
     userCount: number;
   }[];
+  /** Permintaan penghapusan `pending` termuda (basis KENDALI) — bahan panel
+   *  eksekusi #155. `null` = tidak ada permintaan; eksekusi memang HANYA
+   *  berjalan atas permintaan eksplisit pemilik (UU PDP). */
+  deletionRequest: {
+    id: number;
+    graceEndsAt: Date;
+    note: string | null;
+    createdAt: Date;
+  } | null;
   /** `null` = `sai_platform` tak terjangkau / belum disediakan. */
   billing: {
     subscription: {
@@ -211,6 +220,12 @@ export async function tenantDetailForOperator(
     : [];
   const membersByCompany = new Map(memberCounts.map((row) => [row.companyId, row._count._all]));
   const userCount = await deps.control.user.count({ where: { tenantId } });
+
+  const deletionRequest = await deps.control.tenantDeletionRequest.findFirst({
+    where: { tenantId, status: "pending" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, graceEndsAt: true, note: true, createdAt: true },
+  });
 
   let billing: OperatorTenantDetail["billing"] = null;
   try {
@@ -327,8 +342,50 @@ export async function tenantDetailForOperator(
       ...company,
       userCount: membersByCompany.get(company.id) ?? 0,
     })),
+    deletionRequest,
     billing,
   };
+}
+
+/* ─────────────────────────────── Daftar paket ────────────────────────────── */
+
+export interface OperatorPlanRow {
+  key: string;
+  name: string;
+  priceMonthly: string;
+  currency: string;
+  maxCompanies: number;
+  maxUsers: number;
+  trialDays: number;
+}
+
+/**
+ * Paket aktif untuk panel ganti paket (#155). `null` = platform tak
+ * terjangkau — panelnya berkata "penagihan tidak terjangkau" dan tombolnya
+ * mati, bukan 500 (pola tahan-mati modul ini).
+ */
+export async function listPlansForOperator(
+  deps: { platform: PlatformClient } = { platform: platformDb }
+): Promise<OperatorPlanRow[] | null> {
+  try {
+    const plans = await deps.platform.plan.findMany({
+      where: { isActive: true },
+      orderBy: { priceMonthly: "asc" },
+      select: {
+        key: true,
+        name: true,
+        priceMonthly: true,
+        currency: true,
+        maxCompanies: true,
+        maxUsers: true,
+        trialDays: true,
+      },
+    });
+    return plans.map((plan) => ({ ...plan, priceMonthly: plan.priceMonthly.toString() }));
+  } catch (error) {
+    console.error("[operator-store] daftar paket tak terbaca:", error);
+    return null;
+  }
 }
 
 /* ─────────────────────────────── Rekonsiliasi ────────────────────────────── */

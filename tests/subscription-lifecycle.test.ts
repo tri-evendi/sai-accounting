@@ -42,6 +42,8 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       trial_expired: "active", // siklus tagih dimulai — bukan hadiah gratis
       grace_expired: null,
       cancel: null,
+      operator_suspend: "suspended", // manual #155 — penyalahgunaan saat trial
+      operator_restore: null,
     },
     active: {
       payment_received: "active", // perpanjangan — sah, keadaan tetap
@@ -49,6 +51,8 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       trial_expired: null,
       grace_expired: null,
       cancel: null, // berhenti hanya dari suspended (diagram)
+      operator_suspend: "suspended", // manual #155
+      operator_restore: null,
     },
     past_due: {
       payment_received: "active",
@@ -56,6 +60,8 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       trial_expired: null,
       grace_expired: "suspended",
       cancel: null,
+      operator_suspend: "suspended", // manual #155 — tanpa menunggu tenggang
+      operator_restore: null,
     },
     suspended: {
       payment_received: "active", // bayar = pulih penuh
@@ -63,6 +69,8 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       trial_expired: null,
       grace_expired: null,
       cancel: "cancelled",
+      operator_suspend: null, // sudah ditangguhkan — idempoten, bukan galat
+      operator_restore: "active", // pemulihan manual #155 — mendarat sama dengan bayar
     },
     cancelled: {
       payment_received: null,
@@ -70,6 +78,8 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       trial_expired: null,
       grace_expired: null,
       cancel: null,
+      operator_suspend: null, // keadaan akhir — juga bagi tangan operator
+      operator_restore: null,
     },
   };
 

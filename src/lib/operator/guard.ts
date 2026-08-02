@@ -94,3 +94,16 @@ export async function optionalOperatorSession(): Promise<OperatorPageSession | n
   const session = verifyOperatorToken(await readOperatorCookie());
   return session ? { operator: { name: session.sub }, session } : null;
 }
+
+/**
+ * Penjaga SERVER ACTION bidang operator (issue #155) — pemeriksaan yang sama
+ * dengan `requireOperatorPage` (host + IP + cookie + MFA), tetapi jawabannya
+ * `null`, bukan redirect/404: action menjawab lewat state form, dan jawaban
+ * gagalnya SERAGAM (pola action login #154 — action tidak boleh terpanggil
+ * dari host pelanggan sekalipun proxy berubah). Setiap action tulis WAJIB
+ * memanggil ini lebih dulu — ditegakkan sapuan sumber di
+ * `tests/operator-writes.test.ts` dan `tests/authz-coverage.test.ts`.
+ */
+export async function requireOperatorActionSession(): Promise<OperatorPageSession | null> {
+  return optionalOperatorSession();
+}

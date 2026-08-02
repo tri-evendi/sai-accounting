@@ -33,6 +33,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# … kecuali CONTOHNYA (#159 temuan 6): README & scripts/setup.sh menyuruh
+# `cp .env.example .env`, tapi pola `.env*` di atas diam-diam menelan berkas
+# contohnya sendiri — clone baru tidak pernah menerimanya.
+!.env.example
+!.env.docker.example
 
 # vercel
 .vercel

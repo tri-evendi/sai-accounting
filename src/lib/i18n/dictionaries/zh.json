@@ -251,7 +251,7 @@
     },
     "login": {
       "heading": "登录",
-      "description": "使用您的公司账号进入账簿与日常工作。",
+      "description": "已有账号？登录即可进入账簿与日常工作。新客户可通过下方链接注册。",
       "username": "用户名",
       "usernamePlaceholder": "您的用户名",
       "identifier": "邮箱或用户名",

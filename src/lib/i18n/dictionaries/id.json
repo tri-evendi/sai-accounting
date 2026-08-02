@@ -251,7 +251,7 @@
     },
     "login": {
       "heading": "Masuk",
-      "description": "Gunakan akun perusahaan Anda untuk membuka buku dan pekerjaan harian.",
+      "description": "Sudah punya akun? Masuk untuk membuka buku dan pekerjaan harian. Pelanggan baru bisa mendaftar lewat tautan di bawah.",
       "username": "Nama Pengguna",
       "usernamePlaceholder": "nama.pengguna",
       "identifier": "Email atau Nama Pengguna",

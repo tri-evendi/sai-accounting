@@ -46,6 +46,29 @@ const GUARDED_PAGE_GROUPS = ["(dashboard)", "(setup)"];
 const TENANT_PAGE_GROUPS = ["(tenant)"];
 
 /**
+ * Grup rute BIDANG OPERATOR (issue #154): halamannya wajib memanggil
+ * `requireOperatorPage` — penjaga bidang yang TERPISAH dari penjaga pelanggan.
+ * Sengaja bukan `GUARDED_PAGE_GROUPS` maupun `TENANT_PAGE_GROUPS`: operator
+ * bukan pelanggan, tidak ada di tabel `users`, dan memakai penjaga pelanggan
+ * di sini akan menyeret matriks izin pelanggan ke bidang yang justru dibuat
+ * untuk berada di luarnya. Sebaliknya penjaga operator tidak boleh muncul di
+ * halaman pelanggan mana pun.
+ */
+const OPERATOR_PAGE_GROUPS = ["(operator)"];
+
+/**
+ * Halaman bidang operator yang sah TANPA `requireOperatorPage`, beserta
+ * alasannya — pemanggilnya justru belum bersesi.
+ */
+const OPERATOR_PAGE_EXCEPTIONS = new Set([
+  // Halaman masuk bidang operator: yang membukanya belum punya sesi operator,
+  // jadi penjaga sesi akan memantulkannya ke dirinya sendiri. Ia tetap menjaga
+  // diri lewat `operatorPlaneViolation()` — pemeriksaan host + daftar IP yang
+  // sama, yang gagal-TERTUTUP bila `OPERATOR_HOST` tidak diset.
+  "(operator)/operator/login/page.tsx",
+]);
+
+/**
  * Grup rute yang halamannya SAH tanpa penjaga izin, beserta alasannya —
  * pasangan eksplisit dari daftar-daftar berpenjaga di atas, dipakai tes
  * "inventaris grup rute" di bawah (issue #156).
@@ -172,6 +195,7 @@ describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)",
       "api", // route API — cakupannya dijaga describe "cakupan penjaga API route"
       ...GUARDED_PAGE_GROUPS,
       ...TENANT_PAGE_GROUPS,
+      ...OPERATOR_PAGE_GROUPS,
       ...UNGUARDED_PAGE_GROUPS,
     ]);
     const unregistered = readdirSync(APP_DIR, { withFileTypes: true })
@@ -204,6 +228,46 @@ describe("cakupan penjaga halaman tenant (issue #135)", () => {
         "requirePagePermission("
       );
     }
+  });
+});
+
+describe("cakupan penjaga bidang operator (issue #154)", () => {
+  const pages = OPERATOR_PAGE_GROUPS.flatMap((group) =>
+    existsSync(join(APP_DIR, group)) ? filesNamed(join(APP_DIR, group), "page.tsx") : []
+  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
+
+  it("grup (operator) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages).toContain("(operator)/operator/page.tsx");
+  });
+
+  it("setiap halaman operator memakai requireOperatorPage — BUKAN penjaga pelanggan", () => {
+    for (const rel of pages) {
+      if (OPERATOR_PAGE_EXCEPTIONS.has(rel)) continue;
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireOperatorPage`).toContain("requireOperatorPage(");
+      // Penjaga pelanggan/tenant di bidang operator akan menyeret matriks izin
+      // pelanggan ke bidang yang sengaja hidup di luarnya.
+      expect(src, `${rel} memanggil penjaga perusahaan`).not.toContain("requirePagePermission(");
+      expect(src, `${rel} memanggil penjaga tenant`).not.toContain(
+        "requireTenantPagePermission("
+      );
+    }
+  });
+
+  it("halaman masuk operator menjaga dirinya sendiri lewat pemeriksaan bidang", () => {
+    for (const rel of OPERATOR_PAGE_EXCEPTIONS) {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa operatorPlaneViolation`).toContain("operatorPlaneViolation(");
+    }
+  });
+
+  it("tidak ada route API di bawah (operator) — masuk/keluar lewat server action", () => {
+    // Disengaja (#154): permukaan API operator di `src/app/api` akan tercakup
+    // penjaga izin PELANGGAN, yang justru bidang yang salah.
+    const group = join(APP_DIR, "(operator)");
+    const routes = existsSync(group) ? filesNamed(group, "route.ts") : [];
+    expect(routes).toEqual([]);
   });
 });
 

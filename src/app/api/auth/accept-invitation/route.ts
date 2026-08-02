@@ -8,11 +8,15 @@
  *                  halaman penerimaan menampilkannya. Memegang tautan =
  *                  menerima surelnya, jadi tidak ada yang bocor ke pihak lain;
  *                  semua kegagalan token dijawab SATU bentuk yang sama.
- * POST {token, username, name?, password}
+ * POST {token, name?, password}
  *                → buat akun: penerima MENENTUKAN KATA SANDINYA SENDIRI —
  *                  inilah yang mengubur alur "admin mengetik kata sandi lalu
  *                  mengirimnya lewat WhatsApp". User + Membership +
  *                  TenantMembership lahir satu transaksi (invitation-store).
+ *                  Username TIDAK ditanya (#159 temuan 4): email sudah jadi
+ *                  pengenal (desain #139 §4.3), jadi username diturunkan dari
+ *                  email undangan — tabrakan per tenant diselesaikan
+ *                  deterministik di invitation-store.
  */
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
@@ -30,9 +34,10 @@ import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 
+/* `username` sengaja TIDAK ada di sini (#159 temuan 4) — klien lama yang
+ * masih mengirimkannya tetap lolos: kunci tak dikenal dibuang zod. */
 const acceptSchema = z.object({
   token: z.string().min(1).max(128),
-  username: z.string().min(1).max(50).trim(),
   name: z.string().max(100).trim().optional(),
   password: z.string().min(8).max(128),
 });
@@ -94,7 +99,6 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   const result = await acceptInvitation(parsed.data.token, {
-    username: parsed.data.username,
     name: parsed.data.name,
     passwordHash,
   });
@@ -109,11 +113,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: t("invitations.invalidToken"), code: "invalid_token" },
         { status: 400 }
-      );
-    case "username_taken":
-      return NextResponse.json(
-        { error: t("errors.usernameTaken"), code: "username_taken" },
-        { status: 409 }
       );
     case "email_taken":
       /* Di antara undangan dan penerimaan, alamatnya telanjur dipakai akun
@@ -148,7 +147,7 @@ export async function POST(request: Request) {
         tenantId: company.tenant.id,
         tenantSlug: company.tenant.slug,
         userId: String(result.userId),
-        username: parsed.data.username,
+        username: result.username,
         action: "tenant.invitation.accept",
         details: { email: result.email, companySlug: company.slug, role: result.companyRole },
         request,
@@ -160,7 +159,7 @@ export async function POST(request: Request) {
         () =>
           writeAuditLog({
             userId: String(result.userId),
-            username: parsed.data.username,
+            username: result.username,
             role: result.companyRole,
             action: "user.invite_accepted",
             entity: "user",

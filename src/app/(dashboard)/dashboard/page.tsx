@@ -19,6 +19,7 @@ import {
 } from "@/lib/inventory";
 import { LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
+import { resolvePostLoginPath } from "@/lib/post-login";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { visibleWorkflows } from "@/lib/workflows";
@@ -100,10 +101,15 @@ export default async function DashboardPage() {
    * Beranda menjaga dirinya sendiri dengan `auth()` (terdaftar di
    * tests/authz-coverage.test.ts), jadi ia juga harus memeriksa PERUSAHAAN
    * sendiri — penjaga izin yang biasanya melakukannya tidak lewat sini.
-   * Tanpa perusahaan aktif setiap query di bawah akan melempar; pengguna
-   * dikirim memilih perusahaannya dulu (issue #104).
+   * Tanpa perusahaan aktif setiap query di bawah akan melempar; arahnya SATU
+   * aturan dengan pasca-masuk (#159 temuan 3): nol perusahaan →
+   * /companies/new, selainnya → /select-company (issue #104/#138).
    */
-  if (session.user.companyId == null) redirect("/select-company");
+  if (session.user.companyId == null) {
+    redirect(
+      resolvePostLoginPath(session.user.mustChangePassword, null, session.user.companyCount, null)
+    );
+  }
 
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());

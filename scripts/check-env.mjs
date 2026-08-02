@@ -5,6 +5,7 @@
  */
 import "./load-env.mjs";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
 const required = ["DATABASE_URL", "AUTH_SECRET"];
@@ -41,6 +42,34 @@ if (missing.length > 0) {
 if (warnings.length > 0) {
   console.warn("WARNING: Recommended variables not set:", warnings.join(", "));
   console.warn("Set AUTH_URL to your public HTTPS URL, e.g. https://inventory.example.com");
+}
+
+/*
+ * nodemailer tercantum di package.json tapi node_modules bisa saja lebih tua
+ * dari package.json (#159 temuan 6) — dan ketiadaannya SENYAP sampai gagal:
+ * di produksi ber-SMTP surel berhenti terkirim; di pengembangan bahkan lebih
+ * buruk, Turbopack tetap me-resolve `await import("nodemailer")` di
+ * src/lib/mailer-core.ts walau cabang smtp tidak pernah jalan, sehingga
+ * /api/auth/register menjawab 500. Obatnya selalu sama: `bun install`.
+ */
+const require = createRequire(import.meta.url);
+let mailerInstalled = true;
+try {
+  require.resolve("nodemailer");
+} catch {
+  mailerInstalled = false;
+}
+if (!mailerInstalled) {
+  const message =
+    "nodemailer tidak ditemukan di node_modules padahal tercantum di package.json — " +
+    "node_modules Anda lebih tua dari package.json. Jalankan: bun install";
+  if (process.env.MAIL_TRANSPORT === "smtp") {
+    // Transport smtp MEMBUTUHKANNYA di jalur kirim — gagal cepat di sini,
+    // bukan 500 pertama saat orang mengatur ulang kata sandinya.
+    console.error("ERROR:", message);
+    process.exit(1);
+  }
+  console.warn("WARNING:", message);
 }
 
 if (process.env.NODE_ENV !== "production") {

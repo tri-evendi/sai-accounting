@@ -251,7 +251,7 @@
     },
     "login": {
       "heading": "登录",
-      "description": "使用您的公司账号进入账簿与日常工作。",
+      "description": "已有账号？登录即可进入账簿与日常工作。新客户可通过下方链接注册。",
       "username": "用户名",
       "usernamePlaceholder": "您的用户名",
       "identifier": "邮箱或用户名",
@@ -3339,7 +3339,6 @@
     "acceptHeading": "接受邀请",
     "acceptDescription": "您受邀加入 {company}。",
     "acceptAs": "此邀请发给 {email}。请在下方完善您的账户。",
-    "username": "用户名(用于显示)",
     "choosePassword": "您的密码(至少 8 个字符)",
     "submitting": "正在创建账户...",
     "submit": "创建账户并加入",

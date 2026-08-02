@@ -251,7 +251,7 @@
     },
     "login": {
       "heading": "Sign in",
-      "description": "Use your company account to open the books and your daily work.",
+      "description": "Already have an account? Sign in to open the books and your daily work. New customers can sign up via the link below.",
       "username": "Username",
       "usernamePlaceholder": "your.username",
       "identifier": "Email or Username",
@@ -3339,7 +3339,6 @@
     "acceptHeading": "Accept Invitation",
     "acceptDescription": "You have been invited to join {company}.",
     "acceptAs": "This invitation is for {email}. Complete your account below.",
-    "username": "Username (for display)",
     "choosePassword": "Your Password (min. 8 characters)",
     "submitting": "Creating account...",
     "submit": "Create Account & Join",

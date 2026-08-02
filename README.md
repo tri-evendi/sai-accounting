@@ -43,6 +43,14 @@ bun run setup          # install, migrate, seed demo data, build
 bun run dev            # http://localhost:3000
 ```
 
+> Setelah menarik perubahan yang menyentuh `package.json`, jalankan **`bun
+> install`** lagi sebelum `bun run dev`. `node_modules` yang lebih tua dari
+> `package.json` gagal DIAM-DIAM sampai halamannya disentuh — contoh nyata:
+> tanpa `nodemailer`, Turbopack tetap me-resolve `import("nodemailer")` di
+> `src/lib/mailer-core.ts` walau transport `file` tidak pernah memakainya,
+> dan `/api/auth/register` menjawab 500. (`scripts/check-env.mjs` memeriksa
+> ini pada start produksi.)
+
 Demo logins (after seed): see terminal output from seed — e.g. `admin` / `admin123`.
 
 To seed manually:

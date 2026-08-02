@@ -129,6 +129,27 @@ export async function companyIdForRoute(
   return ids?.companyId ?? null;
 }
 
+/**
+ * Kebalikan `resolveIds`: dari id perusahaan ke sepasang slug jalurnya.
+ *
+ * Dipakai satu pemanggil — `/dashboard` telanjang — dan justru untuk keadaan
+ * yang paling mudah terlewat: sesi yang terbit SEBELUM #157 membawa `companyId`
+ * tanpa `tenantSlug`, sehingga tidak ada bahan untuk menyusun jalur kanonik.
+ * Tanpa jalan keluar ini, halaman itu akan mengarahkan ke dirinya sendiri tanpa
+ * henti. Membacanya dari basis data mengubah keadaan "tidak tahu" menjadi
+ * "cari tahu", dan itu satu query yang hanya terjadi sekali per sesi lama.
+ */
+export async function routeForCompany(
+  companyId: number
+): Promise<{ tenantSlug: string; companySlug: string } | null> {
+  const row = await controlDb.company.findUnique({
+    where: { id: companyId },
+    select: { slug: true, isActive: true, tenant: { select: { slug: true } } },
+  });
+  if (!row || !row.isActive || !row.tenant) return null;
+  return { tenantSlug: row.tenant.slug, companySlug: row.slug };
+}
+
 /** Buang satu pemetaan slug (dipakai saat perusahaan baru lahir/berganti nama basis data). */
 export function invalidateTenantRoute(tenantSlug: string, companySlug: string): void {
   cache.delete(`${tenantSlug}/${companySlug}`);

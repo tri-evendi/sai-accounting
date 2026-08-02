@@ -93,19 +93,32 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
     expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(directoriesIn(SCOPED_DIR));
   });
 
-  it("halaman DIPINDAHKAN, bukan digandakan — jalur lamanya harus hilang", () => {
+  it("halaman DIPINDAHKAN, bukan digandakan — yang tersisa di jalur lama hanya pengarah", () => {
     /*
      * Menyisakan salinan di jalur lama akan membuat `/invoices` tetap menjawab
      * 200 dengan perusahaan dari SESI — persis kebiasaan yang issue ini hapus,
-     * hanya kini bersembunyi di balik jalur yang terlihat usang. Yang boleh
-     * tinggal di jalur lama hanyalah pantulan 307 milik proxy, dan pantulan itu
-     * tidak butuh berkas apa pun.
+     * hanya kini bersembunyi di balik jalur yang terlihat usang. Umumnya tidak
+     * ada berkas yang tertinggal sama sekali: pantulan 307 milik proxy tidak
+     * membutuhkannya.
+     *
+     * Satu pengecualian yang HARUS dibuktikan sifatnya, bukan cuma didaftar:
+     * `/dashboard` telanjang tetap ada karena ia tujuan bawaan seluruh aplikasi
+     * dan karena proxy tak bisa memantulkan token tanpa slug. Syaratnya ia
+     * benar-benar PENGARAH — tanpa penjaga izin, tanpa satu pun query.
      */
     for (const segment of MIGRATED_ROOT_SEGMENTS) {
-      expect(
-        existsSync(join(DASHBOARD_DIR, segment)),
-        `${segment} masih punya salinan di jalur lama`
-      ).toBe(false);
+      const legacy = join(DASHBOARD_DIR, segment, "page.tsx");
+      if (!existsSync(legacy)) {
+        expect(
+          existsSync(join(DASHBOARD_DIR, segment)),
+          `${segment} masih punya berkas di jalur lama`
+        ).toBe(false);
+        continue;
+      }
+      const src = readFileSync(legacy, "utf8");
+      expect(src, `${segment} tertinggal di jalur lama tapi bukan pengarah`).toContain("redirect(");
+      expect(src).not.toContain("requirePagePermission");
+      expect(src).not.toContain("@/lib/prisma");
     }
   });
 

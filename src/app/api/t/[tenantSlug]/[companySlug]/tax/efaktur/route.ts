@@ -5,6 +5,10 @@
  * (`getEfakturExport`), builds the rows with the pure `@/lib/efaktur` mapping, and
  * streams a UTF-8 CSV. It posts no journal and changes no posting rule.
  *
+ * Perusahaan datang dari JALUR, bukan dari header (issue #158): berkasnya
+ * diambil lewat `<a href>` biasa, dan sebuah tautan tidak melewati `apiFetch()`
+ * yang menyisipkan header lingkup. Lihat `lib/company-scope.ts`.
+ *
  * Query params: `from` and `to` (YYYY-MM-DD, inclusive).
  * Behaviour:
  *   • Seller NPWP missing → 422: the export cannot be filed without it, so we
@@ -13,7 +17,7 @@
  *     rows are written. The /tax/efaktur page surfaces the held-back list.
  */
 import { NextResponse } from "next/server";
-import { requireApiPermission } from "@/lib/auth-guard";
+import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { efakturToCsv } from "@/lib/efaktur";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -24,8 +28,8 @@ function parseDate(value: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export async function GET(request: Request) {
-  const result = await requireApiPermission("tax.read");
+export async function GET(request: Request, ctx: TenantApiContext) {
+  const result = await requireApiPermission("tax.read", ctx.params);
   if (!result.authorized) return result.response;
 
   const { searchParams } = new URL(request.url);

@@ -252,6 +252,44 @@ describe("penjaga API — header adalah masukan pengguna (issue #158)", () => {
   });
 });
 
+/**
+ * Unduhan yang dibuka di tab baru (`<a href download>`) tidak melewati
+ * `apiFetch()`, jadi tidak ada tempat menyisipkan header — perusahaannya ada di
+ * JALUR. Yang dijaga: jalur diperlakukan dengan kecurigaan yang sama persis.
+ */
+describe("route /api/t/{tenant}/{company} — lingkup dari jalur", () => {
+  it("params jalur MENGALAHKAN header, supaya alamat unduhan tidak bisa dibelokkan", async () => {
+    // Header menyebut PT Sejahtera, jalur menyebut CV Maju. Berkas yang
+    // dikirim harus milik alamat yang diminta, bukan milik header yang
+    // kebetulan ikut terbawa peramban.
+    withHeaders({ [TENANT_SLUG_HEADER]: "acme", [COMPANY_SLUG_HEADER]: "pt-sejahtera" });
+
+    const result = await requireApiPermission("tax.read", {
+      tenantSlug: "acme",
+      companySlug: "cv-maju",
+    });
+
+    expect(result.authorized && result.companyId).toBe(11);
+  });
+
+  it("slug tenant lain di jalur → 404 identik dengan slug fiktif", async () => {
+    const foreign = await requireApiPermission("tax.read", {
+      tenantSlug: "globex",
+      companySlug: "cv-maju",
+    });
+    const fictitious = await requireApiPermission("tax.read", {
+      tenantSlug: "tidak-ada",
+      companySlug: "juga-tidak-ada",
+    });
+
+    expect(foreign.authorized).toBe(false);
+    expect(fictitious.authorized).toBe(false);
+    if (foreign.authorized || fictitious.authorized) return;
+    expect(foreign.response.status).toBe(404);
+    expect(await foreign.response.text()).toBe(await fictitious.response.text());
+  });
+});
+
 describe("dua tab, dua perusahaan — satu sesi (menutup #151)", () => {
   it("dua permintaan dengan SESI YANG SAMA mendarat di buku yang berbeda", async () => {
     withHeaders({ [TENANT_SLUG_HEADER]: "acme", [COMPANY_SLUG_HEADER]: "cv-maju" });

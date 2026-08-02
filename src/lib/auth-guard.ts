@@ -46,6 +46,14 @@ export type ApiRouteParams =
   | Promise<TenantScopedParams & Record<string, unknown>>;
 
 /**
+ * Argumen KEDUA sebuah handler route Next di bawah `/api/t/…` — dituliskan
+ * sekali di sini supaya bentuknya tidak ditebak ulang di setiap route.
+ */
+export interface TenantApiContext {
+  params: Promise<TenantScopedParams>;
+}
+
+/**
  * SATU jawaban untuk SEMUA kegagalan penyelesaian perusahaan (issue #158).
  *
  * Slug yang tidak pernah ada, PT nonaktif, bukan anggota, dan PT milik tenant

@@ -11,7 +11,7 @@
  * schema before production filing (see `@/lib/efaktur`).
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { tenantApiPath, type TenantScopedParams } from "@/lib/tenant-routes";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,14 @@ export default async function EfakturPage({
   const { seller, sellerNpwpMissing, result, matched } = await getEfakturExport(from, to);
   const { rows, problems } = result;
 
-  const downloadHref = `/api/tax/efaktur?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
+  /*
+   * Alamat unduhan menyebut perusahaannya di JALUR (issue #158): berkasnya
+   * diambil lewat `<a href>` biasa, yang tidak melewati `apiFetch()` dan
+   * karenanya tidak bisa membawa header lingkup. Slugnya datang dari `params`
+   * halaman ini — alamat yang sedang dibuka, bukan sesi.
+   */
+  const { tenantSlug, companySlug } = await params;
+  const downloadHref = `${tenantApiPath(tenantSlug, companySlug, "/tax/efaktur")}?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
 
   return (
     <div className="w-full">

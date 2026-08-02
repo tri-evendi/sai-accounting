@@ -130,6 +130,21 @@ export function legacyTenantScopedPath(pathname: string): boolean {
 }
 
 /**
+ * Jalur APLIKASI dari sebuah alamat — `/t/acme/cv-maju/invoices/12` menjadi
+ * `/invoices/12`, dan jalur yang bukan bertenant dikembalikan apa adanya.
+ *
+ * Ada karena sejumlah fungsi memutuskan sesuatu dari BENTUK jalur, bukan dari
+ * perusahaannya: menu mana yang disorot, tur mana yang berlaku di halaman ini.
+ * Semua tabelnya ditulis dalam jalur lama, dan menuliskannya ulang dalam bentuk
+ * bertenant mustahil — slug-nya baru diketahui saat permintaan berjalan.
+ * Membuang awalannya di satu tempat jauh lebih murah daripada mengajari setiap
+ * tabel tentang tenant.
+ */
+export function appPath(pathname: string): string {
+  return parseTenantPath(pathname)?.rest ?? pathname;
+}
+
+/**
  * Pecah `/t/{tenant}/{company}/sisa` menjadi bagian-bagiannya, atau `null`
  * bila bentuknya tidak sah. Sisa jalurnya dikembalikan sebagai jalur LAMA
  * (diawali `/`), supaya pemanggil bisa memetakannya balik.

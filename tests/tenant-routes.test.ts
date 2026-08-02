@@ -22,12 +22,16 @@ import { join } from "node:path";
 
 import {
   MIGRATED_ROOT_SEGMENTS,
+  appPath,
   isTenantScopedPath,
   isValidSlug,
   legacyTenantScopedPath,
   parseTenantPath,
   tenantPath,
 } from "@/lib/tenant-routes";
+import { scopedHref } from "@/components/ui/app-link";
+import { activeNavHref } from "@/lib/nav";
+import { tourForPath } from "@/lib/tours";
 
 const SRC = join(__dirname, "..", "src");
 const DASHBOARD_DIR = join(SRC, "app", "(dashboard)");
@@ -135,6 +139,60 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
     expect(legacyTenantScopedPath("/api/invoices")).toBe(false);
     // Dan jalur yang SUDAH kanonik tidak dipantulkan lagi.
     expect(legacyTenantScopedPath("/t/acme/cv-maju/invoices")).toBe(false);
+  });
+});
+
+describe("tautan & sorotan menu ikut pindah", () => {
+  it("href lama dipetakan ke jalur kanonik saat kita SEDANG di jalur bertenant", () => {
+    expect(scopedHref("/invoices/12", "/t/acme/cv-maju/dashboard")).toBe(
+      "/t/acme/cv-maju/invoices/12"
+    );
+    // Querystring ikut, dan tidak ikut menentukan segmen tujuan.
+    expect(scopedHref("/finance/new?arah=masuk", "/t/acme/cv-maju/finance")).toBe(
+      "/t/acme/cv-maju/finance/new?arah=masuk"
+    );
+  });
+
+  it("di luar jalur bertenant, href diteruskan apa adanya", () => {
+    // Halaman masuk, pemilih perusahaan, konsol operator — tidak ada slug untuk
+    // dipasang, dan menebaknya dari sesi justru memasang kembali kegagalan
+    // "tab sebelah berganti perusahaan" yang issue ini hapus.
+    expect(scopedHref("/invoices", "/login")).toBe("/invoices");
+    expect(scopedHref("/invoices", null)).toBe("/invoices");
+  });
+
+  it("jalur di luar dashboard tidak pernah ikut dipetakan", () => {
+    for (const href of ["/select-company", "/companies/new", "/tenant/billing", "/login"]) {
+      expect(scopedHref(href, "/t/acme/cv-maju/dashboard")).toBe(href);
+    }
+    // Tautan luar & jalur yang sudah kanonik juga tidak disentuh.
+    expect(scopedHref("https://example.test", "/t/acme/cv-maju/dashboard")).toBe(
+      "https://example.test"
+    );
+    expect(scopedHref("/t/acme/cv-maju/invoices", "/t/acme/cv-maju/dashboard")).toBe(
+      "/t/acme/cv-maju/invoices"
+    );
+  });
+
+  it("menu tetap tersorot di jalur bertenant", () => {
+    /*
+     * Tabel menu ditulis dalam jalur lama dan tidak bisa ditulis ulang — slug
+     * baru diketahui saat permintaan berjalan. Tanpa `appPath`, tidak ada satu
+     * pun menu yang tersorot di seluruh aplikasi, dan "tidak ada yang tersorot"
+     * terbaca sebagai tersesat.
+     */
+    expect(appPath("/t/acme/cv-maju/invoices/12")).toBe("/invoices/12");
+    expect(appPath("/invoices/12")).toBe("/invoices/12");
+    expect(activeNavHref("/t/acme/cv-maju/invoices/12", ["/invoices", "/inventory"])).toBe(
+      "/invoices"
+    );
+    expect(activeNavHref("/t/acme/cv-maju/dashboard", ["/dashboard"])).toBe("/dashboard");
+  });
+
+  it("tur panduan tetap mengenali halamannya di jalur bertenant", () => {
+    const legacy = tourForPath("/dashboard");
+    expect(legacy).not.toBeNull();
+    expect(tourForPath("/t/acme/cv-maju/dashboard")?.id).toBe(legacy?.id);
   });
 });
 

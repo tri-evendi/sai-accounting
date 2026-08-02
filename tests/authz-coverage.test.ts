@@ -360,8 +360,8 @@ describe("cakupan penjaga API route", () => {
  * Konteks perusahaan TIDAK dibaca dari sesi (issue #156 — pagar jalan #157).
  *
  * Aturannya: halaman & route menerima konteks perusahaan DARI PENJAGANYA
- * (`requirePagePermission`/`requireApiPermission` menanamkannya lewat
- * `enterCompanyFromSession`), bukan membaca `session.user.companyId` sendiri.
+ * (`requirePagePermission` dari URL, `requireApiPermission` dari permintaan),
+ * bukan membaca `session.user.companyId` sendiri.
  * Tanpa pagar ini, migrasi #157 (konteks dari slug URL, bukan dari sesi) akan
  * bocor balik satu berkas demi satu berkas selama berminggu-minggu — dan
  * pembaca sesi yang lolos adalah persis jalur yang menulis ke buku PT yang
@@ -393,16 +393,12 @@ describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
     // /t/{tenant}/{company}/dashboard dan mengambil perusahaannya dari JALUR.
     "(dashboard)/dashboard/page.tsx",
     // Self-scoped: daftar PT milik pemanggil + PT aktifnya, untuk pemilih &
-    // penukar perusahaan — dipanggil justru saat konteks BELUM ada.
+    // penukar perusahaan — dipanggil justru saat lingkup BELUM ada. Sejak #158
+    // "yang aktif" diambil dari PERMINTAAN lebih dulu; sesi tinggal sebagai
+    // jawaban cadangan untuk /select-company dan /dashboard telanjang, yang
+    // memang tidak punya perusahaan di alamatnya.
     "api/user/companies/route.ts",
-    // Self-scoped: izin efektif peran sendiri untuk penyaringan menu; tanpa
-    // perusahaan aktif jawabannya daftar kosong, bukan galat.
-    "api/user/permissions/route.ts",
-    // Route tenant (#139): PT aktif dipakai sebagai KONTEKS undangan dan
-    // DIBUKTIKAN milik tenant pemanggil (companyOfTenant) sebelum dipakai.
-    // #157 memindahkan pembacaan ini ke penjaga tenant — lalu entri ini hapus.
-    "api/tenant/invitations/route.ts",
-    "api/tenant/invitations/[id]/route.ts",
+
   ]);
 
   const readers = sourceFiles(APP_DIR)
@@ -477,6 +473,53 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
         offenders,
         `${rel} tidak lagi memanggil fetch() telanjang ke /api — hapus dari BARE_FETCH_EXCEPTIONS`
       ).toContain(rel);
+    }
+  });
+});
+
+/**
+ * Route PUBLIK dan route TINGKAT TENANT tetap bekerja TANPA perusahaan
+ * (issue #158).
+ *
+ * Aturan "setiap permintaan membawa perusahaannya" punya batas yang harus
+ * ditulis, bukan diingat: webhook gerbang pembayaran dikirim server Midtrans;
+ * pendaftaran & penerimaan undangan berjalan sebelum akun ada; `/api/health`
+ * dipanggil load-balancer; dan `/api/tenant/*` + `/api/companies` justru dibuat
+ * untuk pelanggan yang belum punya satu pun PT (#135). Menyeret mereka ke
+ * aturan baru berarti menutup permukaan yang alasan keberadaannya adalah
+ * berdiri tanpa perusahaan.
+ */
+describe("route publik & tingkat tenant tidak menuntut perusahaan (issue #158)", () => {
+  const noCompanyRoutes = [...API_EXCEPTIONS, ...TENANT_API_ROUTES];
+
+  /**
+   * Route self-scoped yang SAH menyebut perusahaannya sendiri: mereka membaca
+   * data PER PERUSAHAAN (izin efektif, preferensi keanggotaan, identitas), jadi
+   * "tanpa penjaga izin" tidak pernah berarti "tanpa lingkup".
+   */
+  const SELF_SCOPED_WITH_COMPANY = new Set([
+    "user/permissions/route.ts",
+    "user/accountant-mode/route.ts",
+    "user/companies/route.ts",
+    "company/identity/route.ts",
+    "tenant/invitations/route.ts",
+    "tenant/invitations/[id]/route.ts",
+  ]);
+
+  it("tidak satu pun memanggil penjaga perusahaan", () => {
+    for (const rel of noCompanyRoutes) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} memanggil requireApiPermission`).not.toContain("requireApiPermission(");
+    }
+  });
+
+  it("dan yang benar-benar publik tidak menyentuh lingkup perusahaan sama sekali", () => {
+    const publik = noCompanyRoutes.filter((rel) => !SELF_SCOPED_WITH_COMPANY.has(rel));
+    expect(publik.length).toBeGreaterThan(0);
+    for (const rel of publik) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} menuntut lingkup perusahaan`).not.toContain("@/lib/company-request");
+      expect(src, `${rel} menuntut lingkup perusahaan`).not.toContain("@/lib/company-scope");
     }
   });
 });

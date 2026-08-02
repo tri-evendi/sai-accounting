@@ -51,7 +51,6 @@ const routeCompany = vi.hoisted(() => vi.fn());
 
 const authFn = vi.hoisted(() => vi.fn());
 const headersFn = vi.hoisted(() => vi.fn());
-const enterCompanyFromSession = vi.hoisted(() => vi.fn());
 const canEffective = vi.hoisted(() => vi.fn());
 const isModuleActiveFor = vi.hoisted(() => vi.fn());
 const tenantStateForCompany = vi.hoisted(() => vi.fn());
@@ -62,7 +61,6 @@ vi.mock("@/lib/company-registry", () => ({ membershipFor }));
 vi.mock("@/lib/current-company", () => ({ setRouteCompany, routeCompany }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));
-vi.mock("@/lib/company-session", () => ({ enterCompanyFromSession }));
 vi.mock("@/lib/authz-effective", () => ({ canEffective, isModuleActiveFor }));
 vi.mock("@/lib/tenant-state", () => ({ tenantStateForCompany }));
 
@@ -129,12 +127,6 @@ beforeEach(() => {
   canEffective.mockResolvedValue(true);
   isModuleActiveFor.mockResolvedValue(true);
   tenantStateForCompany.mockResolvedValue({ status: "active" });
-  enterCompanyFromSession.mockResolvedValue({
-    ok: true,
-    companyId: 12,
-    slug: "pt-sejahtera",
-    role: "staff",
-  });
 });
 
 describe("bentuk lingkup — murni, tanpa jaringan", () => {
@@ -202,8 +194,8 @@ describe("penjaga API — header adalah masukan pengguna (issue #158)", () => {
       expect.objectContaining({ role: "finance_manager", companyId: 11 }),
       "invoice.write"
     );
-    // Sesi tidak pernah ditanya perusahaan apa pun.
-    expect(enterCompanyFromSession).not.toHaveBeenCalled();
+    // Sesi menunjuk PT Sejahtera; ia tidak pernah menjadi jawaban.
+    expect(result.companyId).not.toBe(SESSION.user.companyId);
   });
 
   it("header KARANGAN ke PT tenant lain → 404 identik dengan slug fiktif, tanpa satu gerbang pun berjalan", async () => {
@@ -287,6 +279,42 @@ describe("route /api/t/{tenant}/{company} — lingkup dari jalur", () => {
     if (foreign.authorized || fictitious.authorized) return;
     expect(foreign.response.status).toBe(404);
     expect(await foreign.response.text()).toBe(await fictitious.response.text());
+  });
+});
+
+describe("permintaan TANPA lingkup ditolak — tidak ada perusahaan bawaan (issue #158)", () => {
+  it("tanpa header apa pun → 409 company_required, dan sesi tidak menjadi jawaban", async () => {
+    /*
+     * Inilah hadiah sesungguhnya dari seluruh Fase 2. Sesi pemanggil MENUNJUK
+     * PT Sejahtera (id 12) dan ia memang anggota di sana — jadi cadangan lama
+     * akan berhasil dengan mulus, dan permintaan yang lupa membawa
+     * perusahaannya akan menulis ke buku itu tanpa satu pun galat. Yang dikunci
+     * di sini bukan "pesannya benar" melainkan bahwa TIDAK ADA perusahaan yang
+     * bisa didarati.
+     */
+    headersFn.mockResolvedValue({ get: () => null });
+
+    const result = await requireApiPermission("invoice.write");
+
+    expect(result.authorized).toBe(false);
+    if (result.authorized) return;
+    expect(result.response.status).toBe(409);
+    expect((await result.response.json()).code).toBe("company_required");
+    // Ditolak SEBELUM gerbang mana pun, jadi tidak ada tulisan yang mungkin
+    // terjadi — dan tidak ada konteks perusahaan yang tertanam.
+    expect(setRouteCompany).not.toHaveBeenCalled();
+    expect(canEffective).not.toHaveBeenCalled();
+  });
+
+  it("header yang bentuknya tidak sah dihitung TIDAK ADA lingkup, bukan lingkup yang dicoba", async () => {
+    withHeaders({ [TENANT_SLUG_HEADER]: "acme", [COMPANY_SLUG_HEADER]: "../etc" });
+
+    const result = await requireApiPermission("invoice.write");
+    expect(result.authorized).toBe(false);
+    if (result.authorized) return;
+    expect(result.response.status).toBe(409);
+    // Tidak pernah menjadi query.
+    expect(controlDb.company.findFirst).not.toHaveBeenCalled();
   });
 });
 

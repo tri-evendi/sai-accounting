@@ -25,8 +25,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { auth } from "@/lib/auth";
 import { controlDb } from "@/lib/control-db";
+import { companyScopeFromRequest } from "@/lib/company-request";
 import {
   issueInvitation,
   pendingInvitationsForCompany,
@@ -54,18 +54,26 @@ function appOrigin(request: Request): string {
 }
 
 /**
- * PT yang sedang dibuka pengundang, DIBUKTIKAN milik tenantnya. Sesi bisa
- * menunjuk perusahaan apa pun; baris registry-lah yang menjawab perusahaan itu
- * bertaut ke tenant siapa — tanpa bukti ini, admin tenant A yang memegang
- * companyId tenant B di sesinya bisa mengundang orang ke PT yang bukan miliknya.
+ * PT yang sedang dibuka pengundang, DIBUKTIKAN milik tenantnya.
+ *
+ * Slugnya datang dari PERMINTAAN sejak issue #158 (header `x-company-slug` yang
+ * disuntikkan `apiFetch`), bukan dari sesi: cookie dibagi seluruh tab, jadi
+ * mengundang orang dari layar PT A bisa menerbitkan undangan ke PT B yang
+ * kebetulan terakhir dibuka di tab sebelah — dengan peran PT B pula.
+ *
+ * `tenantId` ikut ke dalam WHERE, bukan diperiksa sesudahnya: slug perusahaan
+ * hanya unik DI DALAM tenant (#153), jadi `cv-maju` milik pelanggan lain adalah
+ * baris yang benar-benar ada. Menyaring di query membuat baris asing tidak
+ * pernah terbaca sama sekali.
  */
-async function companyOfTenant(companyId: number | null | undefined, tenantId: number) {
-  if (typeof companyId !== "number") return null;
-  const company = await controlDb.company.findUnique({
-    where: { id: companyId },
+async function companyOfTenant(tenantId: number) {
+  const scope = await companyScopeFromRequest();
+  if (!scope) return null;
+  const company = await controlDb.company.findFirst({
+    where: { slug: scope.companySlug, tenantId, tenant: { slug: scope.tenantSlug } },
     select: { id: true, slug: true, name: true, databaseName: true, isActive: true, tenantId: true },
   });
-  if (!company || !company.isActive || company.tenantId !== tenantId) return null;
+  if (!company || !company.isActive) return null;
   return company;
 }
 
@@ -73,8 +81,7 @@ export async function GET() {
   const result = await requireTenantApiPermission("tenant.member.invite");
   if (!result.authorized) return result.response;
 
-  const session = await auth();
-  const company = await companyOfTenant(session?.user?.companyId, result.tenant.tenantId);
+  const company = await companyOfTenant(result.tenant.tenantId);
   if (!company) {
     const { t } = await getRequestI18n();
     return NextResponse.json(
@@ -91,8 +98,7 @@ export async function POST(request: Request) {
   if (!result.authorized) return result.response;
   const { t, dictionary } = await getRequestI18n();
 
-  const session = await auth();
-  const company = await companyOfTenant(session?.user?.companyId, result.tenant.tenantId);
+  const company = await companyOfTenant(result.tenant.tenantId);
   if (!company) {
     return NextResponse.json(
       { error: t("errors.selectCompanyFirst"), code: "company_required" },

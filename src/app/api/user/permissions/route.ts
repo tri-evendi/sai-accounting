@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
+import { enterCompanyFromRequest } from "@/lib/company-request";
 import { tenantPermissionsForRole } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -16,6 +17,8 @@ import { getRequestI18n } from "@/lib/i18n/server";
  * izin MILIKNYA SENDIRI, data yang toh sudah bisa ia simpulkan dari halaman
  * mana saja yang menerimanya. TAMPILAN SAJA: setiap halaman/route tetap
  * dijaga server-side oleh penjaga izinnya.
+ *
+ * Perusahaannya datang dari permintaan (issue #158) — lihat di bawah.
  */
 export async function GET() {
   const session = await auth();
@@ -25,13 +28,25 @@ export async function GET() {
   }
 
   /*
-   * Izin per-perusahaan menuntut perusahaan aktif (loader modul/override
-   * membacanya); sesi yang belum memilih PT sah di sini — pemanggilnya
-   * sidebar, dan pengguna tanpa PT tetap butuh item TENANT-nya (mis. "Tambah
-   * Perusahaan" di pemilih).
+   * Izin per-perusahaan menuntut perusahaan — dan sejak #158 perusahaan itu
+   * datang dari PERMINTAAN, bukan dari sesi. Bedanya bukan gaya: sidebar dan
+   * palet perintah dirender di dalam satu tab, dan cookie sesi dibagi seluruh
+   * tab. Menyaring menu dengan izin PT yang terakhir dibuka berarti menawarkan
+   * pintu yang penjaga halamannya akan tolak — atau, lebih buruk, MENYEMBUNYIKAN
+   * pintu yang sebetulnya terbuka di PT ini.
+   *
+   * Keanggotaan diverifikasi ulang di `enterCompanyFromRequest`, jadi header
+   * karangan tidak membocorkan apa pun: yang bukan anggota mendapat daftar
+   * kosong, sama seperti yang belum memilih perusahaan.
+   *
+   * Permintaan TANPA lingkup tetap sah — pemanggilnya bisa saja pemilih
+   * perusahaan atau halaman tenant, dan pengguna tanpa PT tetap butuh item
+   * TENANT-nya (mis. "Tambah Perusahaan").
    */
-  const permissions =
-    session.user.companyId != null ? await effectivePermissionsFor(session.user) : [];
+  const scoped = await enterCompanyFromRequest(session.user.id);
+  const permissions = scoped.ok
+    ? await effectivePermissionsFor({ id: session.user.id, role: scoped.role })
+    : [];
 
   /*
    * Izin TENANT ikut di set yang sama (issue #135): kunci kedua matriks saling
@@ -46,7 +61,8 @@ export async function GET() {
   const tenantPermissions = tenantPermissionsForRole(tenantMembership?.role);
 
   return NextResponse.json({
-    role: session.user.role,
+    // Peran DI PT yang diminta — bukan peran di PT yang terakhir dibuka.
+    role: scoped.ok ? scoped.role : null,
     permissions: [...permissions, ...tenantPermissions],
   });
 }

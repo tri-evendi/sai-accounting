@@ -65,9 +65,10 @@ pernah menjadi jawaban.
 
 | Jalur kode | Cara mendapat konteks |
 |---|---|
-| Halaman `/t/{tenant}/{company}/…` | `requirePagePermission(izin, params)` — dari **URL** |
-| Halaman `(setup)` | `requirePagePermission()` — dari sesi |
-| Route API | `requireApiPermission()` — dari sesi (sampai #158) |
+| Halaman `/t/{tenant}/{company}/…` (termasuk wizard `(setup)`) | `requirePagePermission(izin, params)` — dari **URL** |
+| Route API | `requireApiPermission(izin)` — dari **permintaan** (header `x-tenant-slug`/`x-company-slug`) |
+| Route API unduhan `/api/t/{tenant}/{company}/…` | `requireApiPermission(izin, ctx.params)` — dari **jalur** |
+| Route self-scoped tanpa izin (`/api/user/permissions`, …) | `enterCompanyFromRequest()` — dari **permintaan** |
 | Skrip, cron, seed, pekerjaan latar | **`runWithCompany(ctx, fn)` — wajib eksplisit** |
 | Halaman `(auth)` (masuk, pilih perusahaan) | tidak punya, dan memang tidak boleh menyentuh buku besar |
 
@@ -93,9 +94,9 @@ Yang berlaku sekarang:
 * **Gagal apa pun = 404.** Slug tak ada, PT nonaktif, bukan anggota, tenant
   lain — satu jawaban yang sama. 403 mengakui "ini ada tapi bukan hakmu", dan
   pengakuan itu sendiri sudah kebocoran enumerasi (§4.4 docs/MULTI-TENANT.md).
-* **`currentCompany()` punya tiga sumber:** konteks ALS → **jalur** → sesi.
-  Sumber tengah ada supaya kegagalan rambatan `enterWith` tidak berujung jatuh
-  ke perusahaan di sesi.
+* **`currentCompany()` punya dua sumber:** konteks ALS → penyimpan
+  per-permintaan (ditulis penjaga). Setelah itu **melempar** — sumber ketiga
+  (sesi) dihapus di #158; lihat di bawah.
 * **Slug perusahaan TETAP.** Ia ikut menyusun nama basis data DAN kini ada di
   URL; menggantinya mematikan setiap tautan yang pernah dibagikan tanpa satu pun
   galat. Nama perusahaan tetap bebas berubah.
@@ -106,9 +107,40 @@ Yang berlaku sekarang:
 * **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
   `components/ui/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
   `usePathname()` — bukan dari sesi, sebab sesi dibagi seluruh tab.
-* **Sampai #158, route API masih membaca sesi.** `CompanySessionSync` menahan
-  permukaan interaktif sampai cookie menunjuk perusahaan yang sama dengan
-  jalur; tanpa itu halaman bisa MENAMPILKAN buku PT A sambil menyimpan ke PT B.
+* **`CompanySessionSync` tidak menahan apa pun lagi.** Di #157 ia menahan
+  permukaan interaktif sampai cookie menyusul — perlu, selama route API masih
+  membaca sesi. Sejak #158 ia hanya mencatat "yang terakhir dibuka" di latar.
+
+### Sejak issue #158: konteks API datang dari permintaan, dan sesi DIHAPUS
+
+#157 memindahkan halaman; route API masih menanyakan perusahaan kepada sesi.
+Selama itu benar, `/t/acme/cv-maju/invoices` menampilkan buku CV Maju sambil
+menulis ke PT yang tertulis di cookie — bahayanya tidak hilang, ia hanya turun
+satu lapis dan menjadi lebih sulit terlihat karena URL-nya terlihat meyakinkan.
+
+* **Bentuknya HEADER.** `apiFetch()` (`lib/api-fetch.ts`) menyuntikkan
+  `x-tenant-slug` + `x-company-slug` dari `window.location.pathname` — satu
+  tempat, bukan 67 pemanggil. Setiap `fetch("/api/…")` telanjang ditolak sebuah
+  tes pemindai di `tests/authz-coverage.test.ts`.
+* **Jalur untuk yang tidak bisa berheader.** Unduhan `<a href download>` tidak
+  melewati `apiFetch`, jadi dua route tinggal di `/api/t/{tenant}/{company}/…`
+  (template Daftar Akun, ekspor e-Faktur). Bila keduanya dikirim sekaligus,
+  jalur menang.
+* **Header adalah masukan pengguna.** Penjaga hanya memakainya untuk bertanya
+  "perusahaan mana", lalu membaca ulang keanggotaan pemanggil ke basis data
+  kendali pada permintaan itu juga. Gagal apa pun → 404 yang byte-nya sama
+  dengan slug fiktif; tidak ada satu pun gerbang berikutnya yang berjalan.
+* **Peran dari keanggotaan, bukan JWT** — sama seperti di halaman.
+* **Tidak ada cadangan sesi.** `enterCompanyFromSession` dihapus seluruhnya, dan
+  `currentCompany()` kehilangan sumber ketiganya. Permintaan tanpa lingkup
+  dijawab **409 `company_required`**, bukan dilayani dengan perusahaan yang
+  terakhir dibuka. Inilah inti perubahannya: doktrin di atas berhenti menjadi
+  kedisiplinan yang harus diingat setiap penulis route dan menjadi sifat
+  strukturnya — tidak ada perusahaan bawaan untuk didarati.
+* **Route publik & tingkat tenant tidak ikut.** `/api/auth/*`,
+  `/api/billing/webhook`, `/api/health`, dan seluruh `/api/tenant/*` +
+  `/api/companies` memang bekerja tanpa perusahaan; daftarnya di
+  `tests/authz-coverage.test.ts`.
 
 ### Bagaimana klien diselesaikan
 
@@ -116,14 +148,20 @@ Semua kode server bertanya lewat `currentCompany()` (`lib/current-company.ts`),
 dan `prisma` memakainya **saat query dipanggil**:
 
 1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / penjaga), lalu
-2. sesi permintaan (`companyId` di JWT → registry → nama basis data), lalu
+2. penyimpan per-permintaan yang ditulis penjaga (`setRouteCompany`), lalu
 3. **melempar**.
 
-**Kenapa sesi perlu jadi sumber kedua.** Tidak semua jalur melewati penjaga, dan
-yang tidak melewatinya bukan kasus pinggiran: `/api/user/permissions` (penyusun
-menu) dan `/api/user/companies` (pemilih perusahaan) sengaja self-scoped —
-`auth()` saja, tanpa `requireApiPermission`. Tanpa sumber kedua, sidebar setiap
-pengguna kosong dan pemilih perusahaannya gagal persis saat paling dibutuhkan.
+**Kenapa sumber kedua ada** padahal penjaga juga memanggil
+`enterCompanyContext()`: rambatan `enterWith` adalah jalan pintas, bukan
+jaminan (lihat bagian berikutnya). Penjaga menulis ke keduanya lalu **membaca
+kembali** untuk membuktikan konteksnya mendarat — kalau tidak, ia melempar
+sebelum satu query pun berjalan.
+
+**Route self-scoped menyebut perusahaannya sendiri.** `/api/user/permissions`,
+`/api/user/accountant-mode`, dan `/api/company/identity` sengaja tanpa
+`requireApiPermission`, tapi mereka tetap butuh konteks — sejak #158 mereka
+memanggil `enterCompanyFromRequest()` (`lib/company-request.ts`), yang
+memverifikasi keanggotaan persis seperti penjaga.
 
 **Kenapa penyelesaiannya saat dipanggil, bukan saat akses properti.** Membaca
 sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.

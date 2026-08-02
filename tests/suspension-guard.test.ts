@@ -30,11 +30,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Permission } from "@/lib/authz";
 
 /* ── Tepian yang dipalsukan ──────────────────────────────────────────────────
- * Hanya EMPAT hal: sesi (auth), basis data kendali (baris companies+tenant),
+ * Hanya LIMA hal: sesi (auth), header permintaan (lingkup perusahaan yang
+ * dibawa `apiFetch` — issue #158), basis data kendali (baris companies+tenant),
  * Prisma perusahaan (override izin & modul — kosong = matriks bawaan), dan
- * gerbang setup (selesai). Semua di antaranya — company-session, registry,
+ * gerbang setup (selesai). Semua di antaranya — company-request, registry,
  * tenant-state BESERTA cache-nya, authz-effective, readOnlyRefusal — berjalan
- * ASLI. */
+ * ASLI.
+ *
+ * `enterCompanyFromRoute` ikut dipalsukan karena ia satu-satunya pintu ke basis
+ * data KENDALI untuk keanggotaan, dan keanggotaan bukan yang diuji di sini —
+ * sifatnya sendiri dikunci tests/company-route.test.ts. Yang penting: fake-nya
+ * MENANAM konteks perusahaan sungguhan, sehingga seluruh lapisan di bawahnya
+ * (authz-effective, tenant-state) berjalan sebagaimana adanya. */
 
 interface FakeTenantRow {
   id: number;
@@ -73,10 +80,53 @@ const state = vi.hoisted(() => ({
     }
   >,
   userOverrides: [] as Array<{ permission: string; allowed: boolean }>,
+  /** Slug PT yang "sedang dibuka" menurut alamat — sumber header lingkup. */
+  activeSlug: null as string | null,
 }));
+
+const TENANT_SLUG = "tenant-uji";
 
 vi.mock("@/lib/auth", () => ({
   auth: async () => state.session,
+}));
+
+/* Lingkup perusahaan datang dari HEADER permintaan sejak #158 (disuntikkan
+ * `apiFetch` dari alamat yang sedang dibuka). Di luar lingkup permintaan Next,
+ * `headers()` melempar — jadi ia dipalsukan di sini, bukan dilewati. */
+vi.mock("next/headers", () => ({
+  headers: async () => ({
+    get: (name: string) =>
+      name === "x-tenant-slug"
+        ? TENANT_SLUG
+        : name === "x-company-slug"
+          ? state.activeSlug
+          : null,
+  }),
+}));
+
+vi.mock("@/lib/company-route", () => ({
+  enterCompanyFromRoute: async ({
+    tenantSlug,
+    companySlug,
+  }: {
+    tenantSlug: string;
+    companySlug: string;
+  }) => {
+    const entry = [...state.companies.entries()].find(([, row]) => row.slug === companySlug);
+    if (!entry || tenantSlug !== TENANT_SLUG) return { ok: false, reason: "not-found" };
+    const [companyId, row] = entry;
+    if (!row.isActive) return { ok: false, reason: "not-found" };
+    enterCompanyContext({ companyId, slug: row.slug, databaseName: row.databaseName });
+    return {
+      ok: true,
+      companyId,
+      tenantSlug,
+      companySlug,
+      companyName: row.name,
+      role: ROLES.MANAGING_DIRECTOR,
+      accountantMode: null,
+    };
+  },
 }));
 
 vi.mock("@/lib/control-db", () => ({
@@ -129,6 +179,7 @@ vi.mock("next/navigation", () => ({
 
 import { requireApiPermission } from "@/lib/auth-guard";
 import { requirePagePermission } from "@/lib/page-auth";
+import { enterCompanyContext } from "@/lib/company-context";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import {
   invalidateEffectiveMatrix,
@@ -166,18 +217,34 @@ function seedCompany(tenantStatus: string | null): number {
 }
 
 /** Direktur Utama — memegang SEMUA izin perusahaan, jadi satu-satunya gerbang
- *  yang bisa menolaknya adalah gerbang hanya-baca yang sedang diuji. */
+ *  yang bisa menolaknya adalah gerbang hanya-baca yang sedang diuji.
+ *
+ *  `companyId` di sesi sengaja dibiarkan `null`: sejak #158 sesi tidak lagi
+ *  punya suara tentang perusahaan mana, dan menaruhnya di sini akan membuat
+ *  tes ini lulus seandainya penjaga diam-diam membacanya kembali. */
 function openSession(companyId: number): void {
+  const row = state.companies.get(companyId);
+  state.activeSlug = row?.slug ?? null;
   state.session = {
     user: {
       id: "1",
       role: ROLES.MANAGING_DIRECTOR,
       name: "Penguji",
       email: "penguji@example.com",
-      companyId,
+      companyId: null,
       mustChangePassword: false,
     },
   };
+}
+
+/** `params` halaman bertenant untuk PT yang sedang dibuka. */
+function routeParams() {
+  return { tenantSlug: TENANT_SLUG, companySlug: state.activeSlug ?? "" };
+}
+
+/** Beranda PT yang sedang dibuka — tujuan setiap pantulan penolakan. */
+function homePath(): string {
+  return `/t/${TENANT_SLUG}/${state.activeSlug}/dashboard`;
 }
 
 async function expectRedirect(promise: Promise<unknown>, url: string): Promise<void> {
@@ -186,6 +253,7 @@ async function expectRedirect(promise: Promise<unknown>, url: string): Promise<v
 
 beforeEach(() => {
   state.session = null;
+  state.activeSlug = null;
   state.userOverrides = [];
   state.companies.clear();
   invalidateTenantState();
@@ -292,24 +360,24 @@ describe("requirePagePermission — cerminan gerbang yang sama (page-auth.ts)", 
     "tenant %s: halaman ber-izin TULIS dipantulkan ke /dashboard",
     async (status) => {
       openSession(seedCompany(status));
-      await expectRedirect(requirePagePermission("invoice.write"), "/dashboard");
+      await expectRedirect(requirePagePermission("invoice.write", routeParams()), homePath());
     }
   );
 
   it("tenant suspended: halaman BACA dan EKSPOR tetap terbuka", async () => {
     openSession(seedCompany("suspended"));
-    await expect(requirePagePermission("invoice.read")).resolves.toBeTruthy();
-    await expect(requirePagePermission("report.export")).resolves.toBeTruthy();
+    await expect(requirePagePermission("invoice.read", routeParams())).resolves.toBeTruthy();
+    await expect(requirePagePermission("report.export", routeParams())).resolves.toBeTruthy();
   });
 
   it("tenant aktif: halaman tulis terbuka — pantulan di atas benar-benar milik gerbang hanya-baca", async () => {
     openSession(seedCompany("active"));
-    const session = await requirePagePermission("invoice.write");
+    const session = await requirePagePermission("invoice.write", routeParams());
     expect(session.user.role).toBe(ROLES.MANAGING_DIRECTOR);
   });
 
   it("perusahaan tanpa tenant: halaman tulis terbuka — gerbangnya tentang suspensi, bukan adopsi", async () => {
     openSession(seedCompany(null));
-    await expect(requirePagePermission("invoice.write")).resolves.toBeTruthy();
+    await expect(requirePagePermission("invoice.write", routeParams())).resolves.toBeTruthy();
   });
 });

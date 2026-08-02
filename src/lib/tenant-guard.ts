@@ -8,7 +8,7 @@
  * dan ketiadaan konteks itu ADALAH KEADAAN YANG SAH di lingkup tenant:
  * pelanggan yang baru mendaftar belum punya satu pun PT, dan justru sedang
  * menuju halaman yang membuatnya. Karena itu penjaga ini TIDAK menyentuh
- * `enterCompanyFromSession`, TIDAK membaca `session.user.role` (peran per-PT),
+ * `enterCompanyFromRequest`, TIDAK membaca `session.user.role` (peran per-PT),
  * dan TIDAK pernah menyebabkan query ke basis data perusahaan.
  *
  * Sumber keputusannya `TenantMembership` di basis data kendali — dibaca SAAT

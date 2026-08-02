@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
 import type { Permission } from "@/lib/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
-import { companyScopeFromHeaders } from "@/lib/company-scope";
-import { enterCompanyFromSession } from "@/lib/company-session";
-import { enterCompanyFromRoute } from "@/lib/company-route";
+import { enterCompanyFromRequest } from "@/lib/company-request";
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -69,20 +66,18 @@ function notFoundResponse(): NextResponse {
 }
 
 /**
- * Lingkup perusahaan yang DIBAWA permintaan ini, atau `null`.
+ * SATU jawaban untuk permintaan yang TIDAK membawa perusahaannya (issue #158).
  *
- * `headers()` MELEMPAR di luar lingkup permintaan (skrip, cron, tes unit yang
- * memanggil penjaga langsung). Itu bukan kegagalan melainkan jawaban: di sana
- * memang tidak ada permintaan yang bisa membawa lingkup, dan pemanggilnya
- * ditolak beberapa baris di bawah — bukan diberi perusahaan tebakan.
+ * 409, bukan 401: kredensialnya sah, yang kurang adalah lingkupnya. Dan bukan
+ * pula "pakai saja yang di sesi" — itu persis kebiasaan yang issue ini hapus.
+ * Kliennya sudah mengenali `company_required` sejak #104, jadi jawabannya
+ * terbaca sebagai "pilih perusahaan dulu", bukan sebagai kerusakan.
  */
-async function companyScopeFromRequest(): Promise<TenantScopedParams | null> {
-  try {
-    const requestHeaders = await headers();
-    return companyScopeFromHeaders((name) => requestHeaders.get(name));
-  } catch {
-    return null;
-  }
+function scopeRequiredResponse(): NextResponse {
+  return NextResponse.json(
+    { error: "Pilih perusahaan terlebih dahulu.", code: "company_required" },
+    { status: 409 }
+  );
 }
 
 /**
@@ -121,61 +116,32 @@ export async function requireApiPermission(
     };
   }
 
-  const scope = route ? await route : await companyScopeFromRequest();
+  const scoped = await enterCompanyFromRequest(session.user.id, route ? await route : null);
 
-  if (scope) {
-    const scoped = await enterCompanyFromRoute({
-      tenantSlug: scope.tenantSlug,
-      companySlug: scope.companySlug,
-      userId: session.user.id,
-    });
-    if (!scoped.ok) {
-      if (scoped.reason === "no-session") {
-        return {
-          authorized: false,
-          response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-        };
-      }
-      return { authorized: false, response: notFoundResponse() };
+  if (!scoped.ok) {
+    if (scoped.reason === "no-scope") {
+      return { authorized: false, response: scopeRequiredResponse() };
     }
-
-    /*
-     * Sesi DITIMPA oleh kebenaran permintaan — di memori, untuk permintaan ini
-     * saja. Cerminan langkah yang sama di `page-auth.ts`; tanpa ini
-     * `canEffective` di bawah akan menilai dengan peran di PT yang salah.
-     */
-    const scopedSession = {
-      ...session,
-      user: { ...session.user, role: scoped.role, companyId: scoped.companyId },
-    };
-
-    return gateAfterCompany(scopedSession, permission, scoped.companyId);
+    if (scoped.reason === "no-session") {
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      };
+    }
+    return { authorized: false, response: notFoundResponse() };
   }
 
   /*
-   * ══ JALUR LAMA — SEMENTARA (issue #158, dihapus di batch terakhir) ════════
-   * Selama pemanggil belum semuanya memakai `apiFetch()`, permintaan tanpa
-   * lingkup masih dilayani dari sesi. Cabang ini ADALAH bahaya yang issue ini
-   * hapus; ia berumur satu migrasi, bukan satu rilis.
+   * Sesi DITIMPA oleh kebenaran permintaan — di memori, untuk permintaan ini
+   * saja. Cerminan langkah yang sama di `page-auth.ts`; tanpa ini
+   * `canEffective` di bawah akan menilai dengan peran di PT yang salah.
    */
-  const company = await enterCompanyFromSession(session);
-  if (!company.ok) {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        {
-          error:
-            company.reason === "no-company"
-              ? "Pilih perusahaan terlebih dahulu."
-              : "Perusahaan yang Anda buka tidak tersedia lagi.",
-          code: company.reason === "no-company" ? "company_required" : "company_unavailable",
-        },
-        { status: 409 }
-      ),
-    };
-  }
+  const scopedSession = {
+    ...session,
+    user: { ...session.user, role: scoped.role, companyId: scoped.companyId },
+  };
 
-  return gateAfterCompany(session, permission, company.companyId);
+  return gateAfterCompany(scopedSession, permission, scoped.companyId);
 }
 
 /**

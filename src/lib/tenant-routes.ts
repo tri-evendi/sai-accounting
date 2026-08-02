@@ -67,7 +67,11 @@ export function isValidSlug(slug: string | null | undefined): slug is string {
  * Menambahkan segmen ke sini = menyatakan "jalur barunya sudah ada".
  */
 export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
+  "consignees",
+  "contracts",
+  "customers",
   "glossary",
+  "invoices",
   "ledger",
   "payables",
   "periods",
@@ -76,6 +80,7 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "receivables",
   "sales",
   "settings",
+  "suppliers",
   "tax",
   "users",
 ];

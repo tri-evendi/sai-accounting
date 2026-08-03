@@ -8,12 +8,25 @@
  * menjaga izinnya dan mencatat auditnya. Permintaan penghapusan menyebut
  * KONSEKUENSINYA sebelum tombol ditekan (masa tenggang, anonimisasi, buku
  * yang TETAP tersimpan 10 tahun) dan menuntut konfirmasi eksplisit.
+ *
+ * ══ DUA TINDAKAN YANG TIDAK SEDERAJAT ══════════════════════════════════════
+ * Keduanya dulu tampil sebagai dua kotak bertombol lebar penuh yang berurutan,
+ * dan satu-satunya yang membedakan "unduh data saya" dari "hapus akun saya"
+ * adalah warna tepi kotaknya. Yang kedua kini turun ke kaki kartu di atas
+ * permukaan `destructive-soft` yang terpisah garis — bidang tersendiri yang
+ * terbaca sebagai bidang tersendiri, bukan pilihan ketiga dalam satu daftar.
+ * (Konfirmasinya tetap: `ConfirmDialog`, MASTER.md §Form — tombol destruktif
+ * menuntut konfirmasi eksplisit.)
+ *
+ * Tombolnya `sm:w-auto`: tombol selebar kartu di layar 1024px adalah target
+ * sentuh sepanjang 900px untuk satu tindakan yang tak bisa dibatalkan.
  */
 
 import { useEffect, useState } from "react";
 import { Download, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
 
@@ -95,27 +108,31 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
     : null;
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-foreground">
-        {t("tenantSettings.privacyHeading")}
-      </h2>
+    <Card>
+      <CardHeader>
+        <h2 className="text-lg font-semibold text-foreground">
+          {t("tenantSettings.privacyHeading")}
+        </h2>
+      </CardHeader>
 
       {/* Ekspor — tetap tersedia saat suspended; itulah gunanya secara hukum. */}
-      <div className="space-y-2 rounded-lg border border-border p-3">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("tenantSettings.exportBody")}
-        </p>
-        <Button asChild variant="outline" className="w-full">
-          <a href="/api/tenant/export" download>
-            <Download className="h-4 w-4" aria-hidden="true" />
-            {t("tenantSettings.exportButton")}
-          </a>
-        </Button>
-      </div>
+      <CardContent>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-relaxed text-muted-foreground sm:flex-1">
+            {t("tenantSettings.exportBody")}
+          </p>
+          <Button asChild variant="outline" className="w-full shrink-0 sm:w-auto">
+            <a href="/api/tenant/export" download>
+              <Download className="h-4 w-4" aria-hidden="true" />
+              {t("tenantSettings.exportButton")}
+            </a>
+          </Button>
+        </div>
+      </CardContent>
 
       {canDelete && (
-        <div className="space-y-2 rounded-lg border border-destructive/30 p-3">
-          <p className="text-sm leading-relaxed text-muted-foreground">
+        <CardFooter className="flex-col items-stretch gap-3 bg-destructive-soft">
+          <p className="text-sm leading-relaxed text-destructive-strong">
             {t("tenantSettings.deletionBody", { days: state?.graceDays ?? 30 })}
           </p>
 
@@ -129,7 +146,7 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
               </p>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full sm:w-auto"
                 disabled={busy}
                 onClick={cancelRequest}
               >
@@ -139,7 +156,7 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
           ) : (
             <Button
               variant="destructive"
-              className="w-full"
+              className="w-full sm:w-auto sm:self-start"
               disabled={busy}
               onClick={() => setConfirming(true)}
             >
@@ -147,7 +164,7 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
               {t("tenantSettings.deletionRequestButton")}
             </Button>
           )}
-        </div>
+        </CardFooter>
       )}
 
       <ConfirmDialog
@@ -158,6 +175,6 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
         confirmLabel={t("tenantSettings.deletionRequestButton")}
         onConfirm={submitRequest}
       />
-    </section>
+    </Card>
   );
 }

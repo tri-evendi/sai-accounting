@@ -119,28 +119,31 @@ vi.mock("@/lib/i18n/server", () => ({
 }));
 
 /*
- * Kulit layar pra-aplikasi diganti kerangka setipis mungkin: yang diuji di
- * sini adalah ISI halaman, dan `AuthShell` menyeret panel brand, pemilih
- * bahasa, dan sakelar tema — tiga permukaan yang diuji di tempatnya sendiri
- * dan yang di sini hanya menambah derau ke dalam markup.
+ * Kulit halaman diganti kerangka setipis mungkin: yang diuji di sini adalah
+ * ISI halaman, dan `PlatformShell` menyeret lambang produk, pemilih bahasa,
+ * dan sakelar tema — tiga permukaan yang diuji di tempatnya sendiri dan yang
+ * di sini hanya menambah derau ke dalam markup.
+ *
+ * ⚠ Kulitnya berganti bersama tata letaknya: sampai audit tata letak,
+ * halaman ini memakai `AuthShell` (kolom `max-w-md` untuk layar pra-aplikasi).
+ * Yang TIDAK ikut berganti adalah janji di berkas ini — seluruh assertion di
+ * bawah dibiarkan apa adanya, justru supaya perubahan bentuk terbukti tidak
+ * menggeser satu pun batas kewenangan.
  */
-vi.mock("@/components/auth/auth-shell", () => ({
-  AuthShell: ({
+vi.mock("@/components/tenant/platform-shell", () => ({
+  PlatformShell: ({
     heading,
     description,
     children,
-    footer,
   }: {
     heading: string;
     description?: string;
     children: React.ReactNode;
-    footer?: React.ReactNode;
   }) => (
     <div>
       <h1>{heading}</h1>
       {description && <p>{description}</p>}
       {children}
-      {footer}
     </div>
   ),
 }));

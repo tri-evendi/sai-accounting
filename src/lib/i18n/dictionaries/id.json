@@ -223,7 +223,7 @@
   "userMenu": {
     "trigger": "Akun: {name} ({role})",
     "menu": "Menu akun",
-    "tenantAccount": "Akun & Langganan",
+    "tenantAccount": "Akun & Perusahaan",
     "changePassword": "Ubah Kata Sandi",
     "signOut": "Keluar",
     "language": "Bahasa",
@@ -3354,6 +3354,16 @@
     "submit": "Buat Akun & Bergabung",
     "successTitle": "Akun Anda siap.",
     "successBody": "Masuk dengan email dan kata sandi yang baru Anda buat, lalu pilih perusahaannya."
+  },
+  "platform": {
+    "title": "Akun & Perusahaan",
+    "description": "Keadaan akun Anda dan perusahaan yang boleh Anda buka.",
+    "tenantHeading": "Akun",
+    "companiesHeading": "Perusahaan Anda",
+    "companiesBody": "Setiap perusahaan punya bukunya sendiri. Pilih satu untuk membuka pembukuannya.",
+    "teamHeading": "Tim",
+    "teamBody": "Undangan staf dikirim per perusahaan, lewat halaman Pengguna di perusahaan yang bersangkutan.",
+    "inviteTo": "Undang staf ke {company}"
   },
   "tenantSettings": {
     "title": "Langganan & Paket",

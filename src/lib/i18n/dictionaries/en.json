@@ -223,7 +223,7 @@
   "userMenu": {
     "trigger": "Account: {name} ({role})",
     "menu": "Account menu",
-    "tenantAccount": "Account & Subscription",
+    "tenantAccount": "Account & Companies",
     "changePassword": "Change Password",
     "signOut": "Sign out",
     "language": "Language",
@@ -3354,6 +3354,16 @@
     "submit": "Create Account & Join",
     "successTitle": "Your account is ready.",
     "successBody": "Sign in with your email and the password you just created, then pick the company."
+  },
+  "platform": {
+    "title": "Account & Companies",
+    "description": "How your account stands, and which companies you may open.",
+    "tenantHeading": "Account",
+    "companiesHeading": "Your companies",
+    "companiesBody": "Every company keeps its own books. Pick one to open its accounting.",
+    "teamHeading": "Team",
+    "teamBody": "Staff invitations are sent per company, from that company's Users page.",
+    "inviteTo": "Invite staff to {company}"
   },
   "tenantSettings": {
     "title": "Subscription & Plan",

@@ -313,7 +313,7 @@ Inti pekerjaannya. Matriks izin hari ini punya SATU lingkup; ia perlu DUA.
 
 | Lingkup | Contoh | Dijawab | Penjaga |
 |---|---|---|---|
-| **Tenant** | `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings` | `TenantMembership` | `requireTenantPermission` (**baru**) |
+| **Tenant** | `tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings` | `TenantMembership` | `requireTenantPermission` (**baru**) |
 | **Perusahaan** | seluruh matriks sekarang (`invoice.write`, `report.read`, …) | `Membership` | `requireApiPermission` / `requirePagePermission` (tidak berubah) |
 
 > **Aturan: izin tingkat tenant TIDAK BOLEH diperiksa penjaga perusahaan.**
@@ -334,7 +334,7 @@ Peran tenant bawaan:
 |---|---|
 | `owner` | semuanya, termasuk penagihan & penghapusan tenant. Minimal satu, tidak bisa dihapus terakhir (anti-lockout, pola sama dengan peran sistem) |
 | `admin` | buat perusahaan, undang orang. **Tidak** menyentuh penagihan |
-| `member` | tidak ada izin tenant; aksesnya murni dari `Membership` per-PT |
+| `member` | hanya `tenant.home` — membuka halaman akun `/platform`, tempat ia melihat perusahaan yang boleh dibukanya (issue #172). Selebihnya aksesnya murni dari `Membership` per-PT |
 
 ---
 

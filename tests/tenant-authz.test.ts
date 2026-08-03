@@ -4,7 +4,7 @@
  * Menjaga kontrak §6 docs/MULTI-TENANT.md:
  *   owner  — semuanya, termasuk penagihan;
  *   admin  — buat perusahaan & undang orang, TANPA penagihan;
- *   member — tidak ada izin tenant sama sekali;
+ *   member — hanya `tenant.home` (halaman akun /platform, issue #172);
  * dan dua sifat lintas-matriks: deny-by-default, serta kunci izin tenant yang
  * SALING LEPAS dari kunci izin perusahaan (aturan "izin tenant tidak boleh
  * diperiksa penjaga perusahaan" ditegakkan tipe, dan tes ini membuktikan
@@ -47,8 +47,35 @@ describe("matriks izin tenant", () => {
     expect(tenantCan({ role: TENANT_ROLES.ADMIN }, "tenant.settings")).toBe(false);
   });
 
-  it("member tidak memegang SATU PUN izin tenant — aksesnya murni per-PT", () => {
-    expect(tenantPermissionsForRole(TENANT_ROLES.MEMBER)).toEqual([]);
+  it("member memegang TEPAT SATU izin tenant: membuka halaman akun (issue #172)", () => {
+    /*
+     * Sisa aksesnya tetap murni per-PT. `tenant.home` ada karena `/platform`
+     * menjadi pendaratan pasca-masuk SETIAP anggota: menjaganya dengan izin
+     * owner akan memantulkan hampir seluruh pengguna pada langkah pertamanya.
+     * Yang dijaga di sini adalah batasnya — satu baris, bukan dua.
+     */
+    expect(tenantPermissionsForRole(TENANT_ROLES.MEMBER)).toEqual(["tenant.home"]);
+  });
+
+  it("member TIDAK melihat langganan, ekspor, penghapusan, pembuatan PT, atau undangan", () => {
+    // Pemisahan isi halaman /platform berdiri di atas baris-baris ini; kalau
+    // salah satunya bocor ke `member`, halamannya merender bagian owner.
+    for (const permission of [
+      "tenant.billing",
+      "tenant.settings",
+      "tenant.export",
+      "tenant.deletion",
+      "company.create",
+      "tenant.member.invite",
+    ] as const) {
+      expect(tenantCan({ role: TENANT_ROLES.MEMBER }, permission), permission).toBe(false);
+    }
+  });
+
+  it("admin ikut memegang tenant.home — pendaratan itu untuk semua peran tenant", () => {
+    for (const role of TENANT_ROLE_VALUES) {
+      expect(tenantCan({ role }, "tenant.home"), role).toBe(true);
+    }
   });
 
   it("company.create hidup di matriks TENANT dan sudah TIDAK ada di matriks perusahaan", () => {

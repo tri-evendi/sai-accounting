@@ -115,6 +115,40 @@ export function tenantPath(tenantSlug: string, companySlug: string, path: string
 }
 
 /**
+ * ── HALAMAN yang alamatnya BERGANTI NAMA (issue #172) ──────────────────────
+ *
+ * `/tenant` adalah kosakata ARSITEKTUR, bukan kosakata pelanggan: yang dibuka
+ * orang di sana adalah AKUN-nya — langganan, kuota, daftar perusahaannya.
+ * Alamatnya karena itu pindah ke `/platform`, dan yang lama dipantulkan 307
+ * oleh `proxy.ts` supaya bookmark, tautan di surel yang sudah terkirim, dan
+ * setiap tautan lama tetap sampai.
+ *
+ * ⚠ `/api/tenant/*` TIDAK IKUT PINDAH. Itu permukaan API bertingkat tenant
+ * (`requireTenantApiPermission`, issue #135) dan namanya memang benar secara
+ * arsitektur — yang berganti hanya ALAMAT HALAMAN. Karena itu fungsi di bawah
+ * menolak jalur `/api/` lebih dulu, bukan mengandalkan pemanggilnya ingat.
+ *
+ * Peta ini SENGAJA berupa tabel, bukan `if` di dalam proxy: satu tempat untuk
+ * seluruh penggantian nama halaman, dan bisa diuji tanpa menjalankan proxy.
+ */
+export const RENAMED_PAGE_PATHS: Readonly<Record<string, string>> = {
+  "/tenant": "/platform",
+};
+
+/**
+ * Jalur kanonik untuk sebuah alamat halaman LAMA, atau `null` bila alamatnya
+ * memang tidak berganti nama. Sub-jalur ikut (`/tenant/x` → `/platform/x`).
+ */
+export function renamedPagePath(pathname: string): string | null {
+  if (pathname.startsWith("/api/")) return null;
+  for (const [from, to] of Object.entries(RENAMED_PAGE_PATHS)) {
+    if (pathname === from) return to;
+    if (pathname.startsWith(`${from}/`)) return `${to}${pathname.slice(from.length)}`;
+  }
+  return null;
+}
+
+/**
  * Awalan API bertenant (issue #158) — `/api/t/{tenant}/{company}/…`.
  *
  * Dipakai OLEH SANGAT SEDIKIT route, dan itu disengaja: bentuk baku lingkup

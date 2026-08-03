@@ -19,60 +19,12 @@
  */
 
 import { useState } from "react";
-import { signOut, useSession } from "next-auth/react";
-import { Building2, Check, LogOut } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Building2, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
 import { tenantPath } from "@/lib/tenant-routes";
-
-/**
- * Jalan keluar dari layar "belum ada perusahaan untuk akun ini".
- *
- * Tanpa ini layar tersebut adalah satu-satunya jalan buntu di seluruh aplikasi:
- * setiap layar pra-aplikasi lain punya jalan keluarnya sendiri — /setup-required
- * menawarkan "coba lagi", /feature-inactive menawarkan kembali ke beranda —
- * sedangkan yang ini hanya kalimat, tanpa satu pun kendali. Orang yang aksesnya
- * baru dicabut terdampar di sana: tidak bisa masuk, dan tidak bisa keluar untuk
- * mencoba akun lain selain dengan menutup tab.
- *
- * Kuncinya (`auth.selectCompany.signOut`) sudah lama ada di ketiga kamus —
- * hanya tidak pernah dirender.
- */
-/**
- * Identitas + jalan keluar, di layar yang tidak punya chrome apa pun.
- *
- * Tanpa ini, /select-company adalah satu-satunya layar aplikasi yang hanya
- * bisa dimasuki, tidak bisa ditinggalkan: tidak ada menu samping, tidak ada
- * menu avatar. Pengunjung yang ternyata masuk sebagai AKUN YANG SALAH —
- * komputer bersama, sesi rekan kerja yang belum ditutup — hanya punya satu
- * tindakan yang mungkin: membuka buku perusahaan dengan akun orang lain.
- *
- * Namanya ditulis lebih dulu karena "keluar" baru berguna setelah orangnya
- * sadar ia masuk sebagai siapa. Kuncinya (`auth.selectCompany.signOut`) sudah
- * lama ada di ketiga kamus — hanya tidak pernah dirender.
- */
-export function SignedInAs({ name }: { name: string }) {
-  const t = useT();
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="min-w-0 text-sm text-muted-foreground">
-        {t("auth.selectCompany.signedInAs")}{" "}
-        <span className="font-medium text-foreground">{name}</span>
-      </p>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="shrink-0"
-        onClick={() => void signOut({ callbackUrl: "/login" })}
-      >
-        <LogOut className="h-4 w-4" aria-hidden="true" />
-        {t("auth.selectCompany.signOut")}
-      </Button>
-    </div>
-  );
-}
 
 export interface CompanyChoice {
   id: number;

@@ -19,7 +19,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, CreditCard, Plus } from "lucide-react";
+import { Building2, Plus, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -29,7 +29,8 @@ import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { CompanyChoices, SignedInAs } from "./company-choices";
+import { SignedInAs } from "@/components/auth/signed-in-as";
+import { CompanyChoices } from "./company-choices";
 
 export const dynamic = "force-dynamic";
 
@@ -51,9 +52,12 @@ export default async function SelectCompanyPage() {
    */
   const tenantMembership = await tenantMembershipForUser(userId);
   const canCreate = tenantCan(tenantMembership, "company.create");
-  /* Pengaturan langganan (issue #140) — halaman tingkat tenant, owner saja;
-   * pintunya di sini karena layar inilah "rumah" di antara buku-buku. */
-  const canManageTenant = tenantCan(tenantMembership, "tenant.settings");
+  /*
+   * Halaman akun `/platform` (issue #172, dulu `/tenant` berpenjaga owner).
+   * Sejak ia menjadi pendaratan pasca-masuk, SETIAP anggota tenant boleh
+   * membukanya — isinya yang dipisah menurut kewenangan, bukan pintunya.
+   */
+  const canOpenPlatform = tenantCan(tenantMembership, "tenant.home");
 
   // Bukan jalan buntu ke arah mana pun:
   //  • satu perusahaan → tidak ada yang perlu dipilih, langsung buka;
@@ -133,11 +137,11 @@ export default async function SelectCompanyPage() {
               </Link>
             </Button>
           )}
-          {canManageTenant && (
+          {canOpenPlatform && (
             <Button asChild variant="outline" className="w-full">
-              <Link href="/tenant">
-                <CreditCard className="h-4 w-4" aria-hidden="true" />
-                {t("tenantSettings.title")}
+              <Link href="/platform">
+                <UserCircle className="h-4 w-4" aria-hidden="true" />
+                {t("platform.title")}
               </Link>
             </Button>
           )}

@@ -223,6 +223,7 @@
   "userMenu": {
     "trigger": "账户：{name}（{role}）",
     "menu": "账户菜单",
+    "tenantAccount": "账户与订阅",
     "changePassword": "修改密码",
     "signOut": "退出登录",
     "language": "语言",

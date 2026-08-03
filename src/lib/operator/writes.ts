@@ -143,7 +143,12 @@ export async function recordManualPayment(
   /* Satu jalur dengan webhook — `settlement` sintetis; verifikasi tanda
    * tangan tidak relevan (tidak ada gerbang), bukti transfernya manusia. */
   const result = await processPaymentNotification(
-    deps,
+    {
+      ...deps,
+      /* Transfer manual atas tagihan PERPINDAHAN PAKET tetap memindahkan
+       * paketnya — jalur `manual` bukan jalur setengah. */
+      applyPlanChange: planChangeApplier(deps, input.actor),
+    },
     {
       order_id: input.invoiceNumber,
       transaction_status: "settlement",
@@ -342,6 +347,44 @@ export async function changeTenantPlan(
     subscriptionId: subscription.id,
     subscriptionStatus: subscription.status,
     quotaWarning,
+  };
+}
+
+/**
+ * Pemasang paket untuk tagihan PERPINDAHAN PAKET yang baru lunas — dioper ke
+ * `processPaymentNotification` (lihat `WebhookDeps.applyPlanChange`).
+ *
+ * Ada di sini, bukan di `payment-webhook.ts`, justru karena berkas ini sudah
+ * mengimpor berkas itu: pemasangnya mengalir turun bersama `deps`, dan arah
+ * ketergantungannya tetap satu arah. Yang dipakai tetap `changeTenantPlan`
+ * yang sama dengan konsol operator — satu mesin, satu jejak audit, bukan
+ * implementasi kedua yang pelan-pelan menyimpang.
+ *
+ * MELEMPAR bila perpindahannya gagal: pelanggan sudah membayar, jadi
+ * "gagal diam-diam" berarti uang masuk tanpa paket naik. Webhook yang melempar
+ * membuat gerbang mengulang kirimannya, dan pengulangan itu aman — pembayaran
+ * sudah ter-idempoten oleh `gateway_ref` UNIQUE.
+ */
+export function planChangeApplier(deps: OperatorWriteDeps, actor: OperatorActor) {
+  return async (input: {
+    tenantId: number;
+    planKey: string;
+    invoiceNumber: string;
+  }): Promise<void> => {
+    const result = await changeTenantPlan(deps, {
+      tenantRef: { id: input.tenantId },
+      planKey: input.planKey,
+      actor: {
+        operator: actor.operator,
+        reason: `${actor.reason} (tagihan ${input.invoiceNumber})`,
+      },
+    });
+    if (result.outcome !== "changed") {
+      throw new Error(
+        `Perpindahan paket gagal untuk tagihan ${input.invoiceNumber} ` +
+          `(→ ${input.planKey}): ${result.outcome}`
+      );
+    }
   };
 }
 

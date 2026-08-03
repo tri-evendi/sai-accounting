@@ -13,42 +13,50 @@
  *
  *   2. PENJAGANYA. Menjadikan halaman berpenjaga owner sebagai tujuan
  *      pasca-masuk berarti memantulkan hampir setiap staf pada langkah
- *      pertamanya. Karena itu penjaganya `tenant.home` (setiap anggota) dan
- *      ISINYA yang dipisah menurut kewenangan:
+ *      pertamanya. Karena itu penjaganya `tenant.home` — izin yang dipegang
+ *      SETIAP anggota tenant.
  *
- *        setiap anggota  identitas tenant + perusahaan YANG BOLEH IA BUKA
- *        manajer ke atas buat perusahaan (`company.create`),
- *                        undang staf (`tenant.member.invite`)
- *        owner           langganan & tagihan (`tenant.billing`),
- *                        ekspor (`tenant.export`), penghapusan (`tenant.deletion`)
+ * ══ SATU HALAMAN PANJANG → EMPAT RUTE ══════════════════════════════════════
+ * Sampai audit rute, seluruh permukaan tenant (akun, perusahaan, tim,
+ * langganan, privasi) tinggal di SATU halaman, dan menu panel menunjuknya
+ * dengan jangkar `#tim`, `#privasi`, …. Dua hal salah di sana:
+ *
+ *   • jangkar bukan halaman: tidak bisa di-bookmark, tidak masuk riwayat
+ *     sebagai tempat, dan tombol Kembali tidak mengembalikan apa pun;
+ *   • pemisahan kewenangan bergantung pada `{canX && …}` yang benar di setiap
+ *     cabang SATU pohon render. Sebagai rute tersendiri, penjaga di kepala tiap
+ *     halaman yang menolak — dan penolakannya adalah PANTULAN, bukan halaman
+ *     kosong. Itu batas yang jauh lebih sulit dilanggar tanpa sengaja.
+ *
+ * Yang tersisa di sini karena itu hanya yang menjawab "saya mendarat di mana":
+ * ringkasan kuota, identitas akun, dan perusahaan yang boleh ia buka.
  *
  * ══ DAFTAR PERUSAHAAN = KEANGGOTAANNYA SENDIRI, BUKAN ISI TENANT ═══════════
  * `companiesForUser()` membaca `memberships` milik PEMANGGIL. Membacanya dari
  * daftar perusahaan milik TENANT akan membocorkan keberadaan PT lain kepada,
  * misalnya, seorang kepala gudang di salah satu PT — ia tidak berhak tahu
- * pemilik akunnya memegang badan hukum lain. Bagian yang bukan haknya TIDAK
- * DIRENDER sama sekali (dan untuk langganan: query-nya pun tidak berjalan),
- * bukan dirender lalu ditolak.
+ * pemilik akunnya memegang badan hukum lain.
  *
  * Grup `(tenant)` dengan sengaja: halaman ini harus terbuka TANPA perusahaan
  * aktif — pelanggan baru yang belum punya satu pun PT, dan pemilik yang
  * seluruh PT-nya sedang hanya-baca, justru pemakai terpentingnya.
  */
 import Link from "next/link";
-import { Building2, Mail, Plus, Users } from "lucide-react";
+import { AlertTriangle, Building2, Plus } from "lucide-react";
 
-import { AuthShell } from "@/components/auth/auth-shell";
-import { SignedInAs } from "@/components/auth/signed-in-as";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
-import { PrivacySection } from "./privacy-section";
-import { SubscriptionSection } from "./subscription-section";
 
 export const dynamic = "force-dynamic";
 
@@ -58,90 +66,182 @@ export default async function PlatformPage() {
 
   const companies = await companiesForUser(Number.parseInt(user.id, 10));
 
-  /* Satu pembacaan matriks per bagian — dan bagian yang jawabannya `false`
-   * tidak pernah masuk ke pohon render di bawah. */
   const canCreate = tenantCan(tenant, "company.create");
-  const canInvite = tenantCan(tenant, "tenant.member.invite");
   const canSeeBilling = tenantCan(tenant, "tenant.billing");
-  const canExport = tenantCan(tenant, "tenant.export");
-  const canDelete = tenantCan(tenant, "tenant.deletion");
 
   /* Status hanya-baca ditampilkan kepada SEMUA anggota: seorang staf yang
    * tombol simpannya ditolak berhak tahu alasannya. Ini keadaan operasional,
    * bukan rincian langganan — tidak ada paket, harga, atau kuota di sini. */
   const readOnly = isReadOnlyTenantStatus(tenant.tenantStatus);
 
-  /* Langganan DIBACA di dalam cabang izinnya: bagi yang tidak berhak, query
-   * ke basis data kendali & platform tidak pernah berjalan sama sekali. */
+  /* Kuota DIBACA di dalam cabang izinnya: bagi yang tidak berhak, query ke
+   * basis data kendali & platform tidak pernah berjalan sama sekali. */
   const overview = canSeeBilling ? await billingOverviewForTenant(tenant.tenantId) : null;
 
   return (
-    <AuthShell
-      heading={t("platform.title")}
-      description={t("platform.description")}
-      icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
-      footer={<SignedInAs name={user.name ?? ""} />}
-    >
+    <>
+      <PageHeader title={t("platform.title")} description={t("platform.description")} />
+
       <div className="space-y-6">
+        {/* Penangguhan langganan — ikon + kata, bukan warna saja (MASTER.md
+            §Anti-Patterns). Batasnya `warning`, bukan `border`: bidang
+            berstatus yang bertepi netral terbaca sebagai kotak biasa yang
+            kebetulan kuning. */}
         {readOnly && (
-          <div role="status" className="rounded-lg border border-border bg-warning-soft p-4">
+          <div
+            role="status"
+            className="flex gap-3 rounded-lg border border-warning/30 bg-warning-soft p-4"
+          >
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong"
+              aria-hidden="true"
+            />
             <p className="text-sm leading-relaxed text-warning-strong">
               {t("tenantSettings.readOnlyNote")}
             </p>
           </div>
         )}
 
-        {/* Identitas akun — jawaban atas "saya sedang masuk ke akun siapa". */}
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">
-            {t("platform.tenantHeading")}
-          </h2>
-          <div className="rounded-lg border border-border p-3">
-            <p className="truncate font-medium text-foreground">{tenant.tenantName}</p>
-            <p className="truncate text-xs text-muted-foreground">{tenant.tenantSlug}</p>
+        {/* Baris ringkasan. Untuk pemilik ia adalah PEMAKAIAN vs kuota — angka
+            yang paling sering dicari dan dulu terkubur di tengah gulungan;
+            untuk anggota biasa cukup satu kartu, sebab kuota bukan urusannya
+            (dan datanya memang tidak pernah dibaca untuknya). */}
+        <section aria-labelledby={canSeeBilling && overview ? "ringkasan" : undefined}>
+          {canSeeBilling && overview && (
+            <h2 id="ringkasan" className="mb-3 text-lg font-semibold text-foreground">
+              {t("tenantSettings.usageHeading")}
+            </h2>
+          )}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            {canSeeBilling && overview ? (
+              <>
+                <StatCard
+                  title={t("tenantSettings.usageCompanies")}
+                  value={t("tenantSettings.usageOf", {
+                    used: overview.usage.companies,
+                    max: overview.tenant.maxCompanies,
+                  })}
+                />
+                <StatCard
+                  title={t("tenantSettings.usageUsers")}
+                  value={t("tenantSettings.usageOf", {
+                    used: overview.usage.users,
+                    max: overview.tenant.maxUsers,
+                  })}
+                />
+                {/* Status sebagai KATA, bukan warna saja — dan warnanya
+                    mengikuti artinya (ditangguhkan = peringatan). */}
+                <StatCard
+                  title={t("tenantSettings.statusLabel")}
+                  value={t(`tenantSettings.status.${overview.tenant.status}` as DictionaryKey)}
+                  valueClassName={
+                    isReadOnlyTenantStatus(overview.tenant.status)
+                      ? "text-lg text-warning-strong"
+                      : "text-lg text-success-strong"
+                  }
+                />
+              </>
+            ) : (
+              <StatCard title={t("platform.companiesHeading")} value={companies.length} />
+            )}
           </div>
         </section>
 
-        {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">
-            {t("platform.companiesHeading")}
-          </h2>
-
-          {companies.length === 0 ? (
-            /*
-             * Nol perusahaan punya DUA arti yang berbeda, dan menjawab keduanya
-             * dengan kalimat yang sama akan membuat salah satunya jalan buntu:
-             *   • boleh membuat (owner/admin) → yang dibutuhkan adalah tombol;
-             *   • tidak boleh (staf)          → yang dibutuhkan adalah alasan
-             *     dan langkah berikutnya, bukan layar kosong tanpa penjelasan.
-             */
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t(
-                  canCreate
-                    ? "auth.selectCompany.noCompanyYetBody"
-                    : "auth.selectCompany.noAccessBody"
-                )}
-              </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t(
-                  canCreate
-                    ? "auth.selectCompany.noCompanyYetOwner"
-                    : "auth.selectCompany.noAccessNext"
-                )}
-              </p>
+        {/* Akun — "saya sedang masuk ke akun siapa". Nama pendeknya juga ada di
+            bilah atas; yang tinggal di sini adalah slug teknisnya, yang dipakai
+            saat menyebut akun ini kepada dukungan. */}
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold text-foreground">
+              {t("platform.tenantHeading")}
+            </h2>
+          </CardHeader>
+          <CardContent>
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                aria-hidden="true"
+              >
+                <Building2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-medium text-foreground">{tenant.tenantName}</p>
+                <p className="truncate text-xs text-muted-foreground">{tenant.tenantSlug}</p>
+              </div>
             </div>
-          ) : (
-            <>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("platform.companiesBody")}
-              </p>
-              <ul className="space-y-2">
+          </CardContent>
+        </Card>
+
+        {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
+        <Card>
+          <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-foreground">
+                {t("platform.companiesHeading")}
+              </h2>
+              {companies.length > 0 && (
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {t("platform.companiesBody")}
+                </p>
+              )}
+            </div>
+            {/* Aksi utama di kepala kartu saat daftarnya berisi; saat kosong ia
+                pindah ke dalam empty state, tempat ia menjadi satu-satunya
+                langkah berikutnya — bukan tombol kedua yang mengulang. */}
+            {canCreate && companies.length > 0 && (
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link href="/companies/new">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  {t("companies.newTitle")}
+                </Link>
+              </Button>
+            )}
+          </CardHeader>
+
+          <CardContent>
+            {companies.length === 0 ? (
+              /*
+               * Nol perusahaan punya DUA arti yang berbeda, dan menjawab
+               * keduanya dengan kalimat yang sama akan membuat salah satunya
+               * jalan buntu:
+               *   • boleh membuat (owner/admin) → yang dibutuhkan adalah tombol;
+               *   • tidak boleh (staf)          → yang dibutuhkan adalah alasan
+               *     dan langkah berikutnya, bukan layar kosong tanpa penjelasan.
+               */
+              <div className="space-y-3">
+                <EmptyState
+                  icon={<Building2 className="h-12 w-12" />}
+                  title={t(
+                    canCreate
+                      ? "auth.selectCompany.noCompanyYetHeading"
+                      : "auth.selectCompany.noAccessHeading"
+                  )}
+                  description={t(
+                    canCreate
+                      ? "auth.selectCompany.noCompanyYetBody"
+                      : "auth.selectCompany.noAccessBody"
+                  )}
+                  {...(canCreate
+                    ? { actionLabel: t("companies.newTitle"), actionHref: "/companies/new" }
+                    : {})}
+                />
+                <p className="mx-auto max-w-md text-center text-sm leading-relaxed text-muted-foreground">
+                  {t(
+                    canCreate
+                      ? "auth.selectCompany.noCompanyYetOwner"
+                      : "auth.selectCompany.noAccessNext"
+                  )}
+                </p>
+              </div>
+            ) : (
+              /* Kisi, bukan tumpukan: pada 1024px tiga PT muat dalam satu baris
+                 pandangan, dan pemilik dengan sepuluh PT tidak lagi menggulung
+                 sepuluh kartu selebar layar untuk sampai ke kartu di bawahnya. */
+              <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {companies.map((company) => (
                   <li key={company.companyId}>
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                      <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-full flex-col justify-between gap-3 rounded-lg border border-border p-4 transition-colors hover:border-primary/40">
+                      <div className="flex min-w-0 items-start gap-3">
                         <span
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
                           aria-hidden="true"
@@ -149,8 +249,15 @@ export default async function PlatformPage() {
                           <Building2 className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">{company.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{company.slug}</p>
+                          <p
+                            className="truncate font-medium text-foreground"
+                            title={company.name}
+                          >
+                            {company.name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {company.slug}
+                          </p>
                         </div>
                       </div>
                       {/*
@@ -159,7 +266,7 @@ export default async function PlatformPage() {
                        * dibuka" (tata letak bertenant yang mencatatnya), jadi
                        * membuka buku = pergi ke alamatnya.
                        */}
-                      <Button asChild size="sm" className="shrink-0">
+                      <Button asChild size="sm" className="w-full">
                         <Link href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}>
                           {t("auth.selectCompany.openLabel")}
                         </Link>
@@ -168,56 +275,10 @@ export default async function PlatformPage() {
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-
-          {canCreate && (
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/companies/new">
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                {t("companies.newTitle")}
-              </Link>
-            </Button>
-          )}
-        </section>
-
-        {/* Undangan staf — manajer ke atas. Undangannya per PERUSAHAAN (peran
-            akuntansi & jejak auditnya milik satu buku), jadi pintunya pun per
-            perusahaan; tanpa satu pun PT, kalimatnya yang menjelaskan. */}
-        {canInvite && (
-          <section className="space-y-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {t("platform.teamHeading")}
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("platform.teamBody")}
-            </p>
-            {companies.map((company) => (
-              <Button
-                key={company.companyId}
-                asChild
-                variant="outline"
-                className="w-full justify-start"
-              >
-                <Link href={tenantPath(tenant.tenantSlug, company.slug, "/users")}>
-                  <Mail className="h-4 w-4" aria-hidden="true" />
-                  {t("platform.inviteTo", { company: company.name })}
-                </Link>
-              </Button>
-            ))}
-          </section>
-        )}
-
-        {/* Langganan & tagihan — OWNER saja. Komponennya sendiri yang membaca
-            data langganan, jadi bagi yang tak berhak query-nya tak berjalan. */}
-        {canSeeBilling && <SubscriptionSection overview={overview} />}
-
-        {/* Data & Privasi (issue #142) — ekspor untuk pemegang `tenant.export`,
-            permintaan penghapusan untuk `tenant.deletion`; SELALU dirender saat
-            berhak, termasuk (terutama) ketika langganan ditangguhkan. */}
-        {canExport && <PrivacySection canDelete={canDelete} />}
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </AuthShell>
+    </>
   );
 }

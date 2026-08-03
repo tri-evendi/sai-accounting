@@ -19,8 +19,27 @@
  * ("penagihan tidak terjangkau"): penagihan mati tidak boleh mematikan halaman
  * yang menjelaskan keadaan langganan. Paket/kuota datang dari basis data
  * KENDALI (snapshot #140) dan selalu terjawab.
+ *
+ * ══ DUA KARTU, DAN KENAPA TABELNYA BARU SEKARANG MUAT ══════════════════════
+ * Isinya dipisah menurut ASALNYA, yang juga pemisahan yang benar bagi
+ * pembacanya: apa yang saya punya (paket, dari KENDALI, selalu terjawab) vs
+ * apa yang harus saya bayar (tagihan + profil, dari PLATFORM, boleh mati).
+ *
+ * ⚠ KUOTA TIDAK LAGI DI SINI. Angka pemakaian vs kuota naik ke baris kartu
+ * ringkasan di kepala halaman (`page.tsx`) — itu yang paling sering dicari
+ * pemilik, dan di sini ia terkubur di tengah gulungan. Yang ikut pindah adalah
+ * `usageHeading`-nya: angka yang sama muncul di satu tempat saja, sebab dua
+ * salinan akan berbeda pada hari salah satunya diubah.
+ *
+ * Bidang tagihan itulah yang dulu paling menderita di kolom
+ * `max-w-md`: tabel tagihan LIMA KOLOM di dalam ruang isi 384px menggeser
+ * dirinya sendiri secara mendatar bahkan di layar 1440px. Pembungkus
+ * `overflow-x-auto` tangan yang dulu melapisinya juga dilepas — primitif
+ * `Table` sudah membawa pembungkus geser sendiri (MASTER.md §Primitif), jadi
+ * yang dihasilkan lapisan kedua hanyalah dua batang gulung bersarang.
  */
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -50,9 +69,16 @@ export async function SubscriptionSection({
 
   if (!overview) {
     return (
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {t("tenantSettings.noSubscription")}
-      </p>
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-foreground">{t("tenantSettings.title")}</h2>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t("tenantSettings.noSubscription")}
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -60,93 +86,80 @@ export async function SubscriptionSection({
   const readOnly = isReadOnlyTenantStatus(overview.tenant.status);
 
   return (
-    <div className="space-y-6">
-      {/* Paket & status — dari KENDALI (snapshot), selalu tampil. */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">
-          {t("tenantSettings.planHeading")}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="default">{overview.tenant.planKey}</Badge>
-          <span className="text-muted-foreground">{t("tenantSettings.statusLabel")}:</span>
-          <Badge variant={readOnly ? "warning" : "success"}>
-            {statusKey(overview.tenant.status)}
-          </Badge>
-        </div>
-        {overview.tenant.trialEndsAt && (
-          <p className="text-sm text-muted-foreground">
-            {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
+    <>
+      {/* Paket, status & pemakaian — dari KENDALI (snapshot), selalu tampil.
+          Berdampingan pada layar lebar: keduanya menjawab satu pertanyaan
+          ("apa yang saya punya, dan berapa yang sudah terpakai"). */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-foreground">{t("tenantSettings.title")}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {t("tenantSettings.description")}
           </p>
-        )}
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {t("tenantSettings.planChangeNote")}
-        </p>
-      </section>
-
-      {/* Pemakaian vs kuota ter-snapshot. */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">
-          {t("tenantSettings.usageHeading")}
-        </h2>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg border border-border p-3">
-            <dt className="text-muted-foreground">{t("tenantSettings.usageCompanies")}</dt>
-            <dd className="mt-1 font-medium tabular-nums text-foreground">
-              {t("tenantSettings.usageOf", {
-                used: overview.usage.companies,
-                max: overview.tenant.maxCompanies,
-              })}
-            </dd>
-          </div>
-          <div className="rounded-lg border border-border p-3">
-            <dt className="text-muted-foreground">{t("tenantSettings.usageUsers")}</dt>
-            <dd className="mt-1 font-medium tabular-nums text-foreground">
-              {t("tenantSettings.usageOf", {
-                used: overview.usage.users,
-                max: overview.tenant.maxUsers,
-              })}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      {/* Riwayat tagihan — dari PLATFORM, dan boleh "mati". */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">
-          {t("tenantSettings.billingHeading")}
-        </h2>
-        {overview.billing === null ? (
-          <p className="rounded-lg border border-border bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
-            {t("tenantSettings.billingUnavailable")}
-          </p>
-        ) : (
-          <>
-            {overview.billing.subscription ? (
+        </CardHeader>
+        <CardContent>
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("tenantSettings.planHeading")}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant="default">{overview.tenant.planKey}</Badge>
+              <span className="text-muted-foreground">{t("tenantSettings.statusLabel")}:</span>
+              <Badge variant={readOnly ? "warning" : "success"}>
+                {statusKey(overview.tenant.status)}
+              </Badge>
+            </div>
+            {overview.tenant.trialEndsAt && (
               <p className="text-sm text-muted-foreground">
-                {t("tenantSettings.price", {
-                  amount: formatMoney(
-                    Number(overview.billing.subscription.price),
-                    overview.billing.subscription.currency
-                  ),
-                  cycle:
-                    overview.billing.subscription.billingCycle === "yearly"
-                      ? t("tenantSettings.cycleYearly")
-                      : t("tenantSettings.cycleMonthly"),
-                })}{" "}
-                ·{" "}
-                {t("tenantSettings.period", {
-                  date: formatDate(overview.billing.subscription.currentPeriodEnd),
-                })}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("tenantSettings.noSubscription")}
+                {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
               </p>
             )}
-            {overview.billing.invoices.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("tenantSettings.noInvoices")}</p>
-            ) : (
-              <div className="overflow-x-auto">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t("tenantSettings.planChangeNote")}
+            </p>
+          </section>
+        </CardContent>
+      </Card>
+
+      {/* Riwayat tagihan — dari PLATFORM, dan boleh "mati". */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-foreground">
+            {t("tenantSettings.billingHeading")}
+          </h2>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {overview.billing === null ? (
+            <p className="rounded-lg border border-border bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
+              {t("tenantSettings.billingUnavailable")}
+            </p>
+          ) : (
+            <>
+              {overview.billing.subscription ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("tenantSettings.price", {
+                    amount: formatMoney(
+                      Number(overview.billing.subscription.price),
+                      overview.billing.subscription.currency
+                    ),
+                    cycle:
+                      overview.billing.subscription.billingCycle === "yearly"
+                        ? t("tenantSettings.cycleYearly")
+                        : t("tenantSettings.cycleMonthly"),
+                  })}{" "}
+                  ·{" "}
+                  {t("tenantSettings.period", {
+                    date: formatDate(overview.billing.subscription.currentPeriodEnd),
+                  })}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("tenantSettings.noSubscription")}
+                </p>
+              )}
+              {overview.billing.invoices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("tenantSettings.noInvoices")}</p>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -189,23 +202,24 @@ export async function SubscriptionSection({
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            )}
-          </>
-        )}
-        {/* Profil penagihan — NPWP lawan transaksi untuk Faktur Pajak KAMI
-            (issue #141). ⚠ Kewajiban PPN/e-Faktur langganan harus dikonfirmasi
-            penasihat pajak; ini mekanisme datanya. */}
-        <div className="space-y-2 pt-2">
-          <h3 className="text-sm font-semibold text-foreground">
-            {t("billing.profileHeading")}
-          </h3>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {t("billing.profileHint")}
-          </p>
-          <BillingProfileForm profile={overview.billing?.profile ?? null} />
-        </div>
-      </section>
-    </div>
+              )}
+            </>
+          )}
+          {/* Profil penagihan — NPWP lawan transaksi untuk Faktur Pajak KAMI
+              (issue #141). ⚠ Kewajiban PPN/e-Faktur langganan harus dikonfirmasi
+              penasihat pajak; ini mekanisme datanya. Digarisi di atas: ia
+              formulir yang bisa disimpan, bukan lanjutan bacaan tabel. */}
+          <div className="space-y-2 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("billing.profileHeading")}
+            </h3>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t("billing.profileHint")}
+            </p>
+            <BillingProfileForm profile={overview.billing?.profile ?? null} />
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }

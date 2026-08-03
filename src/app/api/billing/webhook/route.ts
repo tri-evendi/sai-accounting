@@ -25,6 +25,7 @@ import {
   webhookServerKey,
   type MidtransNotification,
 } from "@/lib/payment-gateway";
+import { planChangeApplier } from "@/lib/operator/writes";
 import { processPaymentNotification } from "@/lib/payment-webhook";
 import { invalidateTenantState } from "@/lib/tenant-state";
 
@@ -55,7 +56,20 @@ export async function POST(request: Request) {
   }
 
   const result = await processPaymentNotification(
-    { platform: platformDb, control: controlDb },
+    {
+      platform: platformDb,
+      control: controlDb,
+      /* Tagihan PERPINDAHAN PAKET yang lunas memindahkan paketnya di sini —
+       * aktornya BUKAN operator: pelanggan yang memilih dan membayarnya
+       * sendiri, dan jejak audit harus bisa mengatakan itu tanpa menebak. */
+      applyPlanChange: planChangeApplier(
+        { platform: platformDb, control: controlDb },
+        {
+          operator: "self-service:plan-change",
+          reason: "Perpindahan paket swalayan, dibayar pelanggan",
+        }
+      ),
+    },
     body
   );
 

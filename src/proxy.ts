@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-import { legacyTenantScopedPath, tenantPath } from "@/lib/tenant-routes";
+import { resolvePostLoginPath } from "@/lib/post-login";
+import { legacyTenantScopedPath, renamedPagePath, tenantPath } from "@/lib/tenant-routes";
 
 import {
   clientIpFrom,
@@ -141,11 +142,27 @@ export async function proxy(request: NextRequest) {
     secureCookie: useSecureCookies,
   });
 
-  // /register ikut: orang yang sudah masuk tidak sedang mendaftar — form yang
-  // dibiarkan terbuka hanya melahirkan pendaftaran yatim atas nama orang lain.
+  /*
+   * /register ikut: orang yang sudah masuk tidak sedang mendaftar — form yang
+   * dibiarkan terbuka hanya melahirkan pendaftaran yatim atas nama orang lain.
+   *
+   * Tujuannya diputuskan `resolvePostLoginPath` (issue #172), bukan ditulis
+   * ulang di sini: ini pintu KETIGA menuju keadaan "sesi sudah sah, ke mana
+   * sekarang?", dan salinan aturan di proxy adalah salinan yang paling mudah
+   * ketinggalan — ia tak pernah terlihat dari tes halaman mana pun. Fungsinya
+   * murni dan aman-edge (tanpa Prisma, tanpa `node:*`), jadi ia boleh dipanggil
+   * dari sini.
+   */
   if ((pathname === "/login" || pathname === "/register") && token) {
-    const destination =
-      token.mustChangePassword ? "/change-password" : "/dashboard";
+    const destination = resolvePostLoginPath(
+      token.mustChangePassword === true,
+      {
+        companyId: typeof token.companyId === "number" ? token.companyId : null,
+        tenantSlug: typeof token.tenantSlug === "string" ? token.tenantSlug : null,
+        companySlug: typeof token.companySlug === "string" ? token.companySlug : null,
+      },
+      null
+    );
     return NextResponse.redirect(new URL(destination, request.url));
   }
 
@@ -172,6 +189,25 @@ export async function proxy(request: NextRequest) {
       );
     }
     return NextResponse.redirect(new URL("/change-password", request.url));
+  }
+
+  /*
+   * ── Halaman yang BERGANTI NAMA: /tenant → /platform (issue #172) ──────────
+   *
+   * Mekanismenya sama dengan pantulan #157 di bawah — 307, bukan 308/301:
+   * permanen tersimpan di cache peramban selamanya, dan alamat halaman masih
+   * bisa berubah lagi. Petanya di `lib/tenant-routes.ts` (murni, aman-edge).
+   *
+   * Berdiri SESUDAH pemeriksaan sesi supaya pengunjung tanpa token tetap
+   * bertemu /login lebih dulu, dan `renamedPagePath` menolak `/api/…` sendiri:
+   * `/api/tenant/*` adalah permukaan API tingkat tenant (#135) yang namanya
+   * memang benar dan TIDAK ikut pindah.
+   */
+  const renamed = renamedPagePath(pathname);
+  if (renamed) {
+    const target = request.nextUrl.clone();
+    target.pathname = renamed;
+    return NextResponse.redirect(target, 307);
   }
 
   /*

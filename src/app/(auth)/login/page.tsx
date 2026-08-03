@@ -70,7 +70,6 @@ function LoginForm() {
           tenantSlug: session?.user?.tenantSlug,
           companySlug: session?.user?.companySlug,
         },
-        session?.user?.companyCount,
         callbackUrl
       );
       router.replace(destination);
@@ -104,7 +103,6 @@ function LoginForm() {
           tenantSlug: session?.user?.tenantSlug,
           companySlug: session?.user?.companySlug,
         },
-        session?.user?.companyCount,
         callbackUrl
       )
     );

@@ -31,6 +31,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  ReceiptText,
   Sun,
   User,
   type LucideIcon,
@@ -83,6 +84,9 @@ export function UserMenu({
   const [open, setOpen] = useState(false);
   const [companies, setCompanies] = useState<{ id: number; name: string }[] | null>(null);
   const [activeCompany, setActiveCompany] = useState<string | null>(null);
+  /* Boleh membuka /tenant (langganan, tagihan, undangan, ekspor)? Dijawab
+   * server lewat permintaan yang memang sudah dilakukan menu ini. */
+  const [canManageTenant, setCanManageTenant] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const dictionary = useDictionary();
@@ -100,11 +104,20 @@ export function UserMenu({
     let cancelled = false;
     void apiFetch("/api/user/companies")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { activeId: number | null; companies: { id: number; name: string }[] } | null) => {
-        if (cancelled || !data) return;
-        setCompanies(data.companies);
-        setActiveCompany(data.companies.find((c) => c.id === data.activeId)?.name ?? null);
-      })
+      .then(
+        (
+          data: {
+            activeId: number | null;
+            companies: { id: number; name: string }[];
+            canManageTenant?: boolean;
+          } | null
+        ) => {
+          if (cancelled || !data) return;
+          setCompanies(data.companies);
+          setActiveCompany(data.companies.find((c) => c.id === data.activeId)?.name ?? null);
+          setCanManageTenant(Boolean(data.canManageTenant));
+        }
+      )
       .catch(() => {
         // Menu tetap berguna tanpa daftar perusahaan; jangan menggagalkannya.
       });
@@ -313,6 +326,25 @@ export function UserMenu({
               >
                 <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span>{t("auth.selectCompany.switchLabel")}</span>
+              </Link>
+            )}
+            {/* Akun & langganan (halaman /tenant). Hanya OWNER — `tenant.settings`
+                memang begitu, dan menawarkan tautan yang memantul sama tidak
+                membantunya dengan tidak ada tautan sama sekali. Sebelum ini
+                satu-satunya jalan ke sana adalah /select-company, layar yang
+                pengguna ber-PT-satu tidak pernah lihat. */}
+            {canManageTenant && (
+              <Link
+                role="menuitem"
+                href="/tenant"
+                onClick={() => setOpen(false)}
+                className={cn(itemClass, "text-foreground hover:bg-muted")}
+              >
+                <ReceiptText
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span>{t("userMenu.tenantAccount")}</span>
               </Link>
             )}
             <Link

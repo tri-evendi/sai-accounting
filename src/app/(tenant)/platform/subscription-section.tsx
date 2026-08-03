@@ -22,9 +22,16 @@
  *
  * ══ DUA KARTU, DAN KENAPA TABELNYA BARU SEKARANG MUAT ══════════════════════
  * Isinya dipisah menurut ASALNYA, yang juga pemisahan yang benar bagi
- * pembacanya: apa yang saya punya (paket + kuota, dari KENDALI, selalu
- * terjawab) vs apa yang harus saya bayar (tagihan + profil, dari PLATFORM,
- * boleh mati). Bidang keduanya itulah yang dulu paling menderita di kolom
+ * pembacanya: apa yang saya punya (paket, dari KENDALI, selalu terjawab) vs
+ * apa yang harus saya bayar (tagihan + profil, dari PLATFORM, boleh mati).
+ *
+ * ⚠ KUOTA TIDAK LAGI DI SINI. Angka pemakaian vs kuota naik ke baris kartu
+ * ringkasan di kepala halaman (`page.tsx`) — itu yang paling sering dicari
+ * pemilik, dan di sini ia terkubur di tengah gulungan. Yang ikut pindah adalah
+ * `usageHeading`-nya: angka yang sama muncul di satu tempat saja, sebab dua
+ * salinan akan berbeda pada hari salah satunya diubah.
+ *
+ * Bidang tagihan itulah yang dulu paling menderita di kolom
  * `max-w-md`: tabel tagihan LIMA KOLOM di dalam ruang isi 384px menggeser
  * dirinya sendiri secara mendatar bahkan di layar 1440px. Pembungkus
  * `overflow-x-auto` tangan yang dulu melapisinya juga dilepas — primitif
@@ -91,54 +98,26 @@ export async function SubscriptionSection({
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">
-                {t("tenantSettings.planHeading")}
-              </h3>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="default">{overview.tenant.planKey}</Badge>
-                <span className="text-muted-foreground">{t("tenantSettings.statusLabel")}:</span>
-                <Badge variant={readOnly ? "warning" : "success"}>
-                  {statusKey(overview.tenant.status)}
-                </Badge>
-              </div>
-              {overview.tenant.trialEndsAt && (
-                <p className="text-sm text-muted-foreground">
-                  {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
-                </p>
-              )}
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {t("tenantSettings.planChangeNote")}
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("tenantSettings.planHeading")}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant="default">{overview.tenant.planKey}</Badge>
+              <span className="text-muted-foreground">{t("tenantSettings.statusLabel")}:</span>
+              <Badge variant={readOnly ? "warning" : "success"}>
+                {statusKey(overview.tenant.status)}
+              </Badge>
+            </div>
+            {overview.tenant.trialEndsAt && (
+              <p className="text-sm text-muted-foreground">
+                {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
               </p>
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">
-                {t("tenantSettings.usageHeading")}
-              </h3>
-              <dl className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-border p-3">
-                  <dt className="text-muted-foreground">{t("tenantSettings.usageCompanies")}</dt>
-                  <dd className="mt-1 font-medium tabular-nums text-foreground">
-                    {t("tenantSettings.usageOf", {
-                      used: overview.usage.companies,
-                      max: overview.tenant.maxCompanies,
-                    })}
-                  </dd>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <dt className="text-muted-foreground">{t("tenantSettings.usageUsers")}</dt>
-                  <dd className="mt-1 font-medium tabular-nums text-foreground">
-                    {t("tenantSettings.usageOf", {
-                      used: overview.usage.users,
-                      max: overview.tenant.maxUsers,
-                    })}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          </div>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t("tenantSettings.planChangeNote")}
+            </p>
+          </section>
         </CardContent>
       </Card>
 

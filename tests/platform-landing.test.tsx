@@ -135,14 +135,21 @@ vi.mock("@/components/tenant/platform-shell", () => ({
     heading,
     description,
     children,
+    account,
   }: {
     heading: string;
     description?: string;
     children: React.ReactNode;
+    account?: React.ReactNode;
   }) => (
     <div>
       <h1>{heading}</h1>
       {description && <p>{description}</p>}
+      {/* `account` = SignedInAs, yaitu JALAN KELUAR. Ia dirender di sini justru
+          karena diuji di bawah: sejak kulitnya menjadi panel admin, tempatnya
+          bilah atas, dan kulit yang dipalsukan tanpa slot ini akan membuat
+          "setiap keadaan tetap punya jalan keluar" lulus tanpa jalan keluar. */}
+      {account}
       {children}
     </div>
   ),

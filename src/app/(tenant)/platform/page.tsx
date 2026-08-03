@@ -34,38 +34,54 @@
  * aktif — pelanggan baru yang belum punya satu pun PT, dan pemilik yang
  * seluruh PT-nya sedang hanya-baca, justru pemakai terpentingnya.
  *
- * ══ TATA LETAK: BIDANG, BUKAN SATU KOLOM 448px ═════════════════════════════
- * Isi halaman ini dipisah menurut kewenangan sejak #172; yang belum ikut
- * dipisah adalah BENTUKNYA. Sampai audit ini seluruhnya dituang ke dalam
- * `AuthShell` — kulit layar pra-aplikasi, kolom `max-w-md` — sehingga enam
- * urusan yang berbeda (akun, perusahaan, tim, paket, tagihan, penghapusan)
- * berbaris sebagai satu gulungan rata tanpa batas yang terlihat, dan tabel
- * tagihan lima kolom menggeser dirinya sendiri di dalam sumur 384px pada layar
- * 1440px. Empat perbaikan, semuanya soal bentuk — tak satu pun mengubah siapa
- * melihat apa:
+ * ══ BENTUKNYA: PANEL ADMIN PELANGGAN ═══════════════════════════════════════
+ * Isi halaman ini dipisah menurut kewenangan sejak #172; yang menyusul adalah
+ * BENTUKNYA. Sampai audit tata letak seluruhnya dituang ke `AuthShell` — kulit
+ * layar pra-aplikasi, kolom `max-w-md` — sehingga enam urusan yang berbeda
+ * berbaris sebagai satu gulungan rata tanpa peta dan tanpa batas yang terlihat,
+ * dan tabel tagihan lima kolom menggeser dirinya sendiri di dalam sumur 384px
+ * pada layar 1440px.
  *
- *   • `PlatformShell` (lebar, ber-`h1`) menggantikan `AuthShell`;
- *   • setiap urusan mendapat `Card`-nya sendiri — batas yang terlihat, bukan
- *     hanya jarak vertikal, dan judul bagian yang benar-benar `h2` di bawah
- *     satu `h1` (dulu semuanya `h2` sederajat, dan tak ada `h1` sama sekali);
- *   • daftar perusahaan menjadi KISI yang ikut melebar — bukan tumpukan kartu
- *     selebar layar yang panjangnya bertambah satu layar penuh tiap tiga PT;
- *   • JALAN KELUAR naik ke kartu "Akun" paling atas. `SignedInAs` dulu ada di
- *     kaki `AuthShell`, yang pada halaman sepanjang ini berarti di bawah tabel
- *     tagihan: orang yang sadar ia masuk sebagai akun yang salah harus
- *     menggulung melewati data akun orang lain untuk bisa keluar.
+ * Yang menggantikannya adalah panel administrasi akun: sidebar gelap + bilah
+ * atas + kartu ringkasan, yaitu BENTUK YANG SAMA dengan dasbor perusahaan yang
+ * akan dibuka pelanggan sesudahnya (`PlatformShell` menjelaskan kenapa kulit
+ * dasbor sendiri tidak bisa dipakai di sini). Tiga akibat yang disengaja:
+ *
+ *   • MENU = PETA. "Apa lagi yang ada di akun saya" dulu hanya bisa dijawab
+ *     dengan menggulung sampai habis; kini terjawab tanpa menggulung sama
+ *     sekali. Butirnya disusun DI SINI dari matriks izin — kulit tidak boleh
+ *     ikut memutuskan siapa melihat apa, sebab keputusan yang tinggal di dua
+ *     tempat akan berbeda di salah satunya.
+ *   • KARTU ANGKA di atas. Kuota terpakai adalah hal yang paling sering dicari
+ *     pemilik dan dulu terkubur di tengah halaman; ia naik ke baris ringkasan,
+ *     dan `usageHeading` ikut pindah bersamanya supaya angka yang sama tidak
+ *     muncul di dua tempat.
+ *   • JALAN KELUAR di bilah atas, bukan di kaki halaman. `SignedInAs` dulu ada
+ *     di bawah tabel tagihan: orang yang sadar ia masuk sebagai akun yang salah
+ *     harus menggulung melewati data langganan akun orang lain untuk keluar.
  */
 import Link from "next/link";
-import { AlertTriangle, Building2, Mail, Plus, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  Mail,
+  Plus,
+  ShieldCheck,
+  UserCog,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 import { SignedInAs } from "@/components/auth/signed-in-as";
-import { PlatformShell } from "@/components/tenant/platform-shell";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { PlatformShell, type PlatformNavItem } from "@/components/tenant/platform-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
@@ -98,11 +114,66 @@ export default async function PlatformPage() {
    * ke basis data kendali & platform tidak pernah berjalan sama sekali. */
   const overview = canSeeBilling ? await billingOverviewForTenant(tenant.tenantId) : null;
 
+  /* Menu = matriks izin yang sama, dibaca sekali. Bagian yang tidak dirender
+   * tidak boleh punya butir menu: pintu ke ruangan yang tidak ada tetap
+   * memberi tahu orang bahwa ruangan itu ada. */
+  const nav: PlatformNavItem[] = [
+    {
+      href: "#akun",
+      label: t("platform.tenantHeading"),
+      icon: <UserCog className="h-4 w-4" />,
+    },
+    {
+      href: "#perusahaan",
+      label: t("platform.companiesHeading"),
+      icon: <Building2 className="h-4 w-4" />,
+    },
+    ...(canInvite
+      ? [
+          {
+            href: "#tim",
+            label: t("platform.teamHeading"),
+            icon: <Users className="h-4 w-4" />,
+          },
+        ]
+      : []),
+    ...(canSeeBilling
+      ? [
+          {
+            href: "#langganan",
+            label: t("tenantSettings.title"),
+            icon: <Wallet className="h-4 w-4" />,
+          },
+        ]
+      : []),
+    ...(canExport
+      ? [
+          {
+            href: "#privasi",
+            label: t("tenantSettings.privacyHeading"),
+            icon: <ShieldCheck className="h-4 w-4" />,
+          },
+        ]
+      : []),
+    ...(canCreate
+      ? [
+          {
+            href: "/companies/new",
+            label: t("companies.newTitle"),
+            icon: <Plus className="h-4 w-4" />,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <PlatformShell
       heading={t("platform.title")}
       description={t("platform.description")}
       icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      tenantName={tenant.tenantName}
+      nav={nav}
+      account={<SignedInAs name={user.name ?? ""} />}
     >
       {/* Penangguhan langganan — ikon + kata, bukan warna saja (MASTER.md
           §Anti-Patterns). Batasnya `warning`, bukan `border`: bidang berstatus
@@ -122,9 +193,55 @@ export default async function PlatformPage() {
         </div>
       )}
 
-      {/* Akun — "saya sedang masuk ke akun siapa, sebagai siapa, dan bagaimana
-          saya keluar", ketiganya di satu kartu paling atas. */}
-      <Card>
+      {/* Baris ringkasan. Untuk pemilik ia adalah PEMAKAIAN vs kuota — angka
+          yang dulu terkubur di tengah halaman dan paling sering dicari; untuk
+          anggota biasa cukup satu kartu, sebab kuota bukan urusannya (dan
+          datanya memang tidak pernah dibaca untuknya). */}
+      <section aria-labelledby={canSeeBilling && overview ? "ringkasan" : undefined}>
+        {canSeeBilling && overview && (
+          <h2 id="ringkasan" className="mb-3 text-lg font-semibold text-foreground">
+            {t("tenantSettings.usageHeading")}
+          </h2>
+        )}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {canSeeBilling && overview ? (
+            <>
+              <StatCard
+                title={t("tenantSettings.usageCompanies")}
+                value={t("tenantSettings.usageOf", {
+                  used: overview.usage.companies,
+                  max: overview.tenant.maxCompanies,
+                })}
+              />
+              <StatCard
+                title={t("tenantSettings.usageUsers")}
+                value={t("tenantSettings.usageOf", {
+                  used: overview.usage.users,
+                  max: overview.tenant.maxUsers,
+                })}
+              />
+              {/* Status sebagai KATA, bukan warna saja — dan warnanya mengikuti
+                  artinya (ditangguhkan = peringatan, bukan sekadar "beda"). */}
+              <StatCard
+                title={t("tenantSettings.statusLabel")}
+                value={t(`tenantSettings.status.${overview.tenant.status}` as DictionaryKey)}
+                valueClassName={
+                  isReadOnlyTenantStatus(overview.tenant.status)
+                    ? "text-lg text-warning-strong"
+                    : "text-lg text-success-strong"
+                }
+              />
+            </>
+          ) : (
+            <StatCard title={t("platform.companiesHeading")} value={companies.length} />
+          )}
+        </div>
+      </section>
+
+      {/* Akun — "saya sedang masuk ke akun siapa". Nama pendeknya juga ada di
+          bilah atas; yang tinggal di sini adalah slug teknisnya, yang dipakai
+          saat menyebut akun ini kepada dukungan. */}
+      <Card id="akun" className="scroll-mt-4">
         <CardHeader>
           <h2 className="text-lg font-semibold text-foreground">
             {t("platform.tenantHeading")}
@@ -144,15 +261,10 @@ export default async function PlatformPage() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
-          <div className="w-full">
-            <SignedInAs name={user.name ?? ""} />
-          </div>
-        </CardFooter>
       </Card>
 
       {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
-      <Card>
+      <Card id="perusahaan" className="scroll-mt-4">
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-foreground">
@@ -260,7 +372,7 @@ export default async function PlatformPage() {
           akuntansi & jejak auditnya milik satu buku), jadi pintunya pun per
           perusahaan; tanpa satu pun PT, kalimatnya yang menjelaskan. */}
       {canInvite && (
-        <Card>
+        <Card id="tim" className="scroll-mt-4">
           <CardHeader>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -299,12 +411,20 @@ export default async function PlatformPage() {
 
       {/* Langganan & tagihan — OWNER saja. Komponennya sendiri yang membaca
           data langganan, jadi bagi yang tak berhak query-nya tak berjalan. */}
-      {canSeeBilling && <SubscriptionSection overview={overview} />}
+      {canSeeBilling && (
+        <div id="langganan" className="scroll-mt-4 space-y-6">
+          <SubscriptionSection overview={overview} />
+        </div>
+      )}
 
       {/* Data & Privasi (issue #142) — ekspor untuk pemegang `tenant.export`,
           permintaan penghapusan untuk `tenant.deletion`; SELALU dirender saat
           berhak, termasuk (terutama) ketika langganan ditangguhkan. */}
-      {canExport && <PrivacySection canDelete={canDelete} />}
+      {canExport && (
+        <div id="privasi" className="scroll-mt-4">
+          <PrivacySection canDelete={canDelete} />
+        </div>
+      )}
     </PlatformShell>
   );
 }

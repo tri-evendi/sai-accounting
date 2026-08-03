@@ -1,109 +1,205 @@
+"use client";
+
 /**
- * Kulit `/platform` — PENDARATAN pasca-masuk, bukan layar pra-aplikasi.
+ * Kulit `/platform` — PANEL ADMIN PELANGGAN, bukan layar pra-aplikasi.
  *
- * ══ KENAPA BUKAN `AuthShell` ═══════════════════════════════════════════════
- * Sampai issue #172 halaman ini beralamat `/tenant` dan memang layar
- * pra-aplikasi: satu tugas, satu kartu. `AuthShell` — yang kepala berkasnya
- * menyebut dirinya sendiri "kulit layar PRA-APLIKASI (masuk, ganti kata sandi,
- * pilih perusahaan…)" — menaruh isinya di kolom `max-w-md`, yaitu 448px, dan
- * dengan `p-8` menyisakan 384px ruang isi. Itu ukuran yang benar untuk sebuah
- * formulir masuk.
+ * ══ TIGA KULIT, DAN KENAPA INI KULIT KETIGA ════════════════════════════════
+ * Aplikasi ini punya dua kerangka yang sudah mapan, dan halaman ini tidak
+ * cocok di keduanya:
  *
- * Ia menjadi ukuran yang salah pada hari halaman ini berhenti mengerjakan satu
- * tugas. Pendaratan pasca-masuk membawa, dalam satu layar: keadaan langganan,
- * daftar perusahaan, undangan staf, TABEL TAGIHAN LIMA KOLOM, formulir profil
- * penagihan, dan permintaan penghapusan akun. Tabel lima kolom di dalam 384px
- * tidak "menyesuaikan diri" — ia menggeser dirinya sendiri secara mendatar di
- * dalam sumur sempit, DI LAYAR 1440px, dengan dua pertiga layar kosong di kiri
- * dan kanannya. Kolom sempit bukan penyederhanaan di sini; ia memampatkan
- * seluruh isi menjadi satu gulungan panjang yang tidak bisa dipindai.
+ *   `AuthShell`      satu tugas, satu kartu `max-w-md` (masuk, ganti sandi).
+ *                    Halaman ini membawa ENAM urusan; 448px membuat tabel
+ *                    tagihan lima kolom menggeser dirinya sendiri secara
+ *                    mendatar bahkan di layar 1440px.
+ *   `(dashboard)`    Sidebar + Navbar penuh — tapi menunya disusun dari
+ *                    `session.user.role`, yaitu PERAN DI SEBUAH PT. Pengunjung
+ *                    halaman ini boleh jadi belum punya satu pun PT (pemilik
+ *                    baru yang sedang membuat yang pertama). Memakainya berarti
+ *                    memutar layar pemuatan selamanya bagi orang yang paling
+ *                    membutuhkan halaman ini — persis alasan `(tenant)/layout`
+ *                    sengaja setipis `(auth)`.
  *
- * ══ APA YANG TETAP DIWARISI ════════════════════════════════════════════════
- * Halaman ini tetap TANPA chrome aplikasi — tidak ada menu samping dan tidak
- * ada menu avatar, sebab pengunjungnya boleh jadi belum punya satu pun PT
- * (`(tenant)/layout.tsx`). Karena itu tiga hal dari layar pra-aplikasi ikut,
- * dan ketiganya punya alasan yang sama — di sini tidak ada tempat lain yang
- * menyediakannya:
+ * Karena itu kulit ketiga: BENTUK panel admin yang sama dengan dasbor —
+ * sidebar gelap `w-64`, bilah atas `h-16`, isi yang menggulung sendiri — tapi
+ * menunya disusun dari KEWENANGAN TINGKAT TENANT yang dioper halaman, bukan
+ * dari peran di sebuah PT. Pelanggan mendapat panel administrasi akunnya,
+ * dengan tata bahasa visual yang sama dengan buku yang akan ia buka setelahnya.
  *
- *   • pemilih BAHASA & TEMA di bilah atas — di aplikasi keduanya tinggal di
- *     menu akun, chrome yang tidak ada di halaman ini;
- *   • identitas produk (`APP_NAME`, bukan nama PT — lihat catatan kepala
- *     `auth-shell.tsx`: di sini aplikasi belum tentu tahu tenant mana yang
- *     datang, dan nilai cadangannya adalah nama pemasang pertama);
- *   • JALAN KELUAR. MASTER.md §Orientasi Perusahaan mewajibkannya untuk layar
- *     tanpa chrome. Di sini ia tidak dititipkan ke kaki halaman: halamannya
- *     sendiri menaruh `SignedInAs` di kartu "Akun" paling atas, sebab kaki
- *     halaman ada di bawah tabel tagihan — dan "saya masuk sebagai akun yang
- *     salah" adalah hal yang harus bisa diperbaiki tanpa menggulung dulu.
+ * ══ MENUNYA MENUNJUK BAGIAN, DAN ITU DISENGAJA ═════════════════════════════
+ * Butir menu adalah jangkar `#…` ke bagian di halaman yang sama, bukan rute
+ * tersendiri. Alasannya bukan kemalasan: seluruh isi tingkat tenant muat dalam
+ * satu halaman, dan memecahnya menjadi lima rute berarti lima kali muat ulang
+ * untuk pekerjaan yang hampir selalu selesai dalam satu kunjungan. Yang
+ * diberikan menu di sini adalah PETA — jawaban atas "apa lagi yang ada di akun
+ * saya" — yang di kolom tunggal sebelumnya hanya bisa dijawab dengan menggulung
+ * sampai habis.
  *
- * Lebar `max-w-5xl` (1024px), bukan penuh: baris teks selebar layar 1440px
- * tidak terbaca, dan isi halaman ini adalah kalimat penjelas sebanyak data.
+ * ⚠ Daftar menunya DIOPER, tidak dihitung di sini. Menyusunnya di dalam kulit
+ * berarti kulit harus tahu matriks izin, dan itu menaruh keputusan "siapa
+ * melihat apa" di dua tempat — tempat kedua yang tidak diuji siapa pun.
+ *
+ * Lambang, bahasa, tema, dan JALAN KELUAR ikut di sini sebab halaman ini tidak
+ * punya chrome aplikasi: di dasbor keempatnya tinggal di Navbar/menu akun yang
+ * belum ada pada tahap ini (MASTER.md §Orientasi Perusahaan mewajibkan layar
+ * tanpa chrome punya jalan keluar).
  */
+
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
+
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useT } from "@/lib/i18n/client";
+
+export interface PlatformNavItem {
+  /** Jangkar `#bagian` di halaman ini, atau rute penuh (mis. `/companies/new`). */
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}
 
 interface PlatformShellProps {
   children: React.ReactNode;
   heading: string;
   description?: string;
   icon?: React.ReactNode;
+  /** Nama tenant — orientasi "akun siapa", sejajar `CompanyIndicator` di dasbor. */
+  tenantName: string;
+  nav: PlatformNavItem[];
+  /** `SignedInAs` — identitas + keluar, dioper supaya kulit tidak menyentuh sesi. */
+  account?: React.ReactNode;
 }
 
-export function PlatformShell({ children, heading, description, icon }: PlatformShellProps) {
+export function PlatformShell({
+  children,
+  heading,
+  description,
+  icon,
+  tenantName,
+  nav,
+  account,
+}: PlatformShellProps) {
+  const t = useT();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    /* `bg-background`, BUKAN `bg-muted`: di tema gelap `--muted` dan
-     * `--secondary` bernilai sama, dan kartu (`--card`) justru menjadi lebih
-     * gelap daripada halamannya — terbalik dari maksudnya. */
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Tirai layar sempit — di sana sidebar adalah laci, bukan kolom. */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-6">
+          <div className="flex min-w-0 items-center gap-2.5 text-lg font-bold">
             <BrandMark size="sm" />
-            <span className="truncate text-sm font-semibold text-foreground">{APP_NAME}</span>
+            <span className="truncate">{APP_NAME}</span>
           </div>
-          {/* Bahasa & tema — terjangkau tanpa chrome aplikasi. `flex-wrap` +
-              `justify-end` membuatnya turun sendiri di layar 375px. */}
-          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-            <LocaleToggle />
-            <span className="h-5 w-px bg-border" aria-hidden="true" />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:py-10">
-        <div className="mb-8 flex items-start gap-4">
-          {icon && (
-            <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-ring sm:flex">
-              {icon}
-            </span>
-          )}
-          <div className="min-w-0">
-            {/* `h1` sungguhan. Di kulit lama judul halaman adalah `h2` yang
-                sederajat dengan judul setiap bagiannya, dan halaman ini tidak
-                punya `h1` sama sekali — struktur yang datar bagi pembaca layar
-                justru pada halaman yang isinya paling banyak bercabang. */}
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{heading}</h1>
-            {description && (
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
-            )}
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMenuOpen(false)}
+            aria-label={t("sidebar.closeMenu")}
+            className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </Button>
         </div>
 
-        <div className="space-y-6">{children}</div>
-      </main>
+        <nav aria-label={t("sidebar.mainMenu")} className="flex-1 overflow-y-auto px-3 py-4">
+          <ul className="space-y-1">
+            {nav.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                  <span className="shrink-0" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      <footer className="mx-auto w-full max-w-5xl px-4 pb-8 sm:px-6">
-        <p className="text-xs text-muted-foreground">
+        <p className="shrink-0 border-t border-sidebar-border px-6 py-4 text-xs text-sidebar-foreground/60">
           &copy; {new Date().getFullYear()} {APP_NAME}
           {" · v"}
           {APP_VERSION}
         </p>
-      </footer>
+      </aside>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(true)}
+              aria-label={t("sidebar.mainMenu")}
+              className="lg:hidden"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </Button>
+            {/* Orientasi "akun siapa" — sejajar `CompanyIndicator` di dasbor,
+                dan yang menyempit di layar sempit adalah NAMANYA, bukan target
+                sentuh aksi di kanan (MASTER.md §Orientasi Perusahaan). */}
+            <p className="truncate text-sm font-medium text-foreground" title={tenantName}>
+              {tenantName}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            <LocaleToggle />
+            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+            <ThemeToggle />
+            {account && (
+              <>
+                <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+                {account}
+              </>
+            )}
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <div className="mx-auto w-full max-w-6xl space-y-6">
+            <div className="flex items-start gap-4">
+              {icon && (
+                <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-ring sm:flex">
+                  {icon}
+                </span>
+              )}
+              <div className="min-w-0">
+                {/* `h1` sungguhan. Di kulit lama judul halaman adalah `h2` yang
+                    sederajat dengan judul setiap bagiannya, dan halaman ini
+                    tidak punya `h1` sama sekali. */}
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">{heading}</h1>
+                {description && (
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    {description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

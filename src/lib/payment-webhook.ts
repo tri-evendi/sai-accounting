@@ -42,6 +42,26 @@ import type { SubscriptionStatus } from "@/lib/platform-constants";
 export interface WebhookDeps {
   platform: PlatformClient;
   control: ControlClient;
+  /**
+   * Pemasang paket untuk tagihan PERPINDAHAN PAKET swalayan — dipanggil hanya
+   * setelah tagihan ber-`targetPlanId` LUNAS.
+   *
+   * ⚠ DIOPER, BUKAN DIIMPOR. Mesinnya (`changeTenantPlan`) tinggal di
+   * `lib/operator/writes.ts`, dan berkas itu sudah mengimpor berkas INI —
+   * penyelesaian transfer manual memakai inti yang sama. Mengimpornya balik
+   * menjadikan keduanya lingkaran. Arah ketergantungan yang sudah ada
+   * mengatakan webhook adalah lapisan bawah; menyuntikkan pemasangnya
+   * mempertahankan arah itu, alih-alih membaliknya.
+   *
+   * Tidak dipasang + ada tagihan perpindahan yang lunas = MELEMPAR, bukan
+   * dilewati diam-diam: pelanggan yang sudah membayar tapi paketnya tidak naik
+   * adalah kegagalan yang harus berbunyi.
+   */
+  applyPlanChange?: (input: {
+    tenantId: number;
+    planKey: string;
+    invoiceNumber: string;
+  }) => Promise<void>;
 }
 
 export type WebhookOutcome =
@@ -95,7 +115,15 @@ export async function processPaymentNotification(
 
   const invoice = await platform.platformInvoice.findUnique({
     where: { number: notification.order_id },
-    select: { id: true, tenantId: true, subscriptionId: true, status: true, total: true },
+    select: {
+      id: true,
+      tenantId: true,
+      subscriptionId: true,
+      status: true,
+      total: true,
+      /* Niat perpindahan paket ada DI TAGIHAN — lihat migration 0007. */
+      targetPlan: { select: { key: true } },
+    },
   });
   if (!invoice) return { outcome: "unknown_invoice" };
 
@@ -154,6 +182,27 @@ export async function processPaymentNotification(
       data: { status: "paid" },
     });
     event = "payment_received";
+
+    /* ── Perpindahan paket swalayan: SETELAH lunas, sebelum transisi status ──
+     * Urutannya disengaja. `changeTenantPlan` menulis kuota baru ke basis data
+     * KENDALI; transisi di bawah menulis STATUS ke baris yang sama. Menjalankan
+     * perpindahan lebih dulu berarti status akhir yang tertulis adalah status
+     * dari langganan yang SUDAH berpaket baru — bukan sebaliknya, yang akan
+     * meninggalkan kuota baru bersama status paket lama. */
+    if (invoice.targetPlan) {
+      if (!deps.applyPlanChange) {
+        throw new Error(
+          `Tagihan ${notification.order_id} adalah perpindahan paket ` +
+            `(→ ${invoice.targetPlan.key}) tetapi pemasang paket tidak dipasang. ` +
+            `Pembayaran tercatat; paket TIDAK berpindah — wire applyPlanChange.`
+        );
+      }
+      await deps.applyPlanChange({
+        tenantId: invoice.tenantId,
+        planKey: invoice.targetPlan.key,
+        invoiceNumber: notification.order_id,
+      });
+    }
   } else if (invoice.status === "issued") {
     /* failed/expired atas tagihan yang masih terbuka → gagal bayar. */
     event = "payment_failed";

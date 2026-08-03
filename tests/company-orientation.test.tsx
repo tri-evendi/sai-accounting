@@ -166,6 +166,14 @@ describe("layar tanpa perusahaan bukan jalan buntu", () => {
   });
 
   it("dan pendaratan pasca-masuk memakai komponen yang sama (issue #172)", () => {
-    expect(read("app/(tenant)/platform/page.tsx")).toContain("<SignedInAs ");
+    /*
+     * DI KERANGKANYA, bukan di halamannya. Sejak permukaan `/platform` dipecah
+     * menjadi rute-rute sendiri (ringkasan, tim, tagihan, paket, privasi),
+     * menaruh jalan keluar di salah satu halaman berarti empat halaman lain
+     * tidak punya — dan yang paling mungkin dibuka orang dari bookmark justru
+     * bukan pendaratannya. Kerangka menjaminnya untuk seluruh permukaan
+     * sekaligus, dan hanya ada satu tempat yang bisa lupa.
+     */
+    expect(read("app/(tenant)/platform/layout.tsx")).toContain("<SignedInAs ");
   });
 });

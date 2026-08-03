@@ -123,6 +123,10 @@ const TENANT_API_ROUTES = new Set([
   // kewenangan tenant `tenant.billing` (owner, kontraktual), bukan peran PT.
   "tenant/billing/pay/route.ts",
   "tenant/billing/profile/route.ts",
+  // Perpindahan paket SWALAYAN: pelanggan menaikkan/menurunkan paketnya sendiri
+  // (kuota, prorata, dan penolakan turun-paket ditimbang di server). Kewenangan
+  // kontraktual `tenant.billing` — owner, bukan peran di sebuah PT.
+  "tenant/billing/plan-change/route.ts",
   // Kepatuhan (issue #142): ekspor seluruh data tenant & permintaan
   // penghapusan adalah hak PELANGGAN (owner tenant), berdiri di atas semua
   // PT-nya — dan ekspor wajib tetap bekerja saat seluruh PT hanya-baca
@@ -454,6 +458,7 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     // justru menutup permukaan yang dibuat untuk berdiri tanpanya.
     "app/(tenant)/companies/new/company-form.tsx",
     "app/(tenant)/platform/billing-actions.tsx",
+    "app/(tenant)/platform/billing/plans/plan-actions.tsx",
     "app/(tenant)/platform/privacy-section.tsx",
     // Pembungkusnya sendiri.
     "lib/api-fetch.ts",

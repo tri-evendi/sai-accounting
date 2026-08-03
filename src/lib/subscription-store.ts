@@ -45,6 +45,7 @@ export interface BillingOverview {
       billingCycle: string;
       price: string;
       currency: string;
+      currentPeriodStart: Date;
       currentPeriodEnd: Date;
     } | null;
     plan: { key: string; name: string } | null;
@@ -230,6 +231,7 @@ export async function billingOverviewForTenant(tenantId: number): Promise<Billin
         billingCycle: true,
         price: true,
         currency: true,
+        currentPeriodStart: true,
         currentPeriodEnd: true,
         plan: { select: { key: true, name: true } },
       },
@@ -278,6 +280,7 @@ export async function billingOverviewForTenant(tenantId: number): Promise<Billin
             billingCycle: subscription.billingCycle,
             price: subscription.price.toString(),
             currency: subscription.currency,
+            currentPeriodStart: subscription.currentPeriodStart,
             currentPeriodEnd: subscription.currentPeriodEnd,
           }
         : null,

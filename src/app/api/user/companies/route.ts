@@ -50,18 +50,19 @@ export async function GET() {
     : null;
 
   /*
-   * Boleh membuka /tenant? Dijawab DI SINI, bukan ditebak klien.
+   * Boleh membuka /platform? Dijawab DI SINI, bukan ditebak klien.
    *
-   * Halaman akun tenant (langganan, tagihan, undangan staf, ekspor data)
-   * menuntut `tenant.settings` — OWNER saja. Sampai perbaikan ini, satu-satunya
-   * tautan menujunya ada di /select-company, layar yang pengguna BER-PT-SATU
-   * tidak pernah lihat karena perusahaannya dipilihkan otomatis: halaman tempat
-   * pelanggan mengurus langganan dan mengunduh datanya praktis tak terlihat.
+   * Halaman akun (`/platform`, dulu `/tenant`) menuntut `tenant.home` — sejak
+   * issue #172 SETIAP anggota tenant memegangnya, karena halaman itu kini
+   * pendaratan pasca-masuk: di sana orang melihat perusahaan yang boleh
+   * dibukanya, dan owner melihat langganannya. Yang tetap ditolak di sini
+   * hanyalah pengguna TANPA keanggotaan tenant (sisa masa adopsi #134) —
+   * menu yang menampilkan tautan yang memantul sama buruknya dengan tidak ada
+   * tautan sama sekali.
    *
    * Peran TENANT tidak ada di sesi (sesi hanya membawa peran DI PERUSAHAAN),
    * jadi ia dibaca di sini — di permintaan yang memang sudah dilakukan menu
-   * saat dibuka, bukan permintaan tambahan. Menu yang menampilkan tautan yang
-   * memantul sama buruknya dengan tidak ada tautan sama sekali.
+   * saat dibuka, bukan permintaan tambahan.
    */
   const tenantMembership = await tenantMembershipForUser(
     Number.parseInt(session.user.id, 10)
@@ -70,6 +71,6 @@ export async function GET() {
   return NextResponse.json({
     activeId: fromRequest ?? session.user.companyId ?? null,
     companies: companies.map((c) => ({ id: c.companyId, name: c.name, slug: c.slug })),
-    canManageTenant: tenantCan(tenantMembership, "tenant.settings"),
+    canOpenPlatform: tenantCan(tenantMembership, "tenant.home"),
   });
 }

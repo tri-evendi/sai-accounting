@@ -44,11 +44,13 @@ export default async function BareDashboardPage() {
     /*
      * Slugnya DICARI, tidak ditebak dari sesi.
      *
-     * Sesi lama membawa `companyId` tanpa `tenantSlug`, dan
-     * `resolvePostLoginPath` tanpa slug menjawab "/dashboard" — yaitu halaman
-     * ini sendiri, tanpa henti. Satu query menutup lubang itu; ia hanya
-     * berjalan untuk sesi yang belum direvalidasi, sebab yang sudah membawa
-     * slug tidak pernah sampai ke berkas ini (proxy memantulkannya lebih dulu).
+     * Sesi lama membawa `companyId` tanpa `tenantSlug`, jadi proxy tidak bisa
+     * memantulkannya dan permintaannya sampai ke berkas ini. Yang diminta
+     * orangnya adalah BERANDA sebuah perusahaan — bukan halaman akun — jadi
+     * satu query mencarikan slugnya dan mengantarnya ke jalur kanonik. (Sejak
+     * #172 tujuan BAWAAN pasca-masuk memang `/platform`, tetapi `/dashboard`
+     * yang diketik/di-bookmark adalah permintaan eksplisit, dan mengalihkannya
+     * ke halaman akun akan membuat ribuan bookmark berhenti bekerja.)
      *
      * Perusahaan yang sementara itu DINONAKTIFKAN dijawab `null` di sini, dan
      * jatuh ke pemilih perusahaan di bawah — bukan ke 404 pada halaman yang
@@ -59,12 +61,5 @@ export default async function BareDashboardPage() {
     redirect("/select-company");
   }
 
-  redirect(
-    resolvePostLoginPath(
-      session.user.mustChangePassword,
-      null,
-      session.user.companyCount,
-      null
-    )
-  );
+  redirect(resolvePostLoginPath(session.user.mustChangePassword, null, null));
 }

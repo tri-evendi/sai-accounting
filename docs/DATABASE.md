@@ -274,5 +274,5 @@ fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
 lewat `src/lib/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
 keputusan penasihat pajak); e-Faktur: `bun run efaktur:platform` memakai mesin
 `src/lib/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
-pelanggan di /tenant). **TIDAK ADA data kartu yang disimpan** — hanya
+pelanggan di /platform — dulu /tenant, issue #172). **TIDAK ADA data kartu yang disimpan** — hanya
 referensi gerbang, nomor VA, dan payload QR.

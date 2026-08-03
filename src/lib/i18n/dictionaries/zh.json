@@ -223,7 +223,7 @@
   "userMenu": {
     "trigger": "账户：{name}（{role}）",
     "menu": "账户菜单",
-    "tenantAccount": "账户与订阅",
+    "tenantAccount": "账户与公司",
     "changePassword": "修改密码",
     "signOut": "退出登录",
     "language": "语言",
@@ -3354,6 +3354,16 @@
     "submit": "创建账户并加入",
     "successTitle": "您的账户已就绪。",
     "successBody": "使用您的邮箱和刚设置的密码登录,然后选择公司。"
+  },
+  "platform": {
+    "title": "账户与公司",
+    "description": "您的账户状况，以及您可以打开的公司。",
+    "tenantHeading": "账户",
+    "companiesHeading": "您的公司",
+    "companiesBody": "每家公司都有独立的账簿。选择一家以打开其账务。",
+    "teamHeading": "团队",
+    "teamBody": "员工邀请按公司发出，请在相应公司的“用户”页面操作。",
+    "inviteTo": "邀请员工加入 {company}"
   },
   "tenantSettings": {
     "title": "订阅与套餐",

@@ -147,15 +147,25 @@ describe("layar tanpa perusahaan bukan jalan buntu", () => {
     expect(branches.length).toBeGreaterThanOrEqual(2);
   });
 
+  /*
+   * `SignedInAs` pindah ke `components/auth/` di issue #172: `/platform` —
+   * pendaratan pasca-masuk yang juga berdiri tanpa chrome — membutuhkan janji
+   * yang sama persis, dan dua salinan janji "ada jalan keluar" adalah cara
+   * salah satunya diam-diam hilang.
+   */
   it("identitasnya ikut ditulis — keluar baru berguna setelah sadar masuk sebagai siapa", () => {
-    expect(read("app/(auth)/select-company/company-choices.tsx")).toMatch(
+    expect(read("components/auth/signed-in-as.tsx")).toMatch(
       /auth\.selectCompany\.signedInAs/
     );
   });
 
   it("jalan keluarnya benar-benar keluar (bukan tautan yang memantul balik)", () => {
-    expect(read("app/(auth)/select-company/company-choices.tsx")).toMatch(
+    expect(read("components/auth/signed-in-as.tsx")).toMatch(
       /signOut\(\{\s*callbackUrl:\s*"\/login"\s*\}\)/
     );
+  });
+
+  it("dan pendaratan pasca-masuk memakai komponen yang sama (issue #172)", () => {
+    expect(read("app/(tenant)/platform/page.tsx")).toContain("<SignedInAs ");
   });
 });

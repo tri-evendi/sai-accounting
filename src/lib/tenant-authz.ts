@@ -32,17 +32,37 @@ import { TENANT_ROLES, TENANT_ROLE_VALUES, type TenantRole } from "@/lib/constan
 const MANAGERS = [TENANT_ROLES.OWNER, TENANT_ROLES.ADMIN] as const;
 /** Owner saja — penagihan & keputusan yang mengikat kontrak. */
 const OWNER_ONLY = [TENANT_ROLES.OWNER] as const;
+/** SETIAP anggota tenant, termasuk `member` — lihat `tenant.home` di bawah. */
+const EVERY_MEMBER = TENANT_ROLE_VALUES;
 
 /**
  * Matriks izin tenant → peran. `company.create` PINDAH ke sini dari matriks
  * perusahaan (issue #135) — itulah satu perubahan yang memecah ayam-dan-telur.
  *
- * `member` sengaja tidak muncul di satu baris pun: aksesnya murni dari
- * keanggotaan per-PT. Baris `tenant.member.view` satu-satunya pengecualian —
- * melihat siapa saja yang satu tenant dengannya bukan kewenangan, tapi belum
- * ada halamannya; ditinggal di luar sampai #139 membutuhkannya.
+ * `member` memegang TEPAT SATU baris — `tenant.home` (issue #172), dan itu
+ * bukan pelonggaran: halaman pendaratan pasca-masuk harus bisa dibuka SETIAP
+ * anggota, sedangkan isinya tetap dipisah baris demi baris di bawah. Sisa
+ * aksesnya tetap murni dari keanggotaan per-PT.
  */
 export const TENANT_PERMISSION_ROLES = {
+  /*
+   * Membuka halaman pendaratan `/platform` (issue #172): identitas tenant +
+   * daftar PERUSAHAAN YANG BOLEH IA BUKA — tidak lebih.
+   *
+   * Kenapa izin tersendiri, bukan `tenant.settings` yang sudah ada: sejak
+   * halaman ini menjadi tujuan pasca-masuk SETIAP anggota, menjaganya dengan
+   * izin owner berarti memantulkan hampir seluruh pengguna pada langkah
+   * pertama mereka. Dan kenapa bukan "tanpa penjaga sama sekali": halaman di
+   * grup `(tenant)` wajib mendeklarasikan izinnya (tests/authz-coverage), dan
+   * "boleh dibuka semua anggota tenant" adalah pernyataan yang lebih baik
+   * ditulis di matriks daripada disembunyikan sebagai pengecualian.
+   *
+   * Ia TIDAK memberi hak melihat langganan, tagihan, ekspor, penghapusan,
+   * membuat PT, atau mengundang orang — masing-masing tetap dijawab barisnya
+   * sendiri, dan halamannya TIDAK MERENDER bagian yang tidak berhak (bukan
+   * merender lalu menolak).
+   */
+  "tenant.home": EVERY_MEMBER,
   /*
    * Membuat PERUSAHAAN BARU beserta basis datanya. Dulu di matriks
    * per-perusahaan (akses-penuh-saja); kini milik tenant supaya pemilik tenant

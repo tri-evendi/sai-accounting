@@ -171,7 +171,7 @@ pernah bercampur:
 
 | Lingkup | Matriks | Penjaga | Sumber jawaban |
 |---|---|---|---|
-| **Tenant** (`company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data kendali |
+| **Tenant** (`tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data kendali |
 | **Perusahaan** (seluruh matriks di atas) | `PERMISSION_ROLES` di `src/lib/authz.ts` | `requireApiPermission` / `requirePagePermission` | `memberships` per-PT |
 
 Aturannya: **izin tenant TIDAK BOLEH diperiksa penjaga perusahaan** — penjaga

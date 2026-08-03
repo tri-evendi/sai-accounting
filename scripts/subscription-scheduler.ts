@@ -369,7 +369,17 @@ async function main() {
   /* ── 2. Dunning: tagihan lewat jatuh tempo pada langganan aktif ────────── */
   try {
     const issued = await platform.platformInvoice.findMany({
-      where: { status: "issued" },
+      /*
+       * ⚠ `targetPlanId: null` — TAGIHAN PERPINDAHAN PAKET TIDAK IKUT DUNNING.
+       *
+       * Tagihan selisih naik-paket (swalayan) adalah tawaran, bukan kewajiban:
+       * tidak membayarnya berarti TIDAK JADI NAIK PAKET. Membiarkannya masuk
+       * ke dunning berarti pelanggan yang langganan berjalannya lunas sepenuhnya
+       * tetap didorong ke `past_due` — lalu ditangguhkan menjadi hanya-baca —
+       * hanya karena ia mengurungkan niat menaikkan paket. Itu menutup buku
+       * orang yang tidak menunggak apa pun.
+       */
+      where: { status: "issued", targetPlanId: null },
       select: { id: true, subscriptionId: true, status: true, dueDate: true },
     });
     const statusById = new Map(subscriptions.map((s) => [s.id, s.status]));
@@ -421,7 +431,11 @@ async function main() {
       }
     }
     const issuedInvoices = await platform.platformInvoice.findMany({
-      where: { status: "issued" },
+      /* Sama seperti dunning di atas: tagihan perpindahan paket tidak
+       * mengirimkan pengingat jatuh tempo. Mengingatkan orang untuk membayar
+       * kenaikan paket yang ia urungkan adalah menagih sesuatu yang tidak
+       * pernah ia utang. */
+      where: { status: "issued", targetPlanId: null },
       select: { id: true, subscriptionId: true, dueDate: true, number: true },
     });
     /* Instruksi bayar yang masih menunggu (issue #141) — pengingat jatuh tempo

@@ -4,39 +4,48 @@
  * Kulit `/platform` — PANEL ADMIN PELANGGAN, bukan layar pra-aplikasi.
  *
  * ══ TIGA KULIT, DAN KENAPA INI KULIT KETIGA ════════════════════════════════
- * Aplikasi ini punya dua kerangka yang sudah mapan, dan halaman ini tidak
- * cocok di keduanya:
+ * Aplikasi ini punya dua kerangka yang sudah mapan, dan halaman tingkat tenant
+ * tidak cocok di keduanya:
  *
  *   `AuthShell`      satu tugas, satu kartu `max-w-md` (masuk, ganti sandi).
- *                    Halaman ini membawa ENAM urusan; 448px membuat tabel
+ *                    Permukaan tenant membawa ENAM urusan; 448px membuat tabel
  *                    tagihan lima kolom menggeser dirinya sendiri secara
  *                    mendatar bahkan di layar 1440px.
  *   `(dashboard)`    Sidebar + Navbar penuh — tapi menunya disusun dari
  *                    `session.user.role`, yaitu PERAN DI SEBUAH PT. Pengunjung
- *                    halaman ini boleh jadi belum punya satu pun PT (pemilik
- *                    baru yang sedang membuat yang pertama). Memakainya berarti
+ *                    di sini boleh jadi belum punya satu pun PT (pemilik baru
+ *                    yang sedang membuat yang pertama). Memakainya berarti
  *                    memutar layar pemuatan selamanya bagi orang yang paling
  *                    membutuhkan halaman ini — persis alasan `(tenant)/layout`
  *                    sengaja setipis `(auth)`.
  *
  * Karena itu kulit ketiga: BENTUK panel admin yang sama dengan dasbor —
  * sidebar gelap `w-64`, bilah atas `h-16`, isi yang menggulung sendiri — tapi
- * menunya disusun dari KEWENANGAN TINGKAT TENANT yang dioper halaman, bukan
- * dari peran di sebuah PT. Pelanggan mendapat panel administrasi akunnya,
- * dengan tata bahasa visual yang sama dengan buku yang akan ia buka setelahnya.
- *
- * ══ MENUNYA MENUNJUK BAGIAN, DAN ITU DISENGAJA ═════════════════════════════
- * Butir menu adalah jangkar `#…` ke bagian di halaman yang sama, bukan rute
- * tersendiri. Alasannya bukan kemalasan: seluruh isi tingkat tenant muat dalam
- * satu halaman, dan memecahnya menjadi lima rute berarti lima kali muat ulang
- * untuk pekerjaan yang hampir selalu selesai dalam satu kunjungan. Yang
- * diberikan menu di sini adalah PETA — jawaban atas "apa lagi yang ada di akun
- * saya" — yang di kolom tunggal sebelumnya hanya bisa dijawab dengan menggulung
- * sampai habis.
+ * menunya disusun dari KEWENANGAN TINGKAT TENANT yang dioper `layout.tsx`,
+ * bukan dari peran di sebuah PT.
  *
  * ⚠ Daftar menunya DIOPER, tidak dihitung di sini. Menyusunnya di dalam kulit
  * berarti kulit harus tahu matriks izin, dan itu menaruh keputusan "siapa
  * melihat apa" di dua tempat — tempat kedua yang tidak diuji siapa pun.
+ *
+ * ══ BUTIRNYA RUTE, BUKAN JANGKAR ═══════════════════════════════════════════
+ * Versi pertama panel ini memakai jangkar `#tim`, `#privasi`, … ke bagian di
+ * satu halaman panjang. Itu salah, dan salahnya bukan soal rasa:
+ *
+ *   • `#privasi` tidak bisa di-bookmark sebagai HALAMAN, tidak muncul di
+ *     riwayat sebagai tempat tersendiri, dan tombol Kembali tidak
+ *     mengembalikan apa pun;
+ *   • yang jauh lebih penting: satu halaman berarti SELURUH isinya dirender
+ *     dalam satu permintaan, jadi pemisahan kewenangan bergantung pada
+ *     `{canX && …}` yang benar di setiap cabang. Sebagai rute tersendiri,
+ *     penjaga di kepala tiap halaman yang menolak — `tenant.billing` tidak
+ *     dipegang berarti /platform/billing MEMANTULKAN, bukan merender halaman
+ *     yang kebetulan kosong.
+ *
+ * Butir aktif ditandai dari `usePathname()`; `/platform` dicocokkan persis
+ * (kalau tidak, ia akan selalu aktif karena semua jalur lain berawalan
+ * dengannya), sisanya dengan awalan supaya anak-rute seperti
+ * `/platform/billing/plans` tetap menyalakan induknya.
  *
  * Lambang, bahasa, tema, dan JALAN KELUAR ikut di sini sebab halaman ini tidak
  * punya chrome aplikasi: di dasbor keempatnya tinggal di Navbar/menu akun yang
@@ -45,6 +54,8 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
@@ -52,20 +63,19 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
 export interface PlatformNavItem {
-  /** Jangkar `#bagian` di halaman ini, atau rute penuh (mis. `/companies/new`). */
   href: string;
   label: string;
   icon: React.ReactNode;
+  /** Cocokkan PERSIS, bukan sebagai awalan — untuk butir pendaratan. */
+  exact?: boolean;
 }
 
 interface PlatformShellProps {
   children: React.ReactNode;
-  heading: string;
-  description?: string;
-  icon?: React.ReactNode;
   /** Nama tenant — orientasi "akun siapa", sejajar `CompanyIndicator` di dasbor. */
   tenantName: string;
   nav: PlatformNavItem[];
@@ -73,17 +83,13 @@ interface PlatformShellProps {
   account?: React.ReactNode;
 }
 
-export function PlatformShell({
-  children,
-  heading,
-  description,
-  icon,
-  tenantName,
-  nav,
-  account,
-}: PlatformShellProps) {
+export function PlatformShell({ children, tenantName, nav, account }: PlatformShellProps) {
   const t = useT();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isActive = (item: PlatformNavItem) =>
+    item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -97,9 +103,10 @@ export function PlatformShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0",
           menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-6">
           <div className="flex min-w-0 items-center gap-2.5 text-lg font-bold">
@@ -119,20 +126,29 @@ export function PlatformShell({
 
         <nav aria-label={t("sidebar.mainMenu")} className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                >
-                  <span className="shrink-0" aria-hidden="true">
-                    {item.icon}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </a>
-              </li>
-            ))}
+            {nav.map((item) => {
+              const active = isActive(item);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                      active
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <span className="shrink-0" aria-hidden="true">
+                      {item.icon}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
@@ -176,28 +192,7 @@ export function PlatformShell({
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="mx-auto w-full max-w-6xl space-y-6">
-            <div className="flex items-start gap-4">
-              {icon && (
-                <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-ring sm:flex">
-                  {icon}
-                </span>
-              )}
-              <div className="min-w-0">
-                {/* `h1` sungguhan. Di kulit lama judul halaman adalah `h2` yang
-                    sederajat dengan judul setiap bagiannya, dan halaman ini
-                    tidak punya `h1` sama sekali. */}
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{heading}</h1>
-                {description && (
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                    {description}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>
     </div>

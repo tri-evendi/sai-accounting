@@ -69,6 +69,10 @@ model Plan {
 
   subscriptions Subscription[]
 
+  /// Tagihan PERPINDAHAN PAKET yang menuju paket ini (swalayan). Lihat
+  /// `PlatformInvoice.targetPlanId`.
+  planChangeInvoices PlatformInvoice[]
+
   @@index([isActive])
   @@map("plans")
 }
@@ -166,6 +170,18 @@ model PlatformInvoice {
   taxAmount Decimal @default(0) @map("tax_amount") @db.Decimal(15, 2)
   total     Decimal @db.Decimal(15, 2)
   currency  String  @default("IDR") @db.VarChar(5)
+
+  /// Paket tujuan sebuah tagihan PERPINDAHAN PAKET swalayan — dipasang setelah
+  /// tagihan ini LUNAS, oleh `payment-webhook`. `null` = tagihan langganan biasa
+  /// dari penjadwal, yang tidak memindahkan paket apa pun.
+  ///
+  /// Niatnya disimpan DI TAGIHAN, bukan di tabel permintaan tersendiri, karena
+  /// yang menentukan perpindahan adalah pelunasan tagihan ini — dan dua tempat
+  /// yang menyimpan niat yang sama akan berbeda pada hari salah satunya gagal
+  /// ditulis. `onDelete: Restrict`: paket yang masih ditunggu pembayarannya
+  /// tidak boleh lenyap dari katalog.
+  targetPlanId Int?  @map("target_plan_id")
+  targetPlan   Plan? @relation(fields: [targetPlanId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

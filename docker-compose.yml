@@ -97,6 +97,21 @@ services:
       - "traefik.http.routers.sai-secure.rule=Host(`${APP_DOMAIN:-inventory.suburanugerahindonesia.com}`)"
       - "traefik.http.routers.sai-secure.tls=true"
       - "traefik.http.routers.sai-secure.tls.certresolver=le"
+      # ── Bidang OPERATOR (issue #154) — HOSTNAME SENDIRI ────────────────────
+      # Container-nya sama; yang memisahkan adalah HOST. Cookie berlingkup host,
+      # jadi sesi pelanggan yang bocor tidak pernah bisa menjangkau konsol
+      # operator, dan sebaliknya — itulah seluruh alasan pemisahan ini ada, dan
+      # kenapa konsol ini TIDAK boleh menumpang di domain aplikasi.
+      # Penjaga aplikasi menegakkan hal yang sama dari sisi kode: di host
+      # operator setiap rute pelanggan 404, di host pelanggan setiap /operator
+      # 404. Tanpa OPERATOR_HOST di .env, /operator 404 di MANA PUN.
+      - "traefik.http.routers.sai-ops.entrypoints=web"
+      - "traefik.http.routers.sai-ops.rule=Host(`${OPERATOR_DOMAIN:-ops.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-ops.middlewares=sai-https"
+      - "traefik.http.routers.sai-ops-secure.entrypoints=websecure"
+      - "traefik.http.routers.sai-ops-secure.rule=Host(`${OPERATOR_DOMAIN:-ops.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-ops-secure.tls=true"
+      - "traefik.http.routers.sai-ops-secure.tls.certresolver=le"
       # Which container port Traefik forwards to
       - "traefik.http.services.sai.loadbalancer.server.port=3000"
       # Traefik-side health probe

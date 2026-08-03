@@ -84,9 +84,9 @@ export function UserMenu({
   const [open, setOpen] = useState(false);
   const [companies, setCompanies] = useState<{ id: number; name: string }[] | null>(null);
   const [activeCompany, setActiveCompany] = useState<string | null>(null);
-  /* Boleh membuka /tenant (langganan, tagihan, undangan, ekspor)? Dijawab
+  /* Boleh membuka /platform (akun: perusahaan, langganan, ekspor)? Dijawab
    * server lewat permintaan yang memang sudah dilakukan menu ini. */
-  const [canManageTenant, setCanManageTenant] = useState(false);
+  const [canOpenPlatform, setCanOpenPlatform] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const dictionary = useDictionary();
@@ -109,13 +109,13 @@ export function UserMenu({
           data: {
             activeId: number | null;
             companies: { id: number; name: string }[];
-            canManageTenant?: boolean;
+            canOpenPlatform?: boolean;
           } | null
         ) => {
           if (cancelled || !data) return;
           setCompanies(data.companies);
           setActiveCompany(data.companies.find((c) => c.id === data.activeId)?.name ?? null);
-          setCanManageTenant(Boolean(data.canManageTenant));
+          setCanOpenPlatform(Boolean(data.canOpenPlatform));
         }
       )
       .catch(() => {
@@ -328,15 +328,17 @@ export function UserMenu({
                 <span>{t("auth.selectCompany.switchLabel")}</span>
               </Link>
             )}
-            {/* Akun & langganan (halaman /tenant). Hanya OWNER — `tenant.settings`
-                memang begitu, dan menawarkan tautan yang memantul sama tidak
-                membantunya dengan tidak ada tautan sama sekali. Sebelum ini
-                satu-satunya jalan ke sana adalah /select-company, layar yang
-                pengguna ber-PT-satu tidak pernah lihat. */}
-            {canManageTenant && (
+            {/* Akun (halaman /platform, issue #172 — dulu /tenant). Terbuka
+                untuk SETIAP anggota tenant: di sanalah ia melihat perusahaan
+                yang boleh dibukanya, dan owner melihat langganannya. Yang
+                membedakan peran adalah ISI halaman, bukan ada-tidaknya tautan
+                ini — tetapi tautannya tetap dikondisikan `canOpenPlatform`
+                supaya pengguna tanpa keanggotaan tenant (sisa masa adopsi
+                #134) tidak ditawari pintu yang memantulkannya. */}
+            {canOpenPlatform && (
               <Link
                 role="menuitem"
-                href="/tenant"
+                href="/platform"
                 onClick={() => setOpen(false)}
                 className={cn(itemClass, "text-foreground hover:bg-muted")}
               >

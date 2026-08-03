@@ -1,243 +1,223 @@
 /**
- * Pengaturan tenant — paket, pemakaian, riwayat tagihan (issue #140).
+ * `/platform` — PENDARATAN pasca-masuk setiap pelanggan (issue #172).
  *
- * Grup `(tenant)` dengan sengaja: ini halaman TINGKAT TENANT (penjaga
- * `tenant.settings`, owner saja), bisa dibuka tanpa perusahaan aktif — pemilik
- * tenant yang seluruh PT-nya sedang hanya-baca justru pemakai terpentingnya.
+ * Sebelumnya halaman ini beralamat `/tenant` dan menjaga dirinya dengan
+ * `tenant.settings` (OWNER saja). Dua hal berubah, dan keduanya punya alasan
+ * yang sama: pelanggan harus melihat KONTEKS AKUNNYA sebelum masuk ke buku.
  *
- * Bagian paket/kuota/pemakaian datang dari basis data KENDALI (snapshot #140)
- * dan SELALU tampil; bagian riwayat tagihan datang dari `sai_platform` dan
- * boleh gagal dengan tenang ("penagihan tidak terjangkau") — penagihan mati
- * tidak boleh mematikan halaman yang menjelaskan keadaan langganan.
- * Riwayat tagihan hanya untuk pemegang `tenant.billing` (owner — kontraktual).
+ *   1. ALAMATNYA. "tenant" adalah kosakata arsitektur; yang dibuka orang di
+ *      sini adalah akunnya. Alamat lama dipantulkan 307 oleh `proxy.ts`
+ *      (`renamedPagePath`) — bookmark dan tautan di surel yang sudah terkirim
+ *      tetap sampai. ⚠ `/api/tenant/*` TIDAK ikut pindah: itu permukaan API
+ *      bertingkat tenant (#135) yang namanya memang benar.
+ *
+ *   2. PENJAGANYA. Menjadikan halaman berpenjaga owner sebagai tujuan
+ *      pasca-masuk berarti memantulkan hampir setiap staf pada langkah
+ *      pertamanya. Karena itu penjaganya `tenant.home` (setiap anggota) dan
+ *      ISINYA yang dipisah menurut kewenangan:
+ *
+ *        setiap anggota  identitas tenant + perusahaan YANG BOLEH IA BUKA
+ *        manajer ke atas buat perusahaan (`company.create`),
+ *                        undang staf (`tenant.member.invite`)
+ *        owner           langganan & tagihan (`tenant.billing`),
+ *                        ekspor (`tenant.export`), penghapusan (`tenant.deletion`)
+ *
+ * ══ DAFTAR PERUSAHAAN = KEANGGOTAANNYA SENDIRI, BUKAN ISI TENANT ═══════════
+ * `companiesForUser()` membaca `memberships` milik PEMANGGIL. Membacanya dari
+ * daftar perusahaan milik TENANT akan membocorkan keberadaan PT lain kepada,
+ * misalnya, seorang kepala gudang di salah satu PT — ia tidak berhak tahu
+ * pemilik akunnya memegang badan hukum lain. Bagian yang bukan haknya TIDAK
+ * DIRENDER sama sekali (dan untuk langganan: query-nya pun tidak berjalan),
+ * bukan dirender lalu ditolak.
+ *
+ * Grup `(tenant)` dengan sengaja: halaman ini harus terbuka TANPA perusahaan
+ * aktif — pelanggan baru yang belum punya satu pun PT, dan pemilik yang
+ * seluruh PT-nya sedang hanya-baca, justru pemakai terpentingnya.
  */
 import Link from "next/link";
-import { CreditCard } from "lucide-react";
+import { Building2, Mail, Plus, Users } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Badge } from "@/components/ui/badge";
+import { SignedInAs } from "@/components/auth/signed-in-as";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { BillingProfileForm, PayInvoice } from "./billing-actions";
-import { tenantCan } from "@/lib/tenant-authz";
-import { PrivacySection } from "./privacy-section";
+import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
-import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
-import { formatMoney } from "@/lib/money-format";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
+import { tenantCan } from "@/lib/tenant-authz";
+import { requireTenantPagePermission } from "@/lib/tenant-guard";
+import { tenantPath } from "@/lib/tenant-routes";
+import { PrivacySection } from "./privacy-section";
+import { SubscriptionSection } from "./subscription-section";
 
 export const dynamic = "force-dynamic";
 
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
-
-export default async function TenantSettingsPage() {
-  const { tenant } = await requireTenantPagePermission("tenant.settings");
+export default async function PlatformPage() {
+  const { user, tenant } = await requireTenantPagePermission("tenant.home");
   const t = await getT();
 
-  const overview = await billingOverviewForTenant(tenant.tenantId);
+  const companies = await companiesForUser(Number.parseInt(user.id, 10));
+
+  /* Satu pembacaan matriks per bagian — dan bagian yang jawabannya `false`
+   * tidak pernah masuk ke pohon render di bawah. */
+  const canCreate = tenantCan(tenant, "company.create");
+  const canInvite = tenantCan(tenant, "tenant.member.invite");
   const canSeeBilling = tenantCan(tenant, "tenant.billing");
-  /* Kartu Data & Privasi (issue #142): ekspor untuk pemegang `tenant.export`,
-   * permintaan penghapusan untuk pemegang `tenant.deletion` — dan kartunya
-   * SELALU dirender saat berhak, termasuk (terutama) ketika suspended. */
   const canExport = tenantCan(tenant, "tenant.export");
   const canDelete = tenantCan(tenant, "tenant.deletion");
 
-  const statusKey = (status: string) => t(`tenantSettings.status.${status}` as DictionaryKey);
-  const readOnly = isReadOnlyTenantStatus(overview?.tenant.status);
+  /* Status hanya-baca ditampilkan kepada SEMUA anggota: seorang staf yang
+   * tombol simpannya ditolak berhak tahu alasannya. Ini keadaan operasional,
+   * bukan rincian langganan — tidak ada paket, harga, atau kuota di sini. */
+  const readOnly = isReadOnlyTenantStatus(tenant.tenantStatus);
+
+  /* Langganan DIBACA di dalam cabang izinnya: bagi yang tidak berhak, query
+   * ke basis data kendali & platform tidak pernah berjalan sama sekali. */
+  const overview = canSeeBilling ? await billingOverviewForTenant(tenant.tenantId) : null;
 
   return (
     <AuthShell
-      heading={t("tenantSettings.title")}
-      description={t("tenantSettings.description")}
-      icon={<CreditCard className="h-5 w-5" aria-hidden="true" />}
-      footer={
-        <Button asChild variant="outline" className="w-full">
-          <Link href="/select-company">{t("common.back")}</Link>
-        </Button>
-      }
+      heading={t("platform.title")}
+      description={t("platform.description")}
+      icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      footer={<SignedInAs name={user.name ?? ""} />}
     >
-      {!overview ? (
-        <div className="space-y-6">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t("tenantSettings.noSubscription")}
-          </p>
-          {canExport && <PrivacySection canDelete={canDelete} />}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {readOnly && (
-            <div role="status" className="rounded-lg border border-border bg-warning-soft p-4">
-              <p className="text-sm leading-relaxed text-warning-strong">
-                {t("tenantSettings.readOnlyNote")}
-              </p>
-            </div>
-          )}
-
-          {/* Paket & status — dari KENDALI (snapshot), selalu tampil. */}
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              {t("tenantSettings.planHeading")}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant="default">{overview.tenant.planKey}</Badge>
-              <span className="text-muted-foreground">{t("tenantSettings.statusLabel")}:</span>
-              <Badge variant={readOnly ? "warning" : "success"}>
-                {statusKey(overview.tenant.status)}
-              </Badge>
-            </div>
-            {overview.tenant.trialEndsAt && (
-              <p className="text-sm text-muted-foreground">
-                {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
-              </p>
-            )}
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t("tenantSettings.planChangeNote")}
+      <div className="space-y-6">
+        {readOnly && (
+          <div role="status" className="rounded-lg border border-border bg-warning-soft p-4">
+            <p className="text-sm leading-relaxed text-warning-strong">
+              {t("tenantSettings.readOnlyNote")}
             </p>
-          </section>
+          </div>
+        )}
 
-          {/* Pemakaian vs kuota ter-snapshot. */}
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              {t("tenantSettings.usageHeading")}
-            </h2>
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg border border-border p-3">
-                <dt className="text-muted-foreground">{t("tenantSettings.usageCompanies")}</dt>
-                <dd className="mt-1 font-medium tabular-nums text-foreground">
-                  {t("tenantSettings.usageOf", {
-                    used: overview.usage.companies,
-                    max: overview.tenant.maxCompanies,
-                  })}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <dt className="text-muted-foreground">{t("tenantSettings.usageUsers")}</dt>
-                <dd className="mt-1 font-medium tabular-nums text-foreground">
-                  {t("tenantSettings.usageOf", {
-                    used: overview.usage.users,
-                    max: overview.tenant.maxUsers,
-                  })}
-                </dd>
-              </div>
-            </dl>
-          </section>
+        {/* Identitas akun — jawaban atas "saya sedang masuk ke akun siapa". */}
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("platform.tenantHeading")}
+          </h2>
+          <div className="rounded-lg border border-border p-3">
+            <p className="truncate font-medium text-foreground">{tenant.tenantName}</p>
+            <p className="truncate text-xs text-muted-foreground">{tenant.tenantSlug}</p>
+          </div>
+        </section>
 
-          {/* Riwayat tagihan — dari PLATFORM; owner saja, dan boleh "mati". */}
-          {canSeeBilling && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-foreground">
-                {t("tenantSettings.billingHeading")}
-              </h2>
-              {overview.billing === null ? (
-                <p className="rounded-lg border border-border bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
-                  {t("tenantSettings.billingUnavailable")}
-                </p>
-              ) : (
-                <>
-                  {overview.billing.subscription ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t("tenantSettings.price", {
-                        amount: formatMoney(
-                          Number(overview.billing.subscription.price),
-                          overview.billing.subscription.currency
-                        ),
-                        cycle:
-                          overview.billing.subscription.billingCycle === "yearly"
-                            ? t("tenantSettings.cycleYearly")
-                            : t("tenantSettings.cycleMonthly"),
-                      })}{" "}
-                      ·{" "}
-                      {t("tenantSettings.period", {
-                        date: formatDate(overview.billing.subscription.currentPeriodEnd),
-                      })}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t("tenantSettings.noSubscription")}
-                    </p>
-                  )}
-                  {overview.billing.invoices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("tenantSettings.noInvoices")}</p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead>{t("tenantSettings.invoiceNumber")}</TableHead>
-                          <TableHead>{t("tenantSettings.invoiceDue")}</TableHead>
-                          <TableHead className="text-right">
-                            {t("tenantSettings.invoiceTotal")}
-                          </TableHead>
-                          <TableHead>{t("tenantSettings.statusLabel")}</TableHead>
-                          <TableHead>{t("billing.payColumn")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {overview.billing.invoices.map((invoice) => (
-                          <TableRow key={invoice.id}>
-                            <TableCell className="font-medium text-foreground">
-                              {invoice.number}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {formatDate(invoice.dueDate)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums text-foreground">
-                              {formatMoney(Number(invoice.total), invoice.currency)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={invoice.status === "paid" ? "success" : "default"}>
-                                {t(
-                                  `tenantSettings.invoiceStatus.${invoice.status}` as DictionaryKey
-                                )}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {/* "Bayar" hanya untuk tagihan TERBUKA (issue #141) —
-                                  VA/QRIS; tagih-lalu-ingatkan, bukan auto-debit. */}
-                              {invoice.status === "issued" ? (
-                                <PayInvoice
-                                  invoiceId={invoice.id}
-                                  pending={invoice.pendingPayment}
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </>
-              )}
-              {/* Profil penagihan — NPWP lawan transaksi untuk Faktur Pajak
-                  KAMI (issue #141). ⚠ Kewajiban PPN/e-Faktur langganan harus
-                  dikonfirmasi penasihat pajak; ini mekanisme datanya. */}
-              <div className="space-y-2 pt-2">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t("billing.profileHeading")}
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {t("billing.profileHint")}
-                </p>
-                <BillingProfileForm profile={overview.billing?.profile ?? null} />
-              </div>
-            </section>
+        {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("platform.companiesHeading")}
+          </h2>
+
+          {companies.length === 0 ? (
+            /*
+             * Nol perusahaan punya DUA arti yang berbeda, dan menjawab keduanya
+             * dengan kalimat yang sama akan membuat salah satunya jalan buntu:
+             *   • boleh membuat (owner/admin) → yang dibutuhkan adalah tombol;
+             *   • tidak boleh (staf)          → yang dibutuhkan adalah alasan
+             *     dan langkah berikutnya, bukan layar kosong tanpa penjelasan.
+             */
+            <div className="space-y-3">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t(
+                  canCreate
+                    ? "auth.selectCompany.noCompanyYetBody"
+                    : "auth.selectCompany.noAccessBody"
+                )}
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t(
+                  canCreate
+                    ? "auth.selectCompany.noCompanyYetOwner"
+                    : "auth.selectCompany.noAccessNext"
+                )}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("platform.companiesBody")}
+              </p>
+              <ul className="space-y-2">
+                {companies.map((company) => (
+                  <li key={company.companyId}>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                          aria-hidden="true"
+                        >
+                          <Building2 className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{company.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{company.slug}</p>
+                        </div>
+                      </div>
+                      {/*
+                       * Tautan LANGSUNG ke jalur kanonik, bukan penukar sesi:
+                       * sejak #158 `companyId` di sesi hanya catatan "terakhir
+                       * dibuka" (tata letak bertenant yang mencatatnya), jadi
+                       * membuka buku = pergi ke alamatnya.
+                       */}
+                      <Button asChild size="sm" className="shrink-0">
+                        <Link href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}>
+                          {t("auth.selectCompany.openLabel")}
+                        </Link>
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
-          {canExport && <PrivacySection canDelete={canDelete} />}
-        </div>
-      )}
+          {canCreate && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/companies/new">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {t("companies.newTitle")}
+              </Link>
+            </Button>
+          )}
+        </section>
+
+        {/* Undangan staf — manajer ke atas. Undangannya per PERUSAHAAN (peran
+            akuntansi & jejak auditnya milik satu buku), jadi pintunya pun per
+            perusahaan; tanpa satu pun PT, kalimatnya yang menjelaskan. */}
+        {canInvite && (
+          <section className="space-y-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              {t("platform.teamHeading")}
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t("platform.teamBody")}
+            </p>
+            {companies.map((company) => (
+              <Button
+                key={company.companyId}
+                asChild
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <Link href={tenantPath(tenant.tenantSlug, company.slug, "/users")}>
+                  <Mail className="h-4 w-4" aria-hidden="true" />
+                  {t("platform.inviteTo", { company: company.name })}
+                </Link>
+              </Button>
+            ))}
+          </section>
+        )}
+
+        {/* Langganan & tagihan — OWNER saja. Komponennya sendiri yang membaca
+            data langganan, jadi bagi yang tak berhak query-nya tak berjalan. */}
+        {canSeeBilling && <SubscriptionSection overview={overview} />}
+
+        {/* Data & Privasi (issue #142) — ekspor untuk pemegang `tenant.export`,
+            permintaan penghapusan untuk `tenant.deletion`; SELALU dirender saat
+            berhak, termasuk (terutama) ketika langganan ditangguhkan. */}
+        {canExport && <PrivacySection canDelete={canDelete} />}
+      </div>
     </AuthShell>
   );
 }

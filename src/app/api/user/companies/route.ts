@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
 import { companyScopeFromRequest } from "@/lib/company-request";
 import { getRequestI18n } from "@/lib/i18n/server";
+import { tenantMembershipForUser } from "@/lib/tenant-directory";
+import { tenantCan } from "@/lib/tenant-authz";
 
 /**
  * Perusahaan yang boleh dibuka PENGGUNA YANG SEDANG MASUK (issue #104).
@@ -47,8 +49,27 @@ export async function GET() {
     ? (companies.find((c) => c.slug === scope.companySlug)?.companyId ?? null)
     : null;
 
+  /*
+   * Boleh membuka /tenant? Dijawab DI SINI, bukan ditebak klien.
+   *
+   * Halaman akun tenant (langganan, tagihan, undangan staf, ekspor data)
+   * menuntut `tenant.settings` — OWNER saja. Sampai perbaikan ini, satu-satunya
+   * tautan menujunya ada di /select-company, layar yang pengguna BER-PT-SATU
+   * tidak pernah lihat karena perusahaannya dipilihkan otomatis: halaman tempat
+   * pelanggan mengurus langganan dan mengunduh datanya praktis tak terlihat.
+   *
+   * Peran TENANT tidak ada di sesi (sesi hanya membawa peran DI PERUSAHAAN),
+   * jadi ia dibaca di sini — di permintaan yang memang sudah dilakukan menu
+   * saat dibuka, bukan permintaan tambahan. Menu yang menampilkan tautan yang
+   * memantul sama buruknya dengan tidak ada tautan sama sekali.
+   */
+  const tenantMembership = await tenantMembershipForUser(
+    Number.parseInt(session.user.id, 10)
+  );
+
   return NextResponse.json({
     activeId: fromRequest ?? session.user.companyId ?? null,
     companies: companies.map((c) => ({ id: c.companyId, name: c.name, slug: c.slug })),
+    canManageTenant: tenantCan(tenantMembership, "tenant.settings"),
   });
 }

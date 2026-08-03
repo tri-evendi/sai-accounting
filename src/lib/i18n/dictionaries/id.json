@@ -223,6 +223,7 @@
   "userMenu": {
     "trigger": "Akun: {name} ({role})",
     "menu": "Menu akun",
+    "tenantAccount": "Akun & Langganan",
     "changePassword": "Ubah Kata Sandi",
     "signOut": "Keluar",
     "language": "Bahasa",

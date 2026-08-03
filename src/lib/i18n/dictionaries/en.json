@@ -223,6 +223,7 @@
   "userMenu": {
     "trigger": "Account: {name} ({role})",
     "menu": "Account menu",
+    "tenantAccount": "Account & Subscription",
     "changePassword": "Change Password",
     "signOut": "Sign out",
     "language": "Language",

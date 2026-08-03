@@ -1,18 +1,19 @@
 /**
- * `/api/user/companies` ikut menjawab BOLEH-TIDAKNYA membuka /tenant.
+ * `/api/user/companies` ikut menjawab BOLEH-TIDAKNYA membuka `/platform`.
  *
- * Kenapa ini diuji sendiri: halaman akun tenant (langganan, tagihan, undangan
- * staf, ekspor data) menuntut `tenant.settings` — OWNER saja. Sebelum
- * perbaikan ini satu-satunya tautan menujunya ada di `/select-company`, layar
- * yang pengguna BER-PT-SATU tidak pernah lihat karena perusahaannya
- * dipilihkan otomatis. Akibatnya halaman tempat pelanggan mengurus langganan
- * dan mengunduh datanya praktis tak terlihat.
+ * Kenapa ini diuji sendiri: menu pengguna tidak boleh menebak kewenangan
+ * tenant. Sesi hanya membawa peran DI PERUSAHAAN (seseorang bisa Direktur di
+ * PT A dan staf gudang di PT B), sedangkan pintu ke halaman akun ditentukan
+ * KEANGGOTAAN TENANT — yang hanya bisa dibaca server.
  *
- * Yang dijaga di sini ada dua, dan keduanya mudah rusak diam-diam:
- *   1. jawabannya datang dari KEANGGOTAAN TENANT yang dibaca server, bukan
- *      dari peran DI PERUSAHAAN yang kebetulan ada di sesi;
- *   2. bukan-owner TIDAK mendapat tautannya — menawarkan tautan yang memantul
- *      sama tidak membantunya dengan tidak ada tautan sama sekali.
+ * Sejak issue #172 halaman itu beralamat `/platform` dan menjadi pendaratan
+ * pasca-masuk SETIAP anggota tenant (`tenant.home`), bukan lagi layar owner
+ * (`tenant.settings`). Dua hal yang dijaga di sini, dan keduanya mudah rusak
+ * diam-diam:
+ *   1. jawabannya datang dari keanggotaan TENANT yang dibaca server;
+ *   2. yang TIDAK punya keanggotaan tenant sama sekali (sisa masa adopsi #134)
+ *      tetap tidak ditawari tautannya — menawarkan pintu yang memantul sama
+ *      tidak membantunya dengan tidak ada pintu sama sekali.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,31 +43,36 @@ beforeEach(() => {
   state.membership = null;
 });
 
-describe("/api/user/companies — tautan akun tenant (owner saja)", () => {
-  it("owner tenant BOLEH: canManageTenant true", async () => {
+describe("/api/user/companies — tautan halaman akun (/platform)", () => {
+  it("owner tenant BOLEH: canOpenPlatform true", async () => {
     state.membership = { role: "owner" };
     const body = await (await GET()).json();
-    expect(body.canManageTenant).toBe(true);
+    expect(body.canOpenPlatform).toBe(true);
   });
 
-  it("bukan owner TIDAK: peran tenant lain tetap false", async () => {
+  it("member biasa JUGA boleh sejak #172 — di sanalah daftar perusahaannya", async () => {
     state.membership = { role: "member" };
     const body = await (await GET()).json();
-    expect(body.canManageTenant).toBe(false);
+    expect(body.canOpenPlatform).toBe(true);
+  });
+
+  it("admin tenant boleh", async () => {
+    state.membership = { role: "admin" };
+    const body = await (await GET()).json();
+    expect(body.canOpenPlatform).toBe(true);
   });
 
   it("tanpa keanggotaan tenant (sisa masa adopsi #134) → false, bukan meledak", async () => {
     state.membership = null;
     const body = await (await GET()).json();
-    expect(body.canManageTenant).toBe(false);
+    expect(body.canOpenPlatform).toBe(false);
   });
 
-  it("jawabannya TIDAK diambil dari peran di perusahaan yang ada di sesi", async () => {
-    // Peran PT penuh akses, tetapi bukan owner TENANT: tetap tidak boleh.
-    state.session = { user: { id: "7", companyId: 1 } };
-    state.membership = { role: "member" };
+  it("peran yang tidak dikenal ditolak — deny-by-default, bukan 'boleh saja'", async () => {
+    // Peran PT penuh akses BUKAN peran tenant: matriks tenant tidak mengenalnya.
+    state.membership = { role: "managing_director" };
     const body = await (await GET()).json();
-    expect(body.canManageTenant).toBe(false);
+    expect(body.canOpenPlatform).toBe(false);
     // Daftar perusahaannya tetap dijawab seperti biasa.
     expect(body.companies).toHaveLength(1);
   });

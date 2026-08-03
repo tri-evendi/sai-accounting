@@ -223,6 +223,10 @@ describe("cakupan penjaga halaman tenant (issue #135)", () => {
   it("grup (tenant) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
     expect(pages.length).toBeGreaterThan(0);
     expect(pages).toContain("(tenant)/companies/new/page.tsx");
+    // Pendaratan pasca-masuk (issue #172) hidup di grup ini, dan ALAMATNYA
+    // `/platform` — bukan `/tenant`, yang sejak itu hanya dipantulkan proxy.
+    expect(pages).toContain("(tenant)/platform/page.tsx");
+    expect(pages).not.toContain("(tenant)/tenant/page.tsx");
   });
 
   it("setiap halaman tenant memakai requireTenantPagePermission — BUKAN penjaga perusahaan", () => {
@@ -449,8 +453,8 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     // pun PT adalah pemanggil yang sah, jadi menuntut perusahaan di sini
     // justru menutup permukaan yang dibuat untuk berdiri tanpanya.
     "app/(tenant)/companies/new/company-form.tsx",
-    "app/(tenant)/tenant/billing-actions.tsx",
-    "app/(tenant)/tenant/privacy-section.tsx",
+    "app/(tenant)/platform/billing-actions.tsx",
+    "app/(tenant)/platform/privacy-section.tsx",
     // Pembungkusnya sendiri.
     "lib/api-fetch.ts",
   ]);

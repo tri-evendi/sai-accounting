@@ -204,6 +204,48 @@ tidak meninggalkan galat apa pun. Sudah dikunci: matriks izin efektif, override
 per pengguna, himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
 (`setup-gate.ts`), dan registry perusahaan.
 
+### Slug perusahaan PERMANEN — ditegakkan basis data (#161)
+
+`companies.slug` tidak boleh berubah setelah perusahaan lahir, dan sejak issue
+#161 yang menolaknya bukan lagi kesepakatan melainkan trigger
+`companies_slug_immutable` (migration kendali **0010**):
+
+```
+ERROR 1644 (45000): slug perusahaan permanen (#161): ia menyusun nama basis
+data dan URL. Nama boleh diubah; ganti slug perlu alias tersimpan.
+```
+
+Alasannya bertumpuk, dan semuanya sunyi kalau dilanggar:
+
+- slug menyusun **nama basis data** (`sai_t{tenantId}_{slug}`, sejak #153) —
+  menggantinya berarti me-rename basis data hidup, atau membiarkan nama basis
+  data tidak lagi sesuai slug-nya (satu-satunya petunjuk manusiawi tentang buku
+  siapa yang ada di dalamnya);
+- sejak #157 slug duduk di **URL** — menggantinya mematikan setiap tautan yang
+  pernah dibagikan, di-bookmark, atau dikirim lewat surel, dan yang muncul
+  bukan penjelasan melainkan `not-found` yang byte-identik dengan "perusahaan
+  ini tidak ada" (sifat anti-penyisiran #158, yang di sini justru menyembunyikan
+  sebabnya);
+- cache rute `(tenant.slug, company.slug) → id` akan menunjuk id lama sampai
+  satu TTL berlalu.
+
+**Yang ditolak adalah NILAI yang berubah**, bukan kolom yang ikut disebut:
+`SET slug = slug` dan penulisan baris penuh oleh ORM tetap lolos. **`name`
+bebas diubah** — ia tidak pernah dipakai sebagai pengenal.
+
+Dua lapis di atasnya: tes `tests/company-slug-immutable.test.ts` menolak kode
+yang menulis `slug` ke baris yang sudah ada (agar penulisnya tahu saat menulis,
+bukan saat pengguna pertama mencobanya), dan
+`scripts/prove-company-slug-immutable.ts` memastikan triggernya masih hidup di
+pemasangan nyata — trigger bisa raib tanpa mengubah satu baris kode pun (dump
+tanpa `--triggers`, pemulihan dari dump seperti itu, migration yang me-rebuild
+tabelnya), dan CI tidak akan pernah melihatnya.
+
+**Kalau penggantian nama memang dibutuhkan**, jalurnya bukan membuang trigger
+lalu `UPDATE slug`. Ia menuntut slug lama yang **disimpan dan tetap dilayani**
+sebagai alias — tanpa itu, yang terjadi hanyalah memindahkan kerusakan ke
+tautan orang lain, tanpa bunyi.
+
 ---
 
 ## 3. Memindahkan pemasangan yang sudah berjalan

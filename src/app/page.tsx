@@ -34,6 +34,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Building2, FileText, Languages, ShieldCheck } from "lucide-react";
 
+import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingPricing } from "@/components/landing/landing-pricing";
@@ -157,6 +158,12 @@ export default async function Home() {
         <LandingModules />
 
         <LandingPricing />
+
+        {/* FAQ tepat SESUDAH harga: di situlah keberatan muncul — orang sudah
+            melihat angkanya dan sedang mencari alasan untuk tidak melanjutkan.
+            Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum
+            ditanyakan siapa pun. */}
+        <LandingFaq />
 
         {/* ── Ajakan penutup ─────────────────────────────────────────────── */}
         <section className="border-t border-border py-16 sm:py-20">

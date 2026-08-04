@@ -37,6 +37,7 @@ import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
 import { formatMoney } from "@/lib/money-format";
 import { TRIAL_DAYS } from "@/lib/registration";
+import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
@@ -51,6 +52,8 @@ const PLANS = [
     currency: "IDR",
     maxCompanies: 1,
     maxUsers: 3,
+    contactOnly: false,
+    isRecommended: false,
   },
   {
     key: "pro",
@@ -61,6 +64,22 @@ const PLANS = [
     currency: "IDR",
     maxCompanies: 3,
     maxUsers: 10,
+    contactOnly: false,
+    isRecommended: true,
+  },
+  {
+    /* Paket berharga RUNDINGAN: kolom harganya 0 karena skema menuntut angka,
+     * dan justru itulah yang tidak boleh sampai ke layar. */
+    key: "enterprise",
+    name: "Enterprise",
+    description: null,
+    priceMonthly: 0,
+    priceYearly: null,
+    currency: "IDR",
+    maxCompanies: 10,
+    maxUsers: 50,
+    contactOnly: true,
+    isRecommended: false,
   },
 ];
 
@@ -137,8 +156,12 @@ describe("halaman pendaratan publik", () => {
   it("harga & kuota datang dari katalog, bukan dari teks di markup", async () => {
     const html = await render();
 
-    for (const plan of PLANS) {
-      expect(html).toContain(plan.name);
+    // NAMA setiap paket muncul — termasuk yang berharga rundingan.
+    for (const plan of PLANS) expect(html).toContain(plan.name);
+
+    // ANGKA hanya untuk paket yang memang berharga. Paket rundingan diuji
+    // terpisah di bawah: nominal & kuotanya justru TIDAK boleh muncul.
+    for (const plan of PLANS.filter((p) => !p.contactOnly)) {
       expect(html).toContain(formatMoney(plan.priceMonthly, plan.currency));
       expect(html).toContain(T("platform.plansQuotaCompanies", { max: plan.maxCompanies }));
       expect(html).toContain(T("platform.plansQuotaUsers", { max: plan.maxUsers }));
@@ -215,6 +238,48 @@ describe("halaman pendaratan publik", () => {
     const html = await render();
     expect(html).toContain(`>${LOCALES.length}<`);
     for (const currency of CURRENCIES) expect(html).toContain(currency);
+  });
+
+  it("paket rundingan tidak memajang nominal — 'Rp 0' terbaca sebagai gratis", async () => {
+    const html = await render();
+
+    expect(html).toContain(T("landing.pricingContactPrice"));
+    // Angka nol paket Enterprise tidak boleh muncul sebagai harga di mana pun.
+    expect(html).not.toContain(formatMoney(0, "IDR"));
+    // Kuotanya pun tidak dijanjikan: yang berlaku adalah salinan di tenant,
+    // dan justru itulah yang dirundingkan.
+    expect(html).toContain(T("landing.pricingContactQuota"));
+    expect(html).not.toContain(T("platform.plansQuotaUsers", { max: 50 }));
+  });
+
+  it("paket rundingan tidak menawarkan pendaftaran swalayan", async () => {
+    const html = await render();
+    // Tanpa alamat kontak, kartunya tetap tampil tetapi menyebut yang kurang
+    // adalah KONFIGURASI — bukan diam-diam menjadi jalan buntu.
+    expect(html).toContain(T("landing.pricingContactMissing"));
+  });
+
+  it("paket yang disorot ditandai berteks, bukan sekadar tepi berwarna", async () => {
+    const html = await render();
+    expect(html).toContain(T("landing.pricingRecommended"));
+  });
+
+  it("FAQ menjawab enam keberatan, dengan angka dari sumbernya", async () => {
+    const html = await render();
+
+    expect(html).toContain(T("landing.faqHeading"));
+    for (const key of [
+      "landing.faqAfterTrialQ",
+      "landing.faqQuotaQ",
+      "landing.faqIsolationQ",
+      "landing.faqExportQ",
+    ]) {
+      expect(html, `${key} hilang dari FAQ`).toContain(T(key));
+    }
+    // Dua jawaban membawa angka, dan keduanya harus datang dari konstanta yang
+    // sama yang dipakai penagihan — bukan diketik ke dalam kalimatnya.
+    expect(html).toContain(T("landing.faqTrialA", { days: TRIAL_DAYS }));
+    expect(html).toContain(T("landing.faqTaxA", { rate: DEFAULT_TAX_RATE }));
   });
 
   it("dokumen hukum terjangkau SEBELUM orang menyetujuinya", async () => {

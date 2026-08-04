@@ -26,6 +26,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getT } from "@/lib/i18n/server";
@@ -38,6 +39,12 @@ export async function LandingPricing() {
   const t = await getT();
   const plans = await activePlans();
   const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
+  /* Alamat penjualan untuk paket berharga rundingan. Tidak diset = kartunya
+   * tetap tampil (paketnya memang ada) tetapi TANPA tombol yang menuju
+   * ke mana-mana — tombol `mailto:` kosong adalah jalan buntu, dan kalimat
+   * penggantinya memberi tahu pemasang bahwa yang kurang adalah konfigurasi,
+   * bukan paketnya. */
+  const contactEmail = process.env.PLATFORM_CONTACT_EMAIL?.trim();
 
   return (
     <section id="harga" className="scroll-mt-20 border-t border-border bg-muted/40 py-16 sm:py-24">
@@ -72,22 +79,44 @@ export async function LandingPricing() {
             <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan) => (
                 <li key={plan.key}>
-                  <Card className="flex h-full flex-col">
-                    <CardHeader>
+                  <Card
+                    className={
+                      plan.isRecommended
+                        ? "flex h-full flex-col border-primary ring-1 ring-primary"
+                        : "flex h-full flex-col"
+                    }
+                  >
+                    <CardHeader className="flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+                      {/* Sorotan paket adalah LENCANA BERTEKS, bukan sekadar
+                          tepi berwarna: tepi saja tidak terbaca oleh siapa pun
+                          yang tidak membedakan warnanya (MASTER.md
+                          §Anti-Patterns). */}
+                      {plan.isRecommended && <Badge variant="success">{t("landing.pricingRecommended")}</Badge>}
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col gap-3">
-                      <p className="text-2xl font-bold tabular-nums text-foreground">
-                        {formatMoney(plan.priceMonthly, plan.currency)}
-                        <span className="text-sm font-normal text-muted-foreground">
-                          {t("platform.plansPerMonth")}
-                        </span>
-                      </p>
-                      {plan.priceYearly !== null && (
-                        <p className="text-sm tabular-nums text-muted-foreground">
-                          {formatMoney(plan.priceYearly, plan.currency)}
-                          {t("platform.plansPerYear")}
+                      {/* Paket berharga rundingan TIDAK memajang nominal.
+                          Kolom harganya berisi 0, dan "Rp 0" di kartu penjualan
+                          bukan sekadar salah — ia terbaca sebagai gratis. */}
+                      {plan.contactOnly ? (
+                        <p className="text-2xl font-bold text-foreground">
+                          {t("landing.pricingContactPrice")}
                         </p>
+                      ) : (
+                        <>
+                          <p className="text-2xl font-bold tabular-nums text-foreground">
+                            {formatMoney(plan.priceMonthly, plan.currency)}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              {t("platform.plansPerMonth")}
+                            </span>
+                          </p>
+                          {plan.priceYearly !== null && (
+                            <p className="text-sm tabular-nums text-muted-foreground">
+                              {formatMoney(plan.priceYearly, plan.currency)}
+                              {t("platform.plansPerYear")}
+                            </p>
+                          )}
+                        </>
                       )}
                       {plan.description && (
                         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -98,18 +127,32 @@ export async function LandingPricing() {
                           dalam aplikasi: dua kalimat untuk angka yang sama akan
                           berbeda pada hari salah satunya disunting. */}
                       <ul className="space-y-1.5 text-sm text-foreground">
-                        <li className="flex items-start gap-2">
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                          <span className="tabular-nums">
-                            {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
-                          </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                          <span className="tabular-nums">
-                            {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
-                          </span>
-                        </li>
+                        {plan.contactOnly ? (
+                          /* Angka kuota paket rundingan adalah bawaan katalog,
+                             bukan janji: kuota yang berlaku disalin ke tenant
+                             saat paketnya dipasang, dan justru itulah yang
+                             dirundingkan. Memajangnya berarti menjanjikan
+                             angka yang belum disepakati siapa pun. */
+                          <li className="flex items-start gap-2">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                            <span>{t("landing.pricingContactQuota")}</span>
+                          </li>
+                        ) : (
+                          <>
+                            <li className="flex items-start gap-2">
+                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                              <span className="tabular-nums">
+                                {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
+                              </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                              <span className="tabular-nums">
+                                {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
+                              </span>
+                            </li>
+                          </>
+                        )}
                       </ul>
                       {/* Tombolnya menuju PENDAFTARAN apa adanya, TANPA
                           `?plan=`. Pendaftaran tidak menerima pilihan paket:
@@ -118,9 +161,23 @@ export async function LandingPricing() {
                           dipilih sesudah akunnya jadi. Parameter yang tidak
                           dibaca siapa pun akan terlihat seperti janji bahwa
                           paket ini sudah dipilih. */}
-                      <Button asChild className="mt-auto w-full sm:w-auto">
-                        <Link href="/register">{t("landing.heroPrimary")}</Link>
-                      </Button>
+                      {plan.contactOnly ? (
+                        contactEmail ? (
+                          <Button asChild variant="outline" className="mt-auto w-full sm:w-auto">
+                            <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(plan.name)}`}>
+                              {t("landing.pricingContactCta")}
+                            </a>
+                          </Button>
+                        ) : (
+                          <p className="mt-auto text-sm text-muted-foreground">
+                            {t("landing.pricingContactMissing")}
+                          </p>
+                        )
+                      ) : (
+                        <Button asChild className="mt-auto w-full sm:w-auto">
+                          <Link href="/register">{t("landing.heroPrimary")}</Link>
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 </li>

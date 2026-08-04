@@ -64,6 +64,24 @@ model Plan {
   trialDays Int @default(14) @map("trial_days")
 
   isActive  Boolean  @default(true) @map("is_active")
+
+  /// DIJUAL atau tidak — terpisah dari `isActive` (issue katalog #179).
+  /// `internal` adalah paket pemakaian penyedia sendiri: ia WAJIB aktif supaya
+  /// putaran adopsi yatim (#152) bisa menyembuhkan tenant internal, tetapi
+  /// memajangnya di halaman harga berarti menawarkan "Rp 0, 10 PT" kepada
+  /// publik. Aktif = sah dipakai; publik = ditawarkan.
+  isPublic Boolean @default(true) @map("is_public")
+
+  /// Harganya DIRUNDINGKAN, bukan dipajang (Enterprise). Dibaca kartu harga
+  /// DAN penjaga pindah paket: harga 0 pada paket seperti ini berarti prorata
+  /// dihitung dari nol — yaitu naik paket gratis lewat tombol swalayan.
+  contactOnly Boolean @default(false) @map("contact_only")
+
+  /// Paket yang disorot di halaman harga. Keputusan penjualan, bukan aturan
+  /// yang ditebak kode ("yang tengah") — dan bukan pula variabel environment
+  /// yang menuntut penggelaran ulang untuk mengubahnya.
+  isRecommended Boolean @default(false) @map("is_recommended")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -74,6 +92,8 @@ model Plan {
   planChangeInvoices PlatformInvoice[]
 
   @@index([isActive])
+  /// Katalog publik selalu menyaring keduanya sekaligus.
+  @@index([isActive, isPublic])
   @@map("plans")
 }
 

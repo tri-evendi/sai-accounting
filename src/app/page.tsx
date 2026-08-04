@@ -38,6 +38,8 @@ import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LocaleToggle } from "@/components/ui/locale-toggle";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { auth } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
@@ -170,6 +172,17 @@ export default async function Home() {
           <div>
             <p className="text-sm font-semibold text-foreground">{APP_NAME}</p>
             <p className="mt-1 text-sm text-muted-foreground">{t("landing.footerTagline")}</p>
+          </div>
+          {/* Pemilih bahasa & tema JUGA di sini, bukan hanya di bilah atas: di
+              bawah 640px bilah atas menyembunyikan keduanya agar tombol Masuk
+              dan Daftar tidak menyusut di bawah target sentuh 40px. Tanpa
+              salinan ini, pengunjung ponsel — termasuk pembaca Mandarin yang
+              belum punya akun — tidak punya SATU pun cara mengganti bahasa,
+              dan menu akun yang biasanya menyediakannya baru ada setelah
+              masuk. */}
+          <div className="flex items-center gap-2 sm:hidden">
+            <LocaleToggle />
+            <ThemeToggle />
           </div>
           <nav aria-label={t("landing.footerLegal")} className="flex flex-col gap-2 text-sm">
             <Link

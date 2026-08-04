@@ -40,8 +40,11 @@ export async function LandingNav() {
         <div className="flex items-center gap-2">
           {/* Di layar sempit dua sakelar ini disembunyikan agar tombol MASUK
               dan DAFTAR — satu-satunya hal yang benar-benar dituju orang di
-              sini — tidak menyusut di bawah target sentuh 40px. Keduanya tetap
-              terjangkau di kaki halaman. */}
+              sini — tidak menyusut di bawah target sentuh 40px. Gantinya
+              dirender di KAKI halaman dengan `sm:hidden` (lihat `page.tsx`),
+              jadi tidak pernah ada ukuran layar yang kehilangan keduanya:
+              pengunjung ponsel yang belum punya akun tidak punya menu akun
+              untuk mengganti bahasa. */}
           <div className="hidden items-center gap-2 sm:flex">
             <LocaleToggle />
             <ThemeToggle />

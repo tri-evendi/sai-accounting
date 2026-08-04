@@ -27,6 +27,11 @@
  *   • yang berubah dalam praktik adalah NAMA perusahaan, dan nama memang boleh
  *     berubah bebas — ia tidak pernah dipakai sebagai pengenal.
  * Cache slug→perusahaan di `company-route.ts` berdiri di atas keputusan ini.
+ *
+ * Sejak issue #161 keputusan itu DITEGAKKAN, bukan sekadar dicatat: trigger
+ * `companies_slug_immutable` (migration kendali 0010) menolak setiap UPDATE
+ * yang mengubah nilai slug, dari jalur mana pun — termasuk yang belum
+ * terbayang saat baris ini ditulis. Lihat docs/MULTI-COMPANY.md §2.
  */
 
 /**

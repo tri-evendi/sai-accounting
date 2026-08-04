@@ -1,0 +1,185 @@
+/**
+ * Halaman pendaratan publik `/` — permukaan pertama bagi orang yang BELUM
+ * punya akun.
+ *
+ * Sebelum halaman ini ada, `/` hanya memantulkan ke `/login`: orang asing yang
+ * mengetik alamat produk disambut formulir kata sandi, dan tautan pendaftaran
+ * baru terlihat sesudah ia mendarat di formulir yang bukan untuknya.
+ *
+ * Yang dijaga di sini bukan tata letaknya (itu akan berubah setiap kali
+ * pemasaran berubah pikiran), melainkan empat janji yang kalau meleset tidak
+ * berbunyi:
+ *
+ *   1. **Yang sudah bersesi tidak melihat halaman pemasaran** — ia memantul,
+ *      dan pemantulannya tetap satu aturan yang sama dengan halaman masuk.
+ *   2. **Yang belum bersesi menemukan KEDUA pintu** — daftar dan masuk. Itu
+ *      seluruh alasan halaman ini ada.
+ *   3. **Harga datang dari KATALOG, bukan diketik.** Harga yang ditulis tangan
+ *      adalah salinan kedua dari angka yang menagih; dua salinan akan berbeda
+ *      pada hari salah satunya berubah, dan yang membayar selisihnya adalah
+ *      orang yang mendaftar karena angka lama.
+ *   4. **Katalog mati ≠ halaman kosong.** `activePlans()` boleh `null`
+ *      (platform penagihan tak terjangkau) tanpa menjatuhkan halaman yang
+ *      menjelaskan produknya.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderToReadableStream } from "react-dom/server";
+
+import { LocaleProvider } from "@/lib/i18n/client";
+import { translate, type Dictionary } from "@/lib/i18n/dictionary";
+import id from "@/lib/i18n/dictionaries/id.json";
+import { formatMoney } from "@/lib/money-format";
+import { TRIAL_DAYS } from "@/lib/registration";
+
+const dict = id as unknown as Dictionary;
+const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
+
+const PLANS = [
+  {
+    key: "starter",
+    name: "Starter",
+    description: "Untuk satu PT",
+    priceMonthly: 150000,
+    priceYearly: null,
+    currency: "IDR",
+    maxCompanies: 1,
+    maxUsers: 3,
+  },
+  {
+    key: "pro",
+    name: "Pro",
+    description: null,
+    priceMonthly: 450000,
+    priceYearly: 4500000,
+    currency: "IDR",
+    maxCompanies: 3,
+    maxUsers: 10,
+  },
+];
+
+/** `redirect()` asli Next.js bekerja dengan melempar — tiruannya juga. */
+class Redirected extends Error {
+  constructor(readonly to: string) {
+    super(`redirect: ${to}`);
+  }
+}
+
+const state = {
+  session: null as { user: { id: string } } | null,
+  plans: null as typeof PLANS | null,
+};
+
+vi.mock("next/navigation", () => ({
+  redirect: (to: string) => {
+    throw new Redirected(to);
+  },
+  /* Pemilih bahasa & tema di bilah atas adalah komponen KLIEN yang memanggil
+   * `useRouter()`; hook itu menuntut konteks App Router yang tidak ada di
+   * perenderan SSR telanjang. Keduanya sengaja TETAP dirender (tidak
+   * di-stub): halaman ini satu-satunya tempat orang yang belum punya akun
+   * bisa memilih bahasanya, jadi hilangnya harus terlihat di sini. */
+  useRouter: () => ({ refresh: () => {}, push: () => {} }),
+  usePathname: () => "/",
+}));
+
+vi.mock("@/lib/auth", () => ({ auth: async () => state.session }));
+
+/* `getT` membaca cookie lokal lewat `next/headers`, yang menuntut konteks
+ * permintaan — tidak ada di perenderan SSR telanjang seperti di sini. Kamus
+ * yang dipakai tetap kamus SUNGGUHAN (`id.json`), jadi kunci yang salah ketik
+ * tetap terlihat sebagai teks kunci di markup, bukan tersembunyi di balik
+ * tiruan yang mengembalikan apa saja. */
+vi.mock("@/lib/i18n/server", () => ({ getT: async () => T }));
+
+vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => state.plans }));
+
+const { default: LandingPage } = await import("@/app/page");
+
+async function render(): Promise<string> {
+  const stream = await renderToReadableStream(
+    <LocaleProvider locale="id" dictionary={dict}>
+      {await LandingPage()}
+    </LocaleProvider>
+  );
+  const html = await new Response(stream).text();
+  return html.replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+}
+
+beforeEach(() => {
+  state.session = null;
+  state.plans = PLANS;
+});
+
+describe("halaman pendaratan publik", () => {
+  it("pengunjung bersesi TIDAK melihat halaman pemasaran — ia memantul", async () => {
+    state.session = { user: { id: "7" } };
+    // `/dashboard` sengaja, bukan jalur tenant yang sudah jadi: halaman itulah
+    // yang memegang `resolvePostLoginPath`, satu-satunya aturan tujuan
+    // pasca-masuk. Menduplikasinya di sini berarti dua aturan yang akan
+    // menyimpang.
+    await expect(render()).rejects.toThrow("redirect: /dashboard");
+  });
+
+  it("pengunjung tanpa sesi menemukan KEDUA pintu: daftar dan masuk", async () => {
+    const html = await render();
+    expect(html).toContain('href="/register"');
+    expect(html).toContain('href="/login"');
+    expect(html).toContain(T("landing.heroHeading"));
+  });
+
+  it("harga & kuota datang dari katalog, bukan dari teks di markup", async () => {
+    const html = await render();
+
+    for (const plan of PLANS) {
+      expect(html).toContain(plan.name);
+      expect(html).toContain(formatMoney(plan.priceMonthly, plan.currency));
+      expect(html).toContain(T("platform.plansQuotaCompanies", { max: plan.maxCompanies }));
+      expect(html).toContain(T("platform.plansQuotaUsers", { max: plan.maxUsers }));
+    }
+    // Harga tahunan hanya muncul untuk paket yang punya — bukan Rp 0 untuk
+    // paket yang tidak dijual tahunan.
+    expect(html).toContain(formatMoney(4500000, "IDR"));
+
+    // Paket yang ditarik dari penjualan tidak pernah sampai ke sini: itu
+    // urusan `activePlans()`, dan halaman ini tidak boleh menyaring ulang
+    // (dua penyaring akan berbeda). Yang dijaga di sini: halaman menampilkan
+    // PERSIS apa yang katalog berikan.
+    expect(html.match(/Starter/g)?.length).toBe(1);
+  });
+
+  it("lama uji coba dari konstanta yang sama yang menghitungnya", async () => {
+    const html = await render();
+    expect(html).toContain(T("landing.pricingTrialNote", { days: TRIAL_DAYS }));
+  });
+
+  it("katalog tak terjangkau → halaman tetap berdiri, dengan kalimatnya", async () => {
+    state.plans = null;
+    const html = await render();
+
+    expect(html).toContain(T("landing.pricingUnavailable"));
+    // Penagihan mati tidak boleh mematikan halaman yang menjelaskan produk:
+    // hero dan pintu masuk tetap ada.
+    expect(html).toContain(T("landing.heroHeading"));
+    expect(html).toContain('href="/register"');
+  });
+
+  it("katalog kosong dijawab kalimat, bukan bagian harga yang melompong", async () => {
+    state.plans = [];
+    const html = await render();
+    expect(html).toContain(T("landing.pricingEmpty"));
+  });
+
+  it("tombol paket tidak menjanjikan paket yang belum dipilih", async () => {
+    const html = await render();
+    // Pendaftaran tidak menerima pilihan paket — setiap tenant lahir di paket
+    // `trial`. `?plan=` yang tidak dibaca siapa pun akan terbaca sebagai janji
+    // bahwa paket itu sudah dipilih.
+    expect(html).not.toContain("/register?plan=");
+  });
+
+  it("dokumen hukum terjangkau SEBELUM orang menyetujuinya", async () => {
+    const html = await render();
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain('href="/privacy"');
+  });
+});

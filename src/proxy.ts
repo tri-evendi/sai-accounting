@@ -17,6 +17,13 @@ import {
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  // Halaman pendaratan: pembacanya justru orang yang BELUM punya akun. Tanpa
+  // baris ini proxy memantulkannya ke `/login` sebelum halamannya sempat
+  // dirender — yaitu persis keadaan yang halaman itu dibuat untuk mengakhiri
+  // (orang asing disambut formulir kata sandi). Pemantulan untuk yang SUDAH
+  // bersesi tetap ada, tapi di halamannya sendiri: ia yang tahu tujuan
+  // pasca-masuk, dan proxy tidak boleh menduanya.
+  if (pathname === "/") return true;
   // issue #136 — alur atur-ulang kata sandi mandiri: orang yang lupa kata
   // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
   // `/api/auth/*` di bawah.

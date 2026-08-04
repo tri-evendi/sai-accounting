@@ -73,11 +73,23 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     description: "Sampai tiga PT, lima belas pengguna.",
-    priceMonthly: "450000.00",
-    priceYearly: "4500000.00",
+    /* Rp 599rb/bln — DI BAWAH padanan pasar untuk bentuk yang sama, bukan di
+     * atasnya: menyusun 3 database + 15 pengguna di Accurate Online berharga
+     * ±Rp 813rb/bln (333rb + 2×100rb database + 14×20rb pengguna), dan tiga PT
+     * di Kledo berarti tiga langganan (±Rp 1,2jt). Yang dijual di sini justru
+     * yang mereka tagih terpisah: buku terpisah per PT dalam SATU akun.
+     *
+     * Tahunan = 10 bulan (dua bulan gratis), pola diskon yang sama dengan
+     * Kledo & Mekari. */
+    priceMonthly: "599000.00",
+    priceYearly: "5990000.00",
     maxCompanies: 3,
     maxUsers: 15,
-    trialDays: 7,
+    /* 14 hari, bukan 7: standar pasar (Kledo menyebutnya eksplisit) DAN
+     * onboarding di sini lebih berat — daftar akun plus saldo awal harus
+     * selesai sebelum bukunya berguna. Uji coba yang habis sebelum penyiapan
+     * selesai tidak mengonversi siapa pun. */
+    trialDays: 14,
     isPublic: true,
     isRecommended: true,
   },

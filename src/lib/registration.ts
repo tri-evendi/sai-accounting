@@ -39,7 +39,7 @@ export const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
  * tidak ada yang berbunyi. `scripts/seed-plans.ts` memegang sisi basis
  * datanya.
  */
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 14;
 
 /**
  * Paket tempat pendaftar baru MENDARAT — dan sejak keputusan ini, itu paket

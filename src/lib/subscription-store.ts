@@ -72,9 +72,14 @@ export interface BillingOverview {
   } | null;
 }
 
-/** Paket yang dipakai langganan kelahiran (#152) — kunci yang sama dengan
- *  `tenants.plan_key` bawaan yang ditulis `registration-store.ts`. */
-const TRIAL_PLAN_KEY = "trial";
+/* Paket yang dipakai langganan kelahiran (#152) — DIIMPOR, bukan diketik
+ * ulang: kuncinya harus persis sama dengan `tenants.plan_key` yang ditulis
+ * `registration-store.ts`. Dua literal yang harus sepakat akan berhenti
+ * sepakat pada hari salah satunya diubah, dan akibatnya senyap: tenant lahir
+ * menunjuk satu paket sementara langganannya lahir di paket lain. */
+import { SIGNUP_PLAN_KEY } from "@/lib/registration";
+
+const TRIAL_PLAN_KEY = SIGNUP_PLAN_KEY;
 
 export type InitialSubscriptionOutcome =
   | { created: true; subscriptionId: number; status: string }

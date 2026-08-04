@@ -39,6 +39,11 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import {
+  SIGNUP_MAX_COMPANIES,
+  SIGNUP_MAX_USERS,
+  SIGNUP_PLAN_KEY,
+} from "../src/lib/registration";
 
 const DEFAULT_PLANS = [
   {
@@ -59,16 +64,6 @@ const DEFAULT_PLANS = [
     maxUsers: 50,
     trialDays: 0,
     isPublic: false,
-  },
-  {
-    key: "trial",
-    name: "Trial",
-    description: "Masa uji coba — satu PT, tiga pengguna.",
-    priceMonthly: "0.00",
-    maxCompanies: 1,
-    maxUsers: 3,
-    trialDays: 7,
-    isPublic: true,
   },
   {
     /* Satu-satunya paket berbayar yang dijual swalayan. Angkanya DIWARISI dari
@@ -112,8 +107,14 @@ const DEFAULT_PLANS = [
  * Paket yang pernah dijual dan kini TIDAK ditawarkan lagi. Dipensiunkan dari
  * katalog (`is_public = false`), tidak pernah dinonaktifkan: lihat komentar
  * kepala berkas.
+ *
+ * `trial` ikut di sini sejak uji coba menjadi uji coba PAKET PRO: ia bukan
+ * lagi paket yang dijual melainkan KEADAAN sebuah langganan Pro. Ia tetap
+ * AKTIF — tenant lama yang masih menunjuknya harus tetap sah, dan putaran
+ * adopsi yatim (#152) melahirkan langganan dari `tenants.plan_key` apa pun
+ * isinya.
  */
-const RETIRED_KEYS = ["starter", "business"] as const;
+const RETIRED_KEYS = ["trial", "starter", "business"] as const;
 
 async function main() {
   const url = process.env.PLATFORM_DATABASE_URL?.trim();
@@ -135,6 +136,23 @@ async function main() {
       connectionLimit: 1,
     }),
   });
+
+  /* Kuota Pro hidup di DUA tempat: baris katalog di bawah dan konstanta
+   * snapshot di `lib/registration.ts` (pendaftaran sengaja tidak membaca
+   * basis data platform). Perbedaan di antaranya tidak akan pernah melempar —
+   * ia hanya membuat halaman harga menjanjikan kuota yang tidak diberikan. */
+  const signupPlan = DEFAULT_PLANS.find((p) => p.key === SIGNUP_PLAN_KEY);
+  if (
+    signupPlan &&
+    (signupPlan.maxCompanies !== SIGNUP_MAX_COMPANIES || signupPlan.maxUsers !== SIGNUP_MAX_USERS)
+  ) {
+    console.warn(
+      `⚠ kuota paket "${SIGNUP_PLAN_KEY}" di seed (${signupPlan.maxCompanies} PT / ` +
+        `${signupPlan.maxUsers} pengguna) BERBEDA dari snapshot pendaftaran ` +
+        `(${SIGNUP_MAX_COMPANIES} PT / ${SIGNUP_MAX_USERS} pengguna) — ` +
+        "samakan keduanya di lib/registration.ts."
+    );
+  }
 
   for (const plan of DEFAULT_PLANS) {
     const existing = await platform.plan.findUnique({ where: { key: plan.key } });

@@ -15,6 +15,9 @@ import {
   hashVerificationToken,
   mintVerificationToken,
   tenantSlugCandidates,
+  SIGNUP_MAX_COMPANIES,
+  SIGNUP_MAX_USERS,
+  SIGNUP_PLAN_KEY,
   trialEndsAtFrom,
   usernameFromEmail,
   verdictForVerification,
@@ -148,10 +151,15 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
         slug,
         name: row.name,
         status: STATUS_AFTER_VERIFICATION,
-        planKey: "trial",
+        planKey: SIGNUP_PLAN_KEY,
         trialEndsAt: trialEndsAtFrom(now),
-        // Kuota memakai bawaan kolom (#134): max_companies 1, max_users 3 —
-        // snapshot paket trial; naik kelas = pekerjaan #140.
+        /* Kuota DITULIS EKSPLISIT, tidak lagi mengandalkan bawaan kolom
+         * (1 PT / 3 pengguna). Sejak uji coba menjadi uji coba paket PRO,
+         * bawaan kolom adalah kuota paket yang salah — pendaftar akan melihat
+         * halaman harga menjanjikan 3 PT lalu ditolak di PT kedua, tanpa satu
+         * pun galat yang menjelaskan sebabnya. */
+        maxCompanies: SIGNUP_MAX_COMPANIES,
+        maxUsers: SIGNUP_MAX_USERS,
       },
     });
     const user = await tx.user.create({

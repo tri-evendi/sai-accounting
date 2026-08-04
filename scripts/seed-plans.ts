@@ -10,11 +10,17 @@
  *
  * ══ SATU PENGECUALIAN: BENDERA KATALOG ═════════════════════════════════════
  * `is_public` / `contact_only` / `is_recommended` (migration platform 0008)
- * JUSTRU diselaraskan pada paket yang sudah ada. Ketiganya bukan angka
- * penagihan melainkan keputusan "apa yang dijual dan bagaimana ditampilkan",
- * dan bawaannya (`is_public = true`) berarti setiap paket lama — termasuk
- * `internal` milik penyedia — tampil di halaman harga publik sampai ada yang
- * mematikannya. Harga dan kuota tetap tidak pernah disentuh.
+ * dan `trial_days` JUSTRU diselaraskan pada paket yang sudah ada. Keempatnya
+ * bukan angka penagihan melainkan keputusan "apa yang dijual dan bagaimana
+ * ditampilkan", dan bawaan bendera (`is_public = true`) berarti setiap paket
+ * lama — termasuk `internal` milik penyedia — tampil di halaman harga publik
+ * sampai ada yang mematikannya. Harga dan kuota tetap tidak pernah disentuh.
+ *
+ * `trial_days` ikut karena lama uji coba hidup di DUA tempat: kolom ini (dibaca
+ * `subscription-lifecycle` & `operator/writes`) dan konstanta `TRIAL_DAYS`
+ * (dipakai pendaftaran mandiri, yang sengaja tidak menyentuh basis data
+ * platform). Membiarkan kolomnya basi berarti dua orang yang mendaftar lewat
+ * pintu berbeda mendapat masa uji coba berbeda — dan tidak ada yang berbunyi.
  *
  * ══ KATALOG YANG DIJUAL: trial · pro · enterprise ══════════════════════════
  * Paket publik lain (`starter`, `business`) DIPENSIUNKAN dari katalog dengan
@@ -61,7 +67,7 @@ const DEFAULT_PLANS = [
     priceMonthly: "0.00",
     maxCompanies: 1,
     maxUsers: 3,
-    trialDays: 14,
+    trialDays: 7,
     isPublic: true,
   },
   {
@@ -76,7 +82,7 @@ const DEFAULT_PLANS = [
     priceYearly: "4500000.00",
     maxCompanies: 3,
     maxUsers: 15,
-    trialDays: 14,
+    trialDays: 7,
     isPublic: true,
     isRecommended: true,
   },
@@ -139,11 +145,13 @@ async function main() {
         isPublic: plan.isPublic,
         contactOnly: "contactOnly" in plan ? plan.contactOnly : false,
         isRecommended: "isRecommended" in plan ? plan.isRecommended : false,
+        trialDays: plan.trialDays,
       };
       const drifted =
         existing.isPublic !== flags.isPublic ||
         existing.contactOnly !== flags.contactOnly ||
-        existing.isRecommended !== flags.isRecommended;
+        existing.isRecommended !== flags.isRecommended ||
+        existing.trialDays !== flags.trialDays;
 
       if (!drifted) {
         console.log(`= paket "${plan.key}" sudah ada — tidak disentuh`);
@@ -151,9 +159,9 @@ async function main() {
       }
       await platform.plan.update({ where: { key: plan.key }, data: flags });
       console.log(
-        `~ paket "${plan.key}" — bendera katalog diselaraskan ` +
-          `(publik=${flags.isPublic}, rundingan=${flags.contactOnly}, disorot=${flags.isRecommended}); ` +
-          "harga & kuota tidak disentuh"
+        `~ paket "${plan.key}" — katalog diselaraskan ` +
+          `(publik=${flags.isPublic}, rundingan=${flags.contactOnly}, disorot=${flags.isRecommended}, ` +
+          `uji coba=${flags.trialDays} hari); harga & kuota tidak disentuh`
       );
       continue;
     }

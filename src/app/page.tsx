@@ -34,6 +34,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Building2, FileText, Languages, ShieldCheck } from "lucide-react";
 
+import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,12 @@ export default async function Home() {
             </ul>
           </div>
         </section>
+
+        {/* Urutan disengaja: empat kartu di atas menjawab "kenapa produk ini",
+            bagian modul menjawab "apakah PEKERJAAN SAYA ada di dalamnya", dan
+            baru sesudah itu harga. Menaruh harga sebelum jawaban itu memaksa
+            orang menimbang angka untuk sesuatu yang belum ia tahu isinya. */}
+        <LandingModules />
 
         <LandingPricing />
 

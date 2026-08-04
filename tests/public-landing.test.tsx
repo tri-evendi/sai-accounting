@@ -7,7 +7,7 @@
  * baru terlihat sesudah ia mendarat di formulir yang bukan untuknya.
  *
  * Yang dijaga di sini bukan tata letaknya (itu akan berubah setiap kali
- * pemasaran berubah pikiran), melainkan empat janji yang kalau meleset tidak
+ * pemasaran berubah pikiran), melainkan lima janji yang kalau meleset tidak
  * berbunyi:
  *
  *   1. **Yang sudah bersesi tidak melihat halaman pemasaran** — ia memantul,
@@ -21,10 +21,17 @@
  *   4. **Katalog mati ≠ halaman kosong.** `activePlans()` boleh `null`
  *      (platform penagihan tak terjangkau) tanpa menjatuhkan halaman yang
  *      menjelaskan produknya.
+ *   5. **Daftar modul datang dari REGISTRI, bukan dari daftar yang diketik.**
+ *      Daftar tangan akan berhenti menyebut modul berikutnya tanpa membuat
+ *      apa pun merah — halaman publik diam-diam berhenti menawarkan hal yang
+ *      baru saja dibangun.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToReadableStream } from "react-dom/server";
 
+import { BUSINESS_MODULES, MODULE_META } from "@/lib/business-modules";
+import { CURRENCIES } from "@/lib/constants";
+import { LOCALES } from "@/lib/i18n/config";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -175,6 +182,39 @@ describe("halaman pendaratan publik", () => {
     // `trial`. `?plan=` yang tidak dibaca siapa pun akan terbaca sebagai janji
     // bahwa paket itu sudah dipilih.
     expect(html).not.toContain("/register?plan=");
+  });
+
+  it("daftar modul datang dari REGISTRI — semuanya, bukan sebagian yang diketik", async () => {
+    const html = await render();
+
+    for (const key of BUSINESS_MODULES) {
+      expect(html, `modul ${key} tidak disebut`).toContain(T(MODULE_META[key].labelKey));
+      expect(html).toContain(T(MODULE_META[key].descriptionKey));
+    }
+
+    // Penjaga terhadap kemunduran yang paling mungkin: seseorang mengganti
+    // `BUSINESS_MODULES.map(...)` dengan daftar pilihan yang diketik tangan.
+    // Daftar seperti itu akan berhenti menyebut modul berikutnya TANPA
+    // membuat apa pun merah — halaman publik diam-diam berhenti menawarkan
+    // hal yang baru saja dibangun.
+    // `>10<`, bukan `10`: angka telanjang bisa cocok dengan potongan harga
+    // atau kelas Tailwind mana pun, dan penjaga yang cocok dengan apa saja
+    // tidak menjaga apa-apa.
+    expect(html).toContain(`>${BUSINESS_MODULES.length}<`);
+  });
+
+  it("modul inti ditandai berteks, bukan sekadar berbeda warna", async () => {
+    const html = await render();
+    // `core_accounting` tidak bisa dimatikan; menampilkannya setara dengan
+    // sembilan lainnya menyesatkan ke dua arah — seolah ia bisa dilepas, dan
+    // seolah yang lain wajib ikut.
+    expect(html).toContain(T("landing.modulesCore"));
+  });
+
+  it("angka di strip fakta dihitung dari registri, bukan diketik", async () => {
+    const html = await render();
+    expect(html).toContain(`>${LOCALES.length}<`);
+    for (const currency of CURRENCIES) expect(html).toContain(currency);
   });
 
   it("dokumen hukum terjangkau SEBELUM orang menyetujuinya", async () => {

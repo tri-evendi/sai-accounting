@@ -167,6 +167,9 @@ export async function proxy(request: NextRequest) {
         companyId: typeof token.companyId === "number" ? token.companyId : null,
         tenantSlug: typeof token.tenantSlug === "string" ? token.tenantSlug : null,
         companySlug: typeof token.companySlug === "string" ? token.companySlug : null,
+        /* Token lama belum membawanya — `undefined` di sini berarti "tidak
+         * diketahui", dan pendaratannya mempertahankan perilaku lama. */
+        tenantRole: typeof token.tenantRole === "string" ? token.tenantRole : undefined,
       },
       null
     );

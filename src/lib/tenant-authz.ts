@@ -91,6 +91,42 @@ export type TenantPermission = keyof typeof TENANT_PERMISSION_ROLES;
 
 export const TENANT_PERMISSIONS = Object.keys(TENANT_PERMISSION_ROLES) as TenantPermission[];
 
+/**
+ * Izin tenant yang membuat `/platform` PUNYA ISI bagi pemegangnya.
+ *
+ * `tenant.home` sengaja TIDAK termasuk: ia dipegang setiap anggota dan hanya
+ * berarti "boleh membuka halamannya" — bukan "punya urusan di sana". Yang di
+ * bawah ini adalah urusan yang sesungguhnya: langganan, kuota, tim, ekspor,
+ * membuat PT.
+ */
+const ACCOUNT_BUSINESS: readonly TenantPermission[] = [
+  "company.create",
+  "tenant.settings",
+  "tenant.billing",
+  "tenant.member.invite",
+  "tenant.export",
+  "tenant.deletion",
+];
+
+/**
+ * Apakah pemegang peran ini punya urusan di panel akun `/platform`?
+ *
+ * Dipakai `resolvePostLoginPath` untuk memutuskan pendaratan: seorang STAF
+ * yang diundang ke satu PT tidak mengurus langganan, kuota, atau tim — ia
+ * datang untuk membukukan. Memaksanya melewati panel akun setiap kali masuk
+ * berarti satu layar tambahan seumur pemakaiannya, dan layar itu tidak
+ * menjawab satu pun pertanyaan yang ia bawa.
+ *
+ * MURNI dan tanpa `server-only`: pemakainya termasuk `proxy.ts` di runtime
+ * Edge. Deny-by-default seperti `tenantCan` — peran kosong/tak dikenal
+ * dianggap TIDAK punya urusan akun, dan pemanggilnya (lihat post-login)
+ * memperlakukan ketidaktahuan sebagai "pertahankan perilaku lama".
+ */
+export function hasAccountBusiness(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return ACCOUNT_BUSINESS.some((permission) => tenantCan({ role }, permission));
+}
+
 /** Apakah string ini kunci izin TENANT (bukan izin perusahaan)? */
 export function isTenantPermission(value: string): value is TenantPermission {
   return Object.prototype.hasOwnProperty.call(TENANT_PERMISSION_ROLES, value);

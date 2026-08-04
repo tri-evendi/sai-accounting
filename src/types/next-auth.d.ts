@@ -16,6 +16,7 @@ declare module "next-auth" {
      * milik tepat satu tenant. NULL hanya di sisa masa adopsi #134.
      */
     tenantSlug?: string | null;
+    tenantRole?: string | null;
     /** Perusahaan yang TERAKHIR dibuka. NULL = pengguna belum memilih (#104). */
     companyId?: number | null;
     companySlug?: string | null;
@@ -45,6 +46,10 @@ declare module "next-auth" {
       accountantMode?: boolean | null;
       // issue #157 — tenant pemilik akun; bagian pertama jalur kanonik.
       tenantSlug: string | null;
+      /** Peran TENANT (owner/admin/member) — menentukan pendaratan pasca-masuk
+       *  (`resolvePostLoginPath`). `undefined` = sesi lama yang belum
+       *  membawanya; jangan jatuhkan ke `null`. */
+      tenantRole?: string | null;
       /*
        * issue #104, turun pangkat di #157 — perusahaan yang TERAKHIR DIBUKA.
        * Bukan lagi sumber kebenaran otorisasi: halaman bertenant mengambil
@@ -73,6 +78,7 @@ declare module "next-auth/jwt" {
     checkedAt?: number;
     // issue #157 — slug tenant pemilik akun (tetap selama sesi hidup).
     tenantSlug?: string | null;
+    tenantRole?: string | null;
     // issue #104 — perusahaan yang TERAKHIR dibuka token ini.
     companyId?: number | null;
     companySlug?: string | null;

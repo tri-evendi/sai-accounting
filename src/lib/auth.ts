@@ -113,6 +113,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const only = companies.length === 1 ? companies[0] : null;
         const membership = only ? await membershipFor(user.id, only.companyId) : null;
 
+        /* Peran TENANT (bukan peran di sebuah PT) — menentukan apakah panel
+         * akun `/platform` punya isi bagi orang ini, dan karena itu ke mana ia
+         * mendarat sesudah masuk (lihat `resolvePostLoginPath`). Dibaca sekali
+         * di sini; perubahannya jarang dan akibat terburuk dari nilai basi
+         * hanyalah satu pendaratan yang salah tempat — halamannya tetap
+         * menjaga dirinya sendiri. */
+        const tenantMembership = await tenantMembershipForUser(user.id);
+
         /*
          * Slug tenant (issue #157) — dibaca SEKALI, di sini.
          *
@@ -150,6 +158,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           companyName: only?.name ?? null,
           companyCount: companies.length,
           role: membership?.role ?? null,
+          tenantRole: tenantMembership?.role ?? null,
           accountantMode: membership?.accountantMode ?? null,
         };
       },
@@ -162,6 +171,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           mustChangePassword?: boolean;
           sessionVersion?: number;
           tenantSlug?: string | null;
+          tenantRole?: string | null;
           companyId?: number | null;
           companySlug?: string | null;
           companyName?: string | null;
@@ -173,6 +183,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.mustChangePassword = u.mustChangePassword ?? false;
         token.sessionVersion = u.sessionVersion ?? 1;
         token.tenantSlug = u.tenantSlug ?? null;
+        token.tenantRole = u.tenantRole ?? null;
         token.companyId = u.companyId ?? null;
         token.companySlug = u.companySlug ?? null;
         token.companyName = u.companyName ?? null;
@@ -314,6 +325,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (token.accountantMode as boolean | null | undefined) ?? null;
         (session.user as { tenantSlug: string | null }).tenantSlug =
           (token.tenantSlug as string | null | undefined) ?? null;
+        /* `undefined` DILESTARIKAN, bukan dijatuhkan ke null: sesi yang terbit
+         * sebelum medan ini ada tidak boleh terbaca sebagai "tidak punya
+         * urusan akun" — `resolvePostLoginPath` memperlakukan tidak-tahu
+         * sebagai "pertahankan perilaku lama". */
+        (session.user as { tenantRole?: string | null }).tenantRole = token.tenantRole as
+          | string
+          | null
+          | undefined;
         (session.user as { companyId: number | null }).companyId =
           (token.companyId as number | null | undefined) ?? null;
         (session.user as { companySlug: string | null }).companySlug =

@@ -24,6 +24,7 @@
  * aplikasi (`CompanyIndicator`), tempat ia sudah bisa benar.
  */
 
+import Link from "next/link";
 import { AlertCircle, Check } from "lucide-react";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -69,7 +70,20 @@ function BrandPanel({ className }: { className?: string }) {
         aria-hidden
       />
       <div className="relative flex flex-1 flex-col justify-center">
-        <BrandMark size="lg" className="mb-6 shadow-lg shadow-primary/30" />
+        {/* JALAN PULANG. Sejak `/` menjadi halaman pendaratan publik, orang
+            yang menekan "Daftar" dari sana dan ingin membaca ulang harga atau
+            daftar modulnya tidak punya jalan kembali selain tombol Back
+            peramban — dan lambang produk adalah tempat pertama yang dicoba
+            siapa pun untuk pulang. Untuk yang SUDAH bersesi, `/` memantulkan
+            ke tujuan pasca-masuknya, jadi tautan ini tidak pernah menjadi
+            jalan buntu di layar mana pun yang memakai kulit ini. */}
+        <Link
+          href="/"
+          aria-label={t("auth.backToHome")}
+          className="mb-6 inline-flex w-fit rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+        >
+          <BrandMark size="lg" className="shadow-lg shadow-primary/30" />
+        </Link>
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
         <p className="mt-3 max-w-xs text-sm leading-relaxed text-sidebar-foreground/70">
           {t("auth.brandTagline")}

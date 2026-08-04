@@ -38,7 +38,11 @@
  * `Table` sudah membawa pembungkus geser sendiri (MASTER.md §Primitif), jadi
  * yang dihasilkan lapisan kedua hanyalah dua batang gulung bersarang.
  */
+import Link from "next/link";
+import { CalendarClock } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
@@ -49,7 +53,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMoney } from "@/lib/money-format";
-import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
+import {
+  isReadOnlyTenantStatus,
+  platformInvoiceAmounts,
+  trialCountdown,
+} from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -85,6 +93,25 @@ export async function SubscriptionSection({
   const statusKey = (status: string) => t(`tenantSettings.status.${status}` as DictionaryKey);
   const readOnly = isReadOnlyTenantStatus(overview.tenant.status);
 
+  /* Hitung mundur hanya bermakna selama benar-benar UJI COBA — tenant `active`
+   * yang kebetulan masih menyimpan `trial_ends_at` lama tidak boleh melihat
+   * spanduk yang menakut-nakuti tentang tagihan yang sudah lewat. */
+  const trial =
+    overview.tenant.status === "trialing" ? trialCountdown(overview.tenant.trialEndsAt) : null;
+  const subscriptionPrice = overview.billing?.subscription?.price;
+  const trialCharge =
+    trial && subscriptionPrice
+      ? formatMoney(
+          Number(
+            platformInvoiceAmounts(
+              subscriptionPrice,
+              process.env.PLATFORM_PPN_DISABLED !== "true"
+            ).total
+          ),
+          overview.billing?.subscription?.currency ?? "IDR"
+        )
+      : null;
+
   return (
     <>
       {/* Paket, status & pemakaian — dari KENDALI (snapshot), selalu tampil.
@@ -113,6 +140,51 @@ export async function SubscriptionSection({
               <p className="text-sm text-muted-foreground">
                 {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
               </p>
+            )}
+            {trial && (
+              /* ⚠ SPANDUK UJI COBA — bukan hiasan.
+               *
+               * Sejak uji coba menjadi uji coba paket PRO, hari terakhirnya
+               * tidak berakhir dengan tagihan Rp 0 melainkan dengan TAGIHAN
+               * SUNGGUHAN. Sampai spanduk ini ada, satu-satunya petunjuknya
+               * adalah baris abu-abu berisi tanggal di atas — kalimat yang
+               * benar dan tidak memberi tahu apa pun tentang apa yang akan
+               * terjadi. Pelanggan pertama yang terkejut menerima tagihan
+               * adalah pelanggan yang tidak pernah membaca tanggal itu.
+               *
+               * NOMINALNYA LENGKAP DENGAN PPN, lewat `platformInvoiceAmounts`
+               * yang SAMA dengan yang menerbitkan tagihannya. Menyebut harga
+               * paket telanjang di sini akan mengulang persis kesalahan yang
+               * ditutup di halaman harga: angka yang tidak akan sama dengan
+               * yang tertagih.
+               *
+               * Warna TIDAK sendirian: ada ikon dan ada kalimat yang menyebut
+               * sisa harinya (MASTER.md §Anti-Patterns). */
+              <div
+                className={
+                  trial.urgent
+                    ? "flex flex-wrap items-start gap-3 rounded-lg border border-warning bg-warning-soft p-4 text-warning-strong"
+                    : "flex flex-wrap items-start gap-3 rounded-lg border border-border bg-muted p-4 text-foreground"
+                }
+              >
+                <CalendarClock className="mt-0.5 size-5 shrink-0" aria-hidden />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-sm font-medium">
+                    {trial.days > 0
+                      ? t("tenantSettings.trialDaysLeft", { days: trial.days })
+                      : t("tenantSettings.trialOver")}
+                  </p>
+                  {trialCharge && (
+                    <p className="text-sm tabular-nums">
+                      {t("tenantSettings.trialFirstInvoice", { amount: trialCharge })}
+                    </p>
+                  )}
+                  <p className="text-sm">{t("tenantSettings.trialUnpaidNote")}</p>
+                </div>
+                <Button asChild size="sm" variant={trial.urgent ? "primary" : "outline"}>
+                  <Link href="/platform/billing/plans">{t("platform.plansViewLabel")}</Link>
+                </Button>
+              </div>
             )}
             <p className="text-xs leading-relaxed text-muted-foreground">
               {t("tenantSettings.planChangeNote")}

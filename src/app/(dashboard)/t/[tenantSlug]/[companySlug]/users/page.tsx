@@ -12,6 +12,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { tenantCan } from "@/lib/tenant-authz";
+import { tenantSeatCount } from "@/lib/invitation-store";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { UsersClient } from "./users-client";
 
@@ -35,10 +36,23 @@ export default async function UsersPage({
   const membership = await tenantMembershipForUser(Number.parseInt(session.user.id!, 10));
   const canInvite = tenantCan(membership, "tenant.member.invite");
 
+  /*
+   * KURSI (kuota `max_users`) dibaca DI SINI, bukan ditemukan saat undangan
+   * ditolak. Sebelum ini satu-satunya kabar tentang kuota adalah 422 SESUDAH
+   * seseorang mengetik alamat rekannya dan menekan kirim — dan penyebab paling
+   * sering penolakannya, UNDANGAN YANG MASIH MENUNGGU, tidak terlihat di mana
+   * pun: kursi terpakai bahkan sebelum orangnya membuat akun.
+   *
+   * Hanya untuk yang boleh mengundang: bagi yang lain angka kuota tenant bukan
+   * urusannya, dan querinya pun tidak berjalan.
+   */
+  const seats = canInvite && membership ? await tenantSeatCount(membership.tenantId) : null;
+
   return (
     <UsersClient
       roles={roles.map((r) => ({ key: r.key, label: r.label }))}
       canInvite={canInvite}
+      seats={seats}
     />
   );
 }

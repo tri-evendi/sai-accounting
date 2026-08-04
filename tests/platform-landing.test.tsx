@@ -37,6 +37,7 @@ import { renderToReadableStream } from "react-dom/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
+import { formatMoney } from "@/lib/money-format";
 import { POST_LOGIN_PATH } from "@/lib/post-login";
 import { legacyTenantScopedPath, renamedPagePath } from "@/lib/tenant-routes";
 
@@ -86,7 +87,20 @@ const OVERVIEW = {
       currentPeriodEnd: new Date("2026-08-31T00:00:00Z"),
     },
     plan: { key: "pro", name: "Pro" },
-    invoices: [],
+    /* Ditulis bertipe, bukan `[]` telanjang: array kosong tanpa anotasi
+     * menjadi `never[]`, dan tes yang mengisinya untuk menguji keadaan
+     * "sedang menunggak" ditolak `tsc` — bukan karena salah, melainkan karena
+     * bentuk fixture-nya kurang. */
+    invoices: [] as Array<{
+      id: number;
+      number: string;
+      status: string;
+      issueDate: Date;
+      dueDate: Date;
+      total: string;
+      currency: string;
+      pendingPayment: null;
+    }>,
     profile: null,
   },
 };
@@ -272,6 +286,76 @@ beforeEach(() => {
 });
 
 describe("setiap rute menjaga dirinya sendiri", () => {
+  it("kuota tampil sebagai METER yang bisa diumumkan pembaca layar", async () => {
+    state.companies = [company(1, "pusat", "PT Pusat")];
+    const html = await render(PlatformPage);
+
+    /* Bentuknya dipilih dari heuristik: satu rasio terhadap BATAS adalah meter,
+     * bukan angka telanjang. Yang dikunci di sini bukan tampilannya melainkan
+     * apa yang diumumkan: nilai, batas, dan satuan yang jelas. */
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain(`aria-valuenow="${OVERVIEW.usage.companies}"`);
+    expect(html).toContain(`aria-valuemax="${OVERVIEW.tenant.maxCompanies}"`);
+    expect(html).toContain(`aria-valuenow="${OVERVIEW.usage.users}"`);
+    expect(html).toContain(`aria-valuemax="${OVERVIEW.tenant.maxUsers}"`);
+    // Angkanya tetap ada sebagai KATA — meter tanpa nilai terbaca hanya sebagai
+    // hiasan, dan pembaca layar lama tidak selalu mengumumkan progressbar.
+    expect(html).toContain(
+      T("tenantSettings.usageOf", {
+        used: OVERVIEW.usage.companies,
+        max: OVERVIEW.tenant.maxCompanies,
+      })
+    );
+  });
+
+  it("tagihan berikutnya menyebut NOMINAL BER-PPN, bukan harga paket telanjang", async () => {
+    const html = await render(PlatformPage);
+
+    expect(html).toContain(T("tenantSettings.nextChargeLabel"));
+    /* 450.000 + PPN 11% = 499.500. Menyebut 450.000 di sini akan mengulang
+     * persis kesalahan yang ditutup di halaman harga: angka yang TIDAK akan
+     * sama dengan yang tertagih. */
+    expect(html).toContain(formatMoney(499500, "IDR"));
+    expect(html).not.toContain(formatMoney(450000, "IDR"));
+  });
+
+  it("kartu tunggakan hanya muncul bila memang ada tagihan `issued`", async () => {
+    const clean = await render(PlatformPage);
+    /* Kartu "Rp 0" yang selalu menyala mengajari pembacanya mengabaikan tempat
+     * itu — dan pada hari angkanya bukan nol, ia sudah tak terlihat. */
+    expect(clean).not.toContain(T("tenantSettings.unpaidLabel"));
+
+    OVERVIEW.billing.invoices = [
+      {
+        id: 1,
+        number: "PINV-1",
+        status: "issued",
+        issueDate: new Date("2026-08-01T00:00:00Z"),
+        dueDate: new Date("2026-08-08T00:00:00Z"),
+        total: "499500.00",
+        currency: "IDR",
+        pendingPayment: null,
+      },
+      {
+        id: 2,
+        number: "PINV-0",
+        status: "paid",
+        issueDate: new Date("2026-07-01T00:00:00Z"),
+        dueDate: new Date("2026-07-08T00:00:00Z"),
+        total: "499500.00",
+        currency: "IDR",
+        pendingPayment: null,
+      },
+    ];
+    const owing = await render(PlatformPage);
+    OVERVIEW.billing.invoices = [];
+
+    expect(owing).toContain(T("tenantSettings.unpaidLabel"));
+    // Hanya yang `issued` dijumlahkan — yang `paid` tidak boleh ikut menakuti.
+    expect(owing).toContain(formatMoney(499500, "IDR"));
+    expect(owing).toContain(T("tenantSettings.unpaidCount", { count: 1 }));
+  });
+
   it("pendaratan dijaga `tenant.home` — izin yang dipegang SETIAP anggota tenant", async () => {
     await render(PlatformPage);
     expect(state.guardedWith).toEqual(["tenant.home"]);

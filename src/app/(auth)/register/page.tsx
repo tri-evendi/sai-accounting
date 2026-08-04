@@ -24,12 +24,25 @@ export default function RegisterPage() {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  /* Kenapa BUKAN tombol yang dinonaktifkan sampai kotaknya dicentang: tombol
+   * mati tidak menjelaskan apa pun. Orang yang melewatkan kotak persetujuan
+   * hanya melihat tombol yang tidak bereaksi, dan tidak ada satu pun kalimat
+   * yang menyebut sebabnya — keluhan "tombol daftarnya rusak" yang sebenarnya
+   * bukan kerusakan. Tombolnya kini hidup, dan penolakannya BERBICARA, tepat
+   * di sebelah kotaknya. */
+  const [termsError, setTermsError] = useState(false);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    if (!terms) {
+      setTermsError(true);
+      document.getElementById("terms")?.focus();
+      return;
+    }
+    setTermsError(false);
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -129,8 +142,13 @@ export default function RegisterPage() {
             <Checkbox
               id="terms"
               checked={terms}
-              onCheckedChange={(value) => setTerms(value === true)}
+              onCheckedChange={(value) => {
+                setTerms(value === true);
+                if (value === true) setTermsError(false);
+              }}
               disabled={loading}
+              aria-invalid={termsError || undefined}
+              aria-describedby={termsError ? "terms-error" : undefined}
               className="mt-0.5"
             />
             <label
@@ -156,7 +174,12 @@ export default function RegisterPage() {
               .
             </label>
           </div>
-          <Button type="submit" className="w-full" size="lg" disabled={loading || !terms}>
+          {termsError && (
+            <p id="terms-error" role="alert" className="text-sm text-destructive">
+              {t("auth.register.termsRequired")}
+            </p>
+          )}
+          <Button type="submit" className="w-full" size="lg" disabled={loading}>
             {loading ? t("auth.register.submitting") : t("auth.register.submit")}
           </Button>
         </form>

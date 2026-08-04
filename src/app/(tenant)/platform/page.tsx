@@ -49,6 +49,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { QuotaMeter } from "@/components/ui/quota-meter";
+import { formatMoney } from "@/lib/money-format";
+import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
@@ -57,6 +60,11 @@ import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
+
+/** Tanggal ringkas untuk kartu panel — sama gayanya dengan tabel tagihan. */
+function formatPanelDate(d: Date): string {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +85,32 @@ export default async function PlatformPage() {
   /* Kuota DIBACA di dalam cabang izinnya: bagi yang tidak berhak, query ke
    * basis data kendali & platform tidak pernah berjalan sama sekali. */
   const overview = canSeeBilling ? await billingOverviewForTenant(tenant.tenantId) : null;
+
+  /* ── Dua pertanyaan uang yang selama ini hanya bisa dijawab dengan menggulung
+   * ke tabel tagihan dan menghitung sendiri: "kapan & berapa berikutnya" dan
+   * "apakah saya sedang menunggak". Keduanya dihitung DI SINI dari data yang
+   * memang sudah diambil — tidak ada query tambahan.
+   *
+   * Nominalnya lewat `platformInvoiceAmounts` yang SAMA dengan yang
+   * menerbitkan tagihan: harga paket telanjang akan menyebut angka yang tidak
+   * akan pernah sama dengan yang tertagih. */
+  const subscription = overview?.billing?.subscription ?? null;
+  const nextCharge =
+    subscription && subscription.status !== "cancelled"
+      ? formatMoney(
+          Number(
+            platformInvoiceAmounts(subscription.price, process.env.PLATFORM_PPN_DISABLED !== "true")
+              .total
+          ),
+          subscription.currency
+        )
+      : null;
+
+  /* `issued` = sudah terbit dan BELUM lunas (draft belum ditagihkan, void
+   * dibatalkan, paid selesai). Menjumlahkan status lain akan menakut-nakuti
+   * dengan angka yang tidak ditagihkan kepada siapa pun. */
+  const unpaid = (overview?.billing?.invoices ?? []).filter((inv) => inv.status === "issued");
+  const unpaidTotal = unpaid.reduce((sum, inv) => sum + Number(inv.total), 0);
 
   return (
     <>
@@ -115,19 +149,38 @@ export default async function PlatformPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             {canSeeBilling && overview ? (
               <>
-                <StatCard
-                  title={t("tenantSettings.usageCompanies")}
-                  value={t("tenantSettings.usageOf", {
+                {/* METER, bukan angka telanjang. "2 / 3" benar dan tidak
+                    menjawab pertanyaan yang sebenarnya dibawa pemilik akun ke
+                    sini: seberapa dekat saya dengan mentok. Bentuknya dipilih
+                    dari heuristik — satu rasio terhadap sebuah BATAS adalah
+                    meter. Keparahannya juga berupa kata, bukan rona saja. */}
+                <QuotaMeter
+                  label={t("tenantSettings.usageCompanies")}
+                  used={overview.usage.companies}
+                  max={overview.tenant.maxCompanies}
+                  valueLabel={t("tenantSettings.usageOf", {
                     used: overview.usage.companies,
                     max: overview.tenant.maxCompanies,
                   })}
+                  stateLabel={
+                    overview.usage.companies >= overview.tenant.maxCompanies
+                      ? t("tenantSettings.quotaFull")
+                      : t("tenantSettings.quotaNearlyFull")
+                  }
                 />
-                <StatCard
-                  title={t("tenantSettings.usageUsers")}
-                  value={t("tenantSettings.usageOf", {
+                <QuotaMeter
+                  label={t("tenantSettings.usageUsers")}
+                  used={overview.usage.users}
+                  max={overview.tenant.maxUsers}
+                  valueLabel={t("tenantSettings.usageOf", {
                     used: overview.usage.users,
                     max: overview.tenant.maxUsers,
                   })}
+                  stateLabel={
+                    overview.usage.users >= overview.tenant.maxUsers
+                      ? t("tenantSettings.quotaFull")
+                      : t("tenantSettings.quotaNearlyFull")
+                  }
                 />
                 {/* Status sebagai KATA, bukan warna saja — dan warnanya
                     mengikuti artinya (ditangguhkan = peringatan). */}
@@ -140,6 +193,30 @@ export default async function PlatformPage() {
                       : "text-lg text-success-strong"
                   }
                 />
+                {/* Kapan & berapa berikutnya — pertanyaan yang dulu hanya bisa
+                    dijawab dengan menggulung ke tabel tagihan lalu menghitung
+                    PPN-nya sendiri. */}
+                {nextCharge && subscription && (
+                  <StatCard
+                    title={t("tenantSettings.nextChargeLabel")}
+                    value={nextCharge}
+                    hint={t("tenantSettings.nextChargeOn", {
+                      date: formatPanelDate(subscription.currentPeriodEnd),
+                    })}
+                  />
+                )}
+                {/* Tunggakan hanya muncul bila MEMANG ada. Kartu "Rp 0" yang
+                    selalu menyala mengajari pembacanya mengabaikan tempat itu,
+                    dan pada hari angkanya bukan nol ia sudah tak terlihat. */}
+                {unpaid.length > 0 && (
+                  <StatCard
+                    title={t("tenantSettings.unpaidLabel")}
+                    href="/platform/billing"
+                    value={formatMoney(unpaidTotal, unpaid[0].currency)}
+                    valueClassName="text-lg text-warning-strong"
+                    hint={t("tenantSettings.unpaidCount", { count: unpaid.length })}
+                  />
+                )}
               </>
             ) : (
               <StatCard title={t("platform.companiesHeading")} value={companies.length} />

@@ -105,6 +105,23 @@ services:
       # Penjaga aplikasi menegakkan hal yang sama dari sisi kode: di host
       # operator setiap rute pelanggan 404, di host pelanggan setiap /operator
       # 404. Tanpa OPERATOR_HOST di .env, /operator 404 di MANA PUN.
+      #
+      # ⚠️  MENAMBAH PROXY DI DEPAN TRAEFIK? BACA INI DULU (issue #162).
+      # Daftar IP operator (OPERATOR_IP_ALLOWLIST) membandingkan alamat klien
+      # yang dibaca dari `x-forwarded-for`. Aplikasi mengambil entri ke-N dari
+      # KANAN, dengan N = OPERATOR_TRUSTED_PROXY_HOPS (bawaan 1 = Traefik saja,
+      # yaitu susunan sekarang). Entri paling kanan adalah satu-satunya yang
+      # ditulis Traefik sendiri; yang di kirinya bisa saja diketik klien.
+      #
+      # Menaruh Cloudflare, CDN, atau load-balancer kedua DI DEPAN Traefik
+      # menambah satu hop: setel OPERATOR_TRUSTED_PROXY_HOPS=2 di .env pada
+      # perubahan yang SAMA. Kalau lupa, yang terbaca adalah alamat CDN — dan
+      # seluruh dunia yang lewat CDN itu tampak sebagai satu IP.
+      #
+      # Sebaliknya, JANGAN menurunkan angkanya di bawah jumlah proxy yang
+      # sebenarnya: setiap hop yang tidak dihitung adalah satu entri kiriman
+      # klien yang ikut dipercaya. Rantai yang lebih pendek dari angka ini
+      # ditolak (gagal-tertutup), bukan ditebak.
       - "traefik.http.routers.sai-ops.entrypoints=web"
       - "traefik.http.routers.sai-ops.rule=Host(`${OPERATOR_DOMAIN:-ops.suburanugerahindonesia.com}`)"
       - "traefik.http.routers.sai-ops.middlewares=sai-https"

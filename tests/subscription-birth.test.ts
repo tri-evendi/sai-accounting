@@ -1,7 +1,7 @@
 /**
  * Langganan lahir BERSAMA tenant (issue #152) — sifat yang dikunci:
  *   • verifikasi email melahirkan baris `subscriptions`: harga SNAPSHOT dari
- *     paket `trial` (§5), `trial_ends_at` dari `plans.trial_days`, platform
+ *     paket PENDARATAN (§5), `trial_ends_at` dari `plans.trial_days`, platform
  *     DULU lalu salinan kendali;
  *   • `sai_platform` mati / tabel `plans` kosong → verifikasi TETAP 200:
  *     helper-nya tidak pernah melempar, sebabnya tercatat di log server;
@@ -26,6 +26,7 @@ const controlDb = vi.hoisted(() => ({
 vi.mock("@/lib/platform-db", () => ({ platformDb }));
 vi.mock("@/lib/control-db", () => ({ controlDb }));
 
+import { SIGNUP_PLAN_KEY } from "@/lib/registration";
 import { createInitialSubscription } from "@/lib/subscription-store";
 import {
   ORPHAN_ADOPTABLE_TENANT_STATUSES,
@@ -36,17 +37,23 @@ import {
 const NOW = new Date("2026-08-01T00:00:00Z");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Paket `trial` seperti yang dikembalikan Prisma — harga sebagai nilai buram
- *  (Decimal di produksi): snapshot berarti nilai ini LEWAT APA ADANYA. */
-const TRIAL_PLAN = {
+/** Paket PENDARATAN pendaftar baru seperti yang dikembalikan Prisma — harga
+ *  sebagai nilai buram (Decimal di produksi): snapshot berarti nilai ini LEWAT
+ *  APA ADANYA.
+ *
+ *  Sejak uji coba menjadi uji coba paket PRO, paket ini BERBAYAR: langganan
+ *  lahir `trialing` di atasnya, dan tagihan pertama pada hari ke-7 adalah harga
+ *  di bawah — bukan Rp 0 seperti ketika pendaftar mendarat di paket `trial`
+ *  tersendiri. */
+const SIGNUP_PLAN = {
   id: 7,
-  key: "trial",
+  key: SIGNUP_PLAN_KEY,
   isActive: true,
-  priceMonthly: "150000.00",
+  priceMonthly: "450000.00",
   currency: "IDR",
-  trialDays: 14,
-  maxCompanies: 1,
-  maxUsers: 3,
+  trialDays: 7,
+  maxCompanies: 3,
+  maxUsers: 15,
 };
 
 beforeEach(() => {
@@ -61,8 +68,8 @@ beforeEach(() => {
 
 describe("createInitialSubscription — verifikasi email melahirkan langganan (#152)", () => {
   it("baris subscriptions lahir: harga SNAPSHOT §5, trial_ends_at dari paket, kunci idempotensi terisi", async () => {
-    platformDb.plan.findUnique.mockResolvedValue(TRIAL_PLAN);
-    const bornTrialEnd = new Date(NOW.getTime() + 14 * DAY_MS);
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
+    const bornTrialEnd = new Date(NOW.getTime() + SIGNUP_PLAN.trialDays * DAY_MS);
     platformDb.subscription.create.mockResolvedValue({ id: 11, trialEndsAt: bornTrialEnd });
     controlDb.tenant.update.mockResolvedValue({});
 
@@ -74,9 +81,9 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
     expect(data.planId).toBe(7);
     expect(data.status).toBe("trialing");
     /* SNAPSHOT: nilai harga paket lewat apa adanya — bukan dirujuk ulang. */
-    expect(data.price).toBe(TRIAL_PLAN.priceMonthly);
+    expect(data.price).toBe(SIGNUP_PLAN.priceMonthly);
     expect(data.currency).toBe("IDR");
-    expect(data.trialEndsAt.getTime()).toBe(NOW.getTime() + 14 * DAY_MS);
+    expect(data.trialEndsAt.getTime()).toBe(NOW.getTime() + SIGNUP_PLAN.trialDays * DAY_MS);
     expect(data.currentPeriodStart.getTime()).toBe(NOW.getTime());
     expect(data.currentPeriodEnd.toISOString()).toBe("2026-09-01T00:00:00.000Z");
     /* Kunci idempotensi kelahiran — UNIQUE di skema; balapan menabraknya. */
@@ -84,8 +91,8 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
   });
 
   it("urutan tulis: PLATFORM dulu, salinan kendali (status + snapshot kuota/trial) belakangan", async () => {
-    platformDb.plan.findUnique.mockResolvedValue(TRIAL_PLAN);
-    const bornTrialEnd = new Date(NOW.getTime() + 14 * DAY_MS);
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
+    const bornTrialEnd = new Date(NOW.getTime() + SIGNUP_PLAN.trialDays * DAY_MS);
     platformDb.subscription.create.mockResolvedValue({ id: 11, trialEndsAt: bornTrialEnd });
     controlDb.tenant.update.mockResolvedValue({});
 
@@ -94,9 +101,9 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
     expect(controlDb.tenant.update).toHaveBeenCalledWith({
       where: { id: 5 },
       data: {
-        planKey: "trial",
-        maxCompanies: 1,
-        maxUsers: 3,
+        planKey: SIGNUP_PLAN_KEY,
+        maxCompanies: SIGNUP_PLAN.maxCompanies,
+        maxUsers: SIGNUP_PLAN.maxUsers,
         trialEndsAt: bornTrialEnd,
         status: "trialing",
       },
@@ -104,6 +111,39 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
     const createOrder = platformDb.subscription.create.mock.invocationCallOrder[0];
     const updateOrder = controlDb.tenant.update.mock.invocationCallOrder[0];
     expect(createOrder).toBeLessThan(updateOrder);
+  });
+
+  it("paket yang DICARI adalah paket pendaratan pendaftaran — bukan literal kedua", async () => {
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
+    platformDb.subscription.create.mockResolvedValue({ id: 11, trialEndsAt: NOW });
+    controlDb.tenant.update.mockResolvedValue({});
+
+    await createInitialSubscription(5, NOW);
+
+    /* `registration-store` menulis `tenants.plan_key = SIGNUP_PLAN_KEY`, dan
+     * kelahiran langganan HARUS mencari paket yang sama. Dua literal yang harus
+     * sepakat akan berhenti sepakat pada hari salah satunya diubah — dan
+     * akibatnya senyap: tenant menunjuk satu paket, langganannya lahir di
+     * paket lain, lalu ditagih harga yang bukan miliknya. */
+    expect(platformDb.plan.findUnique).toHaveBeenCalledWith({
+      where: { key: SIGNUP_PLAN_KEY },
+    });
+  });
+
+  it("kuota kendali disalin dari PAKET, jadi snapshot pendaftaran yang menyimpang tersembuhkan", async () => {
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
+    platformDb.subscription.create.mockResolvedValue({ id: 11, trialEndsAt: NOW });
+    controlDb.tenant.update.mockResolvedValue({});
+
+    await createInitialSubscription(5, NOW);
+
+    /* Pendaftaran menulis kuota dari KONSTANTA (ia tidak boleh menyentuh
+     * `sai_platform`), dan langkah ini menimpanya dengan kuota PAKET yang
+     * sebenarnya. Artinya konstanta yang basi hanya salah selama beberapa
+     * milidetik — selama platform terjangkau. */
+    const data = controlDb.tenant.update.mock.calls[0][0].data;
+    expect(data.maxCompanies).toBe(SIGNUP_PLAN.maxCompanies);
+    expect(data.maxUsers).toBe(SIGNUP_PLAN.maxUsers);
   });
 
   it("basis data platform MATI → tidak melempar (verifikasi tetap 200); sebabnya tercatat", async () => {
@@ -128,7 +168,7 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
   });
 
   it("balapan: constraint UNIQUE menabrak (P2002) → mundur dengan tenang, kendali tidak disentuh", async () => {
-    platformDb.plan.findUnique.mockResolvedValue(TRIAL_PLAN);
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
     platformDb.subscription.create.mockRejectedValue({ code: "P2002" });
 
     const outcome = await createInitialSubscription(5, NOW);
@@ -138,7 +178,7 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
   });
 
   it("salinan kendali gagal → langganan TETAP lahir (rekonsiliasi yang menemukan selisihnya)", async () => {
-    platformDb.plan.findUnique.mockResolvedValue(TRIAL_PLAN);
+    platformDb.plan.findUnique.mockResolvedValue(SIGNUP_PLAN);
     platformDb.subscription.create.mockResolvedValue({ id: 11, trialEndsAt: null });
     controlDb.tenant.update.mockRejectedValue(new Error("control down"));
 
@@ -151,6 +191,8 @@ describe("createInitialSubscription — verifikasi email melahirkan langganan (#
 
 describe("initialSubscriptionFromPlan — bentuk langganan pertama (murni)", () => {
   it("trial_days > 0 → trialing dengan trial_ends_at dari paket", () => {
+    /* Fungsi MURNI: angkanya datang dari argumennya, bukan dari katalog. 14
+     * di sini bukan kebijakan melainkan masukan uji — justru itu gunanya. */
     const spec = initialSubscriptionFromPlan({ trialDays: 14 }, NOW);
     expect(spec.status).toBe("trialing");
     expect(spec.trialEndsAt?.getTime()).toBe(NOW.getTime() + 14 * DAY_MS);

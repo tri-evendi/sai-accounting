@@ -49,8 +49,14 @@ export function CompanyForm({
    * akan menjanjikan nama yang bukan yang sebenarnya dibuat server.
    */
   tenantId,
+  /**
+   * Slug tenant — dipakai HANYA untuk menyusun jalan pintas ke wizard
+   * penyiapan perusahaan yang baru dibuat (`/t/{tenant}/{company}/setup`).
+   */
+  tenantSlug,
 }: {
   tenantId: number;
+  tenantSlug: string;
 }) {
   const t = useT();
   const router = useRouter();
@@ -191,9 +197,27 @@ export function CompanyForm({
         </div>
         <ProvisionProgress state={progress} />
         <div className="flex flex-wrap gap-2">
+          {/* ⚠ JALAN PINTAS KE WIZARD, dan kenapa ia yang menjadi tombol UTAMA.
+           *
+           * Sebelum ini satu-satunya jalan maju adalah "buka pemilih
+           * perusahaan" — bahkan bagi orang yang baru saja membuat PT
+           * PERTAMANYA dan karena itu tidak punya apa pun untuk dipilih.
+           * Perjalanannya menjadi tiga lompatan (kartu sukses → pemilih →
+           * gerbang penyiapan) untuk satu tujuan yang sudah pasti, dan langkah
+           * yang WAJIB dikerjakan berikutnya — daftar akun & saldo awal —
+           * tidak pernah disebut namanya.
+           *
+           * Pemuatan penuh (`<a>`, bukan `<Link>`) disengaja, sama seperti
+           * jalur pemilih: sesi harus memuat ulang konteks perusahaannya.
+           * Penjaga di halaman setup tetap yang memutuskan boleh-tidaknya —
+           * pintasan ini tidak melewati apa pun (keanggotaan pembuatnya sudah
+           * dibuat bersamaan dengan perusahaannya). */}
+          <Button asChild>
+            <a href={`/t/${tenantSlug}/${createdSlug}/setup`}>{t("companies.openSetup")}</a>
+          </Button>
           {/* Perpindahan perusahaan lewat pemilih — pemuatan penuh, sama
               seperti jalur lainnya (lihat CompanyChoices). */}
-          <Button asChild>
+          <Button asChild variant="outline">
             <a href="/select-company">{t("companies.openPicker")}</a>
           </Button>
           <Button

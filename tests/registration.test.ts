@@ -2,8 +2,9 @@
  * Pendaftaran mandiri (issue #138) — sifat yang dikunci:
  *   • token verifikasi: mentah ≠ tersimpan (SHA-256), berbatas 24 jam,
  *     sekali pakai (semantik yang sama dengan token atur-ulang #136);
- *   • verifikasi melahirkan tenant berstatus `trialing` dengan trial 14 hari
- *     (snapshot bawaan paket, bukan pembacaan basis data platform);
+ *   • verifikasi melahirkan tenant berstatus `trialing` dengan masa uji coba
+ *     sepanjang `TRIAL_DAYS` (snapshot bawaan paket, bukan pembacaan basis
+ *     data platform);
  *   • slug tenant: dinormalkan, tidak pernah kosong, kandidat anti-tabrakan
  *     deterministik lalu acak;
  *   • gerbang penyediaan: kuota `max_companies` & status tenant diputuskan
@@ -60,10 +61,18 @@ describe("kelahiran tenant", () => {
     expect(TENANT_STATUSES).toContain(STATUS_AFTER_VERIFICATION);
   });
 
-  it("trial 14 hari — snapshot bawaan paket trial (plans.trial_days #137)", () => {
+  it("masa uji coba = TRIAL_DAYS hari, dihitung dari saat verifikasi", () => {
     const now = new Date("2026-08-01T00:00:00Z");
-    expect(TRIAL_DAYS).toBe(14);
-    expect(trialEndsAtFrom(now).getTime() - now.getTime()).toBe(14 * 24 * 60 * 60 * 1000);
+    /* Angkanya TIDAK diketik ulang di sini. Tes yang menuliskan `14` akan
+     * merah setiap kali keputusan komersialnya berubah — dan yang ia laporkan
+     * bukan cacat melainkan bahwa seseorang mengubah harga jual. Yang layak
+     * dikunci adalah HUBUNGANNYA: tanggal berakhir mengikuti konstanta yang
+     * sama yang dipublikasikan halaman harga dan FAQ. */
+    expect(trialEndsAtFrom(now).getTime() - now.getTime()).toBe(
+      TRIAL_DAYS * 24 * 60 * 60 * 1000
+    );
+    // Yang tetap dijaga sebagai ANGKA: uji coba harus benar-benar ada.
+    expect(TRIAL_DAYS).toBeGreaterThan(0);
   });
 });
 

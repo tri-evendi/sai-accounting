@@ -48,7 +48,9 @@ export default async function NewCompanyPage() {
       {/* `tenantId` hanya untuk PRATINJAU nama basis data (`sai_t{id}_{slug}`,
           issue #153) — nilai yang dipakai server tetap datang dari penjaga
           `requireTenantApiPermission`, tidak pernah dari klien. */}
-      <CompanyForm tenantId={tenant.tenantId} />
+      {/* `tenantSlug` dipakai menyusun jalan pintas ke wizard penyiapan
+          perusahaan yang baru dibuat — lihat komentar di `company-form`. */}
+      <CompanyForm tenantId={tenant.tenantId} tenantSlug={tenant.tenantSlug} />
     </AuthShell>
   );
 }

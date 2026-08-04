@@ -26,12 +26,49 @@ export const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Lama masa uji-coba tenant baru: SNAPSHOT dari bawaan paket `trial`
- * (`plans.trial_days` bawaan 14, issue #137) — disalin, bukan dibaca dari
- * basis data platform saat mendaftar: pendaftaran harus tetap bekerja saat
+ * (`plans.trial_days`, issue #137) — disalin, bukan dibaca dari basis data
+ * platform saat mendaftar: pendaftaran harus tetap bekerja saat
  * `sai_platform` sedang mati (§4A: penagihan mati ≠ orang berhenti bisa
  * masuk), dan mengubah paket tidak boleh diam-diam mengubah tenant berjalan.
+ *
+ * ⚠ ANGKA INI HIDUP DI DUA TEMPAT, dan keduanya harus bergerak bersamaan:
+ * konstanta di sini (dipakai jalur PENDAFTARAN MANDIRI) dan `plans.trial_days`
+ * di basis data platform (dibaca `subscription-lifecycle` & `operator/writes`
+ * untuk langganan yang lahir dari jalur lain). Kalau berbeda, dua pelanggan
+ * yang mendaftar lewat pintu berbeda mendapat masa uji coba berbeda — dan
+ * tidak ada yang berbunyi. `scripts/seed-plans.ts` memegang sisi basis
+ * datanya.
  */
 export const TRIAL_DAYS = 14;
+
+/**
+ * Paket tempat pendaftar baru MENDARAT — dan sejak keputusan ini, itu paket
+ * BERBAYAR (`pro`), bukan paket gratis tersendiri.
+ *
+ * ══ KENAPA BUKAN PAKET `trial` LAGI ════════════════════════════════════════
+ * Sebelumnya pendaftar lahir di paket `trial`: harga Rp 0, kuota 1 PT / 3
+ * pengguna. Akibatnya bukan sekadar penamaan yang aneh, melainkan corong yang
+ * tidak pernah bermuara. Saat uji cobanya habis, penjadwal memindahkan
+ * langganan ke `active` dan menerbitkan tagihan pertama sebesar HARGA
+ * SNAPSHOT-nya — yaitu Rp 0. Pelanggan lalu duduk selamanya sebagai pengguna
+ * gratis berkuota terkecil, tanpa pernah diminta membayar dan tanpa pernah
+ * mencicipi apa yang dijual.
+ *
+ * Uji coba kini benar-benar UJI COBA PAKET PRO: langganannya lahir di `pro`
+ * dengan status `trialing`, kuota Pro, dan pada hari ke-{TRIAL_DAYS} tagihan
+ * pertamanya adalah harga Pro yang sebenarnya. Tidak dibayar → menunggak →
+ * ditangguhkan (hanya-baca, buku tetap bisa diunduh).
+ *
+ * ⚠ KUOTA DI SINI ADALAH SNAPSHOT, sama seperti `TRIAL_DAYS`. Pendaftaran
+ * sengaja TIDAK membaca `sai_platform` (pendaftaran harus tetap bekerja saat
+ * penagihan mati), jadi angka Pro disalin ke sini. `scripts/seed-plans.ts`
+ * memegang sisi basis datanya DAN memperingatkan bila keduanya menyimpang —
+ * dua sumber yang diam-diam berbeda berarti kuota yang dijanjikan halaman
+ * harga bukan kuota yang benar-benar diberikan.
+ */
+export const SIGNUP_PLAN_KEY = "pro";
+export const SIGNUP_MAX_COMPANIES = 3;
+export const SIGNUP_MAX_USERS = 15;
 
 export function trialEndsAtFrom(now: Date = new Date()): Date {
   return new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);

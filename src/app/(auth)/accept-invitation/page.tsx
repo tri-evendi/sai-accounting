@@ -34,6 +34,7 @@ function AcceptInvitationForm() {
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -88,6 +89,12 @@ function AcceptInvitationForm() {
         setError(data?.error ?? t("invitations.invalidToken"));
         return;
       }
+      /* Tujuan yang dikirim server: buku perusahaan yang mengundangnya. Kalau
+       * tidak ada (perusahaannya hilang di antara dua langkah — mustahil dalam
+       * praktik, tapi jawabannya tetap harus punya bentuk), jatuh ke /login
+       * telanjang seperti sebelumnya. */
+      const data = await res.json().catch(() => null);
+      if (typeof data?.next === "string" && data.next.startsWith("/")) setNext(data.next);
       setDone(true);
     } catch {
       setError(t("auth.forgotPassword.failed"));
@@ -96,10 +103,15 @@ function AcceptInvitationForm() {
     }
   }
 
+  /* Sesudah masuk, `resolvePostLoginPath` menghormati `callbackUrl` relatif —
+   * jadi orang yang baru bergabung mendarat LANGSUNG di buku perusahaan yang
+   * mengundangnya, bukan di panel akun yang bukan urusannya. */
+  const loginHref = next ? `/login?callbackUrl=${encodeURIComponent(next)}` : "/login";
+
   const footer = (
     <p className="text-center text-xs text-muted-foreground">
       <Link
-        href="/login"
+        href={loginHref}
         className="font-medium text-primary underline-offset-4 hover:underline"
       >
         {t("invitations.goLogin")}

@@ -29,6 +29,7 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { controlDb } from "@/lib/control-db";
 import { runWithCompany } from "@/lib/company-context";
+import { tenantPath } from "@/lib/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -131,16 +132,20 @@ export async function POST(request: Request) {
 
   /* Jejak audit di PT tempat akunnya lahir. Kegagalan menulis jejak tidak
    * membatalkan akun yang SUDAH sah dibuat — dicatat ke log server saja. */
+  /* Dibaca DI LUAR blok jejak audit: jalurnya ikut ke dalam jawaban, dan
+   * kegagalan menulis jejak tidak boleh menghilangkan tujuan yang sudah pasti
+   * diketahui. */
+  const company = await controlDb.company.findUnique({
+    where: { id: result.companyId },
+    select: {
+      id: true,
+      slug: true,
+      databaseName: true,
+      tenant: { select: { id: true, slug: true } },
+    },
+  });
+
   try {
-    const company = await controlDb.company.findUnique({
-      where: { id: result.companyId },
-      select: {
-        id: true,
-        slug: true,
-        databaseName: true,
-        tenant: { select: { id: true, slug: true } },
-      },
-    });
     if (company?.tenant) {
       // Peristiwa TENANT (issue #142): anggota baru bergabung ke tenant.
       await writeTenantAuditLog({
@@ -173,5 +178,25 @@ export async function POST(request: Request) {
     console.error("[accept-invitation] gagal menulis jejak audit:", error);
   }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  /*
+   * ══ KE MANA ORANG INI SEHARUSNYA PERGI ═══════════════════════════════════
+   * Ia baru saja menerima undangan ke SATU perusahaan. Sampai sekarang layar
+   * "berhasil" hanya menautkannya ke /login telanjang — dan sesudah masuk ia
+   * mendarat di /platform: panel AKUN, berisi langganan dan daftar PT yang
+   * bukan urusannya, untuk akun yang bukan miliknya. Tiga layar sesudah
+   * menerima undangan, dan yang di tengah tidak menjawab satu pun pertanyaan
+   * yang ia bawa.
+   *
+   * Tujuannya sudah pasti diketahui di sini, jadi ia diikutkan sebagai
+   * `callbackUrl`: sesudah masuk, `resolvePostLoginPath` menghormati jalur
+   * relatif dan mengantarnya LANGSUNG ke buku perusahaan yang mengundangnya.
+   * Bukan pintasan otentikasi — ia tetap harus masuk; yang dihapus hanyalah
+   * persinggahan yang tidak ada gunanya baginya.
+   */
+  const next =
+    company?.tenant && company.slug
+      ? tenantPath(company.tenant.slug, company.slug, "/dashboard")
+      : null;
+
+  return NextResponse.json({ ok: true, next }, { status: 201 });
 }

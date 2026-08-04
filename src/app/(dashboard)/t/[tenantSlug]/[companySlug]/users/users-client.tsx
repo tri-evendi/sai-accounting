@@ -22,6 +22,7 @@ import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
 import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
+import { QuotaMeter } from "@/components/ui/quota-meter";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface User {
@@ -49,11 +50,15 @@ interface PendingInvitation {
 export function UsersClient({
   roles,
   canInvite,
+  seats,
 }: {
   roles: { key: string; label: string }[];
   /** Kewenangan TENANT `tenant.member.invite` (issue #139) — tampilan saja;
    *  API-nya menegakkan sendiri lewat `requireTenantApiPermission`. */
   canInvite: boolean;
+  /** Kursi terpakai vs kuota paket. `null` bila pemakainya tidak berhak
+   *  mengundang — angkanya memang tidak dibaca untuknya. */
+  seats: { currentUsers: number; pendingInvitations: number; maxUsers: number } | null;
 }) {
   const t = useT();
   const [users, setUsers] = useState<User[]>([]);
@@ -233,6 +238,54 @@ export function UsersClient({
       )}
 
       {/* Undangan yang masih menunggu (issue #139). */}
+      {/* ── KURSI: terlihat SEBELUM formulir, bukan sesudah penolakan ──────
+       *
+       * Kuota dihitung dari pengguna AKTIF + UNDANGAN YANG MASIH MENUNGGU,
+       * dan bagian kedua itulah yang paling sering mengejutkan: kursi sudah
+       * terpakai sebelum orangnya pernah membuat akun. Sebelum meter ini,
+       * satu-satunya kabarnya adalah 422 sesudah seseorang mengetik alamat
+       * rekannya.
+       *
+       * Meternya sama dengan yang dipakai panel akun — satu rasio terhadap
+       * batas, dengan keadaan sebagai KATA, bukan rona saja. */}
+      {canInvite && seats && (
+        <div className="grid gap-4 sm:max-w-sm">
+          <QuotaMeter
+            label={t("users.seatsLabel")}
+            used={seats.currentUsers + seats.pendingInvitations}
+            max={seats.maxUsers}
+            valueLabel={t("tenantSettings.usageOf", {
+              used: seats.currentUsers + seats.pendingInvitations,
+              max: seats.maxUsers,
+            })}
+            stateLabel={
+              seats.currentUsers + seats.pendingInvitations >= seats.maxUsers
+                ? t("users.seatsFull")
+                : t("tenantSettings.quotaNearlyFull")
+            }
+          />
+          {seats.pendingInvitations > 0 && (
+            /* Kursi yang ditahan undangan menunggu — disebut angkanya, sebab
+             * "cabut undangan" hanya masuk akal kalau pembacanya tahu ada
+             * undangan yang menahan kursi. */
+            <p className="text-sm text-muted-foreground">
+              {t("users.seatsPending", { count: seats.pendingInvitations })}
+            </p>
+          )}
+          {seats.currentUsers + seats.pendingInvitations >= seats.maxUsers && (
+            <p className="text-sm leading-relaxed text-warning-strong">
+              {t("users.seatsFullHint")}{" "}
+              <a
+                href="/platform/billing/plans"
+                className="font-medium underline underline-offset-4"
+              >
+                {t("platform.plansViewLabel")}
+              </a>
+            </p>
+          )}
+        </div>
+      )}
+
       {canInvite && invitations.length > 0 && (
         <Card className="mb-6">
           <CardHeader><CardTitle>{t("users.pendingInvites")}</CardTitle></CardHeader>

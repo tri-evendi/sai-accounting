@@ -101,14 +101,34 @@ export async function POST(request: Request) {
       maxCompanies: true,
       maxUsers: true,
       isActive: true,
+      isPublic: true,
+      contactOnly: true,
     },
   });
   /* Paket yang sudah ditarik dari penjualan tidak bisa DITUJU — walau pelanggan
-   * lain masih berjalan di atasnya. */
-  if (!target || !target.isActive) {
+   * lain masih berjalan di atasnya. `isPublic` ikut: paket `internal` milik
+   * penyedia wajib AKTIF (putaran adopsi yatim #152 membutuhkannya) dan karena
+   * itu, tanpa syarat ini, bisa dituju siapa pun yang menebak kuncinya —
+   * "Rp 0, 10 PT, 50 pengguna". */
+  if (!target || !target.isActive || !target.isPublic) {
     return NextResponse.json(
       { error: t("platform.planChangeUnknownPlan"), code: "plan_not_found" },
       { status: 404 }
+    );
+  }
+
+  /* ── Paket berharga RUNDINGAN tidak bisa lewat swalayan ──────────────────
+   * Harganya tidak dipajang justru karena belum ada; yang tersimpan di kolom
+   * harga adalah 0. Membiarkannya masuk ke `quotePlanChange` berarti prorata
+   * dihitung dari nol: pelanggan menekan satu tombol dan naik ke paket
+   * Enterprise TANPA membayar apa pun, dengan kuotanya ikut naik seketika.
+   * Penjaga ini karena itu berdiri SEBELUM kutipan dihitung, bukan sesudahnya,
+   * dan kartu "hubungi kami" di halaman harga hanyalah cerminan tampilannya —
+   * bukan yang menegakkannya. */
+  if (target.contactOnly) {
+    return NextResponse.json(
+      { error: t("platform.planChangeContactOnly"), code: "contact_only" },
+      { status: 409 }
     );
   }
 

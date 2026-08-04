@@ -30,12 +30,26 @@
  *     ditegakkan di `lib/auth.ts`; halaman ini justru yang menampilkan
  *     pilihannya, dan /select-company tetap hidup untuk BERGANTI perusahaan.
  */
+import { hasAccountBusiness } from "@/lib/tenant-authz";
 import { legacyTenantScopedPath, tenantPath } from "@/lib/tenant-routes";
 
 export interface PostLoginCompany {
   companyId: number | null | undefined;
   tenantSlug?: string | null;
   companySlug?: string | null;
+  /**
+   * Peran TENANT pemakainya (owner/admin/member). Menentukan apakah `/platform`
+   * punya isi baginya — lihat blok "STAF MENDARAT DI BUKU" di bawah.
+   *
+   * HANYA peran yang benar-benar DIKETAHUI (string) boleh mengubah pendaratan.
+   * `undefined` (sesi yang terbit sebelum medan ini ada) DAN `null` ("diperiksa,
+   * dan orang ini bukan anggota tenant mana pun" — keadaan yang seharusnya
+   * mustahil sesudah #134) sama-sama mempertahankan perilaku lama: mendarat di
+   * `/platform`. Deny-by-default, sejalan dengan matriks izin: menebak ke arah
+   * sebaliknya akan melempar seorang owner ke buku salah satu PT-nya pada hari
+   * kita paling tidak yakin.
+   */
+  tenantRole?: string | null;
 }
 
 /** Pendaratan pasca-masuk. Ditulis sekali; jangan disalin sebagai literal. */
@@ -89,5 +103,29 @@ export function resolvePostLoginPath(
     }
     return relative;
   }
+
+  /*
+   * ══ STAF MENDARAT DI BUKU, BUKAN DI PANEL AKUN ═══════════════════════════
+   * Issue #172 menjadikan `/platform` tujuan bawaan SETIAP anggota, dan untuk
+   * pemilik akun itu benar: langganan, kuota, dan daftar PT memang pertanyaan
+   * pertamanya. Untuk STAF yang diundang ke satu PT, halaman itu tidak
+   * menjawab apa pun — ia tidak mengurus langganan, tidak melihat tagihan,
+   * tidak mengundang siapa pun. Yang ia bawa adalah pekerjaan pembukuan, dan
+   * memaksanya melewati panel akun berarti satu layar tambahan SETIAP KALI
+   * masuk, seumur pemakaiannya.
+   *
+   * Yang memutuskan bukan nama peran melainkan MATRIKS: punya urusan akun
+   * (langganan, tim, ekspor, membuat PT) → panel; tidak punya → buku. Menulis
+   * `role === "member"` di sini akan menjadi salinan kedua dari matriks yang
+   * akan menyimpang pada peran berikutnya.
+   *
+   * Tiga syarat, semuanya wajib: perusahaannya sudah pasti (satu PT, jadi tidak
+   * ada yang perlu dipilih), jalurnya bisa disusun (slug lengkap), dan
+   * perannya DIKETAHUI. Ketidaktahuan mempertahankan perilaku lama.
+   */
+  if (scoped && typeof active.tenantRole === "string" && !hasAccountBusiness(active.tenantRole)) {
+    return tenantPath(tenantSlug, companySlug, "/dashboard");
+  }
+
   return POST_LOGIN_PATH;
 }

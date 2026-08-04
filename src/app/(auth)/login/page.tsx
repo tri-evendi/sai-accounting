@@ -69,6 +69,7 @@ function LoginForm() {
           companyId: session?.user?.companyId,
           tenantSlug: session?.user?.tenantSlug,
           companySlug: session?.user?.companySlug,
+          tenantRole: session?.user?.tenantRole,
         },
         callbackUrl
       );
@@ -102,6 +103,7 @@ function LoginForm() {
           companyId: session?.user?.companyId,
           tenantSlug: session?.user?.tenantSlug,
           companySlug: session?.user?.companySlug,
+          tenantRole: session?.user?.tenantRole,
         },
         callbackUrl
       )

@@ -221,6 +221,36 @@ export function platformInvoiceAmounts(
   };
 }
 
+/**
+ * Sisa hari uji coba + apakah sudah MENDESAK — murni, supaya bisa diuji tanpa
+ * basis data dan dipakai di mana pun keadaan langganan ditampilkan.
+ *
+ * ══ KENAPA INI ADA ═════════════════════════════════════════════════════════
+ * Sejak uji coba menjadi uji coba paket PRO, hari terakhirnya tidak lagi
+ * berakhir dengan tagihan Rp 0 melainkan dengan TAGIHAN SUNGGUHAN. Sampai
+ * sekarang satu-satunya petunjuknya adalah satu baris abu-abu berisi tanggal
+ * ("Uji coba berakhir: 18 Agustus 2026") — kalimat yang benar dan tidak
+ * memberi tahu apa pun tentang apa yang akan terjadi. Orang tidak menghitung
+ * mundur tanggal; mereka membaca "berapa hari lagi".
+ *
+ * Pembulatan KE ATAS: sisa 0,4 hari tetap "1 hari lagi", bukan "0". Menyebut
+ * nol sebelum harinya benar-benar lewat membuat pembacanya mengira uji cobanya
+ * sudah habis padahal masih bisa dipakai — dan sebaliknya, `days <= 0` di sini
+ * berarti memang sudah lewat.
+ */
+export function trialCountdown(
+  trialEndsAt: Date | null | undefined,
+  now: Date = new Date()
+): { days: number; urgent: boolean } | null {
+  if (!trialEndsAt) return null;
+  const ms = trialEndsAt.getTime() - now.getTime();
+  const days = Math.ceil(ms / DAY_MS);
+  /* Tiga hari adalah ambang yang bisa ditindaklanjuti: cukup untuk membaca
+   * halaman paket, bertanya ke atasan, dan memutuskan — dan belum cukup dekat
+   * untuk membuat spanduk mendesak menjadi hiasan yang selalu menyala. */
+  return { days, urgent: days <= 3 };
+}
+
 /** Nomor tagihan DETERMINISTIK — kunci idempotensi penagihan: nomor unik di
  *  `platform_invoices`, jadi penjadwal yang berjalan dua kali menabrak
  *  constraint, bukan menagih dua kali. */

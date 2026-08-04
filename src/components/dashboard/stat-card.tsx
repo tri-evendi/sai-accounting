@@ -7,9 +7,15 @@ interface StatCardProps {
   value: number | string;
   href?: string;
   valueClassName?: string;
+  /**
+   * Baris kedua di bawah angkanya — konteks yang membuat angka itu bisa
+   * ditindaklanjuti ("jatuh tempo 31 Agu 2026", "2 tagihan"). Sengaja teks,
+   * bukan `ReactNode`: kartu ringkasan bukan tempat menaruh kendali.
+   */
+  hint?: string;
 }
 
-export function StatCard({ title, value, href, valueClassName }: StatCardProps) {
+export function StatCard({ title, value, href, valueClassName, hint }: StatCardProps) {
   const content = (
     <Card className={cn(href && "hover:shadow-md transition-shadow cursor-pointer h-full")}>
       <CardHeader className="pb-1">
@@ -19,6 +25,7 @@ export function StatCard({ title, value, href, valueClassName }: StatCardProps) 
         <p className={cn("text-3xl font-bold text-foreground tabular-nums", valueClassName)}>
           {value}
         </p>
+        {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
       </CardContent>
     </Card>
   );

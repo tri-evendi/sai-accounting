@@ -120,17 +120,30 @@ export default async function PlatformPlansPage() {
                       {current && <Badge variant="success">{t("platform.plansCurrent")}</Badge>}
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <p className="text-2xl font-bold tabular-nums text-foreground">
-                        {formatMoney(plan.priceMonthly, plan.currency)}
-                        <span className="text-sm font-normal text-muted-foreground">
-                          {t("platform.plansPerMonth")}
-                        </span>
-                      </p>
-                      {plan.priceYearly !== null && (
-                        <p className="text-sm tabular-nums text-muted-foreground">
-                          {formatMoney(plan.priceYearly, plan.currency)}
-                          {t("platform.plansPerYear")}
+                      {/* Paket berharga RUNDINGAN tidak memajang nominal: kolom
+                          harganya berisi 0, dan "Rp 0" di sini terbaca sebagai
+                          gratis. Tombol swalayannya pun tidak dirender — tapi
+                          yang MENOLAK adalah route `plan-change`, bukan cabang
+                          ini (tombol yang hilang bukan penjaga). */}
+                      {plan.contactOnly ? (
+                        <p className="text-2xl font-bold text-foreground">
+                          {t("landing.pricingContactPrice")}
                         </p>
+                      ) : (
+                        <>
+                          <p className="text-2xl font-bold tabular-nums text-foreground">
+                            {formatMoney(plan.priceMonthly, plan.currency)}
+                            <span className="text-sm font-normal text-muted-foreground">
+                              {t("platform.plansPerMonth")}
+                            </span>
+                          </p>
+                          {plan.priceYearly !== null && (
+                            <p className="text-sm tabular-nums text-muted-foreground">
+                              {formatMoney(plan.priceYearly, plan.currency)}
+                              {t("platform.plansPerYear")}
+                            </p>
+                          )}
+                        </>
                       )}
                       {plan.description && (
                         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -159,7 +172,7 @@ export default async function PlatformPlansPage() {
                       </ul>
                       {/* Paket berjalan tidak punya tombol menuju dirinya
                           sendiri; lencana di kepala kartu yang menyatakannya. */}
-                      {!current && subscription && period && (
+                      {!current && !plan.contactOnly && subscription && period && (
                         <PlanAction
                           planKey={plan.key}
                           planName={plan.name}

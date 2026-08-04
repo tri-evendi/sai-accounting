@@ -21,6 +21,7 @@ import {
   isOperatorPath,
   normalizeHost,
   operatorCookieName,
+  trustedProxyHops,
 } from "@/lib/operator/plane";
 
 const OPS = "ops.example.com";
@@ -154,18 +155,102 @@ describe("ipAllowed — gagal-tertutup", () => {
   });
 });
 
+/**
+ * `clientIpFrom` — dihitung dari KANAN (issue #162).
+ *
+ * Yang diuji di sini bukan "fungsinya mengambil entri yang mana", melainkan
+ * ASUMSI TENTANG PROXY yang selama ini hanya hidup sebagai komentar: entri
+ * yang dipilih harus yang benar-benar DITULIS mesin milik kita, dan tidak
+ * boleh ada teks kiriman klien yang bisa menggesernya.
+ *
+ * Sebelum #162 fungsi ini mengambil entri pertama. Itu aman hanya selama
+ * Traefik menimpa `x-forwarded-for` — yaitu selama `trustedIPs` kosong.
+ * Mengisi `trustedIPs` (yang dilakukan orang saat menaruh CDN di depan)
+ * membuat Traefik mempertahankan header kiriman klien, dan sejak detik itu
+ * entri pertama adalah teks pilihan penyerang. Perubahannya terjadi di berkas
+ * infrastruktur, jadi tidak ada tes lama yang akan berubah warna — itulah
+ * kenapa asumsinya ditulis ulang sebagai tes di bawah ini.
+ */
 describe("clientIpFrom", () => {
   const headersOf = (map: Record<string, string>) => ({
     get: (name: string) => map[name.toLowerCase()] ?? null,
   });
+  /** Tanpa CDN: satu Traefik di depan aplikasi. */
+  const oneProxy = {};
+  /** Dengan CDN/load-balancer kedua di depan Traefik. */
+  const twoProxies = { OPERATOR_TRUSTED_PROXY_HOPS: "2" };
 
-  it("entri PERTAMA x-forwarded-for", () => {
-    expect(clientIpFrom(headersOf({ "x-forwarded-for": "1.2.3.4, 10.0.0.1" }))).toBe("1.2.3.4");
+  it("mengambil entri yang DITULIS proxy — yang paling kanan, bukan yang pertama", () => {
+    // Traefik dengan `trustedIPs` terisi mempertahankan kiriman klien dan
+    // menambahkan alamat yang IA lihat di ujung kanan.
+    expect(clientIpFrom(headersOf({ "x-forwarded-for": "1.2.3.4, 10.0.0.1" }), oneProxy)).toBe(
+      "10.0.0.1"
+    );
   });
 
-  it("jatuh ke x-real-ip, lalu null", () => {
-    expect(clientIpFrom(headersOf({ "x-real-ip": "9.9.9.9" }))).toBe("9.9.9.9");
-    expect(clientIpFrom(headersOf({}))).toBeNull();
+  it("pemalsuan tidak menggeser pilihan, sebanyak apa pun entri yang disisipkan", () => {
+    // Inilah serangan yang dijelaskan #162: klien mengetik IP yang diizinkan
+    // di depan, berharap dibaca sebagai miliknya.
+    const spoofed = headersOf({
+      "x-forwarded-for": "203.0.113.9, 203.0.113.9, 203.0.113.9, 198.51.100.7",
+    });
+    expect(clientIpFrom(spoofed, oneProxy)).toBe("198.51.100.7");
+  });
+
+  it("satu entri (Traefik menimpa, keadaan hari ini) tetap terbaca apa adanya", () => {
+    // Tanpa `trustedIPs`, Traefik MENIMPA header: tepat satu entri, dan
+    // perilakunya identik dengan sebelum #162 — perbaikan ini tidak menggeser
+    // apa pun di pemasangan yang sedang berjalan.
+    expect(clientIpFrom(headersOf({ "x-forwarded-for": "1.2.3.4" }), oneProxy)).toBe("1.2.3.4");
+  });
+
+  it("dua proxy: yang dipilih adalah alamat klien, bukan alamat CDN", () => {
+    // client → CDN → Traefik → app. Traefik menambahkan alamat CDN; alamat
+    // klien ditulis CDN satu entri di kirinya.
+    const headers = headersOf({ "x-forwarded-for": "198.51.100.7, 192.0.2.50" });
+    expect(clientIpFrom(headers, twoProxies)).toBe("198.51.100.7");
+    // Salah konfigurasi ke arah sebaliknya akan memberi alamat CDN — dan
+    // seluruh dunia yang lewat CDN itu akan tampak sebagai satu IP.
+    expect(clientIpFrom(headers, oneProxy)).toBe("192.0.2.50");
+  });
+
+  it("rantai lebih pendek dari yang dikonfigurasi → null (gagal-tertutup)", () => {
+    // Menembus langsung ke Traefik, melewati CDN yang seharusnya di depan.
+    // Yang benar bukan menebak entri yang tersisa, melainkan menolak.
+    expect(clientIpFrom(headersOf({ "x-forwarded-for": "198.51.100.7" }), twoProxies)).toBeNull();
+  });
+
+  it("x-real-ip hanya saat tidak ada x-forwarded-for DAN hanya satu proxy", () => {
+    expect(clientIpFrom(headersOf({ "x-real-ip": "9.9.9.9" }), oneProxy)).toBe("9.9.9.9");
+    // Dengan proxy berlapis, `x-real-ip` berisi alamat proxy SEBELUMNYA —
+    // membandingkannya dengan daftar IP operator berarti membandingkan IP CDN.
+    expect(clientIpFrom(headersOf({ "x-real-ip": "9.9.9.9" }), twoProxies)).toBeNull();
+    expect(clientIpFrom(headersOf({}), oneProxy)).toBeNull();
+  });
+
+  it("x-forwarded-for menang atas x-real-ip", () => {
+    const headers = headersOf({ "x-forwarded-for": "1.2.3.4, 10.0.0.1", "x-real-ip": "9.9.9.9" });
+    expect(clientIpFrom(headers, oneProxy)).toBe("10.0.0.1");
+  });
+});
+
+describe("trustedProxyHops", () => {
+  it("bawaan 1 — satu Traefik, keadaan hari ini", () => {
+    expect(trustedProxyHops({})).toBe(1);
+    expect(trustedProxyHops({ OPERATOR_TRUSTED_PROXY_HOPS: "  " })).toBe(1);
+  });
+
+  it("angka yang sah dipakai apa adanya", () => {
+    expect(trustedProxyHops({ OPERATOR_TRUSTED_PROXY_HOPS: "2" })).toBe(2);
+    expect(trustedProxyHops({ OPERATOR_TRUSTED_PROXY_HOPS: " 3 " })).toBe(3);
+  });
+
+  it("nilai tak masuk akal jatuh ke bawaan, BUKAN ke 0", () => {
+    // hops 0 berarti membaca entri di kanan yang paling ujung… yang ditulis
+    // klien. Salah ketik di .env tidak boleh membuka lubang #162 kembali.
+    for (const bad of ["0", "-1", "abc", "1.5", ""]) {
+      expect(trustedProxyHops({ OPERATOR_TRUSTED_PROXY_HOPS: bad })).toBe(1);
+    }
   });
 });
 

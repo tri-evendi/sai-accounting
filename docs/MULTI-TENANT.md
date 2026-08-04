@@ -407,6 +407,54 @@ tetap wajib menyimpan pembukuannya (§10) dan tetap harus bisa mengunduhnya.
 Mengunci buku besar seseorang karena tagihan tertunggak berarti menghalangi
 kewajiban hukumnya.
 
+### 7.4-IP Daftar IP operator dan proxy di depannya (issue #154/#162)
+
+`OPERATOR_IP_ALLOWLIST` adalah lapisan **terluar** konsol operator — di
+belakangnya masih ada hostname operator sendiri, bcrypt, dan TOTP wajib. Ia
+gagal-tertutup: kosong/tidak diset menolak **semua orang**; `*` (khusus
+pengembangan lokal) mengizinkan semua.
+
+Alamat klien yang dibandingkan dengan daftar itu dibaca dari
+`x-forwarded-for`, dan **header itu bertambah dari kiri ke kanan**: setiap
+proxy menambahkan alamat lawan bicaranya di ujung kanan. Karena itu entri
+paling kiri bukan "IP klien" melainkan *apa pun yang mula-mula ada di header*
+— termasuk yang diketik klien sendiri.
+
+Aplikasi mengambil **entri ke-N dari kanan**, dengan
+N = `OPERATOR_TRUSTED_PROXY_HOPS` (bawaan **1**):
+
+| Susunan | `OPERATOR_TRUSTED_PROXY_HOPS` | Yang dibaca |
+| --- | --- | --- |
+| klien → Traefik → app (sekarang) | `1` (bawaan) | entri paling kanan — satu-satunya yang ditulis Traefik |
+| klien → CDN → Traefik → app | `2` | entri kedua dari kanan — alamat klien menurut CDN |
+
+**Ini ketergantungan pada konfigurasi Traefik, dan ia sunyi.** Selama
+`forwardedHeaders.trustedIPs` kosong, Traefik **menimpa** `x-forwarded-for`
+kiriman klien, jadi hanya ada satu entri. Begitu `trustedIPs` diisi — persis
+yang dilakukan orang saat menaruh Cloudflare atau load-balancer kedua di depan
+— Traefik mulai **mempertahankan** header kiriman klien. Sebelum #162 aplikasi
+membaca entri pertama, dan sejak detik itu daftar IP operator bisa dilewati
+hanya dengan mengirim `X-Forwarded-For: <ip-yang-diizinkan>`. Perubahannya
+terjadi di berkas infrastruktur, jauh dari kode ini, dan **tidak ada tes yang
+akan berubah warna**.
+
+Karena itu yang diperbaiki bukan konfigurasinya melainkan cara membacanya:
+menghitung dari kanan membuat sampah yang disisipkan klien di depan tidak
+pernah terbaca, berapa pun banyaknya. Asumsinya kini hidup sebagai tes
+(`tests/operator-plane.test.ts`), bukan komentar, dan peringatannya juga
+ditulis di `docker-compose.yml` tepat di sebelah label Traefik — tempat orang
+yang menambahkan `trustedIPs` benar-benar bekerja.
+
+Dua sifat yang menyertainya:
+
+- **Rantai lebih pendek dari `hops` → ditolak, bukan ditebak.** Itu berarti
+  permintaan tidak melewati jalur yang kita kira (mis. menembus langsung ke
+  Traefik, melewati CDN).
+- **`x-real-ip` hanya dipakai bila `x-forwarded-for` tidak ada sama sekali,
+  dan hanya saat `hops` = 1.** Dengan proxy berlapis, `x-real-ip` berisi
+  alamat proxy sebelumnya — memakainya berarti membandingkan daftar IP
+  operator dengan IP milik CDN.
+
 ### 7.4a Tindakan TULIS konsol operator (issue #155)
 
 Konsol operator (#154) mula-mula hanya membaca — dan itu bisa dirilis tanpa

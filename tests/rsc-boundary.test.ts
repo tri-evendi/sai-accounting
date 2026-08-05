@@ -98,16 +98,28 @@ const SRC = join(__dirname, "..", "src");
  * per halaman, klik tengah, dan prefetch tidak ikut hilang — lihat komentar
  * kepala `components/ui/pagination.tsx`.
  *
- * 153 sejak #188 (2026-08-05): `textarea.tsx`. Tujuh primitif isian ditulis
- * ulang di atas AntD, dan ENAM di antaranya sudah modul client sebelum issue
- * ini (`input`, `select`, `password-input`, `searchable-select`,
- * `server-searchable-select`, `command`) — jadi migrasi permukaan isian
- * terbesar aplikasi ini, 69 + 39 berkas pemanggil, menaikkan angka ini SATU.
- * `textarea.tsx` satu-satunya yang menyeberang karena ia dulu hanya
- * `<textarea>` + kelas Tailwind, tanpa hook. Ketujuh pemanggilnya sudah client,
- * jadi tidak ada halaman yang ikut tertarik.
+ * 155 sejak #187 + #188 (2026-08-05), dua issue yang mendarat bersamaan.
+ *
+ * #188 menaikkan SATU: `textarea.tsx`. Tujuh primitif isian ditulis ulang di
+ * atas AntD, dan enam di antaranya sudah modul client sebelumnya (`input`,
+ * `select`, `password-input`, `searchable-select`, `server-searchable-select`,
+ * `command`) — jadi permukaan isian terbesar aplikasi ini, 69 + 39 berkas
+ * pemanggil, hanya menambah satu. `textarea.tsx` menyeberang karena ia dulu
+ * `<textarea>` + kelas Tailwind, tanpa hook.
+ *
+ * #187 menaikkan TIGA dan menurunkan SATU: `button.tsx`, `badge.tsx`, dan
+ * `progress.tsx` kini merender komponen AntD; `label.tsx` justru turun —
+ * melepas Radix membuatnya kembali `<label>` biasa, modul netral yang boleh
+ * dirender di server.
+ *
+ * Perhatikan bentuk kenaikannya, karena itulah taruhan seluruh migrasi ini:
+ * `button.tsx` dipakai 128 berkas dan `badge.tsx` 52, tetapi tidak SATU pun di
+ * antaranya ikut menyeberang. Batasnya berhenti di primitif; halaman yang
+ * membaca buku besar lewat Prisma tetap server component dan merender tombol,
+ * label status, serta isiannya sebagai DAUN. Angka server component tidak
+ * bergerak: 152 + 1 (#188) + 3 − 1 (#187) = 155.
  */
-const AMBANG_KLIEN = 153;
+const AMBANG_KLIEN = 155;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -249,6 +261,8 @@ const KLIEN_TERSAHKAN = [
   "components/tenant/platform-shell.tsx",
   "components/ui/alert-dialog.tsx",
   "components/ui/app-link.tsx",
+  "components/ui/badge.tsx",
+  "components/ui/button.tsx",
   "components/ui/checkbox.tsx",
   "components/ui/collapsible.tsx",
   "components/ui/command.tsx",
@@ -258,7 +272,6 @@ const KLIEN_TERSAHKAN = [
   "components/ui/disclosure-section.tsx",
   "components/ui/form.tsx",
   "components/ui/input.tsx",
-  "components/ui/label.tsx",
   "components/ui/learn-more.tsx",
   "components/ui/loading.tsx",
   "components/ui/locale-toggle.tsx",
@@ -267,6 +280,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/pagination.tsx",
   "components/ui/password-input.tsx",
   "components/ui/popover.tsx",
+  "components/ui/progress.tsx",
   "components/ui/searchable-select.tsx",
   "components/ui/select.tsx",
   "components/ui/server-searchable-select.tsx",

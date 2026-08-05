@@ -1,43 +1,50 @@
 "use client";
 
 /**
- * Checkbox (issue #73) — primitif shadcn/ui di atas Radix, token semantik.
+ * Checkbox — primitif di atas Ant Design `Checkbox` (issue #187, fase B1;
+ * sebelumnya Radix, yang dipakai sejak issue #73 untuk matriks Hak Akses).
  *
- * Dibuat untuk sel matriks Hak Akses (/permissions), tetapi generik: state
- * checked dikontrol pemanggil (`checked` + `onCheckedChange`). Dari Radix:
- * peran `checkbox` + `aria-checked` yang benar, toggle lewat Space, dan
- * dukungan label eksternal via `aria-label`/`aria-labelledby`. Fokus memakai
- * `focus-visible` (ring hanya saat navigasi keyboard), tinggi target sentuh
- * dicapai pemanggil lewat padding sel/label di sekitarnya.
+ * ── Satu-satunya penerjemahan yang dibutuhkan ─────────────────────────────
+ * API terkontrol Radix adalah `checked` + `onCheckedChange(nilai)`; API AntD
+ * adalah `checked` + `onChange(event)`. 16 berkas memakai bentuk Radix, dan
+ * mengonversinya adalah pekerjaan fase C — jadi nama lama dipertahankan di
+ * sini dan diterjemahkan sekali: `onChange(e) -> onCheckedChange(e.target.checked)`.
+ *
+ * Perhatikan bahwa `e.target` AntD BUKAN elemen DOM melainkan objek buatan
+ * (`CheckboxChangeEvent`), sehingga `e.target.checked` selalu boolean. Itu
+ * kebetulan menyelesaikan satu utang kecil dari Radix: di sana nilainya bisa
+ * `"indeterminate"`, sehingga ke-16 pemanggil menulis `v === true`. Perbandingan
+ * itu tetap benar terhadap boolean, jadi tak satu pun perlu disentuh sekarang.
+ *
+ * ── Target sentuh ─────────────────────────────────────────────────────────
+ * Kotaknya sendiri `controlInteractiveSize` = `controlHeight / 2` = 20px,
+ * ukuran yang sama persis dengan `size-5` sebelumnya. Sama seperti dulu,
+ * daerah tekan yang layak jempol dicapai pemanggil lewat `<label>` yang
+ * membungkusnya — bukan dengan membesarkan kotaknya, yang justru membuat
+ * formulir panjang terlihat seperti daftar periksa.
  */
 
-import * as React from "react";
-import { Checkbox as CheckboxPrimitive } from "radix-ui";
-import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Checkbox as AntdCheckbox } from "antd";
+import type { CheckboxProps as AntdCheckboxProps } from "antd";
 
-function Checkbox({
-  className,
-  ...props
-}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+type CheckboxProps = Omit<AntdCheckboxProps, "onChange"> &
+  React.AriaAttributes & {
+    /** Nama lama (Radix). Menerima boolean; `"indeterminate"` tidak dipakai. */
+    onCheckedChange?: (checked: boolean) => void;
+  };
+
+function Checkbox({ onCheckedChange, ...props }: CheckboxProps) {
   return (
-    <CheckboxPrimitive.Root
-      data-slot="checkbox"
-      className={cn(
-        "peer size-5 shrink-0 cursor-pointer rounded border border-border bg-card shadow-sm",
-        "transition-colors duration-150 motion-reduce:transition-none",
-        "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
+    <AntdCheckbox
       {...props}
-    >
-      <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
-        <Check className="size-3.5" aria-hidden="true" />
-      </CheckboxPrimitive.Indicator>
-    </CheckboxPrimitive.Root>
+      onChange={
+        onCheckedChange === undefined
+          ? undefined
+          : (event) => onCheckedChange(event.target.checked)
+      }
+    />
   );
 }
 
 export { Checkbox };
+export type { CheckboxProps };

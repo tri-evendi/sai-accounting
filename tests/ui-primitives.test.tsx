@@ -11,52 +11,19 @@
 
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input, TextInput } from "@/components/ui/input";
 import { NativeSelect, SEARCH_THRESHOLD, Select } from "@/components/ui/select";
 
-describe("Button", () => {
-  it("default-nya primary, setinggi 40px (target sentuh MASTER.md)", () => {
-    const html = renderToStaticMarkup(<Button>Simpan</Button>);
-    expect(html).toContain("bg-primary");
-    expect(html).toContain("h-10");
-    expect(html).toContain("cursor-pointer");
-  });
-
-  it("ring fokus hanya untuk keyboard — tidak ada `focus:` gaya lama", () => {
-    const html = renderToStaticMarkup(<Button>Simpan</Button>);
-    expect(html).toContain("focus-visible:ring-2");
-    // `focus:ring` menyala juga saat diklik mouse; itu yang ditinggalkan.
-    expect(html).not.toMatch(/[^-]focus:ring/);
-  });
-
-  it("alias shadcn menghasilkan kelas identik dengan nama domain", () => {
-    // Kalau keduanya sempat menyimpang, tombol hapus di satu halaman bisa
-    // berbeda warna dari halaman lain tanpa ada yang sadar.
-    expect(renderToStaticMarkup(<Button variant="destructive">x</Button>)).toBe(
-      renderToStaticMarkup(<Button variant="danger">x</Button>)
-    );
-    expect(renderToStaticMarkup(<Button variant="default">x</Button>)).toBe(
-      renderToStaticMarkup(<Button variant="primary">x</Button>)
-    );
-  });
-});
-
-describe("Badge", () => {
-  it("memakai pasangan soft/strong, bukan pola /10 yang gagal kontras", () => {
-    const html = renderToStaticMarkup(<Badge variant="success">Lunas</Badge>);
-    expect(html).toContain("bg-success-soft");
-    expect(html).toContain("text-success-strong");
-  });
-
-  it("isinya tetap kata — warna tidak pernah jadi satu-satunya penanda", () => {
-    expect(renderToStaticMarkup(<Badge variant="danger">Jatuh Tempo</Badge>)).toContain(
-      "Jatuh Tempo"
-    );
-  });
-});
+/*
+ * `Button` dan `Badge` sudah tidak diuji di sini sejak issue #187. Keduanya
+ * kini merender komponen Ant Design, sehingga janji-janjinya (tinggi 40px,
+ * cincin fokus, pasangan warna yang lolos kontras) tidak lagi berbentuk string
+ * kelas yang bisa dicari di markup — mereka datang dari token dan baru muncul
+ * setelah AntD menghitung gayanya. Penjaganya pindah, tidak hilang:
+ * `tests/ui-controls-antd.test.tsx`, yang mengambil CSS hasil cssinjs dan
+ * menghitung rasio kontrasnya.
+ */
 
 describe("Card", () => {
   it("meneruskan atribut data-*", () => {

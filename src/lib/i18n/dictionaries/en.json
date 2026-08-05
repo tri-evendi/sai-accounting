@@ -392,7 +392,7 @@
       "submitting": "Signing up...",
       "sentTitle": "Check your inbox",
       "sentBody": "If that address can be registered, a verification email has been sent and is valid for 24 hours. Open the link to activate your account. Nothing arrived? Check your spam folder.",
-  "termsRequired": "Please accept the terms and privacy policy to continue.",
+      "termsRequired": "Please accept the terms and privacy policy to continue.",
       "haveAccount": "Already have an account? Sign in",
       "verifyHeading": "Activate Account",
       "verifyDescription": "One more click — so link-scanning robots cannot silently activate (or burn) your account.",
@@ -1674,6 +1674,20 @@
     "colOpeningBalance": "Opening Balance",
     "colChange": "Change",
     "colClosingBalance": "Closing Balance",
+    "dialog": {
+      "presetMonth": "This month",
+      "presetQuarter": "This quarter",
+      "presetYear": "Year to date",
+      "columns": "Columns to show",
+      "columnsHint": "Identity columns are always included. This choice applies to the screen and to the exported file.",
+      "preview": "Preview",
+      "open": "Open",
+      "exportPdf": "Download PDF",
+      "exportExcel": "Download Excel",
+      "pdfDownloaded": "PDF downloaded",
+      "noParams": "This report takes no parameters.",
+      "noExport": "This report has no printable document yet — open its page to see the data."
+    },
     "catalogCategory": {
       "keuangan": {
         "label": "Financial",

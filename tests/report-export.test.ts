@@ -224,3 +224,61 @@ describe("buildReportSheet — trial balance & cash flow", () => {
     expect(heading).toBeDefined();
   });
 });
+
+/**
+ * Pilihan kolom (dialog parameter Pusat Laporan) — satu penentu untuk tiga
+ * permukaan. Yang dijaga di sini: lembar sebar mengikuti pilihan yang sama,
+ * dan pilihan itu tidak pernah bisa MENAMBAH kolom yang laporannya tak punya.
+ */
+describe("kolom Riwayat Stok yang dipilih pengguna", () => {
+  const base = {
+    kind: "stock-movement" as const,
+    period: "Periode 1 Mei 2026 – 31 Mei 2026",
+    rows: [
+      {
+        name: "Kopi Arabika",
+        unit: "kg",
+        opening: 100,
+        movedIn: 50,
+        movedOut: 20,
+        processed: 0,
+        closing: 130,
+      },
+    ],
+    totalOpening: 100,
+    totalIn: 50,
+    totalOut: 20,
+    totalProcessed: 0,
+    totalClosing: 130,
+    hasProcess: false,
+    dormantCount: 0,
+  };
+
+  it("mempersempit lembar sebar ke kolom yang dipilih, identitas tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Saldo Akhir"]);
+    expect(sheet.rows[0]).toHaveLength(2);
+    // Barisnya tetap baris yang sama — nilainya tidak ikut bergeser kolom.
+    expect(sheet.rows[0][0].value).toBe("Kopi Arabika");
+    expect(sheet.rows[0][1].value).toBe(130);
+    // Baris total pun mengikuti susunan kolom yang sama.
+    expect(sheet.rows.at(-1)?.[1].value).toBe(130);
+  });
+
+  it("tidak memunculkan kolom Diolah di periode tanpa mutasi olah, walau dicentang", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["processed", "closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Saldo Akhir"]);
+  });
+
+  it("tanpa pilihan apa pun, seluruh kolom yang berisi tetap tercetak", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.columns.map((c) => c.header)).toEqual([
+      "Barang",
+      "Satuan",
+      "Saldo Awal",
+      "Masuk",
+      "Keluar",
+      "Saldo Akhir",
+    ]);
+  });
+});

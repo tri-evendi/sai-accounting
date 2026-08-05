@@ -61,3 +61,64 @@ export function grossMarginPct(grossProfit: number, totalSales: number): number 
   if (Math.round(totalSales * 100) === 0) return null;
   return (grossProfit / totalSales) * 100;
 }
+
+// ─── Kolom Riwayat Stok ──────────────────────────────────────────────────────
+
+/**
+ * Susunan kolom Riwayat Stok, dalam urutan kanoniknya.
+ *
+ * Ada di modul ini karena alasan yang sama dengan `incomeStatementLayout`:
+ * layar, PDF, dan lembar sebar harus sepakat. Sebelumnya ketiganya menyusun
+ * daftar kolomnya sendiri-sendiri — tiga salinan aturan `hasProcess` yang
+ * kebetulan masih sama.
+ */
+export const STOCK_MOVEMENT_COLUMNS = [
+  "name",
+  "unit",
+  "opening",
+  "movedIn",
+  "movedOut",
+  "processed",
+  "closing",
+] as const;
+
+export type StockMovementColumnId = (typeof STOCK_MOVEMENT_COLUMNS)[number];
+
+/**
+ * Judul kolom untuk DOKUMEN CETAK (PDF & lembar sebar) — tetap bahasa
+ * Indonesia, seperti seluruh isi `lib/pdf`: berkas yang lepas dari layarnya
+ * tidak membawa pilihan bahasa penggunanya. Layar memakai kamus.
+ */
+export const STOCK_MOVEMENT_HEADERS: Record<StockMovementColumnId, string> = {
+  name: "Barang",
+  unit: "Satuan",
+  opening: "Saldo Awal",
+  movedIn: "Masuk",
+  movedOut: "Keluar",
+  processed: "Diolah",
+  closing: "Saldo Akhir",
+};
+
+/**
+ * Kolom yang benar-benar dicetak, setelah dua penyaring yang urutannya penting:
+ *
+ * 1. **Isi laporan** — `Diolah` hanya ada bila periodenya memang punya mutasi
+ *    olah. Ini bukan pilihan pengguna; kolom penuh tanda hubung bukan informasi.
+ * 2. **Pilihan pengguna** (`visibleColumns` dari dialog parameter). Ia hanya
+ *    boleh MENGURANGI: mencentang `Diolah` di periode tanpa mutasi olah tidak
+ *    memunculkan kolom kosong.
+ *
+ * `name` tak pernah bisa dibuang — tabel angka tanpa nama barang tidak bisa
+ * dibaca siapa pun, dan itu bukan laporan yang pengguna maksud.
+ */
+export function stockMovementColumns(report: {
+  hasProcess: boolean;
+  visibleColumns?: string[];
+}): StockMovementColumnId[] {
+  const available = STOCK_MOVEMENT_COLUMNS.filter(
+    (id) => id !== "processed" || report.hasProcess
+  );
+  const asked = report.visibleColumns;
+  if (!asked || asked.length === 0) return [...available];
+  return available.filter((id) => id === "name" || asked.includes(id));
+}

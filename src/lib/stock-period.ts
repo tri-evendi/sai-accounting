@@ -103,8 +103,19 @@ export function resolveStockPeriod(
   toRaw?: string,
   now: Date = new Date()
 ): StockPeriod {
+  // Rentang yang disebutkan TANPA granularitas berarti "custom".
+  //
+  // Penyaring di halaman selalu mengirim `g`, jadi selama ini bawaan "month"
+  // tak pernah terlihat salah. Dialog parameter di Pusat Laporan mengirim
+  // `?from=&to=` seperti setiap laporan lain — dan tanpa aturan ini rentangnya
+  // diabaikan diam-diam: pengguna memilih Mei, layar menampilkan bulan ini, dan
+  // tak ada satu pun tanda bahwa pilihannya dibuang.
   const granularity: StockPeriodGranularity =
-    granularityRaw && isStockPeriodGranularity(granularityRaw) ? granularityRaw : "month";
+    granularityRaw && isStockPeriodGranularity(granularityRaw)
+      ? granularityRaw
+      : fromRaw || toRaw
+        ? "custom"
+        : "month";
   const anchor = parseAnchor(anchorRaw, now);
 
   let from: Date;

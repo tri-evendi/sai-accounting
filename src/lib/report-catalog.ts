@@ -19,6 +19,7 @@
  * and the report pages byte-for-byte.
  */
 import { toISODate } from "@/lib/dashboard-summary";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 export const REPORT_CATEGORIES = [
   "keuangan",
@@ -53,8 +54,48 @@ export const CATEGORY_DESCRIPTIONS: Record<ReportCategory, string> = {
 
 export type ReportStatus = "available" | "coming_soon";
 
-/** Which parameter form a report asks for — drives the filter UI on its page. */
-export type ReportParamKind = "period" | "as_of" | "period_month" | "none";
+/**
+ * Which parameter form a report asks for — drives the filter UI on its page.
+ *
+ * Menyatakan parameter yang BENAR-BENAR dibaca halaman tujuan, bukan bentuk
+ * periode yang secara konsep cocok untuk laporan itu. Bedanya baru terasa
+ * setelah dialog parameter ada: dialog merender kendalinya dari sini, jadi
+ * nilai yang terlalu murah hati menghasilkan isian yang diabaikan diam-diam.
+ * (`period_month` dihapus karena tak ada satu pun halaman yang membacanya —
+ * tambahkan kembali bersama halaman yang benar-benar memakainya.)
+ */
+export type ReportParamKind = "period" | "as_of" | "none";
+
+/**
+ * Saringan tambahan di luar tanggal, dinyatakan per laporan.
+ *
+ * Sengaja daftar tertutup, bukan `string`: dialog parameter merender kendali
+ * dari daftar ini, jadi nama yang salah ketik harus ditolak `tsc` — bukan
+ * muncul sebagai kendali yang diam-diam hilang di layar.
+ */
+export type ReportFilterId = "costCenter";
+
+/**
+ * Satu kolom yang boleh dipilih pengguna sebelum melihat/mengekspor laporan.
+ *
+ * Dinyatakan di katalog, BUKAN di halamannya, karena tiga tempat harus
+ * menyepakati daftar yang sama: layar, PDF, dan lembar sebar. Katalog adalah
+ * satu-satunya tempat yang sudah dibaca ketiganya.
+ *
+ * `fixed` menandai kolom identitas baris (kode akun, nama barang) — ia tetap
+ * dirender di daftar sebagai tercentang-mati, sebab laporan tanpa kolom
+ * identitas hanya berisi angka tanpa keterangan.
+ */
+export interface ReportColumnSpec {
+  /** Id stabil — dipakai di URL (`?cols=`), di layar, dan di berkas ekspor. */
+  id: string;
+  /** Judul kolom bahasa Indonesia; kamus meng-override lewat `reports.column.<id>`. */
+  label: string;
+  /** Kolom identitas baris: selalu ikut, tak bisa dimatikan. */
+  fixed?: boolean;
+  /** Ikut secara bawaan. Tak diisi = ikut. */
+  defaultOn?: boolean;
+}
 
 export interface ReportDefinition {
   id: string;
@@ -67,6 +108,53 @@ export interface ReportDefinition {
   paramKind: ReportParamKind;
   /** Icon name from lucide-react, resolved by the page (keeps this file pure). */
   icon: string;
+  /**
+   * Jenis payload cetak laporan ini — ADA hanya bila laporannya benar-benar
+   * bisa menghasilkan berkas. Tanpa ini dialog parameter tidak menawarkan PDF
+   * maupun Excel, dan itulah yang jujur: 10 dari 16 entri katalog masih
+   * menunjuk halaman modul yang interaktif, bukan laporan yang bisa dicetak.
+   *
+   * Bertipe `StatementPayload["kind"]`, jadi jenis payload yang dihapus atau
+   * diganti nama di `lib/pdf/statement-pdf` menjatuhkan `tsc` di sini alih-alih
+   * menghasilkan tombol unduh yang gagal saat ditekan.
+   */
+  payloadKind?: StatementPayload["kind"];
+  /** Saringan tambahan yang ditawarkan dialog parameter. */
+  filters?: ReportFilterId[];
+  /** Kolom yang boleh dipilih. Tak diisi = susunan kolomnya baku (laporan keuangan). */
+  columns?: ReportColumnSpec[];
+}
+
+export type ReportExportFormat = "pdf" | "xlsx";
+
+/** Laporan yang bisa menghasilkan berkas — yaitu yang punya payload cetak. */
+export function isExportable(
+  report: ReportDefinition
+): report is ReportDefinition & { payloadKind: StatementPayload["kind"] } {
+  return report.payloadKind !== undefined;
+}
+
+export function reportById(id: string): ReportDefinition | undefined {
+  return REPORTS.find((r) => r.id === id);
+}
+
+/**
+ * Kolom yang aktif untuk satu laporan, dari daftar `?cols=` yang mungkin kotor.
+ *
+ * Aturannya: kolom `fixed` selalu ikut; id asing diabaikan; daftar KOSONG atau
+ * tak ada artinya "bawaan", bukan "tidak ada kolom" — sebuah laporan tanpa satu
+ * kolom pun adalah halaman kosong, dan itu tak pernah yang dimaksud pengguna
+ * yang baru saja menekan Pratinjau.
+ */
+export function resolveColumns(report: ReportDefinition, raw: string | undefined): string[] {
+  const specs = report.columns ?? [];
+  if (specs.length === 0) return [];
+  const asked = (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const wanted = new Set(asked.filter((id) => specs.some((c) => c.id === id)));
+  if (wanted.size === 0) {
+    return specs.filter((c) => c.fixed || c.defaultOn !== false).map((c) => c.id);
+  }
+  return specs.filter((c) => c.fixed || wanted.has(c.id)).map((c) => c.id);
 }
 
 export const REPORTS: ReportDefinition[] = [
@@ -80,6 +168,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/trial-balance",
     paramKind: "as_of",
     icon: "BookText",
+    payloadKind: "trial-balance",
   },
   {
     id: "income-statement",
@@ -91,6 +180,10 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/income-statement",
     paramKind: "period",
     icon: "TrendingUp",
+    payloadKind: "income-statement",
+    // Laba/Rugi SAJA yang boleh dipilah per pusat biaya — tanpa akun antar-unit
+    // neraca yang disaring tak lagi seimbang (issue #91).
+    filters: ["costCenter"],
   },
   {
     id: "balance-sheet",
@@ -101,6 +194,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/balance-sheet",
     paramKind: "as_of",
     icon: "Scale",
+    payloadKind: "balance-sheet",
   },
   {
     id: "cash-flow",
@@ -111,6 +205,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/cash-flow",
     paramKind: "period",
     icon: "Waves",
+    payloadKind: "cash-flow",
   },
   {
     id: "budget-realization",
@@ -119,7 +214,12 @@ export const REPORTS: ReportDefinition[] = [
     category: "keuangan",
     status: "available",
     href: "/budget",
-    paramKind: "period_month",
+    // `/budget` memilih periodenya SENDIRI di dalam halaman dan tidak membaca
+    // satu pun parameter alamat. Sebelumnya entri ini menyebut `period_month`
+    // — tak berakibat selama katalog hanya sebuah tautan, tapi dialog parameter
+    // merender kendalinya dari sini: menawarkan bulan yang lalu diabaikan
+    // halaman tujuan adalah kendali yang berbohong.
+    paramKind: "none",
     icon: "Target",
   },
   // ── Penjualan ─────────────────────────────────────────────────────────────
@@ -140,7 +240,8 @@ export const REPORTS: ReportDefinition[] = [
     category: "penjualan",
     status: "available",
     href: "/budget",
-    paramKind: "period_month",
+    // Sama seperti Realisasi vs Anggaran: halamannya tak membaca parameter apa pun.
+    paramKind: "none",
     icon: "TrendingUp",
   },
   {
@@ -197,6 +298,19 @@ export const REPORTS: ReportDefinition[] = [
     href: "/inventory/movement",
     paramKind: "period",
     icon: "PackageOpen",
+    payloadKind: "stock-movement",
+    // Kolom "Diolah" hanya ada bila periodenya memang punya mutasi olah —
+    // centang di sini boleh MENGHILANGKAN kolom, tak pernah memunculkannya
+    // (laporannya sendiri yang memutuskan lewat `hasProcess`).
+    columns: [
+      { id: "name", label: "Barang", fixed: true },
+      { id: "unit", label: "Satuan" },
+      { id: "opening", label: "Saldo Awal" },
+      { id: "movedIn", label: "Masuk" },
+      { id: "movedOut", label: "Keluar" },
+      { id: "processed", label: "Diolah" },
+      { id: "closing", label: "Saldo Akhir" },
+    ],
   },
   {
     id: "opname-history",
@@ -210,6 +324,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/inventory/opname/history",
     paramKind: "period",
     icon: "Package",
+    payloadKind: "opname-history",
   },
   // ── Kas & Bank ────────────────────────────────────────────────────────────
   {
@@ -240,7 +355,9 @@ export const REPORTS: ReportDefinition[] = [
     category: "pajak",
     status: "available",
     href: "/tax/efaktur",
-    paramKind: "period_month",
+    // Halaman e-Faktur menyaring dengan `?from=&to=` — rentang tanggal, bukan
+    // bulan tunggal seperti yang dulu tertulis di sini.
+    paramKind: "period",
     icon: "FileSpreadsheet",
   },
 ];

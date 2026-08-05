@@ -14,7 +14,12 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { incomeStatementLayout } from "@/lib/statement-layout";
+import {
+  incomeStatementLayout,
+  stockMovementColumns,
+  STOCK_MOVEMENT_HEADERS,
+  type StockMovementColumnId,
+} from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
 export interface StatementRow {
@@ -94,6 +99,12 @@ export type StatementPayload =
       totalClosing: number;
       hasProcess: boolean;
       dormantCount: number;
+      /**
+       * Kolom yang dipilih pengguna di dialog parameter (`?cols=`). Tak diisi =
+       * seluruh kolom yang punya isi. Ia hanya boleh mengurangi — lihat
+       * `stockMovementColumns()`.
+       */
+      visibleColumns?: string[];
     }
   /** Riwayat Hitung Ulang Stok (issue #129). Quantities, signed by direction. */
   | {
@@ -343,31 +354,37 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "stock-movement") {
-    // The `Diolah` column appears only when the period actually contains a
-    // `process` movement — same rule as the screen (see lib/stock-movement.ts).
-    const head = ["Barang", "Satuan", "Saldo Awal", "Masuk", "Keluar"];
-    if (payload.hasProcess) head.push("Diolah");
-    head.push("Saldo Akhir");
+    // Susunan kolomnya diputuskan `stockMovementColumns()` — satu aturan yang
+    // dipakai layar, lembar sebar, dan cetakan ini (isi laporan dulu, baru
+    // pilihan pengguna).
+    const cols = stockMovementColumns(payload);
+    const head = cols.map((c) => STOCK_MOVEMENT_HEADERS[c]);
 
-    const row = (r: (typeof payload.rows)[number]) => {
-      const cells = [r.name, r.unit || "-", qty(r.opening), qty(r.movedIn), qty(r.movedOut)];
-      if (payload.hasProcess) cells.push(qty(r.processed));
-      cells.push(qty(r.closing));
-      return cells;
+    const row = (r: (typeof payload.rows)[number]) =>
+      cols.map((c) => (c === "name" ? r.name : c === "unit" ? r.unit || "-" : qty(r[c])));
+    const totals: Record<StockMovementColumnId, string> = {
+      name: "Total",
+      unit: "",
+      opening: qty(payload.totalOpening),
+      movedIn: qty(payload.totalIn),
+      movedOut: qty(payload.totalOut),
+      processed: qty(payload.totalProcessed),
+      closing: qty(payload.totalClosing),
     };
-    const footer = ["Total", "", qty(payload.totalOpening), qty(payload.totalIn), qty(payload.totalOut)];
-    if (payload.hasProcess) footer.push(qty(payload.totalProcessed));
-    footer.push(qty(payload.totalClosing));
+    const footer = cols.map((c) => totals[c]);
 
     // Right-align every numeric column, whichever count this report has.
-    const numericFrom = 2;
     const columnStyles: Record<number, { halign: "right" }> = {};
-    for (let i = numericFrom; i < head.length; i += 1) columnStyles[i] = { halign: "right" };
+    cols.forEach((c, i) => {
+      if (c !== "name" && c !== "unit") columnStyles[i] = { halign: "right" };
+    });
 
     autoTable(doc, {
       startY: y,
       head: [head],
-      body: payload.rows.length ? payload.rows.map(row) : [["", "Tidak ada mutasi pada periode ini.", ...Array(head.length - 2).fill("")]],
+      body: payload.rows.length
+        ? payload.rows.map(row)
+        : [["Tidak ada mutasi pada periode ini.", ...Array(head.length - 1).fill("")]],
       foot: [footer],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },

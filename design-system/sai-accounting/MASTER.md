@@ -132,6 +132,16 @@ Sejak buku besar tiap PT hidup di basis datanya sendiri, satu pertanyaan berdiri
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
 
+## Pusat Laporan: dialog parameter
+
+Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog parameter (`components/reports/report-launch-dialog.tsx`) yang menanyakan periode/saringan/kolom lebih dulu, lalu menawarkan tiga jalan keluar: **Pratinjau** (halaman laporan), **Unduh PDF**, **Unduh Excel**. Alasannya bukan gaya: membuka dulu dengan periode bawaan berarti menghitung dan merender laporan yang salah, lalu menghitungnya lagi setelah penyaring di atas tabel diubah.
+
+- **Kendali dirender dari katalog, bukan ditulis per laporan.** `paramKind`, `filters`, `columns`, dan `payloadKind` di `lib/report-catalog.ts` adalah satu-satunya sumber bagi dialog, halaman, dan berkas ekspornya.
+- **`paramKind` menyatakan parameter yang BENAR-BENAR dibaca halaman tujuan** — bukan bentuk periode yang secara konsep cocok. Kendali yang isian­nya diabaikan diam-diam adalah kendali yang berbohong (tiga entri katalog pernah begitu).
+- **Tombol unduh hanya muncul bila laporannya punya `payloadKind`.** Entri yang menunjuk halaman modul interaktif menawarkan "Buka" saja, dengan kalimat yang mengatakan kenapa.
+- **Pemilihan kolom hanya untuk laporan bertipe daftar.** Susunan Laba/Rugi, Neraca, dan Arus Kas ditentukan standar akuntansi; centang kolom di sana adalah kendali yang tak mengubah apa pun. Kolom identitas baris selalu ikut (`fixed`), dan pilihan pengguna hanya boleh MENGURANGI kolom — tak pernah memunculkan kolom yang laporannya memang tak punya isinya.
+- **Satu penentu kolom untuk tiga permukaan** (`stockMovementColumns` di `lib/statement-layout.ts`): layar, PDF, dan lembar sebar. Pratinjau yang memperlihatkan kolom berbeda dari berkasnya adalah laporan yang tidak dipercaya dua kali.
+
 ---
 
 ## Konvensi Form (issue #53)

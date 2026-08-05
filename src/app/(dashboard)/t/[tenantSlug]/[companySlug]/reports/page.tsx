@@ -2,7 +2,8 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "@/components/ui/app-link";
+import { ReportLaunchDialog } from "@/components/reports/report-launch-dialog";
+import { costCenterFilterOptions } from "@/lib/cost-center-options";
 import {
   BookText,
   TrendingUp,
@@ -63,14 +64,18 @@ function ReportCard({
   report,
   dictionary,
   t,
+  costCenterOptions,
 }: {
   report: ReportDefinition;
   dictionary: Dictionary;
   t: (key: "reports.comingSoon" | "reports.openReport") => string;
+  costCenterOptions: { value: string; label: string }[];
 }) {
   const Icon = ICONS[report.icon] ?? FileBarChart;
   const soon = report.status === "coming_soon";
   const text = catalogText(dictionary, report.id);
+  const title = text?.title ?? report.title;
+  const description = text?.description ?? report.description;
 
   const inner = (
     <Card
@@ -89,9 +94,9 @@ function ReportCard({
           {soon && <Badge variant="default">{t("reports.comingSoon")}</Badge>}
         </div>
         <h3 className={`mt-3 font-semibold ${soon ? "text-muted-foreground" : "text-foreground"}`}>
-          {text?.title ?? report.title}
+          {title}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">{text?.description ?? report.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         {!soon && (
           <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
             {t("reports.openReport")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -103,9 +108,14 @@ function ReportCard({
 
   if (soon || !report.href) return inner;
   return (
-    <Link href={report.href} className="block h-full">
+    <ReportLaunchDialog
+      report={report}
+      title={title}
+      description={description}
+      costCenterOptions={report.filters?.includes("costCenter") ? costCenterOptions : undefined}
+    >
       {inner}
-    </Link>
+    </ReportLaunchDialog>
   );
 }
 
@@ -119,6 +129,9 @@ export default async function ReportsPage({
   const dictionary = await getDictionary(await getLocale());
   const groups = reportsByCategory();
   const categoryText = dictionary.reports.catalogCategory;
+  // Diambil SEKALI untuk seluruh katalog, bukan per kartu: hanya laporan yang
+  // menyatakan saringan `costCenter` yang menerimanya (lihat ReportCard).
+  const costCenterOptions = await costCenterFilterOptions();
 
   return (
     <div>
@@ -146,7 +159,13 @@ export default async function ReportsPage({
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {group.reports.map((r) => (
-                <ReportCard key={r.id} report={r} dictionary={dictionary} t={t} />
+                <ReportCard
+                  key={r.id}
+                  report={r}
+                  dictionary={dictionary}
+                  t={t}
+                  costCenterOptions={costCenterOptions}
+                />
               ))}
             </div>
           </section>

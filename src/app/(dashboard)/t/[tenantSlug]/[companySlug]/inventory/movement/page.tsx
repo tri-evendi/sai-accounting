@@ -18,6 +18,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { reportById, resolveColumns } from "@/lib/report-catalog";
+import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { PackageOpen, Info } from "lucide-react";
@@ -36,13 +38,19 @@ export default async function StockMovementPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ g?: string; d?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ g?: string; d?: string; from?: string; to?: string; cols?: string }>;
 }) {
   await requirePagePermission("inventory.read", params);
   const t = await getT();
   const sp = await searchParams;
   const period = resolveStockPeriod(sp.g, sp.d, sp.from, sp.to);
   const report = await getStockMovementReport(period.from, period.to);
+
+  // Kolom yang diminta dialog parameter (`?cols=`). Katalog yang memiliki
+  // daftar kolomnya, jadi id asing & daftar kosong dibereskan di sana — bukan
+  // dengan tebakan di halaman ini.
+  const definition = reportById("stock-movement");
+  const visibleColumns = definition ? resolveColumns(definition, sp.cols) : [];
 
   // Satu label untuk layar, PDF, dan Excel — kalau ketiganya membangun sendiri,
   // cetakan bisa menyebut periode yang berbeda dari yang dilihat pengguna.
@@ -83,11 +91,39 @@ export default async function StockMovementPage({
     totalClosing: report.totalClosing,
     hasProcess: report.hasProcess,
     dormantCount: report.dormantCount,
+    visibleColumns,
   };
 
-  // Jumlah kolom bergantung pada ada/tidaknya mutasi `process` — dipakai colSpan
-  // keadaan kosong supaya tidak pernah meleset dari header di atasnya.
-  const columnCount = report.hasProcess ? 7 : 6;
+  // Susunan kolom layar diputuskan penentu yang SAMA dengan PDF & lembar sebar
+  // (`stockMovementColumns`), jadi pratinjau yang dibuka dari dialog parameter
+  // memperlihatkan persis kolom yang akan ikut ke berkasnya.
+  const cols = stockMovementColumns(payload);
+  const HEADERS: Record<StockMovementColumnId, string> = {
+    name: t("common.item"),
+    unit: t("common.unit"),
+    opening: t("stockMovement.colOpening"),
+    movedIn: t("stockMovement.colIn"),
+    movedOut: t("stockMovement.colOut"),
+    processed: t("stockMovement.colProcessed"),
+    closing: t("stockMovement.colClosing"),
+  };
+  // Masuk hijau / keluar merah mengikuti semantik uang app ini, dan angkanya
+  // sendiri tetap penanda non-warna. Varian `-strong`, bukan warna penuh: ini
+  // sel tabel `text-sm`, yang menuntut 4,5:1 (MASTER.md §Color Palette).
+  const QTY_CLASS: Record<Exclude<StockMovementColumnId, "name" | "unit">, string> = {
+    opening: "text-muted-foreground",
+    movedIn: "text-success-strong",
+    movedOut: "text-destructive-strong",
+    processed: "text-muted-foreground",
+    closing: "font-semibold text-foreground",
+  };
+  const TOTALS: Record<Exclude<StockMovementColumnId, "name" | "unit">, number> = {
+    opening: report.totalOpening,
+    movedIn: report.totalIn,
+    movedOut: report.totalOut,
+    processed: report.totalProcessed,
+    closing: report.totalClosing,
+  };
 
   return (
     <div>
@@ -124,21 +160,17 @@ export default async function StockMovementPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead>{t("common.unit")}</TableHead>
-              <TableHead className="text-right">{t("stockMovement.colOpening")}</TableHead>
-              <TableHead className="text-right">{t("stockMovement.colIn")}</TableHead>
-              <TableHead className="text-right">{t("stockMovement.colOut")}</TableHead>
-              {report.hasProcess && (
-                <TableHead className="text-right">{t("stockMovement.colProcessed")}</TableHead>
-              )}
-              <TableHead className="text-right">{t("stockMovement.colClosing")}</TableHead>
+              {cols.map((c) => (
+                <TableHead key={c} className={c === "name" || c === "unit" ? undefined : "text-right"}>
+                  {HEADERS[c]}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {report.rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columnCount} className="p-0">
+                <TableCell colSpan={cols.length} className="p-0">
                   <EmptyState
                     icon={<PackageOpen className="h-12 w-12" />}
                     title={t("stockMovement.emptyTitle")}
@@ -149,15 +181,19 @@ export default async function StockMovementPage({
             ) : (
               report.rows.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium text-foreground">{r.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.unit || "-"}</TableCell>
-                  <Qty value={r.opening} className="text-muted-foreground" />
-                  {/* Masuk hijau / keluar merah mengikuti semantik uang app ini,
-                      dan angkanya sendiri tetap penanda non-warna. */}
-                  <Qty value={r.movedIn} className="text-success" />
-                  <Qty value={r.movedOut} className="text-destructive" />
-                  {report.hasProcess && <Qty value={r.processed} className="text-muted-foreground" />}
-                  <Qty value={r.closing} className="font-semibold text-foreground" />
+                  {cols.map((c) =>
+                    c === "name" ? (
+                      <TableCell key={c} className="font-medium text-foreground">
+                        {r.name}
+                      </TableCell>
+                    ) : c === "unit" ? (
+                      <TableCell key={c} className="text-muted-foreground">
+                        {r.unit || "-"}
+                      </TableCell>
+                    ) : (
+                      <Qty key={c} value={r[c]} className={QTY_CLASS[c]} />
+                    )
+                  )}
                 </TableRow>
               ))
             )}
@@ -165,13 +201,17 @@ export default async function StockMovementPage({
           {report.rows.length > 0 && (
             <TableFooter className="border-t-2 bg-transparent">
               <TableRow className="border-b-0 font-bold hover:bg-transparent">
-                <TableCell className="text-foreground">{t("common.total")}</TableCell>
-                <TableCell />
-                <Qty value={report.totalOpening} />
-                <Qty value={report.totalIn} />
-                <Qty value={report.totalOut} />
-                {report.hasProcess && <Qty value={report.totalProcessed} />}
-                <Qty value={report.totalClosing} />
+                {cols.map((c) =>
+                  c === "name" ? (
+                    <TableCell key={c} className="text-foreground">
+                      {t("common.total")}
+                    </TableCell>
+                  ) : c === "unit" ? (
+                    <TableCell key={c} />
+                  ) : (
+                    <Qty key={c} value={TOTALS[c]} />
+                  )
+                )}
               </TableRow>
             </TableFooter>
           )}

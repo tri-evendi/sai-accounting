@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@/lib/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { apiFetch } from "@/lib/api-fetch";
+import { downloadStatementWorkbook } from "@/lib/report-files";
 
 interface ContractPDFData {
   contractNo: string;
@@ -193,26 +193,10 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
   async function handleExport() {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/reports/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename="?([^"]+)"?/);
-      const filename = match?.[1] ?? `Laporan_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Unduhannya sendiri hidup di `lib/report-files` — dipakai bersama dialog
+      // parameter di Pusat Laporan, yang mengunduh laporan yang sama tanpa
+      // membuka halamannya lebih dulu.
+      await downloadStatementWorkbook(payload);
       toast(t("excel.downloaded"));
     } catch (err) {
       console.error(err);

@@ -19,7 +19,12 @@
  * concern applied by the number format, never by mutating the value.
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { incomeStatementLayout } from "@/lib/statement-layout";
+import {
+  incomeStatementLayout,
+  stockMovementColumns,
+  STOCK_MOVEMENT_HEADERS,
+  type StockMovementColumnId,
+} from "@/lib/statement-layout";
 
 /**
  * How a cell's value should be rendered by the spreadsheet, without changing it.
@@ -281,37 +286,41 @@ function buildStockMovementSheet(
     bold,
   });
 
-  const columns: SheetColumn[] = [
-    { header: "Barang", width: 34 },
-    { header: "Satuan", width: 12 },
-    { header: "Saldo Awal", width: 14 },
-    { header: "Masuk", width: 14 },
-    { header: "Keluar", width: 14 },
-  ];
-  // The `Diolah` column exists only when the period has such a movement — the
-  // same rule the screen and the PDF apply, so all three have identical columns.
-  if (p.hasProcess) columns.push({ header: "Diolah", width: 14 });
-  columns.push({ header: "Saldo Akhir", width: 14 });
+  // The same helper the screen and the PDF ask, so all three have identical
+  // columns — including when the user narrowed them in the parameter dialog.
+  const cols = stockMovementColumns(p);
+  const WIDTHS: Record<StockMovementColumnId, number> = {
+    name: 34,
+    unit: 12,
+    opening: 14,
+    movedIn: 14,
+    movedOut: 14,
+    processed: 14,
+    closing: 14,
+  };
+  const columns: SheetColumn[] = cols.map((c) => ({
+    header: STOCK_MOVEMENT_HEADERS[c],
+    width: WIDTHS[c],
+  }));
 
   const rows: SheetCell[][] = p.rows.length
-    ? p.rows.map((r) => {
-        const cells: SheetCell[] = [text(r.name), text(r.unit || "-"), q(r.opening), q(r.movedIn), q(r.movedOut)];
-        if (p.hasProcess) cells.push(q(r.processed));
-        cells.push(q(r.closing));
-        return cells;
-      })
+    ? p.rows.map((r) =>
+        cols.map((c) =>
+          c === "name" ? text(r.name) : c === "unit" ? text(r.unit || "-") : q(r[c])
+        )
+      )
     : [[text("Tidak ada mutasi pada periode ini."), ...columns.slice(1).map(() => text(null))]];
 
-  const footer: SheetCell[] = [
-    text("Total", true),
-    text(null),
-    q(p.totalOpening, true),
-    q(p.totalIn, true),
-    q(p.totalOut, true),
-  ];
-  if (p.hasProcess) footer.push(q(p.totalProcessed, true));
-  footer.push(q(p.totalClosing, true));
-  rows.push(footer);
+  const totals: Record<StockMovementColumnId, SheetCell> = {
+    name: text("Total", true),
+    unit: text(null),
+    opening: q(p.totalOpening, true),
+    movedIn: q(p.totalIn, true),
+    movedOut: q(p.totalOut, true),
+    processed: q(p.totalProcessed, true),
+    closing: q(p.totalClosing, true),
+  };
+  rows.push(cols.map((c) => totals[c]));
 
   if (p.dormantCount > 0) {
     rows.push([

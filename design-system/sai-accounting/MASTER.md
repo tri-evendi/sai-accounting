@@ -54,6 +54,18 @@ Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk
 
 Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
 
+**Aturannya tidak berhenti di badge — ia berlaku untuk TEKS BERWARNA apa pun.** Di atas `--card` putih, warna penuh gagal ambang teks biasa: `--success` #16A34A hanya **3,30:1** dan `--warning` #D97706 **3,19:1** (hanya `--destructive` #DC2626 lolos, 4,83:1). Yang menyelamatkannya selama ini adalah ukuran, bukan warnanya:
+
+| Tempat | Ambang | Boleh |
+|--------|--------|-------|
+| Angka besar (`text-2xl`/`text-3xl` **tebal** ≥ 18,66px bold) | 3:1 (teks besar) | `text-success` / `text-warning` |
+| **Sel tabel & teks 14px** (primitif `Table` = `text-sm`) | **4,5:1** | **hanya** `-strong` (7,1–8,3:1) |
+| Ikon & isian pekat | 3:1 (non-teks) | warna penuh |
+
+Kolom nominal di beranda pernah memakai `text-success` pada sel `text-sm` — benar warnanya, gagal kontrasnya. **Kolom uang berwarna memakai `text-success-strong` / `text-destructive-strong`.**
+
+**Penjaga lint mengenal sisi arah.** Pola di `eslint.config.mjs` semula hanya mencocokkan `border-` yang langsung diikuti warna, sehingga `border-l-4 border-l-blue-500` (garis aksen kiri kartu — justru bentuk paling umum) lolos berbulan-bulan dan tidak ikut berganti di tema gelap. Pola itu kini mencakup `border-l-`, `border-t-`, `bg-x-`, dst. Kalau muncul bentuk penulisan warna baru yang lolos, **perbaiki polanya**, bukan hanya kelasnya — satu kelas yang diperbaiki akan kembali lewat PR berikutnya.
+
 *Dark mode:* surface naik ke `#0F172A`/`#1E293B`, rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap ada di blok `.dark` (kontras 8,5–10,6:1). Kelas `.dark` dipasang **root layout dari cookie** (`src/lib/theme/`), jadi sudah menempel pada HTML pertama — tidak ada kedipan sebelum hydrate.
 
 **Dua jebakan token yang sudah memakan korban** — palet gelap membuat beberapa token bernilai SAMA, dan komponen yang mengandalkan selisihnya diam-diam runtuh saat tema berganti:

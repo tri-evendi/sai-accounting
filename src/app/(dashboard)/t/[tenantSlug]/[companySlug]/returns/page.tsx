@@ -13,24 +13,45 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { Undo2, Plus, Info } from "lucide-react";
+import { AlertTriangle, Undo2, Plus, Info } from "lucide-react";
 import { ReturnPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Berkas ini server component — tanpa `antd`, tanpa `theme.useToken()`. Angka
+ * di bawah SAMA dengan tokennya (`marginLG` 24, `marginXS` 8, `marginXXS` 4).
+ */
+const SECTION_GAP = 24;
+const CONTROL_GAP = 8;
+const TIGHT_GAP = 4;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+
+/** Satu baris daftar retur, diratakan supaya kolomnya bertipe penuh. */
+interface ReturnRow {
+  key: string;
+  returnNo: string;
+  canceled: boolean;
+  date: string;
+  originLabel: string;
+  partyName: string | null;
+  currency: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  /** `null` = kurs belum diketahui — ditulis dengan kata, tak pernah Rp 0. */
+  baseAmount: number | null;
+  pdf: React.ReactNode;
+}
 
 export default async function ReturnsPage({
   params,
@@ -76,7 +97,151 @@ export default async function ReturnsPage({
 
   const totalCount = tab === "sales" ? salesCount : purchaseCount;
   const totalPages = Math.ceil(totalCount / perPage);
-  const rows = tab === "sales" ? salesReturns : purchaseReturns;
+  const source = tab === "sales" ? salesReturns : purchaseReturns;
+
+  const rows: ReturnRow[] = source.map((r) => {
+    const subtotal = Number(r.subtotal);
+    const tax = Number(r.taxAmount);
+    const isSales = "invoice" in r;
+    const originLabel = isSales
+      ? (r as (typeof salesReturns)[number]).invoice.invoiceNo
+      : `TRX-${(r as (typeof purchaseReturns)[number]).purchaseId}`;
+    const partyName =
+      (isSales
+        ? (r as (typeof salesReturns)[number]).customer?.name
+        : (r as (typeof purchaseReturns)[number]).supplier?.name) ?? null;
+    return {
+      key: `${tab}-${r.id}`,
+      returnNo: r.returnNo,
+      canceled: r.status === "canceled",
+      date: formatDateShort(r.date),
+      originLabel,
+      partyName,
+      currency: r.currency,
+      subtotal,
+      tax,
+      total: subtotal + tax,
+      baseAmount: r.baseAmount == null ? null : Number(r.baseAmount),
+      pdf: (
+        <ReturnPdfButton
+          data={{
+            kind: isSales ? "sales" : "purchase",
+            returnNo: r.returnNo,
+            date: r.date.toISOString(),
+            originLabel,
+            partyName: partyName ?? undefined,
+            currency: r.currency,
+            taxAmount: tax,
+            taxRate: r.taxRate == null ? null : Number(r.taxRate),
+            reason: r.reason,
+            items: r.items.map((it) => ({
+              itemName: it.itemName,
+              quantity: Number(it.quantity),
+              price: Number(it.price),
+            })),
+          }}
+        />
+      ),
+    };
+  });
+
+  const columns: SaiColumns<ReturnRow> = [
+    {
+      key: "returnNo",
+      dataIndex: "returnNo",
+      title: t("returns.colNo"),
+      align: "left",
+      render: (_v, r) => (
+        <span style={{ fontWeight: "var(--ant-font-weight-strong)" }}>
+          {r.returnNo}{" "}
+          {/* Retur batal tidak memposting jurnal & tak dihitung kaps retur —
+              tanpa lencana ia tampak hidup. */}
+          {r.canceled && <Badge variant="default">{t("returns.statusCanceled")}</Badge>}
+        </span>
+      ),
+    },
+    { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
+    {
+      key: "origin",
+      dataIndex: "originLabel",
+      title: tab === "sales" ? t("returns.colOriginSales") : t("returns.colOriginPurchase"),
+      align: "left",
+      render: (_v, r) => (
+        <>
+          {r.originLabel}
+          {r.partyName && (
+            <small style={{ display: "block", color: "var(--ant-color-text-secondary)" }}>
+              {r.partyName}
+            </small>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "subtotal",
+      dataIndex: "subtotal",
+      title: t("returns.colDpp"),
+      align: "right",
+      render: (_v, r) => <Money value={r.subtotal} currency={r.currency} />,
+    },
+    {
+      key: "tax",
+      dataIndex: "tax",
+      title: t("common.vat"),
+      align: "right",
+      // Nol PPN dinyatakan dengan LENCANA "0%", bukan "Rp 0": ia menyatakan
+      // tarifnya, bukan nominal yang kebetulan nol.
+      render: (_v, r) =>
+        r.tax > 0 ? (
+          <Money value={r.tax} currency={r.currency} />
+        ) : (
+          <Badge variant="default">0%</Badge>
+        ),
+    },
+    {
+      key: "total",
+      dataIndex: "total",
+      title: t("common.total"),
+      align: "right",
+      render: (_v, r) => (
+        <Money
+          style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+          value={r.total}
+          currency={r.currency}
+        />
+      ),
+    },
+    {
+      key: "baseAmount",
+      dataIndex: "baseAmount",
+      title: t("returns.colTotalIdr"),
+      align: "right",
+      // Tanpa kurs nilainya BELUM DIKETAHUI — ditulis dengan kata + ikon,
+      // tidak pernah Rp 0. Warnanya tidak bisa dibaca di server component,
+      // jadi ikon + kalimat yang jadi penandanya.
+      render: (_v, r) =>
+        r.baseAmount != null ? (
+          <Money value={r.baseAmount} currency="IDR" />
+        ) : (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: TIGHT_GAP,
+            }}
+          >
+            <AlertTriangle size="1em" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <small>{t("common.rateMissing")}</small>
+          </span>
+        ),
+    },
+    {
+      key: "pdf",
+      dataIndex: "pdf",
+      title: t("returns.colNota"),
+      align: "right",
+    },
+  ];
 
   return (
     <div>
@@ -85,15 +250,27 @@ export default async function ReturnsPage({
         description={t("returns.description")}
         actions={
           <Link href={`/returns/new?type=${tab}`}>
-            <Button className="cursor-pointer">
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            <Button>
+              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
+              <Plus aria-hidden="true" />
               {t("returns.addNew")}
             </Button>
           </Link>
         }
       />
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      {/* Tab penjualan/pembelian. Dulu `<a>` bergaya tombol yang dirakit dari
+          kelas; kini `Button` primitif — target sentuh 40px, ring fokus, dan
+          warna aktif semuanya datang dari token, bukan dari kelas yang harus
+          dijaga sendiri. */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: CONTROL_GAP,
+          marginBottom: SECTION_GAP,
+        }}
+      >
         {[
           {
             label: t("returns.tabSales", { count: salesCount }),
@@ -106,30 +283,33 @@ export default async function ReturnsPage({
             active: tab === "purchase",
           },
         ].map((f) => (
-          <Link
-            key={f.label}
-            href={f.href}
-            className={`rounded-md border px-3 py-2 text-sm transition-colors duration-200 cursor-pointer ${
-              f.active
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-foreground hover:bg-muted"
-            }`}
-          >
-            {f.label}
+          <Link key={f.label} href={f.href}>
+            <Button variant={f.active ? "primary" : "secondary"}>{f.label}</Button>
           </Link>
         ))}
       </div>
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>
+      {/* Catatan "retur membalik jurnal asalnya". Berkas ini di luar pohon
+          komponen AntD, jadi penandanya ikon + kata — bukan warna latar yang
+          variabelnya tak teratasi di sini. */}
+      <p
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: CONTROL_GAP,
+          marginTop: 0,
+          marginBottom: SECTION_GAP,
+        }}
+      >
+        <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <small>
           {t("returns.noteA")} <strong>{t("returns.noteStrong")}</strong> {t("returns.noteB")}
-        </span>
+        </small>
       </p>
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={<Undo2 className="h-12 w-12" />}
+          icon={<Undo2 size={EMPTY_ICON_SIZE} />}
           title={tab === "sales" ? t("returns.emptySales") : t("returns.emptyPurchase")}
           description={t("returns.emptyDescription")}
           actionLabel={t("returns.addNew")}
@@ -137,101 +317,7 @@ export default async function ReturnsPage({
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("returns.colNo")}</TableHead>
-                <TableHead>{t("common.date")}</TableHead>
-                <TableHead>
-                  {tab === "sales" ? t("returns.colOriginSales") : t("returns.colOriginPurchase")}
-                </TableHead>
-                <TableHead className="text-right">{t("returns.colDpp")}</TableHead>
-                <TableHead className="text-right">{t("common.vat")}</TableHead>
-                <TableHead className="text-right">{t("common.total")}</TableHead>
-                <TableHead className="text-right">{t("returns.colTotalIdr")}</TableHead>
-                <TableHead className="text-right">{t("returns.colNota")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                  const currency = r.currency;
-                  const subtotal = Number(r.subtotal);
-                  const tax = Number(r.taxAmount);
-                  const isSales = "invoice" in r;
-                  const originLabel = isSales
-                    ? (r as typeof salesReturns[number]).invoice.invoiceNo
-                    : `TRX-${(r as typeof purchaseReturns[number]).purchaseId}`;
-                  const partyName = isSales
-                    ? (r as typeof salesReturns[number]).customer?.name
-                    : (r as typeof purchaseReturns[number]).supplier?.name;
-                  return (
-                    <TableRow key={`${tab}-${r.id}`}>
-                      <TableCell className="font-medium text-foreground">
-                        {r.returnNo}
-                        {/* Retur batal tidak memposting jurnal & tak dihitung
-                            kaps retur — tanpa lencana ia tampak hidup. */}
-                        {r.status === "canceled" && (
-                          <Badge variant="default" className="ml-2">
-                            {t("returns.statusCanceled")}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-foreground">{formatDateShort(r.date)}</TableCell>
-                      <TableCell className="text-foreground">
-                        {originLabel}
-                        {partyName && (
-                          <span className="mt-0.5 block text-xs text-muted-foreground">{partyName}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="p-0">
-                        <MoneyCell className="text-foreground" value={subtotal} currency={currency} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-foreground">
-                        {tax > 0 ? (
-                          <Money value={tax} currency={currency} />
-                        ) : (
-                          <Badge variant="default">0%</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="p-0">
-                        <MoneyCell
-                          className="font-medium text-foreground"
-                          value={subtotal + tax}
-                          currency={currency}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-foreground">
-                        {r.baseAmount != null ? (
-                          <Money value={Number(r.baseAmount)} currency="IDR" />
-                        ) : (
-                          <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <ReturnPdfButton
-                          data={{
-                            kind: isSales ? "sales" : "purchase",
-                            returnNo: r.returnNo,
-                            date: r.date.toISOString(),
-                            originLabel,
-                            partyName,
-                            currency,
-                            taxAmount: tax,
-                            taxRate: r.taxRate == null ? null : Number(r.taxRate),
-                            reason: r.reason,
-                            items: r.items.map((it) => ({
-                              itemName: it.itemName,
-                              quantity: Number(it.quantity),
-                              price: Number(it.price),
-                            })),
-                          }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
+          <StaticTable columns={columns} rows={rows} rowKey={(r) => r.key} />
           {/* `sp` diteruskan utuh — komponen Pagination membawa `tab` yang
               sedang aktif ke tautan halamannya. */}
           <Pagination

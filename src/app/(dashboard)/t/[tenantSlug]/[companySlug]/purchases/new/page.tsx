@@ -10,6 +10,10 @@ import { PurchaseWizard } from "./purchase-wizard";
 
 export const dynamic = "force-dynamic";
 
+/** Jarak di bawah tautan "Pelajari ini" (= `marginLG` AntD). Angka, karena
+ *  berkas ini server component dan tak boleh memanggil `theme.useToken()`. */
+const LEARN_MORE_GAP = 24;
+
 /**
  * Wizard "Pembelian Baru" — server shell (issue #5).
  *
@@ -43,9 +47,8 @@ export default async function NewPurchaseWizardPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
-        className="mb-1"
         breadcrumbs={[
           { label: t("suppliers.breadcrumb"), href: "/suppliers" },
           { label: t("purchases.title") },
@@ -58,7 +61,9 @@ export default async function NewPurchaseWizardPage({
           </>
         }
       />
-      <LearnMore term="pembelian" className="mt-1 mb-6" label={t("purchases.learnMore")} />
+      <div style={{ marginBottom: LEARN_MORE_GAP }}>
+        <LearnMore term="pembelian" label={t("purchases.learnMore")} />
+      </div>
 
       <PurchaseWizard
         items={items.map((i) => ({

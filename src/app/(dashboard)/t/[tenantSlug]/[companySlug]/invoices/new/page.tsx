@@ -12,6 +12,13 @@ import { NewInvoiceForm } from "./invoice-form";
 export const dynamic = "force-dynamic";
 
 /**
+ * Jarak di bawah tautan "Pelajari ini" (= `marginLG` AntD). Ditulis sebagai
+ * angka karena berkas ini server component dan tak boleh memanggil
+ * `theme.useToken()`.
+ */
+const LEARN_MORE_GAP = 24;
+
+/**
  * Buat Faktur — server shell (issue #15).
  *
  * Split from the form the way `/delivery-orders/new` is: the page reads the
@@ -49,9 +56,8 @@ export default async function NewInvoicePage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
-        className="mb-1"
         breadcrumbs={[
           { label: t("invoices.breadcrumb"), href: "/invoices" },
           { label: t("invoices.createTitle") },
@@ -60,14 +66,26 @@ export default async function NewInvoicePage({
         description={
           <>
             {t("invoices.createDescriptionBefore")}{" "}
-            <Link href="/sales/new" className="font-medium text-primary hover:underline">
+            {/* Tautan ini hidup DI DALAM `PageHeader`, yaitu di dalam pohon
+                komponen AntD — jadi `--ant-color-link` (= `colorBrandText`,
+                5,65:1) teratasi di sini. Di luar pohon itu variabelnya jatuh
+                diam-diam ke warisan; lihat kepala `shared/aging.tsx`. */}
+            <Link
+              href="/sales/new"
+              style={{
+                color: "var(--ant-color-link)",
+                fontWeight: "var(--ant-font-weight-strong)",
+              }}
+            >
               {t("invoices.createDescriptionLink")}
             </Link>
             {t("common.fullStop")}
           </>
         }
       />
-      <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
+      <div style={{ marginBottom: LEARN_MORE_GAP }}>
+        <LearnMore term="faktur" label={t("invoices.learnMore")} />
+      </div>
       <NewInvoiceForm
         initialContract={
           preselectedContract

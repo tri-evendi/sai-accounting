@@ -11,6 +11,10 @@ import { DeliveryOrderForm } from "./delivery-order-form";
 
 export const dynamic = "force-dynamic";
 
+/** Jarak di bawah tautan "Pelajari ini" (= `marginLG` AntD). Ditulis sebagai
+ *  angka: berkas ini server component, tanpa `theme.useToken()`. */
+const LEARN_MORE_GAP = 24;
+
 export default async function NewDeliveryOrderPage({
   params,
 }: {
@@ -58,9 +62,8 @@ export default async function NewDeliveryOrderPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
-        className="mb-1"
         breadcrumbs={[
           { label: t("deliveryOrders.title"), href: "/delivery-orders" },
           { label: t("deliveryOrders.breadcrumbCreate") },
@@ -68,7 +71,9 @@ export default async function NewDeliveryOrderPage({
         title={<TermTooltip term="surat_jalan">{t("deliveryOrders.createTitle")}</TermTooltip>}
         description={t("deliveryOrders.createDescription")}
       />
-      <LearnMore term="surat_jalan" className="mt-1 mb-6" label={t("deliveryOrders.learnMore")} />
+      <div style={{ marginBottom: LEARN_MORE_GAP }}>
+        <LearnMore term="surat_jalan" label={t("deliveryOrders.learnMore")} />
+      </div>
       <DeliveryOrderForm
         canUpdateStock={canUpdateStock}
         contracts={contracts.map((c) => ({

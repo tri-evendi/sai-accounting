@@ -47,7 +47,7 @@ function Section({
             {l.name}
           </TableCell>
           <TableCell className="p-0">
-            <MoneyCell className="py-2" value={l.amount} currency="IDR" />
+            <MoneyCell style={{ paddingBlock: 8 }} value={l.amount} currency="IDR" />
           </TableCell>
         </TableRow>
       ))}
@@ -59,7 +59,7 @@ function Section({
       <TableRow className="font-medium">
         <TableCell className="py-2 text-foreground">{totalLabel}</TableCell>
         <TableCell className="p-0">
-          <MoneyCell className="py-2" value={total} currency="IDR" />
+          <MoneyCell style={{ paddingBlock: 8 }} value={total} currency="IDR" />
         </TableCell>
       </TableRow>
     </>

@@ -49,6 +49,7 @@ import idID from "antd/locale/id_ID";
 import zhCN from "antd/locale/zh_CN";
 
 import type { Locale } from "@/lib/i18n/config";
+import { moneyTokens } from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
 
 /**
@@ -93,7 +94,17 @@ export function AntdProvider({
     () => ({
       algorithm:
         resolved === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-      token: { controlHeight: CONTROL_HEIGHT },
+      /*
+       * Token uang didaftarkan DI SINI, bukan di komponennya (issue #186).
+       * Warna teks nominal harus berganti bersama algoritma tema pada saat yang
+       * sama persis: hijau tema terang di atas permukaan gelap berkontras 1,9:1.
+       * Karena keduanya lahir dari `resolved` yang sama, tidak ada frame di mana
+       * latar sudah gelap tapi angkanya masih memakai warna tema terang.
+       *
+       * Nilainya sendiri beserta rasio terhitungnya ada di
+       * `lib/theme/antd-tokens.ts` — di sini hanya jalur pendaftarannya.
+       */
+      token: { controlHeight: CONTROL_HEIGHT, ...moneyTokens(resolved) },
     }),
     [resolved]
   );

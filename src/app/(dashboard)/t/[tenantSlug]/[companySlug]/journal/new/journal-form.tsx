@@ -308,10 +308,10 @@ export function NewJournalForm() {
                 <TableRow className="font-semibold hover:bg-transparent">
                   <TableCell className="py-3 pr-2 pl-0 text-muted-foreground">{t("journal.totalBase")}</TableCell>
                   <TableCell className="p-0">
-                    <MoneyCell className="px-2 py-3" value={totalDebit} currency="IDR" />
+                    <MoneyCell style={{ paddingInline: 8 }} value={totalDebit} currency="IDR" />
                   </TableCell>
                   <TableCell className="p-0">
-                    <MoneyCell className="px-2 py-3" value={totalCredit} currency="IDR" />
+                    <MoneyCell style={{ paddingInline: 8 }} value={totalCredit} currency="IDR" />
                   </TableCell>
                   <TableCell colSpan={4} className="px-2 py-3">
                     {balanced ? (

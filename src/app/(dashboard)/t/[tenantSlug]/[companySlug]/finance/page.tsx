@@ -313,14 +313,14 @@ export default async function FinancePage({
                       keduanya, jadi warna bukan satu-satunya penanda. */}
                   <TableCell className="text-right">
                     {Number(tx.debit) > 0 ? (
-                      <Money value={Number(tx.debit)} currency={tx.currency} className="text-success" />
+                      <Money value={Number(tx.debit)} currency={tx.currency} tone="positive" />
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     {Number(tx.credit) > 0 ? (
-                      <Money value={Number(tx.credit)} currency={tx.currency} className="text-destructive" />
+                      <Money value={Number(tx.credit)} currency={tx.currency} tone="negative" />
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}

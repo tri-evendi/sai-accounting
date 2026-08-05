@@ -312,10 +312,10 @@ export default async function CashFlowPage({
                 </span>
               </TableCell>
               <TableCell className="p-0">
-                <MoneyCell className="py-4 text-foreground" value={cf.totalInflow} currency="IDR" />
+                <MoneyCell className="text-foreground" style={{ paddingBlock: 16 }} value={cf.totalInflow} currency="IDR" />
               </TableCell>
               <TableCell className="p-0">
-                <MoneyCell className="py-4 text-foreground" value={cf.totalOutflow} currency="IDR" />
+                <MoneyCell className="text-foreground" style={{ paddingBlock: 16 }} value={cf.totalOutflow} currency="IDR" />
               </TableCell>
             </TableRow>
             <TableRow className="border-b-0 text-base font-bold hover:bg-transparent">
@@ -355,13 +355,13 @@ export default async function CashFlowPage({
                     {a.name}
                   </TableCell>
                   <TableCell className="p-0">
-                    <MoneyCell className="py-2.5" value={a.opening} currency="IDR" />
+                    <MoneyCell style={{ paddingBlock: 10 }} value={a.opening} currency="IDR" />
                   </TableCell>
                   <TableCell className="py-2.5 text-right">
                     <Flow amount={a.net} t={t} />
                   </TableCell>
                   <TableCell className="p-0">
-                    <MoneyCell className="py-2.5" value={a.closing} currency="IDR" />
+                    <MoneyCell style={{ paddingBlock: 10 }} value={a.closing} currency="IDR" />
                   </TableCell>
                 </TableRow>
               ))}

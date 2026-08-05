@@ -12,6 +12,7 @@
  * Every figure is IDR base (see the header of `src/lib/reports.ts`); the reports
  * never mix currencies, so the export does not either.
  */
+import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -337,7 +338,7 @@ function qty(value: number): string {
   return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(value);
 }
 
-const BRAND: [number, number, number] = [30, 64, 175]; // --color-primary #1E40AF
+const BRAND = PRINT_BRAND;
 
 /** IDR, id-ID, no decimals — matches `formatCurrency` in the UI so the two agree. */
 function rp(amount: number): string {

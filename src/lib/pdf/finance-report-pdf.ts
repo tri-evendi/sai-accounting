@@ -1,3 +1,4 @@
+import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
@@ -69,7 +70,7 @@ export function generateFinanceReportPDF(
       formatMoney(b.balance, b.currency),
     ]),
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: PRINT_BRAND },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,7 +93,7 @@ export function generateFinanceReportPDF(
       t.credit > 0 ? formatMoney(t.credit, t.currency) : "-",
     ]),
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: PRINT_BRAND },
   });
 
   return doc;

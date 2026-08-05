@@ -19,9 +19,11 @@
 
 import { describe, expect, it } from "vitest";
 import { theme } from "antd";
-import { generate } from "@ant-design/colors";
+import { generate, presetDarkPalettes, presetPalettes } from "@ant-design/colors";
 
 import {
+  BORDER_TOKENS_DARK,
+  BORDER_TOKENS_LIGHT,
   BRAND_TEXT_DARK,
   BRAND_TEXT_LIGHT,
   MONEY_TOKENS_DARK,
@@ -30,11 +32,13 @@ import {
   NEUTRAL_TEXT_LIGHT,
   PRIMARY_BUTTON_DARK,
   PRIMARY_BUTTON_LIGHT,
+  borderTokens,
   brandTextTokens,
   moneyPalette,
   moneyTokens,
   neutralTextTokens,
   primaryButtonTokens,
+  type BorderTokens,
   type BrandTextTokens,
   type MoneyTokens,
   type NeutralTextTokens,
@@ -104,17 +108,20 @@ const worst = (color: string, mode: "light" | "dark") =>
 /** Ambang teks biasa. Berlaku di mana-mana karena `fontSize` bawaan AntD 14px. */
 const AA = 4.5;
 
+/** Ambang komponen non-teks WCAG 1.4.11 — batas kendali, kisi, tepi bidang. */
+const NON_TEXT = 3;
+
 /**
  * Token seperti yang BENAR-BENAR sampai ke komponen: seed -> map -> alias, lalu
  * override kita. Ini yang membedakan "kami menulis nilai baru" dari "nilai baru
  * itu berlaku": beberapa token yang kami perbaiki adalah induk dari token lain
- * (`colorTextDescription`, `colorIcon`), dan AntD menurunkannya DI ANTARA dua
- * tempat override ditempelkan (`theme/util/alias.ts`).
+ * (`colorTextDescription`, `colorIcon`, `colorSplit`), dan AntD menurunkannya
+ * DI ANTARA dua tempat override ditempelkan (`theme/util/alias.ts`).
  */
 const applied = (mode: "light" | "dark") =>
   theme.getDesignToken({
     algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
-    token: { ...neutralTextTokens(mode) },
+    token: { ...neutralTextTokens(mode), ...borderTokens(mode) },
   });
 
 const APPLIED = { light: applied("light"), dark: applied("dark") } as const;
@@ -459,6 +466,133 @@ describe("token teks netral kustom (#207)", () => {
   });
 });
 
+/* ========================================================================== */
+/* issue #208 — batas: kisi tabel, tepi kartu, garis pemisah                   */
+/* ========================================================================== */
+
+describe("batas bawaan AntD (#208)", () => {
+  it("colorBorder & colorBorderSecondary GAGAL bahkan ambang 3:1 non-teks", () => {
+    for (const [t, mode] of [
+      [LIGHT, "light"],
+      [DARK, "dark"],
+    ] as const) {
+      expect(worst(t.colorBorder, mode)).toBeLessThan(NON_TEXT);
+      expect(worst(t.colorBorderSecondary, mode)).toBeLessThan(NON_TEXT);
+    }
+  });
+
+  it("yang TERBURUK justru colorBorderSecondary — dan itulah kisi tabelnya", () => {
+    // Judul issue menyebut colorBorder, tapi `Table.borderColor`,
+    // `Table.headerSplitColor`, dan tepi `Card` semuanya
+    // `colorBorderSecondary` (lihat antd/es/table/style, antd/es/card/style).
+    // Memperbaiki colorBorder saja meninggalkan kisi tabel apa adanya.
+    expect(worst(LIGHT.colorBorderSecondary, "light")).toBeLessThan(
+      worst(LIGHT.colorBorder, "light")
+    );
+    expect(worst(DARK.colorBorderSecondary, "dark")).toBeLessThan(worst(DARK.colorBorder, "dark"));
+  });
+
+  it("colorSplit adalah TURUNAN colorBorderSecondary — jadi wajib ikut disebut", () => {
+    // Tanpa override eksplisit, menaikkan kisi akan menyeret setiap `Divider`
+    // ikut menjadi garis pekat. Yang diuji: pin-nya benar-benar menahan.
+    for (const mode of ["light", "dark"] as const) {
+      expect(APPLIED[mode].colorSplit).toBe(borderTokens(mode).colorSplit);
+    }
+  });
+});
+
+describe("token batas kustom (#208)", () => {
+  /** Batas yang MEMBAWA MAKNA — kisi tabel, tepi kartu, batas kendali. */
+  const meaningful: (keyof BorderTokens)[] = ["colorBorder", "colorBorderSecondary"];
+
+  for (const role of meaningful) {
+    it(`${role} lolos 3:1 di KEDUA tema, di ketiga latar`, () => {
+      expect(worst(BORDER_TOKENS_LIGHT[role], "light")).toBeGreaterThanOrEqual(NON_TEXT);
+      expect(worst(BORDER_TOKENS_DARK[role], "dark")).toBeGreaterThanOrEqual(NON_TEXT);
+    });
+  }
+
+  it("colorSplit sengaja DI BAWAH 3:1 — ia dekoratif, bukan batas bidang", () => {
+    // Bukan kelalaian: `Divider`/pemisah `List` memisahkan isi yang sudah
+    // dipisahkan judul dan ruang kosong. Kalau suatu hari ia dinaikkan ke 3:1,
+    // tes ini merah dan keputusannya harus ditulis ulang, bukan digeser diam.
+    expect(worst(BORDER_TOKENS_LIGHT.colorSplit, "light")).toBeLessThan(NON_TEXT);
+    expect(worst(BORDER_TOKENS_DARK.colorSplit, "dark")).toBeLessThan(NON_TEXT);
+    // ...tapi tetap harus TERLIHAT: jauh di atas 1,14:1 bawaannya.
+    expect(worst(BORDER_TOKENS_LIGHT.colorSplit, "light")).toBeGreaterThan(
+      worst(LIGHT.colorSplit, "light")
+    );
+    expect(worst(BORDER_TOKENS_DARK.colorSplit, "dark")).toBeGreaterThan(
+      worst(DARK.colorSplit, "dark")
+    );
+  });
+
+  it("setiap nilai = anak tangga palet `grey` resmi AntD", () => {
+    // Klaim yang sama dengan token uang, dibuktikan dari palet terpasang:
+    // terang grey-4/3/2, gelap grey-8/7/6. Kalau AntD menggeser paletnya, tes
+    // ini merah dan tabelnya diturunkan ulang — bukan ditambal satu hex.
+    const light = presetPalettes.grey;
+    const dark = presetDarkPalettes.grey;
+    expect(BORDER_TOKENS_LIGHT.colorBorder).toBe(light[3]);
+    expect(BORDER_TOKENS_LIGHT.colorBorderSecondary).toBe(light[2]);
+    expect(BORDER_TOKENS_LIGHT.colorSplit).toBe(light[1]);
+    expect(BORDER_TOKENS_DARK.colorBorder).toBe(dark[7]);
+    expect(BORDER_TOKENS_DARK.colorBorderSecondary).toBe(dark[6]);
+    expect(BORDER_TOKENS_DARK.colorSplit).toBe(dark[5]);
+  });
+
+  it("kisi memakai anak tangga PERTAMA yang lolos — ambang itu lantai, bukan target", () => {
+    // Inilah jawaban "kenapa bukan yang lebih gelap": anak tangga tepat di
+    // bawahnya gagal 3:1, jadi tidak ada pilihan yang lebih tenang; dan yang
+    // dipilih adalah yang paling tenang di antara yang lolos.
+    expect(worst(presetPalettes.grey[1], "light")).toBeLessThan(NON_TEXT);
+    expect(worst(presetDarkPalettes.grey[5], "dark")).toBeLessThan(NON_TEXT);
+  });
+
+  it("hierarki dua tingkat AntD tetap ada: kendali > wadah > dekorasi", () => {
+    for (const [tokens, mode] of [
+      [BORDER_TOKENS_LIGHT, "light"],
+      [BORDER_TOKENS_DARK, "dark"],
+    ] as const) {
+      expect(worst(tokens.colorBorder, mode)).toBeGreaterThan(
+        worst(tokens.colorBorderSecondary, mode)
+      );
+      expect(worst(tokens.colorBorderSecondary, mode)).toBeGreaterThan(
+        worst(tokens.colorSplit, mode)
+      );
+    }
+  });
+
+  it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
+    const round = (n: number) => Math.round(n * 100) / 100;
+    expect(round(worst(BORDER_TOKENS_LIGHT.colorBorder, "light"))).toBe(3.62);
+    expect(round(worst(BORDER_TOKENS_LIGHT.colorBorderSecondary, "light"))).toBe(3.08);
+    expect(round(worst(BORDER_TOKENS_LIGHT.colorSplit, "light"))).toBe(2.61);
+    expect(round(worst(BORDER_TOKENS_DARK.colorBorder, "dark"))).toBe(3.89);
+    expect(round(worst(BORDER_TOKENS_DARK.colorBorderSecondary, "dark"))).toBe(3.05);
+    expect(round(worst(BORDER_TOKENS_DARK.colorSplit, "dark"))).toBe(2.39);
+  });
+
+  it("batas kendali NONAKTIF tidak ikut naik", () => {
+    // `colorBorderDisabled` token terpisah; sama seperti teks nonaktif, ia
+    // harus tetap terlihat nonaktif.
+    expect(APPLIED.light.colorBorderDisabled).toBe(LIGHT.colorBorderDisabled);
+    expect(APPLIED.dark.colorBorderDisabled).toBe(DARK.colorBorderDisabled);
+  });
+
+  it("sidebar gelap kembali terpisah dari halamannya", () => {
+    // Jebakan MASTER.md yang lahir dari bug nyata: `--sidebar` #0F172A dan
+    // latar gelap praktis sewarna (1,03:1 terhadap colorBgContainer), jadi
+    // yang memisahkan dua kolom itu hanya batasnya.
+    const SIDEBAR = "#0F172A";
+    expect(contrast(SIDEBAR, DARK.colorBgContainer)).toBeLessThan(1.1);
+    expect(contrast(BORDER_TOKENS_DARK.colorBorder, SIDEBAR)).toBeGreaterThanOrEqual(NON_TEXT);
+    expect(contrast(BORDER_TOKENS_DARK.colorBorderSecondary, SIDEBAR)).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+  });
+});
+
 describe("moneyTokens / moneyPalette", () => {
   it("memberi tabel yang sesuai temanya", () => {
     expect(moneyTokens("light")).toEqual(MONEY_TOKENS_LIGHT);
@@ -469,6 +603,8 @@ describe("moneyTokens / moneyPalette", () => {
     expect(primaryButtonTokens("dark")).toEqual(PRIMARY_BUTTON_DARK);
     expect(neutralTextTokens("light")).toEqual(NEUTRAL_TEXT_LIGHT);
     expect(neutralTextTokens("dark")).toEqual(NEUTRAL_TEXT_DARK);
+    expect(borderTokens("light")).toEqual(BORDER_TOKENS_LIGHT);
+    expect(borderTokens("dark")).toEqual(BORDER_TOKENS_DARK);
   });
 
   it("memakai token yang didaftarkan ConfigProvider bila ada", () => {

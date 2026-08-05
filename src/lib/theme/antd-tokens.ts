@@ -44,14 +44,13 @@
  * | menunggu | `#874d00` | 6,79 / 6,23 / 6,79  | 6,23 | `#f3cc62` | 11,95 / 13,62 /10,69 | 10,69 |
  * | info     | `#0958d9` | 6,16 / 5,65 / 6,16  | 5,65 | `#3c89e8` |  5,21 /  5,94 / 4,66 |  4,66 |
  *
- * ── Token netral: teks bantuan (#207) ──────────────────────────────────────
- * `colorTextTertiary` dulu sengaja ditunda di sini karena ia token bawaan yang
- * dipakai jauh di luar uang. Kini diputuskan, di bagian bawah berkas ini —
- * `NEUTRAL_TEXT_*`. Alasannya sama dengan token uang: anak tangga netral AntD
- * dipilih untuk selera, bukan untuk sebuah lantai kontras, dan aplikasi yang
- * seluruh isinya angka di sel 14px membutuhkan lantai itu.
- *
- * `colorBorder` (1,41:1 terang) masih menunggu di issue #208.
+ * ── Token netral: teks bantuan (#207) & batas (#208) ───────────────────────
+ * Dulu sengaja ditunda di sini karena keduanya token bawaan yang dipakai jauh
+ * di luar uang. Keduanya kini diputuskan, di bagian bawah berkas ini —
+ * `NEUTRAL_TEXT_*` dan `BORDER_TOKENS_*`. Alasannya sama dengan token uang:
+ * anak tangga netral AntD dipilih untuk selera, bukan untuk sebuah lantai
+ * kontras, dan aplikasi yang seluruh isinya angka di sel 14px membutuhkan
+ * lantai itu.
  */
 
 import type { ResolvedTheme } from "./config";
@@ -312,6 +311,102 @@ export const NEUTRAL_TEXT_DARK: NeutralTextTokens = {
 
 export function neutralTextTokens(resolved: ResolvedTheme): NeutralTextTokens {
   return resolved === "dark" ? NEUTRAL_TEXT_DARK : NEUTRAL_TEXT_LIGHT;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Batas: kisi tabel, tepi kartu, garis pemisah (issue #208)                  */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `colorBorder` bawaan berkontras 1,29:1 (terang) / 1,64:1 (gelap) terhadap
+ * latar terburuknya. Itu mengulang jebakan yang sudah tertulis di MASTER.md —
+ * "batas antar-bidang yang sewarna wajib punya `border`" — lewat jalan lain:
+ * batasnya ada, hanya tak terlihat.
+ *
+ * ── Yang membuat temuan ini lebih besar dari judulnya ──────────────────────
+ * Kisi tabel TIDAK memakai `colorBorder`. Dibaca dari `table/style/index.ts`,
+ * token komponen `Table.borderColor` dan `Table.headerSplitColor` keduanya
+ * `colorBorderSecondary` — dan `Card` memakai token yang sama untuk tepinya.
+ * `colorBorderSecondary` bawaan adalah yang TERBURUK dari ketiganya: 1,05:1
+ * terang. Memperbaiki `colorBorder` saja akan menaikkan kotak isian dan
+ * meninggalkan justru kisi tabel dan tepi kartu — dua hal yang disebut issue —
+ * tepat seperti semula.
+ *
+ * ── Anak tangganya: palet `grey` resmi AntD ────────────────────────────────
+ * Netral bawaan bukan anak tangga palet mana pun; ia `getSolidColor(colorBgBase,
+ * N)` — putih digelapkan N% (terang) atau hitam diterangkan N% (gelap), dengan
+ * N ∈ {6, 15} dan {19, 26}. Tidak ada N yang lebih jauh; menambah N sendiri
+ * sama saja mengarang. Yang tersedia dan resmi adalah `presetPalettes.grey` /
+ * `presetDarkPalettes.grey` dari `@ant-design/colors`, palet yang sama yang
+ * memberi green/red/blue pada token uang.
+ *
+ * | Peran                   | TERANG            | ctr / layout / elev | min  | GELAP             | ctr / layout / elev | min  |
+ * |-------------------------|-------------------|---------------------|------|-------------------|---------------------|------|
+ * | `colorBorder` BAWAAN    | `#d9d9d9`         | 1,41 / 1,29 / 1,41  | 1,29 | `#424242`         | 1,83 / 2,09 / 1,64  | 1,64 |
+ * | `colorBorderSecondary` BAWAAN | `#f0f0f0`   | 1,14 / 1,05 / 1,14  | 1,05 | `#303030`         | 1,40 / 1,59 / 1,25  | 1,25 |
+ * | `colorSplit` BAWAAN     | `rgba(5,5,5,.06)` | 1,14 / 1,14 / 1,14  | 1,14 | `rgba(253,253,253,.12)` | 1,40 / 1,26 / 1,44 | 1,26 |
+ * | **`colorBorder`**       | `#808080` grey-4  | 3,95 / 3,62 / 3,95  | 3,62 | `#7b7b7b` grey-8  | 4,35 / 4,96 / 3,89  | 3,89 |
+ * | **`colorBorderSecondary`** | `#8c8c8c` grey-3 | 3,36 / 3,08 / 3,36 | 3,08 | `#6a6a6a` grey-7 | 3,41 / 3,88 / 3,05  | 3,05 |
+ * | **`colorSplit`**        | `#999999` grey-2  | 2,85 / 2,61 / 2,85  | 2,61 | `#5a5a5a` grey-6  | 2,67 / 3,04 / 2,39  | 2,39 |
+ *
+ * ── Mana yang MEMBAWA MAKNA, mana yang dekoratif ───────────────────────────
+ * Ini keputusan yang menentukan seberapa berisik layar, jadi ditulis eksplisit:
+ *
+ *  • **`colorBorderSecondary` = membawa makna, ambang 3:1.** Kisi tabel dan
+ *    tepi kartu. Kisi adalah cara orang melacak satu baris uang menyeberangi
+ *    layar 1440px; tepi kartu adalah satu-satunya yang memisahkan panel dari
+ *    halaman sewarna di tema gelap. Dipakai anak tangga PERTAMA yang melewati
+ *    3:1 — grey-3 terang (3,08) dan grey-7 gelap (3,05) — bukan yang lebih
+ *    gelap. Grey-5 `#737373` (4,35) juga lolos, tapi kisi setebal itu membuat
+ *    tabel terbaca seperti kertas milimeter; ambangnya lantai, bukan target.
+ *  • **`colorBorder` = membawa makna, ambang 3:1.** Ini batas kendali interaktif
+ *    (`Input`, `Select`, `DatePicker`, tombol `default`), dan WCAG 1.4.11
+ *    menuntut 3:1 untuk batas komponen — kotak isian yang tak terlihat batasnya
+ *    berhenti terbaca sebagai kotak isian. Diberi satu anak tangga LEBIH kuat
+ *    dari kisi (grey-4 / grey-8) supaya hierarki dua tingkat milik AntD tetap
+ *    ada: kendali menonjol di atas wadahnya, bukan sekuat wadahnya.
+ *  • **`colorSplit` = DEKORATIF, sengaja di BAWAH 3:1** (2,61 / 2,39). Ia
+ *    dipakai `Divider`, pemisah `List`, `Descriptions`, `Timeline` — garis yang
+ *    memisahkan isi yang sudah dipisahkan judul dan ruang kosong. Satu anak
+ *    tangga di bawah kisi: terlihat, tapi tak pernah tertukar dengan batas
+ *    bidang.
+ *
+ * `colorSplit` HARUS disebut, tidak boleh dibiarkan: di lapisan alias ia
+ * turunan `colorBorderSecondary` (`getAlphaColor(colorBorderSecondary,
+ * colorBgContainer)`), jadi menaikkan kisi tanpa menyebutnya akan menyeret
+ * setiap `Divider` ikut menjadi garis pekat.
+ *
+ * Yang TIDAK ikut naik, dan itu disengaja: `colorBorderDisabled` (token
+ * terpisah, tetap `#d9d9d9`/`#424242`) — sama seperti teks nonaktif, kendali
+ * nonaktif dikecualikan WCAG dan harus tetap terlihat nonaktif.
+ *
+ * Catatan tema gelap: sidebar aplikasi `#0F172A` berkontras 1,03:1 terhadap
+ * `colorBgContainer` gelap — persis jebakan "dua bidang sewarna" di MASTER.md.
+ * Batas grey-8 di atas sidebar itu berkontras 4,22:1, jadi pembagian kolomnya
+ * kembali terlihat.
+ */
+export interface BorderTokens {
+  colorBorder: string;
+  colorBorderSecondary: string;
+  colorSplit: string;
+}
+
+/** grey-4 / grey-3 / grey-2 dari `presetPalettes.grey`. */
+export const BORDER_TOKENS_LIGHT: BorderTokens = {
+  colorBorder: "#808080", // min 3,62:1
+  colorBorderSecondary: "#8c8c8c", // min 3,08:1
+  colorSplit: "#999999", // min 2,61:1 — dekoratif, sengaja di bawah 3:1
+};
+
+/** grey-8 / grey-7 / grey-6 dari `presetDarkPalettes.grey`. */
+export const BORDER_TOKENS_DARK: BorderTokens = {
+  colorBorder: "#7b7b7b", // min 3,89:1
+  colorBorderSecondary: "#6a6a6a", // min 3,05:1
+  colorSplit: "#5a5a5a", // min 2,39:1 — dekoratif, sengaja di bawah 3:1
+};
+
+export function borderTokens(resolved: ResolvedTheme): BorderTokens {
+  return resolved === "dark" ? BORDER_TOKENS_DARK : BORDER_TOKENS_LIGHT;
 }
 
 /** Sumber token yang cukup bagi `moneyPalette` — apa pun yang `useToken()` beri. */

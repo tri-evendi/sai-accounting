@@ -9,25 +9,36 @@
  * memanggil `onRolesChanged` agar kolom matriks izin ikut termuat ulang.
  *
  * Semua aksi lewat /api/roles (di-gate authz.manage) — sumber kebenaran DB.
+ *
+ * ── Setelah migrasi AntD (issue #199) ──────────────────────────────────────
+ * Tanpa kelas Tailwind; kerapatan "px-4 py-2" yang dulu ditulis ulang di
+ * delapan sel hilang bersamanya.
+ *
+ * Daftar perannya memakai `StaticTable`, BUKAN `DataTable`, meski datanya sudah
+ * di client. Aturannya di MASTER.md: `DataTable` hanya untuk tabel yang
+ * pengguna­nya diuntungkan sortir/filter/paginasi seketika. Daftar peran sebuah
+ * PT berisi segelintir baris yang sudah terurut dari API — di sana rc-table
+ * hanya menambah pustaka ke bundel halaman tanpa satu pun imbalan (terukur:
+ * halaman ber-`DataTable` ±80 KB gzip lebih berat daripada yang tidak).
  */
 import { useCallback, useEffect, useState } from "react";
+import { Col, Flex, Row, theme, Typography } from "antd";
 import { Plus, Trash2, Lock, Check, Ban } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { type SaiColumns } from "@/components/ui/table-columns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** Panjang maksimum label & kunci peran — batas yang sama ditegakkan API. */
+const LABEL_MAX = 50;
+const KEY_MAX = 20;
 
 interface RoleRow {
   key: string;
@@ -38,6 +49,7 @@ interface RoleRow {
 
 export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) {
   const t = useT();
+  const { token } = theme.useToken();
   const { toast } = useToast();
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [newKey, setNewKey] = useState("");
@@ -118,119 +130,149 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
     }
   }
 
+  const roleColumns: SaiColumns<RoleRow> = [
+    {
+      key: "label",
+      dataIndex: "label",
+      title: t("permissions.colRoleName"),
+      render: (_value, role) => (
+        <Flex align="center" gap={token.marginXXS}>
+          <Typography.Text strong>{role.label}</Typography.Text>
+          {role.isSystem && (
+            <Lock
+              size="1em"
+              color={token.colorTextSecondary}
+              aria-label={t("permissions.systemRoleAria")}
+            />
+          )}
+        </Flex>
+      ),
+    },
+    {
+      key: "roleKey",
+      dataIndex: "key",
+      title: t("permissions.colRoleKey"),
+      render: (_value, role) => (
+        <Typography.Text
+          type="secondary"
+          code
+          style={{ fontSize: token.fontSizeSM }}
+        >
+          {role.key}
+        </Typography.Text>
+      ),
+    },
+    {
+      key: "isActive",
+      dataIndex: "isActive",
+      title: t("common.status"),
+      render: (_value, role) => (
+        <Badge variant={role.isActive ? "success" : "default"}>
+          <span>{role.isActive ? t("common.active") : t("common.inactive")}</span>
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      title: "",
+      align: "right",
+      render: (_value, role) =>
+        role.isSystem ? null : (
+          <Flex align="center" justify="flex-end" gap={token.marginXS}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => patch(role, { isActive: !role.isActive })}
+            >
+              {role.isActive ? (
+                <>
+                  <Ban aria-hidden="true" />
+                  {t("permissions.deactivateRole")}
+                </>
+              ) : (
+                <>
+                  <Check aria-hidden="true" />
+                  {t("permissions.activateRole")}
+                </>
+              )}
+            </Button>
+            {/* Menghapus peran mencabut akses setiap orang yang memegangnya —
+                merah + konfirmasi, tak pernah satu klik. */}
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={busy}
+              onClick={() => setDeleteTarget(role)}
+            >
+              <Trash2 aria-hidden="true" />
+              {t("common.delete")}
+            </Button>
+          </Flex>
+        ),
+    },
+  ];
+
   return (
-    <Card className="mb-6">
+    <Card style={{ marginBottom: token.marginLG }}>
       <CardHeader>
         <CardTitle>{t("permissions.roleManagerTitle")}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          {t("permissions.roleManagerHint")}
-        </p>
+      <CardContent>
+        <Flex vertical gap={token.margin}>
+          <Typography.Text type="secondary">
+            {t("permissions.roleManagerHint")}
+          </Typography.Text>
 
-        {/* Daftar peran */}
-        {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
-            primitif agar sama dengan tampilan sebelum migrasi. */}
-        <div className="rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto px-4 py-2">{t("permissions.colRoleName")}</TableHead>
-                <TableHead className="h-auto px-4 py-2">{t("permissions.colRoleKey")}</TableHead>
-                <TableHead className="h-auto px-4 py-2">{t("common.status")}</TableHead>
-                <TableHead className="h-auto px-4 py-2" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roles.map((role) => (
-                <TableRow key={role.key}>
-                  <TableCell className="px-4 py-2 font-medium text-foreground">
-                    <span className="flex items-center gap-1.5">
-                      {role.label}
-                      {role.isSystem && (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label={t("permissions.systemRoleAria")} />
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-4 py-2 font-mono text-xs text-muted-foreground">{role.key}</TableCell>
-                  <TableCell className="px-4 py-2">
-                    <Badge variant={role.isActive ? "success" : "default"}>
-                      {role.isActive ? t("common.active") : t("common.inactive")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-4 py-2">
-                    <div className="flex items-center justify-end gap-2">
-                      {!role.isSystem && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => patch(role, { isActive: !role.isActive })}
-                          >
-                            {role.isActive ? (
-                              <>
-                                <Ban className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
-                                {t("permissions.deactivateRole")}
-                              </>
-                            ) : (
-                              <>
-                                <Check className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
-                                {t("permissions.activateRole")}
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => setDeleteTarget(role)}
-                          >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{" "}
-                            {t("common.delete")}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+          {/* Daftar peran */}
+          <div
+            style={{
+              border: `1px solid ${token.colorBorderSecondary}`,
+              borderRadius: token.borderRadiusLG,
+              overflow: "hidden",
+            }}
+          >
+            <StaticTable columns={roleColumns} rows={roles} rowKey={(role) => role.key} />
+          </div>
 
-        {/* Tambah peran */}
-        <form onSubmit={create} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-          <div className="space-y-1">
-            <label htmlFor="new-role-label" className="block text-sm font-medium text-foreground">
-              {t("permissions.roleNameField")}
-            </label>
-            <TextInput
-              id="new-role-label"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder={t("permissions.roleNamePlaceholder")}
-              maxLength={50}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="new-role-key" className="block text-sm font-medium text-foreground">
-              {t("permissions.roleKeyField")}
-            </label>
-            <TextInput
-              id="new-role-key"
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value.toLowerCase())}
-              placeholder={t("permissions.roleKeyPlaceholder")}
-              maxLength={20}
-              required
-            />
-          </div>
-          <Button type="submit" disabled={busy || !newKey || !newLabel}>
-            <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("permissions.addRole")}
-          </Button>
-        </form>
+          {/* Tambah peran */}
+          <form onSubmit={create}>
+            <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+              <Col xs={24} sm={10}>
+                <Flex vertical gap={token.marginXXS}>
+                  <Label htmlFor="new-role-label">{t("permissions.roleNameField")}</Label>
+                  <TextInput
+                    id="new-role-label"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder={t("permissions.roleNamePlaceholder")}
+                    maxLength={LABEL_MAX}
+                    required
+                  />
+                </Flex>
+              </Col>
+              <Col xs={24} sm={10}>
+                <Flex vertical gap={token.marginXXS}>
+                  <Label htmlFor="new-role-key">{t("permissions.roleKeyField")}</Label>
+                  <TextInput
+                    id="new-role-key"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value.toLowerCase())}
+                    placeholder={t("permissions.roleKeyPlaceholder")}
+                    maxLength={KEY_MAX}
+                    required
+                  />
+                </Flex>
+              </Col>
+              <Col xs={24} sm={4}>
+                <Button type="submit" disabled={busy || !newKey || !newLabel}>
+                  <Plus aria-hidden="true" />
+                  {t("permissions.addRole")}
+                </Button>
+              </Col>
+            </Row>
+          </form>
+        </Flex>
       </CardContent>
 
       {deleteTarget && (

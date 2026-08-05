@@ -1,6 +1,27 @@
 "use client";
 
+/**
+ * Pengaturan — profil pengguna, modul usaha, jejak audit, kamus istilah, dan
+ * kartu "Tentang" yang menyebut identitas perusahaan aktif.
+ *
+ * ── Yang TIDAK boleh berubah di sini ──────────────────────────────────────
+ * Nama perusahaan datang dari `useCompanyIdentity()`, dan urutan sumbernya
+ * (setting perusahaan → nama di registry kendali → konstanta) hidup di
+ * `lib/company-identity-client.tsx`. Ia sengaja TIDAK di-inline ke berkas ini:
+ * memundurkannya ke konstanta lebih awal berarti mencetak nama pemasang pertama
+ * di dokumen PT lain — surat yang terlihat sah padahal salah badan hukum
+ * (MASTER.md §Orientasi Perusahaan). Migrasi tampilan tidak menyentuhnya.
+ *
+ * ── Setelah migrasi AntD (issue #199) ─────────────────────────────────────
+ * Tanpa kelas Tailwind: jarak & warna lewat `theme.useToken()`, pita "modul
+ * dimatikan" menjadi `Alert` AntD, dan kedua tombol tautan memakai
+ * `Button asChild` — bukan lagi `<Link><Button/></Link>`, yang menyarangkan
+ * sebuah tombol di dalam anchor: HTML tak sah, dan pembaca layar
+ * mengumumkannya dua kali (lihat catatan `asChild` di `ui/button.tsx`, #187).
+ */
+
 import { useSession } from "next-auth/react";
+import { Alert, Flex, theme, Typography } from "antd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
@@ -36,6 +57,7 @@ export function SettingsClient({
   const t = useT();
   const company = useCompanyIdentity();
   const dictionary = useDictionary();
+  const { token } = theme.useToken();
   const { data: session } = useSession();
 
   if (!session) return null;
@@ -43,8 +65,21 @@ export function SettingsClient({
   // audit RBAC fase 4 — panel Audit Log tampil bila punya izin membacanya.
   const isManager = canReadAudit;
 
+  /** Jarak antar-kartu halaman — bekas `mb-6`. */
+  const blockGap: React.CSSProperties = { marginBottom: token.marginLG };
+
+  /** Satu baris profil: istilah di atas, nilainya di bawah. */
+  const term = (label: string, value: React.ReactNode) => (
+    <div>
+      <dt style={{ color: token.colorTextSecondary, fontWeight: token.fontWeightStrong }}>
+        {label}
+      </dt>
+      <dd style={{ margin: 0 }}>{value}</dd>
+    </div>
+  );
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader title={t("nav.items.settings")} />
 
       {/*
@@ -61,54 +96,56 @@ export function SettingsClient({
        * dimatikan; yang berhak mendapat tautan ke kartu pengelolanya di bawah.
        */}
       {inactiveModules.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-start gap-x-2 gap-y-1 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
-          <PackageX className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <p className="min-w-0 flex-1">
-            {t("modules.inactiveSummary", {
-              count: inactiveModules.length,
-              list: inactiveModules.map((m) => t(MODULE_META[m].labelKey)).join(", "),
-            })}{" "}
-            {canManageModules ? (
-              <a href="#modules" className="font-medium text-primary underline">
-                {t("modules.inactiveSummaryManage")}
-              </a>
-            ) : (
-              <span>{t("modules.inactiveSummaryAsk")}</span>
-            )}
-          </p>
-        </div>
+        <Alert
+          type="info"
+          showIcon
+          icon={<PackageX size={token.fontSizeLG} aria-hidden="true" />}
+          style={blockGap}
+          message={
+            <>
+              {t("modules.inactiveSummary", {
+                count: inactiveModules.length,
+                list: inactiveModules.map((m) => t(MODULE_META[m].labelKey)).join(", "),
+              })}{" "}
+              {canManageModules ? (
+                <a
+                  href="#modules"
+                  style={{
+                    color: token.colorLink,
+                    fontWeight: token.fontWeightStrong,
+                    textDecoration: "underline",
+                  }}
+                >
+                  {t("modules.inactiveSummaryManage")}
+                </a>
+              ) : (
+                <span>{t("modules.inactiveSummaryAsk")}</span>
+              )}
+            </>
+          }
+        />
       )}
 
-      <Card className="mb-6">
+      <Card style={blockGap}>
         <CardHeader>
           <CardTitle>{t("settings.profileTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="space-y-3">
+          <Flex vertical gap={token.marginSM}>
+            <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: token.marginSM }}>
+              {term(t("common.name"), session.user.name)}
+              {term(t("auth.login.username"), session.user.email)}
+              {term(
+                t("users.role"),
+                roleLabels(dictionary)[session.user.role as SystemRole] || session.user.role
+              )}
+            </dl>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.name")}</dt>
-              <dd className="text-sm text-foreground">{session.user.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t("auth.login.username")}
-              </dt>
-              <dd className="text-sm text-foreground">{session.user.email}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("users.role")}</dt>
-              <dd className="text-sm text-foreground">
-                {roleLabels(dictionary)[session.user.role as SystemRole] || session.user.role}
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-4">
-            <Link href="/change-password">
-              <Button variant="secondary" className="cursor-pointer">
-                {t("settings.changePassword")}
+              <Button asChild variant="secondary">
+                <Link href="/change-password">{t("settings.changePassword")}</Link>
               </Button>
-            </Link>
-          </div>
+            </div>
+          </Flex>
         </CardContent>
       </Card>
 
@@ -120,26 +157,26 @@ export function SettingsClient({
       )}
 
       {isManager && (
-        <div className="mb-6">
+        <div style={blockGap}>
           <AuditLogPanel />
         </div>
       )}
 
       {/* issue #21 — pintu masuk kedua ke Kamus Istilah, selain menu Bantuan. */}
-      <Card className="mb-6">
+      <Card style={blockGap}>
         <CardHeader>
           <CardTitle>{t("helpMenu.trigger")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {t("settings.helpDescription")}
-          </p>
-          <Link href={GLOSSARY_PATH} className="mt-3 inline-block">
-            <Button variant="secondary" className="cursor-pointer">
-              <BookMarked className="mr-2 h-4 w-4" aria-hidden="true" />
-              {t("settings.openGlossary")}
+          <Flex vertical align="flex-start" gap={token.marginSM}>
+            <Typography.Text type="secondary">{t("settings.helpDescription")}</Typography.Text>
+            <Button asChild variant="secondary">
+              <Link href={GLOSSARY_PATH}>
+                <BookMarked aria-hidden="true" />
+                {t("settings.openGlossary")}
+              </Link>
             </Button>
-          </Link>
+          </Flex>
         </CardContent>
       </Card>
 
@@ -148,11 +185,16 @@ export function SettingsClient({
           <CardTitle>{t("settings.aboutTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-foreground">{APP_NAME}</p>
-          <p className="text-sm text-muted-foreground mt-1">{company.name}</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {t("settings.aboutTagline")}
-          </p>
+          <Flex vertical gap={token.marginXXS}>
+            {/* Nama produk lewat `APP_NAME`, nama PT lewat `useCompanyIdentity()`
+                — dua sumber yang berbeda, dan menukarnya berarti mencetak
+                identitas yang salah (lihat kepala berkas). */}
+            <Typography.Text>{APP_NAME}</Typography.Text>
+            <Typography.Text type="secondary">{company.name}</Typography.Text>
+            <Typography.Text type="secondary" style={{ marginTop: token.marginXXS }}>
+              {t("settings.aboutTagline")}
+            </Typography.Text>
+          </Flex>
         </CardContent>
       </Card>
     </div>

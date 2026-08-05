@@ -5,7 +5,7 @@
  * pengguna, pola inline-card yang sama dengan form "Create New User" di
  * `users-client.tsx` (bukan halaman baru).
  *
- * Per izin, pilihan tri-state lewat `NativeSelect` (select native — issue #50):
+ * Per izin, pilihan tri-state lewat `NativeSelect` (issue #50):
  *   "Ikuti peran (Boleh/Tidak)"  → tidak ada baris tersimpan (default);
  *   "Selalu boleh"               → override allowed=true;
  *   "Selalu tidak"               → override allowed=false.
@@ -18,12 +18,19 @@
  * seketika, lalu server memvalidasi ulang sebagai penjaga terakhir.
  *
  * Desain (MASTER.md): label bahasa tugas + kunci izin sebagai teks muted;
- * baris yang menyimpang ditandai latar `warning-soft` DAN teks "izin khusus"
+ * baris yang menyimpang ditandai latar `colorWarningBg` DAN teks "izin khusus"
  * (tidak pernah warna saja); izin anti-lockout dinonaktifkan dengan ikon
  * gembok + penjelasan; simpan/reset lewat dialog konfirmasi; hasil lewat toast.
+ *
+ * ── Header lengket (issue #199) ────────────────────────────────────────────
+ * Daftar izin panjang: begitu digulir, judul kolom "Untuk pengguna ini" keluar
+ * layar dan pemilih tri-state kehilangan artinya. Cara kerjanya dijelaskan di
+ * `matrixScrollBox`/`stickyHead` di bawah — sama persis dengan matriks
+ * `/permissions`, dan dikunci `tests/permission-matrix-sticky.test.tsx`.
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { Alert, Flex, theme, Typography } from "antd";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +46,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 import type { SystemRole } from "@/lib/constants";
 import type { Permission } from "@/lib/authz";
 import {
@@ -52,6 +58,21 @@ import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { Lock, RotateCcw, Save, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+import {
+  MATRIX_MAX_HEIGHT,
+  matrixScrollBox,
+  stickyHead,
+} from "../permissions/matrix-sticky";
+
+/** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[560px]`. */
+const MATRIX_MIN_WIDTH = 560;
+/** Lebar kolom pemilih tri-state — bekas `w-64`. */
+const CHOICE_COLUMN_WIDTH = 256;
+/** Lebar minimum kolom nama izin — bekas `min-w-[280px]`. */
+const PERMISSION_COLUMN_MIN = 280;
+/** Petak warna di legenda — bekas `size-3`. */
+const SWATCH = 12;
 
 interface UserPermissionsResponse {
   user: { id: number; username: string; name: string | null; role: string };
@@ -86,6 +107,8 @@ export function UserPermissionsPanel({
 }) {
   const t = useT();
   const dictionary = useDictionary();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const { toast } = useToast();
   const [data, setData] = useState<UserPermissionsResponse | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -220,23 +243,21 @@ export function UserPermissionsPanel({
 
   if (loadError) {
     return (
-      <Card className="mb-6">
-        <div className="flex items-start justify-between gap-4 p-6">
-          <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">
-            {loadError}
-          </div>
+      <Card style={{ marginBottom: token.marginLG }}>
+        <Flex align="flex-start" justify="space-between" gap={token.margin} style={{ padding: token.paddingLG }}>
+          <Alert type="error" showIcon message={loadError} style={{ flex: 1 }} />
           <Button variant="outline" size="sm" onClick={onClose}>
             <X aria-hidden="true" />
             {t("common.close")}
           </Button>
-        </div>
+        </Flex>
       </Card>
     );
   }
 
   if (!data) {
     return (
-      <Card className="mb-6">
+      <Card style={{ marginBottom: token.marginLG }}>
         <PageLoader message={t("users.loadingPermissions")} />
       </Card>
     );
@@ -246,25 +267,32 @@ export function UserPermissionsPanel({
   const roleLabel = roleLabels(dictionary)[data.user.role as SystemRole] ?? data.user.role;
 
   return (
-    <Card className="mb-6">
+    <Card style={{ marginBottom: token.marginLG }}>
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <Flex wrap align="flex-start" justify="space-between" gap={token.marginSM}>
           <div>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              {t("users.panelTitle", { name: displayName })}
-              {savedOverrideCount > 0 ? (
-                <Badge variant="warning">
-                  {t("users.overrideBadge", { count: savedOverrideCount })}
-                </Badge>
-              ) : (
-                <Badge>{t("users.followRoleBadge")}</Badge>
-              )}
+            <CardTitle>
+              <Flex wrap align="center" gap={token.marginXS} style={{ display: "inline-flex" }}>
+                {t("users.panelTitle", { name: displayName })}
+                {savedOverrideCount > 0 ? (
+                  <Badge variant="warning">
+                    <span>{t("users.overrideBadge", { count: savedOverrideCount })}</span>
+                  </Badge>
+                ) : (
+                  <Badge>
+                    <span>{t("users.followRoleBadge")}</span>
+                  </Badge>
+                )}
+              </Flex>
             </CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: token.marginXXS }}
+            >
               {t("users.panelHint", { role: roleLabel })}
-            </p>
+            </Typography.Text>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <Flex wrap align="center" gap={token.marginXS}>
             <Button
               variant="outline"
               size="sm"
@@ -282,47 +310,79 @@ export function UserPermissionsPanel({
               <X aria-hidden="true" />
               {t("common.close")}
             </Button>
-          </div>
-        </div>
+          </Flex>
+        </Flex>
       </CardHeader>
 
-      <div className="px-6 pb-6">
+      <div style={{ paddingInline: token.paddingLG, paddingBottom: token.paddingLG }}>
         {errors.length > 0 && (
-          <div
-            role="alert"
-            className="mb-4 rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong"
-          >
-            <p className="font-medium">{t("users.errorsTitle")}</p>
-            <ul className="mt-1 list-disc pl-5">
-              {errors.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
+          <div role="alert">
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: token.margin }}
+              message={t("users.errorsTitle")}
+              description={
+                <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                  {errors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              }
+            />
           </div>
         )}
 
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
+        <Flex
+          wrap
+          align="center"
+          gap={token.margin}
+          style={{
+            marginBottom: token.margin,
+            fontSize: token.fontSizeSM,
+            color: token.colorTextSecondary,
+          }}
+        >
+          <Flex align="center" gap={token.marginXXS}>
             <span
               aria-hidden="true"
-              className="inline-block size-3 rounded-sm bg-warning-soft ring-1 ring-warning"
+              style={{
+                display: "inline-block",
+                width: SWATCH,
+                height: SWATCH,
+                borderRadius: token.borderRadiusSM,
+                background: token.colorWarningBg,
+                border: `1px solid ${token.colorWarningBorder}`,
+              }}
             />
             {t("users.legendMarkedBefore")}{" "}
-            <span className="font-medium text-warning-strong">{t("users.legendOverride")}</span>{" "}
+            <span style={{ fontWeight: token.fontWeightStrong, color: money.colorMoneyPending }}>
+              {t("users.legendOverride")}
+            </span>{" "}
             {t("users.legendMarkedAfter")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Lock className="size-3" aria-hidden="true" />
+          </Flex>
+          <Flex align="center" gap={token.marginXXS}>
+            <Lock size="1em" aria-hidden="true" />
             {t("users.legendLocked")}
-          </span>
-        </div>
+          </Flex>
+        </Flex>
 
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
-          <Table className="min-w-[560px]">
+        <div
+          data-permission-matrix="user"
+          style={{
+            ...matrixScrollBox(token),
+            maxHeight: MATRIX_MAX_HEIGHT,
+          }}
+        >
+          <Table style={{ minWidth: MATRIX_MIN_WIDTH }}>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[280px]">{t("users.colPermission")}</TableHead>
-                <TableHead className="w-64">{t("users.colForThisUser")}</TableHead>
+                <TableHead style={{ ...stickyHead(token), minWidth: PERMISSION_COLUMN_MIN }}>
+                  {t("users.colPermission")}
+                </TableHead>
+                <TableHead style={{ ...stickyHead(token), width: CHOICE_COLUMN_WIDTH }}>
+                  {t("users.colForThisUser")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -405,10 +465,18 @@ function UserPermissionGroupRows({
   permissionText: Record<Permission, string>;
   t: TranslateFn;
 }) {
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   return (
     <>
-      <TableRow className="bg-muted/60 hover:bg-muted/60">
-        <TableCell colSpan={2} className="py-2 text-sm font-semibold text-foreground">
+      <TableRow style={{ background: token.colorFillAlter }}>
+        <TableCell
+          colSpan={2}
+          style={{
+            paddingBlock: token.paddingXS,
+            fontWeight: token.fontWeightStrong,
+          }}
+        >
           {label}
         </TableCell>
       </TableRow>
@@ -421,13 +489,18 @@ function UserPermissionGroupRows({
         // dimatikan pada "Ikuti peran (Boleh)".
         const locked = lockedSet.has(permission);
         return (
-          <TableRow key={permission} className={cn(changed && "bg-warning-soft")}>
+          <TableRow
+            key={permission}
+            style={changed ? { background: token.colorWarningBg } : undefined}
+          >
             <TableCell>
-              <div className="text-sm text-foreground">{permissionText[permission]}</div>
-              <div className="text-xs text-muted-foreground">{permission}</div>
+              <div>{permissionText[permission]}</div>
+              <div style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
+                {permission}
+              </div>
             </TableCell>
             <TableCell>
-              <div className="flex flex-col gap-0.5">
+              <Flex vertical gap={token.marginXXS}>
                 <NativeSelect
                   fieldSize="sm"
                   value={choice}
@@ -449,17 +522,29 @@ function UserPermissionGroupRows({
                   ]}
                 />
                 {locked && (
-                  <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                    <Lock className="size-3" aria-hidden="true" />
+                  <Flex
+                    align="center"
+                    gap={token.marginXXS}
+                    style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}
+                  >
+                    <Lock size="1em" aria-hidden="true" />
                     {t("users.lockedShort")}
-                  </span>
+                  </Flex>
                 )}
+                {/* Penanda kedua di samping latar baris: warna tidak pernah
+                    sendirian (MASTER.md §Anti-Patterns). */}
                 {changed && !locked && (
-                  <span className="text-xs font-medium text-warning-strong">
+                  <span
+                    style={{
+                      fontSize: token.fontSizeSM,
+                      fontWeight: token.fontWeightStrong,
+                      color: money.colorMoneyPending,
+                    }}
+                  >
                     {t("users.legendOverride")}
                   </span>
                 )}
-              </div>
+              </Flex>
             </TableCell>
           </TableRow>
         );

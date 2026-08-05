@@ -40,6 +40,24 @@ import { NAV_HOME, isNavItemVisible, visibleNavGroups } from "@/lib/nav";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { useT } from "@/lib/i18n/client";
 
+/**
+ * Teks yang hanya dibacakan pembaca layar — pengganti kelas `sr-only`
+ * (issue #193: chrome aplikasi tidak lagi memakai Tailwind). `display: none`
+ * TIDAK bisa dipakai: ia mencabut judulnya dari pembaca layar juga, dan
+ * judul itulah satu-satunya alasan elemen ini ada.
+ */
+const HANYA_PEMBACA_LAYAR: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
+
 interface CommandPaletteProps {
   role: string;
   accountantMode?: boolean | null;
@@ -88,10 +106,11 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
-        {/* Judul dibutuhkan Radix untuk pengumuman pembaca layar; disembunyikan
-            secara visual karena kolom ketiknya sudah menjelaskan dirinya. */}
-        <DialogTitle className="sr-only">{t("commandPalette.title")}</DialogTitle>
+      <DialogContent>
+        {/* Judul dibutuhkan `aria-labelledby` dialog untuk pengumuman pembaca
+            layar; disembunyikan secara visual karena kolom ketiknya sudah
+            menjelaskan dirinya. */}
+        <DialogTitle style={HANYA_PEMBACA_LAYAR}>{t("commandPalette.title")}</DialogTitle>
         <Command>
           <CommandInput placeholder={t("commandPalette.placeholder")} />
           <CommandList>

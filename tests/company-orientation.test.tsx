@@ -57,10 +57,19 @@ describe("penanda perusahaan aktif", () => {
     }
   });
 
-  it("nama panjang tetap bisa dibaca utuh (title) dan tidak memecah tata letak (truncate)", () => {
+  it("nama panjang tetap bisa dibaca utuh (title) dan tidak memecah tata letak (elipsis)", () => {
+    /*
+     * Sejak issue #193 chrome aplikasi tidak lagi memakai Tailwind, jadi yang
+     * dicari bukan lagi kelas `truncate` melainkan tiga properti yang DULU
+     * dirakitnya. Ketiganya harus ada bersama-sama: `text-overflow` tanpa
+     * `overflow: hidden` tidak memotong apa pun, dan tanpa `white-space:
+     * nowrap` namanya membungkus ke baris kedua dan menaikkan tinggi bilah.
+     */
     const html = render("PT Perusahaan Dengan Nama Yang Sangat Panjang Sekali", id as unknown as Dictionary);
     expect(html).toContain('title="PT Perusahaan Dengan Nama Yang Sangat Panjang Sekali"');
-    expect(html).toContain("truncate");
+    expect(html).toContain("text-overflow:ellipsis");
+    expect(html).toContain("overflow:hidden");
+    expect(html).toContain("white-space:nowrap");
   });
 
   it("tanpa perusahaan aktif tidak merender apa pun — bukan menebak nama", () => {

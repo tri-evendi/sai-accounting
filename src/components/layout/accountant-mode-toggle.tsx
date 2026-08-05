@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Calculator, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Flex, Grid, theme } from "antd";
+import { Calculator } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { ROLES, isFullAccessRole } from "@/lib/constants";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -23,9 +26,33 @@ import { apiFetch } from "@/lib/api-fetch";
  *
  * Display-only: it changes what the user sees, never their role/authorisation,
  * and never what the posting engine writes.
+ *
+ * ── Setelah migrasi AntD (issue #193) ─────────────────────────────────────
+ * Dulu elemen `button` mentah dengan pil rakitan tangan, dan karena itu terdaftar
+ * di `RAW_BUTTON_ALLOWLIST`. Alasan pengecualian itu habis: yang dibutuhkan
+ * ternyata persis `Button` primitif (40px, cincin fokus, transisi, keadaan
+ * nonaktif) DITAMBAH satu `Badge` berteks sebagai penanda keadaan. Karena itu
+ * berkas ini keluar dari daftar pengecualian.
+ *
+ * Dua hal yang sengaja dipertahankan lewat prop, bukan lewat rupa:
+ *  • `role="switch"` + `aria-checked` — inilah yang membuat pembaca layar
+ *    mengumumkannya sebagai sakelar dua keadaan, bukan tombol biasa. AntD
+ *    `Switch` TIDAK dipakai: ia tidak punya tempat untuk label maupun kata
+ *    "AKTIF/NONAKTIF", dan sakelar tanpa kata melanggar aturan "warna/posisi
+ *    tak boleh jadi penanda tunggal".
+ *  • Kata keadaannya (`ON`/`OFF`) lewat `Badge` — penanda kedua di samping
+ *    warna, dan tetap terbaca di layar sempit tempat label "Mode Akuntan"
+ *    sendiri disembunyikan.
+ *
+ * Yang HILANG dan disengaja: pemintal saat menyimpan. `Button` primitif tidak
+ * meneruskan `loading` AntD (tanda tangannya sengaja `button` HTML), dan
+ * `Spin` adalah sebuah `div` — tidak sah di dalam tombol. Umpan baliknya kini
+ * keadaan nonaktif + `aria-busy`; jendelanya satu permintaan PATCH.
  */
 export function AccountantModeToggle() {
   const t = useT();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
   const { data: session, update } = useSession();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -79,38 +106,29 @@ export function AccountantModeToggle() {
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
         onClick={() => setDialogOpen(true)}
         disabled={saving}
+        aria-busy={saving}
         role="switch"
         aria-checked={isOn}
         aria-label={t("accountantMode.toggleAria", {
           state: isOn ? t("accountantMode.state.on") : t("accountantMode.state.off"),
         })}
         title={t("accountantMode.toggleTitle")}
-        className={cn(
-          "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60",
-          isOn
-            ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/10"
-            : "border-border bg-card text-muted-foreground hover:bg-muted"
-        )}
       >
-        {saving ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-        ) : (
-          <Calculator className="h-4 w-4" aria-hidden="true" />
-        )}
-        <span className="hidden sm:inline">{t("accountantMode.label")}</span>
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 text-xs font-semibold",
-            isOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          )}
-        >
-          {isOn ? t("accountantMode.on") : t("accountantMode.off")}
-        </span>
-      </button>
+        <Flex component="span" align="center" gap={token.marginXXS}>
+          <Calculator size={16} aria-hidden="true" />
+          {screens.sm && <span>{t("accountantMode.label")}</span>}
+          <Badge
+            variant={isOn ? "success" : "default"}
+            style={{ marginInlineEnd: 0 }}
+          >
+            {isOn ? t("accountantMode.on") : t("accountantMode.off")}
+          </Badge>
+        </Flex>
+      </Button>
 
       {/* Dialog konfirmasi yang menjelaskan pilihan sebelum diterapkan. "Batal"
           juga berfungsi sebagai jalan "cuma ingin tahu" tanpa mengubah apa pun. */}

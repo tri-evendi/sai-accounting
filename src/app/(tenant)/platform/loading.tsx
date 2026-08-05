@@ -35,8 +35,13 @@ export default function PlatformLoading() {
       <div className="space-y-6">
         {/* Baris kartu ringkasan — kisi yang sama dengan pendaratan. */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {/* `rounded-md` (8px), bukan `rounded-xl`: sejak #191 `QuotaMeter`
+              yang digantikan kerangka ini memakai `borderRadiusLG` AntD, dan
+              kerangka yang sudutnya tidak sama dengan isinya justru menambah
+              lompatan tata letak alih-alih menghapusnya — persis yang dicegah
+              catatan di kepala berkas ini. */}
           {[0, 1, 2].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-4">
+            <div key={i} className="rounded-md border border-border bg-card p-4">
               <div className="h-4 w-24 rounded bg-muted" />
               <div className="mt-2 h-7 w-20 rounded bg-muted" />
               <div className="mt-3 h-2 w-full rounded-full bg-muted" />

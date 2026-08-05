@@ -118,8 +118,23 @@ const SRC = join(__dirname, "..", "src");
  * membaca buku besar lewat Prisma tetap server component dan merender tombol,
  * label status, serta isiannya sebagai DAUN. Angka server component tidak
  * bergerak: 152 + 1 (#188) + 3 − 1 (#187) = 155.
+ *
+ * 158 sejak #191 (2026-08-06): tata letak & navigasi. Naik EMPAT
+ * (`card.tsx`, `page-header.tsx`, `empty-state.tsx`, `quota-meter.tsx`) dan
+ * turun SATU (`collapsible.tsx` dihapus — `DisclosureSection` kini memakai
+ * `Collapse` AntD, jadi re-ekspor Radix itu tidak punya pemakai lagi).
+ * `breadcrumb.tsx` juga hilang, tapi ia server component sehingga tidak pernah
+ * ada di daftar ini: isinya larut ke `page-header.tsx` bersama tipenya.
+ *
+ * Empat kenaikan itu adalah pemakai primitif TERBANYAK di aplikasi ini —
+ * `card.tsx` 107 berkas, `page-header.tsx` 87 — dan justru itu yang perlu
+ * diperiksa di diff: yang menyeberang adalah KEEMPAT primitifnya, bukan satu
+ * pun dari 194 berkas pemanggilnya. Halaman yang membaca buku besar lewat
+ * Prisma tetap server component dan merender kartu serta kepala halamannya
+ * sebagai DAUN; `StaticTable` (#189) tetap server dan hanya keadaan KOSONG-nya
+ * (`EmptyState`) yang kini client.
  */
-const AMBANG_KLIEN = 155;
+const AMBANG_KLIEN = 158;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -263,13 +278,14 @@ const KLIEN_TERSAHKAN = [
   "components/ui/app-link.tsx",
   "components/ui/badge.tsx",
   "components/ui/button.tsx",
+  "components/ui/card.tsx",
   "components/ui/checkbox.tsx",
-  "components/ui/collapsible.tsx",
   "components/ui/command.tsx",
   "components/ui/confirm-dialog.tsx",
   "components/ui/data-table.tsx",
   "components/ui/dialog.tsx",
   "components/ui/disclosure-section.tsx",
+  "components/ui/empty-state.tsx",
   "components/ui/form.tsx",
   "components/ui/input.tsx",
   "components/ui/learn-more.tsx",
@@ -277,10 +293,12 @@ const KLIEN_TERSAHKAN = [
   "components/ui/locale-toggle.tsx",
   "components/ui/money-input.tsx",
   "components/ui/money.tsx",
+  "components/ui/page-header.tsx",
   "components/ui/pagination.tsx",
   "components/ui/password-input.tsx",
   "components/ui/popover.tsx",
   "components/ui/progress.tsx",
+  "components/ui/quota-meter.tsx",
   "components/ui/searchable-select.tsx",
   "components/ui/select.tsx",
   "components/ui/server-searchable-select.tsx",

@@ -1,5 +1,8 @@
+"use client";
+
 /**
- * METER kuota — satu rasio terhadap BATAS.
+ * METER kuota — satu rasio terhadap BATAS. Ditulis ulang di atas Ant Design
+ * `Progress` pada issue #191 (fase B5).
  *
  * ══ KENAPA METER, BUKAN ANGKA TELANJANG ════════════════════════════════════
  * "2 / 3" benar dan tidak menjawab pertanyaan yang sebenarnya dibawa pemilik
@@ -16,17 +19,31 @@
  * sebagai satu-satunya penanda, dan meter yang hanya berubah rona tidak
  * terbaca oleh sebagian pembaca sama sekali.
  *
+ * Warna ISIAN memakai `colorError`/`colorWarning`/`colorPrimary` bawaan AntD:
+ * itu peran non-teks, ambangnya 3:1, dan `lib/theme/antd-tokens.ts` memang
+ * menyebut `Progress` sebagai tempat warna penuh tetap benar. Warna KATA
+ * keadaannya tidak boleh ikut: ia teks 14px, jadi ia memakai token uang
+ * (#186) yang sudah terukur 6,0–10,7:1.
+ *
  * ══ AKSESIBILITAS ══════════════════════════════════════════════════════════
  * `role="progressbar"` dengan `aria-valuenow/min/max` dan label yang menyebut
  * apa yang diukur: pembaca layar mengumumkan "2 dari 3", bukan "67 persen"
- * tanpa satuan. Batangnya sendiri `aria-hidden` — nilainya sudah diumumkan
- * oleh peran di pembungkusnya, dan mengumumkannya dua kali hanya berisik.
+ * tanpa satuan.
+ *
+ * Itulah sebabnya `Progress` AntD dirender DI DALAM pembungkus `aria-hidden`,
+ * bukan dipakai sebagai peran progressbar-nya sendiri: `Progress` mengumumkan
+ * PERSEN, karena persen memang satu-satunya yang ia tahu. Untuk kuota, "67
+ * persen" adalah jawaban yang benar atas pertanyaan yang tidak ditanyakan
+ * siapa pun — yang ingin diketahui adalah masih ada berapa perusahaan lagi.
  *
  * Angka besar memakai angka PROPORSIONAL, bukan `tabular-nums`: tabular
  * memberi setiap digit lebar `0` dan membuat nilai tunggal tampak renggang.
  * Tabular tetap benar di KOLOM tabel, tempat digit harus sejajar ke bawah.
  */
-import { cn } from "@/lib/utils";
+
+import { Progress, theme } from "antd";
+
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 export interface QuotaMeterProps {
   /** Apa yang dihitung — "Perusahaan", "Pengguna". Sentence case, tanpa titik dua. */
@@ -51,6 +68,9 @@ export function QuotaMeter({
   stateLabel,
   className,
 }: QuotaMeterProps) {
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
+
   /* `max` 0 tidak boleh membuat batang menjadi NaN — perlakukan sebagai penuh:
    * kuota nol berarti tidak ada ruang tersisa, dan itu justru keadaan yang
    * paling perlu terlihat. */
@@ -58,10 +78,41 @@ export function QuotaMeter({
   const full = max > 0 ? used >= max : true;
   const nearly = !full && ratio >= NEARLY_FULL;
 
+  const stroke = full
+    ? token.colorError
+    : nearly
+      ? token.colorWarning
+      : token.colorPrimary;
+  /* Trek kosongnya = anak tangga `*Bg` dari ramp yang SAMA dengan isiannya,
+     supaya keadaan meter terbaca di sepanjang batang, bukan hanya di bagian
+     yang terisi. (`railColor`; `trailColor` sudah usang di AntD v6.) */
+  const rail = full
+    ? token.colorErrorBg
+    : nearly
+      ? token.colorWarningBg
+      : token.colorPrimaryBg;
+
   return (
-    <div className={cn("rounded-xl border border-border bg-card p-4", className)}>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{valueLabel}</p>
+    <div
+      className={className}
+      style={{
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+        background: token.colorBgContainer,
+        padding: token.padding,
+      }}
+    >
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>{label}</p>
+      <p
+        style={{
+          margin: `${token.marginXXS}px 0 0`,
+          fontSize: token.fontSizeHeading3,
+          fontWeight: token.fontWeightStrong,
+          color: token.colorText,
+        }}
+      >
+        {valueLabel}
+      </p>
 
       <div
         role="progressbar"
@@ -69,31 +120,27 @@ export function QuotaMeter({
         aria-valuemin={0}
         aria-valuemax={max}
         aria-label={`${label}: ${valueLabel}`}
-        className={cn(
-          "mt-3 h-2 w-full overflow-hidden rounded-full",
-          // Trek = langkah lebih terang dari ramp yang sama dengan isiannya,
-          // supaya keadaannya terbaca di sepanjang batang.
-          full ? "bg-destructive/20" : nearly ? "bg-warning/20" : "bg-primary/15"
-        )}
+        style={{ marginTop: token.marginSM }}
       >
-        <div
-          aria-hidden
-          style={{ width: `${Math.round(ratio * 100)}%` }}
-          className={cn(
-            "h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none",
-            full ? "bg-destructive" : nearly ? "bg-warning" : "bg-primary"
-          )}
-        />
+        <div aria-hidden>
+          <Progress
+            percent={Math.round(ratio * 100)}
+            showInfo={false}
+            strokeColor={stroke}
+            railColor={rail}
+          />
+        </div>
       </div>
 
       {/* Keadaan sebagai KATA. Tanpa baris ini, satu-satunya perbedaan antara
           "lega" dan "mentok" adalah rona batang. */}
       {stateLabel && (full || nearly) && (
         <p
-          className={cn(
-            "mt-2 text-sm font-medium",
-            full ? "text-destructive-strong" : "text-warning-strong"
-          )}
+          style={{
+            margin: `${token.marginXS}px 0 0`,
+            fontWeight: token.fontWeightStrong,
+            color: full ? money.colorMoneyNegative : money.colorMoneyPending,
+          }}
         >
           {stateLabel}
         </p>

@@ -118,7 +118,32 @@ export function stockMovementColumns(report: {
   const available = STOCK_MOVEMENT_COLUMNS.filter(
     (id) => id !== "processed" || report.hasProcess
   );
-  const asked = report.visibleColumns;
-  if (!asked || asked.length === 0) return [...available];
-  return available.filter((id) => id === "name" || asked.includes(id));
+  return selectColumns(available, report.visibleColumns, "name");
+}
+
+/**
+ * Saring `available` dengan pilihan pengguna, mempertahankan urutan kanonik.
+ *
+ * Dua aturan yang berlaku untuk SETIAP laporan bertipe daftar: kolom `always`
+ * tak pernah bisa dibuang (tabel angka tanpa kolom identitas tidak bisa dibaca
+ * siapa pun), dan daftar kosong berarti "seluruhnya" — bukan "tidak satu pun",
+ * yang hanya menghasilkan halaman kosong.
+ */
+export function selectColumns<T extends string>(
+  available: readonly T[],
+  visible: string[] | undefined,
+  always: T
+): T[] {
+  if (!visible || visible.length === 0) return [...available];
+  return available.filter((id) => id === always || visible.includes(id));
+}
+
+// ─── Kolom rekap per mitra (Penjualan per Pelanggan / Pembelian per Pemasok) ──
+
+export const PARTY_RECAP_COLUMNS = ["party", "docCount", "gross", "returns", "net"] as const;
+
+export type PartyRecapColumnId = (typeof PARTY_RECAP_COLUMNS)[number];
+
+export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
+  return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
 }

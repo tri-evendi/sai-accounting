@@ -88,6 +88,20 @@ const cashFlow = z.object({
  */
 const quantity = z.number().finite();
 
+/**
+ * Kolom yang dipilih pengguna di dialog parameter.
+ *
+ * WAJIB dideklarasikan di skema meskipun opsional: zod MENANGGALKAN kunci yang
+ * tak dikenalnya, jadi field yang lupa ditulis di sini tidak ditolak — ia
+ * hilang diam-diam, dan lembar sebarnya tetap memuat seluruh kolom seolah
+ * pengguna tak pernah memilih apa pun.
+ *
+ * Isinya tidak divalidasi terhadap daftar kolom laporan: `stockMovementColumns`
+ * / `partyRecapColumns` hanya pernah MENYARING kolom yang ada, jadi id asing
+ * paling jauh tidak berefek — bukan kolom karangan di dalam berkas.
+ */
+const columnSelection = z.array(z.string()).optional();
+
 const stockMovement = z.object({
   kind: z.literal("stock-movement"),
   period: z.string(),
@@ -109,6 +123,7 @@ const stockMovement = z.object({
   totalClosing: quantity,
   hasProcess: z.boolean(),
   dormantCount: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
 });
 
 /** Riwayat Hitung Ulang Stok (issue #129). `variance` is signed by direction. */
@@ -136,6 +151,35 @@ const opnameHistory = z.object({
   netVariance: quantity,
 });
 
+/**
+ * Rekap per mitra — Penjualan per Pelanggan & Pembelian per Pemasok, dua
+ * laporan berbentuk sama. Semua nominal IDR base; `unratedCount` membawa
+ * dokumen valas tanpa kurs yang TIDAK ikut dijumlahkan, supaya berkasnya bisa
+ * mengatakannya persis seperti layar.
+ */
+const partyRecapRow = z.object({
+  partyName: z.string().nullable(),
+  docCount: z.number().int().nonnegative(),
+  grossBase: money,
+  returnBase: money,
+  netBase: money,
+  unratedCount: z.number().int().nonnegative(),
+});
+
+const partyRecap = z.object({
+  kind: z.enum(["sales-by-customer", "purchases-by-supplier"]),
+  period: z.string(),
+  rows: z.array(partyRecapRow),
+  totals: z.object({
+    docCount: z.number().int().nonnegative(),
+    grossBase: money,
+    returnBase: money,
+    netBase: money,
+    unratedCount: z.number().int().nonnegative(),
+  }),
+  visibleColumns: columnSelection,
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
@@ -143,6 +187,7 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   cashFlow,
   stockMovement,
   opnameHistory,
+  partyRecap,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

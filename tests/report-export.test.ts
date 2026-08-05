@@ -12,6 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { buildReportSheet, type SheetCell, type SheetModel } from "@/lib/report-export";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { statementPayloadSchema } from "@/lib/validations/report-export";
 
 /** Money values, in row order, exactly as the builder placed them. */
 function moneyValues(sheet: SheetModel): number[] {
@@ -280,5 +281,92 @@ describe("kolom Riwayat Stok yang dipilih pengguna", () => {
       "Keluar",
       "Saldo Akhir",
     ]);
+  });
+});
+
+/**
+ * Rekap per mitra — dua laporan berbentuk sama, satu pembangun.
+ *
+ * Termasuk penjaga untuk kelas kegagalan yang tidak terlihat dari tipe: skema
+ * zod MENANGGALKAN kunci yang tak dideklarasikannya, jadi `visibleColumns` yang
+ * lupa ditulis di skema tidak ditolak — ia hilang diam-diam dan lembar sebarnya
+ * memuat seluruh kolom seolah pengguna tak pernah memilih apa pun.
+ */
+describe("rekap per mitra", () => {
+  const base = {
+    kind: "sales-by-customer" as const,
+    period: "Periode 1 Januari 2026 – 31 Maret 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        docCount: 3,
+        grossBase: 15_000_000,
+        returnBase: 1_000_000,
+        netBase: 14_000_000,
+        unratedCount: 0,
+      },
+      {
+        partyName: null,
+        docCount: 1,
+        grossBase: 2_000_000,
+        returnBase: 0,
+        netBase: 2_000_000,
+        unratedCount: 1,
+      },
+    ],
+    totals: {
+      docCount: 4,
+      grossBase: 17_000_000,
+      returnBase: 1_000_000,
+      netBase: 16_000_000,
+      unratedCount: 1,
+    },
+  };
+
+  it("memberi nama pada baris tanpa mitra, bukan sel kosong", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[1][0].value).toBe("Tanpa pelanggan");
+  });
+
+  it("menuliskan retur sebagai pengurang bertanda, bukan angka positif", () => {
+    const sheet = buildReportSheet(base);
+    // Kolom: party, docCount, gross, returns, net
+    expect(sheet.rows[0][3].value).toBe(-1_000_000);
+  });
+
+  it("jumlah dokumen tetap cacah — tidak meminjam topeng rupiah", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][1].value).toBe(3);
+    expect(sheet.rows[0][1].format).toBeUndefined();
+    expect(sheet.rows[0][2].format).toBe("money");
+  });
+
+  it("menyebutkan dokumen valas tanpa kurs yang tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(String(sheet.rows.at(-1)?.[0].value)).toContain("tidak ikut dijumlahkan");
+  });
+
+  it("mengikuti pilihan kolom, identitas mitra tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["net"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Pelanggan", "Bersih (IDR)"]);
+  });
+
+  it("memberi judul & label kolom sendiri untuk sisi pembelian", () => {
+    const sheet = buildReportSheet({ ...base, kind: "purchases-by-supplier" });
+    expect(sheet.title).toBe("Pembelian per Pemasok");
+    expect(sheet.columns[0].header).toBe("Pemasok");
+    expect(sheet.columns[2].header).toBe("Pembelian Kotor (IDR)");
+  });
+
+  it("skema ekspor mempertahankan pilihan kolom, tidak menanggalkannya", () => {
+    const parsed = statementPayloadSchema.parse({ ...base, visibleColumns: ["net"] });
+    expect(parsed).toHaveProperty("visibleColumns", ["net"]);
+  });
+
+  it("skema ekspor menerima kedua sisi rekap", () => {
+    expect(statementPayloadSchema.safeParse(base).success).toBe(true);
+    expect(
+      statementPayloadSchema.safeParse({ ...base, kind: "purchases-by-supplier" }).success
+    ).toBe(true);
   });
 });

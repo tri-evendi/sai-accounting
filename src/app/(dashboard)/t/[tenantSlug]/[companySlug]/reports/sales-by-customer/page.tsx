@@ -9,7 +9,10 @@ import { getSalesByCustomer } from "@/lib/party-recap";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { PartyRecapTable } from "../party-recap-table";
-import { resolvePeriod } from "@/lib/report-catalog";
+import { reportById, resolveColumns, resolvePeriod } from "@/lib/report-catalog";
+import { partyRecapColumns } from "@/lib/statement-layout";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 
@@ -20,13 +23,40 @@ export default async function SalesByCustomerPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; cols?: string }>;
 }) {
   await requirePagePermission("report.read", params);
   const t = await getT();
   const sp = await searchParams;
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
   const result = await getSalesByCustomer(from, to);
+
+  // Kolom yang diminta dialog parameter; katalog yang memiliki daftarnya.
+  const definition = reportById("sales-by-customer");
+  const visibleColumns = definition ? resolveColumns(definition, sp.cols) : [];
+
+  // Satu payload memberi makan tabel, PDF, dan lembar sebarnya — tiga permukaan
+  // yang karena itu tak bisa berbeda angka maupun kolom.
+  const payload: StatementPayload = {
+    kind: "sales-by-customer",
+    period: `Periode ${formatDate(from)} – ${formatDate(to)}`,
+    rows: result.rows.map((r) => ({
+      partyName: r.partyName,
+      docCount: r.docCount,
+      grossBase: r.grossBase,
+      returnBase: r.returnBase,
+      netBase: r.netBase,
+      unratedCount: r.unratedCount,
+    })),
+    totals: {
+      docCount: result.totals.docCount,
+      grossBase: result.totals.grossBase,
+      returnBase: result.totals.returnBase,
+      netBase: result.totals.netBase,
+      unratedCount: result.totals.unratedCount,
+    },
+    visibleColumns,
+  };
 
   return (
     <div>
@@ -40,12 +70,19 @@ export default async function SalesByCustomerPage({
           from: formatDate(from),
           to: formatDate(to),
         })}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
       />
 
       <PeriodFilter basePath="/reports/sales-by-customer" from={fromISO} to={toISO} />
 
       <PartyRecapTable
         result={result}
+        columns={partyRecapColumns(payload)}
         labels={{
           party: t("reports.colCustomer"),
           documents: t("reports.colDocuments"),

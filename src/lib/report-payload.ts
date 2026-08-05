@@ -21,6 +21,7 @@
  */
 import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
 import { getOpnameHistory, getStockMovementReport } from "@/lib/stock-report";
+import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
 import { costCenterFilterLabel } from "@/lib/cost-center-options";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -168,6 +169,35 @@ export async function buildReportPayload(
         totalClosing: r.totalClosing,
         hasProcess: r.hasProcess,
         dormantCount: r.dormantCount,
+        visibleColumns: resolveColumns(report, params.cols),
+      };
+    }
+
+    case "sales-by-customer":
+    case "purchases-by-supplier": {
+      const { from, to } = resolvePeriod(params.from, params.to);
+      const result =
+        report.payloadKind === "sales-by-customer"
+          ? await getSalesByCustomer(from, to)
+          : await getPurchasesBySupplier(from, to);
+      return {
+        kind: report.payloadKind,
+        period: periodLabel(from, to, null),
+        rows: result.rows.map((r) => ({
+          partyName: r.partyName,
+          docCount: r.docCount,
+          grossBase: r.grossBase,
+          returnBase: r.returnBase,
+          netBase: r.netBase,
+          unratedCount: r.unratedCount,
+        })),
+        totals: {
+          docCount: result.totals.docCount,
+          grossBase: result.totals.grossBase,
+          returnBase: result.totals.returnBase,
+          netBase: result.totals.netBase,
+          unratedCount: result.totals.unratedCount,
+        },
         visibleColumns: resolveColumns(report, params.cols),
       };
     }

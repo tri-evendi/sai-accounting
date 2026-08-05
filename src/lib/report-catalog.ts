@@ -253,6 +253,14 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/sales-by-customer",
     paramKind: "period",
     icon: "Users",
+    payloadKind: "sales-by-customer",
+    columns: [
+      { id: "party", label: "Pelanggan", fixed: true },
+      { id: "docCount", label: "Jumlah Dokumen" },
+      { id: "gross", label: "Penjualan Kotor" },
+      { id: "returns", label: "Retur" },
+      { id: "net", label: "Bersih" },
+    ],
   },
   // ── Pembelian ─────────────────────────────────────────────────────────────
   {
@@ -274,6 +282,14 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/purchases-by-supplier",
     paramKind: "period",
     icon: "Truck",
+    payloadKind: "purchases-by-supplier",
+    columns: [
+      { id: "party", label: "Pemasok", fixed: true },
+      { id: "docCount", label: "Jumlah Dokumen" },
+      { id: "gross", label: "Pembelian Kotor" },
+      { id: "returns", label: "Retur" },
+      { id: "net", label: "Bersih" },
+    ],
   },
   // ── Stok ──────────────────────────────────────────────────────────────────
   {

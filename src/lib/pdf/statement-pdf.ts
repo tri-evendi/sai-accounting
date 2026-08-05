@@ -16,8 +16,10 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
+  partyRecapColumns,
   stockMovementColumns,
   STOCK_MOVEMENT_HEADERS,
+  type PartyRecapColumnId,
   type StockMovementColumnId,
 } from "@/lib/statement-layout";
 
@@ -122,6 +124,36 @@ export type StatementPayload =
       totalDecrease: number;
       netVariance: number;
     }
+  /**
+   * Rekap per mitra — dua laporan berbentuk sama (Penjualan per Pelanggan,
+   * Pembelian per Pemasok). Jenisnya dipisah, bukan satu jenis dengan penanda
+   * sisi, supaya judul dokumen & nama lembarnya tetap satu peta tanpa cabang.
+   *
+   * Semua nominal IDR base. Dokumen valas tanpa kurs TIDAK ikut dijumlahkan —
+   * `unratedCount` membawanya supaya cetakan bisa mengatakannya, persis seperti
+   * layar. Angka yang diam-diam kehilangan sebagian dokumennya adalah cara
+   * termudah sebuah rekap dipercaya padahal salah.
+   */
+  | {
+      kind: "sales-by-customer" | "purchases-by-supplier";
+      period: string;
+      rows: {
+        partyName: string | null;
+        docCount: number;
+        grossBase: number;
+        returnBase: number;
+        netBase: number;
+        unratedCount: number;
+      }[];
+      totals: {
+        docCount: number;
+        grossBase: number;
+        returnBase: number;
+        netBase: number;
+        unratedCount: number;
+      };
+      visibleColumns?: string[];
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -142,6 +174,32 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "cash-flow": "Laporan Arus Kas",
   "stock-movement": "Kartu Stok / Mutasi Persediaan",
   "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+};
+
+/**
+ * Judul kolom rekap mitra untuk DOKUMEN CETAK — bahasa Indonesia, seperti
+ * seluruh isi modul ini. Kolom pihaknya berbeda per laporan; sisanya sama.
+ */
+const PARTY_RECAP_HEADERS: Record<
+  "sales-by-customer" | "purchases-by-supplier",
+  Record<PartyRecapColumnId, string>
+> = {
+  "sales-by-customer": {
+    party: "Pelanggan",
+    docCount: "Dokumen",
+    gross: "Penjualan Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
+  "purchases-by-supplier": {
+    party: "Pemasok",
+    docCount: "Dokumen",
+    gross: "Pembelian Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
 };
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
@@ -432,6 +490,61 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
       columnStyles: { 3: { halign: "right" } },
     });
+  }
+
+  if (payload.kind === "sales-by-customer" || payload.kind === "purchases-by-supplier") {
+    const cols = partyRecapColumns(payload);
+    const headers = PARTY_RECAP_HEADERS[payload.kind];
+    // Baris tanpa mitra tercatat: layar menuliskannya sebagai teks redup, dan
+    // cetakan tidak punya warna redup — jadi ia diberi nama di sini, bukan
+    // dibiarkan sebagai sel kosong yang terbaca sebagai kelalaian.
+    const noParty = payload.kind === "sales-by-customer" ? "Tanpa pelanggan" : "Tanpa pemasok";
+    const cell = (
+      r: (typeof payload.rows)[number] | (typeof payload.totals & { partyName: string })
+    ) => ({
+      party: "partyName" in r ? r.partyName ?? noParty : "",
+      docCount: String(r.docCount),
+      gross: rp(r.grossBase),
+      // Retur = pengurang. Tandanya yang menyatakannya, bukan warna.
+      returns: r.returnBase > 0 ? rp(-r.returnBase) : rp(0),
+      net: rp(r.netBase),
+    });
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "party") columnStyles[i] = { halign: "right" };
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => headers[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => {
+            const values = cell(r);
+            return cols.map((c) => values[c]);
+          })
+        : [["Tidak ada dokumen pada periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [
+        cols.map((c) => (c === "party" ? "Total" : cell({ ...payload.totals, partyName: "" })[c])),
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    // Dokumen valas tanpa kurs tidak ikut dijumlahkan. Angka yang diam-diam
+    // kehilangan sebagian dokumennya adalah cara termudah rekap ini dipercaya
+    // padahal salah — jadi cetakan mengatakannya, sama seperti layar.
+    if (payload.totals.unratedCount > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Catatan: ${payload.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`,
+        14,
+        afterTable(doc) + 6
+      );
+    }
   }
 
   if (payload.kind === "cash-flow") {

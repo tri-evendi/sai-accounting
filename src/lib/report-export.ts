@@ -21,8 +21,10 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   incomeStatementLayout,
+  partyRecapColumns,
   stockMovementColumns,
   STOCK_MOVEMENT_HEADERS,
+  type PartyRecapColumnId,
   type StockMovementColumnId,
 } from "@/lib/statement-layout";
 
@@ -386,6 +388,70 @@ function buildOpnameHistorySheet(
   };
 }
 
+function buildPartyRecapSheet(
+  p: Extract<StatementPayload, { kind: "sales-by-customer" | "purchases-by-supplier" }>
+): SheetModel {
+  const cols = partyRecapColumns(p);
+  const sales = p.kind === "sales-by-customer";
+  const HEADERS: Record<PartyRecapColumnId, string> = {
+    party: sales ? "Pelanggan" : "Pemasok",
+    docCount: "Dokumen",
+    gross: sales ? "Penjualan Kotor (IDR)" : "Pembelian Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  };
+  const WIDTHS: Record<PartyRecapColumnId, number> = {
+    party: 36,
+    docCount: 12,
+    gross: 22,
+    returns: 20,
+    net: 22,
+  };
+  const noParty = sales ? "Tanpa pelanggan" : "Tanpa pemasok";
+
+  // Jumlah dokumen adalah CACAH, bukan uang: formatnya tak boleh meminjam
+  // topeng rupiah (12 dokumen bukan "Rp 12").
+  const count = (value: number, bold = false): SheetCell => ({ value, align: "right", bold });
+
+  const cells = (
+    r: { partyName?: string | null; docCount: number; grossBase: number; returnBase: number; netBase: number },
+    label: string | null,
+    bold = false
+  ): Record<PartyRecapColumnId, SheetCell> => ({
+    party: text(label ?? r.partyName ?? noParty, bold),
+    docCount: count(r.docCount, bold),
+    gross: money(r.grossBase, bold),
+    // Retur = pengurang, dan tandanya yang menyatakannya — bukan warna.
+    returns: money(r.returnBase > 0 ? -r.returnBase : 0, bold),
+    net: money(r.netBase, bold),
+  });
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => {
+        const c = cells(r, null);
+        return cols.map((id) => c[id]);
+      })
+    : [[text("Tidak ada dokumen pada periode ini."), ...cols.slice(1).map(() => text(null))]];
+
+  const totals = cells(p.totals, "Total", true);
+  rows.push(cols.map((id) => totals[id]));
+
+  if (p.totals.unratedCount > 0) {
+    rows.push([
+      text(`Catatan: ${p.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`),
+      ...cols.slice(1).map(() => text(null)),
+    ]);
+  }
+
+  return {
+    name: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
+    title: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
+    period: p.period,
+    columns: cols.map((id) => ({ header: HEADERS[id], width: WIDTHS[id] })),
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -401,5 +467,8 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
       return buildTrialBalanceSheet(payload);
     case "cash-flow":
       return buildCashFlowSheet(payload);
+    case "sales-by-customer":
+    case "purchases-by-supplier":
+      return buildPartyRecapSheet(payload);
   }
 }

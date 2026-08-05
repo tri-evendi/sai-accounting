@@ -31,7 +31,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DataTable, moneyColumn } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
+import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
 import {
   Table,
   TableBody,
@@ -48,7 +50,6 @@ import type { SystemRole } from "@/lib/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
-import type { ColumnDef } from "@tanstack/react-table";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
@@ -140,49 +141,54 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
    * karena mata uangnya sudah dinyatakan sekali di judul kolom, jadi tidak
    * diulang di tiap baris.
    */
-  const decidedColumns = useMemo<ColumnDef<ApprovalRequestView>[]>(
+  const decidedColumns = useMemo<SaiColumns<ApprovalRequestView>>(
     () => [
       {
-        accessorKey: "documentNo",
-        header: t("common.document"),
-        cell: ({ row }) => (
+        key: "documentNo",
+        dataIndex: "documentNo",
+        title: t("common.document"),
+        sorter: true,
+        render: (_value, row) => (
           <>
-            <DocumentTitle row={row.original} />
+            <DocumentTitle row={row} />
             <p className="text-xs text-muted-foreground">
               {t("approvals.approverPrefix", {
                 role:
-                  roleLabels(dictionary)[row.original.approverRole as SystemRole] ??
-                  row.original.approverRole,
+                  roleLabels(dictionary)[row.approverRole as SystemRole] ?? row.approverRole,
               })}
             </p>
           </>
         ),
       },
-      { accessorKey: "requestedByName", header: t("approvals.colRequester") },
+      textColumn<ApprovalRequestView>({
+        dataIndex: "requestedByName",
+        title: t("approvals.colRequester"),
+        sorter: true,
+      }),
       moneyColumn<ApprovalRequestView>({
-        accessorKey: "baseAmount",
-        header: t("approvals.colValueIdr"),
+        dataIndex: "baseAmount",
+        title: t("approvals.colValueIdr"),
         hideCurrency: true,
       }),
       {
-        accessorKey: "status",
-        header: t("common.status"),
-        cell: ({ row }) => (
-          <StatusBadge status={row.original.status} label={row.original.statusLabel} />
-        ),
+        key: "status",
+        dataIndex: "status",
+        title: t("common.status"),
+        sorter: true,
+        render: (_value, row) => <StatusBadge status={row.status} label={row.statusLabel} />,
       },
       {
-        accessorKey: "decidedAt",
-        header: t("approvals.colDecidedAt"),
-        cell: ({ row }) => (
+        key: "decidedAt",
+        dataIndex: "decidedAt",
+        title: t("approvals.colDecidedAt"),
+        sorter: true,
+        render: (_value, row) => (
           <div className="text-muted-foreground">
             <span className="block whitespace-nowrap tabular-nums">
-              {row.original.decidedAt ? formatDate(row.original.decidedAt) : "—"}
+              {row.decidedAt ? formatDate(row.decidedAt) : "—"}
             </span>
-            {row.original.decisionNote && (
-              <span className="block text-xs text-muted-foreground">
-                “{row.original.decisionNote}”
-              </span>
+            {row.decisionNote && (
+              <span className="block text-xs text-muted-foreground">“{row.decisionNote}”</span>
             )}
           </div>
         ),
@@ -543,7 +549,12 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
              * ini?") memang butuh pengurutan seketika. Tabel lain di app ini
              * dipaginasi server, jadi cukup primitif `Table`.
              */}
-            <DataTable columns={decidedColumns} data={decided} pageSize={20} />
+            <DataTable
+              columns={decidedColumns}
+              data={decided}
+              rowKey={(row) => row.id}
+              pageSize={20}
+            />
           </CardContent>
         </Card>
       )}

@@ -16,16 +16,11 @@ import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
+import { Money } from "@/components/ui/money";
+import { budgetColumns, type BudgetColumnId } from "@/lib/statement-layout";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
@@ -92,6 +87,111 @@ export default async function BudgetReportPage({
     month === undefined
       ? t("budget.wholeYear", { year })
       : t("common.monthOfYear", { month: months[month - 1], year });
+
+  /*
+   * Susunan kolom layar kini datang dari penentu yang SAMA dengan PDF & lembar
+   * sebar (`budgetColumns`), seperti lima laporan berkolom-pilihan lainnya.
+   *
+   * Sampai #189 tabel ini menuliskan keenam `<TableHead>`-nya sendiri, dan itu
+   * sebabnya entri katalognya sengaja TIDAK menawarkan pilihan kolom: centang
+   * yang hanya berlaku di berkas tapi tidak di layar melanggar aturan yang
+   * dipegang seluruh Pusat Laporan. Penghalang itu kini hilang — menambahkan
+   * `columns` ke entri `budget-realization` di `lib/report-catalog.ts` sudah
+   * cukup untuk menyalakan pemilihnya, dan layar akan ikut menyusut sendiri.
+   * Keputusan menyalakannya diserahkan ke pemilik laporan, bukan diselundupkan
+   * lewat PR primitif tabel.
+   *
+   * Hari ini `visibleColumns` selalu kosong (katalognya belum punya `columns`),
+   * dan daftar kosong berarti "seluruhnya" — jadi tabelnya tampil persis sama
+   * seperti sebelum konversi.
+   */
+  const cols = budgetColumns({ visibleColumns: payload?.visibleColumns });
+
+  type BudgetRow = (typeof report.rows)[number];
+
+  const HEADERS: Record<BudgetColumnId, string> = {
+    account: t("common.account"),
+    budget: t("budget.colBudget"),
+    actual: t("budget.colActual"),
+    variance: t("budget.variance"),
+    variancePct: "%",
+    status: t("common.status"),
+  };
+
+  /** Satu id kolom -> satu kolom tabel; tidak ada daftar kolom kedua. */
+  function columnFor(id: BudgetColumnId): SaiColumns<BudgetRow>[number] {
+    switch (id) {
+      case "budget":
+        return moneyColumn<BudgetRow>({ dataIndex: "budget", title: HEADERS.budget });
+      case "actual":
+        return moneyColumn<BudgetRow>({ dataIndex: "actual", title: HEADERS.actual });
+      case "variance":
+        // Selisih diwarnai menurut `favorable` (bukan tanda) dan membawa awalan
+        // "+" eksplisit — jadi ia BUKAN pemetaan 1:1 ke `moneyColumn`.
+        return {
+          key: "variance",
+          dataIndex: "variance",
+          title: HEADERS.variance,
+          align: "right",
+          render: (_v, r) => (
+            <span className={`tabular-nums ${varianceClass(r.favorable)}`}>
+              {signedCurrency(r.variance)}
+            </span>
+          ),
+        };
+      case "variancePct":
+        return {
+          key: "variancePct",
+          dataIndex: "variancePct",
+          title: HEADERS.variancePct,
+          align: "right",
+          render: (_v, r) => (
+            <span className={`tabular-nums ${varianceClass(r.favorable)}`}>
+              {pctLabel(r.variancePct)}
+            </span>
+          ),
+        };
+      case "status":
+        return {
+          key: "status",
+          dataIndex: "status",
+          title: HEADERS.status,
+          render: (_v, r) => <VarianceBadge status={r.status} favorable={r.favorable} />,
+        };
+      case "account":
+      default:
+        return {
+          key: "account",
+          dataIndex: "name",
+          title: HEADERS.account,
+          className: "text-foreground",
+          render: (_v, r) => (
+            <>
+              <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
+              {r.name}
+            </>
+          ),
+        };
+    }
+  }
+
+  const columns: SaiColumns<BudgetRow> = cols.map(columnFor);
+
+  // Baris total dipetakan per KUNCI kolom, jadi ia ikut menyusut bersama
+  // susunan kolom dan tak bisa meleset satu kolom.
+  const summary: Record<string, React.ReactNode> = {
+    account: t("common.total"),
+    budget: <Money value={report.totals.budget} currency="IDR" />,
+    actual: <Money value={report.totals.actual} currency="IDR" />,
+    variance: (
+      <span className="tabular-nums text-foreground">{signedCurrency(report.totals.variance)}</span>
+    ),
+    variancePct: (
+      <span className="tabular-nums text-muted-foreground">
+        {pctLabel(report.totals.variancePct)}
+      </span>
+    ),
+  };
 
   return (
     <div className="w-full">
@@ -187,63 +287,15 @@ export default async function BudgetReportPage({
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("common.account")}</TableHead>
-                <TableHead className="text-right">{t("budget.colBudget")}</TableHead>
-                <TableHead className="text-right">{t("budget.colActual")}</TableHead>
-                <TableHead className="text-right">{t("budget.variance")}</TableHead>
-                <TableHead className="text-right">%</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.rows.map((r) => (
-                <TableRow key={r.code}>
-                  <TableCell className="text-foreground">
-                    <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
-                    {r.name}
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={r.budget} currency="IDR" />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={r.actual} currency="IDR" />
-                  </TableCell>
-                  {/* Selisih diwarnai menurut favorable (bukan tanda) dan membawa
-                      awalan "+" eksplisit — bukan pemetaan 1:1 ke MoneyCell. */}
-                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                    {signedCurrency(r.variance)}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                    {pctLabel(r.variancePct)}
-                  </TableCell>
-                  <TableCell>
-                    <VarianceBadge status={r.status} favorable={r.favorable} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="font-bold hover:bg-transparent">
-                <TableCell className="text-foreground">{t("common.total")}</TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={report.totals.budget} currency="IDR" />
-                </TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={report.totals.actual} currency="IDR" />
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-foreground">
-                  {signedCurrency(report.totals.variance)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {pctLabel(report.totals.variancePct)}
-                </TableCell>
-                <TableCell />
-              </TableRow>
-            </TableFooter>
-          </Table>
+          {/* `StaticTable`: laporan ini hanya menampilkan — periodenya dipilih
+              di atas dan memuat ulang di server, jadi tak ada yang dibeli
+              dengan memindahkan seluruh barisnya ke peramban. */}
+          <StaticTable<BudgetRow>
+            columns={columns}
+            rows={report.rows}
+            rowKey={(r) => r.code}
+            summary={summary}
+          />
         </Card>
       )}
     </div>

@@ -84,8 +84,21 @@ const SRC = join(__dirname, "..", "src");
  * tidak bisa lagi dirender di server. Kenaikan ini disengaja dan terbatas pada
  * SATU daun: halaman yang memakainya tetap server component, dan `table.tsx`
  * sengaja tetap netral (lihat komentar kepala berkas itu).
+ *
+ * 152 sejak #189 (2026-08-05): `pagination.tsx`. Primitif tabel dipecah dua —
+ * `static-table.tsx` (server) dan `data-table.tsx` (client, AntD `Table`) —
+ * dan pemecahan itu sengaja dipilih JUSTRU supaya angka ini tidak melonjak:
+ * `table.tsx` tetap netral, `static-table.tsx` tetap server, dan 46 halaman
+ * yang merender tabel dari Prisma tetap server component. Satu-satunya
+ * kenaikan adalah kendali paginasi, yang kini memakai AntD `Pagination`.
+ *
+ * Yang menyeberang di situ adalah KENDALInya, bukan datanya: empat angka
+ * (halaman ke berapa, dari berapa, jalur dasar, query yang dipertahankan).
+ * Butir-butirnya tetap `<Link href>` sungguhan lewat `itemRender`, jadi URL
+ * per halaman, klik tengah, dan prefetch tidak ikut hilang — lihat komentar
+ * kepala `components/ui/pagination.tsx`.
  */
-const AMBANG_KLIEN = 151;
+const AMBANG_KLIEN = 152;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -242,6 +255,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/locale-toggle.tsx",
   "components/ui/money-input.tsx",
   "components/ui/money.tsx",
+  "components/ui/pagination.tsx",
   "components/ui/password-input.tsx",
   "components/ui/popover.tsx",
   "components/ui/searchable-select.tsx",

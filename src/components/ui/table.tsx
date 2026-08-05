@@ -4,10 +4,10 @@
  *
  * **Sengaja TANPA `"use client"`.** shadcn menandai berkas ini `"use client"`
  * secara konvensi, padahal isinya tidak memakai hook sama sekali. Di app ini
- * 36 dari 50 tabel adalah server component yang mengambil datanya langsung
- * dari Prisma; menandainya client akan menyeret semuanya ke bundel client
- * tanpa alasan. Jadi penanda itu dilepas — komponen ini murni presentasional
- * dan aman di kedua sisi.
+ * 46 dari 66 pemakai primitif tabel adalah server component yang mengambil
+ * datanya langsung dari Prisma; menandainya client akan menyeret semuanya ke
+ * bundel client tanpa alasan. Jadi penanda itu dilepas — komponen ini murni
+ * presentasional dan aman di kedua sisi.
  *
  * `Table` membawa pembungkus `overflow-x-auto` bawaan: tabel lebar menggulung
  * DI DALAM kotaknya, bukan membuat seluruh halaman menggulung mendatar di
@@ -15,6 +15,24 @@
  *
  * Untuk kolom nominal pakai `MoneyCell` (lihat `money.tsx`) supaya aturan
  * uang MASTER.md ditegakkan di satu tempat, bukan diketik ulang per halaman.
+ *
+ * ── Perannya sejak migrasi AntD (issue #189) ───────────────────────────────
+ * Primitif tabel dipecah dua, dan berkas ini adalah LAPISAN GAYA di bawah
+ * keduanya — bukan lagi API yang seharusnya dipanggil halaman secara langsung:
+ *
+ *   • `static-table.tsx` — `StaticTable`, dirender di SERVER dari `columns` +
+ *     `rows`; memakai primitif di berkas ini untuk markup-nya;
+ *   • `data-table.tsx`   — `DataTable`, di atas AntD `Table`, komponen client,
+ *     untuk tabel yang benar-benar butuh sortir/filter/paginasi seketika.
+ *
+ * Keduanya berbagi kontrak kolom yang sama (`table-columns.tsx`), jadi sebuah
+ * tabel bisa berpindah varian tanpa kolomnya ditulis ulang.
+ *
+ * **Rencana pensiun.** Ekspor JSX di bawah (`Table`/`TableRow`/`TableCell`/…)
+ * masih dipakai langsung oleh 66 berkas; fase C (#193–#200) memindahkannya ke
+ * `StaticTable`/`DataTable` satu modul per PR. Setelah berkas terakhir pindah,
+ * ekspor ini berhenti menjadi API publik dan kelas Tailwind di dalamnya
+ * diganti token AntD di #203 — sampai saat itu keduanya sah hidup berdampingan.
  */
 
 import { cn } from "@/lib/utils";

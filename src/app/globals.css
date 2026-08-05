@@ -288,22 +288,9 @@
 }
 
 /*
- * Sonner `richColors` (#51) memakai paletnya sendiri; diarahkan ulang ke token
- * MASTER.md agar hijau "berhasil" dan merah "gagal" di toast persis sama dengan
- * hijau/merah di tabel dan badge. Warnanya tetap BUKAN satu-satunya penanda —
- * sonner selalu menyertakan ikon + teks.
+ * Blok penyelaras warna `sonner` (#51) DIHAPUS di issue #190: toast kini
+ * `message` Ant Design, dan warnanya datang dari token `ConfigProvider` — tidak
+ * ada lagi elemen `[data-sonner-toaster]` di halaman mana pun untuk diwarnai.
+ * Paketnya sendiri masih terdaftar di package.json tetapi sudah tidak diimpor
+ * satu berkas pun; pencabutannya menunggu pembersihan dependensi #203.
  */
-/* `:root` menaikkan spesifisitas di atas [data-sonner-toaster][data-sonner-theme]
-   milik sonner; urutan penyisipan stylesheet-nya (runtime, via JS) tidak bisa
-   diandalkan, jadi spesifisitas yang dipakai — bukan urutan. */
-:root [data-sonner-toaster][data-sonner-theme] {
-  --success-bg: color-mix(in srgb, var(--success) 10%, #ffffff);
-  --success-border: color-mix(in srgb, var(--success) 30%, #ffffff);
-  --success-text: color-mix(in srgb, var(--success) 80%, #000000);
-  --error-bg: color-mix(in srgb, var(--destructive) 10%, #ffffff);
-  --error-border: color-mix(in srgb, var(--destructive) 30%, #ffffff);
-  --error-text: color-mix(in srgb, var(--destructive) 80%, #000000);
-  --info-bg: color-mix(in srgb, var(--primary) 10%, #ffffff);
-  --info-border: color-mix(in srgb, var(--primary) 30%, #ffffff);
-  --info-text: color-mix(in srgb, var(--primary) 85%, #000000);
-}

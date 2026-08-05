@@ -42,7 +42,7 @@
  */
 
 import { useMemo } from "react";
-import { ConfigProvider, theme as antdTheme } from "antd";
+import { App, ConfigProvider, theme as antdTheme } from "antd";
 import type { Locale as AntdLocale } from "antd/es/locale";
 import enUS from "antd/locale/en_US";
 import idID from "antd/locale/id_ID";
@@ -86,6 +86,17 @@ const ANTD_LOCALES: Record<Locale, AntdLocale> = {
  * tersedia untuk tempat yang memang bukan target sentuh.
  */
 const CONTROL_HEIGHT = 40;
+
+/**
+ * Umur pesan toast, DETIK (AntD memakai detik, bukan milidetik).
+ *
+ * 4 detik, sama dengan `duration={4000}` milik `sonner` yang digantikan di
+ * issue #190 — bukan 3 detik bawaan AntD. Angkanya bukan selera: pesan di
+ * aplikasi ini menyebut nomor dokumen ("Faktur INV-2026-0142 tersimpan"), dan
+ * tiga detik tidak cukup untuk membaca sebuah nomor sambil memastikan itu nomor
+ * yang benar.
+ */
+const TOAST_DURATION_SECONDS = 4;
 
 export function AntdProvider({
   locale,
@@ -190,7 +201,45 @@ export function AntdProvider({
 
   return (
     <ConfigProvider locale={ANTD_LOCALES[locale]} theme={theme}>
-      {children}
+      {/*
+       * ── Kenapa `<App>` ada di sini, dan kenapa `component={false}` ─────────
+       * `message` dan `notification` AntD punya DUA jalur: jalur statis
+       * (`import { message } from "antd"`) yang membuat akar React-nya sendiri
+       * di luar pohon ini, dan jalur konteks (`App.useApp()`). Jalur statis
+       * tidak melihat `ConfigProvider` mana pun — pesannya muncul dengan token
+       * BAWAAN, jadi di tema gelap ia kotak putih di halaman gelap. `<App>`
+       * adalah satu-satunya yang memberi `useToast()` (components/ui/toast.tsx)
+       * jalur konteks itu, dan ia diletakkan DI SINI — bukan di `ToastProvider`
+       * — supaya ia membungkus seluruh aplikasi, termasuk `(tenant)`,
+       * `(operator)`, dan `(auth)` yang tidak pernah memasang `ToastProvider`
+       * sama sekali (halaman tagihan `/platform` memanggil `toast()` dan
+       * pesannya, sebelum ini, tidak pernah muncul di mana pun).
+       *
+       * `component={false}` membuat `<App>` merender `Fragment`, bukan `<div>`.
+       * Ini WAJIB, dan alasannya terukur: elemen `.ant-app` membawa aturan
+       * `font-family / font-size / line-height / color` milik AntD. Dipasang
+       * membungkus seluruh aplikasi, ia menurunkan teks dasar dari 16px (aturan
+       * MASTER.md) menjadi `fontSize` AntD 14px dan menggantikan Inter dengan
+       * tumpukan font sistem AntD — di SETIAP halaman sekaligus, tanpa satu pun
+       * berkas halaman berubah.
+       *
+       * Harganya satu peringatan dev dari AntD: "When using cssVar, ensure
+       * `component` is assigned a valid React component string." Peringatan itu
+       * sudah diperiksa dan TIDAK berlaku untuk pemakaian ini: variabel CSS
+       * yang dibutuhkan `message`/`notification` tidak diwarisi dari elemen
+       * `.ant-app`, melainkan dipasang sendiri oleh `useMessage`/
+       * `useNotification` pada wadah portalnya (`useCSSVarCls` → kelas
+       * `css-var-*` di daftar noticenya — dibaca di
+       * `antd/es/message/useMessage.js`). Jangan "memperbaiki" peringatan ini
+       * dengan `component="div"`: itu menukar satu baris konsol dev dengan
+       * perubahan tipografi seluruh aplikasi.
+       */}
+      <App
+        component={false}
+        message={{ duration: TOAST_DURATION_SECONDS, pauseOnHover: true }}
+      >
+        {children}
+      </App>
     </ConfigProvider>
   );
 }

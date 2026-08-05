@@ -32,13 +32,42 @@
  * pertama kali mencari cara berpindah (pola yang sama di Accurate, Xero,
  * QuickBooks). Jadi: SATU perusahaan → tetap teks biasa; LEBIH dari satu →
  * tautan ke pemilihnya.
+ *
+ * ══ TATA LETAK SETELAH MIGRASI AntD (issue #193) ═══════════════════════════
+ * Yang dulu dikerjakan `truncate` + `text-sm` + `text-muted-foreground` kini
+ * dikerjakan gaya sebaris bernilai TOKEN (`theme.useToken()`), bukan kelas.
+ * Satu janji MASTER.md §Orientasi Perusahaan yang harus bertahan apa adanya:
+ * **yang menyempit adalah NAMANYA** (`text-overflow: ellipsis` + `title`),
+ * bukan target sentuh aksi di sebelah kanannya — karena itu `minWidth: 0` ada
+ * di sini dan `flexShrink: 0` ada di aksi-aksi navbar.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Flex, theme } from "antd";
 import { Building2, ChevronsUpDown } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
+
+/**
+ * Teks yang hanya dibacakan pembaca layar — pengganti kelas `sr-only`.
+ *
+ * Ditulis sebagai gaya, bukan kelas, karena berkas ini tidak lagi memakai
+ * Tailwind (issue #193) dan AntD tidak mengekspor pembantu setara. Pola
+ * `clip` + 1×1px adalah bentuk baku yang sama dengan yang dipakai `sr-only`:
+ * `display: none` TIDAK bisa dipakai — ia mencabut teksnya dari pembaca layar
+ * juga, yaitu satu-satunya pembaca yang dituju.
+ */
+const HANYA_PEMBACA_LAYAR: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
 
 export function CompanyIndicator({
   companyName,
@@ -49,6 +78,7 @@ export function CompanyIndicator({
   companyCount?: number;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
 
   // Tanpa perusahaan aktif tidak ada yang jujur untuk ditulis di sini. Tata
   // letak dashboard sudah menahan keadaan itu (ia menampilkan layar memuat
@@ -59,23 +89,39 @@ export function CompanyIndicator({
   const label = `${t("navbar.activeCompany")}: ${companyName}`;
   const body = (
     <>
-      <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="sr-only">{t("navbar.activeCompany")}:</span>
+      <Building2
+        size={16}
+        style={{ flexShrink: 0, color: token.colorTextTertiary }}
+        aria-hidden="true"
+      />
+      <span style={HANYA_PEMBACA_LAYAR}>{t("navbar.activeCompany")}:</span>
       {/* `title` menyelamatkan nama panjang yang terpotong di layar sempit —
           satu-satunya cara membacanya utuh tanpa membuka menu apa pun. */}
-      <span className="truncate font-medium text-foreground" title={companyName}>
+      <span
+        title={companyName}
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontWeight: token.fontWeightStrong,
+          color: token.colorText,
+        }}
+      >
         {companyName}
       </span>
     </>
   );
 
-  const shared = "flex min-w-0 items-center gap-2 text-sm";
-
   if (companyCount < 2) {
     return (
-      <div className={shared} aria-label={label}>
+      <Flex
+        align="center"
+        gap={token.marginXS}
+        style={{ minWidth: 0, fontSize: token.fontSize }}
+        aria-label={label}
+      >
         {body}
-      </div>
+      </Flex>
     );
   }
 
@@ -85,14 +131,28 @@ export function CompanyIndicator({
       // Namanya saja tidak memberi tahu bahwa ia BISA ditekan; kalimat penuh
       // inilah yang dibacakan pembaca layar.
       aria-label={`${label} — ${t("auth.selectCompany.switchLabel")}`}
-      className={cn(
-        shared,
-        "cursor-pointer rounded-md px-2 py-1 -mx-2 transition-colors duration-150",
-        "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      )}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: token.marginXS,
+        minWidth: 0,
+        // Target sentuh: setinggi kendali AntD (40px, MASTER.md), bukan
+        // setinggi barisnya sendiri.
+        minHeight: token.controlHeight,
+        paddingInline: token.paddingXS,
+        marginInline: -token.paddingXS,
+        borderRadius: token.borderRadius,
+        fontSize: token.fontSize,
+        color: token.colorText,
+        cursor: "pointer",
+      }}
     >
       {body}
-      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <ChevronsUpDown
+        size={14}
+        style={{ flexShrink: 0, color: token.colorTextTertiary }}
+        aria-hidden="true"
+      />
     </Link>
   );
 }

@@ -53,15 +53,22 @@ const PRIMITIVES_DIR = join(SRC_DIR, "components", "ui");
  * keputusan desain — sertakan alasannya.
  */
 const RAW_BUTTON_ALLOWLIST = new Set([
-  // Chrome aplikasi: tombol yang bentuknya ditentukan bilah/panelnya sendiri,
-  // bukan tombol aksi di dalam halaman.
-  "components/layout/sidebar.tsx", // pemicu collapse + baris menu (aktif/nonaktif, lebar penuh)
-  "components/layout/navbar.tsx", // pemicu menu mobile
-  "components/layout/accountant-mode-toggle.tsx", // sakelar mode dengan status di dalam label
-  // Pola dropdown yang dirakit tangan (pemicu + isi menu): fokus, Escape, dan
-  // klik-di-luar dikelola sendiri, dan itemnya bergaya baris menu — bukan tombol.
-  "components/layout/user-menu.tsx",
-  "components/layout/help-menu.tsx",
+  /*
+   * ── Lima entri chrome aplikasi DIKELUARKAN di issue #193 ─────────────────
+   * `sidebar`, `navbar`, `accountant-mode-toggle`, `user-menu`, dan
+   * `help-menu` dulu ada di sini dengan dua alasan: "bentuknya ditentukan
+   * bilah/panelnya sendiri" dan "dropdown rakitan tangan yang mengelola fokus,
+   * Escape, serta klik-di-luar sendiri". Migrasi AntD menghapus KEDUA alasan
+   * itu, bukan sekadar merapikannya:
+   *   • baris menu kini `Menu` (bentuk & keadaan aktifnya milik komponen),
+   *   • kedua dropdown kini `Dropdown` (fokus, Escape, dan klik-di-luar milik
+   *     rc-dropdown — termasuk pengembalian fokus ke pemicu, yang tidak pernah
+   *     dilakukan versi rakitan tangan),
+   *   • pemicu, sakelar mode, dan tombol tutup laci kini `Button` primitif.
+   * Karena itu kelimanya bukan lagi pengecualian; tes "daftar tidak menyimpan
+   * entri basi" di bawah yang akan berteriak kalau ada yang mengembalikannya
+   * tanpa alasan baru.
+   */
   // Lapisan tur berpemandu: tombolnya melayang di atas overlay dengan
   // penempatan & z-index sendiri.
   "components/help/guided-tour.tsx",

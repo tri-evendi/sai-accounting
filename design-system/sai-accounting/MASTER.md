@@ -209,7 +209,11 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`).
 - **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan rakit `p-1.5` (≈28px). Antar aksi ikon yang berdampingan pakai **`gap-2`** (8px) minimum — `gap-1` membuat dua aksi bersebelahan mudah salah tekan.
 - **Pengecualian yang disahkan** (tetap `<button>` mentah, alasannya ditulis di komentar kepala file dan didaftar di `RAW_BUTTON_ALLOWLIST` penjaga): chrome aplikasi (`sidebar`, `navbar`, `accountant-mode-toggle`), dropdown rakitan tangan (`user-menu`, `help-menu`), overlay tur (`guided-tour`), penanda langkah `wizard`, dan grup chip `aria-pressed` (`glossary-browser`).
-- **Bukan tombol, jadi di luar aturan ini:** `<select>` native (`NativeSelect`, issue #50), `<input type="radio">` native, dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
+- **Bukan tombol, jadi di luar aturan ini:** `<input type="radio">` native dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
+- **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Tiga akibat yang harus diketahui sebelum memakainya:
+  - **`name` tetap terkirim** — primitifnya menitipkan `<input type="hidden">` di dalam kontrolnya sendiri, jadi `new FormData(form)` dan `<form method="get">` tetap bekerja.
+  - **`required` TIDAK lagi divalidasi peramban.** Yang tersisa `aria-required` + tanda `*`; penjaganya validasi server (dan zod setelah #192). Isian pilihan yang wajib harus punya validasi selain `required`.
+  - **Pencarian menyala sendiri di atas 12 opsi** (`SEARCH_THRESHOLD`), bisa ditimpa lewat prop `searchable`.
 
 ---
 

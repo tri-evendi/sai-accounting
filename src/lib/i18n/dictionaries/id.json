@@ -1688,7 +1688,8 @@
       "exportExcel": "Unduh Excel",
       "pdfDownloaded": "PDF berhasil diunduh",
       "noParams": "Laporan ini tidak memerlukan parameter.",
-      "noExport": "Laporan ini belum punya dokumen cetak — buka halamannya untuk melihat datanya."
+      "noExport": "Laporan ini belum punya dokumen cetak — buka halamannya untuk melihat datanya.",
+      "exportOnPage": "Laporan ini punya ekspor khusus di halamannya sendiri — buka untuk memakainya."
     },
     "catalogCategory": {
       "keuangan": {

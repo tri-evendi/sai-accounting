@@ -1688,7 +1688,8 @@
       "exportExcel": "Download Excel",
       "pdfDownloaded": "PDF downloaded",
       "noParams": "This report takes no parameters.",
-      "noExport": "This report has no printable document yet — open its page to see the data."
+      "noExport": "This report has no printable document yet — open its page to see the data.",
+      "exportOnPage": "This report has its own specialised export on its page — open it to use that."
     },
     "catalogCategory": {
       "keuangan": {

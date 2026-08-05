@@ -24,9 +24,12 @@
  * ekspornya.
  *
  * Karena itu pula tombol unduh hanya muncul bila laporannya punya
- * `payloadKind`. Sepuluh dari enam belas entri katalog masih menunjuk halaman
- * modul yang interaktif, bukan laporan yang bisa dicetak; bagi mereka dialog
- * ini jujur menawarkan "Buka" saja.
+ * `payloadKind`. Tiga entri sengaja tidak punya: Realisasi Target Penjualan
+ * (satu bagian di dalam laporan anggaran, bukan dokumen sendiri), Rekonsiliasi
+ * Bank (alur kerja pencocokan, bukan laporan cetak), dan e-Faktur (ekspornya
+ * berkas impor DJP di halamannya sendiri). Bagi mereka dialog menawarkan "Buka"
+ * saja — beserta kalimat yang membedakan "belum punya ekspor" dari "ekspornya
+ * ada di halamannya".
  */
 import { useState } from "react";
 import { ArrowRight, Eye, FileSpreadsheet, FileText } from "lucide-react";
@@ -303,10 +306,13 @@ export function ReportLaunchDialog({
           )}
 
           {!exportable && (
-            // Kejujuran yang sama dengan katalognya: laporan ini belum punya
-            // dokumen cetak, dan mengatakannya lebih baik daripada tombol unduh
-            // yang gagal saat ditekan.
-            <p className="text-sm text-muted-foreground">{t("reports.dialog.noExport")}</p>
+            // Kejujuran yang sama dengan katalognya. Dua kalimat, bukan satu:
+            // "belum punya ekspor" dan "ekspornya di halamannya, dalam format
+            // khusus" adalah dua keadaan berbeda, dan menyamakannya mengirim
+            // orang mencari fitur yang sudah dimilikinya.
+            <p className="text-sm text-muted-foreground">
+              {report.exportOnPage ? t("reports.dialog.exportOnPage") : t("reports.dialog.noExport")}
+            </p>
           )}
         </div>
 

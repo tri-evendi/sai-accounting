@@ -123,6 +123,15 @@ export interface ReportDefinition {
   filters?: ReportFilterId[];
   /** Kolom yang boleh dipilih. Tak diisi = susunan kolomnya baku (laporan keuangan). */
   columns?: ReportColumnSpec[];
+  /**
+   * Laporan yang ekspornya HIDUP DI HALAMANNYA sendiri dalam format khusus —
+   * e-Faktur menghasilkan berkas impor DJP, bukan dokumen cetak.
+   *
+   * Membedakannya dari "belum punya ekspor" penting: dialog yang mengatakan
+   * belum ada, padahal ada satu klik jauhnya, mengirim orang mencari fitur yang
+   * sudah dimilikinya.
+   */
+  exportOnPage?: boolean;
 }
 
 export type ReportExportFormat = "pdf" | "xlsx";
@@ -424,6 +433,9 @@ export const REPORTS: ReportDefinition[] = [
     // bulan tunggal seperti yang dulu tertulis di sini.
     paramKind: "period",
     icon: "FileSpreadsheet",
+    // Ekspornya berkas impor DJP, dihasilkan di halamannya sendiri — bukan PDF
+    // atau lembar sebar, jadi ia sengaja tidak lewat jalur payload cetak.
+    exportOnPage: true,
   },
 ];
 

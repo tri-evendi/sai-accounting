@@ -1688,7 +1688,8 @@
       "exportExcel": "下载 Excel",
       "pdfDownloaded": "PDF 已下载",
       "noParams": "此报表无需参数。",
-      "noExport": "此报表尚无可打印文档 — 请打开其页面查看数据。"
+      "noExport": "此报表尚无可打印文档 — 请打开其页面查看数据。",
+      "exportOnPage": "此报表在其页面上有专用导出功能 — 请打开页面使用。"
     },
     "catalogCategory": {
       "keuangan": {

@@ -50,7 +50,7 @@ function Section({
             {l.name}
           </TableCell>
           <TableCell className="p-0">
-            <MoneyCell className="py-2" value={l.amount} currency="IDR" />
+            <MoneyCell style={{ paddingBlock: 8 }} value={l.amount} currency="IDR" />
           </TableCell>
         </TableRow>
       ))}
@@ -62,7 +62,7 @@ function Section({
       <TableRow className="font-medium">
         <TableCell className="py-2 text-foreground">{totalLabel}</TableCell>
         <TableCell className="p-0">
-          <MoneyCell className="py-2" value={total} currency="IDR" />
+          <MoneyCell style={{ paddingBlock: 8 }} value={total} currency="IDR" />
         </TableCell>
       </TableRow>
     </>
@@ -87,7 +87,7 @@ function StepRow({ label, amount, note }: { label: string; amount: number; note?
         {note && <span className="ml-2 text-sm font-normal text-muted-foreground">({note})</span>}
       </TableCell>
       <TableCell className="p-0">
-        <MoneyCell className="py-3 font-semibold" value={amount} currency="IDR" />
+        <MoneyCell className="font-semibold" value={amount} currency="IDR" />
       </TableCell>
     </TableRow>
   );

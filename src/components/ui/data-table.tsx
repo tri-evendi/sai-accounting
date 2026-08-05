@@ -114,14 +114,25 @@ export function moneyColumn<TData>({
     // "Rp 9.000" akan terurut di atas "Rp 10.000".
     sortingFn: "basic",
     meta: alignMeta("right"),
-    cell: ({ row, getValue }) => (
-      <Money
-        value={Number(getValue() ?? 0)}
-        currency={typeof currency === "function" ? currency(row.original) : currency}
-        hideCurrency={hideCurrency}
-        signed={signed}
-      />
-    ),
+    cell: ({ row, getValue }) => {
+      /*
+       * `?? 0` di sini dulu mengubah "nilainya belum diketahui" menjadi
+       * "Rp 0" di setiap tabel yang memakai `moneyColumn` — persis bug yang
+       * baru ditutup di Piutang/Utang & Nilai Persediaan, tapi lewat pintu
+       * yang tak terlihat dari halamannya. Kosong diteruskan apa adanya;
+       * `Money` yang memutuskan menampilkan "—".
+       */
+      const raw = getValue();
+      const empty = raw === null || raw === undefined || raw === "";
+      return (
+        <Money
+          value={empty ? undefined : Number(raw)}
+          currency={typeof currency === "function" ? currency(row.original) : currency}
+          hideCurrency={hideCurrency}
+          signed={signed}
+        />
+      );
+    },
   };
 }
 

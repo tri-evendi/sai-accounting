@@ -1,15 +1,22 @@
 /**
- * Invarian tabel & sel nominal (issue #52).
+ * Invarian tabel & sel nominal (issue #52; sel uang ditulis ulang di atas AntD
+ * pada issue #186).
  *
  * Yang dikunci: tabel lebar tidak boleh membuat SELURUH halaman menggulung
  * mendatar di layar 375px, dan sel uang harus selalu membawa aturan MASTER.md
  * (rata kanan, tabular-nums, mata uang eksplisit, negatif merah bertanda
  * minus) tanpa bergantung pada setiap halaman mengetiknya ulang.
+ *
+ * Sejak #186 warnanya datang dari token AntD, bukan kelas Tailwind — jadi yang
+ * diperiksa adalah gaya sebaris hasil render, bukan nama kelas. Cakupannya
+ * sama persis: ada/tidaknya warna semantik, dan ada/tidaknya penanda non-warna
+ * yang menyertainya.
  */
 
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Money, MoneyCell } from "@/components/ui/money";
+import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
 import { DataTable, moneyColumn } from "@/components/ui/data-table";
 import {
   Table,
@@ -61,16 +68,16 @@ describe("Table", () => {
 describe("Money", () => {
   it("nominal positif: tabular-nums, mata uang eksplisit, tidak merah", () => {
     const html = renderToStaticMarkup(<Money value={1234567} currency="IDR" />);
-    expect(html).toContain("tabular-nums");
+    expect(html).toContain("font-variant-numeric:tabular-nums");
     expect(html).toContain("Rp");
     expect(html).toContain("1.234.567");
-    expect(html).not.toContain("text-destructive");
+    expect(html).not.toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
   });
 
   it("nominal negatif: merah DAN bertanda minus", () => {
     // Dua penanda, bukan satu: warna saja dilarang MASTER.md.
     const html = renderToStaticMarkup(<Money value={-50000} currency="IDR" />);
-    expect(html).toContain("text-destructive");
+    expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
     expect(html).toContain("-");
   });
 
@@ -81,13 +88,28 @@ describe("Money", () => {
     expect(html).not.toContain("Rp");
     expect(html).toContain("1.234.567");
   });
+
+  it("signed mewarnai positif dengan hijau yang lolos AA", () => {
+    const html = renderToStaticMarkup(<Money value={50000} currency="IDR" signed />);
+    expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyPositive);
+  });
+
+  it("tone eksplisit mewarnai menurut arah kolom, bukan tanda", () => {
+    // Kolom "Keluar"/"Kredit": angkanya positif, artinya uang keluar. Penanda
+    // non-warnanya adalah judul kolom, jadi tandanya tidak dibalik.
+    const html = renderToStaticMarkup(
+      <Money value={50000} currency="IDR" tone="negative" />
+    );
+    expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
+    expect(html).toContain("50.000");
+  });
 });
 
 describe("MoneyCell", () => {
   it("rata kanan — syarat kolom nominal MASTER.md", () => {
     const html = renderToStaticMarkup(<MoneyCell value={1000} />);
-    expect(html).toContain("text-right");
-    expect(html).toContain("tabular-nums");
+    expect(html).toContain("text-align:right");
+    expect(html).toContain("font-variant-numeric:tabular-nums");
   });
 });
 
@@ -110,8 +132,8 @@ describe("DataTable", () => {
     expect(html).toContain("INV-1");
     expect(html).toContain("INV-3");
     // Nilai negatif tetap merah walau dirender lewat kolom, bukan manual.
-    expect(html).toContain("text-destructive");
-    expect(html).toContain("tabular-nums");
+    expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
+    expect(html).toContain("font-variant-numeric:tabular-nums");
   });
 
   it("kolom nominal rata kanan, termasuk header-nya", () => {

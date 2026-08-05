@@ -178,6 +178,34 @@ function DialogClose({
  */
 const CONTENT_BASE = "max-w-2xl";
 
+/**
+ * Lebar dialog sebagai PROP, jalan keluar dari paragraf di atas (#194).
+ *
+ * Selama pemanggil hanya bisa mengatur lebar lewat `max-w-*`, setiap dialog
+ * non-standar di fase C harus membawa satu kelas Tailwind — dan `document-
+ * preview` membuktikan biayanya: lembar A4 dibaca di dalam kotak 672px karena
+ * itulah bawaan yang bisa dikalahkan sebuah kelas.
+ *
+ * Nilainya piksel, bukan kelas, dan dipasang sebagai `maxWidth` sebaris.
+ * Sengaja `maxWidth` dan bukan `width`: lebar sesungguhnya tetap
+ * `calc(100vw - 2rem)`, jadi di 375px dialog tetap menyesuaikan layar alih-alih
+ * memaksa 1024px dan menggeser halaman.
+ *
+ * Pemanggil yang masih mengirim `max-w-*` lewat `className` tetap bekerja —
+ * `size` hanya berlaku bila disebut. Keduanya hidup berdampingan sampai #203
+ * mencabut Tailwind.
+ */
+const CONTENT_MAX_WIDTH = {
+  /** Setara `max-w-lg` — konfirmasi, formulir pendek. */
+  sm: 512,
+  /** Setara `max-w-2xl` — bawaan, sama dengan sebelum prop ini ada. */
+  md: 672,
+  /** Setara `max-w-5xl` — pratinjau dokumen; lembar A4 butuh ruang. */
+  lg: 1024,
+} as const;
+
+export type DialogSize = keyof typeof CONTENT_MAX_WIDTH;
+
 /** Cukup untuk menulis atribut; sengaja bukan `HTMLElement` supaya bisa diuji. */
 type AriaTarget = Pick<HTMLElement, "setAttribute">;
 
@@ -223,6 +251,11 @@ interface DialogContentProps {
   padded?: boolean;
   /** Internal: `ConfirmDialog` menahan Escape selama prosesnya berjalan. */
   keyboard?: boolean;
+  /**
+   * Lebar maksimum dialog. Tak diisi = seperti sebelumnya (kelas pemanggil yang
+   * menentukan, bawaan `max-w-2xl`). Lihat `CONTENT_MAX_WIDTH`.
+   */
+  size?: DialogSize;
   /** Internal: dijalankan sekali setiap dialog terbuka, setelah panelnya ada. */
   onOpenAutoFocus?: () => void;
 }
@@ -235,6 +268,7 @@ function DialogContent({
   role = "dialog",
   padded = false,
   keyboard = true,
+  size,
   onOpenAutoFocus,
 }: DialogContentProps) {
   const { open, setOpen } = useDialogState();
@@ -299,6 +333,9 @@ function DialogContent({
         width="calc(100vw - 2rem)"
         className={cn(CONTENT_BASE, className)}
         styles={{
+          /* `size` menang atas kelas karena gaya sebaris memang menang — itu
+             sebabnya ia hanya ditulis saat pemanggil menyebutnya. */
+          ...(size ? { content: { maxWidth: CONTENT_MAX_WIDTH[size] } } : {}),
           /* Tinggi mengikuti kelas pemanggil (`h-[92vh]`) sampai ke isinya. */
           container: { display: "flex", flexDirection: "column", height: "100%" },
           body: {

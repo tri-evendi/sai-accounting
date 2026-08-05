@@ -86,7 +86,7 @@ export function DocumentPreview({
        * Yang TIDAK lagi lewat kelas: `p-0` (sudah bawaan `padded={false}`) dan
        * `h-[92vh]`, yang kini tinggal di pembungkus `Flex` di bawah.
        */}
-      <DialogContent className="max-w-5xl">
+      <DialogContent size="lg">
         <Flex vertical style={{ height: PREVIEW_HEIGHT }}>
           <Flex
             align="center"

@@ -1,46 +1,61 @@
 "use client";
 
 /**
- * DisclosureSection (issue #4) — bagian "Detail lengkap" yang bisa dilipat.
+ * DisclosureSection (issue #4) — bagian "Detail lengkap" yang bisa dilipat,
+ * ditulis ulang di atas Ant Design `Collapse` pada issue #191 (fase B5).
  *
  * Dipakai tiga formulir utama (Kontrak, Faktur, Transaksi Kas) untuk
  * menyembunyikan isian lanjutan — termin, catatan, mata uang non-standar,
  * PPN/PEB — sampai memang dibutuhkan. Pembagian field-nya BUKAN di sini,
  * melainkan data murni di `src/lib/form-sections.ts` supaya bisa diuji.
  *
- * Tiga keputusan yang menentukan bentuk komponen ini:
+ * Tiga keputusan yang menentukan bentuk komponen ini — dan bagaimana masing-
+ * masing selamat dari perpindahan ke AntD:
  *
- *  1. **Isinya tidak pernah dilepas dari DOM.** Panelnya disembunyikan dengan
- *     atribut `hidden`, bukan dengan `{open && ...}`. Isian yang di-unmount akan
+ *  1. **Isinya tidak pernah dilepas dari DOM.** Isian yang di-unmount akan
  *     hilang dari `FormData` saat submit — yaitu diam-diam mengosongkan termin
  *     atau catatan yang sudah diketik pengguna — dan mustahil difokuskan ketika
- *     validasi server menolaknya. Keduanya bug yang lebih parah daripada sedikit
- *     DOM ekstra.
+ *     validasi server menolaknya. Di AntD ini dijamin `forceRender` pada
+ *     itemnya: panelnya tetap terpasang, dan saat tertutup hanya diberi
+ *     `display: none` (`ant-collapse-panel-hidden`). Kendali yang tersembunyi
+ *     oleh CSS TETAP ikut terkirim bersama formulirnya — yang tidak ikut adalah
+ *     kendali yang tidak ada di DOM.
  *
  *  2. **Ringkasan saat tertutup.** Kalau isian disembunyikan, nilainya tidak
  *     boleh ikut tersembunyi. `summary` menampilkan nilai berjalan yang penting
  *     (mis. "USD · kurs belum diisi") di kepala bagian, sehingga tidak ada
  *     informasi yang lenyap hanya karena bagian ini terlipat.
  *
- *  3. **Aksesibilitas.** Sejak issue #51 dibangun di atas Radix `Collapsible`
- *     (lihat `collapsible.tsx`): pemicunya tetap `<button type="button">`
- *     sungguhan, dan `aria-expanded` + `aria-controls` + toggle keyboard
- *     kini datang dari Radix, bukan dirakit tangan. Panelnya `role="group"`
- *     yang dilabeli tombolnya sendiri. Catatan: `forceMount` + `hidden`
- *     manual dipakai justru untuk mempertahankan keputusan (1) — Radix tanpa
- *     forceMount akan melepas isi panel dari DOM saat tertutup.
+ *  3. **Aksesibilitas — dan satu hal yang HILANG di perpindahan ini.**
+ *     Sebelumnya pemicunya dibangun di atas Radix `Collapsible`, sehingga ia
+ *     `<button type="button">` sungguhan. Kepala `Collapse` AntD adalah `<div
+ *     role="button" tabindex="0" aria-expanded>` — namanya, perannya, dan
+ *     keadaannya tetap diumumkan dengan benar, tetapi penanganan papan tiknya
+ *     hanya mengenal **Enter**. Spasi, yang oleh peramban diberikan gratis
+ *     kepada `<button>` sungguhan dan diharapkan setiap pengguna papan tik,
+ *     tidak melakukan apa pun — dan lebih buruk: ia menggulung halaman.
+ *
+ *     Karena itu Spasi dikembalikan di sini, pada pembungkusnya, lewat satu
+ *     penangan yang naik dari kepala panel. Sasarannya dikenali dari `role` +
+ *     `aria-expanded`, bukan dari nama kelas AntD, supaya ia tidak diam-diam
+ *     berhenti bekerja kalau `prefixCls` berubah.
+ *
+ *     Yang tetap hilang dan sengaja tidak dipalsukan: `aria-controls`. AntD
+ *     tidak memberi id pada panelnya dan tidak menerima id dari luar; menaruh
+ *     `aria-controls` yang menunjuk id karangan lebih buruk daripada tidak ada,
+ *     karena pembaca layar akan mengumumkan hubungan yang tidak bisa ditempuh.
  */
 
-import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, AlertCircle } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { Collapse, theme } from "antd";
+
+import { Badge } from "@/components/ui/badge";
 import { ADVANCED_SECTION_TITLE } from "@/lib/form-sections";
 import { useT } from "@/lib/i18n/client";
+
+/** Hanya ada satu panel di sini; kuncinya konstan, bukan dihitung. */
+const PANEL_KEY = "detail";
 
 interface DisclosureSectionProps {
   /** Judul bagian; standarnya "Detail lengkap". */
@@ -72,10 +87,10 @@ export function DisclosureSection({
   className,
 }: DisclosureSectionProps) {
   const t = useT();
+  const { token } = theme.useToken();
   const [uncontrolled, setUncontrolled] = useState(defaultOpen);
   const isControlled = open !== undefined;
   const expanded = isControlled ? open : uncontrolled;
-  const buttonId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -116,77 +131,101 @@ export function DisclosureSection({
     onOpenChange?.(next);
   }
 
-  return (
-    <Collapsible
-      open={expanded}
-      onOpenChange={handleOpenChange}
-      className={cn(
-        "rounded-lg border bg-card transition-colors duration-150",
-        invalid ? "border-destructive" : "border-border",
-        className
-      )}
-    >
-      <CollapsibleTrigger
-        id={buttonId}
-        className={cn(
-          "flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-left",
-          "transition-colors duration-150 hover:bg-muted",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-        )}
-      >
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
-            expanded && "rotate-180"
-          )}
-          aria-hidden="true"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">{title}</span>
-            {invalid && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-destructive-soft px-2 py-0.5 text-xs font-medium text-destructive-strong">
-                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                {t("disclosure.reviewNeeded")}
-              </span>
-            )}
-          </span>
-          {description && (
-            <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
-          )}
-          {!expanded && summary && (
-            <span className="mt-1 block text-xs text-muted-foreground">{summary}</span>
-          )}
-        </span>
-        <span className="shrink-0 text-xs font-medium text-primary">
-          {expanded ? t("disclosure.collapse") : t("disclosure.expand")}
-        </span>
-      </CollapsibleTrigger>
+  /** Spasi pada kepala panel — lihat catatan (3) di kepala berkas. */
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== " " && event.key !== "Spacebar") return;
+    const target = event.target as HTMLElement;
+    if (target.getAttribute("role") !== "button" || !target.hasAttribute("aria-expanded")) {
+      return;
+    }
+    event.preventDefault(); // tanpa ini, Spasi menggulung halaman
+    handleOpenChange(!expanded);
+  }
 
-      {/* `forceMount` + `hidden`, bukan unmount — lihat catatan (1) di atas.
-          `hidden` di sini menimpa milik Radix, yang dengan forceMount tidak
-          pernah menyembunyikan panelnya sendiri. Id panel TIDAK ditimpa:
-          `aria-controls` pada trigger dipasang Radix ke id buatannya. */}
-      <CollapsibleContent
-        forceMount
-        ref={panelRef}
-        role="group"
-        aria-labelledby={buttonId}
-        hidden={!expanded}
-        className="border-t border-border px-4 py-4"
-      >
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
+  return (
+    <div onKeyDown={handleKeyDown}>
+      <Collapse
+        className={className}
+        activeKey={expanded ? [PANEL_KEY] : []}
+        onChange={(keys) => handleOpenChange(keys.length > 0)}
+        /* Satu-satunya warna yang ditulis komponen ini: batas merah saat ada
+           isian bermasalah di dalamnya — dan ia tidak pernah sendirian, label
+           "perlu diperiksa" di kepala bagian membawa katanya. */
+        style={invalid ? { borderColor: token.colorError } : undefined}
+        items={[
+          {
+            key: PANEL_KEY,
+            // Lihat catatan (1): panelnya tetap terpasang, hanya disembunyikan.
+            forceRender: true,
+            extra: (
+              <span style={{ fontSize: token.fontSizeSM, color: token.colorLink }}>
+                {expanded ? t("disclosure.collapse") : t("disclosure.expand")}
+              </span>
+            ),
+            label: (
+              <>
+                <span
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: token.marginXS,
+                  }}
+                >
+                  <span style={{ fontWeight: token.fontWeightStrong }}>{title}</span>
+                  {invalid && (
+                    <Badge variant="danger">
+                      <AlertCircle
+                        className="h-3.5 w-3.5"
+                        aria-hidden="true"
+                        style={{ verticalAlign: "-0.2em", marginInlineEnd: token.marginXXS }}
+                      />
+                      {t("disclosure.reviewNeeded")}
+                    </Badge>
+                  )}
+                </span>
+                {description && (
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    {description}
+                  </span>
+                )}
+                {/* Ringkasan hanya saat tertutup — lihat catatan (2). */}
+                {!expanded && summary && (
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    {summary}
+                  </span>
+                )}
+              </>
+            ),
+            children: <div ref={panelRef}>{children}</div>,
+          },
+        ]}
+      />
+    </div>
   );
 }
 
 /**
  * Fokuskan (dan gulirkan ke) isian bermasalah setelah simpan ditolak.
  *
- * Dipanggil SETELAH bagiannya dibuka — isian di dalam panel `hidden` tidak bisa
- * difokuskan — jadi pemanggilnya membungkus ini di `requestAnimationFrame`
- * supaya React sempat menggambar ulang panelnya lebih dulu.
+ * Dipanggil SETELAH bagiannya dibuka — isian di dalam panel yang disembunyikan
+ * tidak bisa difokuskan — jadi pemanggilnya membungkus ini di
+ * `requestAnimationFrame` supaya React sempat menggambar ulang panelnya lebih
+ * dulu.
  *
  * Dicari lewat `id` dulu, lalu `name`: sebagian isian dikendalikan React tanpa
  * `id` yang stabil, tetapi `name`-nya selalu sama dengan kunci payload API —

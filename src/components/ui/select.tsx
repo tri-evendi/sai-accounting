@@ -148,6 +148,17 @@ function NativeSelect({
   ...props
 }: NativeSelectProps) {
   const isInvalid = isInvalidField(invalid, props["aria-invalid"]);
+  /*
+   * Dibaca dari DUA sumber, persis seperti `invalid` di atas: pemanggil di luar
+   * pola `Form` mengoper `required`, sedangkan `FormControl` menyuntikkan
+   * `aria-required` (sejak #192). Tanpa baris ini yang kedua justru DITIMPA
+   * `undefined` oleh atribut eksplisit di bawah — isian pilihan wajib berhenti
+   * mengumumkan dirinya wajib, yaitu tepat kelas kerugian yang dicatat #216.
+   */
+  const isRequired =
+    Boolean(required) ||
+    props["aria-required"] === true ||
+    props["aria-required"] === "true";
 
   /**
    * Nilai internal hanya melayani hidden companion. Sumber kebenarannya tetap
@@ -223,7 +234,7 @@ function NativeSelect({
       // bisa melebarkan halaman.
       popupMatchSelectWidth
       aria-invalid={isInvalid || undefined}
-      aria-required={required || undefined}
+      aria-required={isRequired || undefined}
       prefix={
         name === undefined ? undefined : (
           <input type="hidden" name={name} value={shown ?? ""} readOnly />

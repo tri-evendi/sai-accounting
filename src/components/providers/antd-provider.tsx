@@ -195,6 +195,18 @@ export function AntdProvider({
          * `colorSuccess` global tetap tersedia apa adanya untuk isian pekat.
          */
         Tag: tagStatusTokens(resolved),
+        /*
+         * Jarak antar-isian (issue #192). `itemMarginBottom` bawaan AntD adalah
+         * `marginLG` (24px), yang masuk akal untuk formulir AntD yang menumpuk
+         * `Form.Item` langsung satu di bawah lainnya. Formulir di aplikasi ini
+         * tidak begitu: semuanya diletakkan di dalam `grid gap-3`/`gap-4`, dan
+         * jaraknya sudah ditentukan grid itu. Membiarkan bawaannya berarti dua
+         * sistem jarak bertumpuk — 16px dari grid DITAMBAH 24px dari item,
+         * hanya pada sumbu vertikal, sehingga kolom kiri dan kanan berhenti
+         * sejajar. Nol di sini mengembalikan tata letak yang sudah ada tanpa
+         * satu pun pemanggil disentuh.
+         */
+        Form: { itemMarginBottom: 0 },
       },
     };
   }, [resolved]);

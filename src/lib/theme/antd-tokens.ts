@@ -526,6 +526,60 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
   return resolved === "dark" ? BORDER_TOKENS_DARK : BORDER_TOKENS_LIGHT;
 }
 
+/* ------------------------------------------------------------------------ */
+/* Tirai overlay: yang DIPERIKSA, lalu sengaja TIDAK diganti (issue #190)     */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `colorBgMask` — satu-satunya token overlay yang harus diukur sebelum
+ * dipercaya, dan hasilnya: **bawaan AntD dipakai apa adanya, tanpa override.**
+ * Bagian ini ada supaya keputusan "tidak melakukan apa-apa" itu tercatat,
+ * karena ia dibuat setelah pengukuran — bukan karena terlewat.
+ *
+ * ── Kenapa ia dicurigai lebih dulu ────────────────────────────────────────
+ * `dialog.tsx` dan `alert-dialog.tsx` lama memakai `bg-black/50` dengan
+ * pengecualian lint TERTULIS, karena upaya sebelumnya memakai token bertema
+ * (`--foreground`) dan token itu ikut BERBALIK di tema gelap: tirainya menjadi
+ * kabut PUTIH, dan halaman justru lebih terang saat dialog dibuka. Setiap
+ * pengganti karena itu harus dibuktikan tidak mengulang pola yang sama.
+ *
+ * ── Terukur (`theme.getDesignToken`, paket `antd` yang terpasang) ─────────
+ *
+ *   terang  colorBgMask = rgba(0,0,0,0.45)
+ *   gelap   colorBgMask = rgba(0,0,0,0.45)   ← NILAI YANG SAMA PERSIS
+ *
+ * Nilainya sama karena ia bukan turunan `colorTextBase` melainkan konstanta di
+ * `antd/es/theme/themes/shared/genColorMapToken.js` — hitam beralfa, dipakai
+ * kedua algoritma. Jadi ia secara struktural tidak bisa berbalik.
+ *
+ * Efeknya pada luminansi (nilai kecil = lebih gelap):
+ *
+ * | Latar                          | sebelum | sesudah tirai |            |
+ * |--------------------------------|---------|---------------|------------|
+ * | terang `#ffffff` (container)   | 1,0000  | 0,2633        | menggelap  |
+ * | terang `#F8FAFC` (halaman app) | 0,9536  | 0,2515        | menggelap  |
+ * | gelap  `#141414` (container)   | 0,0070  | 0,0033        | menggelap  |
+ * | gelap  `#0F172A` (halaman app) | 0,0088  | 0,0039        | menggelap  |
+ *
+ * ── Yang jujur harus ikut ditulis ────────────────────────────────────────
+ * Di tema gelap penggelapannya BENAR arahnya tetapi kecil dalam angka
+ * absolut, karena halaman gelap memang sudah nyaris hitam. Panel dialog
+ * (`colorBgElevated` gelap `#1f1f1f`) karena itu hanya berkontras **1,18:1**
+ * terhadap halaman yang sudah ditirai — yang memisahkan keduanya di sana
+ * praktis hanya bayangan `boxShadow` milik Modal, bukan warnanya.
+ *
+ * Itu tetap arah yang BENAR (panel lebih terang dari sekelilingnya, kebalikan
+ * dari bug kabut putih), dan ia bawaan AntD apa adanya — tetapi ia satu
+ * keluarga dengan jebakan "dua bidang sewarna" di MASTER.md, dan layak
+ * ditinjau di sapuan dua tema #205. Menaikkannya di sini akan menggeser
+ * `colorBgElevated`, yaitu permukaan SETIAP popover, dropdown, dan tooltip —
+ * keputusan yang terlalu lebar untuk diambil di dalam issue overlay.
+ *
+ * Angka-angka di atas dihitung ulang setiap kali suite berjalan di
+ * `tests/ui-overlay-antd.test.tsx`, jadi versi AntD baru tidak bisa membalik
+ * arahnya diam-diam.
+ */
+
 /** Sumber token yang cukup bagi `moneyPalette` — apa pun yang `useToken()` beri. */
 type MoneyTokenSource = Partial<MoneyTokens> & { colorBgContainer: string };
 

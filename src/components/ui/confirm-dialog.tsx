@@ -5,20 +5,28 @@
  * (issue #6): menghapus dokumen, membalik jurnal, mengeluarkan stok dalam
  * jumlah besar.
  *
- * Dua cara pakai:
- *   • **dengan `trigger`** — pola lama: komponen ini yang membuka dialognya;
+ * Dua cara pakai, dan KEDUANYA tetap berlaku setelah pindah ke Ant Design
+ * (issue #190) — 21 pemanggilnya tidak berubah satu baris pun di fase B:
+ *   • **dengan `trigger`** — komponen ini yang membuka dialognya;
  *   • **terkendali** (`open` + `onOpenChange`) — untuk konfirmasi yang muncul di
  *     TENGAH alur lain, mis. tombol Simpan sebuah formulir yang baru ketahuan
  *     "besar" setelah isiannya dihitung.
  *
- * Sejak issue #51 dibangun di atas Radix `AlertDialog` (lihat
- * `alert-dialog.tsx`): focus trap sungguhan, body scroll-lock, Escape
- * menutup, fokus kembali ke pemicunya — semuanya dari Radix, bukan rakitan
- * tangan. Klik di luar sengaja TIDAK menutup (semantik alertdialog):
- * konfirmasi destruktif harus dijawab, bukan hilang karena salah klik.
+ * Dibangun di atas `AlertDialog` (lihat berkas itu), yang sejak issue #190
+ * adalah AntD `Modal` dengan tiga sifat dikunci: klik-luar tidak menutup,
+ * `role="alertdialog"`, dan tanpa tombol X. Yang datang dari AntD dan tidak
+ * dirakit di sini: fokus terkurung, badan halaman terkunci, Escape menutup, dan
+ * fokus kembali ke elemen pemicunya setelah tertutup.
+ *
+ * Satu-satunya perilaku fokus yang tetap harus ditulis di sini adalah ke MANA
+ * fokus jatuh saat dialog terbuka — dan itu bergantung pada isinya, bukan pada
+ * pustakanya.
  */
 
 import { useCallback, useId, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import type { InputRef } from "antd";
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -27,9 +35,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/input";
 import { matchesConfirmPhrase } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
-import { AlertTriangle } from "lucide-react";
 
 interface ConfirmDialogProps {
   title: string;
@@ -85,7 +93,7 @@ export function ConfirmDialog({
   const [loading, setLoading] = useState(false);
   const [typed, setTyped] = useState("");
   const confirmRef = useRef<HTMLButtonElement>(null);
-  const phraseRef = useRef<HTMLInputElement>(null);
+  const phraseRef = useRef<InputRef>(null);
   const phraseId = useId();
   const messageId = useId();
 
@@ -101,6 +109,20 @@ export function ConfirmDialog({
     },
     [isControlled, onOpenChange]
   );
+
+  /**
+   * Dengan frasa, fokus jatuh ke kotak ketik — tombol konfirmasinya masih mati,
+   * jadi memfokuskannya hanya akan menyesatkan. Tanpa frasa, fokus jatuh ke
+   * tombol konfirmasi supaya Enter menyelesaikan kalimat yang baru dibaca.
+   *
+   * Dijalankan setelah panel dialog terpasang; rc-dialog sendiri hanya
+   * memfokuskan panelnya bila belum ada apa pun di dalamnya yang fokus, jadi
+   * kedua jalur tidak saling merebut.
+   */
+  const focusFirstControl = useCallback(() => {
+    if (confirmPhrase) phraseRef.current?.focus();
+    else confirmRef.current?.focus();
+  }, [confirmPhrase]);
 
   async function handleConfirm() {
     // Penjaga kedua: tombolnya memang sudah mati, tetapi Enter pada kotak ketik
@@ -125,30 +147,32 @@ export function ConfirmDialog({
 
       <AlertDialog open={isOpen} onOpenChange={setOpen}>
         <AlertDialogContent
-          // Dengan frasa, fokus jatuh ke kotak ketik — tombol konfirmasinya
-          // masih mati, jadi memfokuskannya hanya akan menyesatkan.
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            if (confirmPhrase) phraseRef.current?.focus();
-            else confirmRef.current?.focus();
-          }}
-          onEscapeKeyDown={loading ? (event) => event.preventDefault() : undefined}
+          onOpenAutoFocus={focusFirstControl}
+          /*
+           * Escape dimatikan HANYA selama prosesnya berjalan. Menutup dialog di
+           * tengah penghapusan tidak membatalkan apa pun di server — ia hanya
+           * menyembunyikan bahwa penghapusan itu sedang terjadi.
+           */
+          keyboard={!loading}
         >
           <div className="flex items-start gap-3">
             <span
-              className={
-                confirmVariant === "danger"
-                  ? "mt-0.5 shrink-0 text-destructive"
-                  : "mt-0.5 shrink-0 text-primary"
-              }
+              className="mt-0.5 shrink-0"
+              style={{
+                color:
+                  confirmVariant === "danger"
+                    ? "var(--ant-color-error)"
+                    : "var(--ant-color-primary)",
+              }}
             >
               <AlertTriangle className="h-5 w-5" aria-hidden="true" />
             </span>
-            {/* `messageId` di pembungkus, BUKAN mengganti id milik Radix
-                Description — id itu dipakai aria-describedby dialognya. */}
+            {/* `messageId` di pembungkus, BUKAN mengganti id milik
+                `AlertDialogDescription` — id itu dipakai `aria-describedby`
+                dialognya. */}
             <div className="min-w-0" id={messageId}>
               <AlertDialogTitle>{title}</AlertDialogTitle>
-              <AlertDialogDescription className="mt-2">
+              <AlertDialogDescription style={{ marginTop: 8 }}>
                 {message}
               </AlertDialogDescription>
             </div>
@@ -156,11 +180,25 @@ export function ConfirmDialog({
 
           {confirmPhrase && (
             <div className="mt-4">
-              <label htmlFor={phraseId} className="block text-sm text-muted-foreground">
+              <label
+                htmlFor={phraseId}
+                className="block"
+                style={{
+                  fontSize: "var(--ant-font-size)",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {phraseLabel}{" "}
-                <span className="font-semibold text-foreground">{confirmPhrase}</span>
+                <span
+                  style={{
+                    fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                    color: "var(--ant-color-text)",
+                  }}
+                >
+                  {confirmPhrase}
+                </span>
               </label>
-              <input
+              <TextInput
                 id={phraseId}
                 ref={phraseRef}
                 type="text"
@@ -174,7 +212,14 @@ export function ConfirmDialog({
                 }}
                 autoComplete="off"
                 aria-describedby={messageId}
-                className="mt-1 block w-full rounded-md border border-border px-3 py-2 text-sm focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive"
+                /*
+                 * `status="error"` bawaan `TextInput` mewarnai kotaknya merah.
+                 * Di sini kotaknya BUKAN salah — ia hanya belum diisi — jadi
+                 * ia dibiarkan netral sampai pengguna benar-benar mengetik
+                 * sesuatu yang tidak cocok.
+                 */
+                invalid={typed.length > 0 && !phraseSatisfied}
+                style={{ marginTop: 4 }}
               />
             </div>
           )}

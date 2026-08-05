@@ -26,14 +26,18 @@ import {
   BRAND_TEXT_LIGHT,
   MONEY_TOKENS_DARK,
   MONEY_TOKENS_LIGHT,
+  NEUTRAL_TEXT_DARK,
+  NEUTRAL_TEXT_LIGHT,
   PRIMARY_BUTTON_DARK,
   PRIMARY_BUTTON_LIGHT,
   brandTextTokens,
   moneyPalette,
   moneyTokens,
+  neutralTextTokens,
   primaryButtonTokens,
   type BrandTextTokens,
   type MoneyTokens,
+  type NeutralTextTokens,
 } from "@/lib/theme/antd-tokens";
 
 /** `#abc` / `#aabbcc` / `rgba(r,g,b,a)` -> kanal + alfa. */
@@ -99,6 +103,21 @@ const worst = (color: string, mode: "light" | "dark") =>
 
 /** Ambang teks biasa. Berlaku di mana-mana karena `fontSize` bawaan AntD 14px. */
 const AA = 4.5;
+
+/**
+ * Token seperti yang BENAR-BENAR sampai ke komponen: seed -> map -> alias, lalu
+ * override kita. Ini yang membedakan "kami menulis nilai baru" dari "nilai baru
+ * itu berlaku": beberapa token yang kami perbaiki adalah induk dari token lain
+ * (`colorTextDescription`, `colorIcon`), dan AntD menurunkannya DI ANTARA dua
+ * tempat override ditempelkan (`theme/util/alias.ts`).
+ */
+const applied = (mode: "light" | "dark") =>
+  theme.getDesignToken({
+    algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    token: { ...neutralTextTokens(mode) },
+  });
+
+const APPLIED = { light: applied("light"), dark: applied("dark") } as const;
 
 describe("kalibrasi rumus kontras", () => {
   it("mereproduksi angka yang sudah tertulis di MASTER.md", () => {
@@ -347,6 +366,99 @@ describe("label tombol primer", () => {
   });
 });
 
+/* ========================================================================== */
+/* issue #207 — teks bantuan & placeholder                                    */
+/* ========================================================================== */
+
+describe("teks bantuan bawaan AntD (#207)", () => {
+  it("colorTextTertiary GAGAL 4,5:1 di KEDUA tema — sebab token ini ada", () => {
+    // Mengunci kegagalan. Kalau ini hijau, AntD mengubah tangga alfanya:
+    // ukur ulang dan pertimbangkan apakah override-nya masih perlu.
+    expect(worst(LIGHT.colorTextTertiary, "light")).toBeLessThan(AA);
+    expect(worst(DARK.colorTextTertiary, "dark")).toBeLessThan(AA);
+  });
+
+  it("teks bantuan memang mewarisi tersier — jadi ia ikut gagal", () => {
+    // `colorTextDescription` adalah yang dipakai untuk kalimat penjelas; kalau
+    // ia berhenti menunjuk tersier, seluruh alasan issue ini berubah.
+    expect(LIGHT.colorTextDescription).toBe(LIGHT.colorTextTertiary);
+    expect(DARK.colorTextDescription).toBe(DARK.colorTextTertiary);
+  });
+
+  it("placeholder LEBIH buruk lagi, dan bukan dari tersier", () => {
+    // Temuan yang mudah terlewat: memperbaiki tersier saja tidak menyentuh
+    // placeholder sama sekali, karena aliasnya menunjuk kuartener (α 0,25).
+    expect(LIGHT.colorTextPlaceholder).toBe(LIGHT.colorTextQuaternary);
+    expect(LIGHT.colorTextPlaceholder).not.toBe(LIGHT.colorTextTertiary);
+    expect(worst(LIGHT.colorTextPlaceholder, "light")).toBeLessThan(
+      worst(LIGHT.colorTextTertiary, "light")
+    );
+    expect(worst(DARK.colorTextPlaceholder, "dark")).toBeLessThan(
+      worst(DARK.colorTextTertiary, "dark")
+    );
+  });
+
+  it("tangga alfa AntD tak punya anak tangga antara 0,45 dan 0,65", () => {
+    // Ini yang membuat "ambil saja nilai di tengah" bukan pilihan yang ada.
+    // 0,45 = tersier, 0,65 = sekunder; tidak ada apa pun di antaranya.
+    expect(LIGHT.colorTextTertiary).toBe("rgba(0,0,0,0.45)");
+    expect(LIGHT.colorTextSecondary).toBe("rgba(0,0,0,0.65)");
+    expect(DARK.colorTextTertiary).toBe("rgba(255,255,255,0.45)");
+    expect(DARK.colorTextSecondary).toBe("rgba(255,255,255,0.65)");
+  });
+});
+
+describe("token teks netral kustom (#207)", () => {
+  const roles: (keyof NeutralTextTokens)[] = ["colorTextTertiary", "colorTextPlaceholder"];
+
+  for (const role of roles) {
+    it(`${role} lolos 4,5:1 di KEDUA tema, di ketiga latar`, () => {
+      expect(worst(NEUTRAL_TEXT_LIGHT[role], "light")).toBeGreaterThanOrEqual(AA);
+      expect(worst(NEUTRAL_TEXT_DARK[role], "dark")).toBeGreaterThanOrEqual(AA);
+    });
+  }
+
+  it("nilainya = anak tangga 0,65 milik AntD sendiri, bukan alfa karangan", () => {
+    // Pembenaran yang sama dengan token uang: paletnya tidak ditolak, hanya
+    // anak tangganya yang dipindah. Di tangga netral, "palet" = daftar alfa.
+    for (const role of roles) {
+      expect(NEUTRAL_TEXT_LIGHT[role]).toBe(LIGHT.colorTextSecondary);
+      expect(NEUTRAL_TEXT_DARK[role]).toBe(DARK.colorTextSecondary);
+    }
+  });
+
+  it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
+    const round = (n: number) => Math.round(n * 100) / 100;
+    expect(round(worst(NEUTRAL_TEXT_LIGHT.colorTextTertiary, "light"))).toBe(6.76);
+    expect(round(worst(NEUTRAL_TEXT_DARK.colorTextTertiary, "dark"))).toBe(7.65);
+  });
+
+  it("teks penjelas & ikon IKUT naik — override merambat ke turunannya", () => {
+    // Kalau AntD memindahkan derivasi ini ke belakang spread override, angka
+    // di layar akan diam-diam kembali ke bawaan sementara berkas token
+    // terlihat benar. Karena itu yang diuji adalah token terpakai, bukan
+    // konstanta kita.
+    for (const mode of ["light", "dark"] as const) {
+      const t = APPLIED[mode];
+      expect(t.colorTextDescription).toBe(neutralTextTokens(mode).colorTextTertiary);
+      expect(t.colorIcon).toBe(neutralTextTokens(mode).colorTextTertiary);
+      expect(t.colorTextPlaceholder).toBe(neutralTextTokens(mode).colorTextPlaceholder);
+      expect(worst(t.colorTextDescription, mode)).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
+  it("teks NONAKTIF sengaja TIDAK ikut naik — WCAG mengecualikannya", () => {
+    // Sebabnya override ditempel di alias `colorTextPlaceholder`, bukan di
+    // `colorTextQuaternary` yang menjadi induk keduanya. Kendali nonaktif yang
+    // kontrasnya dinaikkan berhenti terlihat nonaktif.
+    for (const mode of ["light", "dark"] as const) {
+      const base = mode === "dark" ? DARK : LIGHT;
+      expect(APPLIED[mode].colorTextDisabled).toBe(base.colorTextQuaternary);
+      expect(worst(APPLIED[mode].colorTextDisabled, mode)).toBeLessThan(AA);
+    }
+  });
+});
+
 describe("moneyTokens / moneyPalette", () => {
   it("memberi tabel yang sesuai temanya", () => {
     expect(moneyTokens("light")).toEqual(MONEY_TOKENS_LIGHT);
@@ -355,6 +467,8 @@ describe("moneyTokens / moneyPalette", () => {
     expect(brandTextTokens("dark")).toEqual(BRAND_TEXT_DARK);
     expect(primaryButtonTokens("light")).toEqual(PRIMARY_BUTTON_LIGHT);
     expect(primaryButtonTokens("dark")).toEqual(PRIMARY_BUTTON_DARK);
+    expect(neutralTextTokens("light")).toEqual(NEUTRAL_TEXT_LIGHT);
+    expect(neutralTextTokens("dark")).toEqual(NEUTRAL_TEXT_DARK);
   });
 
   it("memakai token yang didaftarkan ConfigProvider bila ada", () => {

@@ -44,13 +44,14 @@
  * | menunggu | `#874d00` | 6,79 / 6,23 / 6,79  | 6,23 | `#f3cc62` | 11,95 / 13,62 /10,69 | 10,69 |
  * | info     | `#0958d9` | 6,16 / 5,65 / 6,16  | 5,65 | `#3c89e8` |  5,21 /  5,94 / 4,66 |  4,66 |
  *
- * ── Yang SENGAJA tidak diputuskan di sini ──────────────────────────────────
- * `colorTextTertiary` (gagal 4,5:1 di kedua tema) adalah issue #207 dan
- * `colorBorder` (1,41:1 terang) adalah issue #208. Keduanya token bawaan yang
- * dipakai jauh di luar uang, jadi menaikkannya di sini akan mengubah seluruh
- * aplikasi lewat pintu belakang sebuah berkas bernama "token uang". Tempatnya
- * sudah disiapkan: tambahkan saja entri ke `MONEY_TOKENS_*`/blok override di
- * `antd-provider.tsx` tanpa menyentuh komponen uang.
+ * ── Token netral: teks bantuan (#207) ──────────────────────────────────────
+ * `colorTextTertiary` dulu sengaja ditunda di sini karena ia token bawaan yang
+ * dipakai jauh di luar uang. Kini diputuskan, di bagian bawah berkas ini —
+ * `NEUTRAL_TEXT_*`. Alasannya sama dengan token uang: anak tangga netral AntD
+ * dipilih untuk selera, bukan untuk sebuah lantai kontras, dan aplikasi yang
+ * seluruh isinya angka di sel 14px membutuhkan lantai itu.
+ *
+ * `colorBorder` (1,41:1 terang) masih menunggu di issue #208.
  */
 
 import type { ResolvedTheme } from "./config";
@@ -237,6 +238,80 @@ export const PRIMARY_BUTTON_DARK: PrimaryButtonTokens = {
 
 export function primaryButtonTokens(resolved: ResolvedTheme): PrimaryButtonTokens {
   return resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Teks bantuan & placeholder (issue #207)                                    */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `colorTextTertiary` bawaan gagal 4,5:1 di KEDUA tema — dan AntD memakainya
+ * untuk teks bantuan 14px.
+ *
+ * Tangga netral AntD tidak dibuat lewat `generate()` seperti warna berwarna.
+ * Ia dibuat lewat `getAlphaColor(colorTextBase, α)` dengan α dari daftar tetap
+ * (`themes/default/colors.ts`): **0,88 · 0,65 · 0,45 · 0,25** — dan versi
+ * gelapnya memakai daftar yang sama dengan puncak 0,85. Anak tangga itulah
+ * "palet" untuk teks netral, persis seperti green-8/red-8 untuk warna uang.
+ *
+ * | Peran (α)              | TERANG            | ctr / layout / elev | min  | GELAP                  | ctr / layout / elev | min  |
+ * |------------------------|-------------------|---------------------|------|------------------------|---------------------|------|
+ * | tersier BAWAAN (0,45)  | `rgba(0,0,0,.45)` | 3,35 / 3,31 / 3,35  | 3,31 | `rgba(255,255,255,.45)`| 4,52 / 4,41 / 4,40  | 4,40 |
+ * | placeholder BAWAAN (0,25) | `rgba(0,0,0,.25)` | 1,83 / 1,82 / 1,83 | 1,82 | `rgba(255,255,255,.25)`| 2,24 / 2,02 / 2,28  | 2,02 |
+ * | **pengganti (0,65)**   | `rgba(0,0,0,.65)` | 6,98 / 6,76 / 6,98  | 6,76 | `rgba(255,255,255,.65)`| 8,19 / 8,60 / 7,65  | 7,65 |
+ *
+ * ── Kenapa 0,65 dan bukan sesuatu di antaranya ─────────────────────────────
+ * Diukur: α terkecil yang lolos 4,5:1 adalah ~0,53 (terang, di atas
+ * `colorBgLayout`) dan ~0,46 (gelap, di atas `colorBgElevated`). Jadi 0,45 nyaris
+ * cukup di tema gelap dan jelas tidak cukup di tema terang. Tangga AntD tidak
+ * punya anak tangga antara 0,45 dan 0,65 — dan mengarang α sendiri berarti
+ * berhenti memakai paletnya, yaitu hal yang justru dihindari seluruh berkas ini.
+ * Maka dipakai anak tangga berikutnya, 0,65, yang nilainya sama dengan
+ * `colorTextSecondary`.
+ *
+ * **Akibatnya jujur: tingkat "tersier" melebur ke "sekunder".** Hierarki teks
+ * AntD berubah dari tiga tingkat menjadi dua (0,88 untuk isi, 0,65 untuk
+ * penjelas). Itu memang kehilangan — tetapi tingkat yang tidak terbaca bukan
+ * tingkat; ia hanya penanda bahwa ada sesuatu di sana. Beda 0,88 vs 0,65 masih
+ * terlihat jelas, jadi teks bantuan tetap "lebih ringan" dari isinya.
+ *
+ * ── Placeholder: masalah TERPISAH yang mudah terlewat ──────────────────────
+ * `colorTextPlaceholder` **tidak** berasal dari tersier. Di lapisan alias
+ * (`theme/util/alias.ts`) ia = `colorTextQuaternary`, yaitu α 0,25 — 1,82:1,
+ * jauh LEBIH buruk dari tersier. Menaikkan tersier saja meninggalkan seluruh
+ * placeholder `Input`/`Select`/`DatePicker` tak terbaca.
+ *
+ * Yang diganti adalah alias `colorTextPlaceholder`, BUKAN `colorTextQuaternary`
+ * di bawahnya. Sebabnya `colorTextDisabled` juga menunjuk kuartener, dan
+ * WCAG 1.4.3 secara tegas MENGECUALIKAN kendali nonaktif: teks nonaktif yang
+ * dinaikkan kontrasnya berhenti terlihat nonaktif. Terukur setelah override:
+ * `colorTextDisabled` tetap `rgba(0,0,0,0.25)` — persis yang diinginkan.
+ *
+ * Harga yang dibayar: placeholder jadi hampir sepekat nilai isian sungguhan
+ * (0,65 vs 0,88), sehingga kolom kosong bisa terbaca seolah terisi. Itu bisa
+ * diterima **hanya karena aturan MASTER.md**: label selalu terlihat, tak pernah
+ * diganti placeholder. Placeholder di aplikasi ini berisi contoh format, dan
+ * contoh format adalah informasi — informasi 1,82:1 sama saja tidak ada.
+ */
+export interface NeutralTextTokens {
+  colorTextTertiary: string;
+  colorTextPlaceholder: string;
+}
+
+/** α 0,65 — anak tangga `colorTextSecondary` dari `colorTextBase` `#000`. */
+export const NEUTRAL_TEXT_LIGHT: NeutralTextTokens = {
+  colorTextTertiary: "rgba(0,0,0,0.65)", // min 6,76:1
+  colorTextPlaceholder: "rgba(0,0,0,0.65)", // min 6,76:1
+};
+
+/** Anak tangga yang sama dari `colorTextBase` `#fff` versi gelap. */
+export const NEUTRAL_TEXT_DARK: NeutralTextTokens = {
+  colorTextTertiary: "rgba(255,255,255,0.65)", // min 7,65:1
+  colorTextPlaceholder: "rgba(255,255,255,0.65)", // min 7,65:1
+};
+
+export function neutralTextTokens(resolved: ResolvedTheme): NeutralTextTokens {
+  return resolved === "dark" ? NEUTRAL_TEXT_DARK : NEUTRAL_TEXT_LIGHT;
 }
 
 /** Sumber token yang cukup bagi `moneyPalette` — apa pun yang `useToken()` beri. */

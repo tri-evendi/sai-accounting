@@ -49,7 +49,12 @@ import idID from "antd/locale/id_ID";
 import zhCN from "antd/locale/zh_CN";
 
 import type { Locale } from "@/lib/i18n/config";
-import { brandTextTokens, moneyTokens, primaryButtonTokens } from "@/lib/theme/antd-tokens";
+import {
+  brandTextTokens,
+  moneyTokens,
+  neutralTextTokens,
+  primaryButtonTokens,
+} from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
 
 /**
@@ -124,6 +129,19 @@ export function AntdProvider({
         colorLink: brand.colorBrandText,
         colorLinkHover: brand.colorBrandTextHover,
         colorLinkActive: brand.colorBrandTextActive,
+        /*
+         * Teks bantuan & placeholder (issue #207). `colorTextTertiary` bawaan
+         * gagal 4,5:1 di KEDUA tema (3,31 / 4,40) padahal AntD memakainya untuk
+         * teks penjelas 14px; `colorTextPlaceholder` bahkan 1,82:1 karena di
+         * lapisan alias ia menunjuk `colorTextQuaternary`, bukan tersier.
+         *
+         * Keduanya disebut sebagai ALIAS, bukan lewat `colorTextQuaternary` di
+         * bawahnya: kuartener juga memberi `colorTextDisabled`, dan teks
+         * nonaktif justru HARUS tetap redup (dikecualikan WCAG 1.4.3). Yang
+         * ikut naik otomatis dan memang diinginkan: `colorTextDescription` dan
+         * `colorIcon`, keduanya turunan `colorTextTertiary`.
+         */
+        ...neutralTextTokens(resolved),
       },
       /*
        * Isian tombol primer diturunkan sebagai token KOMPONEN, bukan global:

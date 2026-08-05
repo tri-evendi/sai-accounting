@@ -4,15 +4,8 @@ import { getStockMovementReport } from "@/lib/stock-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import { StockPeriodFilter } from "@/components/shared/stock-period-filter";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -26,12 +19,8 @@ import { PackageOpen, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-/** Quantity cell: right-aligned, tabular, id-ID — the money rules minus the currency. */
-function Qty({ value, className = "" }: { value: number; className?: string }) {
-  return (
-    <TableCell className={`text-right tabular-nums ${className}`}>{formatNumber(value)}</TableCell>
-  );
-}
+/** Satu baris laporan — bentuk yang dibaca kolom di bawah. */
+type MovementRow = Awaited<ReturnType<typeof getStockMovementReport>>["rows"][number];
 
 export default async function StockMovementPage({
   params,
@@ -97,6 +86,12 @@ export default async function StockMovementPage({
   // Susunan kolom layar diputuskan penentu yang SAMA dengan PDF & lembar sebar
   // (`stockMovementColumns`), jadi pratinjau yang dibuka dari dialog parameter
   // memperlihatkan persis kolom yang akan ikut ke berkasnya.
+  //
+  // Perhatikan arah aliranya: penentu menghasilkan DAFTAR ID, lalu id itu
+  // dipetakan ke kolom di bawah. Yang TIDAK boleh terjadi adalah menulis
+  // daftar kolom kedua di sebelahnya — itulah cara pratinjau dan berkas
+  // ekspor mulai berbeda kolom, bug yang baru saja ditutup dan yang dikunci
+  // `tests/report-export.test.ts`.
   const cols = stockMovementColumns(payload);
   const HEADERS: Record<StockMovementColumnId, string> = {
     name: t("common.item"),
@@ -124,6 +119,42 @@ export default async function StockMovementPage({
     processed: report.totalProcessed,
     closing: report.totalClosing,
   };
+
+  /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
+  function columnFor(id: StockMovementColumnId): SaiColumns<MovementRow>[number] {
+    if (id === "name") {
+      return {
+        ...textColumn<MovementRow>({ dataIndex: "name", title: HEADERS.name }),
+        className: "font-medium text-foreground",
+      };
+    }
+    if (id === "unit") {
+      return {
+        ...textColumn<MovementRow>({ dataIndex: "unit", title: HEADERS.unit }),
+        className: "text-muted-foreground",
+        // Satuan kosong ditulis "-": selnya memang tak berisi, dan itu berbeda
+        // dari satuan yang belum diketahui.
+        render: (raw) => (raw ? String(raw) : "-"),
+      };
+    }
+    return qtyColumn<MovementRow>({
+      dataIndex: id,
+      title: HEADERS[id],
+      className: QTY_CLASS[id],
+    });
+  }
+
+  const columns: SaiColumns<MovementRow> = cols.map(columnFor);
+
+  // Baris total dipetakan per KUNCI kolom, jadi ia ikut menyusut bersama
+  // pilihan kolom pengguna dan tak bisa meleset satu kolom.
+  const summary: Record<string, React.ReactNode> = { name: t("common.total") };
+  for (const id of cols) {
+    if (id === "name" || id === "unit") continue;
+    summary[id] = (
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatNumber(TOTALS[id])}</span>
+    );
+  }
 
   return (
     <div>
@@ -157,65 +188,25 @@ export default async function StockMovementPage({
       />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {cols.map((c) => (
-                <TableHead key={c} className={c === "name" || c === "unit" ? undefined : "text-right"}>
-                  {HEADERS[c]}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {report.rows.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={cols.length} className="p-0">
-                  <EmptyState
-                    icon={<PackageOpen className="h-12 w-12" />}
-                    title={t("stockMovement.emptyTitle")}
-                    description={t("stockMovement.emptyDescription")}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              report.rows.map((r) => (
-                <TableRow key={r.id}>
-                  {cols.map((c) =>
-                    c === "name" ? (
-                      <TableCell key={c} className="font-medium text-foreground">
-                        {r.name}
-                      </TableCell>
-                    ) : c === "unit" ? (
-                      <TableCell key={c} className="text-muted-foreground">
-                        {r.unit || "-"}
-                      </TableCell>
-                    ) : (
-                      <Qty key={c} value={r[c]} className={QTY_CLASS[c]} />
-                    )
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-          {report.rows.length > 0 && (
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="border-b-0 font-bold hover:bg-transparent">
-                {cols.map((c) =>
-                  c === "name" ? (
-                    <TableCell key={c} className="text-foreground">
-                      {t("common.total")}
-                    </TableCell>
-                  ) : c === "unit" ? (
-                    <TableCell key={c} />
-                  ) : (
-                    <Qty key={c} value={TOTALS[c]} />
-                  )
-                )}
-              </TableRow>
-            </TableFooter>
-          )}
-        </Table>
+        {/*
+         * `StaticTable`, bukan `DataTable`: laporan ini hanya MENAMPILKAN.
+         * Periodenya dipilih di atas (yang memuat ulang di server) dan tak ada
+         * satu pun kendali per kolom, jadi tidak ada yang bisa dibeli dengan
+         * memindahkan seluruh baris persediaan ke peramban.
+         */}
+        <StaticTable<MovementRow>
+          columns={columns}
+          rows={report.rows}
+          rowKey={(r) => r.id}
+          summary={summary}
+          empty={
+            <EmptyState
+              icon={<PackageOpen className="h-12 w-12" />}
+              title={t("stockMovement.emptyTitle")}
+              description={t("stockMovement.emptyDescription")}
+            />
+          }
+        />
       </Card>
 
       {/* Barang yang tidak bersaldo dan tidak bergerak disembunyikan; mengatakannya

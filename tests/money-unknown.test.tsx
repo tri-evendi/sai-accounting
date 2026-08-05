@@ -19,7 +19,10 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { Money, MoneyCell, UNKNOWN } from "@/components/ui/money";
-import { DataTable, moneyColumn } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
+import { StaticTable } from "@/components/ui/static-table";
+import { textColumn } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
 import { MoneyInput } from "@/components/ui/money-input";
 
 /**
@@ -80,31 +83,42 @@ describe("MoneyCell — nilai tak diketahui", () => {
 
 type Row = { doc: string; amount: number | null };
 
+/**
+ * Sejak #189 ada DUA perender tabel yang memakai kontrak kolom yang sama, jadi
+ * aturan ini diuji pada keduanya: sebuah laporan tidak boleh berubah artinya
+ * hanya karena halamannya memilih varian statis atau varian interaktif.
+ */
 describe("moneyColumn — nilai tak diketahui", () => {
   const columns = [
-    { accessorKey: "doc" as const, header: "Dokumen" },
-    moneyColumn<Row>({ accessorKey: "amount", header: "Nilai" }),
+    textColumn<Row>({ dataIndex: "doc", title: "Dokumen" }),
+    moneyColumn<Row>({ dataIndex: "amount", title: "Nilai" }),
   ];
+  const rowKey = (r: Row) => r.doc;
 
-  it("baris tanpa nilai tidak berubah jadi Rp 0 di dalam tabel", () => {
-    // Regresi yang dijaga: `Number(getValue() ?? 0)` di dalam moneyColumn dulu
-    // mengubah setiap nilai kosong jadi nol di SELURUH tabel yang memakainya —
-    // dari dalam primitif, jadi tak terlihat dari halamannya.
-    const html = renderToStaticMarkup(
-      <DataTable columns={columns} data={[{ doc: "INV-9", amount: null }]} />
-    );
-    expect(html).toContain("INV-9");
-    expect(html).toContain(UNKNOWN);
-    expect(text(html)).not.toMatch(/Rp\s*0/);
-  });
+  const perender = {
+    DataTable: (rows: Row[]) =>
+      renderToStaticMarkup(<DataTable columns={columns} data={rows} rowKey={rowKey} />),
+    StaticTable: (rows: Row[]) =>
+      renderToStaticMarkup(<StaticTable columns={columns} rows={rows} rowKey={rowKey} />),
+  };
 
-  it("nilai yang ada tetap terformat seperti biasa", () => {
-    const html = renderToStaticMarkup(
-      <DataTable columns={columns} data={[{ doc: "INV-1", amount: 1234567 }]} />
-    );
-    expect(html).toContain("1.234.567");
-    expect(html).not.toContain(UNKNOWN);
-  });
+  for (const [nama, render] of Object.entries(perender)) {
+    it(`${nama}: baris tanpa nilai tidak berubah jadi Rp 0 di dalam tabel`, () => {
+      // Regresi yang dijaga: `Number(value ?? 0)` di dalam moneyColumn dulu
+      // mengubah setiap nilai kosong jadi nol di SELURUH tabel yang memakainya
+      // — dari dalam primitif, jadi tak terlihat dari halamannya.
+      const html = render([{ doc: "INV-9", amount: null }]);
+      expect(html).toContain("INV-9");
+      expect(html).toContain(UNKNOWN);
+      expect(text(html)).not.toMatch(/Rp\s*0/);
+    });
+
+    it(`${nama}: nilai yang ada tetap terformat seperti biasa`, () => {
+      const html = render([{ doc: "INV-1", amount: 1234567 }]);
+      expect(html).toContain("1.234.567");
+      expect(html).not.toContain(UNKNOWN);
+    });
+  }
 });
 
 describe("MoneyInput — sisi isian dari aturan yang sama", () => {

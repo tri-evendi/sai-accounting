@@ -148,7 +148,7 @@ Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog pa
 
 ## Konvensi Form (issue #53)
 
-Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** shadcn (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(dashboard)/customers/new/page.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
+Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
 
 1. **Satu skema zod, dua sisi.** Skema yang divalidasi form **wajib** skema yang sama dipakai route handler — **diimpor, bukan disalin**. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` client dan `invoicePaymentSchema`/`contractPaymentSchema` server). Client & server tidak boleh bisa menyimpang diam-diam.
 2. **Pesan error lewat KUNCI kamus, ramah awam.** Skema tidak menulis kalimat, melainkan kunci bertipe: `z.string().min(1, vmsg("validation.dateRequired"))` (`@/lib/i18n/validation`). Alasannya: pesan zod dipanggang saat modul dimuat sehingga tidak bisa ikut berganti bahasa — sedangkan mengubahnya menjadi pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di **batas tampilan**: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di dalam skema. Pesan yang membawa nominal memakai `vissue("…", { … })` — kunci + nilainya ikut sebagai `params` zod, bukan sandi yang diselundupkan ke dalam teks pesan.
@@ -171,7 +171,19 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`NativeSelect`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
 5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
 6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).
-7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (field bila ada `fieldErrors`, atau `root`).
+7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (field bila ada `fieldErrors`, atau `root`). Field yang TIDAK punya isian di layar (mis. `invoiceId` yang disuntik server) naik menjadi galat formulir, bukan ditanam di field yang tak pernah dilihat siapa pun — acuan `applyPaymentServerErrors` di `payment-form.tsx`.
+
+### Ant Design sebagai KULIT (keputusan issue #192)
+
+`FormItem` berdiri di atas **`Form.Item` AntD, yang dipakai TANPA `Form` AntD** — tanpa `name`, tanpa `rules`, tanpa `validateMessages`. Mesin formulirnya tetap react-hook-form + zod; AntD hanya memberi tata letak label, jarak, dan keadaan error. **`Form` AntD dan `Form.useForm` tidak boleh dipakai di halaman mana pun** — memakainya berarti aturan validasi hidup di dua tempat dan aturan 1 di atas batal. Dijaga `tests/ui-form-antd.test.tsx`.
+
+Tiga akibat nyata yang perlu diketahui sebelum menulis form baru:
+
+- **Label ditulis tetap sebagai anak** (`<FormLabel required>`), lalu **diangkat** `FormItem` menjadi prop `label` `Form.Item` — karena di AntD label adalah prop, bukan komponen. Pengangkatan hanya menjangkau **anak langsung**; label yang ditulis di dalam `FormField` tetap dirender sebagai `<label htmlFor>` biasa di slot kendali. Keduanya benar; yang berbeda hanya letaknya.
+- **Slot `help` AntD sengaja tidak dipakai.** Tanpa `name`, `Form.Item` baru merender daftar galatnya setelah sebuah `useLayoutEffect` — di render server ia hilang sama sekali. Pesan validasi karena itu tetap `FormMessage` (`role="alert"`, `text-destructive` yang lolos AA; `colorError` AntD hanya 3,27:1 sebagai teks 14px).
+- **Pautan ARIA tetap milik `FormControl`.** AntD hanya menyuntikkan `aria-*` di cabang ber-`name`, yang tidak kita tempuh. Sejak #192 `FormControl` juga memasang **`aria-required`**, jadi isian wajib tidak lagi hanya bertanda `*`.
+
+Tanda wajib `*` tetap digambar aplikasi ini (di BELAKANG teks label, sama seperti `Input`/`Select` komposit), bukan tanda bintang AntD yang digambar `::before` di depan label — dua konvensi di layar yang sama terbaca sebagai cacat.
 
 ---
 

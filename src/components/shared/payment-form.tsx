@@ -15,11 +15,18 @@
  *   • `MoneyInput` — pengguna melihat `1.234.567`, payload menerima `1234567`;
  *   • progressive disclosure — field kurs baru muncul saat mata uang bukan IDR
  *     (aturan form MASTER.md), dan skema menuntutnya hanya di kondisi itu;
- *   • error inline `role="alert"` yang tertaut ARIA ke tiap field.
+ *   • error inline `role="alert"` yang tertaut ARIA ke tiap field;
+ *   • kegagalan validasi SERVER dipetakan kembali ke field-nya masing-masing
+ *     (aturan 7), bukan diringkas menjadi satu pita merah di atas formulir.
+ *
+ * Sejak issue #192 primitif `Form` berdiri di atas `Form.Item` AntD. Berkas ini
+ * tidak berubah karenanya — API primitifnya sama — kecuali dua hal yang memang
+ * kurang sejak awal dan baru sekarang punya tempatnya: tanda wajib pada isian
+ * yang dituntut skema, dan pemetaan galat server per field.
  */
 
 import { useState } from "react";
-import { useForm, useWatch, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver, type UseFormSetError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
@@ -45,6 +52,62 @@ interface PaymentFormProps {
   entityType: "contracts" | "invoices";
   entityId: number;
   onSuccess?: () => void;
+}
+
+/** Bentuk jawaban 400 baku route handler (lihat MASTER.md §Konvensi Form). */
+interface ServerErrorBody {
+  error?: string;
+  details?: { fieldErrors?: Record<string, string[] | undefined> };
+}
+
+/**
+ * Field yang benar-benar diketik di formulir ini. Skema server menambah
+ * `contractId`/`invoiceId` dari URL, jadi `fieldErrors` bisa memuat nama yang
+ * TIDAK punya isian di layar — dan menaruh galatnya di sana berarti pesan yang
+ * tak pernah terlihat siapa pun.
+ */
+const PAYMENT_FIELDS = ["date", "amount", "currency", "rate", "note"] as const;
+
+function isPaymentField(name: string): name is (typeof PAYMENT_FIELDS)[number] {
+  return (PAYMENT_FIELDS as readonly string[]).includes(name);
+}
+
+/**
+ * Kegagalan validasi server → `form.setError` (aturan 7 Konvensi Form).
+ *
+ * Pesannya sudah berbahasa pengguna saat tiba di sini (`translateFieldErrors`
+ * di route handler), jadi `FormMessage` meneruskannya apa adanya — itulah
+ * cabang "bukan kunci" di `translateMessage`.
+ *
+ * Diekspor untuk diuji: inilah satu-satunya bagian formulir ini yang berjalan
+ * SETELAH jaringan, yaitu bagian yang tidak pernah tersentuh saat seseorang
+ * mencoba formulirnya dengan tangan.
+ */
+export function applyPaymentServerErrors(
+  setError: UseFormSetError<PaymentFormInput>,
+  body: ServerErrorBody,
+  fallback: string
+): void {
+  const fieldErrors = body.details?.fieldErrors ?? {};
+  /* Galat yang menunjuk field di luar layar tidak boleh ditelan — ia naik
+   * menjadi galat formulir, tempat pengguna masih bisa membacanya. */
+  const offscreen: string[] = [];
+  let placed = false;
+
+  for (const [name, messages] of Object.entries(fieldErrors)) {
+    const message = messages?.[0];
+    if (!message) continue;
+    if (isPaymentField(name)) {
+      setError(name, { type: "server", message });
+      placed = true;
+    } else {
+      offscreen.push(message);
+    }
+  }
+
+  if (offscreen.length > 0 || !placed) {
+    setError("root", { message: String(offscreen[0] || body.error || fallback) });
+  }
 }
 
 export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
@@ -85,13 +148,8 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      const fieldMsg = data.details?.fieldErrors
-        ? Object.values(data.details.fieldErrors).flat().filter(Boolean)[0]
-        : null;
-      form.setError("root", {
-        message: String(fieldMsg || data.error || t("payments.errSave")),
-      });
+      const data: ServerErrorBody = await res.json().catch(() => ({}));
+      applyPaymentServerErrors(form.setError, data, t("payments.errSave"));
       return;
     }
 
@@ -120,7 +178,10 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("common.date")}</FormLabel>
+                {/* Tanda wajib mengikuti SKEMA, bukan selera: ketiga isian ini
+                    dituntut `paymentFormFields`, jadi tandanya ada di sini dan
+                    `aria-required` ikut terpasang otomatis lewat `FormControl`. */}
+                <FormLabel required>{t("common.date")}</FormLabel>
                 <FormControl>
                   <TextInput type="date" {...field} />
                 </FormControl>
@@ -134,7 +195,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("common.amount")}</FormLabel>
+                <FormLabel required>{t("common.amount")}</FormLabel>
                 <FormControl>
                   <MoneyInput
                     // Rupiah tanpa desimal; valas 2 desimal.
@@ -155,7 +216,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             name="currency"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("common.currency")}</FormLabel>
+                <FormLabel required>{t("common.currency")}</FormLabel>
                 <FormControl>
                   <NativeSelect
                     options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
@@ -174,7 +235,11 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
               name="rate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("fx.rateToIdr", { currency })}</FormLabel>
+                  {/* Wajib HANYA di kondisi ini — sama persis dengan yang
+                      dituntut `requireRateForForeign` di skema. Tanda `*` yang
+                      muncul-hilang bersama isiannya adalah bentuk paling jujur
+                      dari progressive disclosure. */}
+                  <FormLabel required>{t("fx.rateToIdr", { currency })}</FormLabel>
                   <FormControl>
                     <MoneyInput
                       decimals={2}

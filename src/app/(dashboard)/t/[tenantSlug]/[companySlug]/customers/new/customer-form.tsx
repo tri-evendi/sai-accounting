@@ -10,6 +10,14 @@
  * server hanya muncul sebagai satu pita merah di atas form tanpa tahu field
  * mana yang salah. Kini tiap field memvalidasi inline dengan `aria-invalid` +
  * pesan `role="alert"` yang tertaut, dan teksnya berbahasa Indonesia.
+ *
+ * ── Catatan issue #192 ─────────────────────────────────────────────────────
+ * Sejak #192 primitif `Form` berdiri di atas `Form.Item` Ant Design. Berkas ini
+ * TIDAK berubah satu baris pun karenanya, dan justru itulah buktinya: mesin
+ * formulir (react-hook-form + `customerSchema`) tidak ikut berpindah tangan,
+ * hanya kulitnya. Acuan yang berpasangan dengan berkas ini —
+ * `components/shared/payment-form.tsx` — memikul kasus yang sulit (valas,
+ * kurs bersyarat, galat server per field).
  */
 
 import { useForm, type Resolver } from "react-hook-form";

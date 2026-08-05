@@ -190,3 +190,34 @@ export const CASH_BANK_HEADERS: Record<CashBankColumnId, string> = {
 export function cashBankColumns(report: { visibleColumns?: string[] }): CashBankColumnId[] {
   return selectColumns(CASH_BANK_COLUMNS, report.visibleColumns, "account");
 }
+
+// ─── Kolom Umur Piutang / Umur Utang ─────────────────────────────────────────
+
+export const AGING_COLUMNS = [
+  "party",
+  "documentNo",
+  "date",
+  "dueDate",
+  "age",
+  "status",
+  "total",
+  "outstanding",
+] as const;
+
+export type AgingColumnId = (typeof AGING_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const AGING_HEADERS: Record<AgingColumnId, string> = {
+  party: "Mitra",
+  documentNo: "Dokumen",
+  date: "Tanggal",
+  dueDate: "Jatuh Tempo",
+  age: "Umur",
+  status: "Status",
+  total: "Nilai Dokumen",
+  outstanding: "Sisa (IDR)",
+};
+
+export function agingColumns(report: { visibleColumns?: string[] }): AgingColumnId[] {
+  return selectColumns(AGING_COLUMNS, report.visibleColumns, "party");
+}

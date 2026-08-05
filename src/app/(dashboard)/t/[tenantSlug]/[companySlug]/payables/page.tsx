@@ -34,6 +34,8 @@ import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { ArrowUpFromLine, Info } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
+import { reportById, resolveColumns } from "@/lib/report-catalog";
+import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +50,7 @@ export default async function PayablesPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ asOf?: string; overdue?: string }>;
+  searchParams: Promise<{ asOf?: string; overdue?: string; cols?: string }>;
 }) {
   await requirePagePermission("payable.read", params);
   const t = await getT();
@@ -83,7 +85,27 @@ export default async function PayablesPage({
   // "hanya jatuh tempo" yang sedang aktif. Berkas yang memuat kumpulan dokumen
   // berbeda dari layarnya adalah cara termudah dua orang membaca satu laporan
   // dan berdebat tentang angka yang berbeda.
-  const payload = agingPayload("payables", asOf, rows, aging);
+  const definition = reportById("payables");
+  const payload = agingPayload(
+    "payables",
+    asOf,
+    rows,
+    aging,
+    definition ? resolveColumns(definition, sp.cols) : []
+  );
+
+  // Susunan kolom layar = susunan kolom berkasnya. Satu penentu, tiga permukaan.
+  const cols = agingColumns(payload);
+  const HEADERS: Record<AgingColumnId, string> = {
+    party: t("payables.colSupplier"),
+    documentNo: t("common.document"),
+    date: t("common.date"),
+    dueDate: t("common.dueDate"),
+    age: t("common.age"),
+    status: t("common.status"),
+    total: t("payables.colPurchaseValue"),
+    outstanding: t("common.remainingIdr"),
+  };
 
   return (
     <div>
@@ -193,80 +215,118 @@ export default async function PayablesPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>{t("payables.colSupplier")}</TableHead>
-              <TableHead>{t("common.document")}</TableHead>
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead>{t("common.dueDate")}</TableHead>
-              <TableHead>{t("common.age")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead className="text-right">{t("payables.colPurchaseValue")}</TableHead>
-              <TableHead className="text-right">{t("common.remainingIdr")}</TableHead>
+              {cols.map((c) => (
+                <TableHead
+                  key={c}
+                  className={c === "total" || c === "outstanding" ? "text-right" : undefined}
+                >
+                  {HEADERS[c]}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell className="text-foreground">{r.partyName}</TableCell>
-                <TableCell>
-                  <Link
-                    href={r.href}
-                    className="text-primary hover:underline cursor-pointer transition-colors"
-                  >
-                    {r.documentNo}
-                  </Link>
-                  <span className="block text-xs text-muted-foreground">{t("payables.docTypePurchase")}</span>
-                  {r.terms && (
-                    <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
-                      {r.terms}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
-                <TableCell className="text-foreground tabular-nums">
-                  {r.dueDate ? (
-                    formatDateShort(r.dueDate)
-                  ) : (
-                    <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-foreground">
-                  <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                </TableCell>
-                <TableCell>
-                  <PaymentStatusBadge status={r.status} />
-                </TableCell>
-                <TableCell className="text-right text-foreground tabular-nums">
-                  <Money value={r.total} currency={r.currency} />
-                  {r.currency !== "IDR" && (
-                    <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right font-medium text-foreground tabular-nums">
-                  {r.outstandingBase == null ? (
-                    <span className="text-warning-strong">{t("common.rateMissing")}</span>
-                  ) : (
-                    <Money value={r.outstandingBase} currency="IDR" />
-                  )}
-                  {r.allocationEstimated && (
-                    <span className="mt-1 block">
-                      <span
-                        title={t("payables.estimateTitle")}
-                      >
-                        <Badge variant="warning">{t("payables.estimateBadge")}</Badge>
-                      </span>
-                      {/* The fix, offered where the problem is noticed (issue
-                          #38): this opens the allocation editor on the payment
-                          responsible, so the guess can be replaced with fact
-                          without deleting and re-posting the payment. */}
-                      <Link
-                        href={`${r.href}?alokasi=1`}
-                        className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
-                      >
-                        {t("payables.fixAllocation")}
-                      </Link>
-                    </span>
-                  )}
-                </TableCell>
+                {cols.map((c) => {
+                  switch (c) {
+                    case "party":
+                      return (
+                        <TableCell key={c} className="text-foreground">
+                          {r.partyName}
+                        </TableCell>
+                      );
+                    case "documentNo":
+                      return (
+                        <TableCell key={c}>
+                          <Link
+                            href={r.href}
+                            className="text-primary hover:underline cursor-pointer transition-colors"
+                          >
+                            {r.documentNo}
+                          </Link>
+                          <span className="block text-xs text-muted-foreground">
+                            {t("payables.docTypePurchase")}
+                          </span>
+                          {r.terms && (
+                            <span
+                              className="block text-xs text-muted-foreground max-w-56 truncate"
+                              title={r.terms}
+                            >
+                              {r.terms}
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                    case "date":
+                      return (
+                        <TableCell key={c} className="text-foreground tabular-nums">
+                          {formatDateShort(r.date)}
+                        </TableCell>
+                      );
+                    case "dueDate":
+                      return (
+                        <TableCell key={c} className="text-foreground tabular-nums">
+                          {r.dueDate ? (
+                            formatDateShort(r.dueDate)
+                          ) : (
+                            <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                          )}
+                        </TableCell>
+                      );
+                    case "age":
+                      return (
+                        <TableCell key={c} className="text-foreground">
+                          <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
+                        </TableCell>
+                      );
+                    case "status":
+                      return (
+                        <TableCell key={c}>
+                          <PaymentStatusBadge status={r.status} />
+                        </TableCell>
+                      );
+                    case "total":
+                      return (
+                        <TableCell key={c} className="text-right text-foreground tabular-nums">
+                          <Money value={r.total} currency={r.currency} />
+                          {r.currency !== "IDR" && (
+                            <span className="block text-xs text-muted-foreground">{r.currency}</span>
+                          )}
+                        </TableCell>
+                      );
+                    case "outstanding":
+                      return (
+                        <TableCell
+                          key={c}
+                          className="text-right font-medium text-foreground tabular-nums"
+                        >
+                          {r.outstandingBase == null ? (
+                            <span className="text-warning-strong">{t("common.rateMissing")}</span>
+                          ) : (
+                            <Money value={r.outstandingBase} currency="IDR" />
+                          )}
+                          {r.allocationEstimated && (
+                            <span className="mt-1 block">
+                              <span title={t("payables.estimateTitle")}>
+                                <Badge variant="warning">{t("payables.estimateBadge")}</Badge>
+                              </span>
+                              {/* The fix, offered where the problem is noticed (issue
+                                  #38): this opens the allocation editor on the payment
+                                  responsible, so the guess can be replaced with fact
+                                  without deleting and re-posting the payment. */}
+                              <Link
+                                href={`${r.href}?alokasi=1`}
+                                className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
+                              >
+                                {t("payables.fixAllocation")}
+                              </Link>
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                  }
+                })}
               </TableRow>
             ))}
             {rows.length === 0 && (

@@ -540,3 +540,51 @@ describe("laporan kas & bank", () => {
     if (parsed.kind === "cash-bank") expect(parsed.rows[0].net).toBe(-1_000_000);
   });
 });
+
+describe("kolom umur piutang yang dipilih pengguna", () => {
+  const base = {
+    kind: "receivables" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        documentNo: "INV-001",
+        date: "1 Juli 2026",
+        dueDate: "31 Juli 2026",
+        ageDays: 5,
+        ageFromIssue: false,
+        status: "Jatuh Tempo",
+        total: 10_000_000,
+        currency: "IDR",
+        outstandingBase: 10_000_000,
+      },
+    ],
+    buckets: [
+      { label: "0–30 hari", amount: 10_000_000 },
+      { label: "> 90 hari", amount: 0 },
+    ],
+    total: 10_000_000,
+    unresolved: 0,
+  };
+
+  it("mempersempit kolom, mitra tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["outstanding"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Pelanggan", "Sisa (IDR)"]);
+    const row = sheet.rows.find((r) => r[0].value === "PT Kopi Nusantara");
+    expect(row?.[1].value).toBe(10_000_000);
+  });
+
+  it("ringkasan ember tetap menempel di kolom terakhir yang tampil", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["outstanding"] });
+    const bucket = sheet.rows.find((r) => r[0].value === "0–30 hari");
+    expect(bucket).toHaveLength(2);
+    expect(bucket?.[1].value).toBe(10_000_000);
+  });
+
+  it("bertahan saat hanya kolom identitas yang tersisa", () => {
+    // `party` fixed, jadi daftar yang hanya berisi id asing tetap menyisakannya.
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["party"] });
+    expect(sheet.columns).toHaveLength(1);
+    expect(sheet.rows.every((r) => r.length === 1)).toBe(true);
+  });
+});

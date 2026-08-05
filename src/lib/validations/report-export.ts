@@ -205,6 +205,7 @@ const aging = z.object({
   buckets: z.array(z.object({ label: z.string(), amount: money })),
   total: money,
   unresolved: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
 });
 
 /**

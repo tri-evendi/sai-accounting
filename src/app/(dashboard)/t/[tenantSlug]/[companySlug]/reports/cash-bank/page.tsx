@@ -36,6 +36,7 @@ import { cashBankPayload } from "@/lib/report-payload";
 import { cashBankColumns, type CashBankColumnId } from "@/lib/statement-layout";
 import { formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -54,14 +55,12 @@ export default async function CashBankReportPage({
   const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
 
   const cf = await getCashFlow(from, to);
+  // Katalog adalah sumber daftar kolomnya. Entri yang hilang berarti kontraknya
+  // hilang — `notFound()` lebih jujur daripada merender laporan tanpa bentuk
+  // yang disepakati layar dan berkasnya.
   const definition = reportById("cash-bank");
-  const payload = definition
-    ? cashBankPayload(definition, from, to, cf, sp.cols)
-    : null;
-
-  // Katalog adalah sumber daftar kolomnya; tanpa definisinya laporan ini tidak
-  // punya bentuk yang disepakati layar & berkas, jadi tak ada yang dirender.
-  if (!payload || payload.kind !== "cash-bank") return null;
+  if (!definition) notFound();
+  const payload = cashBankPayload(definition, from, to, cf, sp.cols);
 
   const cols = cashBankColumns(payload);
   const HEADERS: Record<CashBankColumnId, string> = {

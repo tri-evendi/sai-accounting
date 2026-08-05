@@ -20,14 +20,17 @@
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
+  agingColumns,
   cashBankColumns,
   incomeStatementLayout,
   partyRecapColumns,
   stockMovementColumns,
   stockValueColumns,
+  AGING_HEADERS,
   CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
+  type AgingColumnId,
   type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
@@ -458,46 +461,83 @@ function buildPartyRecapSheet(
   };
 }
 
+const AGING_WIDTHS: Record<AgingColumnId, number> = {
+  party: 30,
+  documentNo: 20,
+  date: 14,
+  dueDate: 14,
+  age: 12,
+  status: 24,
+  total: 18,
+  outstanding: 20,
+};
+
 function buildAgingSheet(
   p: Extract<StatementPayload, { kind: "receivables" | "payables" }>
 ): SheetModel {
   const receivable = p.kind === "receivables";
   const party = receivable ? "Pelanggan" : "Pemasok";
 
+  const cols = agingColumns(p);
   const rows: SheetCell[][] = [];
+
+  /** Satu baris selebar kolom yang sedang tampil, sisanya kosong. */
+  const pad = (cells: SheetCell[]): SheetCell[] => {
+    const row = [...cells];
+    while (row.length < cols.length) row.push(text(null));
+    return row.slice(0, Math.max(cols.length, 1));
+  };
+  /** Baris ringkasan: labelnya di kolom pertama, nilainya di kolom TERAKHIR. */
+  const summary = (label: SheetCell, value: SheetCell): SheetCell[] => {
+    if (cols.length === 1) return [label];
+    const row = pad([label]);
+    row[row.length - 1] = value;
+    return row;
+  };
 
   // Ringkasan ember sebagai baris berlabel, bukan kolom terpisah: satu lembar
   // dengan dua tabel bersebelahan tak bisa disortir maupun dijumlahkan.
-  rows.push([text("Ringkasan umur", true), text(null), text(null), text(null), text(null), text(null), text(null), text(null)]);
+  rows.push(pad([text("Ringkasan umur", true)]));
   for (const b of p.buckets) {
-    rows.push([text(b.label), text(null), text(null), text(null), text(null), text(null), text(null), money(b.amount)]);
+    rows.push(summary(text(b.label), money(b.amount)));
   }
-  rows.push([text("Total", true), text(null), text(null), text(null), text(null), text(null), text(null), money(p.total, true)]);
-  rows.push(Array.from({ length: 8 }, () => text(null)));
+  rows.push(summary(text("Total", true), money(p.total, true)));
+  rows.push(pad([]));
 
-  rows.push([text("Rincian dokumen", true), text(null), text(null), text(null), text(null), text(null), text(null), text(null)]);
+  rows.push(pad([text("Rincian dokumen", true)]));
   if (p.rows.length === 0) {
-    rows.push([text("Tidak ada dokumen yang belum lunas."), ...Array.from({ length: 7 }, () => text(null))]);
+    rows.push(pad([text("Tidak ada dokumen yang belum lunas.")]));
   }
-  for (const r of p.rows) {
-    rows.push([
-      text(r.partyName),
-      text(r.documentNo),
-      text(r.date),
-      text(r.dueDate ?? "-"),
+  const cell = (r: (typeof p.rows)[number], c: AgingColumnId): SheetCell => {
+    switch (c) {
+      case "party":
+        return text(r.partyName);
+      case "documentNo":
+        return text(r.documentNo);
+      case "date":
+        return text(r.date);
+      case "dueDate":
+        return text(r.dueDate ?? "-");
       // Umur yang dihitung dari TANGGAL DOKUMEN (karena jatuh temponya tidak
       // ada) diberi tanda bintang: dua angka yang artinya berbeda tak boleh
       // berdiri tanpa penanda di kolom yang sama. Karena itu ia teks, bukan
       // angka — dan penjelasannya ada di catatan kaki lembar ini.
-      { value: r.ageFromIssue ? `${r.ageDays} *` : r.ageDays, align: "right" },
-      text(r.status),
+      case "age":
+        return { value: r.ageFromIssue ? `${r.ageDays} *` : r.ageDays, align: "right" };
+      case "status":
+        return text(r.status);
       // Nilai dokumen dalam MATA UANGNYA SENDIRI — kolomnya bercampur mata
       // uang, jadi angkanya tidak boleh memakai topeng rupiah.
-      { value: r.total, align: "right" },
+      case "total":
+        return { value: r.total, align: "right" };
       // Valas tanpa kurs: sel kosong, bukan nol. Nol menyatakan "tidak ada
       // sisa", dan itu bukan yang buku besar katakan.
-      r.outstandingBase == null ? text(null) : money(r.outstandingBase),
-    ]);
+      case "outstanding":
+        return r.outstandingBase == null ? text(null) : money(r.outstandingBase);
+    }
+  };
+  for (const r of p.rows) {
+    rows.push(cols.map((c) => cell(r, c)));
   }
 
   const notes: string[] = [];
@@ -510,26 +550,18 @@ function buildAgingSheet(
     );
   }
   if (notes.length > 0) {
-    rows.push(Array.from({ length: 8 }, () => text(null)));
-    for (const n of notes) {
-      rows.push([text(n), ...Array.from({ length: 7 }, () => text(null))]);
-    }
+    rows.push(pad([]));
+    for (const n of notes) rows.push(pad([text(n)]));
   }
 
   return {
     name: receivable ? "Umur Piutang" : "Umur Utang",
     title: receivable ? "Piutang & Umur Piutang" : "Utang & Umur Utang",
     period: p.period,
-    columns: [
-      { header: party, width: 30 },
-      { header: "Dokumen", width: 20 },
-      { header: "Tanggal", width: 14 },
-      { header: "Jatuh Tempo", width: 14 },
-      { header: "Umur (hari)", width: 12 },
-      { header: "Status", width: 24 },
-      { header: "Nilai Dokumen", width: 18 },
-      { header: "Sisa (IDR)", width: 20 },
-    ],
+    columns: cols.map((c) => ({
+      header: c === "party" ? party : AGING_HEADERS[c],
+      width: AGING_WIDTHS[c],
+    })),
     rows,
   };
 }

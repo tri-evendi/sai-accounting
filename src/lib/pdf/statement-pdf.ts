@@ -16,13 +16,16 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
+  agingColumns,
   cashBankColumns,
   partyRecapColumns,
   stockMovementColumns,
   stockValueColumns,
+  AGING_HEADERS,
   CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
+  type AgingColumnId,
   type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
@@ -187,6 +190,7 @@ export type StatementPayload =
       buckets: { label: string; amount: number }[];
       total: number;
       unresolved: number;
+      visibleColumns?: string[];
     }
   /**
    * Nilai Persediaan — saldo & nilai tiap komoditas saat ini.
@@ -713,29 +717,48 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
     });
 
+    const cols = agingColumns(payload);
+    const headers: Record<AgingColumnId, string> = { ...AGING_HEADERS, party };
+    const cell = (r: (typeof payload.rows)[number], c: AgingColumnId): string => {
+      switch (c) {
+        case "party":
+          return r.partyName;
+        case "documentNo":
+          return r.documentNo;
+        case "date":
+          return r.date;
+        case "dueDate":
+          return r.dueDate ?? "-";
+        // Umur yang dihitung dari TANGGAL DOKUMEN (bukan jatuh tempo, yang
+        // tidak ada) diberi tanda — tanpa itu dua angka yang artinya berbeda
+        // berdiri di kolom yang sama.
+        case "age":
+          return `${r.ageDays} hari${r.ageFromIssue ? " *" : ""}`;
+        case "status":
+          return r.status;
+        case "total":
+          return `${r.currency} ${r.total.toLocaleString("id-ID")}`;
+        // Dokumen valas tanpa kurs: garis, bukan nol. Nol adalah pernyataan
+        // "tidak ada sisa", dan itu bukan yang buku besar katakan.
+        case "outstanding":
+          return r.outstandingBase == null ? "—" : rp(r.outstandingBase);
+      }
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c === "age" || c === "total" || c === "outstanding") columnStyles[i] = { halign: "right" };
+    });
+
     autoTable(doc, {
       startY: afterTable(doc) + 6,
-      head: [[party, "Dokumen", "Tanggal", "Jatuh Tempo", "Umur", "Status", "Nilai Dokumen", "Sisa (IDR)"]],
+      head: [cols.map((c) => headers[c])],
       body: payload.rows.length
-        ? payload.rows.map((r) => [
-            r.partyName,
-            r.documentNo,
-            r.date,
-            r.dueDate ?? "-",
-            // Umur yang dihitung dari TANGGAL DOKUMEN (bukan jatuh tempo, yang
-            // tidak ada) diberi tanda — tanpa itu dua angka yang artinya berbeda
-            // berdiri di kolom yang sama.
-            `${r.ageDays} hari${r.ageFromIssue ? " *" : ""}`,
-            r.status,
-            `${r.currency} ${r.total.toLocaleString("id-ID")}`,
-            // Dokumen valas tanpa kurs: garis, bukan nol. Nol adalah pernyataan
-            // "tidak ada sisa", dan itu bukan yang buku besar katakan.
-            r.outstandingBase == null ? "—" : rp(r.outstandingBase),
-          ])
-        : [["Tidak ada dokumen yang belum lunas.", "", "", "", "", "", "", ""]],
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Tidak ada dokumen yang belum lunas.", ...Array(cols.length - 1).fill("")]],
       styles: { fontSize: 8 },
       headStyles: { fillColor: BRAND },
-      columnStyles: { 4: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
+      columnStyles,
     });
 
     const notes: string[] = [];

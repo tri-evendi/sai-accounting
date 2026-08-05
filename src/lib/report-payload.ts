@@ -88,8 +88,9 @@ export function agingPayload(
     currency: string;
     outstandingBase: number | null;
   }[],
-  aging: { buckets: Record<AgingBucket, number>; total: number; unresolved: number }
-): StatementPayload {
+  aging: { buckets: Record<AgingBucket, number>; total: number; unresolved: number },
+  visibleColumns: string[] = []
+): Extract<StatementPayload, { kind: "receivables" | "payables" }> {
   return {
     kind,
     period: `Per ${formatDate(asOf)}`,
@@ -111,6 +112,7 @@ export function agingPayload(
     })),
     total: aging.total,
     unresolved: aging.unresolved,
+    visibleColumns,
   };
 }
 
@@ -132,7 +134,7 @@ export function cashBankPayload(
     closingCash: number;
   },
   cols?: string
-): StatementPayload {
+): Extract<StatementPayload, { kind: "cash-bank" }> {
   return {
     kind: "cash-bank",
     period: periodLabel(from, to, null),
@@ -299,7 +301,13 @@ export async function buildReportPayload(
         report.payloadKind === "receivables"
           ? await getReceivables({ asOf })
           : await getPayables({ asOf });
-      return agingPayload(report.payloadKind, asOf, result.rows, result.aging);
+      return agingPayload(
+        report.payloadKind,
+        asOf,
+        result.rows,
+        result.aging,
+        resolveColumns(report, params.cols)
+      );
     }
 
     case "sales-by-customer":

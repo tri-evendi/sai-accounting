@@ -233,6 +233,16 @@ export const REPORTS: ReportDefinition[] = [
     paramKind: "as_of",
     icon: "HandCoins",
     payloadKind: "receivables",
+    columns: [
+      { id: "party", label: "Pelanggan", fixed: true },
+      { id: "documentNo", label: "Dokumen" },
+      { id: "date", label: "Tanggal" },
+      { id: "dueDate", label: "Jatuh Tempo" },
+      { id: "age", label: "Umur" },
+      { id: "status", label: "Status" },
+      { id: "total", label: "Nilai Dokumen" },
+      { id: "outstanding", label: "Sisa (IDR)" },
+    ],
   },
   {
     id: "sales-target",
@@ -274,6 +284,16 @@ export const REPORTS: ReportDefinition[] = [
     paramKind: "as_of",
     icon: "Wallet",
     payloadKind: "payables",
+    columns: [
+      { id: "party", label: "Pemasok", fixed: true },
+      { id: "documentNo", label: "Dokumen" },
+      { id: "date", label: "Tanggal" },
+      { id: "dueDate", label: "Jatuh Tempo" },
+      { id: "age", label: "Umur" },
+      { id: "status", label: "Status" },
+      { id: "total", label: "Nilai Dokumen" },
+      { id: "outstanding", label: "Sisa (IDR)" },
+    ],
   },
   {
     id: "purchases-by-supplier",

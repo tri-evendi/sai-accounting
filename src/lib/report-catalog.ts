@@ -300,9 +300,20 @@ export const REPORTS: ReportDefinition[] = [
     description: "Kuantitas dan nilai persediaan terkini per komoditas.",
     category: "stok",
     status: "available",
-    href: "/inventory",
+    // Halaman laporannya SENDIRI, bukan `/inventory`. Halaman modul itu adalah
+    // tempat bekerja — berkartu, bergrafik, terpaginasi sepuluh baris — dan
+    // sepuluh baris pertama bukan laporan nilai persediaan.
+    href: "/reports/stock-value",
     paramKind: "none",
     icon: "Package",
+    payloadKind: "stock-value",
+    columns: [
+      { id: "name", label: "Barang", fixed: true },
+      { id: "unit", label: "Satuan" },
+      { id: "currentStock", label: "Saldo" },
+      { id: "unitCost", label: "Biaya/Unit" },
+      { id: "stockValue", label: "Nilai Persediaan" },
+    ],
   },
   {
     id: "stock-movement",
@@ -351,9 +362,20 @@ export const REPORTS: ReportDefinition[] = [
     description: "Saldo dan mutasi tiap akun kas & bank.",
     category: "kas_bank",
     status: "available",
-    href: "/finance",
-    paramKind: "none",
+    // Halaman laporannya sendiri, dengan alasan yang sama seperti Nilai
+    // Persediaan: `/finance` adalah tempat MENCATAT kas masuk & keluar, dan
+    // daftar transaksinya terpaginasi. Laporan ini menjawab pertanyaan lain —
+    // berapa saldo tiap akun kas & bank bergerak sepanjang satu periode.
+    href: "/reports/cash-bank",
+    paramKind: "period",
     icon: "Landmark",
+    payloadKind: "cash-bank",
+    columns: [
+      { id: "account", label: "Akun Kas & Bank", fixed: true },
+      { id: "opening", label: "Saldo Awal" },
+      { id: "net", label: "Perubahan" },
+      { id: "closing", label: "Saldo Akhir" },
+    ],
   },
   {
     id: "bank-reconciliation",

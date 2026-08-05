@@ -20,12 +20,18 @@
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
+  cashBankColumns,
   incomeStatementLayout,
   partyRecapColumns,
   stockMovementColumns,
+  stockValueColumns,
+  CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
+  STOCK_VALUE_HEADERS,
+  type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
+  type StockValueColumnId,
 } from "@/lib/statement-layout";
 
 /**
@@ -528,6 +534,99 @@ function buildAgingSheet(
   };
 }
 
+function buildStockValueSheet(
+  p: Extract<StatementPayload, { kind: "stock-value" }>
+): SheetModel {
+  const cols = stockValueColumns(p);
+  const WIDTHS: Record<StockValueColumnId, number> = {
+    name: 34,
+    unit: 12,
+    currentStock: 16,
+    unitCost: 20,
+    stockValue: 22,
+  };
+  // Saldo adalah KUANTITAS `Decimal(15,3)`; biaya & nilai adalah uang. Dua
+  // format berbeda di satu tabel, dan meminjamkan topeng rupiah ke saldo akan
+  // membulatkan 12,5 kg menjadi Rp 13.
+  const cell = (r: (typeof p.rows)[number], c: StockValueColumnId): SheetCell => {
+    if (c === "name") return text(r.name);
+    if (c === "unit") return text(r.unit || "-");
+    if (c === "currentStock") return { value: r.currentStock, format: "quantity", align: "right" };
+    const value = c === "unitCost" ? r.unitCost : r.stockValue;
+    // Tanpa dasar biaya: sel KOSONG, bukan nol — nol menyatakan "tidak
+    // bernilai" tentang barang yang ada wujudnya.
+    return value == null ? text(null) : money(value);
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => cols.map((c) => cell(r, c)))
+    : [[text("Belum ada barang."), ...cols.slice(1).map(() => text(null))]];
+
+  rows.push(
+    cols.map((c) =>
+      c === "name"
+        ? text("Total Nilai Persediaan", true)
+        : c === "stockValue"
+          ? money(p.totalValue, true)
+          : text(null)
+    )
+  );
+
+  if (p.uncostedCount > 0) {
+    rows.push([
+      text(
+        `Catatan: ${p.uncostedCount} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`
+      ),
+      ...cols.slice(1).map(() => text(null)),
+    ]);
+  }
+
+  return {
+    name: "Nilai Persediaan",
+    title: "Nilai Persediaan",
+    period: p.period,
+    columns: cols.map((c) => ({ header: STOCK_VALUE_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
+function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>): SheetModel {
+  const cols = cashBankColumns(p);
+  const WIDTHS: Record<CashBankColumnId, number> = {
+    account: 40,
+    opening: 22,
+    net: 22,
+    closing: 22,
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) =>
+        cols.map((c) => (c === "account" ? text(`${r.code}  ${r.name}`.trim()) : money(r[c])))
+      )
+    : [
+        [
+          text("Tidak ada akun kas & bank yang bergerak pada periode ini."),
+          ...cols.slice(1).map(() => text(null)),
+        ],
+      ];
+
+  const totals: Record<CashBankColumnId, SheetCell> = {
+    account: text("Total", true),
+    opening: money(p.openingCash, true),
+    net: money(p.netChange, true),
+    closing: money(p.closingCash, true),
+  };
+  rows.push(cols.map((c) => totals[c]));
+
+  return {
+    name: "Kas & Bank",
+    title: "Laporan Kas & Bank",
+    period: p.period,
+    columns: cols.map((c) => ({ header: CASH_BANK_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -549,5 +648,9 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
     case "receivables":
     case "payables":
       return buildAgingSheet(payload);
+    case "stock-value":
+      return buildStockValueSheet(payload);
+    case "cash-bank":
+      return buildCashBankSheet(payload);
   }
 }

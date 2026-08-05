@@ -25,6 +25,8 @@ import {
   type StockTotalRow,
 } from "@/lib/stock-movement";
 import { buildOpnameHistory, type OpnameHistory } from "@/lib/opname-history";
+import { summarizeInventory } from "@/lib/inventory";
+import { round2 } from "@/lib/reconciliation";
 
 type Client = typeof prisma;
 
@@ -105,4 +107,45 @@ export async function getOpnameHistory(
       quantity: Number(r.quantity),
     }))
   );
+}
+
+/**
+ * Nilai Persediaan — saldo & nilai tiap komoditas pada saat ini.
+ *
+ * Memuat SETIAP gerakan beserta biayanya, dan itu bukan kelalaian: nilai
+ * persediaan memakai biaya rata-rata tertimbang, yang hanya bisa dihitung dari
+ * gerakan `in` satu per satu (`weightedAverageUnitCost`). Menuliskannya ulang
+ * sebagai agregat SQL berarti punya DUA implementasi aturan costing — dan saat
+ * keduanya berselisih, neraca dan HPP menyebut angka berbeda untuk barang yang
+ * sama. Alasan yang sama membuat halaman `/inventory` melakukan hal ini juga.
+ *
+ * Yang dihemat tanpa mengorbankan itu: kolomnya. Hanya empat yang dipakai.
+ *
+ * Item tanpa dasar biaya melaporkan nilai `null`, BUKAN Rp 0 — dan dihitung
+ * terpisah lewat `uncostedCount`, supaya totalnya tidak diam-diam menganggap
+ * barang yang ada wujudnya bernilai nol.
+ */
+export async function getStockValueReport(client = prisma) {
+  const items = await client.item.findMany({
+    include: { stockMovements: { select: { quantity: true, type: true, date: true, unitCost: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const summary = summarizeInventory(items);
+  const rows = summary.map(({ name, unit, currentStock, unitCost, stockValue }) => ({
+    name,
+    unit,
+    currentStock,
+    unitCost,
+    stockValue,
+  }));
+
+  return {
+    rows,
+    totalValue: round2(rows.reduce((s, r) => s + (r.stockValue ?? 0), 0)),
+    // Hanya barang yang MASIH ADA wujudnya: item bersaldo nol tanpa dasar biaya
+    // tidak menyembunyikan nilai apa pun, jadi menghitungnya hanya membuat
+    // catatan kakinya berisik tanpa menambah kebenaran.
+    uncostedCount: rows.filter((r) => r.stockValue === null && r.currentStock > 0).length,
+  };
 }

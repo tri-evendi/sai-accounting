@@ -147,3 +147,46 @@ export type PartyRecapColumnId = (typeof PARTY_RECAP_COLUMNS)[number];
 export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
   return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
 }
+
+// ─── Kolom Nilai Persediaan ──────────────────────────────────────────────────
+
+export const STOCK_VALUE_COLUMNS = [
+  "name",
+  "unit",
+  "currentStock",
+  "unitCost",
+  "stockValue",
+] as const;
+
+export type StockValueColumnId = (typeof STOCK_VALUE_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const STOCK_VALUE_HEADERS: Record<StockValueColumnId, string> = {
+  name: "Barang",
+  unit: "Satuan",
+  currentStock: "Saldo",
+  unitCost: "Biaya/Unit (IDR)",
+  stockValue: "Nilai (IDR)",
+};
+
+export function stockValueColumns(report: { visibleColumns?: string[] }): StockValueColumnId[] {
+  return selectColumns(STOCK_VALUE_COLUMNS, report.visibleColumns, "name");
+}
+
+// ─── Kolom Laporan Kas & Bank ────────────────────────────────────────────────
+
+export const CASH_BANK_COLUMNS = ["account", "opening", "net", "closing"] as const;
+
+export type CashBankColumnId = (typeof CASH_BANK_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const CASH_BANK_HEADERS: Record<CashBankColumnId, string> = {
+  account: "Akun Kas & Bank",
+  opening: "Saldo Awal (IDR)",
+  net: "Perubahan (IDR)",
+  closing: "Saldo Akhir (IDR)",
+};
+
+export function cashBankColumns(report: { visibleColumns?: string[] }): CashBankColumnId[] {
+  return selectColumns(CASH_BANK_COLUMNS, report.visibleColumns, "account");
+}

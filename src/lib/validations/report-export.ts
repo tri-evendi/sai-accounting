@@ -207,6 +207,47 @@ const aging = z.object({
   unresolved: z.number().int().nonnegative(),
 });
 
+/**
+ * Nilai Persediaan. `unitCost`/`stockValue` boleh null — barang tanpa dasar
+ * biaya tidak punya nilai yang jujur, dan Rp 0 menyatakan bahwa barang yang ada
+ * wujudnya tidak bernilai apa-apa. Saldo adalah KUANTITAS, bukan uang.
+ */
+const stockValue = z.object({
+  kind: z.literal("stock-value"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      name: z.string(),
+      unit: z.string().nullable(),
+      currentStock: quantity,
+      unitCost: money.nullable(),
+      stockValue: money.nullable(),
+    })
+  ),
+  totalValue: money,
+  uncostedCount: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
+});
+
+/** Laporan Kas & Bank — saldo awal, perubahan, dan saldo akhir tiap akun. */
+const cashBank = z.object({
+  kind: z.literal("cash-bank"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      opening: money,
+      net: money,
+      closing: money,
+    })
+  ),
+  openingCash: money,
+  netChange: money,
+  closingCash: money,
+  visibleColumns: columnSelection,
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
@@ -216,6 +257,8 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   opnameHistory,
   partyRecap,
   aging,
+  stockValue,
+  cashBank,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

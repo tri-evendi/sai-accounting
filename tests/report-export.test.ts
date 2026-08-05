@@ -462,3 +462,81 @@ describe("umur piutang / utang", () => {
     }
   });
 });
+
+describe("nilai persediaan", () => {
+  const base = {
+    kind: "stock-value" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      { name: "Kopi Arabika", unit: "kg", currentStock: 1200.5, unitCost: 45_000, stockValue: 54_022_500 },
+      { name: "Karung bekas", unit: "pcs", currentStock: 40, unitCost: null, stockValue: null },
+    ],
+    totalValue: 54_022_500,
+    uncostedCount: 1,
+  };
+
+  it("membiarkan barang tanpa dasar biaya KOSONG, bukan Rp 0", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[1][3].value).toBeNull();
+    expect(sheet.rows[1][4].value).toBeNull();
+  });
+
+  it("saldo tetap kuantitas — tidak dibulatkan topeng rupiah", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][2].value).toBe(1200.5);
+    expect(sheet.rows[0][2].format).toBe("quantity");
+    expect(sheet.rows[0][4].format).toBe("money");
+  });
+
+  it("menyebutkan barang bersaldo yang nilainya tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("belum punya dasar biaya"))).toBe(true);
+  });
+
+  it("mengikuti pilihan kolom, nama barang tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["stockValue"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Nilai (IDR)"]);
+  });
+
+  it("skema ekspor menerimanya dengan nilai null utuh", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    if (parsed.kind === "stock-value") expect(parsed.rows[1].stockValue).toBeNull();
+  });
+});
+
+describe("laporan kas & bank", () => {
+  const base = {
+    kind: "cash-bank" as const,
+    period: "Periode 1 Juli 2026 – 31 Juli 2026",
+    rows: [
+      { code: "1101", name: "Kas", opening: 5_000_000, net: -1_000_000, closing: 4_000_000 },
+      { code: "1102", name: "Bank BCA", opening: 100_000_000, net: 25_000_000, closing: 125_000_000 },
+    ],
+    openingCash: 105_000_000,
+    netChange: 24_000_000,
+    closingCash: 129_000_000,
+  };
+
+  it("menggabungkan kode & nama akun dalam satu kolom identitas", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][0].value).toBe("1101  Kas");
+  });
+
+  it("membawa total yang cocok dengan arus kas periodenya", () => {
+    const sheet = buildReportSheet(base);
+    const total = sheet.rows.at(-1);
+    expect(total?.[1].value).toBe(105_000_000);
+    expect(total?.[2].value).toBe(24_000_000);
+    expect(total?.[3].value).toBe(129_000_000);
+  });
+
+  it("mengikuti pilihan kolom, akun tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Akun Kas & Bank", "Saldo Akhir (IDR)"]);
+  });
+
+  it("skema ekspor menerima perubahan bernilai negatif", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    if (parsed.kind === "cash-bank") expect(parsed.rows[0].net).toBe(-1_000_000);
+  });
+});

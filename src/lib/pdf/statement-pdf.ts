@@ -16,11 +16,17 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
+  cashBankColumns,
   partyRecapColumns,
   stockMovementColumns,
+  stockValueColumns,
+  CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
+  STOCK_VALUE_HEADERS,
+  type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
+  type StockValueColumnId,
 } from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
@@ -182,6 +188,41 @@ export type StatementPayload =
       total: number;
       unresolved: number;
     }
+  /**
+   * Nilai Persediaan — saldo & nilai tiap komoditas saat ini.
+   *
+   * `unitCost`/`stockValue` boleh `null`: barang tanpa dasar biaya (legacy
+   * tanpa `unit_cost`) tidak punya nilai yang jujur, dan Rp 0 akan menyatakan
+   * bahwa barang yang ada wujudnya tidak bernilai apa-apa.
+   */
+  | {
+      kind: "stock-value";
+      period: string;
+      rows: {
+        name: string;
+        unit: string | null;
+        currentStock: number;
+        unitCost: number | null;
+        stockValue: number | null;
+      }[];
+      totalValue: number;
+      uncostedCount: number;
+      visibleColumns?: string[];
+    }
+  /**
+   * Laporan Kas & Bank — saldo awal, perubahan, dan saldo akhir TIAP akun kas
+   * & bank pada satu periode. Sumbernya pembaca arus kas yang sama, jadi
+   * "perubahan" di sini tak bisa berselisih dengan arus kas bersih di sana.
+   */
+  | {
+      kind: "cash-bank";
+      period: string;
+      rows: { code: string; name: string; opening: number; net: number; closing: number }[];
+      openingCash: number;
+      netChange: number;
+      closingCash: number;
+      visibleColumns?: string[];
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -206,6 +247,8 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "purchases-by-supplier": "Pembelian per Pemasok",
   receivables: "Piutang & Umur Piutang",
   payables: "Utang & Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Laporan Kas & Bank",
 };
 
 /**
@@ -571,6 +614,83 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       doc.setFont("helvetica", "normal");
       doc.text(
         `Catatan: ${payload.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`,
+        14,
+        afterTable(doc) + 6
+      );
+    }
+  }
+
+  if (payload.kind === "cash-bank") {
+    const cols = cashBankColumns(payload);
+    const cell = (r: (typeof payload.rows)[number], c: CashBankColumnId) =>
+      c === "account" ? `${r.code}  ${r.name}`.trim() : rp(r[c]);
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "account") columnStyles[i] = { halign: "right" };
+    });
+
+    const totals: Record<CashBankColumnId, string> = {
+      account: "Total",
+      opening: rp(payload.openingCash),
+      net: rp(payload.netChange),
+      closing: rp(payload.closingCash),
+    };
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => CASH_BANK_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Tidak ada akun kas & bank yang bergerak pada periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [cols.map((c) => totals[c])],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+  }
+
+  if (payload.kind === "stock-value") {
+    const cols = stockValueColumns(payload);
+    const cell = (r: (typeof payload.rows)[number], c: StockValueColumnId) => {
+      if (c === "name") return r.name;
+      if (c === "unit") return r.unit || "-";
+      if (c === "currentStock") return qty(r.currentStock);
+      // Barang tanpa dasar biaya: garis, bukan Rp 0. Nol menyatakan "tidak
+      // bernilai", dan itu bukan yang buku besar katakan tentang barang yang
+      // ada wujudnya — ia hanya belum punya biaya perolehan tercatat.
+      const value = c === "unitCost" ? r.unitCost : r.stockValue;
+      return value == null ? "—" : rp(value);
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "name" && c !== "unit") columnStyles[i] = { halign: "right" };
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => STOCK_VALUE_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Belum ada barang.", ...Array(cols.length - 1).fill("")]],
+      foot: [
+        cols.map((c) =>
+          c === "name" ? "Total Nilai Persediaan" : c === "stockValue" ? rp(payload.totalValue) : ""
+        ),
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    if (payload.uncostedCount > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Catatan: ${payload.uncostedCount} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`,
         14,
         afterTable(doc) + 6
       );

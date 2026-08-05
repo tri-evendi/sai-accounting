@@ -20,7 +20,7 @@
  * unduh yang menjawab 500.
  */
 import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
-import { getOpnameHistory, getStockMovementReport } from "@/lib/stock-report";
+import { getOpnameHistory, getStockMovementReport, getStockValueReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
 import {
   AGING_BUCKETS,
@@ -111,6 +111,42 @@ export function agingPayload(
     })),
     total: aging.total,
     unresolved: aging.unresolved,
+  };
+}
+
+/**
+ * Bentuk payload Laporan Kas & Bank dari hasil pembaca arus kas — MURNI.
+ *
+ * Terpisah dari pembacanya karena halaman laporannya sudah memegang hasil itu:
+ * satu pembacaan, dua pemakai (tabel & berkas), dan karena itu tak mungkin
+ * berselisih.
+ */
+export function cashBankPayload(
+  report: ReportDefinition,
+  from: Date,
+  to: Date,
+  cf: {
+    cashAccounts: { code: string; name: string; opening: number; closing: number; net: number }[];
+    openingCash: number;
+    netChange: number;
+    closingCash: number;
+  },
+  cols?: string
+): StatementPayload {
+  return {
+    kind: "cash-bank",
+    period: periodLabel(from, to, null),
+    rows: cf.cashAccounts.map(({ code, name, opening, net, closing }) => ({
+      code,
+      name,
+      opening,
+      net,
+      closing,
+    })),
+    openingCash: cf.openingCash,
+    netChange: cf.netChange,
+    closingCash: cf.closingCash,
+    visibleColumns: resolveColumns(report, cols),
   };
 }
 
@@ -229,6 +265,29 @@ export async function buildReportPayload(
         totalClosing: r.totalClosing,
         hasProcess: r.hasProcess,
         dormantCount: r.dormantCount,
+        visibleColumns: resolveColumns(report, params.cols),
+      };
+    }
+
+    case "cash-bank": {
+      const { from, to } = resolvePeriod(params.from, params.to);
+      const cf = await getCashFlow(from, to);
+      return cashBankPayload(report, from, to, cf, params.cols);
+    }
+
+    case "stock-value": {
+      // Tanpa parameter tanggal: nilai persediaan adalah POSISI SAAT INI —
+      // biaya rata-rata tertimbang dihitung dari seluruh riwayat gerakan, dan
+      // memotongnya di satu tanggal akan menghasilkan biaya yang berbeda dari
+      // yang dipakai HPP. Laporan "per tanggal" yang jujur menuntut mesin
+      // costing bertanggal, bukan sekadar saringan di sini.
+      const r = await getStockValueReport();
+      return {
+        kind: "stock-value",
+        period: `Per ${formatDate(new Date())}`,
+        rows: r.rows,
+        totalValue: r.totalValue,
+        uncostedCount: r.uncostedCount,
         visibleColumns: resolveColumns(report, params.cols),
       };
     }

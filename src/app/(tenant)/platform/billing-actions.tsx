@@ -18,6 +18,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { formatDateTime } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
 interface PendingPayment {
@@ -39,9 +40,10 @@ function Instructions({ payment }: { payment: PendingPayment }) {
         <span className="font-medium tabular-nums text-foreground">{payment.vaNumber}</span>
         {payment.expiresAt && (
           <span className="ml-2 text-xs text-muted-foreground">
-            {t("billing.payBefore", {
-              date: new Date(payment.expiresAt).toLocaleString("id-ID"),
-            })}
+            {/* `toLocaleString("id-ID")` polos mencetak "5/8/2026 09.12.44" —
+                detik yang tidak berguna, dan bulan berupa angka yang tidak
+                sejalan dengan tanggal lain di halaman ini ("5 Agu 2026"). */}
+            {t("billing.payBefore", { date: formatDateTime(payment.expiresAt) })}
           </span>
         )}
       </div>
@@ -106,8 +108,17 @@ export function PayInvoice({
     );
   }
 
+  /*
+   * Selama permintaan berjalan, kedua tombol hanya menjadi `disabled` — pudar,
+   * tapi tanpa satu kata pun yang mengatakan ada yang sedang terjadi. Menerbitkan
+   * VA/QRIS memanggil gerbang pembayaran, jadi jeda beberapa detik itu normal;
+   * yang dibaca orang dari dua tombol pudar yang diam adalah "tekanan saya tidak
+   * masuk". `BillingProfileForm` tepat di bawahnya sudah mengganti labelnya saat
+   * menyimpan — tombol bayar mengikuti pola yang sama, memakai kunci
+   * `common.processing` yang sudah ada.
+   */
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" aria-busy={loading}>
       <Button
         type="button"
         size="sm"
@@ -115,7 +126,7 @@ export function PayInvoice({
         disabled={loading}
         onClick={() => requestCharge("virtual_account")}
       >
-        {t("billing.payVa")}
+        {loading ? t("common.processing") : t("billing.payVa")}
       </Button>
       <Button
         type="button"
@@ -124,7 +135,7 @@ export function PayInvoice({
         disabled={loading}
         onClick={() => requestCharge("qris")}
       >
-        {t("billing.payQris")}
+        {loading ? t("common.processing") : t("billing.payQris")}
       </Button>
     </div>
   );

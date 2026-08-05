@@ -26,6 +26,7 @@
  */
 
 import { useState } from "react";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { useForm, useWatch, type Resolver, type UseFormSetError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export function applyPaymentServerErrors(
 export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
   const [open, setOpen] = useState(false);
   const t = useT();
+  const { token } = theme.useToken();
   const { toast } = useToast();
 
   const form = useForm<PaymentFormInput>({
@@ -162,133 +164,189 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <DollarSign className="mr-1 h-4 w-4" /> {t("payments.addPayment")}
+        <DollarSign aria-hidden="true" /> {t("payments.addPayment")}
       </Button>
     );
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
-      <h4 className="mb-3 text-sm font-semibold text-foreground">{t("payments.formTitle")}</h4>
+    /*
+     * Panel bawahan, bukan `Card`: `Card` menggambar permukaan `colorBgContainer`
+     * yang sewarna dengan halaman di sekelilingnya di sini. Yang dibutuhkan
+     * justru kebalikannya — bidang yang sedikit lebih pekat dari wadahnya,
+     * yaitu peran `colorFillAlter` (padanan `bg-muted/40` lama). Batasnya
+     * `colorBorderSecondary` (#208, 3,08:1), jadi ia tetap terlihat di tema
+     * gelap tempat panel dan halaman nyaris sewarna.
+     */
+    <div
+      style={{
+        marginTop: token.margin,
+        padding: token.padding,
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillAlter,
+      }}
+    >
+      <Typography.Title
+        level={4}
+        style={{ fontSize: token.fontSize, marginTop: 0, marginBottom: token.marginSM }}
+      >
+        {t("payments.formTitle")}
+      </Typography.Title>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-3 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                {/* Tanda wajib mengikuti SKEMA, bukan selera: ketiga isian ini
-                    dituntut `paymentFormFields`, jadi tandanya ada di sini dan
-                    `aria-required` ikut terpasang otomatis lewat `FormControl`. */}
-                <FormLabel required>{t("common.date")}</FormLabel>
-                <FormControl>
-                  <TextInput type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+        {/*
+         * `Row`/`Col` menggantikan `grid gap-3 sm:grid-cols-2`. Titik patahnya
+         * kini `sm` AntD (576px), bukan `sm` Tailwind (640px) — pergeseran yang
+         * disengaja: seluruh aplikasi berpindah ke satu tangga titik patah, dan
+         * dua tangga yang berbeda 64px adalah persis jenis selisih yang tak
+         * terlihat sampai satu layar 600px memperlihatkannya.
+         */}
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <Row gutter={[token.marginSM, token.marginSM]}>
+            <Col xs={24} sm={12}>
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    {/* Tanda wajib mengikuti SKEMA, bukan selera: ketiga isian ini
+                        dituntut `paymentFormFields`, jadi tandanya ada di sini dan
+                        `aria-required` ikut terpasang otomatis lewat `FormControl`. */}
+                    <FormLabel required>{t("common.date")}</FormLabel>
+                    <FormControl>
+                      <TextInput type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required>{t("common.amount")}</FormLabel>
+                    <FormControl>
+                      <MoneyInput
+                        // Rupiah tanpa desimal; valas 2 desimal.
+                        decimals={isForeign ? 2 : 0}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required>{t("common.currency")}</FormLabel>
+                    <FormControl>
+                      <NativeSelect
+                        options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Col>
+
+            {/* Progressive disclosure: kurs hanya muncul untuk mata uang asing.
+                Kolomnya ikut hilang bersamanya — `Row` menutup celahnya sendiri,
+                jadi tidak ada sel kosong yang tertinggal di 768px ke atas. */}
+            {isForeign && (
+              <Col xs={24} sm={12}>
+                <FormField
+                  control={form.control}
+                  name="rate"
+                  render={({ field }) => (
+                    <FormItem>
+                      {/* Wajib HANYA di kondisi ini — sama persis dengan yang
+                          dituntut `requireRateForForeign` di skema. Tanda `*` yang
+                          muncul-hilang bersama isiannya adalah bentuk paling jujur
+                          dari progressive disclosure. */}
+                      <FormLabel required>{t("fx.rateToIdr", { currency })}</FormLabel>
+                      <FormControl>
+                        <MoneyInput
+                          decimals={2}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t("payments.rateHint")}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Col>
             )}
-          />
 
-          <FormField
-            control={form.control}
-            name="amount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("common.amount")}</FormLabel>
-                <FormControl>
-                  <MoneyInput
-                    // Rupiah tanpa desimal; valas 2 desimal.
-                    decimals={isForeign ? 2 : 0}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+            <Col span={24}>
+              <FormField
+                control={form.control}
+                name="note"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("common.notesOptional")}</FormLabel>
+                    <FormControl>
+                      <TextInput {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Col>
+
+            {form.formState.errors.root && (
+              <Col span={24}>
+                {/*
+                 * Galat TINGKAT FORMULIR (aturan 7 Konvensi Form) — kegagalan
+                 * server yang tidak menunjuk satu isian pun. Kini `Alert` AntD:
+                 * teksnya `colorText` di atas `colorErrorBg`, bukan merah di
+                 * atas merah muda, dan ikonnya membuat maknanya tidak
+                 * bergantung warna. `role="alert"` tetap milik kita — AntD
+                 * tidak memasangnya, dan tanpa itu pesannya tidak diumumkan.
+                 *
+                 * Ini blok yang, menurut catatan #192, ditulis sendiri-sendiri
+                 * di enam berkas. Belum diangkat jadi primitif `FormRootError`
+                 * di sini — tempatnya `components/ui/form.tsx`, di luar
+                 * ruang lingkup issue ini.
+                 */}
+                <div role="alert">
+                  <Alert type="error" showIcon message={form.formState.errors.root.message} />
+                </div>
+              </Col>
             )}
-          />
 
-          <FormField
-            control={form.control}
-            name="currency"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("common.currency")}</FormLabel>
-                <FormControl>
-                  <NativeSelect
-                    options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Progressive disclosure: kurs hanya muncul untuk mata uang asing. */}
-          {isForeign && (
-            <FormField
-              control={form.control}
-              name="rate"
-              render={({ field }) => (
-                <FormItem>
-                  {/* Wajib HANYA di kondisi ini — sama persis dengan yang
-                      dituntut `requireRateForForeign` di skema. Tanda `*` yang
-                      muncul-hilang bersama isiannya adalah bentuk paling jujur
-                      dari progressive disclosure. */}
-                  <FormLabel required>{t("fx.rateToIdr", { currency })}</FormLabel>
-                  <FormControl>
-                    <MoneyInput
-                      decimals={2}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {t("payments.rateHint")}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-
-          <FormField
-            control={form.control}
-            name="note"
-            render={({ field }) => (
-              <FormItem className="sm:col-span-2">
-                <FormLabel>{t("common.notesOptional")}</FormLabel>
-                <FormControl>
-                  <TextInput {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {form.formState.errors.root && (
-            <p
-              role="alert"
-              className="sm:col-span-2 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong"
-            >
-              {form.formState.errors.root.message}
-            </p>
-          )}
-
-          <div className="flex gap-2 sm:col-span-2">
-            <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t("common.saving") : t("payments.submit")}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-          </div>
+            <Col span={24}>
+              <Flex gap={token.marginXS}>
+                <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? t("common.saving") : t("payments.submit")}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                  {t("common.cancel")}
+                </Button>
+              </Flex>
+            </Col>
+          </Row>
         </form>
       </Form>
     </div>

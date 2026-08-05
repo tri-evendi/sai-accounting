@@ -207,7 +207,8 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
 
   return (
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileSpreadsheet className="h-4 w-4 mr-1" />
+      {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukuran dari primitif `Button`. */}
+      <FileSpreadsheet aria-hidden="true" />
       {loading ? t("pdf.preparing") : t("excel.download")}
     </Button>
   );

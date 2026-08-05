@@ -87,9 +87,12 @@ export function DeleteDocumentButton({
       confirmPhrase={confirmPhrase}
       confirmPhraseLabel={t("documentDelete.retypePrompt")}
       onConfirm={onConfirm}
+      /* `cursor-pointer` tidak lagi ditulis di sini: `.ant-btn` sudah
+         memasangnya sendiri. Jarak & ukuran ikon juga milik `.ant-btn`
+         (`iconGap` = `marginXS`) dan primitif `Button` (16px). */
       trigger={
-        <Button variant="danger" className="cursor-pointer" disabled={busy}>
-          <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+        <Button variant="danger" disabled={busy}>
+          <Trash2 aria-hidden="true" />
           {label}
         </Button>
       }

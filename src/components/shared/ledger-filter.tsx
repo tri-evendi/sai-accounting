@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function LedgerFilter({
   overdueOnly: boolean;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const [d, setD] = useState(asOf);
   const [overdue, setOverdue] = useState(overdueOnly);
@@ -39,8 +41,8 @@ export function LedgerFilter({
   }
 
   return (
-    <form onSubmit={submit} className="mb-6">
-      <div className="flex flex-wrap items-end gap-4">
+    <form onSubmit={submit} style={{ marginBottom: token.marginLG }}>
+      <Flex wrap align="flex-end" gap={token.margin}>
         <Input
           id="asOf"
           type="date"
@@ -48,20 +50,26 @@ export function LedgerFilter({
           value={d}
           onChange={(e) => setD(e.target.value)}
         />
-        <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-foreground">
-          <Checkbox
-            checked={overdue}
-            onCheckedChange={(v) => setOverdue(v === true)}
-          />
-          {t("ledgerFilter.overdueOnly")}
-        </label>
-        <Button type="submit" className="cursor-pointer">
-          {t("common.show")}
-        </Button>
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+        {/*
+         * Teksnya kini ANAK `Checkbox`, bukan `<label>` kedua yang membungkus
+         * satu `<label>` AntD. Selain menghapus sarang label yang tak sah,
+         * daerah tekannya jadi milik AntD sendiri: `.ant-checkbox-wrapper`
+         * mencakup kotak DAN katanya. Tingginya disamakan dengan kendali di
+         * sebelahnya lewat `controlHeight` (40px), bukan angka tetap.
+         */}
+        <Flex align="center" style={{ minHeight: token.controlHeight }}>
+          <Checkbox checked={overdue} onCheckedChange={(v) => setOverdue(v === true)}>
+            {t("ledgerFilter.overdueOnly")}
+          </Checkbox>
+        </Flex>
+        <Button type="submit">{t("common.show")}</Button>
+      </Flex>
+      <Typography.Text
+        type="secondary"
+        style={{ display: "block", marginTop: token.marginXS, fontSize: token.fontSizeSM }}
+      >
         {t("ledgerFilter.hint")}
-      </p>
+      </Typography.Text>
     </form>
   );
 }

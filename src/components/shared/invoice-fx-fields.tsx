@@ -24,9 +24,11 @@
  */
 
 import { useEffect, useState } from "react";
+import { Col, Flex, Row, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Money } from "@/components/ui/money";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import {
   BASE_CURRENCY,
@@ -34,10 +36,19 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
-import { formatCurrency } from "@/lib/utils";
 import { Info, Users, ReceiptText, Ship } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Blok ini dijatuhkan ke dalam grid formulir faktur, yang masih grid Tailwind
+ * (`sm:grid-cols-2`, fase C #195). `1 / -1` = seluruh kolom yang ada, jadi ia
+ * benar di satu kolom (375px) maupun dua — tanpa media query dan tanpa kelas.
+ */
+const FULL_ROW = { gridColumn: "1 / -1" } as const;
+
+/** Lebar isian tarif PPN: dua digit + koma, tak perlu selebar kolom. */
+const TAX_RATE_WIDTH = 140;
 
 export interface CustomerOption {
   id: number;
@@ -124,6 +135,7 @@ export function InvoiceCustomerField({
   onChange: Patch;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
 
   function handleCustomerChange(id: string) {
     const picked = customers.find((c) => String(c.id) === id);
@@ -131,7 +143,7 @@ export function InvoiceCustomerField({
   }
 
   return (
-    <div className="sm:col-span-2">
+    <div style={FULL_ROW}>
       <Select
         id="customerId"
         name="customerId"
@@ -146,10 +158,12 @@ export function InvoiceCustomerField({
             : c.name,
         }))}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-        <Users className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>{t("invoices.customerHint")}</span>
-      </p>
+      <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
+        <Users size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+          {t("invoices.customerHint")}
+        </Typography.Text>
+      </Flex>
     </div>
   );
 }
@@ -172,8 +186,27 @@ export function InvoiceFxAdvancedFields({
   onChange: Patch;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
+
+  /** Kotak bagian — batas + sudut + padding, semuanya token (#208 untuk batasnya). */
+  const sectionBox: React.CSSProperties = {
+    ...FULL_ROW,
+    padding: token.paddingSM,
+    borderRadius: token.borderRadius,
+    border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+  };
+
+  /** Kalimat bantuan berikon — bentuk yang sama dipakai empat kali di sini. */
+  const hint = (text: string, marginTop: number) => (
+    <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop }}>
+      <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+      <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+        {text}
+      </Typography.Text>
+    </Flex>
+  );
 
   function handleCurrencyChange(c: string) {
     const picked = customers.find((cust) => String(cust.id) === customerId);
@@ -193,29 +226,39 @@ export function InvoiceFxAdvancedFields({
       />
 
       {/* PPN control (issue #16) */}
-      <div className="sm:col-span-2 rounded-md border border-border p-3">
-        <label htmlFor="taxable" className="flex cursor-pointer items-center gap-2">
-          <Checkbox
-            id="taxable"
-            name="taxable"
-            checked={taxable}
-            onCheckedChange={(v) =>
-              onChange({
-                taxable: v === true,
-                // Turning PPN on with no rate yet gives the statutory default.
-                taxRate:
-                  v === true && !(Number(taxRate) > 0) ? String(DEFAULT_TAX_RATE) : taxRate,
-              })
-            }
-          />
-          <span className="flex items-center gap-1 text-sm font-medium text-foreground">
-            <ReceiptText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      <div style={sectionBox}>
+        {/*
+         * Label PPN kini ANAK `Checkbox`, bukan `<label htmlFor>` kedua yang
+         * membungkus `<label>` milik AntD. Selain menghapus sarang label yang
+         * tak sah, `TermTooltip` di dalamnya tetap bisa dibuka — dulu ia berada
+         * di dalam area klik label, sehingga membuka penjelasannya justru ikut
+         * mencentang PPN.
+         */}
+        <Checkbox
+          id="taxable"
+          name="taxable"
+          checked={taxable}
+          onCheckedChange={(v) =>
+            onChange({
+              taxable: v === true,
+              // Turning PPN on with no rate yet gives the statutory default.
+              taxRate:
+                v === true && !(Number(taxRate) > 0) ? String(DEFAULT_TAX_RATE) : taxRate,
+            })
+          }
+        >
+          <Flex component="span" align="center" gap={token.marginXXS}>
+            <ReceiptText
+              size={token.fontSize}
+              aria-hidden="true"
+              style={{ color: token.colorTextSecondary }}
+            />
             <TermTooltip term="ppn">{t("invoices.taxableLabel")}</TermTooltip>
-          </span>
-        </label>
+          </Flex>
+        </Checkbox>
 
         {taxable ? (
-          <div className="mt-3">
+          <div style={{ marginTop: token.marginSM }}>
             <Input
               id="taxRate"
               name="taxRate"
@@ -223,52 +266,56 @@ export function InvoiceFxAdvancedFields({
               step="0.01"
               min="0"
               max="100"
-              className="max-w-[140px] text-right tabular-nums"
+              /* Tarif = angka: rata kanan + `tabular-nums` (MASTER.md §3). */
+              style={{
+                maxWidth: TAX_RATE_WIDTH,
+                textAlign: "right",
+                fontVariantNumeric: "tabular-nums",
+              }}
               label={t("common.taxRatePercent")}
               value={taxRate}
               onChange={(e) => onChange({ taxRate: e.target.value })}
             />
-            <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{t("invoices.taxRateHint")}</span>
-            </p>
+            {hint(t("invoices.taxRateHint"), token.marginXXS)}
           </div>
         ) : (
-          <p className="mt-2 flex items-start gap-1 text-xs text-muted-foreground">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{t("invoices.notTaxableHint")}</span>
-          </p>
+          hint(t("invoices.notTaxableHint"), token.marginXS)
         )}
       </div>
 
       {/* Dokumen ekspor / PEB (issue #17) — shown only for an export/0% invoice. */}
       {(currency !== BASE_CURRENCY || !taxable || effectiveRate === 0) && (
-        <div className="sm:col-span-2 rounded-md border border-border p-3">
-          <p className="flex items-center gap-1 text-sm font-medium text-foreground">
-            <Ship className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            {t("invoices.pebSectionTitle")}
-          </p>
-          <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{t("invoices.pebHint")}</span>
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Input
-              id="pebNumber"
-              name="pebNumber"
-              label={t("invoices.pebNumber")}
-              value={pebNumber}
-              onChange={(e) => onChange({ pebNumber: e.target.value })}
+        <div style={sectionBox}>
+          <Flex align="center" gap={token.marginXXS}>
+            <Ship
+              size={token.fontSize}
+              aria-hidden="true"
+              style={{ color: token.colorTextSecondary }}
             />
-            <Input
-              id="pebDate"
-              name="pebDate"
-              type="date"
-              label={t("invoices.pebDate")}
-              value={pebDate}
-              onChange={(e) => onChange({ pebDate: e.target.value })}
-            />
-            <div className="sm:col-span-2">
+            <Typography.Text strong>{t("invoices.pebSectionTitle")}</Typography.Text>
+          </Flex>
+          {hint(t("invoices.pebHint"), token.marginXXS)}
+          <Row gutter={[token.marginSM, token.marginSM]} style={{ marginTop: token.marginSM }}>
+            <Col xs={24} sm={12}>
+              <Input
+                id="pebNumber"
+                name="pebNumber"
+                label={t("invoices.pebNumber")}
+                value={pebNumber}
+                onChange={(e) => onChange({ pebNumber: e.target.value })}
+              />
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input
+                id="pebDate"
+                name="pebDate"
+                type="date"
+                label={t("invoices.pebDate")}
+                value={pebDate}
+                onChange={(e) => onChange({ pebDate: e.target.value })}
+              />
+            </Col>
+            <Col span={24}>
               <Input
                 id="exportNote"
                 name="exportNote"
@@ -276,8 +323,8 @@ export function InvoiceFxAdvancedFields({
                 value={exportNote}
                 onChange={(e) => onChange({ exportNote: e.target.value })}
               />
-            </div>
-          </div>
+            </Col>
+          </Row>
         </div>
       )}
     </>
@@ -299,6 +346,7 @@ export function InvoiceTotalsSummary({
   subtotal: number;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const { currency, rate, taxable, taxRate } = value;
   const isForeign = currency !== BASE_CURRENCY;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
@@ -309,32 +357,85 @@ export function InvoiceTotalsSummary({
   const baseTotal = isForeign ? total * rateValue : total;
   const baseUnknown = isForeign && rateValue <= 0;
 
+  /** Satu baris DPP/PPN/Total: keterangan kiri, nominal kanan. */
+  const line = (
+    label: React.ReactNode,
+    amount: React.ReactNode,
+    options?: { strong?: boolean; ruled?: boolean }
+  ) => (
+    <Flex
+      align="center"
+      justify="space-between"
+      gap={token.marginSM}
+      style={
+        options?.ruled
+          ? {
+              borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+              paddingTop: token.marginXXS,
+            }
+          : undefined
+      }
+    >
+      <dt>
+        {options?.strong ? (
+          <Typography.Text strong>{label}</Typography.Text>
+        ) : (
+          <Typography.Text type="secondary">{label}</Typography.Text>
+        )}
+      </dt>
+      {/* `<dd>` bawaan browser punya `margin-inline-start: 40px` — dinolkan di
+          sini supaya nominalnya benar-benar menempel di tepi kanan. */}
+      <dd style={{ margin: 0, fontWeight: options?.strong ? token.fontWeightStrong : undefined }}>
+        {amount}
+      </dd>
+    </Flex>
+  );
+
   return (
-    <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm">
-      <dl className="space-y-1">
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">{t("invoices.dppLine", { currency })}</dt>
-          <dd className="tabular-nums text-foreground">{formatCurrency(dpp, currency)}</dd>
-        </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">
-            {t("invoices.vatLine", {
-              rate: taxable ? `(${effectiveRate}%)` : t("invoices.vatNotTaxable"),
-              currency,
-            })}
-          </dt>
-          <dd className="tabular-nums text-foreground">{formatCurrency(taxAmount, currency)}</dd>
-        </div>
-        <div className="flex items-center justify-between border-t border-border pt-1 font-medium">
-          <dt className="text-foreground">{t("invoices.totalLine", { currency })}</dt>
-          <dd className="tabular-nums text-foreground">{formatCurrency(total, currency)}</dd>
-        </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">{t("common.ledgerBaseIdr")}</dt>
-          <dd className="tabular-nums font-medium text-foreground">
-            {baseUnknown ? t("invoices.baseUnknown") : formatCurrency(baseTotal, "IDR")}
-          </dd>
-        </div>
+    <div
+      style={{
+        ...FULL_ROW,
+        paddingBlock: token.paddingXS,
+        paddingInline: token.paddingSM,
+        borderRadius: token.borderRadius,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillAlter,
+      }}
+    >
+      {/*
+       * Nominal lewat `Money` (#186), bukan `formatCurrency` sendiri: dengan
+       * begitu tabular-nums, format id-ID, dan mata uang eksplisit datang dari
+       * satu tempat — dan angka pratinjau ini tak bisa berbeda bentuk dari
+       * angka yang sama di tabel faktur.
+       */}
+      <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: token.marginXXS }}>
+        {line(t("invoices.dppLine", { currency }), <Money value={dpp} currency={currency} />)}
+        {line(
+          t("invoices.vatLine", {
+            rate: taxable ? `(${effectiveRate}%)` : t("invoices.vatNotTaxable"),
+            currency,
+          }),
+          <Money value={taxAmount} currency={currency} />
+        )}
+        {line(
+          t("invoices.totalLine", { currency }),
+          <Money value={total} currency={currency} />,
+          { strong: true, ruled: true }
+        )}
+        {/*
+         * Nilai dasar IDR yang belum bisa dihitung tidak ditulis 0 dan tidak
+         * ditulis "—" begitu saja: kalimatnya menyebutkan SEBABNYA (kursnya
+         * belum diisi), yang justru tindakan yang harus diambil pengguna.
+         */}
+        {line(
+          t("common.ledgerBaseIdr"),
+          baseUnknown ? (
+            <Typography.Text type="secondary">{t("invoices.baseUnknown")}</Typography.Text>
+          ) : (
+            <Money value={baseTotal} currency="IDR" />
+          ),
+          { strong: true }
+        )}
       </dl>
     </div>
   );

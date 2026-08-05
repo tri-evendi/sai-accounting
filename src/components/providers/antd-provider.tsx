@@ -49,7 +49,7 @@ import idID from "antd/locale/id_ID";
 import zhCN from "antd/locale/zh_CN";
 
 import type { Locale } from "@/lib/i18n/config";
-import { moneyTokens } from "@/lib/theme/antd-tokens";
+import { brandTextTokens, moneyTokens, primaryButtonTokens } from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
 
 /**
@@ -90,8 +90,9 @@ export function AntdProvider({
 
   // Objek tema distabilkan: setiap identitas objek baru membuat AntD menghitung
   // ulang turunan token dan seluruh pohon di bawahnya ikut render.
-  const theme = useMemo(
-    () => ({
+  const theme = useMemo(() => {
+    const brand = brandTextTokens(resolved);
+    return {
       algorithm:
         resolved === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
       /*
@@ -104,10 +105,35 @@ export function AntdProvider({
        * Nilainya sendiri beserta rasio terhitungnya ada di
        * `lib/theme/antd-tokens.ts` — di sini hanya jalur pendaftarannya.
        */
-      token: { controlHeight: CONTROL_HEIGHT, ...moneyTokens(resolved) },
-    }),
-    [resolved]
-  );
+      token: {
+        controlHeight: CONTROL_HEIGHT,
+        ...moneyTokens(resolved),
+        /*
+         * `colorPrimary` sengaja TIDAK disebut: keputusan pemiliknya adalah
+         * warna merek = bawaan AntD (#1677ff), dan menuliskannya ulang di sini
+         * hanya menciptakan salinan kedua yang bisa menyimpang.
+         *
+         * Yang diganti hanya perannya sebagai TEKS. `colorLink*` bawaan
+         * memakai `colorPrimary` apa adanya (4,10:1 di atas putih) dan
+         * hover-nya malah lebih terang lagi (#69b1ff = 2,06:1) — tautan yang
+         * lenyap tepat saat kursor menyentuhnya. Nilai penggantinya sama
+         * dengan `colorBrandText*`, jadi tautan dan teks merek non-tautan
+         * tidak bisa berpisah warna.
+         */
+        ...brand,
+        colorLink: brand.colorBrandText,
+        colorLinkHover: brand.colorBrandTextHover,
+        colorLinkActive: brand.colorBrandTextActive,
+      },
+      /*
+       * Isian tombol primer diturunkan sebagai token KOMPONEN, bukan global:
+       * yang bermasalah bukan warnanya, melainkan label putih 14px di ATAS
+       * warna itu (4,10:1). `colorPrimary` global tetap utuh untuk cincin
+       * fokus, aksen, dan permukaan gelap. Angkanya di antd-tokens.ts.
+       */
+      components: { Button: primaryButtonTokens(resolved) },
+    };
+  }, [resolved]);
 
   return (
     <ConfigProvider locale={ANTD_LOCALES[locale]} theme={theme}>

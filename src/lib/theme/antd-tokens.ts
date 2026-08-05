@@ -72,6 +72,10 @@ declare module "antd/es/theme/interface/alias" {
     colorMoneyPending?: string;
     /** Angka/tautan informasional sebagai teks. */
     colorMoneyInfo?: string;
+    /** Teks berwarna merek yang BUKAN tautan (label aktif, penekanan). */
+    colorBrandText?: string;
+    colorBrandTextHover?: string;
+    colorBrandTextActive?: string;
   }
 }
 
@@ -108,6 +112,131 @@ export const MONEY_TOKENS_DARK: MoneyTokens = {
 /** Token yang didaftarkan `AntdProvider` ke `ConfigProvider` per tema. */
 export function moneyTokens(resolved: ResolvedTheme): MoneyTokens {
   return resolved === "dark" ? MONEY_TOKENS_DARK : MONEY_TOKENS_LIGHT;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Warna merek sebagai TEKS dan sebagai ISIAN TOMBOL                          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Keputusan pemilik: warna merek = bawaan Ant Design, `colorPrimary` `#1677ff`.
+ * Tidak ada brand kustom, dan `#1E40AF` lama tidak dikembalikan. Karena itu
+ * `colorPrimary` sengaja TIDAK didaftarkan di mana pun — biarkan bawaan AntD
+ * yang berlaku, supaya identitasnya tidak pelan-pelan menyimpang dari palet
+ * yang sedang kita adopsi.
+ *
+ * Masalah yang ikut dengan keputusan itu, terukur (rumus yang sama, kalibrasi
+ * yang sama seperti token uang di atas):
+ *
+ *   `#1677ff` sebagai TEKS di atas putih          = 4,10:1  -> GAGAL 4,5:1
+ *   putih sebagai LABEL di atas isian `#1677ff`   = 4,10:1  -> GAGAL 4,5:1
+ *   `#1677ff` di atas sidebar `#0F172A`           = 4,35:1  -> lolos 3:1 (ikon/
+ *       aksen), tapi TETAP gagal 4,5:1 kalau dipakai sebagai teks 14px
+ *
+ * Jadi masalahnya bukan hanya "permukaan terang": yang selamat hanyalah peran
+ * non-teks. Perbaikannya sama persis dengan pola token uang — identitas tetap
+ * bawaan AntD, peran TEKS KECIL memakai anak tangga yang lebih jauh dari
+ * latarnya, diambil dari tangga biru AntD sendiri.
+ *
+ * ── Teks merek & tautan ───────────────────────────────────────────────────
+ * Aturannya satu kalimat: **satu tangga lebih jauh dari latar untuk keadaan
+ * diam, satu tangga lagi untuk hover, satu lagi untuk aktif.** Di tema terang
+ * itu berarti makin gelap (blue-7 -> 8 -> 9); di tema gelap makin terang
+ * (blue-7 -> 8 -> 9 versi gelap). Nilai hover bawaan AntD tidak bisa dipakai:
+ * `colorLinkHover` terang `#69b1ff` = 2,06:1 dan versi gelapnya `#15417e` =
+ * 1,64:1 (terburuk di ketiga latar) — keduanya gagal bahkan ambang 3:1, jadi
+ * tautannya praktis lenyap justru saat kursor menyentuhnya.
+ *
+ * | Peran        | TERANG    | ctr/layout/elev      | min   | GELAP     | ctr/layout/elev      | min  |
+ * |--------------|-----------|----------------------|-------|-----------|----------------------|------|
+ * | teks/tautan  | `#0958d9` |  6,16 /  5,65 / 6,16 |  5,65 | `#3c89e8` |  5,21 / 5,94 / 4,66  | 4,66 |
+ * | hover        | `#003eb3` |  8,97 /  8,23 / 8,97 |  8,23 | `#65a9f3` |  7,48 / 8,52 / 6,69  | 6,69 |
+ * | aktif        | `#002c8c` | 12,08 / 11,08 /12,08 | 11,08 | `#8dc5f8` | 10,07 /11,47 / 9,01  | 9,01 |
+ */
+export interface BrandTextTokens {
+  colorBrandText: string;
+  colorBrandTextHover: string;
+  colorBrandTextActive: string;
+}
+
+/** blue-7 / blue-8 / blue-9 dari tangga `colorPrimary`, tema terang. */
+export const BRAND_TEXT_LIGHT: BrandTextTokens = {
+  colorBrandText: "#0958d9", // min 5,65:1
+  colorBrandTextHover: "#003eb3", // min 8,23:1
+  colorBrandTextActive: "#002c8c", // min 11,08:1
+};
+
+/** Tangga yang sama diturunkan lewat algoritma gelap AntD. */
+export const BRAND_TEXT_DARK: BrandTextTokens = {
+  colorBrandText: "#3c89e8", // min 4,66:1
+  colorBrandTextHover: "#65a9f3", // min 6,69:1
+  colorBrandTextActive: "#8dc5f8", // min 9,01:1
+};
+
+export function brandTextTokens(resolved: ResolvedTheme): BrandTextTokens {
+  return resolved === "dark" ? BRAND_TEXT_DARK : BRAND_TEXT_LIGHT;
+}
+
+/**
+ * Isian tombol primer — token KOMPONEN, bukan global.
+ *
+ * Yang diperbaiki di sini adalah label putihnya, bukan warnanya sebagai
+ * identitas. `colorPrimary` global tetap `#1677ff` dan tetap dipakai untuk
+ * cincin fokus, aksen, garis aktif, dan permukaan gelap; hanya `Button` yang
+ * mendapat isian lebih gelap, karena hanya `Button` yang menaruh teks 14px di
+ * ATAS warna itu.
+ *
+ * Tiga hal yang perlu dicatat karena berlawanan dengan dugaan:
+ *
+ *  1. **`colorPrimaryHover` bawaan justru arah yang salah di tema terang.**
+ *     Nilainya `#4096ff` (blue-5, LEBIH TERANG): label putih di atasnya
+ *     2,99:1 — lebih buruk dari 4,10:1 yang sedang kita perbaiki. Tangga yang
+ *     lebih gelap yang AntD sediakan adalah `colorPrimaryActive` `#0958d9`,
+ *     yaitu blue-7, warna yang sama dengan teks tautan di atas. Satu anak
+ *     tangga melayani dua peran.
+ *  2. **Tema gelap TIDAK perlu diubah pada keadaan diam.** Label putih di atas
+ *     `#1668dc` bawaan = 5,19:1, lolos. Yang gagal hanya hover-nya
+ *     (`#3c89e8` = 3,54:1), jadi hanya itu yang diganti.
+ *  3. **Karena itu tombol MENGGELAP saat disentuh di kedua tema**, termasuk di
+ *     tema gelap — berlawanan dengan kebiasaan AntD yang menerangkan. Alasannya
+ *     terukur: menerangkan isian di tema gelap berarti menjatuhkan labelnya ke
+ *     3,54:1. Harga yang dibayar adalah kontras isian terhadap halaman saat
+ *     hover (2,28:1 di tema gelap); itu bisa diterima karena yang harus
+ *     "menemukan" tombol adalah keadaan DIAM (3,18:1) — saat hover, kursor
+ *     pengguna sendiri sudah berada di atasnya.
+ *
+ * | Keadaan | TERANG    | label putih | GELAP     | label putih |
+ * |---------|-----------|-------------|-----------|-------------|
+ * | diam    | `#0958d9` |  6,16:1     | `#1668dc` |  5,19:1     |
+ * | hover   | `#003eb3` |  8,97:1     | `#1554ad` |  7,23:1     |
+ * | aktif   | `#002c8c` | 12,08:1     | `#15417e` | 10,05:1     |
+ *
+ * Jalan keluar "biarkan `#1677ff`, besarkan hurufnya" sudah diukur dan
+ * DITOLAK: ambang 3:1 baru berlaku pada ≥18,66px **tebal**, sedangkan
+ * `fontSize` AntD 14px. Label tombol 19px tebal merusak seluruh skala tipografi
+ * MASTER.md (body 16, caption 14) demi satu angka kontras — dan tetap tidak
+ * menolong teks merek di tempat lain.
+ */
+export interface PrimaryButtonTokens {
+  colorPrimary: string;
+  colorPrimaryHover: string;
+  colorPrimaryActive: string;
+}
+
+export const PRIMARY_BUTTON_LIGHT: PrimaryButtonTokens = {
+  colorPrimary: "#0958d9", // blue-7 · label putih 6,16:1
+  colorPrimaryHover: "#003eb3", // blue-8 · 8,97:1
+  colorPrimaryActive: "#002c8c", // blue-9 · 12,08:1
+};
+
+export const PRIMARY_BUTTON_DARK: PrimaryButtonTokens = {
+  colorPrimary: "#1668dc", // bawaan AntD · label putih 5,19:1 — lolos, tak diubah
+  colorPrimaryHover: "#1554ad", // blue-5 gelap · 7,23:1
+  colorPrimaryActive: "#15417e", // blue-4 gelap · 10,05:1
+};
+
+export function primaryButtonTokens(resolved: ResolvedTheme): PrimaryButtonTokens {
+  return resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT;
 }
 
 /** Sumber token yang cukup bagi `moneyPalette` — apa pun yang `useToken()` beri. */

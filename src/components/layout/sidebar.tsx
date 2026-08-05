@@ -2,7 +2,7 @@
 
 import { Link } from "@/components/ui/app-link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -43,6 +43,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -171,6 +172,22 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
   const toggleGroup = (id: string) =>
     setOpenGroups((prev) => ({ ...prev, [id]: !(prev[id] ?? id === activeGroupId) }));
 
+  /*
+   * Escape menutup laci — di layar sempit ia menutupi seluruh halaman, dan
+   * lapisan menutup-layar yang tidak bisa ditutup dari papan ketik hanya punya
+   * satu jalan keluar: menyentuh tirai. Pola yang sama sudah dipegang
+   * `user-menu` dan `help-menu`; laci ini satu-satunya lapisan chrome yang
+   * belum ikut. Pendengarnya hanya hidup selama laci terbuka.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   return (
     <>
       {/* Backdrop for mobile */}
@@ -180,13 +197,30 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
           // eslint-disable-next-line no-restricted-syntax
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
 
+      {/*
+       * ⚠ LACI TERTUTUP TIDAK BOLEH TETAP BISA DI-TAB.
+       *
+       * `-translate-x-full` hanya MENGGESER laci ke luar layar; ~30 tautan menu
+       * dan setiap pemicu grupnya tetap ada di pohon dan tetap di urutan fokus.
+       * Di layar sempit pengguna papan ketik menekan Tab dari bilah atas dan
+       * fokusnya lenyap ke dalam menu yang tidak terlihat di mana pun — puluhan
+       * tekanan tanpa satu pun ring fokus di layar, lalu ia mendarat di halaman
+       * yang tidak pernah ia pilih. Sama persis untuk pembaca layar, yang
+       * membacakan seluruh menu itu sebagai isi halaman.
+       *
+       * `invisible` mencabutnya dari urutan fokus dan dari pohon aksesibilitas;
+       * `lg:visible` mengembalikannya di lebar tempat laci memang kolom tetap.
+       * Transisinya tetap `transform` saja: saat MEMBUKA, visibilitas menyala
+       * lebih dulu lalu geserannya beranimasi seperti sebelumnya.
+       */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
-          open ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground transform transition-transform duration-200 lg:visible lg:translate-x-0 lg:static lg:z-auto",
+          open ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
         {/* Logo */}
@@ -195,13 +229,27 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
             <BrandMark size="sm" />
             <span className="truncate">{APP_NAME}</span>
           </Link>
-          <button
+          {/*
+           * Tombol ikon lewat primitif — `variant="ghost" size="icon"` = 40px,
+           * target sentuh minimum MASTER.md. Versi sebelumnya adalah `<button>`
+           * telanjang TANPA padding sama sekali: yang bisa disentuh hanyalah
+           * ikon 20×20px, di pojok layar, pada satu-satunya lebar tempat tombol
+           * ini muncul — yaitu ponsel. Ia juga tidak punya ring fokus, padahal
+           * pemicu grup tepat di bawahnya punya.
+           *
+           * `sidebar.tsx` memang terdaftar di `RAW_BUTTON_ALLOWLIST`, tapi
+           * alasan yang tertulis di sana adalah pemicu collapse + baris menu
+           * (bentuknya ditentukan panelnya) — bukan tombol ikon ini.
+           */}
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label={t("sidebar.closeMenu")}
-            className="lg:hidden cursor-pointer text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground"
+            className="lg:hidden text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          </Button>
         </div>
 
         {/* Navigation — dikelompokkan per area tugas */}

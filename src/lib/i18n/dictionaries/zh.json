@@ -392,7 +392,7 @@
       "submitting": "注册中...",
       "sentTitle": "请查收邮箱",
       "sentBody": "如果该地址可以注册，验证邮件已发送，24 小时内有效。打开链接即可激活账号。没有收到？请检查垃圾邮件文件夹。",
-  "termsRequired": "请先勾选同意条款与隐私政策以继续。",
+      "termsRequired": "请先勾选同意条款与隐私政策以继续。",
       "haveAccount": "已有账号？登录",
       "verifyHeading": "激活账号",
       "verifyDescription": "再点一下——以免链接扫描机器人悄悄激活（或作废）您的账号。",
@@ -1674,6 +1674,23 @@
     "colOpeningBalance": "期初余额",
     "colChange": "变动",
     "colClosingBalance": "期末余额",
+    "dialog": {
+      "presetMonth": "本月",
+      "presetQuarter": "本季度",
+      "presetYear": "本年至今",
+      "month": "月份",
+      "wholeYear": "全年",
+      "columns": "显示的列",
+      "columnsHint": "标识列始终包含在内。此选择同时适用于屏幕显示和导出文件。",
+      "preview": "预览",
+      "open": "打开",
+      "exportPdf": "下载 PDF",
+      "exportExcel": "下载 Excel",
+      "pdfDownloaded": "PDF 已下载",
+      "noParams": "此报表无需参数。",
+      "noExport": "此报表尚无可打印文档 — 请打开其页面查看数据。",
+      "exportOnPage": "此报表在其页面上有专用导出功能 — 请打开页面使用。"
+    },
     "catalogCategory": {
       "keuangan": {
         "label": "财务",

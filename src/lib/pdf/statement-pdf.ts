@@ -14,7 +14,26 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { incomeStatementLayout } from "@/lib/statement-layout";
+import {
+  incomeStatementLayout,
+  agingColumns,
+  budgetColumns,
+  cashBankColumns,
+  partyRecapColumns,
+  stockMovementColumns,
+  stockValueColumns,
+  AGING_HEADERS,
+  BUDGET_HEADERS,
+  CASH_BANK_HEADERS,
+  STOCK_MOVEMENT_HEADERS,
+  STOCK_VALUE_HEADERS,
+  type AgingColumnId,
+  type BudgetColumnId,
+  type CashBankColumnId,
+  type PartyRecapColumnId,
+  type StockMovementColumnId,
+  type StockValueColumnId,
+} from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
 export interface StatementRow {
@@ -94,6 +113,12 @@ export type StatementPayload =
       totalClosing: number;
       hasProcess: boolean;
       dormantCount: number;
+      /**
+       * Kolom yang dipilih pengguna di dialog parameter (`?cols=`). Tak diisi =
+       * seluruh kolom yang punya isi. Ia hanya boleh mengurangi — lihat
+       * `stockMovementColumns()`.
+       */
+      visibleColumns?: string[];
     }
   /** Riwayat Hitung Ulang Stok (issue #129). Quantities, signed by direction. */
   | {
@@ -110,6 +135,130 @@ export type StatementPayload =
       totalIncrease: number;
       totalDecrease: number;
       netVariance: number;
+    }
+  /**
+   * Rekap per mitra — dua laporan berbentuk sama (Penjualan per Pelanggan,
+   * Pembelian per Pemasok). Jenisnya dipisah, bukan satu jenis dengan penanda
+   * sisi, supaya judul dokumen & nama lembarnya tetap satu peta tanpa cabang.
+   *
+   * Semua nominal IDR base. Dokumen valas tanpa kurs TIDAK ikut dijumlahkan —
+   * `unratedCount` membawanya supaya cetakan bisa mengatakannya, persis seperti
+   * layar. Angka yang diam-diam kehilangan sebagian dokumennya adalah cara
+   * termudah sebuah rekap dipercaya padahal salah.
+   */
+  | {
+      kind: "sales-by-customer" | "purchases-by-supplier";
+      period: string;
+      rows: {
+        partyName: string | null;
+        docCount: number;
+        grossBase: number;
+        returnBase: number;
+        netBase: number;
+        unratedCount: number;
+      }[];
+      totals: {
+        docCount: number;
+        grossBase: number;
+        returnBase: number;
+        netBase: number;
+        unratedCount: number;
+      };
+      visibleColumns?: string[];
+    }
+  /**
+   * Umur Piutang / Umur Utang — dokumen belum lunas per satu tanggal, beserta
+   * ringkasan embernya.
+   *
+   * `outstandingBase` boleh `null`: dokumen valas tanpa kurs tidak punya nilai
+   * IDR yang jujur. Ia TIDAK dijadikan nol (itu akan menyusutkan total tanpa
+   * bersuara) melainkan dibawa apa adanya dan dihitung di `unresolved`, persis
+   * seperti di layar.
+   */
+  | {
+      kind: "receivables" | "payables";
+      period: string;
+      rows: {
+        partyName: string;
+        documentNo: string;
+        date: string;
+        dueDate: string | null;
+        ageDays: number;
+        ageFromIssue: boolean;
+        status: string;
+        total: number;
+        currency: string;
+        outstandingBase: number | null;
+      }[];
+      buckets: { label: string; amount: number }[];
+      total: number;
+      unresolved: number;
+      visibleColumns?: string[];
+    }
+  /**
+   * Nilai Persediaan — saldo & nilai tiap komoditas saat ini.
+   *
+   * `unitCost`/`stockValue` boleh `null`: barang tanpa dasar biaya (legacy
+   * tanpa `unit_cost`) tidak punya nilai yang jujur, dan Rp 0 akan menyatakan
+   * bahwa barang yang ada wujudnya tidak bernilai apa-apa.
+   */
+  | {
+      kind: "stock-value";
+      period: string;
+      rows: {
+        name: string;
+        unit: string | null;
+        currentStock: number;
+        unitCost: number | null;
+        stockValue: number | null;
+      }[];
+      totalValue: number;
+      uncostedCount: number;
+      visibleColumns?: string[];
+    }
+  /**
+   * Laporan Kas & Bank — saldo awal, perubahan, dan saldo akhir TIAP akun kas
+   * & bank pada satu periode. Sumbernya pembaca arus kas yang sama, jadi
+   * "perubahan" di sini tak bisa berselisih dengan arus kas bersih di sana.
+   */
+  | {
+      kind: "cash-bank";
+      period: string;
+      rows: { code: string; name: string; opening: number; net: number; closing: number }[];
+      openingCash: number;
+      netChange: number;
+      closingCash: number;
+      visibleColumns?: string[];
+    }
+  /**
+   * Realisasi vs Anggaran — rencana, kenyataan, dan selisihnya per akun.
+   *
+   * `status` sudah berupa kata ("Di atas anggaran"/"Di bawah anggaran"/"Sesuai
+   * anggaran"), bukan enum mentah: cetakan tidak punya lencana berwarna, jadi
+   * arah selisih harus terbaca sebagai teks. `variancePct` boleh `null` — akun
+   * beranggaran nol tidak punya persentase, dan "0%" akan menyatakan sesuatu
+   * yang tidak dikatakan angkanya.
+   */
+  | {
+      kind: "budget-realization";
+      period: string;
+      rows: {
+        code: string;
+        name: string;
+        budget: number;
+        actual: number;
+        variance: number;
+        variancePct: number | null;
+        status: string;
+      }[];
+      totalBudget: number;
+      totalActual: number;
+      totalVariance: number;
+      totalVariancePct: number | null;
+      alertCount: number;
+      /** Ringkasan target penjualan periode yang sama; null bila tak ada target. */
+      salesTarget: { target: number; actual: number; variance: number } | null;
+      visibleColumns?: string[];
     }
   | {
       kind: "cash-flow";
@@ -131,6 +280,37 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "cash-flow": "Laporan Arus Kas",
   "stock-movement": "Kartu Stok / Mutasi Persediaan",
   "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Piutang & Umur Piutang",
+  payables: "Utang & Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Laporan Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
+};
+
+/**
+ * Judul kolom rekap mitra untuk DOKUMEN CETAK — bahasa Indonesia, seperti
+ * seluruh isi modul ini. Kolom pihaknya berbeda per laporan; sisanya sama.
+ */
+const PARTY_RECAP_HEADERS: Record<
+  "sales-by-customer" | "purchases-by-supplier",
+  Record<PartyRecapColumnId, string>
+> = {
+  "sales-by-customer": {
+    party: "Pelanggan",
+    docCount: "Dokumen",
+    gross: "Penjualan Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
+  "purchases-by-supplier": {
+    party: "Pemasok",
+    docCount: "Dokumen",
+    gross: "Pembelian Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
 };
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
@@ -343,31 +523,37 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "stock-movement") {
-    // The `Diolah` column appears only when the period actually contains a
-    // `process` movement — same rule as the screen (see lib/stock-movement.ts).
-    const head = ["Barang", "Satuan", "Saldo Awal", "Masuk", "Keluar"];
-    if (payload.hasProcess) head.push("Diolah");
-    head.push("Saldo Akhir");
+    // Susunan kolomnya diputuskan `stockMovementColumns()` — satu aturan yang
+    // dipakai layar, lembar sebar, dan cetakan ini (isi laporan dulu, baru
+    // pilihan pengguna).
+    const cols = stockMovementColumns(payload);
+    const head = cols.map((c) => STOCK_MOVEMENT_HEADERS[c]);
 
-    const row = (r: (typeof payload.rows)[number]) => {
-      const cells = [r.name, r.unit || "-", qty(r.opening), qty(r.movedIn), qty(r.movedOut)];
-      if (payload.hasProcess) cells.push(qty(r.processed));
-      cells.push(qty(r.closing));
-      return cells;
+    const row = (r: (typeof payload.rows)[number]) =>
+      cols.map((c) => (c === "name" ? r.name : c === "unit" ? r.unit || "-" : qty(r[c])));
+    const totals: Record<StockMovementColumnId, string> = {
+      name: "Total",
+      unit: "",
+      opening: qty(payload.totalOpening),
+      movedIn: qty(payload.totalIn),
+      movedOut: qty(payload.totalOut),
+      processed: qty(payload.totalProcessed),
+      closing: qty(payload.totalClosing),
     };
-    const footer = ["Total", "", qty(payload.totalOpening), qty(payload.totalIn), qty(payload.totalOut)];
-    if (payload.hasProcess) footer.push(qty(payload.totalProcessed));
-    footer.push(qty(payload.totalClosing));
+    const footer = cols.map((c) => totals[c]);
 
     // Right-align every numeric column, whichever count this report has.
-    const numericFrom = 2;
     const columnStyles: Record<number, { halign: "right" }> = {};
-    for (let i = numericFrom; i < head.length; i += 1) columnStyles[i] = { halign: "right" };
+    cols.forEach((c, i) => {
+      if (c !== "name" && c !== "unit") columnStyles[i] = { halign: "right" };
+    });
 
     autoTable(doc, {
       startY: y,
       head: [head],
-      body: payload.rows.length ? payload.rows.map(row) : [["", "Tidak ada mutasi pada periode ini.", ...Array(head.length - 2).fill("")]],
+      body: payload.rows.length
+        ? payload.rows.map(row)
+        : [["Tidak ada mutasi pada periode ini.", ...Array(head.length - 1).fill("")]],
       foot: [footer],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
@@ -415,6 +601,290 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
       columnStyles: { 3: { halign: "right" } },
     });
+  }
+
+  if (payload.kind === "sales-by-customer" || payload.kind === "purchases-by-supplier") {
+    const cols = partyRecapColumns(payload);
+    const headers = PARTY_RECAP_HEADERS[payload.kind];
+    // Baris tanpa mitra tercatat: layar menuliskannya sebagai teks redup, dan
+    // cetakan tidak punya warna redup — jadi ia diberi nama di sini, bukan
+    // dibiarkan sebagai sel kosong yang terbaca sebagai kelalaian.
+    const noParty = payload.kind === "sales-by-customer" ? "Tanpa pelanggan" : "Tanpa pemasok";
+    const cell = (
+      r: (typeof payload.rows)[number] | (typeof payload.totals & { partyName: string })
+    ) => ({
+      party: "partyName" in r ? r.partyName ?? noParty : "",
+      docCount: String(r.docCount),
+      gross: rp(r.grossBase),
+      // Retur = pengurang. Tandanya yang menyatakannya, bukan warna.
+      returns: r.returnBase > 0 ? rp(-r.returnBase) : rp(0),
+      net: rp(r.netBase),
+    });
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "party") columnStyles[i] = { halign: "right" };
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => headers[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => {
+            const values = cell(r);
+            return cols.map((c) => values[c]);
+          })
+        : [["Tidak ada dokumen pada periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [
+        cols.map((c) => (c === "party" ? "Total" : cell({ ...payload.totals, partyName: "" })[c])),
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    // Dokumen valas tanpa kurs tidak ikut dijumlahkan. Angka yang diam-diam
+    // kehilangan sebagian dokumennya adalah cara termudah rekap ini dipercaya
+    // padahal salah — jadi cetakan mengatakannya, sama seperti layar.
+    if (payload.totals.unratedCount > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Catatan: ${payload.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`,
+        14,
+        afterTable(doc) + 6
+      );
+    }
+  }
+
+  if (payload.kind === "budget-realization") {
+    const cols = budgetColumns(payload);
+    const pct = (value: number | null) =>
+      value === null ? "—" : `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+    const cell = (r: (typeof payload.rows)[number], c: BudgetColumnId): string => {
+      switch (c) {
+        case "account":
+          return `${r.code}  ${r.name}`.trim();
+        case "budget":
+          return rp(r.budget);
+        case "actual":
+          return rp(r.actual);
+        // Selisih selalu bertanda: arahnya adalah isi laporan ini, dan cetakan
+        // tidak punya warna untuk menyampaikannya.
+        case "variance":
+          return `${r.variance > 0 ? "+" : ""}${rp(r.variance)}`;
+        case "variancePct":
+          return pct(r.variancePct);
+        case "status":
+          return r.status;
+      }
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "account" && c !== "status") columnStyles[i] = { halign: "right" };
+    });
+
+    const totals: Record<BudgetColumnId, string> = {
+      account: "Total",
+      budget: rp(payload.totalBudget),
+      actual: rp(payload.totalActual),
+      variance: `${payload.totalVariance > 0 ? "+" : ""}${rp(payload.totalVariance)}`,
+      variancePct: pct(payload.totalVariancePct),
+      status: payload.alertCount > 0 ? `${payload.alertCount} akun melewati ambang` : "",
+    };
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => BUDGET_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Belum ada anggaran untuk periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [cols.map((c) => totals[c])],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    // Target penjualan hidup di halaman yang sama dengan realisasi anggaran,
+    // jadi cetakannya pun membawanya — sebagai blok terpisah, karena ia
+    // membandingkan hal yang berbeda (satu angka target, bukan per akun).
+    if (payload.salesTarget) {
+      autoTable(doc, {
+        startY: afterTable(doc) + 6,
+        head: [["Target Penjualan", "Target", "Realisasi", "Selisih"]],
+        body: [
+          [
+            "Total penjualan periode ini",
+            rp(payload.salesTarget.target),
+            rp(payload.salesTarget.actual),
+            `${payload.salesTarget.variance > 0 ? "+" : ""}${rp(payload.salesTarget.variance)}`,
+          ],
+        ],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: BRAND },
+        columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
+      });
+    }
+  }
+
+  if (payload.kind === "cash-bank") {
+    const cols = cashBankColumns(payload);
+    const cell = (r: (typeof payload.rows)[number], c: CashBankColumnId) =>
+      c === "account" ? `${r.code}  ${r.name}`.trim() : rp(r[c]);
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "account") columnStyles[i] = { halign: "right" };
+    });
+
+    const totals: Record<CashBankColumnId, string> = {
+      account: "Total",
+      opening: rp(payload.openingCash),
+      net: rp(payload.netChange),
+      closing: rp(payload.closingCash),
+    };
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => CASH_BANK_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Tidak ada akun kas & bank yang bergerak pada periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [cols.map((c) => totals[c])],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+  }
+
+  if (payload.kind === "stock-value") {
+    const cols = stockValueColumns(payload);
+    const cell = (r: (typeof payload.rows)[number], c: StockValueColumnId) => {
+      if (c === "name") return r.name;
+      if (c === "unit") return r.unit || "-";
+      if (c === "currentStock") return qty(r.currentStock);
+      // Barang tanpa dasar biaya: garis, bukan Rp 0. Nol menyatakan "tidak
+      // bernilai", dan itu bukan yang buku besar katakan tentang barang yang
+      // ada wujudnya — ia hanya belum punya biaya perolehan tercatat.
+      const value = c === "unitCost" ? r.unitCost : r.stockValue;
+      return value == null ? "—" : rp(value);
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "name" && c !== "unit") columnStyles[i] = { halign: "right" };
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => STOCK_VALUE_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Belum ada barang.", ...Array(cols.length - 1).fill("")]],
+      foot: [
+        cols.map((c) =>
+          c === "name" ? "Total Nilai Persediaan" : c === "stockValue" ? rp(payload.totalValue) : ""
+        ),
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    if (payload.uncostedCount > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Catatan: ${payload.uncostedCount} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`,
+        14,
+        afterTable(doc) + 6
+      );
+    }
+  }
+
+  if (payload.kind === "receivables" || payload.kind === "payables") {
+    const party = payload.kind === "receivables" ? "Pelanggan" : "Pemasok";
+
+    // Ringkasan ember lebih dulu: pertanyaan pertama yang dibawa orang ke
+    // laporan ini adalah "berapa yang sudah lewat 90 hari", bukan "dokumen apa
+    // saja". Daftar dokumennya menyusul sebagai buktinya.
+    autoTable(doc, {
+      startY: y,
+      head: [payload.buckets.map((b) => b.label)],
+      body: [payload.buckets.map((b) => rp(b.amount))],
+      foot: [[`Total: ${rp(payload.total)}`, ...Array(payload.buckets.length - 1).fill("")]],
+      styles: { fontSize: 9, halign: "right" },
+      headStyles: { fillColor: BRAND, halign: "right" },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
+    });
+
+    const cols = agingColumns(payload);
+    const headers: Record<AgingColumnId, string> = { ...AGING_HEADERS, party };
+    const cell = (r: (typeof payload.rows)[number], c: AgingColumnId): string => {
+      switch (c) {
+        case "party":
+          return r.partyName;
+        case "documentNo":
+          return r.documentNo;
+        case "date":
+          return r.date;
+        case "dueDate":
+          return r.dueDate ?? "-";
+        // Umur yang dihitung dari TANGGAL DOKUMEN (bukan jatuh tempo, yang
+        // tidak ada) diberi tanda — tanpa itu dua angka yang artinya berbeda
+        // berdiri di kolom yang sama.
+        case "age":
+          return `${r.ageDays} hari${r.ageFromIssue ? " *" : ""}`;
+        case "status":
+          return r.status;
+        case "total":
+          return `${r.currency} ${r.total.toLocaleString("id-ID")}`;
+        // Dokumen valas tanpa kurs: garis, bukan nol. Nol adalah pernyataan
+        // "tidak ada sisa", dan itu bukan yang buku besar katakan.
+        case "outstanding":
+          return r.outstandingBase == null ? "—" : rp(r.outstandingBase);
+      }
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c === "age" || c === "total" || c === "outstanding") columnStyles[i] = { halign: "right" };
+    });
+
+    autoTable(doc, {
+      startY: afterTable(doc) + 6,
+      head: [cols.map((c) => headers[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Tidak ada dokumen yang belum lunas.", ...Array(cols.length - 1).fill("")]],
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: BRAND },
+      columnStyles,
+    });
+
+    const notes: string[] = [];
+    if (payload.rows.some((r) => r.ageFromIssue)) {
+      notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+    }
+    if (payload.unresolved > 0) {
+      notes.push(
+        `${payload.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+      );
+    }
+    if (notes.length > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      let noteY = afterTable(doc) + 6;
+      for (const n of notes) {
+        doc.text(n, 14, noteY);
+        noteY += 5;
+      }
+    }
   }
 
   if (payload.kind === "cash-flow") {

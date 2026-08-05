@@ -51,6 +51,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { QuotaMeter } from "@/components/ui/quota-meter";
 import { formatMoney } from "@/lib/money-format";
+import { formatDateMedium } from "@/lib/utils";
 import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
@@ -60,11 +61,6 @@ import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
-
-/** Tanggal ringkas untuk kartu panel — sama gayanya dengan tabel tagihan. */
-function formatPanelDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +106,27 @@ export default async function PlatformPage() {
    * dibatalkan, paid selesai). Menjumlahkan status lain akan menakut-nakuti
    * dengan angka yang tidak ditagihkan kepada siapa pun. */
   const unpaid = (overview?.billing?.invoices ?? []).filter((inv) => inv.status === "issued");
-  const unpaidTotal = unpaid.reduce((sum, inv) => sum + Number(inv.total), 0);
+
+  /* ⚠ DIJUMLAHKAN PER MATA UANG, bukan satu `reduce` datar.
+   *
+   * Versi sebelumnya menjumlahkan `Number(inv.total)` seluruh tagihan terbuka
+   * lalu memberi hasilnya mata uang `unpaid[0].currency`. Selama semua tagihan
+   * ber-IDR angkanya kebetulan benar; pada tenant yang satu tagihannya
+   * berdenominasi USD, 100 dolar ikut ditambahkan sebagai 100 rupiah dan
+   * seluruh kartu berbohong — tanpa satu pun tanda di layar bahwa ada yang
+   * dicampur. Menjumlahkan mata uang berbeda menuntut kurs, dan halaman ini
+   * tidak punya (juga tidak boleh mengarangnya): jadi yang ditampilkan adalah
+   * SETIAP mata uang apa adanya, dipisah titik-tengah. */
+  const unpaidByCurrency = new Map<string, number>();
+  for (const inv of unpaid) {
+    unpaidByCurrency.set(
+      inv.currency,
+      (unpaidByCurrency.get(inv.currency) ?? 0) + Number(inv.total)
+    );
+  }
+  const unpaidTotalLabel = Array.from(unpaidByCurrency.entries())
+    .map(([currency, total]) => formatMoney(total, currency))
+    .join(" · ");
 
   return (
     <>
@@ -201,7 +217,7 @@ export default async function PlatformPage() {
                     title={t("tenantSettings.nextChargeLabel")}
                     value={nextCharge}
                     hint={t("tenantSettings.nextChargeOn", {
-                      date: formatPanelDate(subscription.currentPeriodEnd),
+                      date: formatDateMedium(subscription.currentPeriodEnd),
                     })}
                   />
                 )}
@@ -212,7 +228,7 @@ export default async function PlatformPage() {
                   <StatCard
                     title={t("tenantSettings.unpaidLabel")}
                     href="/platform/billing"
-                    value={formatMoney(unpaidTotal, unpaid[0].currency)}
+                    value={unpaidTotalLabel}
                     valueClassName="text-lg text-warning-strong"
                     hint={t("tenantSettings.unpaidCount", { count: unpaid.length })}
                   />

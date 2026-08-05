@@ -170,3 +170,33 @@ describe("resolveStockPeriod — bad input falls back, never poisons", () => {
     expect(isStockPeriodGranularity("decade")).toBe(false);
   });
 });
+
+/**
+ * Rentang tanpa granularitas (issue laporan: dialog parameter).
+ *
+ * Penyaring di halaman selalu mengirim `g`, jadi bawaan "month" tak pernah
+ * terlihat salah. Dialog parameter mengirim `?from=&to=` seperti laporan lain —
+ * dan tanpa aturan ini pilihan periodenya dibuang tanpa satu pun tanda di layar.
+ */
+describe("granularitas tersirat dari rentang", () => {
+  const now = new Date(2026, 6, 20);
+
+  it("menganggap rentang tanpa `g` sebagai custom", () => {
+    const p = resolveStockPeriod(undefined, undefined, "2026-05-01", "2026-05-31", now);
+    expect(p.granularity).toBe("custom");
+    expect(p.fromISO).toBe("2026-05-01");
+    expect(p.toISO).toBe("2026-05-31");
+  });
+
+  it("tetap bulan berjalan bila tak ada rentang sama sekali", () => {
+    expect(resolveStockPeriod(undefined, undefined, undefined, undefined, now).granularity).toBe(
+      "month"
+    );
+  });
+
+  it("granularitas yang disebut eksplisit tetap menang atas rentangnya", () => {
+    expect(resolveStockPeriod("year", undefined, "2026-05-01", "2026-05-31", now).granularity).toBe(
+      "year"
+    );
+  });
+});

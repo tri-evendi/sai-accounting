@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { notFound, redirect } from "next/navigation";
 import { Link } from "@/components/ui/app-link";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort, formatNumber } from "@/lib/utils";
 import {
   countStockHealth,
   stockLevelsFromTotals,
@@ -32,6 +32,7 @@ import {
 } from "@/lib/first-steps";
 import { FirstStepsPanel } from "@/components/dashboard/first-steps-panel";
 import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -81,11 +82,17 @@ export const dynamic = "force-dynamic";
  * disortir/diolah, MASIH milik perusahaan) muncul sebagai "Barang Keluar"
  * berwarna merah, padahal ia tidak mengurangi saldo sama sekali. Warnanya
  * netral karena memang tidak ada uang/barang yang berpindah.
+ *
+ * Yang dikembalikan adalah VARIAN `Badge`, bukan seuntai kelas: sebelumnya
+ * fungsi ini menyalin persis isi varian `success`/`danger`/`default` milik
+ * primitifnya ke dalam sebuah `<span>` rakitan tangan. Salinan itu tidak ikut
+ * berubah ketika pasangan soft/strong diperbaiki di `badge.tsx` — dan padding,
+ * `gap`, serta `whitespace-nowrap`-nya pun sudah menyimpang.
  */
-function movementTone(type: string): string {
-  if (type === "in") return "bg-success-soft text-success-strong";
-  if (type === "out") return "bg-destructive-soft text-destructive-strong";
-  return "bg-muted text-muted-foreground";
+function movementVariant(type: string): "success" | "danger" | "default" {
+  if (type === "in") return "success";
+  if (type === "out") return "danger";
+  return "default";
 }
 
 function movementLabelKey(type: string) {
@@ -275,7 +282,12 @@ export default async function DashboardPage({
     prisma.stockMovement.findMany({
       orderBy: { date: "desc" },
       take: 5,
-      select: { type: true, quantity: true, date: true, item: { select: { name: true } } },
+      select: {
+        type: true,
+        quantity: true,
+        date: true,
+        item: { select: { name: true, unit: true } },
+      },
     }),
     canViewContracts ? prisma.contract.count({ where: { status: "pending" } }) : Promise.resolve(0),
     canViewContracts ? prisma.invoice.count({ where: { status: "pending" } }) : Promise.resolve(0),
@@ -345,6 +357,7 @@ export default async function DashboardPage({
     itemName: m.item.name,
     type: m.type,
     quantity: Number(m.quantity),
+    unit: m.item.unit,
     date: m.date,
   }));
 
@@ -529,17 +542,21 @@ export default async function DashboardPage({
                   <TableRow key={i} className="hover:bg-muted/80">
                     <TableCell className="font-medium text-foreground">{m.itemName}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${movementTone(m.type)}`}
-                      >
+                      <Badge variant={movementVariant(m.type)}>
                         {t(movementLabelKey(m.type))}
-                      </span>
+                      </Badge>
                     </TableCell>
+                    {/* Kuantitas = angka + SATUAN, diformat id-ID seperti setiap
+                        angka lain di app ini. "1500.5 " telanjang adalah satu-
+                        satunya angka berformat mesin yang tersisa di beranda,
+                        dan tanpa satuannya pembaca tidak tahu itu 1.500,5 kg
+                        atau 1.500,5 ton. */}
                     <TableCell className="text-right font-semibold tabular-nums">
-                      {m.quantity}
+                      {formatNumber(m.quantity)}
+                      {m.unit ? ` ${m.unit}` : ""}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(m.date).toLocaleDateString("id-ID")}
+                      {formatDateShort(m.date)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -564,7 +581,13 @@ export default async function DashboardPage({
           {balanceByCurrency.size > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from(balanceByCurrency.entries()).map(([cur, balance]) => (
-                <Card key={cur} className="border-l-4 border-l-blue-500">
+                /* Garis aksen kiri = token `primary` (aksi/brand netral), bukan
+                   `blue-500` mentah. Kelas mentahnya lolos gerbang lint karena
+                   pola penjaganya belum mengenal sisi arah (`border-l-`) —
+                   celah itu ikut ditutup di `eslint.config.mjs`. Akibat
+                   nyatanya: garis ini tetap #3B82F6 saat tema gelap menyala,
+                   satu-satunya bidang di beranda yang tidak ikut bertema. */
+                <Card key={cur} className="border-l-4 border-l-primary">
                   <CardHeader className="pb-1">
                     <CardTitle className="text-sm text-muted-foreground">
                       {t("dashboard.netBalance", { currency: cur })}
@@ -617,16 +640,24 @@ export default async function DashboardPage({
                       <TableCell className="text-muted-foreground">{b.currency}</TableCell>
                       {/* Warna kolom = semantik uang masuk/keluar (hijau/merah per
                           kolom, bukan per tanda) — tidak 1:1 dengan MoneyCell,
-                          jadi format lama dipertahankan. */}
-                      <TableCell className="text-right text-success tabular-nums">
+                          jadi format lama dipertahankan.
+                          ⚠ Rononya `-strong`, BUKAN `--success`/`--destructive`
+                          penuh: sel tabel ber-`text-sm` (14px) adalah teks
+                          BIASA, jadi ambangnya 4.5:1 — dan #16A34A di atas
+                          `--card` putih hanya 3,30:1. Warna penuh itu sah untuk
+                          isian pekat, ikon, dan angka besar (`text-2xl`/`3xl`
+                          tebal lolos ambang teks-besar 3:1), tidak untuk kolom
+                          nominal. `--success-strong` = 7,13:1,
+                          `--destructive-strong` = 8,31:1. */}
+                      <TableCell className="text-right text-success-strong tabular-nums">
                         {formatCurrency(b.debit, b.currency)}
                       </TableCell>
-                      <TableCell className="text-right text-destructive tabular-nums">
+                      <TableCell className="text-right text-destructive-strong tabular-nums">
                         {formatCurrency(b.credit, b.currency)}
                       </TableCell>
                       <TableCell
                         className={`text-right font-semibold tabular-nums ${
-                          b.balance >= 0 ? "text-success" : "text-destructive"
+                          b.balance >= 0 ? "text-success-strong" : "text-destructive-strong"
                         }`}
                       >
                         {formatCurrency(b.balance, b.currency)}
@@ -708,7 +739,7 @@ export default async function DashboardPage({
                       </TableCell>
                       <TableCell className="text-foreground">{c.buyer}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(c.date).toLocaleDateString("id-ID")}
+                        {formatDateShort(c.date)}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={c.status} />

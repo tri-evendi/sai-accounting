@@ -29,8 +29,15 @@
  * langsung ambruk.
  *
  * Karena itu `colorSuccess`/`colorError`/`colorWarning` bawaan TETAP dipakai
- * untuk isian pekat, `Tag`, `Badge`, ikon berlatar, dan `Progress` — di sana
- * ambangnya 3:1 non-teks. Yang diganti hanya perannya sebagai warna teks.
+ * untuk isian pekat, ikon berlatar, dan `Progress` — di sana ambangnya 3:1
+ * non-teks. Yang diganti hanya perannya sebagai warna teks.
+ *
+ * **Koreksi (issue #187): `Tag` dan `Badge` dulu ikut disebut di kalimat itu,
+ * dan itu keliru.** Keduanya bukan isian — keduanya TEKS berlatar tipis, dan
+ * teksnya `fontSizeSM` = 12px. Diukur pada `Tag` yang benar-benar terpasang:
+ * `colorSuccess` di atas `colorSuccessBg` = **2,21:1** di tema terang. Jadi
+ * memakai bawaan di sana mengulang persis kegagalan yang berkas ini cegah,
+ * hanya pada komponen lain. Penggantinya di bagian `tagStatusTokens` di bawah.
  *
  * ── Rasio terhitung (WCAG 2.x, sRGB, alfa dikomposit ke latarnya) ──────────
  * "min" = yang terburuk di antara `colorBgContainer`, `colorBgLayout`, dan
@@ -237,6 +244,116 @@ export const PRIMARY_BUTTON_DARK: PrimaryButtonTokens = {
 
 export function primaryButtonTokens(resolved: ResolvedTheme): PrimaryButtonTokens {
   return resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Cincin fokus keyboard (issue #187)                                         */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Warna cincin fokus — SATU token yang melayani seluruh keluarga kendali.
+ *
+ * ── Token mana yang sebenarnya menggambar cincin itu ───────────────────────
+ * Bukan `colorPrimary`. Dibaca dari `antd/es/style/index.ts`, setiap komponen
+ * memakai `genFocusStyle()`, dan isinya satu baris:
+ *
+ *     outline: `${lineWidthFocus}px solid ${colorPrimaryBorder}`  (offset 1px)
+ *
+ * Jadi yang menentukan terlihat-tidaknya fokus keyboard adalah
+ * **`colorPrimaryBorder`** — anak tangga blue-3, yang AntD pilih sebagai warna
+ * BATAS LEMBUT, bukan sebagai penanda keadaan. Terukur (min di antara
+ * `colorBgContainer`, `colorBgLayout`, `colorBgElevated`):
+ *
+ *   terang `#91caff` = **1,59:1**   ·   gelap `#15325b` = **1,29:1**
+ *
+ * Keduanya jauh di bawah 3:1 yang diminta WCAG 1.4.11 / 2.4.13 untuk penanda
+ * fokus. Praktisnya: pengguna keyboard tidak bisa melihat di mana ia berada —
+ * kegagalan yang tidak pernah muncul di layar orang yang memakai tetikus, dan
+ * karena itu nyaris tidak pernah ditemukan tanpa diukur.
+ *
+ * ── Kenapa nilainya tidak baru ─────────────────────────────────────────────
+ * Cincin fokus tidak membutuhkan warna sendiri: yang dibutuhkannya adalah warna
+ * merek yang SUDAH terbukti lolos di ketiga latar. Itu persis `colorBrandText`
+ * (#186). Memakai ulang anak tangga yang sama berarti fokus, tautan, dan teks
+ * merek tidak bisa berpisah rupa, dan tidak ada satu pun hex tambahan yang
+ * harus diaudit ulang saat palet bergeser.
+ *
+ * | Tema   | cincin    | ctr / layout / elev  | min  |
+ * |--------|-----------|----------------------|------|
+ * | terang | `#0958d9` |  6,16 /  5,65 / 6,16 | 5,65 |
+ * | gelap  | `#3c89e8` |  5,21 /  5,94 / 4,66 | 4,66 |
+ *
+ * Cincin digambar `outline` dengan `outline-offset: 1px`, jadi ada satu piksel
+ * warna HALAMAN antara isian tombol dan cincinnya. Itu sebabnya angka yang
+ * berlaku adalah kontras terhadap LATAR, bukan terhadap isian tombol — cincin
+ * biru tua di sekeliling tombol primer biru tua tetap terbaca sebagai cincin
+ * karena garis pemisah satu piksel itu.
+ */
+export function focusRingColor(resolved: ResolvedTheme): string {
+  return brandTextTokens(resolved).colorBrandText;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Label status: `Tag` (issue #187, menggantikan Badge lama)                   */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Warna TEKS `Tag` untuk keempat status AntD — token KOMPONEN, bukan global.
+ *
+ * ── Kenapa bawaannya tidak bisa dipakai ────────────────────────────────────
+ * `Tag` menaruh teks `fontSizeSM` (12px) di atas latar tipis
+ * `color*Bg`, dan mewarnai teks itu dengan `color*` — anak tangga ke-6, yang
+ * dipilih AntD untuk ISIAN. Diukur terhadap latar `Tag` itu sendiri:
+ *
+ * | Status     | TERANG                      | GELAP                        |
+ * |------------|-----------------------------|------------------------------|
+ * | success    | `#52c41a` / `#f6ffed` 2,21  | `#49aa19` / `#162312`  5,49  |
+ * | warning    | `#faad14` / `#fffbe6` 1,83  | `#d89614` / `#2b2111`  6,24  |
+ * | error      | `#ff4d4f` / `#fff2f0` 2,99  | `#dc4446` / `#2c1618`  4,01  |
+ * | processing | `#1677ff` / `#e6f4ff` 3,66  | `#1668dc` / `#111a2c`  3,35  |
+ *
+ * Empat dari delapan gagal 4,5:1, dan yang terburuk ada di tema terang — tema
+ * bawaan aplikasi ini. Badge lama (`--*-soft` + `--*-strong`) berada di
+ * 6,4–6,8:1, jadi memakai bawaan AntD bukan sekadar "kurang ideal": ia
+ * MEMUNDURKAN label status "Lunas / Menunggu / Jatuh Tempo" dari lolos AA
+ * menjadi gagal, di 52 berkas sekaligus.
+ *
+ * ── Penggantinya bukan warna baru ──────────────────────────────────────────
+ * Peran ini sama persis dengan peran token uang: kata berwarna, ukuran kecil,
+ * di atas permukaan terang. Karena itu dipakai token uang #186 apa adanya —
+ * positif/menunggu/negatif/info — dan tidak ada satu hex pun yang lahir di
+ * issue ini. Latar dan batas `Tag` TETAP bawaan AntD; yang diganti hanya warna
+ * teksnya, sama seperti #186 hanya mengganti peran teks `colorSuccess`.
+ *
+ * Terukur ulang pada latar `Tag` (bukan pada latar halaman):
+ *
+ * | Status     | TERANG           | GELAP            |
+ * |------------|------------------|------------------|
+ * | success    | `#237804`  5,44  | `#8fd460`  9,16  |
+ * | warning    | `#874d00`  6,53  | `#f3cc62` 10,26  |
+ * | error      | `#b32430`  5,98  | `#f39c97`  8,11  |
+ * | processing | `#0958d9`  5,50  | `#3c89e8`  4,91  |
+ *
+ * Didaftarkan sebagai `components.Tag`, bukan token global: `colorSuccess`
+ * global tetap dibutuhkan apa adanya untuk isian pekat dan ikon berlatar, di
+ * mana ambangnya memang 3:1. Yang dipersempit hanya lingkupnya ke komponen yang
+ * memakainya sebagai TEKS.
+ */
+export interface TagStatusTokens {
+  colorSuccess: string;
+  colorWarning: string;
+  colorError: string;
+  colorInfo: string;
+}
+
+export function tagStatusTokens(resolved: ResolvedTheme): TagStatusTokens {
+  const money = moneyTokens(resolved);
+  return {
+    colorSuccess: money.colorMoneyPositive,
+    colorWarning: money.colorMoneyPending,
+    colorError: money.colorMoneyNegative,
+    colorInfo: money.colorMoneyInfo,
+  };
 }
 
 /* ------------------------------------------------------------------------ */

@@ -52,9 +52,11 @@ import type { Locale } from "@/lib/i18n/config";
 import {
   borderTokens,
   brandTextTokens,
+  focusRingColor,
   moneyTokens,
   neutralTextTokens,
   primaryButtonTokens,
+  tagStatusTokens,
 } from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
 
@@ -153,14 +155,36 @@ export function AntdProvider({
          * `colorBorderSecondary` dan sengaja ditahan di bawah 3:1.
          */
         ...borderTokens(resolved),
+        /*
+         * Cincin fokus keyboard (issue #187). Yang menggambarnya adalah
+         * `colorPrimaryBorder` — bukan `colorPrimary` — lewat `genFocusStyle()`
+         * yang dipakai SETIAP komponen AntD. Bawaannya 1,59:1 (terang) dan
+         * 1,29:1 (gelap): penanda fokus yang praktis tak terlihat, dan hanya
+         * merugikan pengguna yang tidak memakai tetikus.
+         *
+         * Disebut GLOBAL, bukan per komponen, karena fokus adalah satu bahasa:
+         * kalau tombol dan kotak isian memberi cincin yang berbeda, yang hilang
+         * bukan hanya kerapian tapi juga kemampuan mengenali "di sinilah saya".
+         * Nilainya memakai ulang `colorBrandText` #186 — tidak ada hex baru.
+         */
+        colorPrimaryBorder: focusRingColor(resolved),
       },
-      /*
-       * Isian tombol primer diturunkan sebagai token KOMPONEN, bukan global:
-       * yang bermasalah bukan warnanya, melainkan label putih 14px di ATAS
-       * warna itu (4,10:1). `colorPrimary` global tetap utuh untuk cincin
-       * fokus, aksen, dan permukaan gelap. Angkanya di antd-tokens.ts.
-       */
-      components: { Button: primaryButtonTokens(resolved) },
+      components: {
+        /*
+         * Isian tombol primer diturunkan sebagai token KOMPONEN, bukan global:
+         * yang bermasalah bukan warnanya, melainkan label putih 14px di ATAS
+         * warna itu (4,10:1). `colorPrimary` global tetap utuh untuk aksen dan
+         * permukaan gelap. Angkanya di antd-tokens.ts.
+         */
+        Button: primaryButtonTokens(resolved),
+        /*
+         * Warna TEKS label status (issue #187). `Tag` memakai `colorSuccess`
+         * dkk. sebagai warna teks 12px di atas latar tipisnya — 2,21:1 untuk
+         * "Lunas" di tema terang. Dipersempit ke lingkup `Tag` supaya
+         * `colorSuccess` global tetap tersedia apa adanya untuk isian pekat.
+         */
+        Tag: tagStatusTokens(resolved),
+      },
     };
   }, [resolved]);
 

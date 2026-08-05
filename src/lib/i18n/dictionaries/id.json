@@ -1678,6 +1678,8 @@
       "presetMonth": "Bulan ini",
       "presetQuarter": "Kuartal ini",
       "presetYear": "Tahun berjalan",
+      "month": "Bulan",
+      "wholeYear": "Setahun penuh",
       "columns": "Kolom yang ditampilkan",
       "columnsHint": "Kolom identitas selalu ikut. Pilihan ini berlaku untuk layar dan berkas ekspornya.",
       "preview": "Pratinjau",

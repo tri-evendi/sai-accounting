@@ -87,6 +87,10 @@ export function ReportLaunchDialog({
   const [from, setFrom] = useState(isoStartOfYear);
   const [to, setTo] = useState(isoToday);
   const [asOf, setAsOf] = useState(isoToday);
+  // `YYYY-MM` dari isian bulan; `wholeYear` mengirim `month=0`, bentuk yang
+  // sudah lama dipakai `/budget/report` untuk "setahun penuh".
+  const [monthValue, setMonthValue] = useState(() => isoToday().slice(0, 7));
+  const [wholeYear, setWholeYear] = useState(false);
   const [costCenter, setCostCenter] = useState("");
   const [busy, setBusy] = useState<null | "pdf" | "xlsx">(null);
 
@@ -106,6 +110,11 @@ export function ReportLaunchDialog({
       p.to = to;
     }
     if (report.paramKind === "as_of") p.asOf = asOf;
+    if (report.paramKind === "period_month") {
+      const [year, month] = monthValue.split("-");
+      p.year = year;
+      p.month = wholeYear ? "0" : String(Number(month));
+    }
     if (showCostCenter && costCenter) p.costCenter = costCenter;
     if (columnSpecs.length > 0) p.cols = columns.join(",");
     return p;
@@ -219,6 +228,33 @@ export function ReportLaunchDialog({
               value={asOf}
               onChange={(e) => setAsOf(e.target.value)}
             />
+          )}
+
+          {report.paramKind === "period_month" && (
+            <div className="space-y-3">
+              <Input
+                id={`${report.id}-month`}
+                type="month"
+                label={t("reports.dialog.month")}
+                value={monthValue}
+                onChange={(e) => setMonthValue(e.target.value)}
+                disabled={wholeYear}
+              />
+              {/* Setahun penuh memakai bulannya sebagai TAHUN saja — isian bulan
+                  dinonaktifkan supaya tidak terlihat seperti pilihan yang
+                  diabaikan. */}
+              <label
+                htmlFor={`${report.id}-whole-year`}
+                className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted"
+              >
+                <Checkbox
+                  id={`${report.id}-whole-year`}
+                  checked={wholeYear}
+                  onCheckedChange={(checked) => setWholeYear(checked === true)}
+                />
+                <span className="text-sm text-foreground">{t("reports.dialog.wholeYear")}</span>
+              </label>
+            </div>
           )}
 
           {showCostCenter && (

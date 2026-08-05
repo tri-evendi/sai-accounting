@@ -1678,6 +1678,8 @@
       "presetMonth": "本月",
       "presetQuarter": "本季度",
       "presetYear": "本年至今",
+      "month": "月份",
+      "wholeYear": "全年",
       "columns": "显示的列",
       "columnsHint": "标识列始终包含在内。此选择同时适用于屏幕显示和导出文件。",
       "preview": "预览",

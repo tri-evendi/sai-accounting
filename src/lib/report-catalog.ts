@@ -61,10 +61,10 @@ export type ReportStatus = "available" | "coming_soon";
  * periode yang secara konsep cocok untuk laporan itu. Bedanya baru terasa
  * setelah dialog parameter ada: dialog merender kendalinya dari sini, jadi
  * nilai yang terlalu murah hati menghasilkan isian yang diabaikan diam-diam.
- * (`period_month` dihapus karena tak ada satu pun halaman yang membacanya —
- * tambahkan kembali bersama halaman yang benar-benar memakainya.)
+ * `period_month` = `?year=&month=`, dengan `month=0` berarti SETAHUN PENUH —
+ * bentuk yang dibaca `/budget/report`, satu-satunya halaman yang memakainya.
  */
-export type ReportParamKind = "period" | "as_of" | "none";
+export type ReportParamKind = "period" | "as_of" | "period_month" | "none";
 
 /**
  * Saringan tambahan di luar tanggal, dinyatakan per laporan.
@@ -213,13 +213,12 @@ export const REPORTS: ReportDefinition[] = [
     description: "Bandingkan anggaran dengan realisasi dari Laba/Rugi, beserta selisihnya.",
     category: "keuangan",
     status: "available",
-    href: "/budget",
-    // `/budget` memilih periodenya SENDIRI di dalam halaman dan tidak membaca
-    // satu pun parameter alamat. Sebelumnya entri ini menyebut `period_month`
-    // — tak berakibat selama katalog hanya sebuah tautan, tapi dialog parameter
-    // merender kendalinya dari sini: menawarkan bulan yang lalu diabaikan
-    // halaman tujuan adalah kendali yang berbohong.
-    paramKind: "none",
+    // `/budget` hanyalah HUB berisi tiga tautan; laporannya ada satu klik lebih
+    // dalam. Kartu yang menjanjikan "Realisasi vs Anggaran" lalu mendaratkan
+    // orang di persimpangan adalah janji yang belum ditepati — dan halaman
+    // itulah yang benar-benar membaca `?year=&month=`.
+    href: "/budget/report",
+    paramKind: "period_month",
     icon: "Target",
   },
   // ── Penjualan ─────────────────────────────────────────────────────────────
@@ -250,9 +249,11 @@ export const REPORTS: ReportDefinition[] = [
     description: "Target penjualan dibanding penjualan riil dari buku besar.",
     category: "penjualan",
     status: "available",
-    href: "/budget",
-    // Sama seperti Realisasi vs Anggaran: halamannya tak membaca parameter apa pun.
-    paramKind: "none",
+    // Realisasi target penjualan hidup di halaman yang SAMA dengan realisasi
+    // anggaran — satu periode, dua bagian. Dua kartu katalog yang menunjuk satu
+    // halaman itu jujur: keduanya memang pertanyaan tentang rencana vs kenyataan.
+    href: "/budget/report",
+    paramKind: "period_month",
     icon: "TrendingUp",
   },
   {

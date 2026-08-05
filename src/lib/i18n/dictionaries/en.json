@@ -1678,6 +1678,8 @@
       "presetMonth": "This month",
       "presetQuarter": "This quarter",
       "presetYear": "Year to date",
+      "month": "Month",
+      "wholeYear": "Whole year",
       "columns": "Columns to show",
       "columnsHint": "Identity columns are always included. This choice applies to the screen and to the exported file.",
       "preview": "Preview",

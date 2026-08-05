@@ -208,3 +208,31 @@ describe("resolveColumns", () => {
     expect(resolveColumns(reportById("balance-sheet")!, "aset")).toEqual([]);
   });
 });
+
+/**
+ * Kartu katalog harus mendarat di LAPORANNYA, bukan di persimpangan menuju
+ * laporan itu. `/budget` adalah hub berisi tiga tautan; dua kartu yang
+ * menjanjikan realisasi anggaran & target penjualan dulu berhenti di sana.
+ */
+describe("tujuan kartu katalog", () => {
+  it("tidak ada kartu yang mendarat di hub /budget", () => {
+    expect(REPORTS.filter((r) => r.href === "/budget")).toEqual([]);
+  });
+
+  it("laporan rencana-vs-kenyataan menunjuk halaman laporannya", () => {
+    expect(reportById("budget-realization")?.href).toBe("/budget/report");
+    expect(reportById("sales-target")?.href).toBe("/budget/report");
+  });
+
+  it("keduanya menyatakan bentuk parameter yang dibaca halaman itu", () => {
+    // `/budget/report` membaca `?year=&month=`, dengan month=0 = setahun penuh.
+    expect(reportById("budget-realization")?.paramKind).toBe("period_month");
+    expect(reportById("sales-target")?.paramKind).toBe("period_month");
+  });
+
+  it("setiap laporan yang bisa dibuka punya alamat", () => {
+    for (const r of REPORTS.filter((x) => x.status === "available")) {
+      expect(r.href, `${r.id}`).toMatch(/^\//);
+    }
+  });
+});

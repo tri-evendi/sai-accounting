@@ -10,6 +10,13 @@ import { NewContractForm } from "./contract-form";
 export const dynamic = "force-dynamic";
 
 /**
+ * Jarak di bawah tautan "Pelajari ini". Berkas ini server component, jadi
+ * `antd` (dan `theme.useToken()`) tidak tersedia — nilainya sama dengan
+ * `marginLG` AntD, ditulis di satu tempat supaya #203 bisa menukarnya.
+ */
+const LEARN_MORE_GAP = 24;
+
+/**
  * Buat Kontrak — server shell (issue #4/#6).
  *
  * Dipecah mengikuti pola `/invoices/new` dan `/delivery-orders/new`: halaman ini
@@ -29,9 +36,12 @@ export default async function NewContractPage({
   const closedPeriods = await listClosedPeriods();
 
   return (
-    <div className="w-full">
+    <div>
+      {/* `w-full` dilepas: `<div>` blok memang sudah selebar induknya, dan
+          `PageHeader` sendiri sudah membawa jarak bawahnya lewat token
+          (`marginLG`) — `mb-1` lama tak pernah berlaku karena gaya sebaris
+          primitifnya selalu menang atas kelas. */}
       <PageHeader
-        className="mb-1"
         breadcrumbs={[
           { label: t("contracts.breadcrumb"), href: "/contracts" },
           { label: t("contracts.createTitle") },
@@ -39,7 +49,9 @@ export default async function NewContractPage({
         title={<TermTooltip term="kontrak">{t("contracts.createTitle")}</TermTooltip>}
         description={t("contracts.createDescription")}
       />
-      <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreNew")} />
+      <div style={{ marginBottom: LEARN_MORE_GAP }}>
+        <LearnMore term="kontrak" label={t("contracts.learnMoreNew")} />
+      </div>
       <NewContractForm closedPeriods={closedPeriods} />
     </div>
   );

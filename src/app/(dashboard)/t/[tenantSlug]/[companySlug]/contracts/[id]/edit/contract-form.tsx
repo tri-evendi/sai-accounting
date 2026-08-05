@@ -1,10 +1,25 @@
 "use client";
 
+/**
+ * Ubah Kontrak — dikonversi ke token Ant Design pada issue #195 (fase C3).
+ *
+ * Yang berubah hanya kulitnya: `className` Tailwind → `Row`/`Col`/`Flex` +
+ * token `theme.useToken()`. Mesin formulirnya (state lokal + `FormData`) dan
+ * `CurrencyRateFields` — satu-satunya tempat aturan "dokumen valas wajib
+ * membawa kursnya sendiri" dinyatakan di layar — sengaja tidak disentuh.
+ *
+ * Satu perbaikan ikut karena konversinya memaksa menyebut idnya: label baris
+ * barang dulu `<label>` TANPA `htmlFor`, jadi ia tidak tertaut ke isian mana
+ * pun. Sekarang tertaut, sama seperti formulir Buat Kontrak.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,6 +33,24 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** Lebar dasar kolom kuantitas pada baris barang (`w-20`/`w-24`/`w-28` lama). */
+const QTY_COL_BASIS = 96;
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — dipakai untuk blok
+ * yang WAJIB berupa CSS grid, yaitu `CurrencyRateFields` yang menaruh anaknya
+ * dengan `gridColumn: "1 / -1"`. Penjelasan lengkap rumusnya ada di
+ * `contracts/new/contract-form.tsx`; ringkasnya, `max(280px, (100% − gutter)/2)`
+ * menahan jumlah kolomnya di dua dan membuat titik patahnya jatuh di 576px —
+ * `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
 
 interface ContractItem {
   itemName: string;
@@ -50,6 +83,7 @@ export function EditContractForm() {
   const router = useAppRouter();
   const params = useParams();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -150,15 +184,36 @@ export function EditContractForm() {
   }
 
   if (!contract) {
-    return <div className="text-destructive">{t("contracts.notFound")}</div>;
+    return (
+      <div role="alert">
+        <Alert type="error" showIcon message={t("contracts.notFound")} />
+      </div>
+    );
   }
 
   const dateStr = new Date(contract.date).toISOString().split("T")[0];
   // Blank when null — an unknown due date must not default to the document date.
   const dueDateStr = contract.dueDate ? new Date(contract.dueDate).toISOString().split("T")[0] : "";
 
+  /** Label mikro di atas satu isian baris barang. */
+  const itemLabel = (htmlFor: string, text: string) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka baris barang — rata kanan + `tabular-nums`. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("contracts.breadcrumb"), href: "/contracts" },
@@ -168,98 +223,170 @@ export function EditContractForm() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader><CardTitle>{t("contracts.detailsTitle")}</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} defaultValue={contract.contractNo} required />
-              <Input id="date" name="date" type="date" label={t("contracts.contractDate")} defaultValue={dateStr} required />
-              <DueDateField defaultValue={dueDateStr} />
-              <Input id="buyer" name="buyer" label={t("contracts.buyerField")} defaultValue={contract.buyer} required />
-              <ConsigneeSelect
-                consigneeId={consigneeId}
-                onConsigneeIdChange={setConsigneeId}
-                defaultText={contract.consignee || ""}
-                current={contract.consigneeRef}
-              />
-              <Input id="packaging" name="packaging" label={t("contracts.packaging")} defaultValue={contract.packaging || ""} />
-              <Input id="shipment" name="shipment" label={t("contracts.shipment")} defaultValue={contract.shipment || ""} />
-              <Input id="top1" name="top1" label={t("contracts.top1")} defaultValue={contract.top1 || ""} />
-              <Input id="top2" name="top2" label={t("contracts.top2")} defaultValue={contract.top2 || ""} />
-              <CurrencyRateFields
-                currency={currency}
-                rate={rate}
-                onCurrencyChange={setCurrency}
-                onRateChange={setRate}
-                currencyLabel={t("common.currency")}
-                rateHint={t("contracts.rateHintEdit")}
-              />
-              <Select
-                id="status" name="status" label={t("common.status")}
-                defaultValue={contract.status}
-                options={[
-                  { value: "pending", label: t("status.contract.pending") },
-                  { value: "signed", label: t("status.contract.signed") },
-                  { value: "canceled", label: t("status.contract.canceled") },
-                ]}
-              />
-            </div>
+            <Row gutter={[token.margin, token.margin]}>
+              <Col xs={24} sm={12}>
+                <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} defaultValue={contract.contractNo} required />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="date" name="date" type="date" label={t("contracts.contractDate")} defaultValue={dateStr} required />
+              </Col>
+              <Col xs={24} sm={12}>
+                <DueDateField defaultValue={dueDateStr} />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="buyer" name="buyer" label={t("contracts.buyerField")} defaultValue={contract.buyer} required />
+              </Col>
+              <Col xs={24} sm={12}>
+                <ConsigneeSelect
+                  consigneeId={consigneeId}
+                  onConsigneeIdChange={setConsigneeId}
+                  defaultText={contract.consignee || ""}
+                  current={contract.consigneeRef}
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="packaging" name="packaging" label={t("contracts.packaging")} defaultValue={contract.packaging || ""} />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="shipment" name="shipment" label={t("contracts.shipment")} defaultValue={contract.shipment || ""} />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="top1" name="top1" label={t("contracts.top1")} defaultValue={contract.top1 || ""} />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input id="top2" name="top2" label={t("contracts.top2")} defaultValue={contract.top2 || ""} />
+              </Col>
+              {/* Valas: isian kurs hanya muncul untuk mata uang bukan-IDR.
+                  `CurrencyRateFields` memberi DUA sel kisi sekaligus sebagai
+                  fragmen, jadi ia mendapat kisi dua kolomnya sendiri di sini —
+                  bukan dua `Col`. Sel kurs tetap ada (kosong) untuk IDR supaya
+                  kisinya tak melompat saat mata uang diganti. */}
+              <Col span={24}>
+                <div style={twoColumnGrid(token.margin)}>
+                  <CurrencyRateFields
+                    currency={currency}
+                    rate={rate}
+                    onCurrencyChange={setCurrency}
+                    onRateChange={setRate}
+                    currencyLabel={t("common.currency")}
+                    rateHint={t("contracts.rateHintEdit")}
+                  />
+                </div>
+              </Col>
+              <Col xs={24} sm={12}>
+                {/* Status lewat peta label bahasa tugas; nilai enum DB tidak
+                    pernah tampil mentah. */}
+                <Select
+                  id="status" name="status" label={t("common.status")}
+                  defaultValue={contract.status}
+                  options={[
+                    { value: "pending", label: t("status.contract.pending") },
+                    { value: "signed", label: t("status.contract.signed") },
+                    { value: "canceled", label: t("status.contract.canceled") },
+                  ]}
+                />
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
               <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> {t("common.addItem")}
+                <Plus aria-hidden="true" /> {t("common.addItem")}
               </Button>
-            </div>
+            </Flex>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <Flex vertical gap={token.margin}>
               {items.map((item, i) => (
-                <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.itemName")}</label>
-                    <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
-                  </div>
-                  <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.bags")}</label>
-                    <TextInput type="number" className="w-full" value={item.bags} onChange={(e) => updateItem(i, "bags", Number(e.target.value))} />
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.kgPerBag")}</label>
-                    <TextInput type="number" step="0.01" className="w-full" value={item.kgPerBag} onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))} />
-                  </div>
-                  <div className="w-28">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("contracts.pricePerKg")}</label>
-                    <TextInput type="number" step="0.01" className="w-full" value={item.pricePerKg} onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))} />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeItem(i)}
-                    aria-label={t("common.removeItemRow", { n: i + 1 })}
-                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div
+                  key={i}
+                  style={{
+                    padding: token.paddingSM,
+                    borderRadius: token.borderRadius,
+                    border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  }}
+                >
+                  {/* `Row` yang membungkus menggantikan satu baris flex kaku:
+                      di 375px kelima kendali dulu saling menghimpit. */}
+                  <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                    <Col xs={24} md={10} style={{ minWidth: 0 }}>
+                      {itemLabel(`itemName-${i}`, t("common.itemName"))}
+                      <TextInput
+                        id={`itemName-${i}`}
+                        value={item.itemName}
+                        onChange={(e) => updateItem(i, "itemName", e.target.value)}
+                        required
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`bags-${i}`, t("common.bags"))}
+                      {/* KUANTITAS (`Decimal(15,3)`), bukan uang. */}
+                      <TextInput
+                        id={`bags-${i}`}
+                        type="number"
+                        style={numberStyle}
+                        value={item.bags}
+                        onChange={(e) => updateItem(i, "bags", Number(e.target.value))}
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`kgPerBag-${i}`, t("common.kgPerBag"))}
+                      <TextInput
+                        id={`kgPerBag-${i}`}
+                        type="number"
+                        step="0.01"
+                        style={numberStyle}
+                        value={item.kgPerBag}
+                        onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))}
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`pricePerKg-${i}`, t("contracts.pricePerKg"))}
+                      <TextInput
+                        id={`pricePerKg-${i}`}
+                        type="number"
+                        step="0.01"
+                        style={numberStyle}
+                        value={item.pricePerKg}
+                        onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))}
+                      />
+                    </Col>
+                    <Col flex="none">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeItem(i)}
+                        aria-label={t("common.removeItemRow", { n: i + 1 })}
+                        style={{ color: token.colorError }}
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </Col>
+                  </Row>
                 </div>
               ))}
-            </div>
+            </Flex>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.saveChanges")}</Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

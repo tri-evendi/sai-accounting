@@ -13,9 +13,27 @@
  * Semua penjaga di sini bersifat mendahului, bukan menggantikan: periode
  * tertutup tetap dijaga `assertPeriodOpen` di dalam transaksi penulisan, dan
  * seluruh aturan lain tetap milik `contractSchema`.
+ *
+ * ── Konversi ke token Ant Design (issue #195, fase C3) ─────────────────────
+ * Yang berubah HANYA kulitnya: `className` Tailwind → `Row`/`Col`/`Flex` +
+ * token `theme.useToken()`. Mesin formulirnya sengaja TIDAK disentuh —
+ * `useState` + `FormData`, penjaga sebelum-kirim, dan `CurrencyRateFields`
+ * (yang memunculkan isian kurs hanya untuk mata uang asing) tetap persis
+ * seperti sebelumnya. Menukar mesinnya ke react-hook-form di PR yang sama
+ * dengan konversi gaya berarti tidak ada yang bisa membaca diff-nya.
+ *
+ * Dua akibat yang perlu diketahui:
+ *  • **Titik patah berpindah** dari `sm` Tailwind (640px) ke `sm` AntD
+ *    (576px). Disengaja: seluruh aplikasi berpindah ke satu tangga titik
+ *    patah (lihat catatan sama di `shared/payment-form.tsx`).
+ *  • **Baris barang kini `Row`/`Col` yang membungkus**, bukan satu baris
+ *    flex yang memaksa lima kendali berdampingan. Di 375px kelima isian dulu
+ *    saling menghimpit sampai kotak "Harga/kg" tinggal beberapa piksel;
+ *    sekarang mereka turun ke baris berikutnya.
  */
 
 import { useState } from "react";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { Button } from "@/components/ui/button";
@@ -38,8 +56,9 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
-import { Trash2, Plus, AlertCircle, Lock } from "lucide-react";
+import { Trash2, Plus, Lock } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
+import { Label } from "@/components/ui/label";
 
 interface ContractItem {
   itemName: string;
@@ -57,9 +76,35 @@ const statusLabels = (t: TranslateFn): Record<string, string> => ({
   canceled: t("contracts.statusCanceledLower"),
 });
 
+/** Lebar dasar kolom kuantitas pada baris barang (`w-20`/`w-24`/`w-28` lama). */
+const QTY_COL_BASIS = 96;
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2` untuk blok yang WAJIB berupa CSS grid.
+ *
+ * Kenapa bukan `Row`/`Col`: `CurrencyRateFields` (dan kerabatnya di
+ * `shared/invoice-fx-fields.tsx`) menaruh anaknya dengan `gridColumn: "1 / -1"`,
+ * yang hanya berarti sesuatu di dalam CSS grid. Membungkusnya dengan `Col`
+ * flexbox akan membuat blok-blok itu diam-diam berhenti membentang.
+ *
+ * `max(FIELD_MIN, (100% − gutter)/2)` menahan jumlah kolomnya di DUA: begitu
+ * setengah lebar wadah melewati `FIELD_MIN`, lebar minimum satu track ikut
+ * membesar sehingga kolom KETIGA tak pernah muat. Dengan `FIELD_MIN` 280 dan
+ * gutter 16, dua kolom mulai tepat di 576px — titik patah `sm` AntD, tangga
+ * yang sama dengan sisa aplikasi.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
 export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<ContractItem[]>([emptyItem()]);
@@ -171,27 +216,51 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
     .filter(Boolean)
     .join(" · ");
 
+  /** Label mikro di atas satu isian baris barang. */
+  const itemLabel = (htmlFor: string, text: string) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka baris barang — rata kanan + `tabular-nums`, seperti kolom uang. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div
-          role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        /* Galat tingkat formulir kini `Alert` AntD: teks `colorText` di atas
+           `colorErrorBg` (bukan merah di atas merah muda) dan ikon yang membuat
+           maknanya tidak bergantung warna. `role="alert"` tetap milik kita —
+           AntD tidak memasangnya, dan tanpa itu pesannya tidak diumumkan. */
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
           <CardTitle>{t("contracts.detailsTitle")}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">{t("contracts.detailsHint")}</p>
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", marginTop: token.marginXXS }}
+          >
+            {t("contracts.detailsHint")}
+          </Typography.Text>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} required />
-            <div>
+          <Row gutter={[token.margin, token.margin]}>
+            <Col xs={24} sm={12}>
+              <Input id="contractNo" name="contractNo" label={t("contracts.contractNo")} required />
+            </Col>
+            <Col xs={24} sm={12}>
               <Input
                 id="date"
                 name="date"
@@ -202,198 +271,277 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                 required
               />
               {periodIssue && (
-                <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                  <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                /* Periode terkunci: ikon gembok + kalimat. Warnanya
+                   `colorError`; ikonnya penanda kedua supaya maknanya tidak
+                   bergantung warna. */
+                <Typography.Paragraph
+                  role="alert"
+                  style={{
+                    margin: 0,
+                    marginTop: token.marginXXS,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: token.marginXXS,
+                    fontSize: token.fontSizeSM,
+                    color: token.colorError,
+                  }}
+                >
+                  <Lock size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>{periodIssue}</span>
-                </p>
+                </Typography.Paragraph>
               )}
-            </div>
-            <Input id="buyer" name="buyer" label={t("contracts.buyerField")} required />
-            <div className="hidden sm:block" aria-hidden="true" />
-            <CurrencyRateFields
-              currency={currency}
-              rate={rate}
-              onCurrencyChange={setCurrency}
-              onRateChange={setRate}
-              currencyLabel={t("common.currency")}
-              rateHint={t("contracts.rateHintNew")}
-            />
-          </div>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input id="buyer" name="buyer" label={t("contracts.buyerField")} required />
+            </Col>
+            {/* Sel kosong yang dulu `hidden sm:block` — ia menjaga pasangan
+                mata uang/kurs tetap mulai di kolom kiri. `Col` kosong
+                melakukan hal yang sama tanpa kelas, dan di 375px ia tak
+                memakan tinggi karena isinya nihil. */}
+            <Col xs={0} sm={12} aria-hidden="true" />
+            {/* Valas: `CurrencyRateFields` memunculkan isian kurs HANYA saat
+                mata uangnya bukan IDR (pasangan client dari
+                `requireRateForForeign` di skema server). Ia memberi DUA sel
+                kisi berdampingan — itu kontraknya, dan kontrak itu dipenuhi di
+                sini oleh satu kisi dua kolom, bukan oleh dua `Col`: keduanya
+                datang sebagai fragmen dari satu komponen. Sel kurs tetap ada
+                (kosong) untuk IDR, jadi kisinya tidak melompat saat mata uang
+                diganti. */}
+            <Col span={24}>
+              <div style={twoColumnGrid(token.margin)}>
+                <CurrencyRateFields
+                  currency={currency}
+                  rate={rate}
+                  onCurrencyChange={setCurrency}
+                  onRateChange={setRate}
+                  currencyLabel={t("common.currency")}
+                  rateHint={t("contracts.rateHintNew")}
+                />
+              </div>
+            </Col>
+          </Row>
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
             <CardTitle>{t("contracts.contractedGoodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.addItem")}
+              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
+                  primitif `Button`. */}
+              <Plus aria-hidden="true" /> {t("common.addItem")}
             </Button>
-          </div>
+          </Flex>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <Flex vertical gap={token.margin}>
             {items.map((item, i) => (
-              <div key={i} className="rounded-md border border-border p-3">
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <label
-                      htmlFor={`itemName-${i}`}
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("common.itemName")}
-                    </label>
+              <div
+                key={i}
+                style={{
+                  padding: token.paddingSM,
+                  borderRadius: token.borderRadius,
+                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                }}
+              >
+                {/* `Row` yang membungkus, bukan satu baris flex kaku: di
+                    375px kelima kendali dulu saling menghimpit. Nama barang
+                    memakai baris penuh di layar sempit, ketiga angka berbagi
+                    baris berikutnya. */}
+                <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                  <Col xs={24} md={10} style={{ minWidth: 0 }}>
+                    {itemLabel(`itemName-${i}`, t("common.itemName"))}
                     <TextInput
                       id={`itemName-${i}`}
-                      className="w-full"
                       value={item.itemName}
                       onChange={(e) => updateItem(i, "itemName", e.target.value)}
                       required
                     />
-                  </div>
-                  <div className="w-20">
-                    <label
-                      htmlFor={`bags-${i}`}
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("common.bags")}
-                    </label>
+                  </Col>
+                  <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                    {itemLabel(`bags-${i}`, t("common.bags"))}
+                    {/* KUANTITAS (`Decimal(15,3)`), bukan uang — tanpa topeng
+                        rupiah, desimalnya utuh. */}
                     <TextInput
                       id={`bags-${i}`}
                       type="number"
                       min={0}
-                      className="w-full text-right tabular-nums"
+                      style={numberStyle}
                       value={item.bags}
                       onChange={(e) => updateItem(i, "bags", Number(e.target.value))}
                     />
-                  </div>
-                  <div className="w-24">
-                    <label
-                      htmlFor={`kgPerBag-${i}`}
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("common.kgPerBag")}
-                    </label>
+                  </Col>
+                  <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                    {itemLabel(`kgPerBag-${i}`, t("common.kgPerBag"))}
                     <TextInput
                       id={`kgPerBag-${i}`}
                       type="number"
                       min={0}
                       step="0.01"
-                      className="w-full text-right tabular-nums"
+                      style={numberStyle}
                       value={item.kgPerBag}
                       onChange={(e) => updateItem(i, "kgPerBag", Number(e.target.value))}
                     />
-                  </div>
-                  <div className="w-28">
-                    <label
-                      htmlFor={`pricePerKg-${i}`}
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("contracts.pricePerKg")}
-                    </label>
+                  </Col>
+                  <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                    {itemLabel(`pricePerKg-${i}`, t("contracts.pricePerKg"))}
                     <TextInput
                       id={`pricePerKg-${i}`}
                       type="number"
                       min={0}
                       step="0.01"
-                      className="w-full text-right tabular-nums"
+                      style={numberStyle}
                       value={item.pricePerKg}
                       onChange={(e) => updateItem(i, "pricePerKg", Number(e.target.value))}
                     />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeItem(i)}
-                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                    disabled={items.length === 1}
-                    aria-label={t("common.removeItemRow", { n: i + 1 })}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-                <p className="mt-2 text-right text-xs tabular-nums text-foreground">
+                  </Col>
+                  <Col flex="none">
+                    {/* `variant="danger"` di sini akan menggambar tombol isian
+                        merah pekat untuk sebuah aksi baris; yang dibutuhkan
+                        hanya WARNA ikonnya, jadi ia lewat `style` dan tombolnya
+                        tetap `ghost`. */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(i)}
+                      style={{ color: token.colorError }}
+                      disabled={items.length === 1}
+                      aria-label={t("common.removeItemRow", { n: i + 1 })}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  </Col>
+                </Row>
+                <Typography.Paragraph
+                  style={{
+                    margin: 0,
+                    marginTop: token.marginXS,
+                    textAlign: "right",
+                    fontSize: token.fontSizeSM,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
                   = {formatCurrency(item.bags * item.kgPerBag * item.pricePerKg, currency)}
-                </p>
+                </Typography.Paragraph>
               </div>
             ))}
-          </div>
+          </Flex>
         </CardContent>
       </Card>
 
       {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
-      <DisclosureSection
-        className="mb-6"
-        description={t("contracts.advancedDescription")}
-        summary={advancedSummary}
-        open={advancedOpen}
-        onOpenChange={setAdvancedOpen}
-        invalid={advancedInvalid}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DueDateField value={dueDate} onChange={setDueDate} />
-          <ConsigneeSelect consigneeId={consigneeId} onConsigneeIdChange={setConsigneeId} />
-          <Input id="packaging" name="packaging" label={t("contracts.packaging")} />
-          <Input id="shipment" name="shipment" label={t("contracts.shipment")} />
-          <div>
-            <Input id="top1" name="top1" label={t("contracts.top1")} />
-            <p className="mt-1 text-xs text-muted-foreground">{t("contracts.top1Hint")}</p>
-          </div>
-          <Input id="top2" name="top2" label={t("contracts.top2")} />
-          <Select
-            id="status"
-            name="status"
-            label={t("common.status")}
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            options={[
-              { value: "pending", label: t("status.contract.pending") },
-              { value: "signed", label: t("contracts.statusSignedLong") },
-              { value: "canceled", label: t("status.contract.canceled") },
-            ]}
-          />
-        </div>
-      </DisclosureSection>
+      <div style={{ marginBottom: token.marginLG }}>
+        <DisclosureSection
+          description={t("contracts.advancedDescription")}
+          summary={advancedSummary}
+          open={advancedOpen}
+          onOpenChange={setAdvancedOpen}
+          invalid={advancedInvalid}
+        >
+          <Row gutter={[token.margin, token.margin]}>
+            <Col xs={24} sm={12}>
+              <DueDateField value={dueDate} onChange={setDueDate} />
+            </Col>
+            <Col xs={24} sm={12}>
+              <ConsigneeSelect consigneeId={consigneeId} onConsigneeIdChange={setConsigneeId} />
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input id="packaging" name="packaging" label={t("contracts.packaging")} />
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input id="shipment" name="shipment" label={t("contracts.shipment")} />
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input id="top1" name="top1" label={t("contracts.top1")} />
+              <Typography.Text
+                type="secondary"
+                style={{
+                  display: "block",
+                  marginTop: token.marginXXS,
+                  fontSize: token.fontSizeSM,
+                }}
+              >
+                {t("contracts.top1Hint")}
+              </Typography.Text>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Input id="top2" name="top2" label={t("contracts.top2")} />
+            </Col>
+            <Col xs={24} sm={12}>
+              {/* Status lewat peta label bahasa tugas — nilai enum DB
+                  (`pending`/`signed`/`canceled`) tidak pernah tampil mentah. */}
+              <Select
+                id="status"
+                name="status"
+                label={t("common.status")}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                options={[
+                  { value: "pending", label: t("status.contract.pending") },
+                  { value: "signed", label: t("contracts.statusSignedLong") },
+                  { value: "canceled", label: t("status.contract.canceled") },
+                ]}
+              />
+            </Col>
+          </Row>
+        </DisclosureSection>
+      </div>
 
-      <Card className="mb-6">
-        <CardContent className="py-3">
-          <dl className="space-y-1 text-sm">
-            <div className="flex items-center justify-between">
-              <dt className="font-medium text-muted-foreground">
+      <Card style={{ marginBottom: token.marginLG }}>
+        <CardContent style={{ paddingBlock: token.paddingSM }}>
+          <dl style={{ margin: 0 }}>
+            <Flex align="center" justify="space-between" gap={token.marginSM}>
+              <dt style={{ color: token.colorTextSecondary, fontWeight: token.fontWeightStrong }}>
                 {t("contracts.estimatedValue", { currency })}
               </dt>
-              <dd className="text-lg font-bold tabular-nums text-foreground">
+              <dd
+                style={{
+                  margin: 0,
+                  fontSize: token.fontSizeLG,
+                  fontWeight: token.fontWeightStrong,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {formatCurrency(subtotal, currency)}
               </dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">
+            </Flex>
+            <Flex
+              align="center"
+              justify="space-between"
+              gap={token.marginSM}
+              style={{ marginTop: token.marginXXS }}
+            >
+              <dt style={{ color: token.colorTextSecondary }}>
                 <TermTooltip term="buku_besar">{t("common.ledgerBaseIdr")}</TermTooltip>
               </dt>
-              <dd className="tabular-nums font-medium text-foreground">
+              {/* Tanpa kurs, nilai dasarnya BELUM DIKETAHUI — ditulis dengan
+                  kalimat, tidak pernah Rp 0. */}
+              <dd
+                style={{
+                  margin: 0,
+                  fontWeight: token.fontWeightStrong,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {baseUnknown(currency, rate)
                   ? t("contracts.fillRateFirst")
                   : formatCurrency(subtotal * (Number(rate) || 1), "IDR")}
               </dd>
-            </div>
+            </Flex>
           </dl>
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
-        <Button type="submit" className="cursor-pointer" disabled={loading}>
+      <Flex wrap gap={token.marginSM}>
+        <Button type="submit" disabled={loading}>
           {loading ? t("common.saving") : t("contracts.submit")}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="cursor-pointer"
-          onClick={() => router.back()}
-        >
+        <Button type="button" variant="secondary" onClick={() => router.back()}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
     </form>
   );
 }

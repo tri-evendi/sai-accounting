@@ -1,3 +1,12 @@
+/**
+ * Rincian Surat Jalan — dikonversi ke token Ant Design pada issue #195.
+ *
+ * **Tetap server component** (tanpa `antd`). Warna lewat primitif yang
+ * mewarnai dirinya sendiri + variabel `--ant-…` yang hanya dipakai di dalam
+ * pohon `<Card>`. Seluruh angka di sini KUANTITAS (`Decimal(15,3)`), jadi
+ * semuanya lewat `formatNumber` — tidak ada satu pun kolom uang di halaman ini.
+ */
+
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Link } from "@/components/ui/app-link";
@@ -5,21 +14,20 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";
+
+/** `marginLG` 24 · `marginSM` 12 — token AntD sebagai angka (server component). */
+const SECTION_GAP = 24;
+const INFO_GAP = 12;
+/** Lebar dasar satu pasang istilah–nilai pada daftar info. */
+const INFO_BASIS = 240;
 
 export default async function DeliveryOrderDetailPage({
   params,
@@ -61,7 +69,7 @@ export default async function DeliveryOrderDetailPage({
     [
       t("deliveryOrders.infoContract"),
       order.contract ? (
-        <Link href={`/contracts/${order.contract.id}`} className="text-primary hover:underline">
+        <Link href={`/contracts/${order.contract.id}`} style={{ color: "var(--ant-color-link)" }}>
           {order.contract.contractNo}
         </Link>
       ) : (
@@ -71,7 +79,7 @@ export default async function DeliveryOrderDetailPage({
     [
       t("deliveryOrders.infoInvoice"),
       order.invoice ? (
-        <Link href={`/invoices/${order.invoice.id}`} className="text-primary hover:underline">
+        <Link href={`/invoices/${order.invoice.id}`} style={{ color: "var(--ant-color-link)" }}>
           {order.invoice.invoiceNo}
         </Link>
       ) : (
@@ -83,8 +91,44 @@ export default async function DeliveryOrderDetailPage({
     [t("common.notes"), order.notes || "—"],
   ];
 
+  const itemColumns: SaiColumns<(typeof order.items)[number]> = [
+    { key: "itemName", dataIndex: "itemName", title: t("common.item"), align: "left" },
+    {
+      key: "bags",
+      dataIndex: "bags",
+      title: t("common.bags"),
+      align: "right",
+      render: (_v, it) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatNumber(it.bags)}</span>
+      ),
+    },
+    {
+      key: "kgPerBag",
+      dataIndex: "kgPerBag",
+      title: t("common.kgPerBag"),
+      align: "right",
+      // `Decimal(15,3)`: 12,5 kg harus tetap 12,5 — bukan dibulatkan.
+      render: (_v, it) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {formatNumber(Number(it.kgPerBag))}
+        </span>
+      ),
+    },
+    {
+      key: "quantity",
+      dataIndex: "quantity",
+      title: t("deliveryOrders.colTotalKg"),
+      align: "right",
+      render: (_v, it) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {formatNumber(Number(it.quantity))}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("deliveryOrders.title"), href: "/delivery-orders" },
@@ -118,16 +162,22 @@ export default async function DeliveryOrderDetailPage({
         }
       />
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("deliveryOrders.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {/* `sm:grid-cols-2` diganti baris yang membungkus sendiri: satu kolom
+              di 375px, dua atau lebih begitu ruangnya ada. */}
+          <dl
+            style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: INFO_GAP }}
+          >
             {info.map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-                <dd className="text-sm text-foreground">{value}</dd>
+              <div key={label} style={{ flex: `1 1 ${INFO_BASIS}px`, minWidth: 0 }}>
+                <dt style={{ color: "var(--ant-color-text-secondary)" }}>
+                  <small>{label}</small>
+                </dt>
+                <dd style={{ margin: 0 }}>{value}</dd>
               </div>
             ))}
           </dl>
@@ -138,46 +188,26 @@ export default async function DeliveryOrderDetailPage({
         <CardHeader>
           <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
         </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("common.item")}</TableHead>
-                <TableHead className="text-right">{t("common.bags")}</TableHead>
-                <TableHead className="text-right">{t("common.kgPerBag")}</TableHead>
-                <TableHead className="text-right">{t("deliveryOrders.colTotalKg")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {order.items.map((it) => (
-                <TableRow key={it.id}>
-                  <TableCell className="text-foreground">{it.itemName}</TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(it.bags)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(Number(it.kgPerBag))}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(Number(it.quantity))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter className="bg-transparent">
-              <TableRow className="font-semibold hover:bg-transparent">
-                <TableCell className="text-foreground">{t("common.total")}</TableCell>
-                <TableCell className="text-right tabular-nums text-foreground">
-                  {formatNumber(totalBags)}
-                </TableCell>
-                <TableCell />
-                <TableCell className="text-right tabular-nums text-foreground">
-                  {formatNumber(totalKg)}
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </CardContent>
+        {/* Tabelnya menempel tepi kartu — `CardContent px-0` lama hanya ada
+            untuk itu, jadi pembungkusnya dilepas seluruhnya. */}
+        <StaticTable
+          columns={itemColumns}
+          rows={order.items}
+          rowKey={(it) => it.id}
+          summary={{
+            itemName: t("common.total"),
+            bags: (
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatNumber(totalBags)}
+              </span>
+            ),
+            quantity: (
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatNumber(totalKg)}
+              </span>
+            ),
+          }}
+        />
       </Card>
     </div>
   );

@@ -14,23 +14,32 @@
  * The remainders shown here are a CONVENIENCE. The same arithmetic re-runs inside
  * POST /api/invoices' transaction (`assertWithinContract`), so a stale page or a
  * hand-edited quantity still cannot over-invoice a contract.
+ *
+ * ── Konversi ke token Ant Design (issue #195, fase C3) ─────────────────────
+ * Yang berubah hanya kulitnya: `className` Tailwind → token `theme.useToken()`
+ * dan tata letak AntD. Mesin formulir (state + `FormData`), penjaga
+ * sebelum-kirim, dan seluruh aritmetika "Ambil" TIDAK disentuh.
+ *
+ * **Kisinya tetap CSS grid, bukan `Row`/`Col`.** Itu bukan selera: tiga blok
+ * bersama yang dijatuhkan ke dalamnya — `InvoiceCustomerField`,
+ * `InvoiceTotalsSummary`, `InvoiceFxAdvancedFields` — membentang dengan
+ * `gridColumn: "1 / -1"` (lihat `FULL_ROW` di `shared/invoice-fx-fields.tsx`,
+ * ditulis di #194 dengan catatan yang menyebut issue ini). Di dalam `Col`
+ * flexbox properti itu tidak berarti apa-apa dan ketiganya akan diam-diam
+ * berhenti membentang penuh.
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { Alert, Col, Flex, Row, Spin, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import {
   ServerSearchableSelect,
   type PickerOption,
@@ -62,8 +71,25 @@ import {
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
-import { Trash2, Plus, Download, Info, Loader2, AlertCircle, Lock } from "lucide-react";
+import { Trash2, Plus, Download, Info, Lock } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`, tetap CSS grid (lihat catatan `FULL_ROW` di kepala berkas).
+ * `max(280px, (100% − gutter)/2)` menahan jumlah kolomnya di dua, sehingga di
+ * 1440px kisinya tidak diam-diam berkembang jadi lima; titik patahnya jatuh
+ * tepat di 576px, `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Lebar dasar kolom angka pada baris barang (`w-24`/`w-28`/`w-20` lama). */
+const QTY_COL_BASIS = 96;
 
 interface InvoiceItem {
   itemName: string;
@@ -98,6 +124,7 @@ export function NewInvoiceForm({
   const initialContractId = initialContract ? Number(initialContract.value) : null;
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([emptyItem()]);
@@ -321,31 +348,114 @@ export function NewInvoiceForm({
     dueDate ? t("invoices.advDueDate", { date: dueDate }) : t("invoices.advNoDueDate"),
   ].join(" · ");
 
+  /** Label mikro di atas satu isian baris barang. */
+  const itemLabel = (htmlFor: string, text: string) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka baris barang — rata kanan + `tabular-nums`. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
+  /** Sel KUANTITAS pada tabel sisa kontrak — id-ID, tanpa topeng rupiah. */
+  const qty = (value: number, strong = false) => (
+    <span
+      style={{
+        fontVariantNumeric: "tabular-nums",
+        fontWeight: strong ? token.fontWeightStrong : undefined,
+      }}
+    >
+      {formatNumber(value)}
+    </span>
+  );
+
+  const outstandingColumns: SaiColumns<ContractLineOutstanding> = [
+    {
+      key: "itemName",
+      dataIndex: "itemName",
+      title: t("common.item"),
+      align: "left",
+      render: (_v, l) => (
+        <Flex wrap align="center" gap={token.marginXXS}>
+          <span>{l.itemName}</span>
+          {l.remainingKg === 0 && (
+            <Badge variant="success">{t("invoices.fullyInvoicedBadge")}</Badge>
+          )}
+        </Flex>
+      ),
+    },
+    {
+      key: "contractedKg",
+      dataIndex: "contractedKg",
+      title: t("contracts.colContractedKg"),
+      align: "right",
+      render: (_v, l) => qty(l.contractedKg),
+    },
+    {
+      key: "deliveredKg",
+      dataIndex: "deliveredKg",
+      title: t("contracts.colDeliveredKg"),
+      align: "right",
+      render: (_v, l) => qty(l.deliveredKg),
+    },
+    {
+      key: "invoicedKg",
+      dataIndex: "invoicedKg",
+      title: t("contracts.colInvoicedKg"),
+      align: "right",
+      render: (_v, l) => qty(l.invoicedKg),
+    },
+    {
+      key: "remainingKg",
+      dataIndex: "remainingKg",
+      title: t("contracts.colRemainingKg"),
+      align: "right",
+      render: (_v, l) => qty(l.remainingKg, true),
+    },
+    {
+      key: "readyToInvoiceKg",
+      dataIndex: "readyToInvoiceKg",
+      title: t("invoices.colReadyToInvoice"),
+      align: "right",
+      render: (_v, l) => qty(l.readyToInvoiceKg),
+    },
+  ];
+
   return (
     <>
       {error && (
-        <div
-          role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        /* Galat tingkat formulir sebagai `Alert` AntD — teks `colorText` di atas
+           `colorErrorBg` + ikon, jadi maknanya tidak bergantung warna.
+           `role="alert"` tetap milik kita; AntD tidak memasangnya. */
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         {/* ── Ambil dari kontrak (issue #15) ── */}
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("invoices.pullTitle")}</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: token.marginXXS }}
+            >
               {t("invoices.pullDescriptionA")}{" "}
               <strong>{t("invoices.pullDescriptionStrong")}</strong>{" "}
               {t("invoices.pullDescriptionB")}
-            </p>
+            </Typography.Text>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div style={twoColumnGrid(token.margin)}>
               {/* Mencari ke server (audit: daftar statis `take: 300` membuat
                   kontrak lama tak terpilih). Detail barisnya tetap dari
                   `/api/contracts/[id]/outstanding` begitu terpilih. */}
@@ -360,7 +470,7 @@ export function NewInvoiceForm({
                 value={contractId != null ? String(contractId) : null}
                 onChange={(v) => chooseContract(v == null ? null : Number(v))}
               />
-              <div className="flex items-end gap-2">
+              <Flex wrap align="flex-end" gap={token.marginXS}>
                 <Button
                   type="button"
                   variant="secondary"
@@ -368,7 +478,7 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.contract.length === 0}
                   onClick={() => pull("contract")}
                 >
-                  <Download className="mr-1 h-4 w-4" aria-hidden /> {t("invoices.pullContractRemainder")}
+                  <Download aria-hidden /> {t("invoices.pullContractRemainder")}
                 </Button>
                 <Button
                   type="button"
@@ -377,88 +487,71 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.delivery.length === 0}
                   onClick={() => pull("delivery")}
                 >
-                  <Download className="mr-1 h-4 w-4" aria-hidden /> {t("invoices.pullShipped")}
+                  <Download aria-hidden /> {t("invoices.pullShipped")}
                 </Button>
-              </div>
+              </Flex>
             </div>
 
             {loadingOutstanding && (
-              <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t("invoices.loadingOutstanding")}
-              </p>
+              /* `Spin` AntD menggantikan `Loader2 animate-spin`: ia menghormati
+                 `prefers-reduced-motion` lewat token gerak AntD, dan membawa
+                 `aria-live` sendiri. */
+              <Flex align="center" gap={token.marginXS} style={{ marginTop: token.margin }}>
+                <Spin size="small" />
+                <Typography.Text type="secondary">
+                  {t("invoices.loadingOutstanding")}
+                </Typography.Text>
+              </Flex>
             )}
 
             {outstanding && !loadingOutstanding && (
-              <div className="mt-4 rounded-md border border-border">
-                {/* Tabel ringkas (px-3 py-2) — padding rapat sengaja menimpa
-                    bawaan primitif agar sama dengan tampilan sebelum migrasi. */}
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted hover:bg-muted">
-                      <TableHead className="h-auto px-3 py-2">{t("common.item")}</TableHead>
-                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colContractedKg")}</TableHead>
-                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colDeliveredKg")}</TableHead>
-                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colInvoicedKg")}</TableHead>
-                      <TableHead className="h-auto px-3 py-2 text-right">{t("contracts.colRemainingKg")}</TableHead>
-                      <TableHead className="h-auto px-3 py-2 text-right">{t("invoices.colReadyToInvoice")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {outstanding.lines.length === 0 ? (
-                      <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={6} className="px-3 py-3 text-center text-muted-foreground">
-                          {t("invoices.noContractLines")}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      outstanding.lines.map((l) => (
-                        <TableRow key={l.key}>
-                          <TableCell className="px-3 py-2 text-foreground">
-                            {l.itemName}
-                            {l.remainingKg === 0 && (
-                              <Badge variant="success" className="ml-2">
-                                {t("invoices.fullyInvoicedBadge")}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
-                            {formatNumber(l.contractedKg)}
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
-                            {formatNumber(l.deliveredKg)}
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
-                            {formatNumber(l.invoicedKg)}
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
-                            {formatNumber(l.remainingKg)}
-                          </TableCell>
-                          <TableCell className="px-3 py-2 text-right tabular-nums text-foreground">
-                            {formatNumber(l.readyToInvoiceKg)}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+              <div
+                style={{
+                  marginTop: token.margin,
+                  borderRadius: token.borderRadius,
+                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  overflow: "hidden",
+                }}
+              >
+                <StaticTable
+                  columns={outstandingColumns}
+                  rows={outstanding.lines}
+                  rowKey={(l) => l.key}
+                  empty={
+                    <Typography.Paragraph
+                      type="secondary"
+                      style={{ margin: 0, padding: token.paddingSM, textAlign: "center" }}
+                    >
+                      {t("invoices.noContractLines")}
+                    </Typography.Paragraph>
+                  }
+                />
               </div>
             )}
 
             {pullNote && (
-              <p className="mt-3 flex items-start gap-1 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span>{pullNote}</span>
-              </p>
+              <Flex
+                align="flex-start"
+                gap={token.marginXXS}
+                style={{ marginTop: token.marginSM }}
+              >
+                <Info size={token.fontSize} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+                <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                  {pullNote}
+                </Typography.Text>
+              </Flex>
             )}
           </CardContent>
         </Card>
 
-        <Card className="mb-6" data-tour="faktur-identitas">
+        <Card style={{ marginBottom: token.marginLG }} data-tour="faktur-identitas">
           <CardHeader>
             <CardTitle>{t("invoices.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* CSS grid, bukan `Row`/`Col`: `InvoiceCustomerField` dan
+                `InvoiceTotalsSummary` membentang dengan `gridColumn: 1 / -1`. */}
+            <div style={twoColumnGrid(token.margin)}>
               <Input id="invoiceNo" name="invoiceNo" label={t("invoices.invoiceNo")} required />
               <div>
                 <Input
@@ -471,10 +564,21 @@ export function NewInvoiceForm({
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <Typography.Paragraph
+                    role="alert"
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                      color: token.colorError,
+                    }}
+                  >
+                    <Lock size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span>{periodIssue}</span>
-                  </p>
+                  </Typography.Paragraph>
                 )}
               </div>
               <InvoiceCustomerField
@@ -487,19 +591,19 @@ export function NewInvoiceForm({
           </CardContent>
         </Card>
 
-        <Card className="mb-6" data-tour="faktur-barang">
+        <Card style={{ marginBottom: token.marginLG }} data-tour="faktur-barang">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
               <CardTitle>
                 <TermTooltip term="faktur">{t("invoices.goodsSoldTitle")}</TermTooltip>
               </CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden /> {t("common.addItem")}
+                <Plus aria-hidden /> {t("common.addItem")}
               </Button>
-            </div>
+            </Flex>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <Flex vertical gap={token.margin}>
               {items.map((item, i) => {
                 // Remainder hint for a line drawn from the contract, so an
                 // over-invoice is visible before the server refuses it.
@@ -508,85 +612,90 @@ export function NewInvoiceForm({
                 );
                 const over = line != null && item.quantity > line.remainingKg;
                 return (
-                  <div key={i} className="rounded-md border border-border p-3">
-                    <div className="flex items-end gap-3">
-                      <div className="flex-1">
-                        <label
-                          htmlFor={`itemName-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("common.itemName")}
-                        </label>
+                  <div
+                    key={i}
+                    style={{
+                      padding: token.paddingSM,
+                      borderRadius: token.borderRadius,
+                      border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                    }}
+                  >
+                    {/* `Row` yang membungkus, bukan satu baris flex kaku: di
+                        375px kelima kendali dulu saling menghimpit. */}
+                    <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                      <Col xs={24} md={8} style={{ minWidth: 0 }}>
+                        {itemLabel(`itemName-${i}`, t("common.itemName"))}
                         <TextInput
                           id={`itemName-${i}`}
-                          className="w-full"
                           value={item.itemName}
                           onChange={(e) => updateItem(i, "itemName", e.target.value)}
                           required
                         />
-                      </div>
-                      <div className="w-24">
-                        <label
-                          htmlFor={`quantity-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("common.quantity")}
-                        </label>
+                      </Col>
+                      <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                        {itemLabel(`quantity-${i}`, t("common.quantity"))}
+                        {/* KUANTITAS (`Decimal(15,3)`), bukan uang — desimalnya
+                            utuh dan tanpa "Rp". */}
                         <TextInput
                           id={`quantity-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="w-full text-right tabular-nums"
+                          style={numberStyle}
                           value={item.quantity}
                           onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
                         />
-                      </div>
-                      <div className="w-28">
-                        <label
-                          htmlFor={`price-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("common.price")}
-                        </label>
+                      </Col>
+                      <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                        {itemLabel(`price-${i}`, t("common.price"))}
                         <TextInput
                           id={`price-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="w-full text-right tabular-nums"
+                          style={numberStyle}
                           value={item.price}
                           onChange={(e) => updateItem(i, "price", Number(e.target.value))}
                         />
-                      </div>
-                      <div className="w-20">
-                        <label
-                          htmlFor={`unit-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("common.unit")}
-                        </label>
+                      </Col>
+                      <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                        {itemLabel(`unit-${i}`, t("common.unit"))}
                         <TextInput
                           id={`unit-${i}`}
-                          className="w-full"
                           value={item.unit}
                           onChange={(e) => updateItem(i, "unit", e.target.value)}
                         />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(i)}
-                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                        disabled={items.length === 1}
-                        aria-label={t("common.removeItemRow", { n: i + 1 })}
+                      </Col>
+                      <Col flex="none">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(i)}
+                          style={{ color: token.colorError }}
+                          disabled={items.length === 1}
+                          aria-label={t("common.removeItemRow", { n: i + 1 })}
+                        >
+                          <Trash2 aria-hidden />
+                        </Button>
+                      </Col>
+                    </Row>
+                    <Flex
+                      wrap
+                      align="center"
+                      justify="space-between"
+                      gap={token.marginXS}
+                      style={{ marginTop: token.marginXS, fontSize: token.fontSizeSM }}
+                    >
+                      {/* Kelebihan faktur ditandai WARNA + KATA: kalimatnya
+                          sendiri berbunyi "melebihi sisa", jadi warnanya bukan
+                          penanda tunggal. */}
+                      <span
+                        style={{
+                          color: over ? token.colorError : token.colorTextSecondary,
+                          fontWeight: over ? token.fontWeightStrong : undefined,
+                        }}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                      <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                         {line
                           ? over
                             ? t("invoices.lineRemainingOver", { kg: formatNumber(line.remainingKg) })
@@ -595,62 +704,69 @@ export function NewInvoiceForm({
                             ? t("invoices.lineOutsideContract")
                             : ""}
                       </span>
-                      <span className="tabular-nums text-foreground">
+                      <span style={{ fontVariantNumeric: "tabular-nums" }}>
                         = {formatCurrency(item.quantity * item.price, fx.currency)}
                       </span>
-                    </div>
+                    </Flex>
                   </div>
                 );
               })}
-            </div>
+            </Flex>
           </CardContent>
         </Card>
 
         {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
-        <DisclosureSection
-          className="mb-6"
-          description={t("invoices.advancedDescription")}
-          summary={advancedSummary}
-          open={advancedOpen}
-          onOpenChange={setAdvancedOpen}
-          invalid={advancedInvalid}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <DueDateField value={dueDate} onChange={setDueDate} />
-            <Select
-              id="status"
-              name="status"
-              label={t("common.status")}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              options={[
-                { value: "pending", label: t("status.contract.pending") },
-                { value: "signed", label: t("status.contract.signed") },
-                { value: "canceled", label: t("status.contract.canceled") },
-              ]}
-            />
-            <InvoiceFxAdvancedFields
-              customers={customers}
-              value={fx}
-              onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
-            />
-            <CostCenterField
-              className="sm:col-span-2"
-              costCenters={costCenters}
-              value={costCenterId}
-              onChange={setCostCenterId}
-            />
-          </div>
-        </DisclosureSection>
+        <div style={{ marginBottom: token.marginLG }}>
+          <DisclosureSection
+            description={t("invoices.advancedDescription")}
+            summary={advancedSummary}
+            open={advancedOpen}
+            onOpenChange={setAdvancedOpen}
+            invalid={advancedInvalid}
+          >
+            {/* Tetap CSS grid: `InvoiceFxAdvancedFields` menaruh kotak PPN & PEB
+                dengan `gridColumn: 1 / -1`, dan `CostCenterField` di bawahnya
+                membentang penuh lewat gaya yang sama. */}
+            <div style={twoColumnGrid(token.margin)}>
+              <DueDateField value={dueDate} onChange={setDueDate} />
+              {/* Status lewat peta label bahasa tugas — nilai enum DB tidak
+                  pernah tampil mentah. */}
+              <Select
+                id="status"
+                name="status"
+                label={t("common.status")}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                options={[
+                  { value: "pending", label: t("status.contract.pending") },
+                  { value: "signed", label: t("status.contract.signed") },
+                  { value: "canceled", label: t("status.contract.canceled") },
+                ]}
+              />
+              <InvoiceFxAdvancedFields
+                customers={customers}
+                value={fx}
+                onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+              />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <CostCenterField
+                  costCenters={costCenters}
+                  value={costCenterId}
+                  onChange={setCostCenterId}
+                />
+              </div>
+            </div>
+          </DisclosureSection>
+        </div>
 
-        <div className="flex gap-3" data-tour="faktur-simpan">
+        <Flex wrap gap={token.marginSM} data-tour="faktur-simpan">
           <Button type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("invoices.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </>
   );

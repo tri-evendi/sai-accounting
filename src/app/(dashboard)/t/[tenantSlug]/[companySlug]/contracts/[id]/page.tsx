@@ -1,3 +1,27 @@
+/**
+ * Rincian Kontrak — dikonversi ke token Ant Design pada issue #195 (fase C3).
+ *
+ * **Tetap server component**, dan itu yang menentukan bentuk berkas ini: `antd`
+ * tidak boleh diimpor di sini (`tests/rsc-boundary.test.ts`), jadi tidak ada
+ * `theme.useToken()`. Warna datang dari primitif yang mewarnai dirinya sendiri
+ * (`Badge`, `Money`, `StatusBadge`, `Card`) dan dari variabel `--ant-…` yang
+ * HANYA dipakai di dalam pohon sebuah komponen AntD — di app ini praktisnya
+ * "di dalam `<Card>`". Di luar pohon itu variabelnya tidak teratasi dan warnanya
+ * jatuh diam-diam ke warisan (lihat catatan panjang di `shared/aging.tsx`).
+ *
+ * Dua catatan supaya konversi ini tidak "diperbaiki" ke arah yang salah nanti:
+ *
+ *  • **Catatan peringatan tidak berwarna.** Baris "sebagian pengiriman tidak
+ *    cocok dengan baris kontrak" dan "pembayaran tanpa kurs" dulu memakai
+ *    `text-warning-strong`. Penandanya kini IKON + KATA, bukan warna — bentuk
+ *    yang sama dipilih `aging.tsx`, dan aturan MASTER.md memang melarang warna
+ *    menjadi penanda tunggal. Ia tetap terbaca kalau kelak dipindah ke luar
+ *    kartu.
+ *  • **Kuantitas bukan uang.** Kolom kg dan kolom bags/kg-per-bag memakai
+ *    `tabular-nums` + `formatNumber` (id-ID), TANPA topeng rupiah: 12,5 kg
+ *    tidak boleh dibaca sebagai Rp 13. Hanya kolom nilai yang lewat `Money`.
+ */
+
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Link } from "@/components/ui/app-link";
@@ -17,19 +41,43 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money, MoneyCell } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
 import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import { buildContractChain, loadContractChain } from "@/lib/document-chain";
+import {
+  buildContractChain,
+  loadContractChain,
+  type ContractLineOutstanding,
+} from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
-import { Banknote, Package, Receipt, Truck } from "lucide-react";
+import { AlertTriangle, Banknote, Package, Receipt, Truck } from "lucide-react";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Jarak yang tidak bisa dibaca dari token di berkas tanpa hook. Nilainya SAMA
+ * dengan tokennya, disebut supaya #203 bisa menukarnya tanpa menebak:
+ * `marginLG` 24, `marginSM` 12, `marginXS` 8, `marginXXS` 4.
+ */
+const SECTION_GAP = 24;
+const CARD_GAP = 12;
+const INLINE_GAP = 8;
+const TIGHT_GAP = 4;
+/** Lebar dasar satu kartu di baris "surat jalan & faktur". */
+const PAIR_BASIS = 320;
+/** Lebar dasar satu pasang istilah–nilai pada daftar info kontrak. */
+const INFO_BASIS = 240;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+/** Padding baris daftar dokumen berantai. */
+const LIST_ROW_PADDING = 8;
 
 export default async function ContractDetailPage({
   params,
@@ -93,8 +141,136 @@ export default async function ContractDetailPage({
     contractBase: baseAmount,
   });
 
+  /** Kolom KUANTITAS — id-ID, tabular-nums, rata kanan, TANPA mata uang. */
+  const qty = (value: number, strong = false) => (
+    <span
+      style={{
+        fontVariantNumeric: "tabular-nums",
+        fontWeight: strong ? "var(--ant-font-weight-strong)" : undefined,
+      }}
+    >
+      {formatNumber(value)}
+    </span>
+  );
+
+  const outstandingColumns: SaiColumns<ContractLineOutstanding> = [
+    { key: "itemName", dataIndex: "itemName", title: t("common.item"), align: "left" },
+    {
+      key: "contractedKg",
+      dataIndex: "contractedKg",
+      title: t("contracts.colContractedKg"),
+      align: "right",
+      render: (_v, row) => qty(row.contractedKg),
+    },
+    {
+      key: "deliveredKg",
+      dataIndex: "deliveredKg",
+      title: t("contracts.colDeliveredKg"),
+      align: "right",
+      render: (_v, row) => qty(row.deliveredKg),
+    },
+    {
+      key: "invoicedKg",
+      dataIndex: "invoicedKg",
+      title: t("contracts.colInvoicedKg"),
+      align: "right",
+      render: (_v, row) => qty(row.invoicedKg),
+    },
+    {
+      key: "remainingKg",
+      dataIndex: "remainingKg",
+      title: t("contracts.colRemainingKg"),
+      align: "right",
+      render: (_v, row) => qty(row.remainingKg, true),
+    },
+    {
+      key: "remainingValue",
+      dataIndex: "remainingValue",
+      title: t("contracts.colRemainingValue"),
+      align: "right",
+      render: (_v, row) => (
+        <Money value={row.remainingValue} currency={contract.currency} />
+      ),
+    },
+    {
+      key: "invoiceStatus",
+      dataIndex: "invoiceStatus",
+      title: t("contracts.colInvoiceStatus"),
+      align: "left",
+      render: (_v, row) => (
+        <Badge
+          variant={
+            row.invoiceStatus === "selesai"
+              ? "success"
+              : row.invoiceStatus === "sebagian"
+                ? "warning"
+                : "default"
+          }
+        >
+          {row.invoiceStatus === "selesai"
+            ? t("contracts.invoicedFull")
+            : row.invoiceStatus === "sebagian"
+              ? t("contracts.invoicedPartial")
+              : t("contracts.invoicedNone")}
+        </Badge>
+      ),
+    },
+  ];
+
+  const paymentRows = contract.payments.map((p) => ({
+    id: p.id,
+    date: formatDate(p.date),
+    amount: Number(p.amount),
+    currency: p.currency,
+    note: p.note ?? "-",
+  }));
+
+  const paymentColumns: SaiColumns<(typeof paymentRows)[number]> = [
+    { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
+    {
+      key: "amount",
+      dataIndex: "amount",
+      title: t("common.amount"),
+      align: "right",
+      render: (_v, row) => (
+        <Money
+          style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+          value={row.amount}
+          currency={row.currency}
+        />
+      ),
+    },
+    {
+      key: "note",
+      dataIndex: "note",
+      title: t("common.notes"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.note}</span>
+      ),
+    },
+  ];
+
+  /** Satu pasang istilah–nilai pada kartu "Informasi Kontrak". */
+  const infoItem = (label: React.ReactNode, value: React.ReactNode) => (
+    <div style={{ flex: `1 1 ${INFO_BASIS}px`, minWidth: 0 }}>
+      <dt
+        style={{
+          color: "var(--ant-color-text-secondary)",
+          fontWeight: "var(--ant-font-weight-strong)",
+        }}
+      >
+        {label}
+      </dt>
+      <dd style={{ margin: 0 }}>{value}</dd>
+    </div>
+  );
+
   return (
-    <div className="w-full">
+    <div>
+      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `Button asChild`):
+          `asChild` merender `<a href>` AntD, yaitu pemuatan halaman PENUH —
+          lihat catatan `asChild` di `ui/button.tsx`. */}
       <PageHeader
         breadcrumbs={[
           { label: t("contracts.breadcrumb"), href: "/contracts" },
@@ -134,7 +310,9 @@ export default async function ContractDetailPage({
               barisnya sudah terisi sisa yang belum difakturkan. */}
           <Link href={`/invoices/new?contractId=${contract.id}`}>
             <Button>
-              <Receipt className="mr-1 h-4 w-4" aria-hidden /> {t("contracts.createInvoice")}
+              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
+                  primitif `Button` (`ICON_SIZE`). */}
+              <Receipt aria-hidden="true" /> {t("contracts.createInvoice")}
             </Button>
           </Link>
           <Link href={`/contracts/${contract.id}/edit`}>
@@ -159,10 +337,18 @@ export default async function ContractDetailPage({
       />
 
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("contracts.chainTitle")}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">{t("contracts.chainDescription")}</p>
+          <p
+            style={{
+              margin: 0,
+              marginTop: "var(--ant-margin-xxs)",
+              color: "var(--ant-color-text-secondary)",
+            }}
+          >
+            {t("contracts.chainDescription")}
+          </p>
         </CardHeader>
         <CardContent>
           <DocumentChainTimeline stages={stages} />
@@ -170,153 +356,139 @@ export default async function ContractDetailPage({
       </Card>
 
       {/* Sisa per baris kontrak — dikirim & difakturkan vs sisa (issue #15) */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("contracts.outstandingTitle")}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p
+            style={{
+              margin: 0,
+              marginTop: "var(--ant-margin-xxs)",
+              color: "var(--ant-color-text-secondary)",
+            }}
+          >
             {t("contracts.outstandingDescription")}
           </p>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead className="text-right">{t("contracts.colContractedKg")}</TableHead>
-              <TableHead className="text-right">{t("contracts.colDeliveredKg")}</TableHead>
-              <TableHead className="text-right">{t("contracts.colInvoicedKg")}</TableHead>
-              <TableHead className="text-right">{t("contracts.colRemainingKg")}</TableHead>
-              <TableHead className="text-right">{t("contracts.colRemainingValue")}</TableHead>
-              <TableHead>{t("contracts.colInvoiceStatus")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {outstandingLines.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="p-0">
-                  <EmptyState
-                    icon={<Package className="h-12 w-12" />}
-                    title={t("contracts.emptyLinesTitle")}
-                    description={t("contracts.emptyLinesDescription")}
-                    actionLabel={t("contracts.emptyLinesAction")}
-                    actionHref={`/contracts/${contract.id}/edit`}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              outstandingLines.map((line) => (
-                <TableRow key={line.key}>
-                  <TableCell className="text-foreground">{line.itemName}</TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(line.contractedKg)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(line.deliveredKg)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {formatNumber(line.invoicedKg)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums text-foreground">
-                    {formatNumber(line.remainingKg)}
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={line.remainingValue} currency={contract.currency} />
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        line.invoiceStatus === "selesai"
-                          ? "success"
-                          : line.invoiceStatus === "sebagian"
-                            ? "warning"
-                            : "default"
-                      }
-                    >
-                      {line.invoiceStatus === "selesai"
-                        ? t("contracts.invoicedFull")
-                        : line.invoiceStatus === "sebagian"
-                          ? t("contracts.invoicedPartial")
-                          : t("contracts.invoicedNone")}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-          {outstandingLines.length > 0 && (
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="font-semibold text-foreground hover:bg-transparent">
-                <TableCell>{t("common.total")}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNumber(totals.contractedKg)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNumber(totals.deliveredKg)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNumber(totals.invoicedKg)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatNumber(totals.remainingKg)}
-                </TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={totals.remainingValue} currency={contract.currency} />
-                </TableCell>
-                <TableCell />
-              </TableRow>
-            </TableFooter>
-          )}
-        </Table>
+        <StaticTable
+          columns={outstandingColumns}
+          rows={outstandingLines}
+          rowKey={(row) => row.key}
+          empty={
+            <EmptyState
+              icon={<Package size={EMPTY_ICON_SIZE} />}
+              title={t("contracts.emptyLinesTitle")}
+              description={t("contracts.emptyLinesDescription")}
+              actionLabel={t("contracts.emptyLinesAction")}
+              actionHref={`/contracts/${contract.id}/edit`}
+            />
+          }
+          summary={{
+            itemName: t("common.total"),
+            contractedKg: qty(totals.contractedKg),
+            deliveredKg: qty(totals.deliveredKg),
+            invoicedKg: qty(totals.invoicedKg),
+            remainingKg: qty(totals.remainingKg),
+            remainingValue: (
+              <Money value={totals.remainingValue} currency={contract.currency} />
+            ),
+          }}
+        />
         {(totals.unmatchedDeliveredKg > 0 || totals.unmatchedInvoicedKg > 0) && (
-          <CardContent className="pt-0">
-            <p className="text-xs text-warning-strong">
-              {totals.unmatchedDeliveredKg > 0 && totals.unmatchedInvoicedKg > 0
-                ? t("contracts.unmatchedBoth", {
-                    delivered: formatNumber(totals.unmatchedDeliveredKg),
-                    invoiced: formatNumber(totals.unmatchedInvoicedKg),
-                  })
-                : totals.unmatchedDeliveredKg > 0
-                  ? t("contracts.unmatchedDelivery", {
+          <CardContent>
+            {/* Penandanya IKON + KATA, bukan warna (MASTER.md §Anti-Patterns). */}
+            <p
+              style={{
+                margin: 0,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: TIGHT_GAP,
+              }}
+            >
+              <AlertTriangle size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+              <small>
+                {totals.unmatchedDeliveredKg > 0 && totals.unmatchedInvoicedKg > 0
+                  ? t("contracts.unmatchedBoth", {
                       delivered: formatNumber(totals.unmatchedDeliveredKg),
-                    })
-                  : t("contracts.unmatchedInvoice", {
                       invoiced: formatNumber(totals.unmatchedInvoicedKg),
-                    })}
+                    })
+                  : totals.unmatchedDeliveredKg > 0
+                    ? t("contracts.unmatchedDelivery", {
+                        delivered: formatNumber(totals.unmatchedDeliveredKg),
+                      })
+                    : t("contracts.unmatchedInvoice", {
+                        invoiced: formatNumber(totals.unmatchedInvoicedKg),
+                      })}
+              </small>
             </p>
           </CardContent>
         )}
       </Card>
 
-      {/* Surat jalan & faktur yang menyebut kontrak ini (issue #15) */}
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <Card>
+      {/* Surat jalan & faktur yang menyebut kontrak ini (issue #15).
+          Kedua kartu tumbuh membagi baris dan turun sendiri saat tak muat —
+          menggantikan `lg:grid-cols-2`, yang patah pada satu lebar tetap. */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: SECTION_GAP,
+          marginBottom: SECTION_GAP,
+        }}
+      >
+        <Card style={{ flex: `1 1 ${PAIR_BASIS}px`, minWidth: 0 }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+            <CardTitle
+              style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
+            >
+              <Truck size="1em" aria-hidden style={{ color: "var(--ant-color-icon)" }} />
               {t("contracts.deliveryOrdersTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.deliveryOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
                 {t("contracts.noDeliveryOrders")}{" "}
-                <Link href="/delivery-orders/new" className="text-primary hover:underline">
+                <Link href="/delivery-orders/new" style={{ color: "var(--ant-color-link)" }}>
                   {t("contracts.createDeliveryOrderLink")}
                 </Link>
               </p>
             ) : (
-              <ul className="divide-y divide-border text-sm">
-                {chain.deliveryOrders.map((d) => (
-                  <li key={d.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="min-w-0">
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {chain.deliveryOrders.map((d, index) => (
+                  <li
+                    key={d.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: CARD_GAP,
+                      paddingBlock: LIST_ROW_PADDING,
+                      borderTop:
+                        index === 0
+                          ? undefined
+                          : "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
                       <Link
                         href={`/delivery-orders/${d.id}`}
-                        className="truncate font-medium text-primary hover:underline"
+                        style={{
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "var(--ant-color-link)",
+                          fontWeight: "var(--ant-font-weight-strong)",
+                        }}
                       >
                         {d.no}
                       </Link>
-                      <p className="text-xs text-muted-foreground">{formatDate(d.date)}</p>
+                      <small style={{ color: "var(--ant-color-text-secondary)" }}>
+                        {formatDate(d.date)}
+                      </small>
                     </div>
-                    <span className="shrink-0 tabular-nums text-foreground">
+                    {/* Kilogram — kuantitas, jadi `formatNumber`, bukan `Money`. */}
+                    <span style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
                       {formatNumber(d.totalKg)} kg
                     </span>
                   </li>
@@ -326,43 +498,65 @@ export default async function ContractDetailPage({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card style={{ flex: `1 1 ${PAIR_BASIS}px`, minWidth: 0 }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden />{" "}
+            <CardTitle
+              style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
+            >
+              <Receipt size="1em" aria-hidden style={{ color: "var(--ant-color-icon)" }} />
               {t("contracts.invoicesTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {chain.invoices.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
                 {t("contracts.noInvoices")}{" "}
                 <Link
                   href={`/invoices/new?contractId=${contract.id}`}
-                  className="text-primary hover:underline"
+                  style={{ color: "var(--ant-color-link)" }}
                 >
                   {t("contracts.createInvoiceLink")}
                 </Link>
               </p>
             ) : (
-              <ul className="divide-y divide-border text-sm">
-                {chain.invoices.map((inv) => (
-                  <li key={inv.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="min-w-0">
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {chain.invoices.map((inv, index) => (
+                  <li
+                    key={inv.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: CARD_GAP,
+                      paddingBlock: LIST_ROW_PADDING,
+                      borderTop:
+                        index === 0
+                          ? undefined
+                          : "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
                       <Link
                         href={`/invoices/${inv.id}`}
-                        className="truncate font-medium text-primary hover:underline"
+                        style={{
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "var(--ant-color-link)",
+                          fontWeight: "var(--ant-font-weight-strong)",
+                        }}
                       >
                         {inv.invoiceNo}
                       </Link>
-                      <p className="text-xs text-muted-foreground">
+                      <small style={{ color: "var(--ant-color-text-secondary)" }}>
                         {formatDate(inv.date)} ·{" "}
-                        <span className="tabular-nums">
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>
                           {t("common.paidOnly", { paid: formatCurrency(inv.paidBase, "IDR") })}
                         </span>
-                      </p>
+                      </small>
                     </div>
-                    <span className="shrink-0 tabular-nums text-foreground">
+                    <span style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
                       {formatCurrency(inv.total, inv.currency)}
                     </span>
                   </li>
@@ -374,86 +568,84 @@ export default async function ContractDetailPage({
       </div>
 
       {/* Contract Info */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("contracts.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.colBuyer")}</dt>
-              <dd className="text-sm text-foreground">{contract.buyer}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t("contracts.colConsignee")}
-              </dt>
-              <dd className="text-sm text-foreground">
-                {contract.consigneeRef ? (
-                  <Link
-                    href={`/consignees/${contract.consigneeRef.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {contract.consigneeRef.name}
-                  </Link>
-                ) : (
-                  consigneeName || "-"
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.status")}</dt>
-              <dd><StatusBadge status={contract.status} /></dd>
-            </div>
-            <div>
-              {/* Jatuh tempo — penggerak status "Jatuh Tempo" di /receivables,
-                  jadi ditampilkan juga di sini. NULL = memang belum diisi. */}
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.dueDate")}</dt>
-              <dd className="text-sm text-foreground tabular-nums">
+          {/* `sm:grid-cols-2` diganti baris yang membungkus sendiri: satu kolom
+              di 375px, dua atau lebih begitu ruangnya ada — tanpa titik patah
+              yang harus ditebak. */}
+          <dl
+            style={{
+              margin: 0,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: SECTION_GAP - INLINE_GAP,
+            }}
+          >
+            {infoItem(t("contracts.colBuyer"), contract.buyer)}
+            {infoItem(
+              t("contracts.colConsignee"),
+              contract.consigneeRef ? (
+                <Link
+                  href={`/consignees/${contract.consigneeRef.id}`}
+                  style={{ color: "var(--ant-color-link)" }}
+                >
+                  {contract.consigneeRef.name}
+                </Link>
+              ) : (
+                consigneeName || "-"
+              )
+            )}
+            {infoItem(t("common.status"), <StatusBadge status={contract.status} />)}
+            {/* Jatuh tempo — penggerak status "Jatuh Tempo" di /receivables,
+                jadi ditampilkan juga di sini. NULL = memang belum diisi. */}
+            {infoItem(
+              t("common.dueDate"),
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>
                 {contract.dueDate ? (
                   formatDateShort(contract.dueDate)
                 ) : (
-                  <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                  <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                    {t("common.notFilledIn")}
+                  </span>
                 )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.currency")}</dt>
-              <dd className="text-sm text-foreground">{contract.currency}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.packaging")}</dt>
-              <dd className="text-sm text-foreground">{contract.packaging || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.shipment")}</dt>
-              <dd className="text-sm text-foreground">{contract.shipment || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top1")}</dt>
-              <dd className="text-sm text-foreground">{contract.top1 || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("contracts.top2")}</dt>
-              <dd className="text-sm text-foreground">{contract.top2 || "-"}</dd>
-            </div>
+              </span>
+            )}
+            {infoItem(t("common.currency"), contract.currency)}
+            {infoItem(t("contracts.packaging"), contract.packaging || "-")}
+            {infoItem(t("contracts.shipment"), contract.shipment || "-")}
+            {infoItem(t("contracts.top1"), contract.top1 || "-")}
+            {infoItem(t("contracts.top2"), contract.top2 || "-")}
           </dl>
         </CardContent>
       </Card>
 
-      {/* Items */}
-      <Card className="mb-6">
+      {/* Items.
+          Tetap primitif `Table` JSX dan BUKAN `StaticTable`, dengan alasan yang
+          bisa diperiksa: kakinya punya DUA baris — nilai kontrak, lalu nilai
+          dasar buku besar (IDR) untuk dokumen valas. `StaticTable.summary`
+          adalah satu baris per tabel; memakainya berarti memindahkan baris
+          kedua ke luar tabel, yaitu mengubah tata letak demi kerapian kode.
+          Perataan & warna di bawah lewat `style`, jadi berkas ini tetap nol
+          `className`. */}
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
         </CardHeader>
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            {/* `hover:bg-transparent` lama diganti gaya SEBARIS: gaya sebaris
+                mengalahkan selektor apa pun, termasuk `:hover`, jadi baris
+                judul & baris total tetap tidak menyala saat disentuh kursor —
+                tanpa satu pun kelas. */}
+            <TableRow style={{ background: "transparent" }}>
               <TableHead>{t("common.item")}</TableHead>
-              <TableHead className="text-right">{t("common.bags")}</TableHead>
-              <TableHead className="text-right">{t("common.kgPerBag")}</TableHead>
-              <TableHead className="text-right">{t("contracts.pricePerKg")}</TableHead>
-              <TableHead className="text-right">{t("common.total")}</TableHead>
+              <TableHead style={{ textAlign: "right" }}>{t("common.bags")}</TableHead>
+              <TableHead style={{ textAlign: "right" }}>{t("common.kgPerBag")}</TableHead>
+              <TableHead style={{ textAlign: "right" }}>{t("contracts.pricePerKg")}</TableHead>
+              <TableHead style={{ textAlign: "right" }}>{t("common.total")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -461,32 +653,50 @@ export default async function ContractDetailPage({
               const itemTotal = Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
               return (
                 <TableRow key={item.id}>
-                  <TableCell className="text-foreground">{item.itemName}</TableCell>
-                  <TableCell className="text-foreground text-right">{Number(item.bags)}</TableCell>
-                  <TableCell className="text-foreground text-right">{Number(item.kgPerBag)}</TableCell>
-                  <TableCell className="text-foreground text-right">{Number(item.pricePerKg)}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell className="font-medium" value={itemTotal} currency={contract.currency} />
+                  <TableCell>{item.itemName}</TableCell>
+                  {/* Bags & kg/bag adalah KUANTITAS (`Decimal(15,3)`) — id-ID
+                      dengan desimalnya utuh, tanpa "Rp". */}
+                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.bags))}</TableCell>
+                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.kgPerBag))}</TableCell>
+                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.pricePerKg))}</TableCell>
+                  <TableCell style={{ padding: 0 }}>
+                    <MoneyCell
+                      style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+                      value={itemTotal}
+                      currency={contract.currency}
+                    />
                   </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
-          <TableFooter className="border-t-2 bg-transparent font-normal">
-            <TableRow className="border-0 hover:bg-transparent">
-              <TableCell colSpan={4} className="text-right font-semibold text-foreground">
+          <TableFooter style={{ background: "transparent", borderTopWidth: 2 }}>
+            <TableRow style={{ background: "transparent" }}>
+              <TableCell
+                colSpan={4}
+                style={{ textAlign: "right", fontWeight: "var(--ant-font-weight-strong)" }}
+              >
                 {t("contracts.totalValue")}
               </TableCell>
-              <TableCell className="p-0">
-                <MoneyCell className="font-bold" value={totalValue} currency={contract.currency} />
+              <TableCell style={{ padding: 0 }}>
+                <MoneyCell
+                  style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+                  value={totalValue}
+                  currency={contract.currency}
+                />
               </TableCell>
             </TableRow>
             {isForeign && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell colSpan={4} className="text-right text-muted-foreground">
+              <TableRow style={{ background: "transparent" }}>
+                <TableCell
+                  colSpan={4}
+                  style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
+                >
                   {t("common.ledgerBaseIdr")}
                 </TableCell>
-                <TableCell className="text-right text-foreground tabular-nums">
+                <TableCell style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                  {/* Tanpa kurs, nilainya BELUM DIKETAHUI — dan itu ditulis
+                      dengan kata, bukan Rp 0. */}
                   {baseAmount != null ? (
                     <Money value={baseAmount} currency="IDR" />
                   ) : (
@@ -500,12 +710,22 @@ export default async function ContractDetailPage({
       </Card>
 
       {/* Payments */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: INLINE_GAP,
+            }}
+          >
             <CardTitle>{t("contracts.paymentsTitle")}</CardTitle>
-            <div className="text-right text-sm text-muted-foreground">
-              <div className="tabular-nums">
+            <div
+              style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
+            >
+              <div style={{ fontVariantNumeric: "tabular-nums" }}>
                 {baseAmount == null
                   ? t("common.paidOnly", { paid: formatCurrency(totalPaidBase, "IDR") })
                   : baseAmount > 0
@@ -519,54 +739,45 @@ export default async function ContractDetailPage({
                         total: formatCurrency(baseAmount, "IDR"),
                       })}
               </div>
+              {/* Pembayaran tanpa kurs TIDAK ikut ditotal, dan jumlah yang
+                  dikecualikan selalu disebut. Ikon + kata, bukan warna. */}
               {paymentsWithoutRate > 0 && (
-                <div className="text-xs text-warning-strong">
-                  {t("common.paymentsUnrated", { count: paymentsWithoutRate })}
-                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "flex-end",
+                    gap: TIGHT_GAP,
+                  }}
+                >
+                  <AlertTriangle
+                    size="1em"
+                    aria-hidden="true"
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                  />
+                  <small>{t("common.paymentsUnrated", { count: paymentsWithoutRate })}</small>
+                </p>
               )}
             </div>
           </div>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead className="text-right">{t("common.amount")}</TableHead>
-              <TableHead>{t("common.notes")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contract.payments.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={3} className="p-0">
-                  <EmptyState
-                    icon={<Banknote className="h-12 w-12" />}
-                    title={t("contracts.emptyPaymentsTitle")}
-                    description={t("contracts.emptyPaymentsDescription")}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              contract.payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="text-foreground">{formatDate(payment.date)}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell
-                      className="font-medium"
-                      value={Number(payment.amount)}
-                      currency={payment.currency}
-                    />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{payment.note || "-"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable
+          columns={paymentColumns}
+          rows={paymentRows}
+          rowKey={(row) => row.id}
+          empty={
+            <EmptyState
+              icon={<Banknote size={EMPTY_ICON_SIZE} />}
+              title={t("contracts.emptyPaymentsTitle")}
+              description={t("contracts.emptyPaymentsDescription")}
+            />
+          }
+        />
         {/* Add Payment Form */}
-        <div className="px-6 pb-4">
+        <CardContent>
           <ContractPaymentSection contractId={contract.id} />
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

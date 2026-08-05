@@ -14,13 +14,31 @@
  *     atas baris draf, bukan versi kedua yang ditulis ulang;
  *   • periode tertutup & stok   → `@/lib/form-guards` + `@/lib/delivery-orders`;
  *   • pemetaan galat → bagian   → `@/lib/form-sections` (#4).
+ *
+ * ── Konversi ke token Ant Design (issue #195, fase C3) ─────────────────────
+ * Yang berubah HANYA kulitnya. Draf, penjaga, aritmetika, dan satu-satunya
+ * panggilan tulis di langkah terakhir tidak disentuh sama sekali.
+ *
+ * Tiga hal yang perlu diketahui sebelum menyuntingnya lagi:
+ *  • **Kuantitas bukan uang.** Kilogram di sini `Decimal(15,3)` — semuanya
+ *    lewat `formatNumber` (id-ID) dengan `tabular-nums`, tidak pernah lewat
+ *    topeng rupiah. Hanya nilai baris & total faktur yang memakai
+ *    `formatCurrency`.
+ *  • **Peringatan tidak pernah bergantung warna saja.** Kalimatnya sendiri
+ *    ("melebihi sisa kontrak", "belum ada di daftar stok") yang membawa
+ *    maknanya; warnanya penanda kedua.
+ *  • **`divide-y` tidak punya padanan gaya sebaris**, jadi daftar ringkasan
+ *    memakai `summaryList()` di bawah: pembungkus per baris dengan garis atas
+ *    mulai baris kedua. Hasilnya sama, tanpa satu pun kelas.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Flex, theme, Typography } from "antd";
 import { Link } from "@/components/ui/app-link";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +116,24 @@ interface SalesResult {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`. `max(280px, (100% − gutter)/2)` menahan jumlah kolomnya di
+ * dua (tanpa itu kisi `auto-fit` akan berkembang jadi lima di 1440px); titik
+ * patahnya jatuh tepat di 576px, `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Lebar dasar kolom angka pada baris barang (`w-28`…`w-40` lama). */
+const QTY_COL_BASIS = 128;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+
 export function SalesWizard({
   items,
   closedPeriods,
@@ -111,6 +147,7 @@ export function SalesWizard({
 }) {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const { draft, setDraft, clear, ready, notice, dismissNotice } = useWizardDraft<SalesDraft>(
     "sales",
     () => emptySalesDraft(todayISO())
@@ -328,62 +365,147 @@ export function SalesWizard({
     router.push("/invoices");
   }
 
+  /**
+   * Daftar ringkasan bergaris pemisah — pengganti `divide-y divide-border`,
+   * yang tidak punya padanan gaya sebaris (tidak ada selektor `> * + *`).
+   * Garisnya dipasang per baris mulai baris KEDUA, jadi hasilnya identik dan
+   * baris yang dirender bersyarat tidak meninggalkan garis menggantung.
+   */
+  const summaryList = (rows: React.ReactNode[]) => {
+    const shown = rows.filter(Boolean);
+    return (
+      <dl style={{ margin: 0 }}>
+        {shown.map((row, i) => (
+          <div
+            key={i}
+            style={{
+              borderTop:
+                i === 0
+                  ? undefined
+                  : `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+            }}
+          >
+            {row}
+          </div>
+        ))}
+      </dl>
+    );
+  };
+
+  /** Label mikro di atas satu isian angka. */
+  const microLabel = (htmlFor: string, text: React.ReactNode) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka — rata kanan + `tabular-nums` (kuantitas maupun harga). */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
+  /** Pasangan keterangan-kecil + nilai tebal di ujung kanan sebuah baris. */
+  const rightStat = (caption: string, value: React.ReactNode) => (
+    <div style={{ marginInlineStart: "auto", textAlign: "right" }}>
+      <Typography.Text
+        type="secondary"
+        style={{ display: "block", fontSize: token.fontSizeSM }}
+      >
+        {caption}
+      </Typography.Text>
+      <span
+        style={{ fontWeight: token.fontWeightStrong, fontVariantNumeric: "tabular-nums" }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+
+  /** Kotak baris — batas + sudut + padding, semuanya token. */
+  const rowBox: React.CSSProperties = {
+    padding: token.paddingSM,
+    borderRadius: token.borderRadius,
+    border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+  };
+
   // ── Layar selesai ────────────────────────────────────────────────────────
   if (result) {
     return (
       <Card>
-        <CardContent className="py-6">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-success-strong" aria-hidden="true" />
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-foreground">{t("sales.savedTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("sales.savedHint")}</p>
-              <dl className="mt-4 divide-y divide-border">
-                {result.customerName && (
-                  <WizardSummaryRow label={t("sales.rowCustomer")} value={result.customerName} />
-                )}
-                {result.deliveryOrder && (
+        <CardContent style={{ paddingBlock: token.paddingLG }}>
+          <Flex align="flex-start" gap={token.marginSM}>
+            {/* Ikon centang memakai warna "uang positif" (#186) — anak tangga
+                yang sudah diukur lolos 4,5:1 di kedua tema. Ia penanda KEDUA;
+                yang pertama adalah judulnya sendiri. */}
+            <CheckCircle2
+              size={token.fontSizeHeading3}
+              aria-hidden="true"
+              style={{ flexShrink: 0, marginTop: 2, color: token.colorMoneyPositive }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <Typography.Title level={2} style={{ fontSize: token.fontSizeLG, marginTop: 0 }}>
+                {t("sales.savedTitle")}
+              </Typography.Title>
+              <Typography.Paragraph type="secondary" style={{ marginTop: token.marginXXS }}>
+                {t("sales.savedHint")}
+              </Typography.Paragraph>
+              <div style={{ marginTop: token.margin }}>
+                {summaryList([
+                  result.customerName ? (
+                    <WizardSummaryRow
+                      key="customer"
+                      label={t("sales.rowCustomer")}
+                      value={result.customerName}
+                    />
+                  ) : null,
+                  result.deliveryOrder ? (
+                    <WizardSummaryRow
+                      key="do"
+                      label={t("sales.rowDeliveryOrder")}
+                      value={
+                        <Link
+                          href={`/delivery-orders/${result.deliveryOrder.id}`}
+                          style={{ color: token.colorLink }}
+                        >
+                          {result.deliveryOrder.no}
+                        </Link>
+                      }
+                    />
+                  ) : null,
                   <WizardSummaryRow
-                    label={t("sales.rowDeliveryOrder")}
+                    key="invoice"
+                    label={t("sales.rowInvoice")}
                     value={
                       <Link
-                        href={`/delivery-orders/${result.deliveryOrder.id}`}
-                        className="text-primary hover:underline"
+                        href={`/invoices/${result.invoice.id}`}
+                        style={{ color: token.colorLink }}
                       >
-                        {result.deliveryOrder.no}
+                        {result.invoice.invoiceNo}
                       </Link>
                     }
-                  />
-                )}
-                <WizardSummaryRow
-                  label={t("sales.rowInvoice")}
-                  value={
-                    <Link
-                      href={`/invoices/${result.invoice.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {result.invoice.invoiceNo}
-                    </Link>
-                  }
-                  strong
-                />
-              </dl>
+                    strong
+                  />,
+                ])}
+              </div>
+              {/* Kabar persetujuan: `Alert` berjenis peringatan — ikonnya
+                  penanda non-warna, `role="status"` tetap milik kita. */}
               {result.approval && (
-                <p
-                  role="status"
-                  className="mt-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong"
-                >
-                  {result.approval.message}
-                </p>
+                <div role="status" style={{ marginTop: token.margin }}>
+                  <Alert type="warning" showIcon message={result.approval.message} />
+                </div>
               )}
-              <div className="mt-6 flex flex-wrap gap-3">
+              <Flex wrap gap={token.marginSM} style={{ marginTop: token.marginLG }}>
                 <Link href={`/invoices/${result.invoice.id}`}>
-                  <Button className="cursor-pointer">{t("sales.viewInvoice")}</Button>
+                  <Button>{t("sales.viewInvoice")}</Button>
                 </Link>
                 <Button
                   type="button"
                   variant="secondary"
-                  className="cursor-pointer"
                   onClick={() => {
                     setResult(null);
                     setStepId("pelanggan");
@@ -394,16 +516,16 @@ export function SalesWizard({
                 >
                   {t("sales.recordAnother")}
                 </Button>
-              </div>
+              </Flex>
             </div>
-          </div>
+          </Flex>
         </CardContent>
       </Card>
     );
   }
 
   if (!ready) {
-    return <p className="text-sm text-muted-foreground">{t("common.preparingForm")}</p>;
+    return <Typography.Text type="secondary">{t("common.preparingForm")}</Typography.Text>;
   }
 
   return (
@@ -469,15 +591,20 @@ export function SalesWizard({
       {/* ── 2. Barang & harga ─────────────────────────────────────────── */}
       {stepId === "barang" && (
         <>
-          <Card className="mb-6">
+          <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
               <CardTitle>
                 <TermTooltip term="kontrak">{t("sales.pullTitle")}</TermTooltip>
               </CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">{t("sales.pullDescription")}</p>
+              <Typography.Text
+                type="secondary"
+                style={{ display: "block", marginTop: token.marginXXS }}
+              >
+                {t("sales.pullDescription")}
+              </Typography.Text>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div style={twoColumnGrid(token.margin)}>
                 {/* Mencari ke server (audit: daftar statis `take: 300`).
                     Sisa & label kontrak terpilih datang dari endpoint
                     `outstanding` yang sama seperti sebelumnya. */}
@@ -505,46 +632,56 @@ export function SalesWizard({
                     patch((d) => ({ ...d, contractId: v == null ? null : Number(v) }));
                   }}
                 />
-                <div className="flex items-end">
+                <Flex align="flex-end">
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="cursor-pointer"
                     disabled={!outstanding || outstanding.pull.contract.length === 0}
                     onClick={pullFromContract}
                   >
-                    <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
-                    {t("invoices.pullContractRemainder")}
+                    {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
+                    <Download aria-hidden="true" /> {t("invoices.pullContractRemainder")}
                   </Button>
-                </div>
+                </Flex>
               </div>
-              {pullNote && <p className="mt-3 text-xs text-muted-foreground">{pullNote}</p>}
+              {pullNote && (
+                <Typography.Paragraph
+                  type="secondary"
+                  style={{
+                    margin: 0,
+                    marginTop: token.marginSM,
+                    fontSize: token.fontSizeSM,
+                  }}
+                >
+                  {pullNote}
+                </Typography.Paragraph>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
                 <CardTitle>{t("sales.goodsSoldTitle")}</CardTitle>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="cursor-pointer"
                   onClick={() => patch((d) => ({ ...d, lines: [...d.lines, emptySalesLine()] }))}
                 >
-                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.addItemLower")}
+                  <Plus aria-hidden="true" /> {t("common.addItemLower")}
                 </Button>
-              </div>
+              </Flex>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
+              <Flex vertical gap={token.margin}>
               {draft.lines.map((line, i) => {
                 const sisa = contractRemainingKg?.get(normalizeItemName(line.itemName));
                 const over = sisa != null && line.quantity > sisa;
                 return (
-                  <div key={i} className="rounded-md border border-border p-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                  <div key={i} style={rowBox}>
+                    <div style={twoColumnGrid(token.marginSM)}>
                       <SearchableSelect
                         label={t("common.itemFromStockList")}
                         placeholder={t("common.pickItem")}
@@ -570,47 +707,42 @@ export function SalesWizard({
                         required
                       />
                     </div>
-                    <div className="mt-3 flex flex-wrap items-end gap-3">
-                      <div className="w-32">
-                        <label
-                          htmlFor={`quantity-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("sales.quantityKg")}
-                        </label>
+                    <Flex
+                      wrap
+                      align="flex-end"
+                      gap={token.marginSM}
+                      style={{ marginTop: token.marginSM }}
+                    >
+                      <div style={{ flex: `1 1 ${QTY_COL_BASIS}px`, maxWidth: 200 }}>
+                        {microLabel(`quantity-${i}`, t("sales.quantityKg"))}
+                        {/* KUANTITAS (`Decimal(15,3)`) — `step="0.001"` dan
+                            tanpa topeng rupiah. */}
                         <TextInput
                           id={`quantity-${i}`}
                           type="number"
                           min={0}
                           step="0.001"
-                          className="text-right tabular-nums"
+                          style={numberStyle}
                           value={line.quantity}
                           onChange={(e) => updateLine(i, { quantity: Number(e.target.value) })}
                         />
                       </div>
-                      <div className="w-40">
-                        <label
-                          htmlFor={`price-${i}`}
-                          className="mb-1 block text-xs font-medium text-muted-foreground"
-                        >
-                          {t("sales.pricePerKgCurrency", { currency })}
-                        </label>
+                      <div style={{ flex: `1 1 ${QTY_COL_BASIS}px`, maxWidth: 200 }}>
+                        {microLabel(`price-${i}`, t("sales.pricePerKgCurrency", { currency }))}
                         <TextInput
                           id={`price-${i}`}
                           type="number"
                           min={0}
                           step="0.01"
-                          className="text-right tabular-nums"
+                          style={numberStyle}
                           value={line.price}
                           onChange={(e) => updateLine(i, { price: Number(e.target.value) })}
                         />
                       </div>
-                      <div className="ml-auto text-right">
-                        <span className="block text-xs text-muted-foreground">{t("common.lineValue")}</span>
-                        <span className="block text-sm font-medium tabular-nums text-foreground">
-                          {formatCurrency(line.quantity * line.price, currency)}
-                        </span>
-                      </div>
+                      {rightStat(
+                        t("common.lineValue"),
+                        formatCurrency(line.quantity * line.price, currency)
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -624,16 +756,30 @@ export function SalesWizard({
                         }
                         disabled={draft.lines.length === 1}
                         aria-label={t("common.removeItemRow", { n: i + 1 })}
-                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                        style={{ color: token.colorError }}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        <Trash2 aria-hidden="true" />
                       </Button>
-                    </div>
-                    <p className="mt-2 text-xs">
+                    </Flex>
+                    {/* Kalimatnya yang membawa makna; warnanya penanda kedua. */}
+                    <Typography.Paragraph
+                      style={{
+                        margin: 0,
+                        marginTop: token.marginXS,
+                        fontSize: token.fontSizeSM,
+                      }}
+                    >
                       {line.itemId == null ? (
-                        <span className="text-warning-strong">{t("sales.lineNoStockItem")}</span>
+                        <span style={{ color: token.colorMoneyPending }}>
+                          {t("sales.lineNoStockItem")}
+                        </span>
                       ) : (
-                        <span className={over ? "font-medium text-destructive-strong" : "text-muted-foreground"}>
+                        <span
+                          style={{
+                            color: over ? token.colorMoneyNegative : token.colorTextSecondary,
+                            fontWeight: over ? token.fontWeightStrong : undefined,
+                          }}
+                        >
                           {sisa == null
                             ? t("sales.lineStock", {
                                 stock: formatNumber(itemById.get(line.itemId)?.currentStock ?? 0),
@@ -653,18 +799,25 @@ export function SalesWizard({
                                 })}
                         </span>
                       )}
-                    </p>
+                    </Typography.Paragraph>
                   </div>
                 );
               })}
 
-              <dl className="border-t border-border pt-3">
+              <dl
+                style={{
+                  margin: 0,
+                  borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  paddingTop: token.paddingSM,
+                }}
+              >
                 <WizardSummaryRow
                   label={t("sales.orderValue")}
                   value={formatCurrency(salesOrderValue(draft), currency)}
                   strong
                 />
               </dl>
+              </Flex>
             </CardContent>
           </Card>
         </>
@@ -673,10 +826,24 @@ export function SalesWizard({
       {/* ── 3. Surat jalan (opsional) ─────────────────────────────────── */}
       {stepId === "pengiriman" && (
         <Card>
-          <CardContent className="space-y-4 py-4">
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted">
+          <CardContent>
+            <Flex vertical gap={token.margin}>
+            {/* Kotak pilihan "buat surat jalan". Tetap `<label>` telanjang:
+                `Checkbox` primitif tidak menerima blok penjelas dua baris di
+                dalamnya, dan seluruh kotak memang harus bisa ditekan. */}
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: token.marginSM,
+                padding: token.paddingSM,
+                borderRadius: token.borderRadiusLG,
+                border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                cursor: "pointer",
+              }}
+            >
               <Checkbox
-                className="mt-1"
+                style={{ marginTop: token.marginXXS }}
                 checked={draft.delivery.include}
                 onCheckedChange={(v) =>
                   patch((d) => {
@@ -689,21 +856,31 @@ export function SalesWizard({
                   })
                 }
               />
-              <span className="text-sm">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <span>
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: token.marginXS,
+                    fontWeight: token.fontWeightStrong,
+                  }}
+                >
+                  <Truck size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
                   {t("sales.shipCheckboxA")}{" "}
                   <TermTooltip term="surat_jalan">{t("sales.shipTerm")}</TermTooltip>
                 </span>
-                <span className="mt-0.5 block text-muted-foreground">
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginTop: token.marginXXS }}
+                >
                   {t("sales.shipCheckboxHint")}
-                </span>
+                </Typography.Text>
               </span>
             </label>
 
             {draft.delivery.include && (
               <>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div style={twoColumnGrid(token.margin)}>
                   <Input
                     id="deliveryDate"
                     type="date"
@@ -749,22 +926,30 @@ export function SalesWizard({
 
                 {items.length === 0 ? (
                   <EmptyState
-                    icon={<Package className="h-12 w-12" />}
+                    icon={<Package size={EMPTY_ICON_SIZE} />}
                     title={t("common.emptyStockTitle")}
                     description={t("sales.emptyStockDescription")}
                     actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
                     actionHref={canUpdateStock ? "/inventory/update" : undefined}
                   />
                 ) : (
-                  <div className="space-y-3">
+                  <Flex vertical gap={token.marginSM}>
                     {draft.lines.map((line, i) => {
                       const master = line.itemId != null ? itemById.get(line.itemId) : null;
                       const kg = shipKg(line);
                       const overOrder = kg > line.quantity;
                       const overStock = master != null && kg > master.currentStock;
                       return (
-                        <div key={i} className="rounded-md border border-border p-3">
-                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                        <div key={i} style={rowBox}>
+                          <label
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                              gap: token.marginXS,
+                              cursor: "pointer",
+                            }}
+                          >
                             <Checkbox
                               checked={line.ship}
                               disabled={line.itemId == null}
@@ -777,12 +962,15 @@ export function SalesWizard({
                                 })
                               }
                             />
-                            <span className="font-medium text-foreground">
+                            <span style={{ fontWeight: token.fontWeightStrong }}>
                               {line.itemName || t("common.rowN", { n: i + 1 })}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <Typography.Text
+                              type="secondary"
+                              style={{ fontSize: token.fontSizeSM }}
+                            >
                               {t("sales.ordered", { qty: formatNumber(line.quantity) })}
-                            </span>
+                            </Typography.Text>
                             {line.itemId == null && (
                               <Badge variant="warning">{t("common.notInStockList")}</Badge>
                             )}
@@ -790,60 +978,58 @@ export function SalesWizard({
 
                           {line.ship && (
                             <>
-                              <div className="mt-3 flex flex-wrap items-end gap-3">
-                                <div className="w-28">
-                                  <label
-                                    htmlFor={`shipBags-${i}`}
-                                    className="mb-1 block text-xs font-medium text-muted-foreground"
-                                  >
-                                    {t("sales.shipBags")}
-                                  </label>
+                              <Flex
+                                wrap
+                                align="flex-end"
+                                gap={token.marginSM}
+                                style={{ marginTop: token.marginSM }}
+                              >
+                                <div style={{ flex: `1 1 ${QTY_COL_BASIS}px`, maxWidth: 200 }}>
+                                  {microLabel(`shipBags-${i}`, t("sales.shipBags"))}
                                   <TextInput
                                     id={`shipBags-${i}`}
                                     type="number"
                                     min={0}
-                                    className="text-right tabular-nums"
+                                    style={numberStyle}
                                     value={line.shipBags}
                                     onChange={(e) =>
                                       updateLine(i, { shipBags: Number(e.target.value) })
                                     }
                                   />
                                 </div>
-                                <div className="w-32">
-                                  <label
-                                    htmlFor={`shipKgPerBag-${i}`}
-                                    className="mb-1 block text-xs font-medium text-muted-foreground"
-                                  >
-                                    {t("sales.shipKgPerBag")}
-                                  </label>
+                                <div style={{ flex: `1 1 ${QTY_COL_BASIS}px`, maxWidth: 200 }}>
+                                  {microLabel(`shipKgPerBag-${i}`, t("sales.shipKgPerBag"))}
+                                  {/* KUANTITAS `Decimal(15,3)` — desimalnya utuh. */}
                                   <TextInput
                                     id={`shipKgPerBag-${i}`}
                                     type="number"
                                     min={0}
                                     step="0.001"
-                                    className="text-right tabular-nums"
+                                    style={numberStyle}
                                     value={line.shipKgPerBag}
                                     onChange={(e) =>
                                       updateLine(i, { shipKgPerBag: Number(e.target.value) })
                                     }
                                   />
                                 </div>
-                                <div className="ml-auto text-right">
-                                  <span className="block text-xs text-muted-foreground">
-                                    {t("sales.totalShipped")}
-                                  </span>
-                                  <span className="block text-sm font-medium tabular-nums text-foreground">
-                                    {formatNumber(kg)} kg
-                                  </span>
-                                </div>
-                              </div>
-                              <p className="mt-2 text-xs">
+                                {rightStat(t("sales.totalShipped"), `${formatNumber(kg)} kg`)}
+                              </Flex>
+                              <Typography.Paragraph
+                                style={{
+                                  margin: 0,
+                                  marginTop: token.marginXS,
+                                  fontSize: token.fontSizeSM,
+                                }}
+                              >
                                 <span
-                                  className={
-                                    overOrder || overStock
-                                      ? "font-medium text-destructive-strong"
-                                      : "text-muted-foreground"
-                                  }
+                                  style={{
+                                    color:
+                                      overOrder || overStock
+                                        ? token.colorMoneyNegative
+                                        : token.colorTextSecondary,
+                                    fontWeight:
+                                      overOrder || overStock ? token.fontWeightStrong : undefined,
+                                  }}
                                 >
                                   {overStock && overOrder
                                     ? t("sales.shipStockOverBoth", {
@@ -861,13 +1047,13 @@ export function SalesWizard({
                                             stock: formatNumber(master?.currentStock ?? 0),
                                           })}
                                 </span>
-                              </p>
+                              </Typography.Paragraph>
                             </>
                           )}
                         </div>
                       );
                     })}
-                  </div>
+                  </Flex>
                 )}
 
                 <DisclosureSection
@@ -878,7 +1064,7 @@ export function SalesWizard({
                       .join(" · ") || t("common.notEntered")
                   }
                 >
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div style={twoColumnGrid(token.margin)}>
                     <Input
                       id="vehicleNo"
                       label={t("sales.vehicleNo")}
@@ -903,7 +1089,7 @@ export function SalesWizard({
                       }
                       maxLength={50}
                     />
-                    <div className="sm:col-span-2">
+                    <div style={{ gridColumn: "1 / -1" }}>
                       <Input
                         id="deliveryNotes"
                         label={t("common.notes")}
@@ -921,6 +1107,7 @@ export function SalesWizard({
                 </DisclosureSection>
               </>
             )}
+            </Flex>
           </CardContent>
         </Card>
       )}
@@ -928,14 +1115,14 @@ export function SalesWizard({
       {/* ── 4. Tagihan ────────────────────────────────────────────────── */}
       {stepId === "faktur" && (
         <>
-          <Card className="mb-6">
+          <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
               <CardTitle>
                 <TermTooltip term="faktur">{t("sales.invoiceIdentityTitle")}</TermTooltip>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div style={twoColumnGrid(token.margin)}>
                 <Input
                   id="invoiceNo"
                   label={t("sales.invoiceNo")}
@@ -960,79 +1147,83 @@ export function SalesWizard({
             </CardContent>
           </Card>
 
-          <Card className="mb-6">
+          <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
                 <CardTitle>{t("sales.billedTitle")}</CardTitle>
-                <div className="flex gap-2">
+                <Flex wrap gap={token.marginXS}>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="cursor-pointer"
                     onClick={() => patch((d) => applySalesPull(d, "order"))}
                   >
-                    <Download className="mr-1 h-4 w-4" aria-hidden="true" /> {t("sales.pullAll")}
+                    <Download aria-hidden="true" /> {t("sales.pullAll")}
                   </Button>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="cursor-pointer"
                     disabled={!draft.delivery.include}
                     onClick={() => patch((d) => applySalesPull(d, "delivery"))}
                   >
-                    <Download className="mr-1 h-4 w-4" aria-hidden="true" /> {t("sales.pullShipped")}
+                    <Download aria-hidden="true" /> {t("sales.pullShipped")}
                   </Button>
-                </div>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{t("sales.billedHint")}</p>
+                </Flex>
+              </Flex>
+              <Typography.Text
+                type="secondary"
+                style={{ display: "block", marginTop: token.marginXXS }}
+              >
+                {t("sales.billedHint")}
+              </Typography.Text>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
+              <Flex vertical gap={token.marginSM}>
               {draft.lines.map((line, i) => (
-                <div
-                  key={i}
-                  className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3"
-                >
-                  <div className="min-w-40 flex-1">
-                    <span className="block text-sm font-medium text-foreground">
+                <Flex key={i} wrap align="flex-end" gap={token.marginSM} style={rowBox}>
+                  <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                    <span style={{ display: "block", fontWeight: token.fontWeightStrong }}>
                       {line.itemName || t("common.rowN", { n: i + 1 })}
                     </span>
-                    <span className="block text-xs text-muted-foreground">
+                    <Typography.Text
+                      type="secondary"
+                      style={{ display: "block", fontSize: token.fontSizeSM }}
+                    >
                       {t("sales.lineOrderedShipped", {
                         ordered: formatNumber(line.quantity),
                         shipped: formatNumber(shipKg(line)),
                         price: formatCurrency(line.price, currency),
                       })}
-                    </span>
+                    </Typography.Text>
                   </div>
-                  <div className="w-36">
-                    <label
-                      htmlFor={`billQuantity-${i}`}
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("sales.billedKg")}
-                    </label>
+                  <div style={{ flex: `1 1 ${QTY_COL_BASIS}px`, maxWidth: 200 }}>
+                    {microLabel(`billQuantity-${i}`, t("sales.billedKg"))}
+                    {/* KUANTITAS `Decimal(15,3)` — desimalnya utuh, tanpa "Rp". */}
                     <TextInput
                       id={`billQuantity-${i}`}
                       type="number"
                       min={0}
                       step="0.001"
-                      className="text-right tabular-nums"
+                      style={numberStyle}
                       value={line.billQuantity}
                       onChange={(e) => updateLine(i, { billQuantity: Number(e.target.value) })}
                     />
                   </div>
-                  <div className="w-32 text-right">
-                    <span className="block text-xs text-muted-foreground">{t("sales.lineValueShort")}</span>
-                    <span className="block text-sm font-medium tabular-nums text-foreground">
-                      {formatCurrency(line.billQuantity * line.price, currency)}
-                    </span>
-                  </div>
-                </div>
+                  {rightStat(
+                    t("sales.lineValueShort"),
+                    formatCurrency(line.billQuantity * line.price, currency)
+                  )}
+                </Flex>
               ))}
 
-              <dl className="border-t border-border pt-3">
+              <dl
+                style={{
+                  margin: 0,
+                  borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  paddingTop: token.paddingSM,
+                }}
+              >
                 <WizardSummaryRow
                   label={t("sales.subtotalDpp")}
                   value={formatCurrency(salesInvoiceSubtotal(draft), currency)}
@@ -1047,6 +1238,7 @@ export function SalesWizard({
                   strong
                 />
               </dl>
+              </Flex>
             </CardContent>
           </Card>
 
@@ -1067,18 +1259,15 @@ export function SalesWizard({
                 : t("invoices.advNoDueDate"),
             ].join(" · ")}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div style={twoColumnGrid(token.margin)}>
               <DueDateField
                 value={draft.invoice.dueDate}
                 onChange={(v) => patch((d) => ({ ...d, invoice: { ...d.invoice, dueDate: v } }))}
               />
               <div>
-                <label
-                  htmlFor="currency"
-                  className="mb-1 block text-sm font-medium text-foreground"
-                >
+                <Label htmlFor="currency" style={{ marginBottom: token.marginXXS }}>
                   {t("common.currencyField")}
-                </label>
+                </Label>
                 <NativeSelect
                   id="currency"
                   options={[
@@ -1104,18 +1293,22 @@ export function SalesWizard({
                   }
                 />
               </div>
+              {/* Progressive disclosure valas: isian kurs HANYA dirender saat
+                  mata uangnya bukan IDR — pasangan client dari aturan
+                  "dokumen valas wajib membawa kursnya sendiri". Selnya ikut
+                  hilang; kisi `auto-fit` menutup celahnya sendiri. */}
               {currency !== "IDR" && (
                 <div>
-                  <label htmlFor="rate" className="mb-1 block text-sm font-medium text-foreground">
+                  <Label htmlFor="rate" style={{ marginBottom: token.marginXXS }}>
                     <TermTooltip term="kurs">{t("common.rateTerm")}</TermTooltip> 1 {currency}{" "}
                     {t("common.rateTo")}
-                  </label>
+                  </Label>
                   <TextInput
                     id="rate"
                     type="number"
                     min={0}
                     step="0.000001"
-                    className="text-right tabular-nums"
+                    style={numberStyle}
                     value={draft.invoice.rate || ""}
                     onChange={(e) =>
                       patch((d) => ({
@@ -1124,13 +1317,28 @@ export function SalesWizard({
                       }))
                     }
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <Typography.Text
+                    type="secondary"
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                    }}
+                  >
                     {t("common.rateRequiredHint")}
-                  </p>
+                  </Typography.Text>
                 </div>
               )}
               <div>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                <label
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: token.marginXS,
+                    cursor: "pointer",
+                  }}
+                >
                   <Checkbox
                     checked={draft.invoice.taxable}
                     onCheckedChange={(v) =>
@@ -1143,20 +1351,15 @@ export function SalesWizard({
                   {t("sales.vatChargeable")} <TermTooltip term="ppn">{t("common.vat")}</TermTooltip>
                 </label>
                 {draft.invoice.taxable && (
-                  <div className="mt-2 w-32">
-                    <label
-                      htmlFor="taxRate"
-                      className="mb-1 block text-xs font-medium text-muted-foreground"
-                    >
-                      {t("common.taxRatePercent")}
-                    </label>
+                  <div style={{ marginTop: token.marginXS, maxWidth: 160 }}>
+                    {microLabel("taxRate", t("common.taxRatePercent"))}
                     <TextInput
                       id="taxRate"
                       type="number"
                       min={0}
                       max={100}
                       step="0.01"
-                      className="text-right tabular-nums"
+                      style={numberStyle}
                       value={draft.invoice.taxRate}
                       onChange={(e) =>
                         patch((d) => ({
@@ -1178,22 +1381,27 @@ export function SalesWizard({
         <Card>
           <CardHeader>
             <CardTitle>{t("common.checkBeforeSaving")}</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: token.marginXXS }}
+            >
               {t("common.checkBeforeSavingHint")}
-            </p>
+            </Typography.Text>
           </CardHeader>
           <CardContent>
-            <dl className="divide-y divide-border">
+            {summaryList([
               <WizardSummaryRow
+                key="customer"
                 label={t("sales.rowCustomer")}
                 value={
                   draft.customer.mode === "new"
                     ? t("sales.summaryNew", { name: draft.customer.name })
                     : (selectedCustomer?.name ?? "—")
                 }
-              />
-              {draft.contractId != null && (
+              />,
+              draft.contractId != null ? (
                 <WizardSummaryRow
+                  key="contract"
                   label={t("sales.summaryContract")}
                   value={
                     outstanding?.contract.id === draft.contractId
@@ -1201,8 +1409,9 @@ export function SalesWizard({
                       : `#${draft.contractId}`
                   }
                 />
-              )}
+              ) : null,
               <WizardSummaryRow
+                key="goods"
                 label={t("sales.summaryGoods")}
                 value={t("common.rowCount", {
                   count: draft.lines.filter((l) => l.itemName.trim()).length,
@@ -1211,13 +1420,20 @@ export function SalesWizard({
                   .filter((l) => l.itemName.trim())
                   .map((l) => `${l.itemName} ${formatNumber(l.quantity)} kg`)
                   .join(" · ")}
-              />
+              />,
               <WizardSummaryRow
+                key="delivery"
                 label={t("sales.rowDeliveryOrder")}
                 value={
                   draft.delivery.include ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: token.marginXXS,
+                      }}
+                    >
+                      <Truck size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
                       {formatNumber(draft.lines.reduce((s, l) => s + shipKg(l), 0))} kg
                     </span>
                   ) : (
@@ -1229,11 +1445,18 @@ export function SalesWizard({
                     ? t("sales.deliveryHint", { date: draft.delivery.date })
                     : t("common.stockUnchanged")
                 }
-              />
+              />,
               <WizardSummaryRow
+                key="invoice"
                 label={
-                  <span className="inline-flex items-center gap-1">
-                    <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: token.marginXXS,
+                    }}
+                  >
+                    <FileText size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
                     {t("sales.summaryInvoice", { no: draft.invoice.invoiceNo })}
                   </span>
                 }
@@ -1244,11 +1467,23 @@ export function SalesWizard({
                   tax: formatCurrency(salesInvoiceTax(draft), currency),
                 })}
                 strong
-              />
-            </dl>
-            <p className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+              />,
+            ])}
+            {/* Catatan kaki di bidang yang sedikit lebih pekat dari kartunya
+                (`colorFillAlter`) — peran yang sama dengan `bg-muted` lama. */}
+            <Typography.Paragraph
+              type="secondary"
+              style={{
+                margin: 0,
+                marginTop: token.margin,
+                padding: token.paddingSM,
+                borderRadius: token.borderRadius,
+                background: token.colorFillAlter,
+                fontSize: token.fontSizeSM,
+              }}
+            >
               {t("sales.summaryFooter")}
-            </p>
+            </Typography.Paragraph>
           </CardContent>
         </Card>
       )}

@@ -4,27 +4,33 @@
  * CRUD aturan persetujuan (issue #25). Form dengan label terlihat, nominal
  * tabular-nums rata kanan, status pakai badge berteks, penonaktifan lewat
  * konfirmasi — sesuai Pre-Delivery Checklist MASTER.md.
+ *
+ * ── Setelah migrasi AntD (issue #199) ──────────────────────────────────────
+ * Tanpa kelas Tailwind: tata letak lewat `Row`/`Col`/`Flex`, jarak & ukuran
+ * lewat `theme.useToken()`. Kolom nominal & status kini datang dari
+ * `moneyColumn`/`Badge`, jadi aturan uang tidak lagi diketik ulang per sel.
+ *
+ * Perendernya `StaticTable`, bukan `DataTable`: sebuah PT punya segelintir
+ * aturan persetujuan dan halaman ini menampilkan semuanya sekaligus — tak ada
+ * yang perlu disortir atau dipaginasi. rc-table di sini hanya menambah pustaka
+ * ke bundel tanpa imbalan (MASTER.md §Primitif Wajib: Tabel & Tombol).
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Col, Flex, Row, theme, Typography } from "antd";
 import { Ban, Plus, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
 import { useToast } from "@/components/ui/toast";
 import { ROLE_LABELS, ROLES } from "@/lib/constants";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
@@ -32,6 +38,12 @@ import type { ApprovalRuleView } from "@/lib/approval-queue";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { approvalDocumentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Dua kolom yang sama lebar di layar lebar, menumpuk di bawah `lg` — bekas
+ * `lg:grid-cols-[1fr_1fr]`. Angkanya titik henti `lg` milik AntD `Row`/`Col`.
+ */
+const HALF = { xs: 24, lg: 12 } as const;
 
 export function ApprovalRules({
   rules,
@@ -41,6 +53,7 @@ export function ApprovalRules({
   roles: { key: string; label: string }[];
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const documentTypeLabels = approvalDocumentTypeLabels(useDictionary());
   const documentOptions = APPROVAL_DOCUMENT_TYPES.map((type) => ({
     value: type,
@@ -110,156 +123,214 @@ export function ApprovalRules({
 
   const active = rules.filter((r) => r.isActive);
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-      {/* ── Daftar aturan ── */}
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>{t("approvals.rulesListTitle")}</CardTitle>
-          <Badge variant={active.length > 0 ? "success" : "default"}>
-            {t("approvals.activeCount", { count: active.length })}
-          </Badge>
-        </CardHeader>
-        <CardContent className="px-0 py-0">
-          {rules.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <ShieldCheck className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">{t("approvals.rulesEmptyTitle")}</p>
-              <p className="text-xs text-muted-foreground">{t("approvals.rulesEmptyHint")}</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>{t("approvals.colDocumentType")}</TableHead>
-                  <TableHead className="text-right">{t("approvals.colMinAmount")}</TableHead>
-                  <TableHead>{t("approvals.colApproverRole")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rules.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {rule.documentTypeLabel}
-                      {rule.note && (
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          {rule.note}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="p-0">
-                      <MoneyCell value={rule.minAmount} currency="IDR" hideCurrency />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {roleLabel(rule.approverRole)}
-                    </TableCell>
-                    <TableCell>
-                      {rule.isActive ? (
-                        <Badge variant="success">
-                          <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
-                          {t("common.active")}
-                        </Badge>
-                      ) : (
-                        <Badge variant="default">
-                          <Ban className="mr-1 h-3 w-3" aria-hidden="true" />
-                          {t("common.inactive")}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {rule.isActive && (
-                        <ConfirmDialog
-                          title={t("approvals.deactivateTitle")}
-                          message={t("approvals.deactivateMessage")}
-                          confirmLabel={t("approvals.deactivate")}
-                          confirmVariant="danger"
-                          onConfirm={() => deactivate(rule)}
-                          trigger={
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={busy}
-                              className="cursor-pointer"
-                            >
-                              <Ban className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                              {t("approvals.deactivate")}
-                            </Button>
-                          }
-                        />
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+  const ruleColumns: SaiColumns<ApprovalRuleView> = [
+    {
+      key: "documentType",
+      dataIndex: "documentTypeLabel",
+      title: t("approvals.colDocumentType"),
+      render: (_value, rule) => (
+        <>
+          <Typography.Text strong>{rule.documentTypeLabel}</Typography.Text>
+          {rule.note && (
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", fontSize: token.fontSizeSM }}
+            >
+              {rule.note}
+            </Typography.Text>
           )}
-        </CardContent>
-      </Card>
+        </>
+      ),
+    },
+    moneyColumn<ApprovalRuleView>({
+      dataIndex: "minAmount",
+      title: t("approvals.colMinAmount"),
+      hideCurrency: true,
+    }),
+    {
+      key: "approverRole",
+      dataIndex: "approverRole",
+      title: t("approvals.colApproverRole"),
+      render: (_value, rule) => (
+        <Typography.Text type="secondary">{roleLabel(rule.approverRole)}</Typography.Text>
+      ),
+    },
+    {
+      key: "isActive",
+      dataIndex: "isActive",
+      title: t("common.status"),
+      // Badge BERTEKS + ikon; warnanya penanda kedua (MASTER.md §Anti-Patterns).
+      render: (_value, rule) =>
+        rule.isActive ? (
+          <Badge variant="success">
+            <ShieldCheck size="1em" aria-hidden="true" />
+            <span>{t("common.active")}</span>
+          </Badge>
+        ) : (
+          <Badge variant="default">
+            <Ban size="1em" aria-hidden="true" />
+            <span>{t("common.inactive")}</span>
+          </Badge>
+        ),
+    },
+    {
+      key: "actions",
+      title: "",
+      align: "right",
+      render: (_value, rule) =>
+        rule.isActive ? (
+          // Menonaktifkan aturan mengubah siapa yang harus menyetujui uang —
+          // karena itu tetap lewat ConfirmDialog bervarian danger.
+          <ConfirmDialog
+            title={t("approvals.deactivateTitle")}
+            message={t("approvals.deactivateMessage")}
+            confirmLabel={t("approvals.deactivate")}
+            confirmVariant="danger"
+            onConfirm={() => deactivate(rule)}
+            trigger={
+              <Button variant="secondary" size="sm" disabled={busy}>
+                <Ban aria-hidden="true" />
+                {t("approvals.deactivate")}
+              </Button>
+            }
+          />
+        ) : null,
+    },
+  ];
+
+  return (
+    <Row gutter={[token.marginLG, token.marginLG]}>
+      {/* ── Daftar aturan ── */}
+      <Col {...HALF}>
+        <Card>
+          <CardHeader
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: token.marginSM,
+            }}
+          >
+            <CardTitle>{t("approvals.rulesListTitle")}</CardTitle>
+            <Badge variant={active.length > 0 ? "success" : "default"}>
+              <span>{t("approvals.activeCount", { count: active.length })}</span>
+            </Badge>
+          </CardHeader>
+          <CardContent style={{ padding: 0 }}>
+            {rules.length === 0 ? (
+              <Flex
+                vertical
+                align="center"
+                gap={token.marginXS}
+                style={{
+                  paddingInline: token.paddingLG,
+                  paddingBlock: token.paddingXL + token.paddingSM,
+                  textAlign: "center",
+                }}
+              >
+                <ShieldCheck
+                  size={token.fontSizeHeading3}
+                  color={token.colorTextSecondary}
+                  aria-hidden="true"
+                />
+                <Typography.Text type="secondary">
+                  {t("approvals.rulesEmptyTitle")}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                  {t("approvals.rulesEmptyHint")}
+                </Typography.Text>
+              </Flex>
+            ) : (
+              <StaticTable columns={ruleColumns} rows={rules} rowKey={(rule) => rule.id} />
+            )}
+          </CardContent>
+        </Card>
+      </Col>
 
       {/* ── Tambah aturan ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("approvals.addRuleTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={create} className="space-y-4">
-            <Select
-              id="rule-document-type"
-              label={t("approvals.fieldDocumentType")}
-              options={documentOptions}
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-            />
-            <p className="-mt-2 text-xs text-muted-foreground">
-              {t("approvals.paymentHint")}
-            </p>
+      <Col {...HALF}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("approvals.addRuleTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={create}>
+              <Flex vertical gap={token.margin}>
+                <div>
+                  <Select
+                    id="rule-document-type"
+                    label={t("approvals.fieldDocumentType")}
+                    options={documentOptions}
+                    value={documentType}
+                    onChange={(e) => setDocumentType(e.target.value)}
+                  />
+                  <Typography.Text
+                    type="secondary"
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                    }}
+                  >
+                    {t("approvals.paymentHint")}
+                  </Typography.Text>
+                </div>
 
-            <Input
-              id="rule-min-amount"
-              label={t("approvals.fieldMinAmount")}
-              type="number"
-              min={0}
-              step="0.01"
-              inputMode="decimal"
-              required
-              value={minAmount}
-              onChange={(e) => setMinAmount(e.target.value)}
-              className="text-right tabular-nums"
-            />
-            <p className="-mt-2 text-xs text-muted-foreground">
-              {t("approvals.minAmountHint")}
-            </p>
+                <div>
+                  <Input
+                    id="rule-min-amount"
+                    label={t("approvals.fieldMinAmount")}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    inputMode="decimal"
+                    required
+                    value={minAmount}
+                    onChange={(e) => setMinAmount(e.target.value)}
+                    style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                  />
+                  <Typography.Text
+                    type="secondary"
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                    }}
+                  >
+                    {t("approvals.minAmountHint")}
+                  </Typography.Text>
+                </div>
 
-            <Select
-              id="rule-approver-role"
-              label={t("approvals.fieldApproverRole")}
-              options={roleOptions}
-              value={approverRole}
-              onChange={(e) => setApproverRole(e.target.value)}
-            />
+                <Select
+                  id="rule-approver-role"
+                  label={t("approvals.fieldApproverRole")}
+                  options={roleOptions}
+                  value={approverRole}
+                  onChange={(e) => setApproverRole(e.target.value)}
+                />
 
-            <div className="space-y-1">
-              <label htmlFor="rule-note" className="block text-sm font-medium text-foreground">
-                {t("common.notesOptional")}
-              </label>
-              <Textarea
-                id="rule-note"
-                rows={2}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t("approvals.notePlaceholder")}
-              />
-            </div>
+                <Flex vertical gap={token.marginXXS}>
+                  <Label htmlFor="rule-note">{t("common.notesOptional")}</Label>
+                  <Textarea
+                    id="rule-note"
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder={t("approvals.notePlaceholder")}
+                  />
+                </Flex>
 
-            <Button type="submit" disabled={busy || minAmount === ""} className="cursor-pointer">
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              {t("approvals.submitRule")}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+                <div>
+                  <Button type="submit" disabled={busy || minAmount === ""}>
+                    <Plus aria-hidden="true" />
+                    {t("approvals.submitRule")}
+                  </Button>
+                </div>
+              </Flex>
+            </form>
+          </CardContent>
+        </Card>
+      </Col>
+    </Row>
   );
 }

@@ -10,10 +10,23 @@
  * Nilai ditampilkan dua kali dan itu disengaja: dalam mata uang dokumen (yang
  * ditandatangani orang) dan dalam IDR base (yang diadu dengan ambang). Tanpa
  * keduanya, sebuah faktur USD terlihat seolah jauh di bawah ambang rupiah.
+ *
+ * ── Setelah migrasi AntD (issue #199) ──────────────────────────────────────
+ * Tidak ada satu pun kelas Tailwind di berkas ini: tata letak lewat `Flex`,
+ * jarak & ukuran lewat `theme.useToken()`, warna lewat primitif yang mewarnai
+ * dirinya sendiri (`Money`, `Badge`) atau lewat token langsung.
+ *
+ * Satu tabel SENGAJA tetap memakai primitif JSX `Table`, bukan `DataTable`:
+ * "Pengajuan Saya". Alasannya ada di komentar di tempatnya — singkatnya, baris
+ * yang belum dibaca ditandai LATAR BARIS, dan tak satu pun dari kedua perender
+ * tabel (`StaticTable`/`DataTable`) meneruskan gaya per baris. Mengonversinya
+ * sekarang berarti menghapus satu-satunya penanda "ini keputusan baru" di
+ * permukaan yang justru berfungsi sebagai notifikasi.
  */
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, theme, Typography } from "antd";
 import { Link } from "@/components/ui/app-link";
 import {
   CheckCircle2,
@@ -29,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -42,9 +56,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { Money, MoneyCell } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
 import type { SystemRole } from "@/lib/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
@@ -52,69 +66,91 @@ import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
 
+/** Lebar kotak catatan pengajuan ulang di dalam sel tabel — bekas `w-56`. */
+const RESUBMIT_NOTE_WIDTH = 224;
+/** Panjang minimum catatan sebelum tombol Tolak hidup (alasan wajib ditulis). */
+const REJECT_NOTE_MIN = 5;
+
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
 function StatusBadge({ status, label }: { status: string; label: string }) {
+  /*
+   * Ikon `1em` = `fontSizeSM` milik `Tag`, dan jaraknya datang dari aturan
+   * `.ant-tag > svg + span` AntD — karena itu labelnya WAJIB `<span>`, bukan
+   * teks telanjang (pola yang sama dengan `components/shared/aging.tsx`).
+   */
   if (status === "approved") {
     return (
       <Badge variant="success">
-        <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" />
-        {label}
+        <CheckCircle2 size="1em" aria-hidden="true" />
+        <span>{label}</span>
       </Badge>
     );
   }
   if (status === "rejected") {
     return (
       <Badge variant="danger">
-        <XCircle className="mr-1 h-3 w-3" aria-hidden="true" />
-        {label}
+        <XCircle size="1em" aria-hidden="true" />
+        <span>{label}</span>
       </Badge>
     );
   }
   return (
     <Badge variant="warning">
-      <ClipboardCheck className="mr-1 h-3 w-3" aria-hidden="true" />
-      {label}
+      <ClipboardCheck size="1em" aria-hidden="true" />
+      <span>{label}</span>
     </Badge>
-  );
-}
-
-function Money({ value, currency }: { value: number; currency: string }) {
-  return (
-    <span className="tabular-nums">{formatCurrency(value, currency)}</span>
   );
 }
 
 /** Judul baris: jenis dokumen + nomor, dengan tautan bila dokumennya punya halaman. */
 function DocumentTitle({ row }: { row: ApprovalRequestView }) {
+  const { token } = theme.useToken();
   const text = `${row.documentTypeLabel}${row.documentNo ? ` ${row.documentNo}` : ""}`;
-  if (!row.documentHref) return <span className="font-medium text-foreground">{text}</span>;
+  if (!row.documentHref) return <Typography.Text strong>{text}</Typography.Text>;
   return (
     <Link
       href={row.documentHref}
-      className="inline-flex cursor-pointer items-center gap-1 font-medium text-primary transition-colors duration-150 hover:text-primary"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: token.marginXXS,
+        fontWeight: token.fontWeightStrong,
+        // `colorLink` = `colorBrandText` #186 (5,65:1); `colorPrimary` sebagai
+        // teks hanya 4,10:1 — lihat lib/theme/antd-tokens.ts.
+        color: token.colorLink,
+      }}
     >
       {text}
-      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+      <ExternalLink size="1em" aria-hidden="true" />
     </Link>
   );
 }
 
 function ValueCell({ row, t }: { row: ApprovalRequestView; t: TranslateFn }) {
+  const { token } = theme.useToken();
+  const footnote: React.CSSProperties = {
+    display: "block",
+    margin: 0,
+    fontSize: token.fontSizeSM,
+    color: token.colorTextSecondary,
+  };
   return (
-    <div className="text-right">
-      <p className="font-semibold text-foreground">
+    <div style={{ textAlign: "right" }}>
+      <Typography.Text strong>
         <Money value={row.amount} currency={row.currency} />
-      </p>
+      </Typography.Text>
       {row.currency !== "IDR" && (
-        <p className="text-xs text-muted-foreground">
-          {t("approvals.valueEquivalent")} <Money value={row.baseAmount} currency="IDR" />
+        <p style={footnote}>
+          {t("approvals.valueEquivalent")}{" "}
+          <Money value={row.baseAmount} currency="IDR" style={{ fontSize: "inherit" }} />
           {row.rate
             ? ` ${t("approvals.valueRate", { rate: row.rate.toLocaleString("id-ID") })}`
             : ""}
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
-        {t("approvals.valueThreshold")} <Money value={row.thresholdAmount} currency="IDR" />
+      <p style={footnote}>
+        {t("approvals.valueThreshold")}{" "}
+        <Money value={row.thresholdAmount} currency="IDR" style={{ fontSize: "inherit" }} />
       </p>
     </div>
   );
@@ -130,10 +166,21 @@ interface Props {
 export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   const t = useT();
   const dictionary = useDictionary();
+  const { token } = theme.useToken();
   const router = useRouter();
   const { toast } = useToast();
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  /** Kepala kartu dengan lencana jumlah di kanan. */
+  const cardHeaderStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: token.marginSM,
+  };
+  /** Badan kartu yang isinya tabel/daftar penuh lebar — bekas `px-0 py-0`. */
+  const flushBody: React.CSSProperties = { padding: 0 };
 
   /**
    * Kolom riwayat keputusan. `moneyColumn` menyumbang seluruh aturan uang
@@ -151,12 +198,12 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         render: (_value, row) => (
           <>
             <DocumentTitle row={row} />
-            <p className="text-xs text-muted-foreground">
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: token.fontSizeSM }}>
               {t("approvals.approverPrefix", {
                 role:
                   roleLabels(dictionary)[row.approverRole as SystemRole] ?? row.approverRole,
               })}
-            </p>
+            </Typography.Text>
           </>
         ),
       },
@@ -183,18 +230,26 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         title: t("approvals.colDecidedAt"),
         sorter: true,
         render: (_value, row) => (
-          <div className="text-muted-foreground">
-            <span className="block whitespace-nowrap tabular-nums">
+          <div style={{ color: token.colorTextSecondary }}>
+            <span
+              style={{
+                display: "block",
+                whiteSpace: "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {row.decidedAt ? formatDate(row.decidedAt) : "—"}
             </span>
             {row.decisionNote && (
-              <span className="block text-xs text-muted-foreground">“{row.decisionNote}”</span>
+              <span style={{ display: "block", fontSize: token.fontSizeSM }}>
+                “{row.decisionNote}”
+              </span>
             )}
           </div>
         ),
       },
     ],
-    [t, dictionary]
+    [t, dictionary, token]
   );
 
   async function decide(row: ApprovalRequestView, decision: "approve" | "reject") {
@@ -272,91 +327,118 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
   );
 
   return (
-    <div className="space-y-6">
+    <Flex vertical gap={token.marginLG}>
       {/* ── Antrean penyetuju ── */}
       <Card data-tour="persetujuan-antrean">
-        <CardHeader className="flex items-center justify-between">
+        <CardHeader style={cardHeaderStyle}>
           <CardTitle>{t("approvals.inboxTitle")}</CardTitle>
           <Badge variant={inbox.length > 0 ? "warning" : "default"}>
-            {t("approvals.docCount", { count: inbox.length })}
+            <span>{t("approvals.docCount", { count: inbox.length })}</span>
           </Badge>
         </CardHeader>
-        <CardContent className="px-0 py-0">
+        <CardContent style={flushBody}>
           {inbox.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">{t("approvals.inboxEmpty")}</p>
-              <p className="text-xs text-muted-foreground">
+            <Flex
+              vertical
+              align="center"
+              gap={token.marginXS}
+              style={{
+                paddingInline: token.paddingLG,
+                paddingBlock: token.paddingXL + token.paddingSM,
+                textAlign: "center",
+              }}
+            >
+              <Inbox size={token.fontSizeHeading3} color={token.colorTextSecondary} aria-hidden="true" />
+              <Typography.Text type="secondary">{t("approvals.inboxEmpty")}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                 {t("approvals.inboxEmptyHint")}{" "}
                 <Link
                   href="/approvals/rules"
-                  className="cursor-pointer text-primary underline transition-colors duration-150 hover:text-primary"
+                  style={{ color: token.colorLink, textDecoration: "underline" }}
                 >
                   {t("nav.items.approvalRules")}
                 </Link>
                 {t("common.fullStop")}
-              </p>
-            </div>
+              </Typography.Text>
+            </Flex>
           ) : (
-            <ul className="divide-y divide-border">
-              {inbox.map((row) => (
-                <li key={row.id} className="px-6 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0">
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {inbox.map((row, index) => (
+                <li
+                  key={row.id}
+                  style={{
+                    paddingInline: token.paddingLG,
+                    paddingBlock: token.padding,
+                    // Garis pemisah antar-butir — bekas `divide-y divide-border`.
+                    borderBlockStart:
+                      index === 0 ? undefined : `1px solid ${token.colorBorderSecondary}`,
+                  }}
+                >
+                  <Flex wrap align="flex-start" justify="space-between" gap={token.margin}>
+                    <div style={{ minWidth: 0 }}>
                       <DocumentTitle row={row} />
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <Typography.Text
+                        type="secondary"
+                        style={{ display: "block", marginTop: token.marginXXS }}
+                      >
                         {t("approvals.submittedBy", {
                           name: row.requestedByName,
                           date: formatDate(row.createdAt),
                         })}
-                      </p>
+                      </Typography.Text>
                       {row.requestNote && (
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <Typography.Text
+                          type="secondary"
+                          style={{ display: "block", marginTop: token.marginXXS }}
+                        >
                           {t("approvals.requestNote", { note: row.requestNote })}
-                        </p>
+                        </Typography.Text>
                       )}
                       {/* issue #44 — pengajuan ULANG: penyetuju harus tahu bahwa
                           dokumen ini pernah ditolak dan atas alasan apa, kalau
                           tidak ia menimbangnya seolah-olah baru pertama datang.
-                          Ditandai teks + ikon, tidak pernah warna-saja. */}
+                          `Alert` AntD (pola #194): teks `colorText` di atas latar
+                          tipis + ikon, jadi maknanya tidak bergantung warna —
+                          bukan lagi amber di atas amber muda. */}
                       {wasResubmitted(row) && (
-                        <p className="mt-2 flex items-start gap-1.5 rounded-md bg-warning-soft px-2.5 py-1.5 text-sm text-warning-strong">
-                          <RotateCcw
-                            className="mt-0.5 h-4 w-4 shrink-0"
-                            aria-hidden="true"
-                          />
-                          <span>
-                            <span className="font-medium">{t("approvals.resubmittedBadge")}</span>{" "}
-                            {[
-                              t("approvals.resubmittedPrev"),
-                              row.decidedByName
-                                ? t("approvals.resubmittedBy", { name: row.decidedByName })
-                                : "",
-                              row.decidedAt
-                                ? t("approvals.resubmittedOn", {
-                                    date: formatDate(row.decidedAt),
-                                  })
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                            {row.decisionNote
-                              ? t("approvals.resubmittedNote", { note: row.decisionNote })
-                              : t("common.fullStop")}
-                          </span>
-                        </p>
+                        <Alert
+                          type="warning"
+                          style={{ marginTop: token.marginXS }}
+                          icon={<RotateCcw size={token.fontSizeLG} aria-hidden="true" />}
+                          showIcon
+                          message={
+                            <span>
+                              <Typography.Text strong>
+                                {t("approvals.resubmittedBadge")}
+                              </Typography.Text>{" "}
+                              {[
+                                t("approvals.resubmittedPrev"),
+                                row.decidedByName
+                                  ? t("approvals.resubmittedBy", { name: row.decidedByName })
+                                  : "",
+                                row.decidedAt
+                                  ? t("approvals.resubmittedOn", {
+                                      date: formatDate(row.decidedAt),
+                                    })
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              {row.decisionNote
+                                ? t("approvals.resubmittedNote", { note: row.decisionNote })
+                                : t("common.fullStop")}
+                            </span>
+                          }
+                        />
                       )}
                     </div>
                     <ValueCell row={row} t={t} />
-                  </div>
+                  </Flex>
 
-                  <div className="mt-3">
-                    <label
-                      htmlFor={`note-${row.id}`}
-                      className="mb-1 block text-sm font-medium text-foreground"
-                    >
+                  <div style={{ marginTop: token.marginSM }}>
+                    <Label htmlFor={`note-${row.id}`} style={{ marginBottom: token.marginXXS }}>
                       {t("approvals.decisionNoteLabel")}
-                    </label>
+                    </Label>
                     <Textarea
                       id={`note-${row.id}`}
                       rows={2}
@@ -366,12 +448,15 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       }
                       placeholder={t("approvals.decisionNotePlaceholder")}
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <Typography.Text
+                      type="secondary"
+                      style={{ display: "block", marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+                    >
                       {t("approvals.decisionNoteHint")}
-                    </p>
+                    </Typography.Text>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginSM }}>
                     <ConfirmDialog
                       title={t("approvals.approveTitle")}
                       message={t("approvals.approveMessage")}
@@ -379,12 +464,15 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       confirmVariant="primary"
                       onConfirm={() => decide(row, "approve")}
                       trigger={
-                        <Button size="sm" disabled={busyId === row.id} className="cursor-pointer">
-                          <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                        <Button size="sm" disabled={busyId === row.id}>
+                          <CheckCircle2 aria-hidden="true" />
                           {t("approvals.approve")}
                         </Button>
                       }
                     />
+                    {/* Aksi destruktif: tetap merah pekat DAN tetap lewat
+                        ConfirmDialog — dan tetap menuntut alasan tertulis
+                        sebelum tombolnya hidup (design-system/…/approvals.md). */}
                     <ConfirmDialog
                       title={t("approvals.rejectTitle")}
                       message={t("approvals.rejectMessage")}
@@ -395,15 +483,17 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                         <Button
                           variant="danger"
                           size="sm"
-                          disabled={busyId === row.id || (notes[row.id]?.trim().length ?? 0) < 5}
-                          className="cursor-pointer"
+                          disabled={
+                            busyId === row.id ||
+                            (notes[row.id]?.trim().length ?? 0) < REJECT_NOTE_MIN
+                          }
                         >
-                          <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                          <XCircle aria-hidden="true" />
                           {t("approvals.reject")}
                         </Button>
                       }
                     />
-                  </div>
+                  </Flex>
                 </li>
               ))}
             </ul>
@@ -413,26 +503,48 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
 
       {/* ── Pengajuan saya (notifikasi in-app) ── */}
       <Card data-tour="persetujuan-pengajuan">
-        <CardHeader className="flex items-center justify-between">
+        <CardHeader style={cardHeaderStyle}>
           <CardTitle>{t("approvals.mineTitle")}</CardTitle>
           {unread.length > 0 && (
             <Badge variant="warning">
-              {t("approvals.unreadBadge", { count: unread.length })}
+              <span>{t("approvals.unreadBadge", { count: unread.length })}</span>
             </Badge>
           )}
         </CardHeader>
-        <CardContent className="px-0 py-0">
+        <CardContent style={flushBody}>
           {mine.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+            <Typography.Paragraph
+              type="secondary"
+              style={{
+                margin: 0,
+                paddingInline: token.paddingLG,
+                paddingBlock: token.paddingXL,
+                textAlign: "center",
+              }}
+            >
               {t("approvals.mineEmpty")}
-            </p>
+            </Typography.Paragraph>
           ) : (
+            /*
+             * TETAP primitif JSX `Table`, bukan `DataTable` — dan alasannya satu
+             * baris di bawah: `TableRow` yang belum dibaca mendapat LATAR
+             * sendiri. Baik `StaticTable` maupun `DataTable` hanya meneruskan
+             * gaya per KOLOM (lewat `onCell` di `DataTable`); tak satu pun
+             * meneruskan gaya per BARIS, sehingga mengonversinya sekarang akan
+             * menghapus satu-satunya penanda "ini keputusan baru" — di kartu
+             * yang justru berperan sebagai notifikasi in-app.
+             *
+             * Yang dibutuhkan agar tabel ini bisa ikut pindah adalah satu prop
+             * `rowStyle`/`onRow` di kedua perender; itu perubahan di
+             * `src/components/ui/**` dan ditulis di laporan issue ini, bukan
+             * dikerjakan di sini.
+             */
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow>
                   <TableHead>{t("common.document")}</TableHead>
                   <TableHead>{t("approvals.colSubmitted")}</TableHead>
-                  <TableHead className="text-right">{t("approvals.colValue")}</TableHead>
+                  <TableHead style={{ textAlign: "right" }}>{t("approvals.colValue")}</TableHead>
                   <TableHead>{t("common.status")}</TableHead>
                   <TableHead>{t("approvals.colDecision")}</TableHead>
                   <TableHead />
@@ -446,32 +558,46 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                   return (
                     <TableRow
                       key={row.id}
-                      className={isUnread ? "bg-warning-soft hover:bg-warning-soft" : undefined}
+                      style={isUnread ? { background: token.colorWarningBg } : undefined}
                     >
                       <TableCell>
                         <DocumentTitle row={row} />
-                        <p className="text-xs text-muted-foreground">{row.message}</p>
+                        <Typography.Text type="secondary" style={{ display: "block", fontSize: token.fontSizeSM }}>
+                          {row.message}
+                        </Typography.Text>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
+                      <TableCell
+                        style={{
+                          whiteSpace: "nowrap",
+                          color: token.colorTextSecondary,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
                         {formatDate(row.createdAt)}
                       </TableCell>
-                      <TableCell className="p-0">
+                      <TableCell style={{ padding: 0 }}>
                         <MoneyCell value={row.amount} currency={row.currency} />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={row.status} label={row.statusLabel} />
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell style={{ color: token.colorTextSecondary }}>
                         {row.decidedAt ? (
                           <>
-                            <span className="block whitespace-nowrap tabular-nums">
+                            <span
+                              style={{
+                                display: "block",
+                                whiteSpace: "nowrap",
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
                               {formatDate(row.decidedAt)}
                             </span>
-                            <span className="block text-xs text-muted-foreground">
+                            <span style={{ display: "block", fontSize: token.fontSizeSM }}>
                               {t("approvals.resubmittedBy", { name: row.decidedByName ?? "" })}
                             </span>
                             {row.decisionNote && (
-                              <span className="block text-xs text-muted-foreground">
+                              <span style={{ display: "block", fontSize: token.fontSizeSM }}>
                                 “{row.decisionNote}”
                               </span>
                             )}
@@ -480,17 +606,16 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-col items-end gap-2">
+                      <TableCell style={{ textAlign: "right" }}>
+                        <Flex vertical align="flex-end" gap={token.marginXS}>
                           {isUnread && row.requestedById === currentUserId && (
                             <Button
                               variant="secondary"
                               size="sm"
                               disabled={busyId === row.id}
                               onClick={() => markRead(row)}
-                              className="cursor-pointer"
                             >
-                              <MailOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                              <MailOpen aria-hidden="true" />
                               {t("approvals.markRead")}
                             </Button>
                           )}
@@ -506,20 +631,19 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                                 onChange={(e) =>
                                   setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
                                 }
-                                className="w-56"
+                                style={{ width: RESUBMIT_NOTE_WIDTH }}
                               />
                               <Button
                                 size="sm"
                                 disabled={busyId === row.id}
                                 onClick={() => resubmit(row)}
-                                className="cursor-pointer"
                               >
-                                <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                <RotateCcw aria-hidden="true" />
                                 {t("approvals.resubmit")}
                               </Button>
                             </>
                           )}
-                        </div>
+                        </Flex>
                       </TableCell>
                     </TableRow>
                   );
@@ -535,13 +659,13 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         <Card data-tour="persetujuan-riwayat">
           <CardHeader>
             <CardTitle>
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Flex align="center" gap={token.marginXS} style={{ display: "inline-flex" }}>
+                <ShieldCheck size="1em" color={token.colorTextSecondary} aria-hidden="true" />
                 {t("approvals.historyTitle")}
-              </span>
+              </Flex>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-0 py-0">
+          <CardContent style={flushBody}>
             {/*
              * Satu-satunya tabel di halaman ini yang memakai DataTable, dan
              * itu disengaja: riwayat keputusan sudah termuat penuh di client,
@@ -558,6 +682,6 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
           </CardContent>
         </Card>
       )}
-    </div>
+    </Flex>
   );
 }

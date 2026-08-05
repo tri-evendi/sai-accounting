@@ -154,6 +154,34 @@ export type StatementPayload =
       };
       visibleColumns?: string[];
     }
+  /**
+   * Umur Piutang / Umur Utang — dokumen belum lunas per satu tanggal, beserta
+   * ringkasan embernya.
+   *
+   * `outstandingBase` boleh `null`: dokumen valas tanpa kurs tidak punya nilai
+   * IDR yang jujur. Ia TIDAK dijadikan nol (itu akan menyusutkan total tanpa
+   * bersuara) melainkan dibawa apa adanya dan dihitung di `unresolved`, persis
+   * seperti di layar.
+   */
+  | {
+      kind: "receivables" | "payables";
+      period: string;
+      rows: {
+        partyName: string;
+        documentNo: string;
+        date: string;
+        dueDate: string | null;
+        ageDays: number;
+        ageFromIssue: boolean;
+        status: string;
+        total: number;
+        currency: string;
+        outstandingBase: number | null;
+      }[];
+      buckets: { label: string; amount: number }[];
+      total: number;
+      unresolved: number;
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -176,6 +204,8 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
   "sales-by-customer": "Penjualan per Pelanggan",
   "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Piutang & Umur Piutang",
+  payables: "Utang & Umur Utang",
 };
 
 /**
@@ -544,6 +574,67 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
         14,
         afterTable(doc) + 6
       );
+    }
+  }
+
+  if (payload.kind === "receivables" || payload.kind === "payables") {
+    const party = payload.kind === "receivables" ? "Pelanggan" : "Pemasok";
+
+    // Ringkasan ember lebih dulu: pertanyaan pertama yang dibawa orang ke
+    // laporan ini adalah "berapa yang sudah lewat 90 hari", bukan "dokumen apa
+    // saja". Daftar dokumennya menyusul sebagai buktinya.
+    autoTable(doc, {
+      startY: y,
+      head: [payload.buckets.map((b) => b.label)],
+      body: [payload.buckets.map((b) => rp(b.amount))],
+      foot: [[`Total: ${rp(payload.total)}`, ...Array(payload.buckets.length - 1).fill("")]],
+      styles: { fontSize: 9, halign: "right" },
+      headStyles: { fillColor: BRAND, halign: "right" },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
+    });
+
+    autoTable(doc, {
+      startY: afterTable(doc) + 6,
+      head: [[party, "Dokumen", "Tanggal", "Jatuh Tempo", "Umur", "Status", "Nilai Dokumen", "Sisa (IDR)"]],
+      body: payload.rows.length
+        ? payload.rows.map((r) => [
+            r.partyName,
+            r.documentNo,
+            r.date,
+            r.dueDate ?? "-",
+            // Umur yang dihitung dari TANGGAL DOKUMEN (bukan jatuh tempo, yang
+            // tidak ada) diberi tanda — tanpa itu dua angka yang artinya berbeda
+            // berdiri di kolom yang sama.
+            `${r.ageDays} hari${r.ageFromIssue ? " *" : ""}`,
+            r.status,
+            `${r.currency} ${r.total.toLocaleString("id-ID")}`,
+            // Dokumen valas tanpa kurs: garis, bukan nol. Nol adalah pernyataan
+            // "tidak ada sisa", dan itu bukan yang buku besar katakan.
+            r.outstandingBase == null ? "—" : rp(r.outstandingBase),
+          ])
+        : [["Tidak ada dokumen yang belum lunas.", "", "", "", "", "", "", ""]],
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: BRAND },
+      columnStyles: { 4: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
+    });
+
+    const notes: string[] = [];
+    if (payload.rows.some((r) => r.ageFromIssue)) {
+      notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+    }
+    if (payload.unresolved > 0) {
+      notes.push(
+        `${payload.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+      );
+    }
+    if (notes.length > 0) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      let noteY = afterTable(doc) + 6;
+      for (const n of notes) {
+        doc.text(n, 14, noteY);
+        noteY += 5;
+      }
     }
   }
 

@@ -180,6 +180,33 @@ const partyRecap = z.object({
   visibleColumns: columnSelection,
 });
 
+/**
+ * Umur Piutang / Umur Utang. `outstandingBase` boleh null — dokumen valas tanpa
+ * kurs tidak punya nilai IDR yang jujur, dan menjadikannya nol akan menyusutkan
+ * total tanpa bersuara.
+ */
+const aging = z.object({
+  kind: z.enum(["receivables", "payables"]),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      partyName: z.string(),
+      documentNo: z.string(),
+      date: z.string(),
+      dueDate: z.string().nullable(),
+      ageDays: z.number().int(),
+      ageFromIssue: z.boolean(),
+      status: z.string(),
+      total: money,
+      currency: z.string(),
+      outstandingBase: money.nullable(),
+    })
+  ),
+  buckets: z.array(z.object({ label: z.string(), amount: money })),
+  total: money,
+  unresolved: z.number().int().nonnegative(),
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
@@ -188,6 +215,7 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   stockMovement,
   opnameHistory,
   partyRecap,
+  aging,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

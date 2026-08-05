@@ -452,6 +452,82 @@ function buildPartyRecapSheet(
   };
 }
 
+function buildAgingSheet(
+  p: Extract<StatementPayload, { kind: "receivables" | "payables" }>
+): SheetModel {
+  const receivable = p.kind === "receivables";
+  const party = receivable ? "Pelanggan" : "Pemasok";
+
+  const rows: SheetCell[][] = [];
+
+  // Ringkasan ember sebagai baris berlabel, bukan kolom terpisah: satu lembar
+  // dengan dua tabel bersebelahan tak bisa disortir maupun dijumlahkan.
+  rows.push([text("Ringkasan umur", true), text(null), text(null), text(null), text(null), text(null), text(null), text(null)]);
+  for (const b of p.buckets) {
+    rows.push([text(b.label), text(null), text(null), text(null), text(null), text(null), text(null), money(b.amount)]);
+  }
+  rows.push([text("Total", true), text(null), text(null), text(null), text(null), text(null), text(null), money(p.total, true)]);
+  rows.push(Array.from({ length: 8 }, () => text(null)));
+
+  rows.push([text("Rincian dokumen", true), text(null), text(null), text(null), text(null), text(null), text(null), text(null)]);
+  if (p.rows.length === 0) {
+    rows.push([text("Tidak ada dokumen yang belum lunas."), ...Array.from({ length: 7 }, () => text(null))]);
+  }
+  for (const r of p.rows) {
+    rows.push([
+      text(r.partyName),
+      text(r.documentNo),
+      text(r.date),
+      text(r.dueDate ?? "-"),
+      // Umur yang dihitung dari TANGGAL DOKUMEN (karena jatuh temponya tidak
+      // ada) diberi tanda bintang: dua angka yang artinya berbeda tak boleh
+      // berdiri tanpa penanda di kolom yang sama. Karena itu ia teks, bukan
+      // angka — dan penjelasannya ada di catatan kaki lembar ini.
+      { value: r.ageFromIssue ? `${r.ageDays} *` : r.ageDays, align: "right" },
+      text(r.status),
+      // Nilai dokumen dalam MATA UANGNYA SENDIRI — kolomnya bercampur mata
+      // uang, jadi angkanya tidak boleh memakai topeng rupiah.
+      { value: r.total, align: "right" },
+      // Valas tanpa kurs: sel kosong, bukan nol. Nol menyatakan "tidak ada
+      // sisa", dan itu bukan yang buku besar katakan.
+      r.outstandingBase == null ? text(null) : money(r.outstandingBase),
+    ]);
+  }
+
+  const notes: string[] = [];
+  if (p.rows.some((r) => r.ageFromIssue)) {
+    notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+  }
+  if (p.unresolved > 0) {
+    notes.push(
+      `${p.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+    );
+  }
+  if (notes.length > 0) {
+    rows.push(Array.from({ length: 8 }, () => text(null)));
+    for (const n of notes) {
+      rows.push([text(n), ...Array.from({ length: 7 }, () => text(null))]);
+    }
+  }
+
+  return {
+    name: receivable ? "Umur Piutang" : "Umur Utang",
+    title: receivable ? "Piutang & Umur Piutang" : "Utang & Umur Utang",
+    period: p.period,
+    columns: [
+      { header: party, width: 30 },
+      { header: "Dokumen", width: 20 },
+      { header: "Tanggal", width: 14 },
+      { header: "Jatuh Tempo", width: 14 },
+      { header: "Umur (hari)", width: 12 },
+      { header: "Status", width: 24 },
+      { header: "Nilai Dokumen", width: 18 },
+      { header: "Sisa (IDR)", width: 20 },
+    ],
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -470,5 +546,8 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
     case "sales-by-customer":
     case "purchases-by-supplier":
       return buildPartyRecapSheet(payload);
+    case "receivables":
+    case "payables":
+      return buildAgingSheet(payload);
   }
 }

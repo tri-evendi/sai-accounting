@@ -22,6 +22,15 @@
 import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
 import { getOpnameHistory, getStockMovementReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
+import {
+  AGING_BUCKETS,
+  AGING_BUCKET_LABELS,
+  PAYMENT_STATUS_LABELS,
+  getPayables,
+  getReceivables,
+  type AgingBucket,
+  type PaymentStatus,
+} from "@/lib/receivables";
 import { costCenterFilterLabel } from "@/lib/cost-center-options";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -52,6 +61,57 @@ function periodLabel(from: Date, to: Date, costCenter: string | null): string {
     `Periode ${formatDate(from)} – ${formatDate(to)}` +
     (costCenter ? ` · Pusat Biaya: ${costCenter}` : "")
   );
+}
+
+/**
+ * Bentuk payload Umur Piutang / Umur Utang — MURNI, dari baris yang sudah
+ * dibaca.
+ *
+ * Dipisah dari pembacaannya supaya HALAMAN piutang/utang bisa memakainya juga:
+ * halaman itu sudah memegang barisnya (lengkap dengan saringan "hanya jatuh
+ * tempo" yang sedang aktif), dan memanggil pembacanya sekali lagi hanya untuk
+ * membuat berkas berarti berkasnya bisa memuat kumpulan dokumen yang berbeda
+ * dari yang dilihat penggunanya.
+ */
+export function agingPayload(
+  kind: "receivables" | "payables",
+  asOf: Date,
+  rows: {
+    partyName: string;
+    documentNo: string;
+    date: Date;
+    dueDate: Date | null;
+    ageDays: number;
+    ageFromIssue: boolean;
+    status: PaymentStatus;
+    total: number;
+    currency: string;
+    outstandingBase: number | null;
+  }[],
+  aging: { buckets: Record<AgingBucket, number>; total: number; unresolved: number }
+): StatementPayload {
+  return {
+    kind,
+    period: `Per ${formatDate(asOf)}`,
+    rows: rows.map((r) => ({
+      partyName: r.partyName,
+      documentNo: r.documentNo,
+      date: formatDate(r.date),
+      dueDate: r.dueDate ? formatDate(r.dueDate) : null,
+      ageDays: r.ageDays,
+      ageFromIssue: r.ageFromIssue,
+      status: PAYMENT_STATUS_LABELS[r.status],
+      total: r.total,
+      currency: r.currency,
+      outstandingBase: r.outstandingBase,
+    })),
+    buckets: AGING_BUCKETS.map((b) => ({
+      label: AGING_BUCKET_LABELS[b],
+      amount: aging.buckets[b],
+    })),
+    total: aging.total,
+    unresolved: aging.unresolved,
+  };
 }
 
 export async function buildReportPayload(
@@ -171,6 +231,16 @@ export async function buildReportPayload(
         dormantCount: r.dormantCount,
         visibleColumns: resolveColumns(report, params.cols),
       };
+    }
+
+    case "receivables":
+    case "payables": {
+      const { asOf } = resolveAsOf(params.asOf);
+      const result =
+        report.payloadKind === "receivables"
+          ? await getReceivables({ asOf })
+          : await getPayables({ asOf });
+      return agingPayload(report.payloadKind, asOf, result.rows, result.aging);
     }
 
     case "sales-by-customer":

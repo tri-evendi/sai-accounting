@@ -232,6 +232,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/receivables",
     paramKind: "as_of",
     icon: "HandCoins",
+    payloadKind: "receivables",
   },
   {
     id: "sales-target",
@@ -272,6 +273,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/payables",
     paramKind: "as_of",
     icon: "Wallet",
+    payloadKind: "payables",
   },
   {
     id: "purchases-by-supplier",

@@ -370,3 +370,95 @@ describe("rekap per mitra", () => {
     ).toBe(true);
   });
 });
+
+/**
+ * Umur Piutang / Umur Utang — dokumen belum lunas per satu tanggal.
+ *
+ * Yang dijaga: dokumen valas TANPA KURS tidak boleh menjadi nol di lembar
+ * sebar. Nol adalah pernyataan "tidak ada sisa"; yang benar adalah "nilainya
+ * tidak diketahui", dan menuliskannya sebagai nol menyusutkan total tanpa
+ * bersuara — persis kegagalan yang `unresolved` ada untuk mencegahnya.
+ */
+describe("umur piutang / utang", () => {
+  const base = {
+    kind: "receivables" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        documentNo: "INV-001",
+        date: "1 Juli 2026",
+        dueDate: "31 Juli 2026",
+        ageDays: 5,
+        ageFromIssue: false,
+        status: "Jatuh Tempo",
+        total: 10_000_000,
+        currency: "IDR",
+        outstandingBase: 10_000_000,
+      },
+      {
+        partyName: "Coffee Buyers Ltd",
+        documentNo: "INV-002",
+        date: "2 Juli 2026",
+        dueDate: null,
+        ageDays: 34,
+        ageFromIssue: true,
+        status: "Belum Bayar",
+        total: 5_000,
+        currency: "USD",
+        outstandingBase: null,
+      },
+    ],
+    buckets: [
+      { label: "0–30 hari", amount: 10_000_000 },
+      { label: "31–60 hari", amount: 0 },
+      { label: "61–90 hari", amount: 0 },
+      { label: "> 90 hari", amount: 0 },
+    ],
+    total: 10_000_000,
+    unresolved: 1,
+  };
+
+  it("membiarkan sisa dokumen tanpa kurs KOSONG, bukan nol", () => {
+    const sheet = buildReportSheet(base);
+    const row = sheet.rows.find((r) => r[1].value === "INV-002");
+    expect(row?.[7].value).toBeNull();
+    // Sedangkan dokumen ber-IDR tetap angka yang bisa dijumlahkan.
+    const rated = sheet.rows.find((r) => r[1].value === "INV-001");
+    expect(rated?.[7].value).toBe(10_000_000);
+    expect(rated?.[7].format).toBe("money");
+  });
+
+  it("menandai umur yang dihitung dari tanggal dokumen, dan menjelaskannya", () => {
+    const sheet = buildReportSheet(base);
+    const row = sheet.rows.find((r) => r[1].value === "INV-002");
+    expect(row?.[4].value).toBe("34 *");
+    expect(sheet.rows.some((r) => String(r[0].value).startsWith("* Umur dihitung"))).toBe(true);
+  });
+
+  it("menyebutkan dokumen yang tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("tidak ikut dijumlahkan"))).toBe(true);
+  });
+
+  it("membawa ringkasan ember beserta totalnya", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][0].value).toBe("Ringkasan umur");
+    expect(sheet.rows[1][0].value).toBe("0–30 hari");
+    expect(sheet.rows[1][7].value).toBe(10_000_000);
+  });
+
+  it("memberi judul & nama lembar sendiri untuk sisi utang", () => {
+    const sheet = buildReportSheet({ ...base, kind: "payables" });
+    expect(sheet.title).toBe("Utang & Umur Utang");
+    expect(sheet.columns[0].header).toBe("Pemasok");
+  });
+
+  it("skema ekspor menerima sisa yang null tanpa mengubahnya jadi nol", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    expect(parsed).toMatchObject({ kind: "receivables" });
+    if (parsed.kind === "receivables") {
+      expect(parsed.rows[1].outstandingBase).toBeNull();
+    }
+  });
+});

@@ -33,6 +33,8 @@ import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/compon
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { ArrowUpFromLine, Info } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
+import { agingPayload } from "@/lib/report-payload";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -77,11 +79,23 @@ export default async function PayablesPage({
   // (issue #37). Disclosed per row and in the banner — never presented as fact.
   const estimatedCount = rows.filter((r) => r.allocationEstimated).length;
 
+  // Payload cetak dari baris yang SAMA dengan tabel di bawah — termasuk saringan
+  // "hanya jatuh tempo" yang sedang aktif. Berkas yang memuat kumpulan dokumen
+  // berbeda dari layarnya adalah cara termudah dua orang membaca satu laporan
+  // dan berdebat tentang angka yang berbeda.
+  const payload = agingPayload("payables", asOf, rows, aging);
+
   return (
     <div>
       <PageHeader
         className="mb-2"
         title={<TermTooltip term="utang">{t("payables.title")}</TermTooltip>}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
         description={
           <>
             {t("payables.description", { date: formatDateShort(asOf) })}

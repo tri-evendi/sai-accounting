@@ -26,6 +26,8 @@ import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { agingPayload } from "@/lib/report-payload";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -56,11 +58,23 @@ export default async function ReceivablesPage({
 
   const { rows, aging, byParty, overdueCount } = await getReceivables({ asOf, overdueOnly });
 
+  // Payload cetak dari baris yang SAMA dengan tabel di bawah — termasuk saringan
+  // "hanya jatuh tempo" yang sedang aktif. Berkas yang memuat kumpulan dokumen
+  // berbeda dari layarnya adalah cara termudah dua orang membaca satu laporan
+  // dan berdebat tentang angka yang berbeda.
+  const payload = agingPayload("receivables", asOf, rows, aging);
+
   return (
     <div>
       <PageHeader
         className="mb-2"
         title={<TermTooltip term="piutang">{t("receivables.title")}</TermTooltip>}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
         description={
           <>
             {t("receivables.description", { date: formatDateShort(asOf) })}

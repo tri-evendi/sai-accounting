@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "./globals.css";
 import { APP_NAME } from "@/lib/constants";
+import { AntdProvider } from "@/components/providers/antd-provider";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
@@ -87,16 +89,33 @@ export default async function RootLayout({
         )}
       </head>
       <body className="min-h-full">
+        {/*
+         * AntdRegistry mengumpulkan gaya CSS-in-JS yang dipakai render ini dan
+         * menyisipkannya ke HTML lewat `useServerInsertedHTML` — sebelum
+         * markup yang memakainya. Tanpa itu gaya AntD baru muncul setelah
+         * hydrate: layar berkedip tanpa gaya di setiap muatan pertama, dan
+         * pada koneksi lambat kedipannya cukup panjang untuk membuat orang
+         * menekan tombol dua kali. Ia harus MEMBUNGKUS semua yang merender
+         * komponen AntD, karena itu letaknya paling luar di dalam <body>.
+         */}
+        <AntdRegistry>
         <ThemeProvider theme={theme}>
         <LocaleProvider locale={locale} dictionary={dictionary}>
-          {/* Identitas perusahaan diambil di sisi client (lihat
-              company-identity-client.tsx): membacanya di server SINI berarti
-              satu query Prisma di root layout, yang ikut berjalan saat
-              `next build` menghasilkan 49 halaman statis — padahal build
-              memakai DATABASE_URL placeholder tanpa koneksi. */}
-          <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
+          {/* Di dalam ThemeProvider dengan sengaja: jembatan AntD membaca tema
+              dari konteks itu supaya toggle tema mengubah komponen AntD tanpa
+              muat ulang (alasan lengkapnya di antd-provider.tsx). Bahasanya
+              tetap datang sebagai prop dari server. */}
+          <AntdProvider locale={locale}>
+            {/* Identitas perusahaan diambil di sisi client (lihat
+                company-identity-client.tsx): membacanya di server SINI berarti
+                satu query Prisma di root layout, yang ikut berjalan saat
+                `next build` menghasilkan 49 halaman statis — padahal build
+                memakai DATABASE_URL placeholder tanpa koneksi. */}
+            <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
+          </AntdProvider>
         </LocaleProvider>
         </ThemeProvider>
+        </AntdRegistry>
       </body>
     </html>
   );

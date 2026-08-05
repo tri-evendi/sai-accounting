@@ -12,6 +12,19 @@ import { getT } from "@/lib/i18n/server";
  * encodes *favourability*, not direction: an over-variance is green on a revenue
  * account (beat the target) but red on an expense account (overspent), which a
  * direction-only colour could never express.
+ *
+ * ── Kenapa TIDAK ada satu pun gaya di sini setelah #194 ────────────────────
+ * `gap-1` dan `h-3 w-3` dulu ada karena `<svg>` lucide di dalam badge tidak
+ * punya ukuran maupun jarak. Keduanya sekarang milik `Tag` AntD sendiri:
+ * `.ant-tag > svg + span` mendapat `margin-inline-start: paddingInline`, dan
+ * ikonnya diberi `size="1em"` sehingga ia mengikuti `fontSizeSM` (12px) milik
+ * `Tag` — bukan angka tetap yang harus diubah kalau kerapatan tema bergeser.
+ * Label WAJIB dibungkus `<span>`: selektor jarak AntD itu mencocokkan
+ * `> svg + span`, dan teks telanjang tidak akan pernah cocok.
+ *
+ * Berkas ini TETAP server component. Ia tidak memanggil `theme.useToken()` —
+ * satu-satunya token yang dibutuhkannya (warna teks `Tag`) sudah dipasang
+ * `AntdProvider` lewat `components.Tag`, jadi tidak ada yang perlu dibaca.
  */
 export async function VarianceBadge({
   status,
@@ -24,9 +37,9 @@ export async function VarianceBadge({
 
   if (status === "on_target") {
     return (
-      <Badge variant="default" className="gap-1">
-        <Minus className="h-3 w-3" aria-hidden="true" />
-        {t("budget.varianceOnTarget")}
+      <Badge variant="default">
+        <Minus size="1em" aria-hidden="true" />
+        <span>{t("budget.varianceOnTarget")}</span>
       </Badge>
     );
   }
@@ -38,9 +51,11 @@ export async function VarianceBadge({
   const variant = favorable === null ? "default" : favorable ? "success" : "danger";
 
   return (
-    <Badge variant={variant} className="gap-1">
-      <Icon className="h-3 w-3" aria-hidden="true" />
-      {label} {t("budget.varianceSuffix")}
+    <Badge variant={variant}>
+      <Icon size="1em" aria-hidden="true" />
+      <span>
+        {label} {t("budget.varianceSuffix")}
+      </span>
     </Badge>
   );
 }

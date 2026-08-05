@@ -1,5 +1,26 @@
 "use client";
 
+/**
+ * Grafik Beranda (recharts).
+ *
+ * ── Apa yang BERUBAH di issue #194, dan apa yang sengaja TIDAK ─────────────
+ * Yang berubah: seluruh `className` Tailwind — keadaan kosong, legenda, dan
+ * tooltip arus kas — kini token AntD. Tooltip itu bukan sekadar kerapian:
+ * "Uang masuk"/"Uang keluar" dulu memakai `--success`/`--destructive`, yang
+ * sebagai teks 12px berada di 3,30:1 dan 4,83:1. Sekarang keduanya memakai
+ * `colorMoneyPositive`/`colorMoneyNegative` (#186, 5,12:1 dan 6,00:1) lewat
+ * `moneyPalette` — pembantu yang sama yang dipakai `Money`, jadi angka di
+ * tooltip dan angka di tabel tidak bisa berbeda warna. Kalimatnya sendiri
+ * tetap menyebut arahnya, jadi warnanya penanda KEDUA, bukan satu-satunya.
+ *
+ * Yang TIDAK berubah: warna SERI (`fill`, `stroke`, `tick`) masih variabel
+ * `--success`/`--chart-1`/`--border` dari `globals.css`. Memindahkannya adalah
+ * issue #202, yang di epik #206 terdaftar sebagai KEPUTUSAN tersendiri —
+ * palet kategorikal sebuah grafik bukan turunan mekanis dari token teks, dan
+ * memilihnya diam-diam di dalam issue permukaan berarti mengambil keputusan
+ * itu tanpa mengukurnya. Variabel-variabel itu masih hidup sampai #203.
+ */
+
 import {
   BarChart,
   Bar,
@@ -13,9 +34,14 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Flex, theme, Typography } from "antd";
 import { useT } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 const CHART_HEIGHT = 260;
+
+/** Tinggi minimum kotak "belum ada data" — setara `min-h-[200px]` sebelumnya. */
+const EMPTY_MIN_HEIGHT = 200;
 
 // Warna per POSISI, bukan per label. Sebelum multibahasa peta ini berkunci
 // teks Indonesia ("Sah", "Aman"); begitu labelnya ikut bahasa pengguna, kunci
@@ -34,9 +60,13 @@ interface PieDatum {
 
 function ChartEmpty({ message }: { message: string }) {
   return (
-    <div className="flex h-full min-h-[200px] items-center justify-center">
-      <p className="text-sm text-muted-foreground">{message}</p>
-    </div>
+    <Flex
+      align="center"
+      justify="center"
+      style={{ height: "100%", minHeight: EMPTY_MIN_HEIGHT }}
+    >
+      <Typography.Text type="secondary">{message}</Typography.Text>
+    </Flex>
   );
 }
 
@@ -74,6 +104,7 @@ function DonutChart({
   colors: readonly string[];
   emptyMessage: string;
 }) {
+  const { token } = theme.useToken();
   const filtered = data
     .map((d, i) => ({ ...d, fill: colors[i] ?? "var(--muted-foreground)" }))
     .filter((d) => d.value > 0);
@@ -105,7 +136,11 @@ function DonutChart({
         <Legend
           verticalAlign="bottom"
           height={36}
-          formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
+          formatter={(value) => (
+            <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
+              {value}
+            </span>
+          )}
         />
       </PieChart>
     </ResponsiveContainer>
@@ -231,22 +266,48 @@ interface CashFlowChartProps {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CashFlowTooltip({ active, payload, label, currency }: any) {
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   if (!active || !payload?.length) return null;
   const income = payload.find((p: { dataKey: string }) => p.dataKey === "debit")?.value ?? 0;
   const expense = payload.find((p: { dataKey: string }) => p.dataKey === "credit")?.value ?? 0;
 
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-foreground mb-1.5">{label}</p>
-      <p className="text-success">
+    /*
+     * Masuk/keluar TIDAK dibedakan warna saja: kalimatnya sendiri menyebutkan
+     * "Uang masuk"/"Uang keluar" (`charts.tooltipMoneyIn/Out`). Warnanya kini
+     * `colorMoneyPositive`/`colorMoneyNegative` (#186) — bukan `--success`/
+     * `--destructive` lama, yang sebagai teks 12px hanya 3,30:1 dan 4,83:1.
+     */
+    <div
+      style={{
+        padding: `${token.paddingXS}px ${token.paddingSM}px`,
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorBgElevated,
+        boxShadow: token.boxShadowSecondary,
+        fontSize: token.fontSizeSM,
+      }}
+    >
+      <div style={{ fontWeight: token.fontWeightStrong, marginBottom: token.marginXXS }}>
+        {label}
+      </div>
+      <div style={{ color: money.colorMoneyPositive }}>
         {t("charts.tooltipMoneyIn", { amount: formatMoney(income, currency) })}
-      </p>
-      <p className="text-destructive">
+      </div>
+      <div style={{ color: money.colorMoneyNegative }}>
         {t("charts.tooltipMoneyOut", { amount: formatMoney(expense, currency) })}
-      </p>
-      <p className="mt-1.5 font-medium text-foreground border-t border-border pt-1.5">
+      </div>
+      <div
+        style={{
+          marginTop: token.marginXXS,
+          paddingTop: token.marginXXS,
+          borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+          fontWeight: token.fontWeightStrong,
+        }}
+      >
         {t("charts.tooltipDifference", { amount: formatMoney(income - expense, currency) })}
-      </p>
+      </div>
     </div>
   );
 }

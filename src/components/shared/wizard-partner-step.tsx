@@ -11,6 +11,7 @@
  * Itulah sebabnya membatalkan di langkah 2 tidak meninggalkan mitra yatim.
  */
 
+import { Col, Flex, Row, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,9 +23,11 @@ import {
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { PartnerDraft } from "@/lib/wizard";
-import { cn } from "@/lib/utils";
 import { UserPlus, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
+
+/** Ikon keadaan kosong — sebesar `h-12 w-12` sebelum migrasi. */
+const EMPTY_ICON_SIZE = 48;
 
 interface Props {
   /**
@@ -67,6 +70,7 @@ export function WizardPartnerStep({
   manageHref,
 }: Props) {
   const t = useT();
+  const { token } = theme.useToken();
   const isNew = value.mode === "new";
   const noun =
     kind === "customer" ? t("wizard.partner.nounCustomer") : t("wizard.partner.nounSupplier");
@@ -74,41 +78,70 @@ export function WizardPartnerStep({
 
   return (
     <Card>
-      <CardContent className="space-y-4 py-4">
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium text-foreground">
-            {t(per("wizard.partner.thisCustomer", "wizard.partner.thisSupplier"))}
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(
-              [
-                { mode: "existing", label: t("wizard.partner.modeExisting"), icon: Users },
-                { mode: "new", label: t("wizard.partner.modeNew"), icon: UserPlus },
-              ] as const
-            ).map(({ mode, label, icon: Icon }) => (
-              <label
-                key={mode}
-                className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm",
-                  "transition-colors duration-150 hover:bg-muted",
-                  value.mode === mode
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-foreground"
-                )}
-              >
-                <input
-                  type="radio"
-                  name="partner-mode"
-                  className="h-4 w-4 cursor-pointer"
-                  checked={value.mode === mode}
-                  onChange={() => onChange({ mode })}
-                />
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+      {/* `CardContent` tanpa kelas sudah `px-6 py-4` — persis padding yang
+          dulu ditulis ulang sebagai `py-4`. Jarak antar-blok pindah ke `Flex`. */}
+      <CardContent>
+        <Flex vertical gap={token.margin}>
+          <fieldset>
+            <legend
+              style={{ marginBottom: token.marginXS, fontWeight: token.fontWeightStrong }}
+            >
+              {t(per("wizard.partner.thisCustomer", "wizard.partner.thisSupplier"))}
+            </legend>
+            <Row gutter={[token.marginXS, token.marginXS]}>
+              {(
+                [
+                  { mode: "existing", label: t("wizard.partner.modeExisting"), icon: Users },
+                  { mode: "new", label: t("wizard.partner.modeNew"), icon: UserPlus },
+                ] as const
+              ).map(({ mode, label, icon: Icon }) => {
+                const picked = value.mode === mode;
+                return (
+                  <Col key={mode} xs={24} sm={12}>
+                    {/*
+                     * Kartu pilihan: yang terpilih ditandai batas `colorPrimary`
+                     * + latar `colorPrimaryBg` — TAMBAHAN di atas radio yang
+                     * memang sudah tercentang, bukan penggantinya. Warna di sini
+                     * hanya mempercepat pembacaan; penandanya tetap radio.
+                     */}
+                    <Flex
+                      component="label"
+                      align="center"
+                      gap={token.marginSM}
+                      style={{
+                        cursor: "pointer",
+                        padding: token.paddingSM,
+                        borderRadius: token.borderRadiusLG,
+                        border: `${token.lineWidth}px solid ${
+                          picked ? token.colorPrimary : token.colorBorder
+                        }`,
+                        background: picked ? token.colorPrimaryBg : undefined,
+                        transition: `background ${token.motionDurationMid}, border-color ${token.motionDurationMid}`,
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="partner-mode"
+                        style={{
+                          width: token.fontSize,
+                          height: token.fontSize,
+                          cursor: "pointer",
+                        }}
+                        checked={picked}
+                        onChange={() => onChange({ mode })}
+                      />
+                      <Icon
+                        size={token.fontSize}
+                        aria-hidden="true"
+                        style={{ flexShrink: 0, color: token.colorTextSecondary }}
+                      />
+                      <span>{label}</span>
+                    </Flex>
+                  </Col>
+                );
+              })}
+            </Row>
+          </fieldset>
 
         {!isNew &&
           (fetchUrl ? (
@@ -125,7 +158,7 @@ export function WizardPartnerStep({
             />
           ) : options.length === 0 ? (
             <EmptyState
-              icon={<Users className="h-12 w-12" />}
+              icon={<Users size={EMPTY_ICON_SIZE} />}
               title={t("wizard.partner.emptyTitle", { noun })}
               description={t("wizard.partner.emptyDescription", { noun })}
               actionLabel={t("wizard.partner.manageAction", { noun })}
@@ -146,28 +179,32 @@ export function WizardPartnerStep({
 
         {isNew && (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="partnerName"
-                label={t(per("wizard.partner.nameCustomer", "wizard.partner.nameSupplier"))}
-                value={value.name}
-                onChange={(e) => onChange({ name: e.target.value })}
-                maxLength={100}
-                required
-              />
-              <Input
-                id="partnerPhone"
-                label={t("wizard.partner.phoneField")}
-                value={value.phone}
-                onChange={(e) => onChange({ phone: e.target.value })}
-                maxLength={30}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
+            <Row gutter={[token.margin, token.margin]}>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="partnerName"
+                  label={t(per("wizard.partner.nameCustomer", "wizard.partner.nameSupplier"))}
+                  value={value.name}
+                  onChange={(e) => onChange({ name: e.target.value })}
+                  maxLength={100}
+                  required
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="partnerPhone"
+                  label={t("wizard.partner.phoneField")}
+                  value={value.phone}
+                  onChange={(e) => onChange({ phone: e.target.value })}
+                  maxLength={30}
+                />
+              </Col>
+            </Row>
+            <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
               {t(per("wizard.partner.notSavedCustomer", "wizard.partner.notSavedSupplier"))}{" "}
               <strong>{t("wizard.partner.notSavedStrong")}</strong>{" "}
               {t("wizard.partner.notSavedAfter")}
-            </p>
+            </Typography.Text>
 
             <DisclosureSection
               description={
@@ -180,57 +217,72 @@ export function WizardPartnerStep({
                 value.email || t("wizard.partner.summaryNoEmail"),
               ].join(" · ")}
             >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  id="partnerAddress"
-                  label={t("common.address")}
-                  value={value.address}
-                  onChange={(e) => onChange({ address: e.target.value })}
-                  maxLength={500}
-                />
-                <Input
-                  id="partnerEmail"
-                  type="email"
-                  label={t("wizard.partner.emailField")}
-                  value={value.email}
-                  onChange={(e) => onChange({ email: e.target.value })}
-                  maxLength={100}
-                />
+              <Row gutter={[token.margin, token.margin]}>
+                <Col xs={24} sm={12}>
+                  <Input
+                    id="partnerAddress"
+                    label={t("common.address")}
+                    value={value.address}
+                    onChange={(e) => onChange({ address: e.target.value })}
+                    maxLength={500}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Input
+                    id="partnerEmail"
+                    type="email"
+                    label={t("wizard.partner.emailField")}
+                    value={value.email}
+                    onChange={(e) => onChange({ email: e.target.value })}
+                    maxLength={100}
+                  />
+                </Col>
                 {withCustomerFields && (
                   <>
-                    <Input
-                      id="partnerPic"
-                      label={t("wizard.partner.picField")}
-                      value={value.pic}
-                      onChange={(e) => onChange({ pic: e.target.value })}
-                      maxLength={100}
-                    />
-                    <Input
-                      id="partnerNpwp"
-                      label={t("wizard.partner.npwpField")}
-                      value={value.npwp}
-                      onChange={(e) => onChange({ npwp: e.target.value })}
-                      maxLength={30}
-                    />
-                    <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground sm:col-span-2">
+                    <Col xs={24} sm={12}>
+                      <Input
+                        id="partnerPic"
+                        label={t("wizard.partner.picField")}
+                        value={value.pic}
+                        onChange={(e) => onChange({ pic: e.target.value })}
+                        maxLength={100}
+                      />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Input
+                        id="partnerNpwp"
+                        label={t("wizard.partner.npwpField")}
+                        value={value.npwp}
+                        onChange={(e) => onChange({ npwp: e.target.value })}
+                        maxLength={30}
+                      />
+                    </Col>
+                    <Col span={24}>
+                      {/*
+                       * Kata-katanya kini ANAK `Checkbox`, bukan `<label>` kedua
+                       * yang membungkus `<label>` AntD. Daerah tekannya jadi
+                       * milik `.ant-checkbox-wrapper` — kotak DAN keterangannya.
+                       */}
                       <Checkbox
-                        className="mt-1"
                         checked={value.taxExempt}
                         onCheckedChange={(v) => onChange({ taxExempt: v === true })}
-                      />
-                      <span>
+                      >
                         {t("wizard.partner.taxExemptLabel")}
-                        <span className="block text-xs text-muted-foreground">
+                        <Typography.Text
+                          type="secondary"
+                          style={{ display: "block", fontSize: token.fontSizeSM }}
+                        >
                           {t("wizard.partner.taxExemptHint")}
-                        </span>
-                      </span>
-                    </label>
+                        </Typography.Text>
+                      </Checkbox>
+                    </Col>
                   </>
                 )}
-              </div>
+              </Row>
             </DisclosureSection>
           </>
         )}
+        </Flex>
       </CardContent>
     </Card>
   );

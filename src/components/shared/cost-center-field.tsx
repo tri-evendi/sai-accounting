@@ -25,6 +25,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Flex, theme, Typography } from "antd";
 import { Info } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
@@ -66,6 +67,13 @@ export interface CostCenterFieldProps {
   /** `""` = belum ditetapkan. */
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Penempatan di dalam grid FORMULIR PEMANGGIL (`sm:col-span-2`, `mt-4`).
+   * Sengaja dibiarkan sebagai jalan lewat selama fase C: lima formulir yang
+   * memakainya belum dikonversi (#195–#199), dan mencabutnya di sini akan
+   * membuat pemilih pusat biaya melompat ke satu kolom di kelima layar itu.
+   * Ia hilang bersama formulir-formulir itu, bukan sebelum.
+   */
   className?: string;
   /** Ganti kalimat bantuan bawaan — dipakai formulir stok, yang alasannya beda. */
   hint?: string;
@@ -84,6 +92,7 @@ export function CostCenterField({
   hint,
 }: CostCenterFieldProps) {
   const t = useT();
+  const { token } = theme.useToken();
   if (costCenters.length === 0) return null;
 
   return (
@@ -99,10 +108,16 @@ export function CostCenterField({
           ...costCenters.map((c) => ({ value: String(c.id), label: `${c.code} — ${c.name}` })),
         ]}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span>{hint ?? t("costCenters.pickerHint")}</span>
-      </p>
+      <Flex
+        align="flex-start"
+        gap={token.marginXXS}
+        style={{ marginTop: token.marginXXS }}
+      >
+        <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+          {hint ?? t("costCenters.pickerHint")}
+        </Typography.Text>
+      </Flex>
     </div>
   );
 }

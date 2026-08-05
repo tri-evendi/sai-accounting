@@ -20,11 +20,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { StockPeriodGranularity } from "@/lib/stock-period";
+
+/** Lebar minimum label periode (setara `min-w-[16rem]` sebelum migrasi). */
+const PERIOD_LABEL_WIDTH = 256;
 
 export function StockPeriodFilter({
   basePath,
@@ -47,6 +51,7 @@ export function StockPeriodFilter({
 }) {
   const router = useRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [f, setF] = useState(fromISO);
   const [to, setTo] = useState(toISO);
 
@@ -74,7 +79,10 @@ export function StockPeriodFilter({
     { value: "custom", label: t("stockMovement.granularityCustom") },
   ];
 
-  function submitCustom(e: React.FormEvent<HTMLFormElement>) {
+  /* `HTMLElement`, bukan `HTMLFormElement`: `<form>`-nya kini dirender `Flex`
+     lewat prop `component`, dan tanda tangan event AntD tidak menyempit ke
+     elemen form. Isi fungsinya tidak menyentuh `currentTarget` sama sekali. */
+  function submitCustom(e: React.FormEvent<HTMLElement>) {
     e.preventDefault();
     const p = new URLSearchParams({ g: "custom" });
     if (f) p.set("from", f);
@@ -83,8 +91,14 @@ export function StockPeriodFilter({
   }
 
   return (
-    <div className="mb-6 space-y-3">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("stockMovement.granularityLabel")}>
+    <Flex vertical gap={token.marginSM} style={{ marginBottom: token.marginLG }}>
+      <Flex
+        wrap
+        align="center"
+        gap={token.marginXS}
+        role="group"
+        aria-label={t("stockMovement.granularityLabel")}
+      >
         {options.map((o) => (
           <Button
             key={o.value}
@@ -97,16 +111,16 @@ export function StockPeriodFilter({
             {o.label}
           </Button>
         ))}
-      </div>
+      </Flex>
 
       {granularity === "custom" ? (
-        <form onSubmit={submitCustom} className="flex flex-wrap items-end gap-3">
+        <Flex component="form" wrap align="flex-end" gap={token.marginSM} onSubmit={submitCustom}>
           <Input id="from" type="date" label={t("common.from")} value={f} onChange={(e) => setF(e.target.value)} />
           <Input id="to" type="date" label={t("common.to")} value={to} onChange={(e) => setTo(e.target.value)} />
           <Button type="submit">{t("common.show")}</Button>
-        </form>
+        </Flex>
       ) : (
-        <div className="flex items-center gap-3">
+        <Flex align="center" gap={token.marginSM}>
           <Button
             type="button"
             size="sm"
@@ -115,9 +129,14 @@ export function StockPeriodFilter({
             disabled={!prevAnchorISO}
             onClick={() => prevAnchorISO && go(granularity, prevAnchorISO)}
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <ChevronLeft aria-hidden="true" />
           </Button>
-          <span className="min-w-[16rem] text-center text-sm font-medium text-foreground">{label}</span>
+          {/* Lebar minimum supaya ◀ ▶ tidak bergeser saat labelnya berganti
+              dari "Minggu 3 Agu" ke "September 2026" — panah yang berpindah
+              tempat tiap klik adalah target yang harus dicari ulang. */}
+          <Typography.Text strong style={{ minWidth: PERIOD_LABEL_WIDTH, textAlign: "center" }}>
+            {label}
+          </Typography.Text>
           <Button
             type="button"
             size="sm"
@@ -126,10 +145,10 @@ export function StockPeriodFilter({
             disabled={!nextAnchorISO}
             onClick={() => nextAnchorISO && go(granularity, nextAnchorISO)}
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight aria-hidden="true" />
           </Button>
-        </div>
+        </Flex>
       )}
-    </div>
+    </Flex>
   );
 }

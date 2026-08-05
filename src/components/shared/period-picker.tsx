@@ -6,24 +6,39 @@
  * "0" means the whole year (every monthly plan summed) — the same convention the
  * report and input pages share.
  */
+import { Flex, theme } from "antd";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Select } from "@/components/ui/select";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 
+/**
+ * Lebar kedua isian. Bukan token — tidak ada token AntD yang berarti "selebar
+ * satu tahun" — tetapi juga bukan kelas: keduanya kotak isian yang isinya
+ * SUDAH diketahui panjangnya ("2026", "September"), dan membiarkannya melar
+ * mengikuti kolom membuat baris saringan bergoyang tiap kali bulannya berganti.
+ */
+const YEAR_WIDTH = 160;
+const MONTH_WIDTH = 192;
+
+/**
+ * `className` dicabut, tidak dipindahkan: ketiga pemanggil (Anggaran per Akun,
+ * Target Penjualan, Laporan Anggaran) memanggilnya tanpa kelas apa pun, dan
+ * nilai bawaannya dulu justru kelas Tailwind — sebuah tata letak yang
+ * bersembunyi di dalam nilai default sebuah prop.
+ */
 export function PeriodPicker({
   year,
   month,
   yearsBack = 4,
-  className,
 }: {
   year: number;
   /** undefined = whole year. */
   month?: number;
   yearsBack?: number;
-  className?: string;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const months = monthNames(useDictionary());
   const router = useRouter();
   const pathname = usePathname();
@@ -41,8 +56,8 @@ export function PeriodPicker({
   }
 
   return (
-    <div className={className ?? "flex flex-wrap items-end gap-3"}>
-      <div className="w-40">
+    <Flex wrap align="flex-end" gap={token.marginSM}>
+      <div style={{ width: YEAR_WIDTH }}>
         <Select
           id="period-year"
           label={t("budget.yearField")}
@@ -51,7 +66,7 @@ export function PeriodPicker({
           options={years.map((y) => ({ value: String(y), label: String(y) }))}
         />
       </div>
-      <div className="w-48">
+      <div style={{ width: MONTH_WIDTH }}>
         <Select
           id="period-month"
           label={t("budget.monthField")}
@@ -63,6 +78,6 @@ export function PeriodPicker({
           ]}
         />
       </div>
-    </div>
+    </Flex>
   );
 }

@@ -10,6 +10,7 @@
  * tab baru yang punya tombol cetak bawaan browser.
  */
 import { useRef } from "react";
+import { Flex, theme } from "antd";
 import { Printer, Download } from "lucide-react";
 import {
   Dialog,
@@ -19,6 +20,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+
+/**
+ * Tinggi panel pratinjau. Bukan token — tidak ada token AntD yang berarti
+ * "hampir setinggi layar" — dan sengaja diukur terhadap VIEWPORT, bukan
+ * terhadap dokumennya: sebuah PDF bisa 40 halaman, dan panel yang tumbuh
+ * mengikuti isinya akan menggulung HALAMAN di belakang tirai.
+ */
+const PREVIEW_HEIGHT = "92vh";
+
+/** Satu baris yang dipotong dengan elipsis — judul dokumen bisa sangat panjang. */
+const ELLIPSIS = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+} as const;
 
 export interface DocumentPreviewProps {
   open: boolean;
@@ -41,6 +57,7 @@ export function DocumentPreview({
   onDownload,
 }: DocumentPreviewProps) {
   const t = useT();
+  const { token } = theme.useToken();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   function handlePrint() {
@@ -55,51 +72,106 @@ export function DocumentPreview({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[92vh] max-w-5xl p-0">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="min-w-0">
-            <DialogTitle className="truncate text-base font-semibold text-foreground">
-              {title}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              {t("documentPreview.hint")}
-            </DialogDescription>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 pr-8">
-            <Button variant="secondary" size="sm" onClick={handlePrint}>
-              <Printer className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documentPreview.print")}
-            </Button>
-            {onDownload ? (
-              <Button size="sm" onClick={onDownload}>
-                <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
-                {t("documentPreview.download")}
+      {/*
+       * SATU-SATUNYA `className` yang tersisa di berkas ini, dan ia bukan gaya
+       * melainkan UKURAN PANEL. `DialogContent` (#190) memaku lebarnya lewat
+       * `cn("max-w-2xl", className)` dan tidak menerima `style` maupun prop
+       * lebar; 2xl (672px) untuk sebuah lembar A4 berarti dokumennya dibaca
+       * dalam kolom yang lebih sempit daripada dokumennya sendiri.
+       *
+       * Menambah prop `width`/`size` ke `DialogContent` adalah perbaikan yang
+       * benar, tetapi `components/ui/**` di luar ruang lingkup issue ini —
+       * dicatat di laporan, bukan dikerjakan diam-diam di sini.
+       *
+       * Yang TIDAK lagi lewat kelas: `p-0` (sudah bawaan `padded={false}`) dan
+       * `h-[92vh]`, yang kini tinggal di pembungkus `Flex` di bawah.
+       */}
+      <DialogContent className="max-w-5xl">
+        <Flex vertical style={{ height: PREVIEW_HEIGHT }}>
+          <Flex
+            align="center"
+            justify="space-between"
+            gap={token.marginSM}
+            style={{
+              paddingBlock: token.paddingSM,
+              paddingInline: token.padding,
+              borderBottom: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <DialogTitle
+                style={{
+                  ...ELLIPSIS,
+                  margin: 0,
+                  fontSize: token.fontSizeLG,
+                  fontWeight: token.fontWeightStrong,
+                }}
+              >
+                {title}
+              </DialogTitle>
+              <DialogDescription
+                style={{
+                  margin: 0,
+                  fontSize: token.fontSizeSM,
+                  color: token.colorTextSecondary,
+                }}
+              >
+                {t("documentPreview.hint")}
+              </DialogDescription>
+            </div>
+            {/* Ruang kanan disisakan untuk tombol tutup (X) milik Modal, yang
+                digambar di pojok dan akan menimpa tombol Unduh tanpa ini. */}
+            <Flex
+              align="center"
+              gap={token.marginXS}
+              style={{ flexShrink: 0, paddingInlineEnd: token.paddingXL }}
+            >
+              <Button variant="secondary" size="sm" onClick={handlePrint}>
+                <Printer aria-hidden="true" /> {t("documentPreview.print")}
               </Button>
-            ) : (
-              <a href={src} download>
-                <Button size="sm">
-                  <Download className="mr-1 h-4 w-4" aria-hidden="true" />{" "}
-                  {t("documentPreview.download")}
+              {onDownload ? (
+                <Button size="sm" onClick={onDownload}>
+                  <Download aria-hidden="true" /> {t("documentPreview.download")}
                 </Button>
-              </a>
+              ) : (
+                <a href={src} download>
+                  <Button size="sm">
+                    <Download aria-hidden="true" /> {t("documentPreview.download")}
+                  </Button>
+                </a>
+              )}
+            </Flex>
+          </Flex>
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "auto",
+              background: token.colorFillAlter,
+              borderEndStartRadius: token.borderRadiusLG,
+              borderEndEndRadius: token.borderRadiusLG,
+            }}
+          >
+            {kind === "pdf" ? (
+              <iframe
+                ref={iframeRef}
+                src={src}
+                title={title}
+                style={{ height: "100%", width: "100%", border: 0 }}
+              />
+            ) : (
+              <Flex align="center" justify="center" style={{ height: "100%", padding: token.padding }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={title}
+                  style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
+                />
+              </Flex>
             )}
           </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-auto rounded-b-xl bg-muted">
-          {kind === "pdf" ? (
-            <iframe
-              ref={iframeRef}
-              src={src}
-              title={title}
-              className="h-full w-full border-0"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={title} className="max-h-full max-w-full object-contain" />
-            </div>
-          )}
-        </div>
+        </Flex>
       </DialogContent>
     </Dialog>
   );

@@ -133,8 +133,33 @@ const SRC = join(__dirname, "..", "src");
  * Prisma tetap server component dan merender kartu serta kepala halamannya
  * sebagai DAUN; `StaticTable` (#189) tetap server dan hanya keadaan KOSONG-nya
  * (`EmptyState`) yang kini client.
+ *
+ * 159 sejak #194 (2026-08-06, fase C2 — `components/shared`). Naik SATU:
+ * `components/shared/document-chain-timeline.tsx`. Yang memindahkannya bukan
+ * interaktivitas — komponen itu tetap tanpa satu pun penangan kejadian —
+ * melainkan WARNA: cincin tahapnya memakai pasangan token AntD
+ * (`colorSuccessBg` + `colorMoneyPositive`), dan token AntD hanya bisa dibaca
+ * lewat `theme.useToken()`, sebuah hook.
+ *
+ * Jalan tanpa hook sudah dicoba dan gagal terukur: `ConfigProvider` v6 memang
+ * menulis setiap token sebagai variabel CSS, tetapi ia memasangnya pada elemen
+ * ber-kelas `css-var-root` yang digambar komponen AntD sendiri — BUKAN pada
+ * `:root`. Di halaman kontrak tidak ada satu pun komponen AntD di ATAS
+ * komponen ini, jadi `var(--ant-color-success-bg)` tidak pernah teratasi dan
+ * warnanya jatuh diam-diam ke warisan. Kalau `AntdProvider` kelak memberi
+ * `cssVar` sebuah kunci yang dipasang di `<html>`, kenaikan ini bisa dibalik.
+ *
+ * Ongkosnya sempit dan disebutkan supaya bisa ditimbang: komponen ini dirender
+ * SEKALI per halaman rincian kontrak, dengan empat tahap; propnya data biasa
+ * yang halamannya sudah hitung, dan halaman kontraknya sendiri tetap server
+ * component.
+ *
+ * Yang TIDAK ikut, dan itu bagian penting dari diff ini: `aging.tsx` dan
+ * `variance-badge.tsx` tetap server component meski ikut dikonversi di issue
+ * yang sama. `aging.tsx` tidak boleh menyeberang sama sekali — ia mengimpor
+ * `AGING_BUCKETS` dari `lib/receivables.ts`, yang menarik Prisma.
  */
-const AMBANG_KLIEN = 158;
+const AMBANG_KLIEN = 159;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -260,6 +285,7 @@ const KLIEN_TERSAHKAN = [
   "components/shared/currency-rate-fields.tsx",
   "components/shared/dashboard-charts.tsx",
   "components/shared/delete-document-button.tsx",
+  "components/shared/document-chain-timeline.tsx",
   "components/shared/document-preview.tsx",
   "components/shared/due-date-field.tsx",
   "components/shared/invoice-fx-fields.tsx",

@@ -1,3 +1,4 @@
+import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -80,7 +81,7 @@ export function generateShippingPDF(data: ShippingDocData, company: { name: stri
     ]),
     foot: [["", "", "", "TOTAL", `${totalWeight.toLocaleString()} kg`]],
     theme: "grid",
-    headStyles: { fillColor: [44, 62, 80], textColor: 255, fontStyle: "bold", fontSize: 9 },
+    headStyles: { fillColor: PRINT_BRAND, textColor: 255, fontStyle: "bold", fontSize: 9 },
     bodyStyles: { fontSize: 9 },
     footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 9 },
     margin: { left: 14, right: 14 },

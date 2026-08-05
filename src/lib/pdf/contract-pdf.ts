@@ -1,3 +1,4 @@
+import { PRINT_BRAND, PRINT_MONEY_IN } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -129,7 +130,7 @@ export function generateContractPDF(contract: ContractData, company: { name: str
     }),
     foot: [["", "", "", "", "TOTAL", formatCurrency(totalValue, contract.currency)]],
     theme: "grid",
-    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold", fontSize: 9 },
+    headStyles: { fillColor: PRINT_BRAND, textColor: 255, fontStyle: "bold", fontSize: 9 },
     bodyStyles: { fontSize: 9 },
     footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 9 },
     margin: { left: 14, right: 14 },
@@ -159,7 +160,7 @@ export function generateContractPDF(contract: ContractData, company: { name: str
       ]),
       foot: [["", formatCurrency(totalPaid, contract.currency), "", `${Math.round((totalPaid / totalValue) * 100)}% paid`]],
       theme: "grid",
-      headStyles: { fillColor: [39, 174, 96], textColor: 255, fontSize: 9 },
+      headStyles: { fillColor: PRINT_MONEY_IN, textColor: 255, fontSize: 9 },
       bodyStyles: { fontSize: 9 },
       footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 9 },
       margin: { left: 14, right: 14 },

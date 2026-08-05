@@ -1,3 +1,4 @@
+import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
@@ -41,7 +42,7 @@ export function generateStockReportPDF(items: ClientInventoryItem[], company: { 
     ]),
     foot: [["", "", "", "", "", "", `Total: ${formatMoney(totalValue, "IDR")}`, ""]],
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [22, 101, 52] },
+    headStyles: { fillColor: PRINT_BRAND },
     columnStyles: {
       5: { halign: "right" },
       6: { halign: "right" },

@@ -22,6 +22,8 @@
 import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
 import { getOpnameHistory, getStockMovementReport, getStockValueReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
+import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
+import type { VarianceStatus } from "@/lib/budget";
 import {
   AGING_BUCKETS,
   AGING_BUCKET_LABELS,
@@ -43,8 +45,54 @@ export interface ReportPayloadParams {
   from?: string;
   to?: string;
   asOf?: string;
+  year?: string;
+  month?: string;
   costCenter?: string;
   cols?: string;
+}
+
+/** Nama bulan untuk DOKUMEN CETAK — bahasa Indonesia, seperti isi `lib/pdf`. */
+const MONTH_NAMES_ID = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+/** Kata untuk arah selisih; cetakan tak punya lencana berwarna. */
+const VARIANCE_STATUS_TEXT: Record<VarianceStatus, string> = {
+  over: "Di atas anggaran",
+  under: "Di bawah anggaran",
+  on_target: "Sesuai anggaran",
+};
+
+/**
+ * `?year=&month=` → tahun & bulan yang sah, aturan yang SAMA dengan halaman
+ * `/budget/report`: tahun 2000–2100, bulan 1–12, dan `month=0` berarti setahun
+ * penuh. Nilai tak sah jatuh ke periode berjalan — alamat yang diedit tangan
+ * tidak boleh mengirim `NaN` ke Prisma.
+ */
+export function resolveBudgetPeriod(
+  yearRaw: string | undefined,
+  monthRaw: string | undefined,
+  now: Date = new Date()
+): { year: number; month: number | undefined } {
+  const y = Number(yearRaw);
+  const year = Number.isInteger(y) && y >= 2000 && y <= 2100 ? y : now.getFullYear();
+  const m = monthRaw === undefined ? now.getMonth() + 1 : Number(monthRaw);
+  if (m === 0) return { year, month: undefined };
+  return {
+    year,
+    month: Number.isInteger(m) && m >= 1 && m <= 12 ? m : now.getMonth() + 1,
+  };
 }
 
 type ExportableReport = ReportDefinition & { payloadKind: StatementPayload["kind"] };
@@ -149,6 +197,65 @@ export function cashBankPayload(
     netChange: cf.netChange,
     closingCash: cf.closingCash,
     visibleColumns: resolveColumns(report, cols),
+  };
+}
+
+/**
+ * Bentuk payload Realisasi vs Anggaran dari hasil kedua pembacanya — MURNI.
+ *
+ * Dipisah karena halaman `/budget/report` sudah memegang keduanya: satu
+ * pembacaan, dua pemakai (tabel & berkas), dan karena itu tak bisa berselisih.
+ */
+export function budgetPayload(
+  definition: ReportDefinition,
+  year: number,
+  month: number | undefined,
+  budget: {
+    rows: {
+      code: string;
+      name: string;
+      budget: number;
+      actual: number;
+      variance: number;
+      variancePct: number | null;
+      status: VarianceStatus;
+    }[];
+    totals: {
+      budget: number;
+      actual: number;
+      variance: number;
+      variancePct: number | null;
+      alertCount: number;
+    };
+  },
+  sales: { hasTargets: boolean; totalTarget: number; actualSales: number; row: { variance: number } },
+  cols?: string
+): Extract<StatementPayload, { kind: "budget-realization" }> {
+  return {
+    kind: "budget-realization",
+    period: month === undefined ? `Tahun ${year}` : `${MONTH_NAMES_ID[month - 1]} ${year}`,
+    rows: budget.rows.map((r) => ({
+      code: r.code,
+      name: r.name,
+      budget: r.budget,
+      actual: r.actual,
+      variance: r.variance,
+      variancePct: r.variancePct,
+      // Kata, bukan enum mentah: cetakan tak punya lencana berwarna, jadi arah
+      // selisih harus terbaca sebagai teks.
+      status: VARIANCE_STATUS_TEXT[r.status],
+    })),
+    totalBudget: budget.totals.budget,
+    totalActual: budget.totals.actual,
+    totalVariance: budget.totals.variance,
+    totalVariancePct: budget.totals.variancePct,
+    alertCount: budget.totals.alertCount,
+    // Target penjualan hidup di halaman yang sama; tanpa target sama sekali ia
+    // `null`, bukan nol — "target Rp 0 tercapai" adalah kalimat yang salah.
+    salesTarget: sales.hasTargets
+      ? { target: sales.totalTarget, actual: sales.actualSales, variance: sales.row.variance }
+      : null,
+    visibleColumns: resolveColumns(definition, cols),
   };
 }
 
@@ -269,6 +376,18 @@ export async function buildReportPayload(
         dormantCount: r.dormantCount,
         visibleColumns: resolveColumns(report, params.cols),
       };
+    }
+
+    case "budget-realization": {
+      // `?year=&month=`, dengan month=0 = setahun penuh — bentuk yang sudah
+      // lama dibaca `/budget/report`, divalidasi dengan aturan yang sama supaya
+      // alamat yang diedit tangan tidak berujung 500.
+      const { year, month } = resolveBudgetPeriod(params.year, params.month);
+      const [{ report: budget }, sales] = await Promise.all([
+        getBudgetReport(year, month),
+        getSalesTargetRealization(year, month),
+      ]);
+      return budgetPayload(report, year, month, budget, sales, params.cols);
     }
 
     case "cash-bank": {

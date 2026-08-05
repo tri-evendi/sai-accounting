@@ -9,6 +9,9 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
+import { reportById } from "@/lib/report-catalog";
+import { budgetPayload } from "@/lib/report-payload";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -80,6 +83,11 @@ export default async function BudgetReportPage({
     getBudgetReport(year, month),
     getSalesTargetRealization(year, month),
   ]);
+  // Payload cetak dari hasil pembacaan yang SAMA dengan tabel di bawah — satu
+  // pembacaan, dua pemakai, jadi berkas dan layar tak bisa berselisih.
+  const definition = reportById("budget-realization");
+  const payload = definition ? budgetPayload(definition, year, month, report, sales) : null;
+
   const periodText =
     month === undefined
       ? t("budget.wholeYear", { year })
@@ -97,6 +105,14 @@ export default async function BudgetReportPage({
           period: periodText,
           threshold: DEFAULT_VARIANCE_THRESHOLD_PCT,
         })}
+        actions={
+          payload ? (
+            <>
+              <StatementPDFButton payload={payload} />
+              <StatementExcelButton payload={payload} />
+            </>
+          ) : undefined
+        }
       />
 
       <div className="mb-6">

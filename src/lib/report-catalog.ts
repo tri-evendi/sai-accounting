@@ -220,6 +220,10 @@ export const REPORTS: ReportDefinition[] = [
     href: "/budget/report",
     paramKind: "period_month",
     icon: "Target",
+    payloadKind: "budget-realization",
+    // Tanpa pilihan kolom: tabel variansi di layar belum dirender dari daftar
+    // kolom, dan centang yang hanya berlaku di berkas melanggar aturan yang
+    // dipegang seluruh Pusat Laporan — layar, PDF, dan lembar sebar sepakat.
   },
   // ── Penjualan ─────────────────────────────────────────────────────────────
   {

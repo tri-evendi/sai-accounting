@@ -249,6 +249,35 @@ const cashBank = z.object({
   visibleColumns: columnSelection,
 });
 
+/**
+ * Realisasi vs Anggaran. `variancePct` boleh null — akun beranggaran nol tak
+ * punya penyebut, dan "0%" akan menyatakan sesuatu yang tidak dikatakan angkanya.
+ */
+const budgetRealization = z.object({
+  kind: z.literal("budget-realization"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      budget: money,
+      actual: money,
+      variance: money,
+      variancePct: money.nullable(),
+      status: z.string(),
+    })
+  ),
+  totalBudget: money,
+  totalActual: money,
+  totalVariance: money,
+  totalVariancePct: money.nullable(),
+  alertCount: z.number().int().nonnegative(),
+  salesTarget: z
+    .object({ target: money, actual: money, variance: money })
+    .nullable(),
+  visibleColumns: columnSelection,
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
@@ -260,6 +289,7 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   aging,
   stockValue,
   cashBank,
+  budgetRealization,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

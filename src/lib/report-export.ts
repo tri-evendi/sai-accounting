@@ -21,16 +21,19 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   agingColumns,
+  budgetColumns,
   cashBankColumns,
   incomeStatementLayout,
   partyRecapColumns,
   stockMovementColumns,
   stockValueColumns,
   AGING_HEADERS,
+  BUDGET_HEADERS,
   CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
+  type BudgetColumnId,
   type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
@@ -659,6 +662,97 @@ function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>)
   };
 }
 
+function buildBudgetSheet(
+  p: Extract<StatementPayload, { kind: "budget-realization" }>
+): SheetModel {
+  const cols = budgetColumns(p);
+  const WIDTHS: Record<BudgetColumnId, number> = {
+    account: 40,
+    budget: 20,
+    actual: 20,
+    variance: 20,
+    variancePct: 14,
+    status: 22,
+  };
+
+  // Persentase sebagai ANGKA, bukan teks "+12,3%": lembar sebar yang menerima
+  // angka bisa mengurutkan dan menyaringnya. Persen yang tak terdefinisi
+  // (anggaran nol) tetap sel kosong — "0%" menyatakan hal yang tidak dikatakan.
+  const cell = (
+    r: { code: string; name: string; budget: number; actual: number; variance: number; variancePct: number | null; status: string },
+    c: BudgetColumnId,
+    bold = false
+  ): SheetCell => {
+    switch (c) {
+      case "account":
+        return text(`${r.code}  ${r.name}`.trim(), bold);
+      case "budget":
+        return money(r.budget, bold);
+      case "actual":
+        return money(r.actual, bold);
+      case "variance":
+        return money(r.variance, bold);
+      case "variancePct":
+        return r.variancePct === null
+          ? text(null)
+          : { value: r.variancePct, align: "right", bold };
+      case "status":
+        return text(r.status, bold);
+    }
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => cols.map((c) => cell(r, c)))
+    : [[text("Belum ada anggaran untuk periode ini."), ...cols.slice(1).map(() => text(null))]];
+
+  rows.push(
+    cols.map((c) =>
+      cell(
+        {
+          code: "",
+          name: "Total",
+          budget: p.totalBudget,
+          actual: p.totalActual,
+          variance: p.totalVariance,
+          variancePct: p.totalVariancePct,
+          status: p.alertCount > 0 ? `${p.alertCount} akun melewati ambang` : "",
+        },
+        c,
+        true
+      )
+    )
+  );
+
+  if (p.salesTarget) {
+    rows.push(cols.map(() => text(null)));
+    rows.push([text("Target Penjualan", true), ...cols.slice(1).map(() => text(null))]);
+    rows.push(
+      cols.map((c) =>
+        cell(
+          {
+            code: "",
+            name: "Total penjualan periode ini",
+            budget: p.salesTarget!.target,
+            actual: p.salesTarget!.actual,
+            variance: p.salesTarget!.variance,
+            variancePct: null,
+            status: "",
+          },
+          c
+        )
+      )
+    );
+  }
+
+  return {
+    name: "Realisasi vs Anggaran",
+    title: "Realisasi vs Anggaran",
+    period: p.period,
+    columns: cols.map((c) => ({ header: BUDGET_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -684,5 +778,7 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
       return buildStockValueSheet(payload);
     case "cash-bank":
       return buildCashBankSheet(payload);
+    case "budget-realization":
+      return buildBudgetSheet(payload);
   }
 }

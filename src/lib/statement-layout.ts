@@ -221,3 +221,30 @@ export const AGING_HEADERS: Record<AgingColumnId, string> = {
 export function agingColumns(report: { visibleColumns?: string[] }): AgingColumnId[] {
   return selectColumns(AGING_COLUMNS, report.visibleColumns, "party");
 }
+
+// ─── Kolom Realisasi vs Anggaran ─────────────────────────────────────────────
+
+export const BUDGET_COLUMNS = [
+  "account",
+  "budget",
+  "actual",
+  "variance",
+  "variancePct",
+  "status",
+] as const;
+
+export type BudgetColumnId = (typeof BUDGET_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const BUDGET_HEADERS: Record<BudgetColumnId, string> = {
+  account: "Akun",
+  budget: "Anggaran (IDR)",
+  actual: "Realisasi (IDR)",
+  variance: "Selisih (IDR)",
+  variancePct: "Selisih %",
+  status: "Keterangan",
+};
+
+export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColumnId[] {
+  return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
+}

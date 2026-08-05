@@ -17,15 +17,18 @@ import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
   agingColumns,
+  budgetColumns,
   cashBankColumns,
   partyRecapColumns,
   stockMovementColumns,
   stockValueColumns,
   AGING_HEADERS,
+  BUDGET_HEADERS,
   CASH_BANK_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
+  type BudgetColumnId,
   type CashBankColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
@@ -227,6 +230,36 @@ export type StatementPayload =
       closingCash: number;
       visibleColumns?: string[];
     }
+  /**
+   * Realisasi vs Anggaran — rencana, kenyataan, dan selisihnya per akun.
+   *
+   * `status` sudah berupa kata ("Di atas anggaran"/"Di bawah anggaran"/"Sesuai
+   * anggaran"), bukan enum mentah: cetakan tidak punya lencana berwarna, jadi
+   * arah selisih harus terbaca sebagai teks. `variancePct` boleh `null` — akun
+   * beranggaran nol tidak punya persentase, dan "0%" akan menyatakan sesuatu
+   * yang tidak dikatakan angkanya.
+   */
+  | {
+      kind: "budget-realization";
+      period: string;
+      rows: {
+        code: string;
+        name: string;
+        budget: number;
+        actual: number;
+        variance: number;
+        variancePct: number | null;
+        status: string;
+      }[];
+      totalBudget: number;
+      totalActual: number;
+      totalVariance: number;
+      totalVariancePct: number | null;
+      alertCount: number;
+      /** Ringkasan target penjualan periode yang sama; null bila tak ada target. */
+      salesTarget: { target: number; actual: number; variance: number } | null;
+      visibleColumns?: string[];
+    }
   | {
       kind: "cash-flow";
       period: string;
@@ -253,6 +286,7 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   payables: "Utang & Umur Utang",
   "stock-value": "Nilai Persediaan",
   "cash-bank": "Laporan Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
 };
 
 /**
@@ -621,6 +655,78 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
         14,
         afterTable(doc) + 6
       );
+    }
+  }
+
+  if (payload.kind === "budget-realization") {
+    const cols = budgetColumns(payload);
+    const pct = (value: number | null) =>
+      value === null ? "—" : `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+    const cell = (r: (typeof payload.rows)[number], c: BudgetColumnId): string => {
+      switch (c) {
+        case "account":
+          return `${r.code}  ${r.name}`.trim();
+        case "budget":
+          return rp(r.budget);
+        case "actual":
+          return rp(r.actual);
+        // Selisih selalu bertanda: arahnya adalah isi laporan ini, dan cetakan
+        // tidak punya warna untuk menyampaikannya.
+        case "variance":
+          return `${r.variance > 0 ? "+" : ""}${rp(r.variance)}`;
+        case "variancePct":
+          return pct(r.variancePct);
+        case "status":
+          return r.status;
+      }
+    };
+
+    const columnStyles: Record<number, { halign: "right" }> = {};
+    cols.forEach((c, i) => {
+      if (c !== "account" && c !== "status") columnStyles[i] = { halign: "right" };
+    });
+
+    const totals: Record<BudgetColumnId, string> = {
+      account: "Total",
+      budget: rp(payload.totalBudget),
+      actual: rp(payload.totalActual),
+      variance: `${payload.totalVariance > 0 ? "+" : ""}${rp(payload.totalVariance)}`,
+      variancePct: pct(payload.totalVariancePct),
+      status: payload.alertCount > 0 ? `${payload.alertCount} akun melewati ambang` : "",
+    };
+
+    autoTable(doc, {
+      startY: y,
+      head: [cols.map((c) => BUDGET_HEADERS[c])],
+      body: payload.rows.length
+        ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
+        : [["Belum ada anggaran untuk periode ini.", ...Array(cols.length - 1).fill("")]],
+      foot: [cols.map((c) => totals[c])],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles,
+    });
+
+    // Target penjualan hidup di halaman yang sama dengan realisasi anggaran,
+    // jadi cetakannya pun membawanya — sebagai blok terpisah, karena ia
+    // membandingkan hal yang berbeda (satu angka target, bukan per akun).
+    if (payload.salesTarget) {
+      autoTable(doc, {
+        startY: afterTable(doc) + 6,
+        head: [["Target Penjualan", "Target", "Realisasi", "Selisih"]],
+        body: [
+          [
+            "Total penjualan periode ini",
+            rp(payload.salesTarget.target),
+            rp(payload.salesTarget.actual),
+            `${payload.salesTarget.variance > 0 ? "+" : ""}${rp(payload.salesTarget.variance)}`,
+          ],
+        ],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: BRAND },
+        columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
+      });
     }
   }
 

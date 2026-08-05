@@ -37,6 +37,8 @@ export async function GET(request: Request) {
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
     asOf: params.get("asOf") ?? undefined,
+    year: params.get("year") ?? undefined,
+    month: params.get("month") ?? undefined,
     costCenter: params.get("costCenter") ?? undefined,
     cols: params.get("cols") ?? undefined,
   });

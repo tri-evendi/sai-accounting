@@ -23,6 +23,7 @@ import {
   isExportable,
 } from "@/lib/report-catalog";
 import { toISODate } from "@/lib/dashboard-summary";
+import { resolveBudgetPeriod } from "@/lib/report-payload";
 
 describe("catalogue integrity", () => {
   it("covers the six issue categories, in order", () => {
@@ -234,5 +235,26 @@ describe("tujuan kartu katalog", () => {
     for (const r of REPORTS.filter((x) => x.status === "available")) {
       expect(r.href, `${r.id}`).toMatch(/^\//);
     }
+  });
+});
+
+describe("resolveBudgetPeriod", () => {
+  const now = new Date(2026, 6, 20);
+
+  it("memakai tahun & bulan yang sah", () => {
+    expect(resolveBudgetPeriod("2025", "3", now)).toEqual({ year: 2025, month: 3 });
+  });
+
+  it("month=0 berarti setahun penuh", () => {
+    expect(resolveBudgetPeriod("2025", "0", now)).toEqual({ year: 2025, month: undefined });
+  });
+
+  it("nilai tak sah jatuh ke periode berjalan, bukan NaN ke Prisma", () => {
+    expect(resolveBudgetPeriod("abc", "13", now)).toEqual({ year: 2026, month: 7 });
+    expect(resolveBudgetPeriod("1899", "x", now)).toEqual({ year: 2026, month: 7 });
+  });
+
+  it("tanpa parameter sama sekali memakai bulan berjalan", () => {
+    expect(resolveBudgetPeriod(undefined, undefined, now)).toEqual({ year: 2026, month: 7 });
   });
 });

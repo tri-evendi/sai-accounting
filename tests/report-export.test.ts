@@ -588,3 +588,70 @@ describe("kolom umur piutang yang dipilih pengguna", () => {
     expect(sheet.rows.every((r) => r.length === 1)).toBe(true);
   });
 });
+
+describe("realisasi vs anggaran", () => {
+  const base = {
+    kind: "budget-realization" as const,
+    period: "Juli 2026",
+    rows: [
+      {
+        code: "5101",
+        name: "Beban Gaji",
+        budget: 50_000_000,
+        actual: 56_000_000,
+        variance: 6_000_000,
+        variancePct: 12,
+        status: "Di atas anggaran",
+      },
+      {
+        code: "5201",
+        name: "Beban Sewa",
+        budget: 0,
+        actual: 3_000_000,
+        variance: 3_000_000,
+        variancePct: null,
+        status: "Di atas anggaran",
+      },
+    ],
+    totalBudget: 50_000_000,
+    totalActual: 59_000_000,
+    totalVariance: 9_000_000,
+    totalVariancePct: 18,
+    alertCount: 2,
+    salesTarget: { target: 200_000_000, actual: 180_000_000, variance: -20_000_000 },
+  };
+
+  it("persen tak terdefinisi tetap kosong, bukan 0%", () => {
+    const sheet = buildReportSheet(base);
+    // Kolom: account, budget, actual, variance, variancePct, status
+    expect(sheet.rows[1][4].value).toBeNull();
+    expect(sheet.rows[0][4].value).toBe(12);
+  });
+
+  it("arah selisih terbaca sebagai kata, bukan warna", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][5].value).toBe("Di atas anggaran");
+  });
+
+  it("menyebutkan berapa akun melewati ambang di baris total", () => {
+    const sheet = buildReportSheet(base);
+    const total = sheet.rows.find((r) => String(r[0].value).includes("Total"));
+    expect(String(total?.[5].value)).toContain("2 akun");
+  });
+
+  it("membawa blok target penjualan periode yang sama", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => r[0].value === "Target Penjualan")).toBe(true);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("Total penjualan"))).toBe(true);
+  });
+
+  it("tanpa target sama sekali, bloknya tidak dicetak", () => {
+    const sheet = buildReportSheet({ ...base, salesTarget: null });
+    expect(sheet.rows.some((r) => r[0].value === "Target Penjualan")).toBe(false);
+  });
+
+  it("skema ekspor menerima persen null dan target null", () => {
+    expect(statementPayloadSchema.safeParse(base).success).toBe(true);
+    expect(statementPayloadSchema.safeParse({ ...base, salesTarget: null }).success).toBe(true);
+  });
+});

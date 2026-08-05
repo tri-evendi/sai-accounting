@@ -54,6 +54,18 @@ Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk
 
 Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
 
+**Aturannya tidak berhenti di badge — ia berlaku untuk TEKS BERWARNA apa pun.** Di atas `--card` putih, warna penuh gagal ambang teks biasa: `--success` #16A34A hanya **3,30:1** dan `--warning` #D97706 **3,19:1** (hanya `--destructive` #DC2626 lolos, 4,83:1). Yang menyelamatkannya selama ini adalah ukuran, bukan warnanya:
+
+| Tempat | Ambang | Boleh |
+|--------|--------|-------|
+| Angka besar (`text-2xl`/`text-3xl` **tebal** ≥ 18,66px bold) | 3:1 (teks besar) | `text-success` / `text-warning` |
+| **Sel tabel & teks 14px** (primitif `Table` = `text-sm`) | **4,5:1** | **hanya** `-strong` (7,1–8,3:1) |
+| Ikon & isian pekat | 3:1 (non-teks) | warna penuh |
+
+Kolom nominal di beranda pernah memakai `text-success` pada sel `text-sm` — benar warnanya, gagal kontrasnya. **Kolom uang berwarna memakai `text-success-strong` / `text-destructive-strong`.**
+
+**Penjaga lint mengenal sisi arah.** Pola di `eslint.config.mjs` semula hanya mencocokkan `border-` yang langsung diikuti warna, sehingga `border-l-4 border-l-blue-500` (garis aksen kiri kartu — justru bentuk paling umum) lolos berbulan-bulan dan tidak ikut berganti di tema gelap. Pola itu kini mencakup `border-l-`, `border-t-`, `bg-x-`, dst. Kalau muncul bentuk penulisan warna baru yang lolos, **perbaiki polanya**, bukan hanya kelasnya — satu kelas yang diperbaiki akan kembali lewat PR berikutnya.
+
 *Dark mode:* surface naik ke `#0F172A`/`#1E293B`, rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap ada di blok `.dark` (kontras 8,5–10,6:1). Kelas `.dark` dipasang **root layout dari cookie** (`src/lib/theme/`), jadi sudah menempel pada HTML pertama — tidak ada kedipan sebelum hydrate.
 
 **Dua jebakan token yang sudah memakan korban** — palet gelap membuat beberapa token bernilai SAMA, dan komponen yang mengandalkan selisihnya diam-diam runtuh saat tema berganti:
@@ -119,6 +131,18 @@ Sejak buku besar tiap PT hidup di basis datanya sendiri, satu pertanyaan berdiri
 - **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` shadcn (lihat "Konvensi Form" di bawah) — bukan `useState` manual.
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
+
+## Pusat Laporan: dialog parameter
+
+Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog parameter (`components/reports/report-launch-dialog.tsx`) yang menanyakan periode/saringan/kolom lebih dulu, lalu menawarkan tiga jalan keluar: **Pratinjau** (halaman laporan), **Unduh PDF**, **Unduh Excel**. Alasannya bukan gaya: membuka dulu dengan periode bawaan berarti menghitung dan merender laporan yang salah, lalu menghitungnya lagi setelah penyaring di atas tabel diubah.
+
+- **Kendali dirender dari katalog, bukan ditulis per laporan.** `paramKind`, `filters`, `columns`, dan `payloadKind` di `lib/report-catalog.ts` adalah satu-satunya sumber bagi dialog, halaman, dan berkas ekspornya.
+- **`paramKind` menyatakan parameter yang BENAR-BENAR dibaca halaman tujuan** — bukan bentuk periode yang secara konsep cocok. Kendali yang isian­nya diabaikan diam-diam adalah kendali yang berbohong (tiga entri katalog pernah begitu).
+- **Tombol unduh hanya muncul bila laporannya punya `payloadKind`.** Entri yang menunjuk halaman modul interaktif menawarkan "Buka" saja, dengan kalimat yang mengatakan kenapa.
+- **Pemilihan kolom hanya untuk laporan bertipe daftar.** Susunan Laba/Rugi, Neraca, dan Arus Kas ditentukan standar akuntansi; centang kolom di sana adalah kendali yang tak mengubah apa pun. Kolom identitas baris selalu ikut (`fixed`), dan pilihan pengguna hanya boleh MENGURANGI kolom — tak pernah memunculkan kolom yang laporannya memang tak punya isinya.
+- **Satu penentu kolom untuk tiga permukaan** (`stockMovementColumns`, `partyRecapColumns`, `agingColumns`, `stockValueColumns`, `cashBankColumns` di `lib/statement-layout.ts`): layar, PDF, dan lembar sebar. Pratinjau yang memperlihatkan kolom berbeda dari berkasnya adalah laporan yang tidak dipercaya dua kali.
+- **Kartu mendarat di LAPORANNYA, bukan di halaman kerja atau persimpangan.** Halaman modul (`/inventory`, `/finance`) terpaginasi dan disaring untuk bekerja; sepuluh baris pertama bukan laporan, dan totalnya akan salah. Hub (`/budget`) menunda laporannya satu klik lagi. Laporan yang tidak punya view sendiri mendapat halamannya di bawah `/reports`, dengan izin mengikuti DATANYA (`inventory.read`, `cash.read`) — sebuah laporan tidak melonggarkan siapa yang boleh melihat isinya.
+- **Nilai yang tidak diketahui ditulis kosong atau "—", tak pernah 0.** Dokumen valas tanpa kurs, barang tanpa dasar biaya: nol menyatakan "tidak ada nilai", yang berbeda dari "nilainya belum diketahui" — dan menjumlahkannya sebagai nol menyusutkan total tanpa satu pun tanda di layar. Jumlah yang dikecualikan selalu disebutkan sebagai catatan.
 
 ---
 

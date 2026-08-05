@@ -53,7 +53,7 @@
  * tanpa chrome punya jalan keluar).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -91,21 +91,60 @@ export function PlatformShell({ children, tenantName, nav, account }: PlatformSh
   const isActive = (item: PlatformNavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
+  /* Escape menutup laci — aturan yang sama dengan laci dasbor: lapisan yang
+   * menutupi seluruh layar tidak boleh hanya bisa ditutup dengan menyentuh
+   * tirainya. */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Tirai layar sempit — di sana sidebar adalah laci, bukan kolom. */}
+      {/* Tirai layar sempit — di sana sidebar adalah laci, bukan kolom.
+       *
+       * ⚠ HITAM, BUKAN `bg-foreground/50`. Tirai yang memakai `--foreground`
+       * IKUT BERBALIK bersama tema: di tema gelap `--foreground` adalah #F8FAFC,
+       * jadi "tirai" itu menjadi kabut PUTIH 50% — halaman di baliknya justru
+       * menjadi lebih terang saat laci dibuka, kebalikan dari yang seharusnya
+       * dilakukan sebuah scrim. Ini persis jebakan "tinjau di KEDUA tema" di
+       * MASTER.md §Color Palette: dari kodenya kelas itu terlihat paling benar
+       * di antara semua pilihan, sebab ia satu-satunya yang lolos penjaga token
+       * tanpa pengecualian.
+       *
+       * Scrim memang bukan permukaan bertema — ia bayangan. Sidebar dasbor
+       * sudah lama benar dengan `bg-black/50` + pengecualian setempat; di sini
+       * pengecualian yang sama yang berlaku, bukan token yang salah. */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          // eslint-disable-next-line no-restricted-syntax
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
       )}
 
+      {/* ⚠ LACI TERTUTUP TIDAK BOLEH TETAP BISA DI-TAB.
+       *
+       * `-translate-x-full` hanya MENGGESER laci ke luar layar; butir menunya
+       * tetap ada di pohon dan tetap urutan fokus. Di layar sempit itu berarti
+       * pengguna keyboard menekan Tab dari bilah atas dan fokusnya menghilang
+       * ke dalam lima tautan yang tidak terlihat di mana pun — beberapa tekanan
+       * tanpa satu pun ring fokus di layar, lalu ia mendarat di suatu tempat
+       * tanpa tahu bagaimana ia sampai.
+       *
+       * `invisible` mencabutnya dari urutan fokus (dan dari pembaca layar);
+       * `lg:visible` mengembalikannya di lebar tempat laci memang menjadi kolom
+       * tetap. Transisinya tetap `transform` saja: saat MEMBUKA, visibilitas
+       * menyala lebih dulu lalu geserannya beranimasi seperti sebelumnya. */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0",
-          menuOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:visible lg:translate-x-0",
+          menuOpen ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-6">

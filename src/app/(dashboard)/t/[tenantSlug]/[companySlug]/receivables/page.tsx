@@ -26,6 +26,10 @@ import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { agingPayload } from "@/lib/report-payload";
+import { reportById, resolveColumns } from "@/lib/report-catalog";
+import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +43,7 @@ export default async function ReceivablesPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ asOf?: string; overdue?: string }>;
+  searchParams: Promise<{ asOf?: string; overdue?: string; cols?: string }>;
 }) {
   await requirePagePermission("receivable.read", params);
   const t = await getT();
@@ -56,11 +60,43 @@ export default async function ReceivablesPage({
 
   const { rows, aging, byParty, overdueCount } = await getReceivables({ asOf, overdueOnly });
 
+  // Payload cetak dari baris yang SAMA dengan tabel di bawah — termasuk saringan
+  // "hanya jatuh tempo" yang sedang aktif. Berkas yang memuat kumpulan dokumen
+  // berbeda dari layarnya adalah cara termudah dua orang membaca satu laporan
+  // dan berdebat tentang angka yang berbeda.
+  const definition = reportById("receivables");
+  const payload = agingPayload(
+    "receivables",
+    asOf,
+    rows,
+    aging,
+    definition ? resolveColumns(definition, sp.cols) : []
+  );
+
+  // Susunan kolom layar = susunan kolom berkasnya. Satu penentu, tiga permukaan.
+  const cols = agingColumns(payload);
+  const HEADERS: Record<AgingColumnId, string> = {
+    party: t("common.customer"),
+    documentNo: t("common.document"),
+    date: t("common.date"),
+    dueDate: t("common.dueDate"),
+    age: t("common.age"),
+    status: t("common.status"),
+    total: t("receivables.colDocumentValue"),
+    outstanding: t("common.remainingIdr"),
+  };
+
   return (
     <div>
       <PageHeader
         className="mb-2"
         title={<TermTooltip term="piutang">{t("receivables.title")}</TermTooltip>}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            <StatementExcelButton payload={payload} />
+          </>
+        }
         description={
           <>
             {t("receivables.description", { date: formatDateShort(asOf) })}
@@ -92,71 +128,111 @@ export default async function ReceivablesPage({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.customer")}</TableHead>
-              <TableHead>{t("common.document")}</TableHead>
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead>{t("common.dueDate")}</TableHead>
-              <TableHead>{t("common.age")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead className="text-right">{t("receivables.colDocumentValue")}</TableHead>
-              <TableHead className="text-right">{t("common.remainingIdr")}</TableHead>
+              {cols.map((c) => (
+                <TableHead
+                  key={c}
+                  className={c === "total" || c === "outstanding" ? "text-right" : undefined}
+                >
+                  {HEADERS[c]}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={`${r.kind}-${r.id}`}>
-                <TableCell className="text-foreground">{r.partyName}</TableCell>
-                <TableCell>
-                  <Link
-                    href={r.href}
-                    className="text-primary hover:underline cursor-pointer transition-colors"
-                  >
-                    {r.documentNo}
-                  </Link>
-                  <span className="block text-xs text-muted-foreground">
-                    {r.kind === "invoice" ? t("receivables.docTypeInvoice") : t("receivables.docTypeContract")}
-                  </span>
-                  {/* Free text, straight from top1/top2 — informational only. */}
-                  {r.terms && (
-                    <span className="block text-xs text-muted-foreground max-w-56 truncate" title={r.terms}>
-                      {r.terms}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-foreground tabular-nums">{formatDateShort(r.date)}</TableCell>
-                <TableCell className="text-foreground tabular-nums">
-                  {r.dueDate ? (
-                    formatDateShort(r.dueDate)
-                  ) : (
-                    <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-foreground">
-                  <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                </TableCell>
-                <TableCell>
-                  <PaymentStatusBadge status={r.status} />
-                </TableCell>
-                <TableCell className="text-right text-foreground tabular-nums">
-                  <Money value={r.total} currency={r.currency} />
-                  {r.currency !== "IDR" && (
-                    <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right font-medium text-foreground tabular-nums">
-                  {r.outstandingBase == null ? (
-                    <span className="text-warning-strong">{t("common.rateMissing")}</span>
-                  ) : (
-                    <Money value={r.outstandingBase} currency="IDR" />
-                  )}
-                  {/* Only shown when every payment shared the document's currency —
-                      otherwise there is no single-currency remainder to state. */}
-                  {r.outstanding != null && r.currency !== "IDR" && (
-                    <span className="block text-xs text-muted-foreground">
-                      <Money value={r.outstanding} currency={r.currency} />
-                    </span>
-                  )}
-                </TableCell>
+                {cols.map((c) => {
+                  switch (c) {
+                    case "party":
+                      return (
+                        <TableCell key={c} className="text-foreground">
+                          {r.partyName}
+                        </TableCell>
+                      );
+                    case "documentNo":
+                      return (
+                        <TableCell key={c}>
+                          <Link
+                            href={r.href}
+                            className="text-primary hover:underline cursor-pointer transition-colors"
+                          >
+                            {r.documentNo}
+                          </Link>
+                          <span className="block text-xs text-muted-foreground">
+                            {r.kind === "invoice"
+                              ? t("receivables.docTypeInvoice")
+                              : t("receivables.docTypeContract")}
+                          </span>
+                          {/* Free text, straight from top1/top2 — informational only. */}
+                          {r.terms && (
+                            <span
+                              className="block text-xs text-muted-foreground max-w-56 truncate"
+                              title={r.terms}
+                            >
+                              {r.terms}
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                    case "date":
+                      return (
+                        <TableCell key={c} className="text-foreground tabular-nums">
+                          {formatDateShort(r.date)}
+                        </TableCell>
+                      );
+                    case "dueDate":
+                      return (
+                        <TableCell key={c} className="text-foreground tabular-nums">
+                          {r.dueDate ? (
+                            formatDateShort(r.dueDate)
+                          ) : (
+                            <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
+                          )}
+                        </TableCell>
+                      );
+                    case "age":
+                      return (
+                        <TableCell key={c} className="text-foreground">
+                          <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
+                        </TableCell>
+                      );
+                    case "status":
+                      return (
+                        <TableCell key={c}>
+                          <PaymentStatusBadge status={r.status} />
+                        </TableCell>
+                      );
+                    case "total":
+                      return (
+                        <TableCell key={c} className="text-right text-foreground tabular-nums">
+                          <Money value={r.total} currency={r.currency} />
+                          {r.currency !== "IDR" && (
+                            <span className="block text-xs text-muted-foreground">{r.currency}</span>
+                          )}
+                        </TableCell>
+                      );
+                    case "outstanding":
+                      return (
+                        <TableCell
+                          key={c}
+                          className="text-right font-medium text-foreground tabular-nums"
+                        >
+                          {r.outstandingBase == null ? (
+                            <span className="text-warning-strong">{t("common.rateMissing")}</span>
+                          ) : (
+                            <Money value={r.outstandingBase} currency="IDR" />
+                          )}
+                          {/* Only shown when every payment shared the document's currency —
+                              otherwise there is no single-currency remainder to state. */}
+                          {r.outstanding != null && r.currency !== "IDR" && (
+                            <span className="block text-xs text-muted-foreground">
+                              <Money value={r.outstanding} currency={r.currency} />
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                  }
+                })}
               </TableRow>
             ))}
             {rows.length === 0 && (

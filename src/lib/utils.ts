@@ -44,6 +44,29 @@ export function formatDateShort(date: Date | string) {
   }).format(new Date(date));
 }
 
+/**
+ * Tanggal ringkas bergaya "12 Agu 2026" — bentuk yang dipakai kartu & tabel
+ * permukaan `/platform`.
+ *
+ * Ada di sini, bukan sebagai helper lokal, karena SALINANNYA sudah tumbuh:
+ * `platform/page.tsx` dan `platform/subscription-section.tsx` masing-masing
+ * menulis `Intl.DateTimeFormat("id-ID", { dateStyle: "medium" })` sendiri —
+ * dua definisi identik untuk tanggal yang muncul BERSEBELAHAN (kartu "tagihan
+ * berikutnya" dan kolom jatuh tempo di tabel di bawahnya). Dua salinan berarti
+ * dua tempat yang harus diingat pada hari gaya tanggalnya diubah, dan yang
+ * terlewat akan berdiri persis di sebelah yang tidak.
+ */
+export function formatDateMedium(date: Date | string) {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(date));
+}
+
+/** Tanggal + jam — untuk batas waktu yang jamnya memang menentukan (mis. kedaluwarsa VA/QRIS). */
+export function formatDateTime(date: Date | string) {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(date)
+  );
+}
+
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }

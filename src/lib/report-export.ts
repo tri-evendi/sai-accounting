@@ -19,7 +19,26 @@
  * concern applied by the number format, never by mutating the value.
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { incomeStatementLayout } from "@/lib/statement-layout";
+import {
+  agingColumns,
+  budgetColumns,
+  cashBankColumns,
+  incomeStatementLayout,
+  partyRecapColumns,
+  stockMovementColumns,
+  stockValueColumns,
+  AGING_HEADERS,
+  BUDGET_HEADERS,
+  CASH_BANK_HEADERS,
+  STOCK_MOVEMENT_HEADERS,
+  STOCK_VALUE_HEADERS,
+  type AgingColumnId,
+  type BudgetColumnId,
+  type CashBankColumnId,
+  type PartyRecapColumnId,
+  type StockMovementColumnId,
+  type StockValueColumnId,
+} from "@/lib/statement-layout";
 
 /**
  * How a cell's value should be rendered by the spreadsheet, without changing it.
@@ -281,37 +300,41 @@ function buildStockMovementSheet(
     bold,
   });
 
-  const columns: SheetColumn[] = [
-    { header: "Barang", width: 34 },
-    { header: "Satuan", width: 12 },
-    { header: "Saldo Awal", width: 14 },
-    { header: "Masuk", width: 14 },
-    { header: "Keluar", width: 14 },
-  ];
-  // The `Diolah` column exists only when the period has such a movement — the
-  // same rule the screen and the PDF apply, so all three have identical columns.
-  if (p.hasProcess) columns.push({ header: "Diolah", width: 14 });
-  columns.push({ header: "Saldo Akhir", width: 14 });
+  // The same helper the screen and the PDF ask, so all three have identical
+  // columns — including when the user narrowed them in the parameter dialog.
+  const cols = stockMovementColumns(p);
+  const WIDTHS: Record<StockMovementColumnId, number> = {
+    name: 34,
+    unit: 12,
+    opening: 14,
+    movedIn: 14,
+    movedOut: 14,
+    processed: 14,
+    closing: 14,
+  };
+  const columns: SheetColumn[] = cols.map((c) => ({
+    header: STOCK_MOVEMENT_HEADERS[c],
+    width: WIDTHS[c],
+  }));
 
   const rows: SheetCell[][] = p.rows.length
-    ? p.rows.map((r) => {
-        const cells: SheetCell[] = [text(r.name), text(r.unit || "-"), q(r.opening), q(r.movedIn), q(r.movedOut)];
-        if (p.hasProcess) cells.push(q(r.processed));
-        cells.push(q(r.closing));
-        return cells;
-      })
+    ? p.rows.map((r) =>
+        cols.map((c) =>
+          c === "name" ? text(r.name) : c === "unit" ? text(r.unit || "-") : q(r[c])
+        )
+      )
     : [[text("Tidak ada mutasi pada periode ini."), ...columns.slice(1).map(() => text(null))]];
 
-  const footer: SheetCell[] = [
-    text("Total", true),
-    text(null),
-    q(p.totalOpening, true),
-    q(p.totalIn, true),
-    q(p.totalOut, true),
-  ];
-  if (p.hasProcess) footer.push(q(p.totalProcessed, true));
-  footer.push(q(p.totalClosing, true));
-  rows.push(footer);
+  const totals: Record<StockMovementColumnId, SheetCell> = {
+    name: text("Total", true),
+    unit: text(null),
+    opening: q(p.totalOpening, true),
+    movedIn: q(p.totalIn, true),
+    movedOut: q(p.totalOut, true),
+    processed: q(p.totalProcessed, true),
+    closing: q(p.totalClosing, true),
+  };
+  rows.push(cols.map((c) => totals[c]));
 
   if (p.dormantCount > 0) {
     rows.push([
@@ -377,6 +400,359 @@ function buildOpnameHistorySheet(
   };
 }
 
+function buildPartyRecapSheet(
+  p: Extract<StatementPayload, { kind: "sales-by-customer" | "purchases-by-supplier" }>
+): SheetModel {
+  const cols = partyRecapColumns(p);
+  const sales = p.kind === "sales-by-customer";
+  const HEADERS: Record<PartyRecapColumnId, string> = {
+    party: sales ? "Pelanggan" : "Pemasok",
+    docCount: "Dokumen",
+    gross: sales ? "Penjualan Kotor (IDR)" : "Pembelian Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  };
+  const WIDTHS: Record<PartyRecapColumnId, number> = {
+    party: 36,
+    docCount: 12,
+    gross: 22,
+    returns: 20,
+    net: 22,
+  };
+  const noParty = sales ? "Tanpa pelanggan" : "Tanpa pemasok";
+
+  // Jumlah dokumen adalah CACAH, bukan uang: formatnya tak boleh meminjam
+  // topeng rupiah (12 dokumen bukan "Rp 12").
+  const count = (value: number, bold = false): SheetCell => ({ value, align: "right", bold });
+
+  const cells = (
+    r: { partyName?: string | null; docCount: number; grossBase: number; returnBase: number; netBase: number },
+    label: string | null,
+    bold = false
+  ): Record<PartyRecapColumnId, SheetCell> => ({
+    party: text(label ?? r.partyName ?? noParty, bold),
+    docCount: count(r.docCount, bold),
+    gross: money(r.grossBase, bold),
+    // Retur = pengurang, dan tandanya yang menyatakannya — bukan warna.
+    returns: money(r.returnBase > 0 ? -r.returnBase : 0, bold),
+    net: money(r.netBase, bold),
+  });
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => {
+        const c = cells(r, null);
+        return cols.map((id) => c[id]);
+      })
+    : [[text("Tidak ada dokumen pada periode ini."), ...cols.slice(1).map(() => text(null))]];
+
+  const totals = cells(p.totals, "Total", true);
+  rows.push(cols.map((id) => totals[id]));
+
+  if (p.totals.unratedCount > 0) {
+    rows.push([
+      text(`Catatan: ${p.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`),
+      ...cols.slice(1).map(() => text(null)),
+    ]);
+  }
+
+  return {
+    name: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
+    title: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
+    period: p.period,
+    columns: cols.map((id) => ({ header: HEADERS[id], width: WIDTHS[id] })),
+    rows,
+  };
+}
+
+const AGING_WIDTHS: Record<AgingColumnId, number> = {
+  party: 30,
+  documentNo: 20,
+  date: 14,
+  dueDate: 14,
+  age: 12,
+  status: 24,
+  total: 18,
+  outstanding: 20,
+};
+
+function buildAgingSheet(
+  p: Extract<StatementPayload, { kind: "receivables" | "payables" }>
+): SheetModel {
+  const receivable = p.kind === "receivables";
+  const party = receivable ? "Pelanggan" : "Pemasok";
+
+  const cols = agingColumns(p);
+  const rows: SheetCell[][] = [];
+
+  /** Satu baris selebar kolom yang sedang tampil, sisanya kosong. */
+  const pad = (cells: SheetCell[]): SheetCell[] => {
+    const row = [...cells];
+    while (row.length < cols.length) row.push(text(null));
+    return row.slice(0, Math.max(cols.length, 1));
+  };
+  /** Baris ringkasan: labelnya di kolom pertama, nilainya di kolom TERAKHIR. */
+  const summary = (label: SheetCell, value: SheetCell): SheetCell[] => {
+    if (cols.length === 1) return [label];
+    const row = pad([label]);
+    row[row.length - 1] = value;
+    return row;
+  };
+
+  // Ringkasan ember sebagai baris berlabel, bukan kolom terpisah: satu lembar
+  // dengan dua tabel bersebelahan tak bisa disortir maupun dijumlahkan.
+  rows.push(pad([text("Ringkasan umur", true)]));
+  for (const b of p.buckets) {
+    rows.push(summary(text(b.label), money(b.amount)));
+  }
+  rows.push(summary(text("Total", true), money(p.total, true)));
+  rows.push(pad([]));
+
+  rows.push(pad([text("Rincian dokumen", true)]));
+  if (p.rows.length === 0) {
+    rows.push(pad([text("Tidak ada dokumen yang belum lunas.")]));
+  }
+  const cell = (r: (typeof p.rows)[number], c: AgingColumnId): SheetCell => {
+    switch (c) {
+      case "party":
+        return text(r.partyName);
+      case "documentNo":
+        return text(r.documentNo);
+      case "date":
+        return text(r.date);
+      case "dueDate":
+        return text(r.dueDate ?? "-");
+      // Umur yang dihitung dari TANGGAL DOKUMEN (karena jatuh temponya tidak
+      // ada) diberi tanda bintang: dua angka yang artinya berbeda tak boleh
+      // berdiri tanpa penanda di kolom yang sama. Karena itu ia teks, bukan
+      // angka — dan penjelasannya ada di catatan kaki lembar ini.
+      case "age":
+        return { value: r.ageFromIssue ? `${r.ageDays} *` : r.ageDays, align: "right" };
+      case "status":
+        return text(r.status);
+      // Nilai dokumen dalam MATA UANGNYA SENDIRI — kolomnya bercampur mata
+      // uang, jadi angkanya tidak boleh memakai topeng rupiah.
+      case "total":
+        return { value: r.total, align: "right" };
+      // Valas tanpa kurs: sel kosong, bukan nol. Nol menyatakan "tidak ada
+      // sisa", dan itu bukan yang buku besar katakan.
+      case "outstanding":
+        return r.outstandingBase == null ? text(null) : money(r.outstandingBase);
+    }
+  };
+  for (const r of p.rows) {
+    rows.push(cols.map((c) => cell(r, c)));
+  }
+
+  const notes: string[] = [];
+  if (p.rows.some((r) => r.ageFromIssue)) {
+    notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+  }
+  if (p.unresolved > 0) {
+    notes.push(
+      `${p.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+    );
+  }
+  if (notes.length > 0) {
+    rows.push(pad([]));
+    for (const n of notes) rows.push(pad([text(n)]));
+  }
+
+  return {
+    name: receivable ? "Umur Piutang" : "Umur Utang",
+    title: receivable ? "Piutang & Umur Piutang" : "Utang & Umur Utang",
+    period: p.period,
+    columns: cols.map((c) => ({
+      header: c === "party" ? party : AGING_HEADERS[c],
+      width: AGING_WIDTHS[c],
+    })),
+    rows,
+  };
+}
+
+function buildStockValueSheet(
+  p: Extract<StatementPayload, { kind: "stock-value" }>
+): SheetModel {
+  const cols = stockValueColumns(p);
+  const WIDTHS: Record<StockValueColumnId, number> = {
+    name: 34,
+    unit: 12,
+    currentStock: 16,
+    unitCost: 20,
+    stockValue: 22,
+  };
+  // Saldo adalah KUANTITAS `Decimal(15,3)`; biaya & nilai adalah uang. Dua
+  // format berbeda di satu tabel, dan meminjamkan topeng rupiah ke saldo akan
+  // membulatkan 12,5 kg menjadi Rp 13.
+  const cell = (r: (typeof p.rows)[number], c: StockValueColumnId): SheetCell => {
+    if (c === "name") return text(r.name);
+    if (c === "unit") return text(r.unit || "-");
+    if (c === "currentStock") return { value: r.currentStock, format: "quantity", align: "right" };
+    const value = c === "unitCost" ? r.unitCost : r.stockValue;
+    // Tanpa dasar biaya: sel KOSONG, bukan nol — nol menyatakan "tidak
+    // bernilai" tentang barang yang ada wujudnya.
+    return value == null ? text(null) : money(value);
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => cols.map((c) => cell(r, c)))
+    : [[text("Belum ada barang."), ...cols.slice(1).map(() => text(null))]];
+
+  rows.push(
+    cols.map((c) =>
+      c === "name"
+        ? text("Total Nilai Persediaan", true)
+        : c === "stockValue"
+          ? money(p.totalValue, true)
+          : text(null)
+    )
+  );
+
+  if (p.uncostedCount > 0) {
+    rows.push([
+      text(
+        `Catatan: ${p.uncostedCount} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`
+      ),
+      ...cols.slice(1).map(() => text(null)),
+    ]);
+  }
+
+  return {
+    name: "Nilai Persediaan",
+    title: "Nilai Persediaan",
+    period: p.period,
+    columns: cols.map((c) => ({ header: STOCK_VALUE_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
+function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>): SheetModel {
+  const cols = cashBankColumns(p);
+  const WIDTHS: Record<CashBankColumnId, number> = {
+    account: 40,
+    opening: 22,
+    net: 22,
+    closing: 22,
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) =>
+        cols.map((c) => (c === "account" ? text(`${r.code}  ${r.name}`.trim()) : money(r[c])))
+      )
+    : [
+        [
+          text("Tidak ada akun kas & bank yang bergerak pada periode ini."),
+          ...cols.slice(1).map(() => text(null)),
+        ],
+      ];
+
+  const totals: Record<CashBankColumnId, SheetCell> = {
+    account: text("Total", true),
+    opening: money(p.openingCash, true),
+    net: money(p.netChange, true),
+    closing: money(p.closingCash, true),
+  };
+  rows.push(cols.map((c) => totals[c]));
+
+  return {
+    name: "Kas & Bank",
+    title: "Laporan Kas & Bank",
+    period: p.period,
+    columns: cols.map((c) => ({ header: CASH_BANK_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
+function buildBudgetSheet(
+  p: Extract<StatementPayload, { kind: "budget-realization" }>
+): SheetModel {
+  const cols = budgetColumns(p);
+  const WIDTHS: Record<BudgetColumnId, number> = {
+    account: 40,
+    budget: 20,
+    actual: 20,
+    variance: 20,
+    variancePct: 14,
+    status: 22,
+  };
+
+  // Persentase sebagai ANGKA, bukan teks "+12,3%": lembar sebar yang menerima
+  // angka bisa mengurutkan dan menyaringnya. Persen yang tak terdefinisi
+  // (anggaran nol) tetap sel kosong — "0%" menyatakan hal yang tidak dikatakan.
+  const cell = (
+    r: { code: string; name: string; budget: number; actual: number; variance: number; variancePct: number | null; status: string },
+    c: BudgetColumnId,
+    bold = false
+  ): SheetCell => {
+    switch (c) {
+      case "account":
+        return text(`${r.code}  ${r.name}`.trim(), bold);
+      case "budget":
+        return money(r.budget, bold);
+      case "actual":
+        return money(r.actual, bold);
+      case "variance":
+        return money(r.variance, bold);
+      case "variancePct":
+        return r.variancePct === null
+          ? text(null)
+          : { value: r.variancePct, align: "right", bold };
+      case "status":
+        return text(r.status, bold);
+    }
+  };
+
+  const rows: SheetCell[][] = p.rows.length
+    ? p.rows.map((r) => cols.map((c) => cell(r, c)))
+    : [[text("Belum ada anggaran untuk periode ini."), ...cols.slice(1).map(() => text(null))]];
+
+  rows.push(
+    cols.map((c) =>
+      cell(
+        {
+          code: "",
+          name: "Total",
+          budget: p.totalBudget,
+          actual: p.totalActual,
+          variance: p.totalVariance,
+          variancePct: p.totalVariancePct,
+          status: p.alertCount > 0 ? `${p.alertCount} akun melewati ambang` : "",
+        },
+        c,
+        true
+      )
+    )
+  );
+
+  if (p.salesTarget) {
+    rows.push(cols.map(() => text(null)));
+    rows.push([text("Target Penjualan", true), ...cols.slice(1).map(() => text(null))]);
+    rows.push(
+      cols.map((c) =>
+        cell(
+          {
+            code: "",
+            name: "Total penjualan periode ini",
+            budget: p.salesTarget!.target,
+            actual: p.salesTarget!.actual,
+            variance: p.salesTarget!.variance,
+            variancePct: null,
+            status: "",
+          },
+          c
+        )
+      )
+    );
+  }
+
+  return {
+    name: "Realisasi vs Anggaran",
+    title: "Realisasi vs Anggaran",
+    period: p.period,
+    columns: cols.map((c) => ({ header: BUDGET_HEADERS[c], width: WIDTHS[c] })),
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -392,5 +768,17 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
       return buildTrialBalanceSheet(payload);
     case "cash-flow":
       return buildCashFlowSheet(payload);
+    case "sales-by-customer":
+    case "purchases-by-supplier":
+      return buildPartyRecapSheet(payload);
+    case "receivables":
+    case "payables":
+      return buildAgingSheet(payload);
+    case "stock-value":
+      return buildStockValueSheet(payload);
+    case "cash-bank":
+      return buildCashBankSheet(payload);
+    case "budget-realization":
+      return buildBudgetSheet(payload);
   }
 }

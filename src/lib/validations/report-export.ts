@@ -88,6 +88,20 @@ const cashFlow = z.object({
  */
 const quantity = z.number().finite();
 
+/**
+ * Kolom yang dipilih pengguna di dialog parameter.
+ *
+ * WAJIB dideklarasikan di skema meskipun opsional: zod MENANGGALKAN kunci yang
+ * tak dikenalnya, jadi field yang lupa ditulis di sini tidak ditolak — ia
+ * hilang diam-diam, dan lembar sebarnya tetap memuat seluruh kolom seolah
+ * pengguna tak pernah memilih apa pun.
+ *
+ * Isinya tidak divalidasi terhadap daftar kolom laporan: `stockMovementColumns`
+ * / `partyRecapColumns` hanya pernah MENYARING kolom yang ada, jadi id asing
+ * paling jauh tidak berefek — bukan kolom karangan di dalam berkas.
+ */
+const columnSelection = z.array(z.string()).optional();
+
 const stockMovement = z.object({
   kind: z.literal("stock-movement"),
   period: z.string(),
@@ -109,6 +123,7 @@ const stockMovement = z.object({
   totalClosing: quantity,
   hasProcess: z.boolean(),
   dormantCount: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
 });
 
 /** Riwayat Hitung Ulang Stok (issue #129). `variance` is signed by direction. */
@@ -136,6 +151,133 @@ const opnameHistory = z.object({
   netVariance: quantity,
 });
 
+/**
+ * Rekap per mitra — Penjualan per Pelanggan & Pembelian per Pemasok, dua
+ * laporan berbentuk sama. Semua nominal IDR base; `unratedCount` membawa
+ * dokumen valas tanpa kurs yang TIDAK ikut dijumlahkan, supaya berkasnya bisa
+ * mengatakannya persis seperti layar.
+ */
+const partyRecapRow = z.object({
+  partyName: z.string().nullable(),
+  docCount: z.number().int().nonnegative(),
+  grossBase: money,
+  returnBase: money,
+  netBase: money,
+  unratedCount: z.number().int().nonnegative(),
+});
+
+const partyRecap = z.object({
+  kind: z.enum(["sales-by-customer", "purchases-by-supplier"]),
+  period: z.string(),
+  rows: z.array(partyRecapRow),
+  totals: z.object({
+    docCount: z.number().int().nonnegative(),
+    grossBase: money,
+    returnBase: money,
+    netBase: money,
+    unratedCount: z.number().int().nonnegative(),
+  }),
+  visibleColumns: columnSelection,
+});
+
+/**
+ * Umur Piutang / Umur Utang. `outstandingBase` boleh null — dokumen valas tanpa
+ * kurs tidak punya nilai IDR yang jujur, dan menjadikannya nol akan menyusutkan
+ * total tanpa bersuara.
+ */
+const aging = z.object({
+  kind: z.enum(["receivables", "payables"]),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      partyName: z.string(),
+      documentNo: z.string(),
+      date: z.string(),
+      dueDate: z.string().nullable(),
+      ageDays: z.number().int(),
+      ageFromIssue: z.boolean(),
+      status: z.string(),
+      total: money,
+      currency: z.string(),
+      outstandingBase: money.nullable(),
+    })
+  ),
+  buckets: z.array(z.object({ label: z.string(), amount: money })),
+  total: money,
+  unresolved: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
+});
+
+/**
+ * Nilai Persediaan. `unitCost`/`stockValue` boleh null — barang tanpa dasar
+ * biaya tidak punya nilai yang jujur, dan Rp 0 menyatakan bahwa barang yang ada
+ * wujudnya tidak bernilai apa-apa. Saldo adalah KUANTITAS, bukan uang.
+ */
+const stockValue = z.object({
+  kind: z.literal("stock-value"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      name: z.string(),
+      unit: z.string().nullable(),
+      currentStock: quantity,
+      unitCost: money.nullable(),
+      stockValue: money.nullable(),
+    })
+  ),
+  totalValue: money,
+  uncostedCount: z.number().int().nonnegative(),
+  visibleColumns: columnSelection,
+});
+
+/** Laporan Kas & Bank — saldo awal, perubahan, dan saldo akhir tiap akun. */
+const cashBank = z.object({
+  kind: z.literal("cash-bank"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      opening: money,
+      net: money,
+      closing: money,
+    })
+  ),
+  openingCash: money,
+  netChange: money,
+  closingCash: money,
+  visibleColumns: columnSelection,
+});
+
+/**
+ * Realisasi vs Anggaran. `variancePct` boleh null — akun beranggaran nol tak
+ * punya penyebut, dan "0%" akan menyatakan sesuatu yang tidak dikatakan angkanya.
+ */
+const budgetRealization = z.object({
+  kind: z.literal("budget-realization"),
+  period: z.string(),
+  rows: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      budget: money,
+      actual: money,
+      variance: money,
+      variancePct: money.nullable(),
+      status: z.string(),
+    })
+  ),
+  totalBudget: money,
+  totalActual: money,
+  totalVariance: money,
+  totalVariancePct: money.nullable(),
+  alertCount: z.number().int().nonnegative(),
+  salesTarget: z
+    .object({ target: money, actual: money, variance: money })
+    .nullable(),
+  visibleColumns: columnSelection,
+});
+
 export const statementPayloadSchema = z.discriminatedUnion("kind", [
   trialBalance,
   incomeStatement,
@@ -143,6 +285,11 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   cashFlow,
   stockMovement,
   opnameHistory,
+  partyRecap,
+  aging,
+  stockValue,
+  cashBank,
+  budgetRealization,
 ]);
 
 export type StatementPayloadInput = z.infer<typeof statementPayloadSchema>;

@@ -392,7 +392,7 @@
       "submitting": "Mendaftarkan...",
       "sentTitle": "Periksa kotak masuk Anda",
       "sentBody": "Kalau alamat itu bisa didaftarkan, surel verifikasi sudah dikirim dan berlaku 24 jam. Buka tautannya untuk mengaktifkan akun. Tidak menerima apa pun? Periksa folder spam.",
-  "termsRequired": "Centang persetujuan syarat & kebijakan privasi dulu untuk melanjutkan.",
+      "termsRequired": "Centang persetujuan syarat & kebijakan privasi dulu untuk melanjutkan.",
       "haveAccount": "Sudah punya akun? Masuk",
       "verifyHeading": "Aktifkan Akun",
       "verifyDescription": "Satu tekanan tombol lagi — supaya robot pemindai tautan tidak mengaktifkan (atau menghanguskan) akun Anda diam-diam.",
@@ -1674,6 +1674,23 @@
     "colOpeningBalance": "Saldo Awal",
     "colChange": "Perubahan",
     "colClosingBalance": "Saldo Akhir",
+    "dialog": {
+      "presetMonth": "Bulan ini",
+      "presetQuarter": "Kuartal ini",
+      "presetYear": "Tahun berjalan",
+      "month": "Bulan",
+      "wholeYear": "Setahun penuh",
+      "columns": "Kolom yang ditampilkan",
+      "columnsHint": "Kolom identitas selalu ikut. Pilihan ini berlaku untuk layar dan berkas ekspornya.",
+      "preview": "Pratinjau",
+      "open": "Buka",
+      "exportPdf": "Unduh PDF",
+      "exportExcel": "Unduh Excel",
+      "pdfDownloaded": "PDF berhasil diunduh",
+      "noParams": "Laporan ini tidak memerlukan parameter.",
+      "noExport": "Laporan ini belum punya dokumen cetak — buka halamannya untuk melihat datanya.",
+      "exportOnPage": "Laporan ini punya ekspor khusus di halamannya sendiri — buka untuk memakainya."
+    },
     "catalogCategory": {
       "keuangan": {
         "label": "Keuangan",

@@ -12,6 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { buildReportSheet, type SheetCell, type SheetModel } from "@/lib/report-export";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { statementPayloadSchema } from "@/lib/validations/report-export";
 
 /** Money values, in row order, exactly as the builder placed them. */
 function moneyValues(sheet: SheetModel): number[] {
@@ -222,5 +223,435 @@ describe("buildReportSheet — trial balance & cash flow", () => {
     // The uncategorised section is present, never dropped.
     const heading = sheet.rows.find((r) => r[0]?.value === "Belum Terkategori");
     expect(heading).toBeDefined();
+  });
+});
+
+/**
+ * Pilihan kolom (dialog parameter Pusat Laporan) — satu penentu untuk tiga
+ * permukaan. Yang dijaga di sini: lembar sebar mengikuti pilihan yang sama,
+ * dan pilihan itu tidak pernah bisa MENAMBAH kolom yang laporannya tak punya.
+ */
+describe("kolom Riwayat Stok yang dipilih pengguna", () => {
+  const base = {
+    kind: "stock-movement" as const,
+    period: "Periode 1 Mei 2026 – 31 Mei 2026",
+    rows: [
+      {
+        name: "Kopi Arabika",
+        unit: "kg",
+        opening: 100,
+        movedIn: 50,
+        movedOut: 20,
+        processed: 0,
+        closing: 130,
+      },
+    ],
+    totalOpening: 100,
+    totalIn: 50,
+    totalOut: 20,
+    totalProcessed: 0,
+    totalClosing: 130,
+    hasProcess: false,
+    dormantCount: 0,
+  };
+
+  it("mempersempit lembar sebar ke kolom yang dipilih, identitas tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Saldo Akhir"]);
+    expect(sheet.rows[0]).toHaveLength(2);
+    // Barisnya tetap baris yang sama — nilainya tidak ikut bergeser kolom.
+    expect(sheet.rows[0][0].value).toBe("Kopi Arabika");
+    expect(sheet.rows[0][1].value).toBe(130);
+    // Baris total pun mengikuti susunan kolom yang sama.
+    expect(sheet.rows.at(-1)?.[1].value).toBe(130);
+  });
+
+  it("tidak memunculkan kolom Diolah di periode tanpa mutasi olah, walau dicentang", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["processed", "closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Saldo Akhir"]);
+  });
+
+  it("tanpa pilihan apa pun, seluruh kolom yang berisi tetap tercetak", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.columns.map((c) => c.header)).toEqual([
+      "Barang",
+      "Satuan",
+      "Saldo Awal",
+      "Masuk",
+      "Keluar",
+      "Saldo Akhir",
+    ]);
+  });
+});
+
+/**
+ * Rekap per mitra — dua laporan berbentuk sama, satu pembangun.
+ *
+ * Termasuk penjaga untuk kelas kegagalan yang tidak terlihat dari tipe: skema
+ * zod MENANGGALKAN kunci yang tak dideklarasikannya, jadi `visibleColumns` yang
+ * lupa ditulis di skema tidak ditolak — ia hilang diam-diam dan lembar sebarnya
+ * memuat seluruh kolom seolah pengguna tak pernah memilih apa pun.
+ */
+describe("rekap per mitra", () => {
+  const base = {
+    kind: "sales-by-customer" as const,
+    period: "Periode 1 Januari 2026 – 31 Maret 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        docCount: 3,
+        grossBase: 15_000_000,
+        returnBase: 1_000_000,
+        netBase: 14_000_000,
+        unratedCount: 0,
+      },
+      {
+        partyName: null,
+        docCount: 1,
+        grossBase: 2_000_000,
+        returnBase: 0,
+        netBase: 2_000_000,
+        unratedCount: 1,
+      },
+    ],
+    totals: {
+      docCount: 4,
+      grossBase: 17_000_000,
+      returnBase: 1_000_000,
+      netBase: 16_000_000,
+      unratedCount: 1,
+    },
+  };
+
+  it("memberi nama pada baris tanpa mitra, bukan sel kosong", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[1][0].value).toBe("Tanpa pelanggan");
+  });
+
+  it("menuliskan retur sebagai pengurang bertanda, bukan angka positif", () => {
+    const sheet = buildReportSheet(base);
+    // Kolom: party, docCount, gross, returns, net
+    expect(sheet.rows[0][3].value).toBe(-1_000_000);
+  });
+
+  it("jumlah dokumen tetap cacah — tidak meminjam topeng rupiah", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][1].value).toBe(3);
+    expect(sheet.rows[0][1].format).toBeUndefined();
+    expect(sheet.rows[0][2].format).toBe("money");
+  });
+
+  it("menyebutkan dokumen valas tanpa kurs yang tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(String(sheet.rows.at(-1)?.[0].value)).toContain("tidak ikut dijumlahkan");
+  });
+
+  it("mengikuti pilihan kolom, identitas mitra tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["net"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Pelanggan", "Bersih (IDR)"]);
+  });
+
+  it("memberi judul & label kolom sendiri untuk sisi pembelian", () => {
+    const sheet = buildReportSheet({ ...base, kind: "purchases-by-supplier" });
+    expect(sheet.title).toBe("Pembelian per Pemasok");
+    expect(sheet.columns[0].header).toBe("Pemasok");
+    expect(sheet.columns[2].header).toBe("Pembelian Kotor (IDR)");
+  });
+
+  it("skema ekspor mempertahankan pilihan kolom, tidak menanggalkannya", () => {
+    const parsed = statementPayloadSchema.parse({ ...base, visibleColumns: ["net"] });
+    expect(parsed).toHaveProperty("visibleColumns", ["net"]);
+  });
+
+  it("skema ekspor menerima kedua sisi rekap", () => {
+    expect(statementPayloadSchema.safeParse(base).success).toBe(true);
+    expect(
+      statementPayloadSchema.safeParse({ ...base, kind: "purchases-by-supplier" }).success
+    ).toBe(true);
+  });
+});
+
+/**
+ * Umur Piutang / Umur Utang — dokumen belum lunas per satu tanggal.
+ *
+ * Yang dijaga: dokumen valas TANPA KURS tidak boleh menjadi nol di lembar
+ * sebar. Nol adalah pernyataan "tidak ada sisa"; yang benar adalah "nilainya
+ * tidak diketahui", dan menuliskannya sebagai nol menyusutkan total tanpa
+ * bersuara — persis kegagalan yang `unresolved` ada untuk mencegahnya.
+ */
+describe("umur piutang / utang", () => {
+  const base = {
+    kind: "receivables" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        documentNo: "INV-001",
+        date: "1 Juli 2026",
+        dueDate: "31 Juli 2026",
+        ageDays: 5,
+        ageFromIssue: false,
+        status: "Jatuh Tempo",
+        total: 10_000_000,
+        currency: "IDR",
+        outstandingBase: 10_000_000,
+      },
+      {
+        partyName: "Coffee Buyers Ltd",
+        documentNo: "INV-002",
+        date: "2 Juli 2026",
+        dueDate: null,
+        ageDays: 34,
+        ageFromIssue: true,
+        status: "Belum Bayar",
+        total: 5_000,
+        currency: "USD",
+        outstandingBase: null,
+      },
+    ],
+    buckets: [
+      { label: "0–30 hari", amount: 10_000_000 },
+      { label: "31–60 hari", amount: 0 },
+      { label: "61–90 hari", amount: 0 },
+      { label: "> 90 hari", amount: 0 },
+    ],
+    total: 10_000_000,
+    unresolved: 1,
+  };
+
+  it("membiarkan sisa dokumen tanpa kurs KOSONG, bukan nol", () => {
+    const sheet = buildReportSheet(base);
+    const row = sheet.rows.find((r) => r[1].value === "INV-002");
+    expect(row?.[7].value).toBeNull();
+    // Sedangkan dokumen ber-IDR tetap angka yang bisa dijumlahkan.
+    const rated = sheet.rows.find((r) => r[1].value === "INV-001");
+    expect(rated?.[7].value).toBe(10_000_000);
+    expect(rated?.[7].format).toBe("money");
+  });
+
+  it("menandai umur yang dihitung dari tanggal dokumen, dan menjelaskannya", () => {
+    const sheet = buildReportSheet(base);
+    const row = sheet.rows.find((r) => r[1].value === "INV-002");
+    expect(row?.[4].value).toBe("34 *");
+    expect(sheet.rows.some((r) => String(r[0].value).startsWith("* Umur dihitung"))).toBe(true);
+  });
+
+  it("menyebutkan dokumen yang tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("tidak ikut dijumlahkan"))).toBe(true);
+  });
+
+  it("membawa ringkasan ember beserta totalnya", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][0].value).toBe("Ringkasan umur");
+    expect(sheet.rows[1][0].value).toBe("0–30 hari");
+    expect(sheet.rows[1][7].value).toBe(10_000_000);
+  });
+
+  it("memberi judul & nama lembar sendiri untuk sisi utang", () => {
+    const sheet = buildReportSheet({ ...base, kind: "payables" });
+    expect(sheet.title).toBe("Utang & Umur Utang");
+    expect(sheet.columns[0].header).toBe("Pemasok");
+  });
+
+  it("skema ekspor menerima sisa yang null tanpa mengubahnya jadi nol", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    expect(parsed).toMatchObject({ kind: "receivables" });
+    if (parsed.kind === "receivables") {
+      expect(parsed.rows[1].outstandingBase).toBeNull();
+    }
+  });
+});
+
+describe("nilai persediaan", () => {
+  const base = {
+    kind: "stock-value" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      { name: "Kopi Arabika", unit: "kg", currentStock: 1200.5, unitCost: 45_000, stockValue: 54_022_500 },
+      { name: "Karung bekas", unit: "pcs", currentStock: 40, unitCost: null, stockValue: null },
+    ],
+    totalValue: 54_022_500,
+    uncostedCount: 1,
+  };
+
+  it("membiarkan barang tanpa dasar biaya KOSONG, bukan Rp 0", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[1][3].value).toBeNull();
+    expect(sheet.rows[1][4].value).toBeNull();
+  });
+
+  it("saldo tetap kuantitas — tidak dibulatkan topeng rupiah", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][2].value).toBe(1200.5);
+    expect(sheet.rows[0][2].format).toBe("quantity");
+    expect(sheet.rows[0][4].format).toBe("money");
+  });
+
+  it("menyebutkan barang bersaldo yang nilainya tidak ikut dijumlahkan", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("belum punya dasar biaya"))).toBe(true);
+  });
+
+  it("mengikuti pilihan kolom, nama barang tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["stockValue"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Nilai (IDR)"]);
+  });
+
+  it("skema ekspor menerimanya dengan nilai null utuh", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    if (parsed.kind === "stock-value") expect(parsed.rows[1].stockValue).toBeNull();
+  });
+});
+
+describe("laporan kas & bank", () => {
+  const base = {
+    kind: "cash-bank" as const,
+    period: "Periode 1 Juli 2026 – 31 Juli 2026",
+    rows: [
+      { code: "1101", name: "Kas", opening: 5_000_000, net: -1_000_000, closing: 4_000_000 },
+      { code: "1102", name: "Bank BCA", opening: 100_000_000, net: 25_000_000, closing: 125_000_000 },
+    ],
+    openingCash: 105_000_000,
+    netChange: 24_000_000,
+    closingCash: 129_000_000,
+  };
+
+  it("menggabungkan kode & nama akun dalam satu kolom identitas", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][0].value).toBe("1101  Kas");
+  });
+
+  it("membawa total yang cocok dengan arus kas periodenya", () => {
+    const sheet = buildReportSheet(base);
+    const total = sheet.rows.at(-1);
+    expect(total?.[1].value).toBe(105_000_000);
+    expect(total?.[2].value).toBe(24_000_000);
+    expect(total?.[3].value).toBe(129_000_000);
+  });
+
+  it("mengikuti pilihan kolom, akun tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closing"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Akun Kas & Bank", "Saldo Akhir (IDR)"]);
+  });
+
+  it("skema ekspor menerima perubahan bernilai negatif", () => {
+    const parsed = statementPayloadSchema.parse(base);
+    if (parsed.kind === "cash-bank") expect(parsed.rows[0].net).toBe(-1_000_000);
+  });
+});
+
+describe("kolom umur piutang yang dipilih pengguna", () => {
+  const base = {
+    kind: "receivables" as const,
+    period: "Per 5 Agustus 2026",
+    rows: [
+      {
+        partyName: "PT Kopi Nusantara",
+        documentNo: "INV-001",
+        date: "1 Juli 2026",
+        dueDate: "31 Juli 2026",
+        ageDays: 5,
+        ageFromIssue: false,
+        status: "Jatuh Tempo",
+        total: 10_000_000,
+        currency: "IDR",
+        outstandingBase: 10_000_000,
+      },
+    ],
+    buckets: [
+      { label: "0–30 hari", amount: 10_000_000 },
+      { label: "> 90 hari", amount: 0 },
+    ],
+    total: 10_000_000,
+    unresolved: 0,
+  };
+
+  it("mempersempit kolom, mitra tetap ikut", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["outstanding"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Pelanggan", "Sisa (IDR)"]);
+    const row = sheet.rows.find((r) => r[0].value === "PT Kopi Nusantara");
+    expect(row?.[1].value).toBe(10_000_000);
+  });
+
+  it("ringkasan ember tetap menempel di kolom terakhir yang tampil", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["outstanding"] });
+    const bucket = sheet.rows.find((r) => r[0].value === "0–30 hari");
+    expect(bucket).toHaveLength(2);
+    expect(bucket?.[1].value).toBe(10_000_000);
+  });
+
+  it("bertahan saat hanya kolom identitas yang tersisa", () => {
+    // `party` fixed, jadi daftar yang hanya berisi id asing tetap menyisakannya.
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["party"] });
+    expect(sheet.columns).toHaveLength(1);
+    expect(sheet.rows.every((r) => r.length === 1)).toBe(true);
+  });
+});
+
+describe("realisasi vs anggaran", () => {
+  const base = {
+    kind: "budget-realization" as const,
+    period: "Juli 2026",
+    rows: [
+      {
+        code: "5101",
+        name: "Beban Gaji",
+        budget: 50_000_000,
+        actual: 56_000_000,
+        variance: 6_000_000,
+        variancePct: 12,
+        status: "Di atas anggaran",
+      },
+      {
+        code: "5201",
+        name: "Beban Sewa",
+        budget: 0,
+        actual: 3_000_000,
+        variance: 3_000_000,
+        variancePct: null,
+        status: "Di atas anggaran",
+      },
+    ],
+    totalBudget: 50_000_000,
+    totalActual: 59_000_000,
+    totalVariance: 9_000_000,
+    totalVariancePct: 18,
+    alertCount: 2,
+    salesTarget: { target: 200_000_000, actual: 180_000_000, variance: -20_000_000 },
+  };
+
+  it("persen tak terdefinisi tetap kosong, bukan 0%", () => {
+    const sheet = buildReportSheet(base);
+    // Kolom: account, budget, actual, variance, variancePct, status
+    expect(sheet.rows[1][4].value).toBeNull();
+    expect(sheet.rows[0][4].value).toBe(12);
+  });
+
+  it("arah selisih terbaca sebagai kata, bukan warna", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows[0][5].value).toBe("Di atas anggaran");
+  });
+
+  it("menyebutkan berapa akun melewati ambang di baris total", () => {
+    const sheet = buildReportSheet(base);
+    const total = sheet.rows.find((r) => String(r[0].value).includes("Total"));
+    expect(String(total?.[5].value)).toContain("2 akun");
+  });
+
+  it("membawa blok target penjualan periode yang sama", () => {
+    const sheet = buildReportSheet(base);
+    expect(sheet.rows.some((r) => r[0].value === "Target Penjualan")).toBe(true);
+    expect(sheet.rows.some((r) => String(r[0].value).includes("Total penjualan"))).toBe(true);
+  });
+
+  it("tanpa target sama sekali, bloknya tidak dicetak", () => {
+    const sheet = buildReportSheet({ ...base, salesTarget: null });
+    expect(sheet.rows.some((r) => r[0].value === "Target Penjualan")).toBe(false);
+  });
+
+  it("skema ekspor menerima persen null dan target null", () => {
+    expect(statementPayloadSchema.safeParse(base).success).toBe(true);
+    expect(statementPayloadSchema.safeParse({ ...base, salesTarget: null }).success).toBe(true);
   });
 });

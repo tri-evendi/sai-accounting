@@ -28,6 +28,7 @@ import { Download, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatDate } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 
 interface DeletionState {
@@ -101,11 +102,10 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
     }
   }
 
-  const graceDate = state?.pending
-    ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
-        new Date(state.pending.graceEndsAt)
-      )
-    : null;
+  /* Gaya "long" lewat helper bersama, bukan `Intl` yang dirakit di tempat:
+   * tanggal ini menyebut hari akun sebuah badan usaha benar-benar ditutup, dan
+   * satu-satunya tanggal di halaman yang gayanya ditentukan sendiri. */
+  const graceDate = state?.pending ? formatDate(state.pending.graceEndsAt) : null;
 
   return (
     <Card>
@@ -136,8 +136,29 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
             {t("tenantSettings.deletionBody", { days: state?.graceDays ?? 30 })}
           </p>
 
-          {message && <p className="text-sm text-success-strong">{message}</p>}
-          {error && <p className="text-sm text-destructive-strong">{error}</p>}
+          {/* ⚠ HASILNYA DIUMUMKAN, bukan sekadar dicetak.
+           *
+           * Kedua kalimat ini adalah SATU-SATUNYA umpan balik dari dua
+           * permintaan jaringan yang tidak memindahkan halaman ke mana pun —
+           * dan salah satunya menutup akses seluruh badan usaha. Sebagai `<p>`
+           * telanjang, pembaca layar tidak mengumumkan apa pun ketika kalimat
+           * itu muncul: yang menekan "Ajukan penghapusan" mendengar sunyi, lalu
+           * menekan lagi. (Tetangganya, `billing-actions.tsx`, memakai toast
+           * yang memang sudah punya live region; di sini kalimatnya harus
+           * tinggal di tempat sebab ia menerangkan bidang di sekitarnya.)
+           *
+           * `alert` untuk galat (menyela — ada yang gagal dan perlu diketahui
+           * sekarang), `status` untuk keberhasilan (sopan, tidak memotong). */}
+          {message && (
+            <p role="status" className="text-sm text-success-strong">
+              {message}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-sm text-destructive-strong">
+              {error}
+            </p>
+          )}
 
           {state?.pending ? (
             <div className="space-y-2">

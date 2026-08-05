@@ -17,9 +17,18 @@ import nextTs from "eslint-config-next/typescript";
  * `bg-sidebar`/`text-sidebar-foreground` untuk permukaan gelap permanen. Untuk
  * scrim overlay yang memang harus hitam (mis. `bg-black/50`), matikan setempat
  * dengan `// eslint-disable-next-line no-restricted-syntax` beserta alasannya.
+ *
+ * ⚠ SISI ARAH IKUT DICAKUP (`border-l-blue-500`, `border-t-red-500`, …).
+ * Sampai audit UI /platform + beranda, pola di bawah hanya mengenal `border-`
+ * yang langsung diikuti warna — sehingga `border-l-4 border-l-blue-500` di
+ * kartu saldo beranda lolos gerbang lint selama berbulan-bulan. Celahnya bukan
+ * teoretis: justru garis aksen sisi kiri yang paling sering ditulis begitu,
+ * dan itulah kelas yang tidak ikut berganti saat tema gelap menyala.
  */
+const SIDE = "(x|y|s|e|t|r|b|l)-";
 const RAW_PALETTE =
-  "(bg|text|border|ring|ring-offset|divide|from|to|via|placeholder|fill|stroke|outline|decoration|accent|caret|shadow)-((blue|gray|red|green|yellow|amber|slate|emerald|rose|sky|indigo|zinc|neutral|stone)-[0-9]|(white|black)\\b)";
+  `(bg|text|border|ring|ring-offset|divide|from|to|via|placeholder|fill|stroke|outline|decoration|accent|caret|shadow)-(${SIDE})?` +
+  "((blue|gray|red|green|yellow|amber|slate|emerald|rose|sky|indigo|zinc|neutral|stone)-[0-9]|(white|black)\\b)";
 
 const rawPaletteMessage =
   "Kelas palet Tailwind mentah dilarang (issue #54). Pakai token semantik: " +

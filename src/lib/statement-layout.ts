@@ -61,3 +61,190 @@ export function grossMarginPct(grossProfit: number, totalSales: number): number 
   if (Math.round(totalSales * 100) === 0) return null;
   return (grossProfit / totalSales) * 100;
 }
+
+// ─── Kolom Riwayat Stok ──────────────────────────────────────────────────────
+
+/**
+ * Susunan kolom Riwayat Stok, dalam urutan kanoniknya.
+ *
+ * Ada di modul ini karena alasan yang sama dengan `incomeStatementLayout`:
+ * layar, PDF, dan lembar sebar harus sepakat. Sebelumnya ketiganya menyusun
+ * daftar kolomnya sendiri-sendiri — tiga salinan aturan `hasProcess` yang
+ * kebetulan masih sama.
+ */
+export const STOCK_MOVEMENT_COLUMNS = [
+  "name",
+  "unit",
+  "opening",
+  "movedIn",
+  "movedOut",
+  "processed",
+  "closing",
+] as const;
+
+export type StockMovementColumnId = (typeof STOCK_MOVEMENT_COLUMNS)[number];
+
+/**
+ * Judul kolom untuk DOKUMEN CETAK (PDF & lembar sebar) — tetap bahasa
+ * Indonesia, seperti seluruh isi `lib/pdf`: berkas yang lepas dari layarnya
+ * tidak membawa pilihan bahasa penggunanya. Layar memakai kamus.
+ */
+export const STOCK_MOVEMENT_HEADERS: Record<StockMovementColumnId, string> = {
+  name: "Barang",
+  unit: "Satuan",
+  opening: "Saldo Awal",
+  movedIn: "Masuk",
+  movedOut: "Keluar",
+  processed: "Diolah",
+  closing: "Saldo Akhir",
+};
+
+/**
+ * Kolom yang benar-benar dicetak, setelah dua penyaring yang urutannya penting:
+ *
+ * 1. **Isi laporan** — `Diolah` hanya ada bila periodenya memang punya mutasi
+ *    olah. Ini bukan pilihan pengguna; kolom penuh tanda hubung bukan informasi.
+ * 2. **Pilihan pengguna** (`visibleColumns` dari dialog parameter). Ia hanya
+ *    boleh MENGURANGI: mencentang `Diolah` di periode tanpa mutasi olah tidak
+ *    memunculkan kolom kosong.
+ *
+ * `name` tak pernah bisa dibuang — tabel angka tanpa nama barang tidak bisa
+ * dibaca siapa pun, dan itu bukan laporan yang pengguna maksud.
+ */
+export function stockMovementColumns(report: {
+  hasProcess: boolean;
+  visibleColumns?: string[];
+}): StockMovementColumnId[] {
+  const available = STOCK_MOVEMENT_COLUMNS.filter(
+    (id) => id !== "processed" || report.hasProcess
+  );
+  return selectColumns(available, report.visibleColumns, "name");
+}
+
+/**
+ * Saring `available` dengan pilihan pengguna, mempertahankan urutan kanonik.
+ *
+ * Dua aturan yang berlaku untuk SETIAP laporan bertipe daftar: kolom `always`
+ * tak pernah bisa dibuang (tabel angka tanpa kolom identitas tidak bisa dibaca
+ * siapa pun), dan daftar kosong berarti "seluruhnya" — bukan "tidak satu pun",
+ * yang hanya menghasilkan halaman kosong.
+ */
+export function selectColumns<T extends string>(
+  available: readonly T[],
+  visible: string[] | undefined,
+  always: T
+): T[] {
+  if (!visible || visible.length === 0) return [...available];
+  return available.filter((id) => id === always || visible.includes(id));
+}
+
+// ─── Kolom rekap per mitra (Penjualan per Pelanggan / Pembelian per Pemasok) ──
+
+export const PARTY_RECAP_COLUMNS = ["party", "docCount", "gross", "returns", "net"] as const;
+
+export type PartyRecapColumnId = (typeof PARTY_RECAP_COLUMNS)[number];
+
+export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
+  return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
+}
+
+// ─── Kolom Nilai Persediaan ──────────────────────────────────────────────────
+
+export const STOCK_VALUE_COLUMNS = [
+  "name",
+  "unit",
+  "currentStock",
+  "unitCost",
+  "stockValue",
+] as const;
+
+export type StockValueColumnId = (typeof STOCK_VALUE_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const STOCK_VALUE_HEADERS: Record<StockValueColumnId, string> = {
+  name: "Barang",
+  unit: "Satuan",
+  currentStock: "Saldo",
+  unitCost: "Biaya/Unit (IDR)",
+  stockValue: "Nilai (IDR)",
+};
+
+export function stockValueColumns(report: { visibleColumns?: string[] }): StockValueColumnId[] {
+  return selectColumns(STOCK_VALUE_COLUMNS, report.visibleColumns, "name");
+}
+
+// ─── Kolom Laporan Kas & Bank ────────────────────────────────────────────────
+
+export const CASH_BANK_COLUMNS = ["account", "opening", "net", "closing"] as const;
+
+export type CashBankColumnId = (typeof CASH_BANK_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const CASH_BANK_HEADERS: Record<CashBankColumnId, string> = {
+  account: "Akun Kas & Bank",
+  opening: "Saldo Awal (IDR)",
+  net: "Perubahan (IDR)",
+  closing: "Saldo Akhir (IDR)",
+};
+
+export function cashBankColumns(report: { visibleColumns?: string[] }): CashBankColumnId[] {
+  return selectColumns(CASH_BANK_COLUMNS, report.visibleColumns, "account");
+}
+
+// ─── Kolom Umur Piutang / Umur Utang ─────────────────────────────────────────
+
+export const AGING_COLUMNS = [
+  "party",
+  "documentNo",
+  "date",
+  "dueDate",
+  "age",
+  "status",
+  "total",
+  "outstanding",
+] as const;
+
+export type AgingColumnId = (typeof AGING_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const AGING_HEADERS: Record<AgingColumnId, string> = {
+  party: "Mitra",
+  documentNo: "Dokumen",
+  date: "Tanggal",
+  dueDate: "Jatuh Tempo",
+  age: "Umur",
+  status: "Status",
+  total: "Nilai Dokumen",
+  outstanding: "Sisa (IDR)",
+};
+
+export function agingColumns(report: { visibleColumns?: string[] }): AgingColumnId[] {
+  return selectColumns(AGING_COLUMNS, report.visibleColumns, "party");
+}
+
+// ─── Kolom Realisasi vs Anggaran ─────────────────────────────────────────────
+
+export const BUDGET_COLUMNS = [
+  "account",
+  "budget",
+  "actual",
+  "variance",
+  "variancePct",
+  "status",
+] as const;
+
+export type BudgetColumnId = (typeof BUDGET_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const BUDGET_HEADERS: Record<BudgetColumnId, string> = {
+  account: "Akun",
+  budget: "Anggaran (IDR)",
+  actual: "Realisasi (IDR)",
+  variance: "Selisih (IDR)",
+  variancePct: "Selisih %",
+  status: "Keterangan",
+};
+
+export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColumnId[] {
+  return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
+}

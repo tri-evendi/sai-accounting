@@ -53,6 +53,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMoney } from "@/lib/money-format";
+import { formatDateMedium } from "@/lib/utils";
 import {
   isReadOnlyTenantStatus,
   platformInvoiceAmounts,
@@ -63,10 +64,6 @@ import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 import { BillingProfileForm, PayInvoice } from "./billing-actions";
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
 
 export async function SubscriptionSection({
   overview,
@@ -138,7 +135,7 @@ export async function SubscriptionSection({
             </div>
             {overview.tenant.trialEndsAt && (
               <p className="text-sm text-muted-foreground">
-                {t("tenantSettings.trialEndsAt")}: {formatDate(overview.tenant.trialEndsAt)}
+                {t("tenantSettings.trialEndsAt")}: {formatDateMedium(overview.tenant.trialEndsAt)}
               </p>
             )}
             {trial && (
@@ -221,7 +218,7 @@ export async function SubscriptionSection({
                   })}{" "}
                   ·{" "}
                   {t("tenantSettings.period", {
-                    date: formatDate(overview.billing.subscription.currentPeriodEnd),
+                    date: formatDateMedium(overview.billing.subscription.currentPeriodEnd),
                   })}
                 </p>
               ) : (
@@ -251,7 +248,7 @@ export async function SubscriptionSection({
                           {invoice.number}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {formatDate(invoice.dueDate)}
+                          {formatDateMedium(invoice.dueDate)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-foreground">
                           {formatMoney(Number(invoice.total), invoice.currency)}

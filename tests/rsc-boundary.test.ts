@@ -24,7 +24,8 @@
  *
  * Jadi angka sebenarnya sebelum migrasi adalah **146 client / 141 server**,
  * dan sesudah #184 **147 client / 141 server** dari 288 berkas `.tsx`
- * (+3 modul `.ts` yang juga client = 150 modul, yang dikunci `AMBANG_KLIEN`).
+ * (+3 modul `.ts` yang juga client = 150 modul, yang dikunci `AMBANG_KLIEN`;
+ * 151 sejak #186 menaikkan `money.tsx` — alasannya di dekat konstanta itu).
  * Selisih satu berkas ini kecil, tapi berkasnya bukan berkas sembarangan:
  * `table.tsx` adalah primitif tabel, permukaan terbesar aplikasi ini, dan
  * satu-satunya primitif yang SENGAJA netral supaya 36 dari 50 tabel bisa tetap
@@ -77,7 +78,14 @@ const SRC = join(__dirname, "..", "src");
  * berarti ada satu permukaan lagi yang datanya berpindah ke peramban. Naikkan
  * hanya bersama satu baris baru di `KLIEN_TERSAHKAN` dan alasan di pesan commit.
  */
-const AMBANG_KLIEN = 150;
+/*
+ * 151 sejak #186 (2026-08-05): `money.tsx` naik jadi modul client karena warna
+ * nominal kini dibaca dari token AntD lewat `theme.useToken()` — hook, jadi ia
+ * tidak bisa lagi dirender di server. Kenaikan ini disengaja dan terbatas pada
+ * SATU daun: halaman yang memakainya tetap server component, dan `table.tsx`
+ * sengaja tetap netral (lihat komentar kepala berkas itu).
+ */
+const AMBANG_KLIEN = 151;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -233,6 +241,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/loading.tsx",
   "components/ui/locale-toggle.tsx",
   "components/ui/money-input.tsx",
+  "components/ui/money.tsx",
   "components/ui/password-input.tsx",
   "components/ui/popover.tsx",
   "components/ui/searchable-select.tsx",

@@ -4,10 +4,26 @@
  * Command (issue #51) — daftar perintah/opsi terfilter di atas `cmdk`,
  * pola shadcn/ui dengan palet aplikasi ini.
  *
- * Dipakai oleh `SearchableSelect` sebagai mesin combobox: cmdk memberi
- * ARIA combobox yang benar (`aria-activedescendant`, `role="listbox"`),
- * navigasi panah + Enter, dan filter ketik — perilaku yang dulu dirakit
- * tangan tanpa ARIA-nya.
+ * ── Peninjauan issue #188: cmdk TETAP, dan ini alasannya ──────────────────
+ * #188 meminta ditinjau apakah berkas ini masih perlu setelah `Select
+ * showSearch` AntD tersedia. Jawabannya: dua dari tiga pemakainya memang sudah
+ * pindah — `SearchableSelect` dan `ServerSearchableSelect` kini `Select` AntD —
+ * tetapi pemakai ketiganya, palet perintah ⌘K
+ * (`components/layout/command-palette.tsx`), TIDAK punya padanan di AntD.
+ *
+ * Yang dibutuhkan palet itu adalah daftar berjudul-grup di dalam modal, yang
+ * disaring sambil diketik dan dinavigasi panah — bukan daftar yang menggantung
+ * di bawah sebuah isian. `AutoComplete`/`Select showSearch` selalu terpaut pada
+ * pemicunya dan tidak punya `CommandGroup` berjudul; membangunnya ulang berarti
+ * menulis sendiri penyaringan, roving focus, dan `aria-activedescendant` — tiga
+ * hal yang justru menjadi alasan cmdk dipilih di #51. Mengganti komponen yang
+ * BEKERJA dengan rakitan tangan yang aksesibilitasnya lebih tipis bukan
+ * migrasi, itu kemunduran.
+ *
+ * Kulitnya masih memakai token Tailwind. Itu disengaja: palet ini hidup di
+ * dalam `Dialog` yang juga belum dikonversi (#190), dan mengubah setengahnya
+ * hanya menghasilkan modal yang dua gayanya bertabrakan. Keduanya dikonversi
+ * bersama di #193 (chrome aplikasi).
  */
 
 import * as React from "react";

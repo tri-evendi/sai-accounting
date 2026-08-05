@@ -1,38 +1,50 @@
 "use client";
 
 /**
- * PasswordInput — isian sandi dengan tombol perlihatkan/sembunyikan.
+ * PasswordInput (issue #50, ditulis ulang di atas AntD `Input.Password` pada
+ * issue #188) — isian sandi dengan tombol perlihatkan/sembunyikan.
  *
- * Ikut dirapikan di issue #50: gayanya tidak lagi menyalin kelas isian, tetapi
- * memakai `fieldVariants` yang sama dengan `Input`/`Select`, jadi ketiganya
- * tidak bisa lagi berbeda tinggi atau warna diam-diam. Pesan error terhubung
- * ke isiannya (`aria-invalid` + `aria-describedby` -> `role="alert"`), seperti
- * `Input`.
+ * ── Tombol matanya dibuang, dan itu MENAIKKAN aksesibilitas ───────────────
+ * Implementasi manual sebelumnya memasang `tabIndex={-1}` pada tombolnya
+ * "supaya urutan Tab tidak disela". Akibatnya pengguna papan ketik — termasuk
+ * yang memakai pembaca layar — tidak punya cara sama sekali untuk memeriksa
+ * sandi yang sudah diketik; tombol itu hanya ada untuk tetikus dan sentuhan.
+ * Tombol bawaan AntD sebaliknya: `role="button"`, `tabIndex={0}`,
+ * `aria-pressed` yang mengumumkan keadaan sekarang, penanganan Enter/Spasi, dan
+ * `aria-label` yang IKUT BERGANTI BAHASA lewat `ConfigProvider`
+ * ("Tampilkan"/"Sembunyikan" di id, dan padanannya di en/zh) — sebelumnya label
+ * itu literal bahasa Indonesia di aplikasi trilingual.
  *
- * Label tombol matanya berbahasa Indonesia — app ini Indonesia-first.
+ * Yang hilang: satu perhentian Tab tambahan per isian sandi. Itu memang harga
+ * yang dulu sengaja dihindari, tapi menukar "bisa dijangkau papan ketik" dengan
+ * "urutan Tab lebih pendek" adalah pertukaran yang salah arah; pola WAI-ARIA
+ * untuk tombol di dalam isian memang menempatkannya di urutan Tab.
  *
  * ── Dua lapis, seperti `TextInput`/`Input` ────────────────────────────────
- * `PasswordField` adalah lapis TELANJANG (isian + tombol mata, tanpa
- * label/error) yang dipakai di dalam pola `Form` shadcn; `PasswordInput`
- * membungkusnya dengan label & pesan error untuk pemakaian di luar `Form`.
- * Pemisahannya mengikuti alasan yang sama dengan `TextInput` (MASTER.md
- * §Konvensi Form aturan 4): `FormControl` adalah Radix `Slot` yang menyalurkan
- * `id`/`aria-*` ke anak TUNGGAL-nya, jadi anaknya tidak boleh berupa `<div>`
- * pembungkus — atribut itu akan mendarat di pembungkusnya, bukan di isian yang
- * dimaksud, dan pautan label–error diam-diam putus.
+ * `PasswordField` TELANJANG (isian + tombol mata, tanpa label/error) untuk
+ * dipakai di dalam `FormControl`; `PasswordInput` membungkusnya dengan label &
+ * pesan error. `FormControl` (Radix `Slot`) menyalurkan `id`/`aria-*` ke anak
+ * TUNGGAL-nya — dan `Input.Password` meneruskan keduanya ke `<input>` di
+ * dalamnya, bukan ke `affix-wrapper`-nya, jadi pautan label–error tetap
+ * menunjuk isian yang benar.
  */
 
-import { Eye, EyeOff } from "lucide-react";
-import { useId, useState } from "react";
-import { fieldVariants } from "@/components/ui/input";
+import { Input, type InputRef } from "antd";
+
+import { isInvalidField } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
-type PasswordFieldProps = Omit<React.ComponentProps<"input">, "size" | "type"> & {
-  invalid?: boolean;
+type PasswordFieldProps = Omit<
+  React.ComponentProps<"input">,
+  "size" | "type" | "prefix" | "ref"
+> & {
+  invalid?: boolean | null;
+  ref?: React.Ref<InputRef>;
 };
 
-type PasswordInputProps = Omit<React.ComponentProps<"input">, "size" | "type"> & {
+type PasswordInputProps = PasswordFieldProps & {
   label?: React.ReactNode;
   error?: string;
 };
@@ -41,37 +53,16 @@ type PasswordInputProps = Omit<React.ComponentProps<"input">, "size" | "type"> &
  * Isian sandi telanjang. Semua prop yang diterima diteruskan ke `<input>` di
  * dalamnya — termasuk `id` dan `aria-*` yang dialirkan `FormControl`.
  */
-function PasswordField({ className, invalid, disabled, ...props }: PasswordFieldProps) {
-  const [visible, setVisible] = useState(false);
+function PasswordField({ invalid, ...props }: PasswordFieldProps) {
+  const isInvalid = isInvalidField(invalid, props["aria-invalid"]);
 
   return (
-    <div className="relative">
-      <input
-        data-slot="input"
-        type={visible ? "text" : "password"}
-        disabled={disabled}
-        className={cn(fieldVariants({ invalid: Boolean(invalid) }), "pr-10", className)}
-        {...props}
-      />
-      {/* `tabIndex={-1}` disengaja: urutan Tab tetap isian → isian berikutnya,
-          tidak disela tombol bantu. Tetap terjangkau lewat klik/sentuh, dan
-          bukan satu-satunya jalan (isiannya sendiri bisa diketik & dibaca
-          pembaca layar). */}
-      <button
-        type="button"
-        tabIndex={-1}
-        disabled={disabled}
-        onClick={() => setVisible((v) => !v)}
-        className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3 text-muted-foreground transition-colors duration-150 hover:text-foreground motion-reduce:transition-none disabled:pointer-events-none"
-        aria-label={visible ? "Sembunyikan sandi" : "Perlihatkan sandi"}
-      >
-        {visible ? (
-          <EyeOff className="h-4 w-4" aria-hidden />
-        ) : (
-          <Eye className="h-4 w-4" aria-hidden />
-        )}
-      </button>
-    </div>
+    <Input.Password
+      data-slot="input"
+      status={isInvalid ? "error" : undefined}
+      {...props}
+      aria-invalid={isInvalid || undefined}
+    />
   );
 }
 
@@ -95,7 +86,6 @@ function PasswordInput({
         id={inputId}
         disabled={disabled}
         invalid={Boolean(error)}
-        aria-invalid={error ? true : undefined}
         aria-describedby={cn(describedBy, error && errorId) || undefined}
         className={className}
         {...props}

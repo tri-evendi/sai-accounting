@@ -97,8 +97,17 @@ const SRC = join(__dirname, "..", "src");
  * Butir-butirnya tetap `<Link href>` sungguhan lewat `itemRender`, jadi URL
  * per halaman, klik tengah, dan prefetch tidak ikut hilang — lihat komentar
  * kepala `components/ui/pagination.tsx`.
+ *
+ * 153 sejak #188 (2026-08-05): `textarea.tsx`. Tujuh primitif isian ditulis
+ * ulang di atas AntD, dan ENAM di antaranya sudah modul client sebelum issue
+ * ini (`input`, `select`, `password-input`, `searchable-select`,
+ * `server-searchable-select`, `command`) — jadi migrasi permukaan isian
+ * terbesar aplikasi ini, 69 + 39 berkas pemanggil, menaikkan angka ini SATU.
+ * `textarea.tsx` satu-satunya yang menyeberang karena ia dulu hanya
+ * `<textarea>` + kelas Tailwind, tanpa hook. Ketujuh pemanggilnya sudah client,
+ * jadi tidak ada halaman yang ikut tertarik.
  */
-const AMBANG_KLIEN = 152;
+const AMBANG_KLIEN = 153;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -262,6 +271,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/select.tsx",
   "components/ui/server-searchable-select.tsx",
   "components/ui/term-tooltip.tsx",
+  "components/ui/textarea.tsx",
   "components/ui/theme-toggle.tsx",
   "components/ui/toast.tsx",
   "lib/company-identity-client.tsx",

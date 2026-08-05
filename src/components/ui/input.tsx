@@ -1,53 +1,83 @@
 "use client";
 
 /**
- * Input (issue #50) — CVA + token, API pemanggil (`label`, `error`) tetap.
+ * Input (issue #50, ditulis ulang di atas AntD pada issue #188).
  *
- * Yang berubah selain warna:
- *   • tinggi kontrol jadi 40px (`h-10`) — "target sentuh ≥ 40px" MASTER.md;
- *     sebelumnya hanya padding, sehingga tingginya ±38px;
- *   • `focus-visible` menggantikan `focus`, jadi ring hanya muncul saat
- *     navigasi keyboard;
- *   • pesan error kini benar-benar TERHUBUNG ke isiannya: `aria-invalid` +
- *     `aria-describedby` -> id pesan, dan pesannya `role="alert"` sehingga
- *     diumumkan. Sebelumnya error hanya teks merah di bawah field — pengguna
- *     pembaca layar tidak tahu field mana yang salah.
+ * API pemanggilnya TIDAK berubah — 69 berkas yang mengimpor berkas ini tidak
+ * disentuh di fase B: `label`, `error`, `invalid`, `fieldSize`, dan seluruh
+ * atribut `<input>` native tetap diterima. Yang berganti hanya kulitnya: rupa,
+ * tinggi, warna batas, dan gaya fokus kini datang dari token AntD
+ * (`lib/theme/antd-tokens.ts`), bukan dari `fieldVariants` CVA yang sudah
+ * dihapus di sini.
  *
- * `fieldVariants` diekspor dan dipakai ulang oleh `Select` supaya kedua
- * kontrol tidak pelan-pelan berbeda rupa.
+ * ── Dua lapis, dan kenapa keduanya harus tetap ada ────────────────────────
+ * `TextInput` TELANJANG (satu `<input>`, tanpa label/error) dan `Input`
+ * KOMPOSIT (label + pesan error sendiri). Pemisahan itu bukan gaya: `FormControl`
+ * (Radix `Slot`) menyalurkan `id`/`aria-*` ke anak TUNGGAL-nya, jadi isian di
+ * dalam pola `Form` wajib berupa satu kontrol, bukan `<div>` pembungkus. Kalau
+ * keduanya dilebur sekarang, atribut itu mendarat di pembungkus dan pautan
+ * label–error putus tanpa satu pun galat. Peleburan ke `Form.Item` AntD adalah
+ * keputusan tersendiri (issue #192), bukan efek samping migrasi kulit.
+ *
+ * ── Yang TIDAK ikut pindah ke AntD, dengan sengaja ────────────────────────
+ * Pesan error komposit tetap `<p className="text-sm text-destructive">`, bukan
+ * `token.colorError`. Alasannya terukur dan sudah tertulis di
+ * `lib/theme/antd-tokens.ts`: `colorError` terang berkontras 3,27:1 sebagai
+ * TEKS — di bawah 4,5:1 untuk huruf 14px. Menukar teks error yang sekarang
+ * lolos AA dengan token AntD berarti memundurkan aksesibilitas demi keseragaman
+ * yang belum diputuskan siapa pun. Warna error pada KOTAK isiannya sendiri
+ * tetap milik AntD (`status="error"`), karena di sana ambangnya 3:1 non-teks.
+ *
+ * ── `ref` ─────────────────────────────────────────────────────────────────
+ * `InputRef` AntD, bukan `HTMLInputElement` — konsekuensi nyata dari pindah ke
+ * `Input` AntD, sama seperti `MoneyInput` di #186. Elemennya tetap terjangkau
+ * lewat `ref.current.input`, dan `focus()`/`blur()`/`select()` ada langsung di
+ * `InputRef` (itu yang dipakai `react-hook-form` untuk memfokuskan isian
+ * pertama yang gagal validasi).
  */
 
 import { useId } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { Input as AntdInput, type InputRef } from "antd";
+
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const fieldVariants = cva(
-  [
-    "block w-full rounded-md border bg-background px-3 text-sm text-foreground shadow-sm",
-    "transition-colors duration-150 motion-reduce:transition-none",
-    "outline-none placeholder:text-muted-foreground",
-    "focus-visible:ring-2 focus-visible:ring-offset-0",
-    "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
-  ],
-  {
-    variants: {
-      invalid: {
-        false: "border-border focus-visible:border-ring focus-visible:ring-ring",
-        true: "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
-      },
-      fieldSize: {
-        /** Default — 40px, target sentuh minimum MASTER.md. */
-        md: "h-10 py-2",
-        sm: "h-8 py-1",
-      },
-    },
-    defaultVariants: { invalid: false, fieldSize: "md" },
-  }
-);
+/**
+ * Ukuran kontrol. `md` = bawaan provider (`controlHeight: 40`, target sentuh
+ * MASTER.md); `sm` = `size="small"` AntD untuk tempat yang memang bukan target
+ * sentuh (sel tabel, baris filter padat).
+ */
+type FieldSize = "md" | "sm";
 
-type InputProps = Omit<React.ComponentProps<"input">, "size"> &
-  VariantProps<typeof fieldVariants> & {
+/** `md` sengaja memetakan ke `undefined`: biarkan token provider yang menentukan. */
+function antdSize(fieldSize: FieldSize | null | undefined) {
+  return fieldSize === "sm" ? ("small" as const) : undefined;
+}
+
+/**
+ * `FormControl` menyuntikkan `aria-invalid` (pola `Form` shadcn), sedangkan
+ * pemanggil di luar pola itu memakai prop `invalid`. Keduanya harus dibaca —
+ * kalau hanya `invalid` yang dilihat, isian yang ditolak react-hook-form
+ * mengumumkan dirinya ke pembaca layar tapi garisnya tetap netral: error yang
+ * hanya terdengar, tidak terlihat (bug yang sama sudah ditutup di #186).
+ */
+function isInvalidField(
+  invalid: boolean | null | undefined,
+  ariaInvalid: React.AriaAttributes["aria-invalid"]
+): boolean {
+  return Boolean(invalid) || ariaInvalid === true || ariaInvalid === "true";
+}
+
+type BareFieldProps = {
+  fieldSize?: FieldSize | null;
+  invalid?: boolean | null;
+};
+
+type TextInputProps = Omit<React.ComponentProps<"input">, "size" | "prefix" | "ref"> &
+  BareFieldProps & { ref?: React.Ref<InputRef> };
+
+type InputProps = Omit<React.ComponentProps<"input">, "size" | "prefix" | "ref"> &
+  BareFieldProps & {
     /**
      * ReactNode, bukan string, supaya label boleh membawa bantuan kontekstual —
      * mis. `<TermTooltip term="kurs">Kurs</TermTooltip>` (issue #6). Tetap
@@ -56,28 +86,30 @@ type InputProps = Omit<React.ComponentProps<"input">, "size"> &
      */
     label?: React.ReactNode;
     error?: string;
+    ref?: React.Ref<InputRef>;
   };
 
 /**
- * Isian telanjang — hanya `<input>` bergaya, tanpa pembungkus label/error.
+ * Isian telanjang — satu `<input>` bergaya AntD, tanpa pembungkus label/error.
+ * Ini yang dipakai di dalam `FormControl` (MASTER.md §Konvensi Form aturan 4).
  *
- * Ini yang dipakai di dalam pola `Form` shadcn (issue #53): `FormControl`
- * (Radix `Slot`) meneruskan `id`/`aria-*` ke ANAK TUNGGAL-nya, jadi anaknya
- * harus berupa satu `<input>`, bukan `<div>` pembungkus milik `Input`
- * komposit. `Input` sendiri dibangun di atas ini agar gayanya tidak
- * bercabang.
+ * Tanpa `prefix`/`suffix`/`allowClear`, AntD merender `<input class="ant-input">`
+ * apa adanya — tanpa `<span>` pembungkus. `id` dan `aria-*` mendarat di `<input>`
+ * dalam kedua bentuk (itu yang membuat `PasswordField`, yang SELALU punya suffix,
+ * tetap benar pautannya), tetapi `className` berpindah ke pembungkus begitu
+ * affix muncul. Karena 69 pemanggil mengoper `className` untuk mengatur lebar
+ * isian, bentuk telanjang di sini dijaga tetap telanjang.
  */
-function TextInput({
-  className,
-  fieldSize,
-  invalid,
-  ...props
-}: Omit<React.ComponentProps<"input">, "size"> & VariantProps<typeof fieldVariants>) {
+function TextInput({ fieldSize, invalid, ...props }: TextInputProps) {
+  const isInvalid = isInvalidField(invalid, props["aria-invalid"]);
+
   return (
-    <input
+    <AntdInput
       data-slot="input"
-      className={cn(fieldVariants({ invalid: Boolean(invalid), fieldSize }), className)}
+      size={antdSize(fieldSize)}
+      status={isInvalid ? "error" : undefined}
       {...props}
+      aria-invalid={isInvalid || undefined}
     />
   );
 }
@@ -119,7 +151,6 @@ function Input({
         id={inputId}
         fieldSize={fieldSize}
         invalid={isInvalid}
-        aria-invalid={isInvalid || undefined}
         aria-describedby={cn(describedBy, error && errorId) || undefined}
         className={className}
         {...props}
@@ -133,5 +164,5 @@ function Input({
   );
 }
 
-export { Input, TextInput, fieldVariants };
-export type { InputProps };
+export { Input, TextInput, antdSize, isInvalidField };
+export type { InputProps, TextInputProps, FieldSize, BareFieldProps };

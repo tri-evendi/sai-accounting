@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Typography, theme } from "antd";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -45,6 +46,7 @@ interface ModulesResponse {
 
 export function ModuleSettingsPanel() {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const { toast } = useToast();
   const [saved, setSaved] = useState<ModulesResponse | null>(null);
@@ -140,30 +142,34 @@ export function ModuleSettingsPanel() {
   }
 
   return (
-    <Card className="mb-6">
+    <Card style={{ marginBottom: token.marginLG }}>
       <CardHeader>
         <CardTitle>{t("modules.sectionTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-sm text-muted-foreground">{t("modules.sectionDescription")}</p>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: token.margin }}>
+          {t("modules.sectionDescription")}
+        </Typography.Paragraph>
 
+        {/* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah
+            apa pun — lihat catatan di `app/(auth)/forgot-password/page.tsx`. */}
         {loadError ? (
-          <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {loadError}
-          </p>
+          <Alert type="error" showIcon message={loadError} />
         ) : (
           <>
             {errors.length > 0 && (
-              <div
-                role="alert"
-                className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-              >
-                <ul className="list-disc pl-5">
-                  {errors.map((message) => (
-                    <li key={message}>{message}</li>
-                  ))}
-                </ul>
-              </div>
+              <Alert
+                type="error"
+                showIcon
+                style={{ marginBottom: token.margin }}
+                message={
+                  <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                    {errors.map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                  </ul>
+                }
+              />
             )}
 
             <ModulePicker
@@ -174,12 +180,12 @@ export function ModuleSettingsPanel() {
               disabled={saving || !saved}
             />
 
-            <div className="mt-4 flex justify-end">
+            <Flex justify="flex-end" style={{ marginTop: token.margin }}>
               <Button disabled={saving || !isDirty} onClick={() => setConfirm(true)}>
                 <Save aria-hidden="true" />
                 {t("common.saveChanges")}
               </Button>
-            </div>
+            </Flex>
           </>
         )}
 

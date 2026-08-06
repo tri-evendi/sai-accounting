@@ -18,6 +18,7 @@
  */
 
 import { signOut } from "next-auth/react";
+import { Flex, theme } from "antd";
 import { LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,22 +26,23 @@ import { useT } from "@/lib/i18n/client";
 
 export function SignedInAs({ name }: { name: string }) {
   const t = useT();
+  const { token } = theme.useToken();
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="min-w-0 text-sm text-muted-foreground">
+    <Flex wrap align="center" justify="space-between" gap={token.marginSM}>
+      <p style={{ margin: 0, minWidth: 0, color: token.colorTextSecondary }}>
         {t("auth.selectCompany.signedInAs")}{" "}
-        <span className="font-medium text-foreground">{name}</span>
+        <span style={{ fontWeight: 500, color: token.colorText }}>{name}</span>
       </p>
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="shrink-0"
+        style={{ flexShrink: 0 }}
         onClick={() => void signOut({ callbackUrl: "/login" })}
       >
-        <LogOut className="h-4 w-4" aria-hidden="true" />
+        <LogOut size={16} aria-hidden="true" />
         {t("auth.selectCompany.signOut")}
       </Button>
-    </div>
+    </Flex>
   );
 }

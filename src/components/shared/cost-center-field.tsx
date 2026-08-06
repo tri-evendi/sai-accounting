@@ -67,14 +67,6 @@ export interface CostCenterFieldProps {
   /** `""` = belum ditetapkan. */
   value: string;
   onChange: (value: string) => void;
-  /**
-   * Penempatan di dalam grid FORMULIR PEMANGGIL (`sm:col-span-2`, `mt-4`).
-   * Sengaja dibiarkan sebagai jalan lewat selama fase C: lima formulir yang
-   * memakainya belum dikonversi (#195–#199), dan mencabutnya di sini akan
-   * membuat pemilih pusat biaya melompat ke satu kolom di kelima layar itu.
-   * Ia hilang bersama formulir-formulir itu, bukan sebelum.
-   */
-  className?: string;
   /** Ganti kalimat bantuan bawaan — dipakai formulir stok, yang alasannya beda. */
   hint?: string;
 }
@@ -83,12 +75,16 @@ export interface CostCenterFieldProps {
  * Nilainya dikendalikan pemanggil (bukan `FormData`), supaya formulir yang
  * mengirim JSON — semuanya, di app ini — bisa menaruh `costCenterId` di badan
  * permintaan tanpa menebak-nebak isi `<form>`.
+ *
+ * Prop `className` DICABUT di issue #240: ia hidup sebagai jalan lewat untuk
+ * `sm:col-span-2` selama kelima formulir pemanggilnya belum dikonversi, dan
+ * sejak #195–#199 kelimanya menempatkan pemilih ini lewat pembungkusnya sendiri
+ * (`<Col>` atau `<div style>`) — tidak ada satu pun yang masih mengisinya.
  */
 export function CostCenterField({
   costCenters,
   value,
   onChange,
-  className,
   hint,
 }: CostCenterFieldProps) {
   const t = useT();
@@ -96,7 +92,7 @@ export function CostCenterField({
   if (costCenters.length === 0) return null;
 
   return (
-    <div className={className}>
+    <div>
       <Select
         id="costCenterId"
         name="costCenterId"

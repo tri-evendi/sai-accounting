@@ -30,8 +30,16 @@
  * `prefers-reduced-motion` — ditulis sebagai satu aturan CSS ber-`href` +
  * `precedence`; React 19 meniadakan gandanya dan menaikkannya ke `<head>`.
  * Sasarannya atribut `data-*`, bukan kelas, supaya berkas ini tetap bersih dari
- * kelas apa pun. Titik patahnya 1024px, angka yang sama dengan `lg:` milik
- * `AuthShell` — panel brand memang hilang di layar sempit di sana.
+ * kelas apa pun.
+ *
+ * ⚠ **Titik patahnya HARUS sama dengan `AuthShell`.** Ia kini **992px**, bukan
+ * 1024px: sejak #240 kulit itu memakai `Col` ber-`xs`/`lg` AntD, dan `lg` AntD
+ * adalah 992px sedangkan `lg:` Tailwind 1024px. Selisih 32px itu tidak terlihat
+ * dari kode mana pun — yang terjadi hanyalah kerangka masih menggambar kepala
+ * versi ponsel sementara isinya sudah datang dengan panel brand, lalu tata
+ * letaknya melompat tepat pada lebar jendela di antara keduanya. Kalau kelak
+ * `AuthShell` berganti titik patah lagi, ganti angka di bawah pada saat yang
+ * sama.
  */
 
 /** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda. */
@@ -54,7 +62,7 @@ export default function AuthLoading() {
         [data-skeleton]{animation:sai-skeleton-pulse 2s cubic-bezier(.4,0,.6,1) infinite}
         @keyframes sai-skeleton-pulse{0%,100%{opacity:1}50%{opacity:.5}}
         @media (prefers-reduced-motion:reduce){[data-skeleton]{animation:none}}
-        @media (min-width:1024px){
+        @media (min-width:992px){
           [data-auth-skeleton]{flex-direction:row}
           [data-auth-brand]{display:block}
           [data-auth-topbar]{display:none}
@@ -72,8 +80,10 @@ export default function AuthLoading() {
           data-auth-brand
           style={{
             display: "none",
-            flexBasis: "30%",
-            minWidth: 280,
+            /* 7/24 — lebar `Col lg={7}` milik `AuthShell`, bukan 30% bulat:
+               selisih 0,83% sudah cukup membuat tepi panelnya bergeser saat
+               isinya tiba. */
+            flexBasis: "29.166667%",
             maxWidth: 384,
             flexShrink: 0,
             background: "var(--sidebar)",

@@ -27,13 +27,22 @@
  * milik token AntD, bukan dari `theme.useToken()` (sebuah hook, yang akan
  * memaksanya jadi client).
  *
- * Variabel itu teratasi di sini karena angkanya dirender DI DALAM `Card`, dan
- * `Card` adalah komponen AntD: `ConfigProvider` v6 memasang setiap token pada
- * elemen ber-kelas `css-var-root` yang digambar komponen AntD sendiri — bukan
- * pada `:root`. Aturan yang sama dengan `components/shared/aging.tsx` (#194) dan
- * dengan beranda itu sendiri. Kalau kartu ini kelak dipakai di luar `Card`,
- * warnanya akan jatuh diam-diam ke warisan — itulah alasan `tone` hidup DI SINI
- * dan bukan sebagai gaya yang ditulis pemanggil.
+ * Variabel itu teratasi di mana pun sejak #227 (PR #238): `AntdProvider` memberi
+ * `cssVar` sebuah kunci tetap dan root layout memasangnya di `<html>`, jadi blok
+ * `.sai-tokens{--ant-…}` ada di HTML pertama dan diwarisi seluruh dokumen —
+ * bukan hanya pohon di bawah sebuah komponen AntD. Syarat lama "harus dirender
+ * di dalam `Card`" karena itu SUDAH DICABUT; jangan menyalinnya kembali dari
+ * berkas yang belum diperbarui.
+ *
+ * ── Tanpa satu kelas Tailwind pun (issue #240, fase C9) ────────────────────
+ * Yang HILANG bersama kelasnya, dan itu perlu diketahui sebelum seseorang
+ * mengira ini kelalaian: `hover:shadow-md`. Kartu ber-`href` dulu terangkat saat
+ * disentuh kursor. Keadaan `:hover` tidak bisa ditulis sebagai gaya sebaris, dan
+ * jalan yang benar adalah prop `hoverable` milik `Card` AntD — yang tidak
+ * diteruskan primitif `components/ui/card.tsx` (tanda tangannya `div`). Itu
+ * lingkup #203; dicatat sebagai calon issue dengan pemanggil nyata, bukan
+ * ditambal dengan `<style>` sisipan per kartu. Petunjuk "ini bisa diklik" tetap
+ * ada: elemennya `<a href>`, jadi kursornya tetap berubah.
  *
  * Anak tangganya adalah token uang #186 (`colorMoneyPositive`/`Pending`/
  * `Negative`), bukan `colorSuccess`/`colorWarning`/`colorError` bawaan: angka
@@ -47,7 +56,6 @@
 
 import { Link } from "@/components/ui/app-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 /**
  * Arah angka kartu. `neutral` (bawaan) sengaja tanpa warna: di beranda
@@ -66,15 +74,38 @@ const TONE_COLOR: Record<StatTone, string | undefined> = {
 /**
  * Ukuran nilai kartu.
  *
- * `number` (bawaan) = 30px, ukuran untuk ANGKA — itu isi mayoritas kartu ini.
- * `phrase` = 18px, untuk nilai yang berupa KATA atau untaian nominal antar-mata
- * uang; lihat catatan pencabutan `valueClassName` di kepala berkas.
+ * `number` (bawaan) = `fontSizeHeading2`, 30px — sama persis dengan `text-3xl`
+ * sebelum migrasi, ukuran untuk ANGKA, isi mayoritas kartu ini.
+ * `phrase` = `fontSizeLG`, 16px, untuk nilai yang berupa KATA atau untaian
+ * nominal antar-mata uang; lihat catatan pencabutan `valueClassName` di kepala
+ * berkas. Ia dulu 18px (`text-lg`), yang bukan anak tangga token mana pun —
+ * turun ke 16 dan bukan naik ke 20 (`fontSizeXL`) karena prop ini ADA justru
+ * untuk mencegah untaian "Rp 12.345.678 · US$ 50" melewati lebar kartunya di
+ * 768px. Dua piksel lebih kecil aman; empat piksel lebih besar belum diukur.
  */
 type StatSize = "number" | "phrase";
 
-const SIZE_CLASS: Record<StatSize, string> = {
-  number: "text-3xl",
-  phrase: "text-lg",
+const SIZE_FONT: Record<StatSize, string> = {
+  number: "var(--ant-font-size-heading-2)",
+  phrase: "var(--ant-font-size-lg)",
+};
+
+/** `CardHeader` `pb-1` = `paddingXXS` (4). */
+const HEADER: React.CSSProperties = { paddingBottom: "var(--ant-padding-xxs)" };
+
+/** `text-sm font-medium text-muted-foreground` — judul kartu. */
+const TITLE: React.CSSProperties = {
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** `mt-1 text-sm text-muted-foreground` — baris konteks di bawah angkanya. */
+const HINT: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 interface StatCardProps {
@@ -100,26 +131,35 @@ export function StatCard({
   hint,
 }: StatCardProps) {
   const content = (
-    <Card className={cn(href && "hover:shadow-md transition-shadow cursor-pointer h-full")}>
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+    <Card style={href ? { height: "100%" } : undefined}>
+      <CardHeader style={HEADER}>
+        <CardTitle style={TITLE}>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* `text-foreground` tetap sebagai warna DASAR; gaya sebaris menimpanya
-            hanya ketika `tone` memang menyebut arah. */}
+        {/* Warna DASARnya `colorText`; `tone` menimpanya hanya ketika ia memang
+            menyebut arah. */}
         <p
-          className={cn(SIZE_CLASS[size], "font-bold text-foreground tabular-nums")}
-          style={TONE_COLOR[tone] === undefined ? undefined : { color: TONE_COLOR[tone] }}
+          style={{
+            margin: 0,
+            fontSize: SIZE_FONT[size],
+            fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+            fontVariantNumeric: "tabular-nums",
+            color: TONE_COLOR[tone] ?? "var(--ant-color-text)",
+          }}
         >
           {value}
         </p>
-        {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+        {hint && <p style={HINT}>{hint}</p>}
       </CardContent>
     </Card>
   );
 
   if (href) {
-    return <Link href={href} className="block h-full">{content}</Link>;
+    return (
+      <Link href={href} style={{ display: "block", height: "100%" }}>
+        {content}
+      </Link>
+    );
   }
 
   return content;

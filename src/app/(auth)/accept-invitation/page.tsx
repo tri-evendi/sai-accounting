@@ -12,6 +12,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Alert, Flex, Typography, theme } from "antd";
 import { UserPlus } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -21,6 +22,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { PageLoader } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n/client";
 
+const { Text } = Typography;
+
 interface InvitationInfo {
   email: string;
   companyName: string;
@@ -29,6 +32,7 @@ interface InvitationInfo {
 
 function AcceptInvitationForm() {
   const t = useT();
+  const { token: designToken } = theme.useToken();
   const token = useSearchParams().get("token") ?? "";
   const [info, setInfo] = useState<InvitationInfo | null>(null);
   const [checking, setChecking] = useState(true);
@@ -109,14 +113,18 @@ function AcceptInvitationForm() {
   const loginHref = next ? `/login?callbackUrl=${encodeURIComponent(next)}` : "/login";
 
   const footer = (
-    <p className="text-center text-xs text-muted-foreground">
+    <Flex justify="center">
       <Link
         href={loginHref}
-        className="font-medium text-primary underline-offset-4 hover:underline"
+        style={{
+          color: designToken.colorLink,
+          fontSize: designToken.fontSizeSM,
+          fontWeight: 500,
+        }}
       >
         {t("invitations.goLogin")}
       </Link>
-    </p>
+    </Flex>
   );
 
   if (checking) return <PageLoader message={t("invitations.checking")} />;
@@ -130,62 +138,63 @@ function AcceptInvitationForm() {
           : t("invitations.acceptHeading")
       }
       error={error}
-      icon={<UserPlus className="h-5 w-5" aria-hidden />}
+      icon={<UserPlus size={20} aria-hidden />}
       footer={footer}
     >
       {done ? (
-        <div role="status" className="space-y-2 rounded-lg border border-border bg-success-soft p-4">
-          <p className="text-sm font-medium text-success-strong">
-            {t("invitations.successTitle")}
-          </p>
-          <p className="text-sm leading-relaxed text-success-strong">
-            {t("invitations.successBody")}
-          </p>
+        /* `role` pada pembungkus — `Alert` AntD hanya meneruskan `aria-*`/`data-*`. */
+        <div role="status" aria-live="polite">
+          <Alert
+            type="success"
+            showIcon
+            message={t("invitations.successTitle")}
+            description={t("invitations.successBody")}
+          />
         </div>
       ) : !info ? (
         /* Token hilang / tak dikenal / kedaluwarsa / terpakai — SATU kalimat. */
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("invitations.invalidToken")}
-        </p>
+        <Text type="secondary">{t("invitations.invalidToken")}</Text>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t("invitations.acceptAs", { email: info.email })}
-          </p>
-          <Input
-            id="name"
-            name="name"
-            label={t("users.displayName")}
-            autoFocus
-            maxLength={100}
-            disabled={loading}
-          />
-          <PasswordInput
-            id="password"
-            name="password"
-            label={t("invitations.choosePassword")}
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={128}
-            disabled={loading}
-          />
-          <PasswordInput
-            id="confirmPassword"
-            name="confirmPassword"
-            label={t("auth.resetPassword.confirm")}
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={128}
-            disabled={loading}
-          />
-          <p className="text-xs text-muted-foreground">{t("auth.changePassword.hint")}</p>
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? t("invitations.submitting") : t("invitations.submit")}
-          </Button>
+        <form onSubmit={handleSubmit}>
+          <Flex vertical gap={designToken.marginMD}>
+            <Text type="secondary">{t("invitations.acceptAs", { email: info.email })}</Text>
+            <Input
+              id="name"
+              name="name"
+              label={t("users.displayName")}
+              autoFocus
+              maxLength={100}
+              disabled={loading}
+            />
+            <PasswordInput
+              id="password"
+              name="password"
+              label={t("invitations.choosePassword")}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              disabled={loading}
+            />
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              label={t("auth.resetPassword.confirm")}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              disabled={loading}
+            />
+            <Text type="secondary" style={{ fontSize: designToken.fontSizeSM }}>
+              {t("auth.changePassword.hint")}
+            </Text>
+            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+              {loading ? t("invitations.submitting") : t("invitations.submit")}
+            </Button>
+          </Flex>
         </form>
       )}
     </AuthShell>

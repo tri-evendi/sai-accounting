@@ -38,6 +38,7 @@ import {
   type ProvisionState,
 } from "@/app/(tenant)/companies/new/provision-progress";
 import { LocaleProvider } from "@/lib/i18n/client";
+import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
 
@@ -275,7 +276,19 @@ describe("kemajuan penyediaan: yang ditampilkan harus sungguhan", () => {
       completed: new Set(["validate", "create_database"]),
       failed: true,
     });
-    expect(html).toContain("text-destructive");
+    /*
+     * Sejak #200 penandanya bukan lagi kelas `text-destructive` melainkan token
+     * uang (#186) — dan yang dicocokkan di sini NILAI TOKENNYA, bukan hex yang
+     * diketik ulang: kalau paletnya diubah, tes ini ikut bergeser alih-alih
+     * gagal karena alasan yang salah. Render tes berjalan di luar
+     * `AntdProvider`, jadi `moneyPalette` memakai jalur cadangan tema terang.
+     *
+     * Warnanya tidak pernah penanda tunggal: ikon tahapnya berganti BENTUK
+     * (centang → segitiga peringatan), dan perpindahannya diumumkan
+     * `ProvisionAnnouncer`.
+     */
+    expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
+    expect(html).toContain("lucide-triangle-alert");
     // 2 dari 4 — pengguna tetap tahu sejauh mana ia sampai sebelum gagal.
     expect(html).toContain("2/4");
   });

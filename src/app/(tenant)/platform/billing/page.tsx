@@ -27,6 +27,26 @@ import { SubscriptionSection } from "../subscription-section";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * Judul & kalimat kartu memakai variabel token AntD — keduanya dirender DI
+ * DALAM `Card`, dan `Card` adalah komponen AntD yang membawa `css-var-root`
+ * tempat variabelnya dipasang (#227). Di luar pohon itu variabelnya tidak
+ * teratasi; lihat catatan yang sama di beranda (#199).
+ */
+const CARD_HEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+const CARD_BODY: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size)",
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
 export default async function PlatformBillingPage() {
   const { tenant } = await requireTenantPagePermission("tenant.billing");
   const t = await getT();
@@ -46,13 +66,13 @@ export default async function PlatformBillingPage() {
           <Button asChild variant="outline" size="sm">
             <Link href="/platform/billing/plans">
               {t("platform.plansViewLabel")}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
         }
       />
 
-      <div className="space-y-6">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <SubscriptionSection overview={overview} />
 
         {/* Jalan keluar dari halaman ini menuju pertanyaan yang paling sering
@@ -61,20 +81,30 @@ export default async function PlatformBillingPage() {
             perbandingan, bukan satu angka. */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-foreground">
-              {t("platform.plansUpgradeHeading")}
-            </h2>
+            <h2 style={CARD_HEADING}>{t("platform.plansUpgradeHeading")}</h2>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-relaxed text-muted-foreground sm:flex-1">
-              {t("platform.plansDescription")}
-            </p>
-            <Button asChild className="w-full shrink-0 sm:w-auto">
-              <Link href="/platform/billing/plans">
-                {t("platform.plansViewLabel")}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
+          {/* Kalimat dan tombol berdampingan saat muat, bertumpuk saat tidak —
+              `flexWrap` menggantikan `sm:flex-row`, tanpa media query. */}
+          <CardContent>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <p style={{ ...CARD_BODY, flex: "1 1 260px" }}>
+                {t("platform.plansDescription")}
+              </p>
+              <Button asChild style={{ flexShrink: 0 }}>
+                <Link href="/platform/billing/plans">
+                  {t("platform.plansViewLabel")}
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

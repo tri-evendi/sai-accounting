@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { signIn, getSession, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Flex, Typography, theme } from "antd";
 import { LogIn } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,8 @@ import { useT, type TranslateFn } from "@/lib/i18n/client";
 // Aturan arah pasca-masuk hidup di satu tempat (#159 temuan 3): penjaga
 // halaman server memakai fungsi yang sama — jangan menyalinnya ke sini lagi.
 import { resolvePostLoginPath } from "@/lib/post-login";
+
+const { Text } = Typography;
 
 /**
  * Pesan gagal masuk. Hanya galat kredensial baku yang diterjemahkan: sisanya
@@ -36,15 +39,24 @@ function formatSignInError(message: string | undefined, t: TranslateFn) {
   return message;
 }
 
+/** Kalimat tunggu di tengah kartu — satu bentuk, dua pemakai di berkas ini. */
+function WaitingLine({ children }: { children: React.ReactNode }) {
+  return (
+    <Text type="secondary" style={{ display: "block", textAlign: "center" }}>
+      {children}
+    </Text>
+  );
+}
+
 function LoginLoading() {
   const t = useT();
   return (
     <AuthShell
       heading={t("auth.login.heading")}
       description={t("auth.login.description")}
-      icon={<LogIn className="h-5 w-5" aria-hidden />}
+      icon={<LogIn size={20} aria-hidden />}
     >
-      <p className="text-center text-sm text-muted-foreground">{t("common.loading")}</p>
+      <WaitingLine>{t("common.loading")}</WaitingLine>
     </AuthShell>
   );
 }
@@ -54,6 +66,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { status: sessionStatus } = useSession();
   const t = useT();
+  const { token } = theme.useToken();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -116,11 +129,9 @@ function LoginForm() {
       <AuthShell
         heading={t("auth.login.heading")}
         description={t("auth.login.description")}
-        icon={<LogIn className="h-5 w-5" aria-hidden />}
+        icon={<LogIn size={20} aria-hidden />}
       >
-        <p className="text-center text-sm text-muted-foreground">
-          {t("auth.login.checkingSession")}
-        </p>
+        <WaitingLine>{t("auth.login.checkingSession")}</WaitingLine>
       </AuthShell>
     );
   }
@@ -130,59 +141,56 @@ function LoginForm() {
       heading={t("auth.login.heading")}
       description={t("auth.login.description")}
       error={error}
-      icon={<LogIn className="h-5 w-5" aria-hidden />}
+      icon={<LogIn size={20} aria-hidden />}
       footer={
         /* Tautan SUNGGUHAN sejak issue #136 — dulu kalimat "hubungi admin
            sistem", jalan buntu bagi pelanggan yang justru dirinya adminnya.
            Sejak #138 ada pintu kedua: mendaftar sendiri. */
-        <div className="space-y-2 text-center text-xs text-muted-foreground">
-          <p>
-            <Link
-              href="/forgot-password"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {t("auth.login.forgotPassword")}
-            </Link>
-          </p>
-          <p>
+        <Flex vertical align="center" gap={token.marginXS}>
+          <Link
+            href="/forgot-password"
+            style={{ color: token.colorLink, fontSize: token.fontSizeSM, fontWeight: 500 }}
+          >
+            {t("auth.login.forgotPassword")}
+          </Link>
+          <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
             {t("auth.login.registerPrompt")}{" "}
-            <Link
-              href="/register"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
+            <Link href="/register" style={{ color: token.colorLink, fontWeight: 500 }}>
               {t("auth.login.registerLink")}
             </Link>
-          </p>
-        </div>
+          </Text>
+        </Flex>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email = pengenal resmi (issue #136); username lama tetap diterima
-            selama masa peralihan — lihat authorize() di lib/auth.ts. */}
-        <Input
-          id="identifier"
-          name="identifier"
-          label={t("auth.login.identifier")}
-          placeholder={t("auth.login.identifierPlaceholder")}
-          autoComplete="username"
-          required
-          autoFocus
-          disabled={loading}
-          aria-invalid={error ? true : undefined}
-        />
-        <PasswordInput
-          id="password"
-          name="password"
-          label={t("auth.login.password")}
-          placeholder="••••••••"
-          autoComplete="current-password"
-          required
-          disabled={loading}
-          aria-invalid={error ? true : undefined}
-        />
-        <Button type="submit" className="w-full" size="lg" disabled={loading}>
-          {loading ? t("auth.login.submitting") : t("auth.login.submit")}
-        </Button>
+      <form onSubmit={handleSubmit}>
+        <Flex vertical gap={token.marginMD}>
+          {/* Email = pengenal resmi (issue #136); username lama tetap diterima
+              selama masa peralihan — lihat authorize() di lib/auth.ts. */}
+          <Input
+            id="identifier"
+            name="identifier"
+            label={t("auth.login.identifier")}
+            placeholder={t("auth.login.identifierPlaceholder")}
+            autoComplete="username"
+            required
+            autoFocus
+            disabled={loading}
+            aria-invalid={error ? true : undefined}
+          />
+          <PasswordInput
+            id="password"
+            name="password"
+            label={t("auth.login.password")}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+            disabled={loading}
+            aria-invalid={error ? true : undefined}
+          />
+          <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+            {loading ? t("auth.login.submitting") : t("auth.login.submit")}
+          </Button>
+        </Flex>
       </form>
     </AuthShell>
   );

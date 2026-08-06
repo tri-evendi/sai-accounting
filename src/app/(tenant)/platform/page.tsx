@@ -40,6 +40,13 @@
  * Grup `(tenant)` dengan sengaja: halaman ini harus terbuka TANPA perusahaan
  * aktif — pelanggan baru yang belum punya satu pun PT, dan pemilik yang
  * seluruh PT-nya sedang hanya-baca, justru pemakai terpentingnya.
+ *
+ * ══ DUA SUMBER WARNA, DAN GARIS YANG MEMISAHKANNYA (issue #200) ════════════
+ * Server component: tanpa `antd`, tanpa `theme.useToken()`. Variabel `--ant-…`
+ * hanya teratasi DI DALAM sebuah komponen AntD (#227), dan di halaman ini
+ * pembawanya adalah `Card`. Jadi isi kartu memakai token AntD, sedangkan pita
+ * "hanya-baca" yang berdiri sendiri di atas kartu pertama memakai token `:root`
+ * aplikasi. Kartu angkanya (`StatCard`, `QuotaMeter`) mewarnai dirinya sendiri.
  */
 import Link from "next/link";
 import { AlertTriangle, Building2, Plus } from "lucide-react";
@@ -63,6 +70,76 @@ import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
 
 export const dynamic = "force-dynamic";
+
+/** Pita penangguhan — DI LUAR `Card`, jadi token `:root` aplikasi. */
+const READ_ONLY_NOTE: React.CSSProperties = {
+  display: "flex",
+  gap: 12,
+  padding: 16,
+  borderRadius: 8,
+  border: "1px solid var(--warning)",
+  background: "var(--warning-soft)",
+  color: "var(--warning-strong)",
+};
+
+/**
+ * Baris ringkasan yang membagi lebarnya sendiri — pengganti
+ * `grid-cols-2 lg:grid-cols-3`. Satu kolom di 375px, dan itu perbaikan yang
+ * disengaja: dua kartu berdampingan di 375px menyisakan ±115px untuk sebuah
+ * nilai, terlalu sempit bagi kata status maupun untaian nominal.
+ */
+const SUMMARY_GRID: React.CSSProperties = {
+  display: "grid",
+  gap: 16,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+};
+
+/** Kisi kartu perusahaan — bekas `sm:grid-cols-2 xl:grid-cols-3`. */
+const COMPANY_GRID: React.CSSProperties = {
+  listStyle: "none",
+  display: "grid",
+  gap: 12,
+  margin: 0,
+  padding: 0,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+};
+
+/* ── Gaya DI DALAM `Card` — token AntD lewat variabel CSS ───────────────── */
+
+const CARD_HEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+const CARD_BODY: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size)",
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
+const TRUNCATE: React.CSSProperties = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+/** Kotak ikon perusahaan — bekas `h-9 w-9` / `h-10 w-10`. */
+function iconBox(size: number): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    width: size,
+    height: size,
+    borderRadius: "var(--ant-border-radius)",
+    background: "var(--ant-color-fill-quaternary)",
+    color: "var(--ant-color-text-secondary)",
+  };
+}
 
 export default async function PlatformPage() {
   const { user, tenant } = await requireTenantPagePermission("tenant.home");
@@ -132,21 +209,15 @@ export default async function PlatformPage() {
     <>
       <PageHeader title={t("platform.title")} description={t("platform.description")} />
 
-      <div className="space-y-6">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {/* Penangguhan langganan — ikon + kata, bukan warna saja (MASTER.md
             §Anti-Patterns). Batasnya `warning`, bukan `border`: bidang
             berstatus yang bertepi netral terbaca sebagai kotak biasa yang
             kebetulan kuning. */}
         {readOnly && (
-          <div
-            role="status"
-            className="flex gap-3 rounded-lg border border-warning/30 bg-warning-soft p-4"
-          >
-            <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong"
-              aria-hidden="true"
-            />
-            <p className="text-sm leading-relaxed text-warning-strong">
+          <div role="status" style={READ_ONLY_NOTE}>
+            <AlertTriangle size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.625 }}>
               {t("tenantSettings.readOnlyNote")}
             </p>
           </div>
@@ -158,11 +229,19 @@ export default async function PlatformPage() {
             (dan datanya memang tidak pernah dibaca untuknya). */}
         <section aria-labelledby={canSeeBilling && overview ? "ringkasan" : undefined}>
           {canSeeBilling && overview && (
-            <h2 id="ringkasan" className="mb-3 text-lg font-semibold text-foreground">
+            <h2
+              id="ringkasan"
+              style={{
+                margin: "0 0 12px",
+                fontSize: 18,
+                fontWeight: 600,
+                color: "var(--foreground)",
+              }}
+            >
               {t("tenantSettings.usageHeading")}
             </h2>
           )}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div style={SUMMARY_GRID}>
             {canSeeBilling && overview ? (
               <>
                 {/* METER, bukan angka telanjang. "2 / 3" benar dan tidak
@@ -199,15 +278,15 @@ export default async function PlatformPage() {
                   }
                 />
                 {/* Status sebagai KATA, bukan warna saja — dan warnanya
-                    mengikuti artinya (ditangguhkan = peringatan). */}
+                    mengikuti artinya (ditangguhkan = peringatan). `tone`
+                    menggantikan `valueClassName` yang dicabut di #200; `size`
+                    menjaga nilainya tetap 18px, sebab ia sebuah kata, bukan
+                    angka. */}
                 <StatCard
                   title={t("tenantSettings.statusLabel")}
                   value={t(`tenantSettings.status.${overview.tenant.status}` as DictionaryKey)}
-                  valueClassName={
-                    isReadOnlyTenantStatus(overview.tenant.status)
-                      ? "text-lg text-warning-strong"
-                      : "text-lg text-success-strong"
-                  }
+                  size="phrase"
+                  tone={isReadOnlyTenantStatus(overview.tenant.status) ? "warning" : "success"}
                 />
                 {/* Kapan & berapa berikutnya — pertanyaan yang dulu hanya bisa
                     dijawab dengan menggulung ke tabel tagihan lalu menghitung
@@ -216,6 +295,7 @@ export default async function PlatformPage() {
                   <StatCard
                     title={t("tenantSettings.nextChargeLabel")}
                     value={nextCharge}
+                    size="phrase"
                     hint={t("tenantSettings.nextChargeOn", {
                       date: formatDateMedium(subscription.currentPeriodEnd),
                     })}
@@ -223,13 +303,16 @@ export default async function PlatformPage() {
                 )}
                 {/* Tunggakan hanya muncul bila MEMANG ada. Kartu "Rp 0" yang
                     selalu menyala mengajari pembacanya mengabaikan tempat itu,
-                    dan pada hari angkanya bukan nol ia sudah tak terlihat. */}
+                    dan pada hari angkanya bukan nol ia sudah tak terlihat.
+                    Nilainya bisa memuat BEBERAPA mata uang sekaligus — itulah
+                    kenapa ukurannya `phrase`, bukan `number`. */}
                 {unpaid.length > 0 && (
                   <StatCard
                     title={t("tenantSettings.unpaidLabel")}
                     href="/platform/billing"
                     value={unpaidTotalLabel}
-                    valueClassName="text-lg text-warning-strong"
+                    size="phrase"
+                    tone="warning"
                     hint={t("tenantSettings.unpaidCount", { count: unpaid.length })}
                   />
                 )}
@@ -245,21 +328,34 @@ export default async function PlatformPage() {
             saat menyebut akun ini kepada dukungan. */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-foreground">
-              {t("platform.tenantHeading")}
-            </h2>
+            <h2 style={CARD_HEADING}>{t("platform.tenantHeading")}</h2>
           </CardHeader>
           <CardContent>
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-                aria-hidden="true"
-              >
-                <Building2 className="h-5 w-5" />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              <span style={iconBox(40)} aria-hidden="true">
+                <Building2 size={20} />
               </span>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">{tenant.tenantName}</p>
-                <p className="truncate text-xs text-muted-foreground">{tenant.tenantSlug}</p>
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...TRUNCATE,
+                    margin: 0,
+                    fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                    color: "var(--ant-color-text)",
+                  }}
+                >
+                  {tenant.tenantName}
+                </p>
+                <p
+                  style={{
+                    ...TRUNCATE,
+                    margin: 0,
+                    fontSize: "var(--ant-font-size-sm)",
+                    color: "var(--ant-color-text-secondary)",
+                  }}
+                >
+                  {tenant.tenantSlug}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -267,13 +363,19 @@ export default async function PlatformPage() {
 
         {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
         <Card>
-          <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-foreground">
-                {t("platform.companiesHeading")}
-              </h2>
+          <CardHeader
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <h2 style={CARD_HEADING}>{t("platform.companiesHeading")}</h2>
               {companies.length > 0 && (
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p style={{ ...CARD_BODY, marginTop: "var(--ant-margin-xxs)" }}>
                   {t("platform.companiesBody")}
                 </p>
               )}
@@ -282,9 +384,9 @@ export default async function PlatformPage() {
                 pindah ke dalam empty state, tempat ia menjadi satu-satunya
                 langkah berikutnya — bukan tombol kedua yang mengulang. */}
             {canCreate && companies.length > 0 && (
-              <Button asChild variant="outline" size="sm" className="shrink-0">
+              <Button asChild variant="outline" size="sm" style={{ flexShrink: 0 }}>
                 <Link href="/companies/new">
-                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  <Plus aria-hidden="true" />
                   {t("companies.newTitle")}
                 </Link>
               </Button>
@@ -301,9 +403,9 @@ export default async function PlatformPage() {
                *   • tidak boleh (staf)          → yang dibutuhkan adalah alasan
                *     dan langkah berikutnya, bukan layar kosong tanpa penjelasan.
                */
-              <div className="space-y-3">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <EmptyState
-                  icon={<Building2 className="h-12 w-12" />}
+                  icon={<Building2 size={48} />}
                   title={t(
                     canCreate
                       ? "auth.selectCompany.noCompanyYetHeading"
@@ -318,7 +420,7 @@ export default async function PlatformPage() {
                     ? { actionLabel: t("companies.newTitle"), actionHref: "/companies/new" }
                     : {})}
                 />
-                <p className="mx-auto max-w-md text-center text-sm leading-relaxed text-muted-foreground">
+                <p style={{ ...CARD_BODY, maxWidth: "48ch", margin: "0 auto", textAlign: "center" }}>
                   {t(
                     canCreate
                       ? "auth.selectCompany.noCompanyYetOwner"
@@ -330,25 +432,46 @@ export default async function PlatformPage() {
               /* Kisi, bukan tumpukan: pada 1024px tiga PT muat dalam satu baris
                  pandangan, dan pemilik dengan sepuluh PT tidak lagi menggulung
                  sepuluh kartu selebar layar untuk sampai ke kartu di bawahnya. */
-              <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <ul style={COMPANY_GRID}>
                 {companies.map((company) => (
                   <li key={company.companyId}>
-                    <div className="flex h-full flex-col justify-between gap-3 rounded-lg border border-border p-4 transition-colors hover:border-primary/40">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <span
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-                          aria-hidden="true"
-                        >
-                          <Building2 className="h-4 w-4" />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        height: "100%",
+                        padding: 16,
+                        borderRadius: "var(--ant-border-radius-lg)",
+                        border: "1px solid var(--ant-color-border-secondary)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+                        <span style={iconBox(36)} aria-hidden="true">
+                          <Building2 size={16} />
                         </span>
-                        <div className="min-w-0">
+                        <div style={{ minWidth: 0 }}>
                           <p
-                            className="truncate font-medium text-foreground"
                             title={company.name}
+                            style={{
+                              ...TRUNCATE,
+                              margin: 0,
+                              fontWeight:
+                                "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                              color: "var(--ant-color-text)",
+                            }}
                           >
                             {company.name}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p
+                            style={{
+                              ...TRUNCATE,
+                              margin: 0,
+                              fontSize: "var(--ant-font-size-sm)",
+                              color: "var(--ant-color-text-secondary)",
+                            }}
+                          >
                             {company.slug}
                           </p>
                         </div>
@@ -359,7 +482,7 @@ export default async function PlatformPage() {
                        * dibuka" (tata letak bertenant yang mencatatnya), jadi
                        * membuka buku = pergi ke alamatnya.
                        */}
-                      <Button asChild size="sm" className="w-full">
+                      <Button asChild size="sm" style={{ width: "100%" }}>
                         <Link href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}>
                           {t("auth.selectCompany.openLabel")}
                         </Link>

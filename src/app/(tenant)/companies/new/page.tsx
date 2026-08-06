@@ -23,6 +23,19 @@ import { CompanyForm } from "./company-form";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Kalimat penjelas. Server component di dalam `AuthShell` yang belum
+ * dikonversi, jadi tidak ada komponen AntD di atasnya dan variabel `--ant-…`
+ * tidak akan teratasi (#227) — warnanya token `:root` aplikasi, sumber yang
+ * sama dengan kulitnya.
+ */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--muted-foreground)",
+};
+
 export default async function NewCompanyPage() {
   const { tenant } = await requireTenantPagePermission("company.create");
   const t = await getT();
@@ -31,18 +44,23 @@ export default async function NewCompanyPage() {
     <AuthShell
       heading={t("companies.newTitle")}
       description={t("companies.newDescription")}
-      icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      icon={<Building2 size={20} aria-hidden="true" />}
       footer={
-        <Button asChild variant="outline" className="w-full">
+        /* JALAN KELUAR. Layar ini berdiri sebelum aplikasi, tanpa chrome apa
+           pun — tanpa tautan ini satu-satunya tindakan yang mungkin adalah
+           membuat perusahaan. */
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/select-company">{t("common.back")}</Link>
         </Button>
       }
     >
       {/* Konsekuensinya disebut SEBELUM tombolnya ditekan: buku yang terpisah
           penuh, dan wizard penyiapan yang masih menunggu. */}
-      <div className="mb-6 space-y-1 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("companies.explainIsolation")}</p>
-        <p>{t("companies.explainNextStep")}</p>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 24 }}
+      >
+        <p style={BODY_TEXT}>{t("companies.explainIsolation")}</p>
+        <p style={BODY_TEXT}>{t("companies.explainNextStep")}</p>
       </div>
 
       {/* `tenantId` hanya untuk PRATINJAU nama basis data (`sai_t{id}_{slug}`,

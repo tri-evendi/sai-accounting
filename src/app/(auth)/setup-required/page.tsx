@@ -31,6 +31,30 @@ import { isSetupDone } from "@/lib/setup-gate";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 
+/*
+ * ── Warna (issue #200) ─────────────────────────────────────────────────────
+ * Server component di dalam `AuthShell` yang belum dikonversi: tanpa `antd`,
+ * dan tanpa satu pun komponen AntD di atasnya sehingga variabel `--ant-…`
+ * tidak teratasi (#227). Kalimatnya memakai token `:root` aplikasi — token yang
+ * sama dengan kulitnya, jadi keduanya tidak bisa berpisah warna. Tombolnya
+ * mewarnai dirinya sendiri lewat primitif `Button`.
+ */
+
+/** Kalimat penjelas — bekas `text-sm leading-relaxed text-muted-foreground`. */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--muted-foreground)",
+};
+
+/** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
+const EXIT_ROW: React.CSSProperties = {
+  marginTop: 24,
+  paddingTop: 20,
+  borderTop: "1px solid var(--border)",
+};
+
 export default async function SetupRequiredPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -53,11 +77,11 @@ export default async function SetupRequiredPage() {
     <AuthShell
       heading={t("auth.setupRequired.heading")}
       description={t("auth.setupRequired.description")}
-      icon={<Lock className="h-5 w-5" aria-hidden="true" />}
+      icon={<Lock size={20} aria-hidden="true" />}
     >
-      <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("auth.setupRequired.body")}</p>
-        <p>{t("auth.setupRequired.whoCanFix")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={BODY_TEXT}>{t("auth.setupRequired.body")}</p>
+        <p style={BODY_TEXT}>{t("auth.setupRequired.whoCanFix")}</p>
       </div>
 
       {/*
@@ -74,8 +98,8 @@ export default async function SetupRequiredPage() {
        * sekali seumur pemasangan jelas tidak sepadan. Menekan tautan ini
        * menuju beranda, gerbang berjalan lagi, dan hasilnya benar ke dua arah.
        */}
-      <div className="mt-6 border-t border-border pt-5">
-        <Button asChild variant="outline" className="w-full">
+      <div style={EXIT_ROW}>
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/dashboard">{t("auth.setupRequired.retry")}</Link>
         </Button>
       </div>

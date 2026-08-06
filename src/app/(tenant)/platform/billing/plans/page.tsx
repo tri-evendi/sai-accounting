@@ -31,6 +31,23 @@
  *
  * Katalog boleh gagal dengan tenang (`activePlans()` → `null`): platform mati
  * tidak boleh mematikan halaman yang menjelaskan langganan.
+ *
+ * ══ ⚠ HALAMAN HARGA DI DALAM APLIKASI, BUKAN HALAMAN PEMASARAN (#200) ══════
+ * Ini satu-satunya tempat di aplikasi internal yang menampilkan DAFTAR HARGA,
+ * dan sejak semua permukaan memakai token AntD yang sama, batas antara ia dan
+ * halaman pendaratan publik `/` menjadi lebih mudah kabur — bukan lebih sulit.
+ * Yang menjaganya bukan palet melainkan BENTUK, dan ketiganya disengaja:
+ *
+ *   • kepalanya `PageHeader` + breadcrumb (Akun → Langganan → Paket), jadi ia
+ *     terbaca sebagai HALAMAN DI DALAM panel akun, bukan sebagai pendaratan;
+ *   • tidak ada hero, tidak ada kartu "paling populer", tidak ada paket yang
+ *     dibesarkan atau ditinggikan — perbandingan datar, urutan katalog;
+ *   • CTA-nya menyebut TINDAKANNYA ("Pilih paket ini") dan berujung pada
+ *     dialog yang menyebut konsekuensi uangnya, bukan "Mulai sekarang".
+ *
+ * Kerapatan MASTER.md (6/10) berlaku penuh di sini; kelonggaran `py-16 sm:py-24`
+ * di `design-system/sai-accounting/pages/landing.md` berlaku HANYA untuk `/`.
+ * Berkas ini juga tidak mengimpor satu pun komponen dari `components/landing/**`.
  */
 import { Check } from "lucide-react";
 
@@ -47,6 +64,44 @@ import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 
 export const dynamic = "force-dynamic";
+
+/*
+ * Seluruh isi halaman ini dirender DI DALAM `Card`, dan `Card` adalah komponen
+ * AntD yang membawa `css-var-root` — jadi variabel `--ant-…` teratasi di sini
+ * (#227). Tidak ada token `:root` aplikasi maupun hex di berkas ini.
+ */
+const CARD_HEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+const BODY: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size)",
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** Harga: 24px tebal. Sengaja `fontSizeHeading3`, BUKAN ukuran hero. */
+const PRICE: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-heading-3)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  fontVariantNumeric: "tabular-nums",
+  color: "var(--ant-color-text)",
+};
+
+/** Kisi paket yang membagi lebarnya sendiri — bekas `sm:grid-cols-2 lg:grid-cols-3`. */
+const PLAN_GRID: React.CSSProperties = {
+  listStyle: "none",
+  display: "grid",
+  gap: 16,
+  margin: 0,
+  padding: 0,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+};
 
 export default async function PlatformPlansPage() {
   const { tenant } = await requireTenantPagePermission("tenant.billing");
@@ -84,104 +139,141 @@ export default async function PlatformPlansPage() {
         ]}
       />
 
-      <div className="space-y-6">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {plans === null ? (
           <Card>
             <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("platform.plansUnavailable")}
-              </p>
+              <p style={BODY}>{t("platform.plansUnavailable")}</p>
             </CardContent>
           </Card>
         ) : plans.length === 0 ? (
           <Card>
             <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("platform.plansEmpty")}
-              </p>
+              <p style={BODY}>{t("platform.plansEmpty")}</p>
             </CardContent>
           </Card>
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul style={PLAN_GRID}>
             {plans.map((plan) => {
               const current = plan.key === currentKey;
               return (
                 <li key={plan.key}>
+                  {/* Paket berjalan ditandai TEPI + LENCANA BERTEKS; ia tidak
+                      dibesarkan atau ditinggikan — tak ada paket yang "dijual
+                      lebih keras" di sini. */}
                   <Card
-                    className={
-                      current ? "h-full border-primary ring-1 ring-primary" : "h-full"
-                    }
+                    style={{
+                      height: "100%",
+                      ...(current
+                        ? {
+                            borderColor: "var(--ant-color-primary)",
+                            boxShadow: "0 0 0 1px var(--ant-color-primary)",
+                          }
+                        : null),
+                    }}
                   >
-                    <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-                      <h2 className="text-lg font-semibold text-foreground">{plan.name}</h2>
+                    <CardHeader
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <h2 style={CARD_HEADING}>{plan.name}</h2>
                       {/* Penanda paket berjalan adalah LENCANA BERTEKS, bukan
                           sekadar tepi berwarna — tepi saja tidak terbaca oleh
                           siapa pun yang tidak membedakan warnanya. */}
                       {current && <Badge variant="success">{t("platform.plansCurrent")}</Badge>}
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      {/* Paket berharga RUNDINGAN tidak memajang nominal: kolom
-                          harganya berisi 0, dan "Rp 0" di sini terbaca sebagai
-                          gratis. Tombol swalayannya pun tidak dirender — tapi
-                          yang MENOLAK adalah route `plan-change`, bukan cabang
-                          ini (tombol yang hilang bukan penjaga). */}
-                      {plan.contactOnly ? (
-                        <p className="text-2xl font-bold text-foreground">
-                          {t("landing.pricingContactPrice")}
-                        </p>
-                      ) : (
-                        <>
-                          <p className="text-2xl font-bold tabular-nums text-foreground">
-                            {formatMoney(plan.priceMonthly, plan.currency)}
-                            <span className="text-sm font-normal text-muted-foreground">
-                              {t("platform.plansPerMonth")}
-                            </span>
+                    <CardContent>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* Paket berharga RUNDINGAN tidak memajang nominal: kolom
+                            harganya berisi 0, dan "Rp 0" di sini terbaca sebagai
+                            gratis. Tombol swalayannya pun tidak dirender — tapi
+                            yang MENOLAK adalah route `plan-change`, bukan cabang
+                            ini (tombol yang hilang bukan penjaga). */}
+                        {plan.contactOnly ? (
+                          <p style={{ ...PRICE, fontVariantNumeric: "normal" }}>
+                            {t("landing.pricingContactPrice")}
                           </p>
-                          {plan.priceYearly !== null && (
-                            <p className="text-sm tabular-nums text-muted-foreground">
-                              {formatMoney(plan.priceYearly, plan.currency)}
-                              {t("platform.plansPerYear")}
+                        ) : (
+                          <>
+                            <p style={PRICE}>
+                              {formatMoney(plan.priceMonthly, plan.currency)}
+                              <span
+                                style={{
+                                  fontSize: "var(--ant-font-size-sm)",
+                                  fontWeight: 400,
+                                  color: "var(--ant-color-text-secondary)",
+                                }}
+                              >
+                                {t("platform.plansPerMonth")}
+                              </span>
                             </p>
-                          )}
-                        </>
-                      )}
-                      {plan.description && (
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {plan.description}
-                        </p>
-                      )}
-                      <ul className="space-y-1.5 text-sm text-foreground">
-                        <li className="flex items-start gap-2">
-                          <Check
-                            className="mt-0.5 h-4 w-4 shrink-0 text-success"
-                            aria-hidden="true"
+                            {plan.priceYearly !== null && (
+                              <p
+                                style={{
+                                  ...BODY,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                {formatMoney(plan.priceYearly, plan.currency)}
+                                {t("platform.plansPerYear")}
+                              </p>
+                            )}
+                          </>
+                        )}
+                        {plan.description && <p style={BODY}>{plan.description}</p>}
+                        <ul
+                          style={{
+                            listStyle: "none",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            margin: 0,
+                            padding: 0,
+                            fontSize: "var(--ant-font-size)",
+                            color: "var(--ant-color-text)",
+                          }}
+                        >
+                          {[
+                            t("platform.plansQuotaCompanies", { max: plan.maxCompanies }),
+                            t("platform.plansQuotaUsers", { max: plan.maxUsers }),
+                          ].map((line) => (
+                            <li
+                              key={line}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 8 }}
+                            >
+                              {/* Centang = IKON (non-teks), jadi warna penuh
+                                  `colorSuccess` sah di sini — ambangnya 3:1. */}
+                              <Check
+                                size={16}
+                                style={{
+                                  marginTop: 2,
+                                  flexShrink: 0,
+                                  color: "var(--ant-color-success)",
+                                }}
+                                aria-hidden="true"
+                              />
+                              <span style={{ fontVariantNumeric: "tabular-nums" }}>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Paket berjalan tidak punya tombol menuju dirinya
+                            sendiri; lencana di kepala kartu yang menyatakannya. */}
+                        {!current && !plan.contactOnly && subscription && period && (
+                          <PlanAction
+                            planKey={plan.key}
+                            planName={plan.name}
+                            priceMonthly={plan.priceMonthly}
+                            currentPrice={Number(subscription.price)}
+                            remainingDays={period.remainingDays}
+                            periodDays={period.periodDays}
                           />
-                          <span className="tabular-nums">
-                            {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
-                          </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check
-                            className="mt-0.5 h-4 w-4 shrink-0 text-success"
-                            aria-hidden="true"
-                          />
-                          <span className="tabular-nums">
-                            {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
-                          </span>
-                        </li>
-                      </ul>
-                      {/* Paket berjalan tidak punya tombol menuju dirinya
-                          sendiri; lencana di kepala kartu yang menyatakannya. */}
-                      {!current && !plan.contactOnly && subscription && period && (
-                        <PlanAction
-                          planKey={plan.key}
-                          planName={plan.name}
-                          priceMonthly={plan.priceMonthly}
-                          currentPrice={Number(subscription.price)}
-                          remainingDays={period.remainingDays}
-                          periodDays={period.periodDays}
-                        />
-                      )}
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </li>
@@ -194,14 +286,10 @@ export default async function PlatformPlansPage() {
             halaman ini terlihat seperti toko yang tombol belinya hilang. */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-foreground">
-              {t("platform.plansUpgradeHeading")}
-            </h2>
+            <h2 style={CARD_HEADING}>{t("platform.plansUpgradeHeading")}</h2>
           </CardHeader>
           <CardContent>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("platform.plansUpgradeBody")}
-            </p>
+            <p style={BODY}>{t("platform.plansUpgradeBody")}</p>
           </CardContent>
         </Card>
       </div>

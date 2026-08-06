@@ -26,6 +26,27 @@ function formatDateTime(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
+/*
+ * Warna di berkas ini memakai token `:root` aplikasi, bukan `--ant-…` (#200):
+ * konsol operator tidak menggambar satu pun komponen AntD di atas isinya, jadi
+ * variabel AntD tidak akan teratasi di sini (#227). Formulirnya sendiri
+ * (`MailSettingsForm`) adalah komponen client dan mewarnai dirinya.
+ */
+const H1: React.CSSProperties = {
+  margin: 0,
+  fontSize: 24,
+  fontWeight: 700,
+  letterSpacing: "-0.025em",
+  color: "var(--foreground)",
+};
+
+const LEAD: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--muted-foreground)",
+};
+
 export default async function OperatorMailPage() {
   await requireOperatorPage();
   const t = await getT();
@@ -47,14 +68,10 @@ export default async function OperatorMailPage() {
   const settings = data.settings;
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {t("operator.mail.heading")}
-        </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("operator.mail.description")}
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <h1 style={H1}>{t("operator.mail.heading")}</h1>
+        <p style={LEAD}>{t("operator.mail.description")}</p>
       </div>
 
       <MailSettingsForm

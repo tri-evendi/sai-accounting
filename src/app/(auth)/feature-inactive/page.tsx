@@ -17,6 +17,15 @@
  *
  * Bukan jalan buntu: kalau modulnya ternyata AKTIF (mis. tautan lama, atau
  * modulnya baru dinyalakan lagi), halaman ini langsung mengarahkan ke beranda.
+ * Dan kalaupun tidak, tombol "kembali ke beranda" di kaki kartu TETAP ada —
+ * layar penjelas tanpa satu pun kendali adalah jalan buntu (MASTER.md
+ * §Orientasi Perusahaan).
+ *
+ * ── Warna (issue #200) ───────────────────────────────────────────────────
+ * Server component di dalam `AuthShell` yang belum dikonversi: tanpa `antd`,
+ * dan tanpa komponen AntD di atasnya sehingga `--ant-…` tidak teratasi (#227).
+ * Kalimatnya karena itu memakai token `:root` aplikasi — token yang sama
+ * dengan kulitnya. Tombolnya mewarnai dirinya sendiri.
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -31,6 +40,21 @@ import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 export const dynamic = "force-dynamic";
+
+/** Kalimat penjelas — bekas `text-sm leading-relaxed text-muted-foreground`. */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--muted-foreground)",
+};
+
+/** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
+const EXIT_ROW: React.CSSProperties = {
+  marginTop: 24,
+  paddingTop: 20,
+  borderTop: "1px solid var(--border)",
+};
 
 export default async function FeatureInactivePage({
   searchParams,
@@ -59,15 +83,17 @@ export default async function FeatureInactivePage({
     <AuthShell
       heading={t("modules.inactiveTitle")}
       description={t("modules.sectionTitle")}
-      icon={<PackageX className="h-5 w-5" aria-hidden="true" />}
+      icon={<PackageX size={20} aria-hidden="true" />}
     >
-      <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("modules.inactiveBody", { module: t(MODULE_META[raw].labelKey) })}</p>
-        <p>{t("modules.ledgerNote")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={BODY_TEXT}>
+          {t("modules.inactiveBody", { module: t(MODULE_META[raw].labelKey) })}
+        </p>
+        <p style={BODY_TEXT}>{t("modules.ledgerNote")}</p>
       </div>
 
-      <div className="mt-6 border-t border-border pt-5">
-        <Button asChild variant="outline" className="w-full">
+      <div style={EXIT_ROW}>
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/dashboard">{t("modules.inactiveBack")}</Link>
         </Button>
       </div>

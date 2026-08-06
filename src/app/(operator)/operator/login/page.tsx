@@ -27,7 +27,7 @@ export default async function OperatorLoginPage() {
   if (await optionalOperatorSession()) redirect("/operator");
 
   return (
-    <div className="mx-auto w-full max-w-sm py-10">
+    <div style={{ width: "100%", maxWidth: 384, margin: "0 auto", padding: "40px 0" }}>
       <OperatorLoginForm />
     </div>
   );

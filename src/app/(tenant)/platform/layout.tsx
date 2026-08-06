@@ -38,7 +38,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     {
       href: "/platform",
       label: t("platform.title"),
-      icon: <LayoutDashboard className="h-4 w-4" />,
+      icon: <LayoutDashboard size={16} />,
       /* PERSIS: tanpa ini butir pendaratan menyala di setiap anak-rute, sebab
          semuanya berawalan `/platform`. */
       exact: true,
@@ -48,7 +48,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/team",
             label: t("platform.teamHeading"),
-            icon: <Users className="h-4 w-4" />,
+            icon: <Users size={16} />,
           },
         ]
       : []),
@@ -57,7 +57,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/billing",
             label: t("tenantSettings.title"),
-            icon: <Wallet className="h-4 w-4" />,
+            icon: <Wallet size={16} />,
           },
         ]
       : []),
@@ -66,7 +66,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/privacy",
             label: t("tenantSettings.privacyHeading"),
-            icon: <ShieldCheck className="h-4 w-4" />,
+            icon: <ShieldCheck size={16} />,
           },
         ]
       : []),
@@ -75,7 +75,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/companies/new",
             label: t("companies.newTitle"),
-            icon: <Plus className="h-4 w-4" />,
+            icon: <Plus size={16} />,
           },
         ]
       : []),

@@ -8,6 +8,20 @@
  * warna berarti seluruh kueri buku besarnya ikut ke peramban — harga yang jauh
  * lebih besar dari yang dibeli.
  *
+ * ── `valueClassName` DICABUT di issue #200 ────────────────────────────────
+ * Jalur lama itu hidup semata-mata karena `/platform` belum dikonversi; sejak
+ * fase C8 tidak ada satu pun pemanggil yang tersisa, jadi ia dihapus.
+ *
+ * Yang perlu diketahui sebelum menyimpulkan `tone` cukup: kedua pemanggil
+ * terakhirnya memakai `valueClassName` untuk DUA hal, bukan satu — warna DAN
+ * ukuran (`text-lg`). Nilai kartu status adalah sebuah KATA ("Ditangguhkan")
+ * dan nilai kartu tunggakan adalah untaian nominal per mata uang
+ * ("Rp 12.345.678 · US$ 50"); pada 30px keduanya melewati lebar kartunya
+ * sendiri di 768px dan memecah baris ringkasan. Karena itu pencabutan
+ * `valueClassName` datang bersama `size`, bukan hanya `tone` — mengganti satu
+ * kelas Tailwind yang bisa berisi apa saja dengan dua prop bertipe yang
+ * masing-masing menyatakan MAKSUDNYA.
+ *
  * `tone` mengembalikannya tanpa memindahkan satu berkas pun melewati batas RSC:
  * **berkas ini tetap server component**, dan warnanya datang dari VARIABEL CSS
  * milik token AntD, bukan dari `theme.useToken()` (sebuah hook, yang akan
@@ -49,16 +63,26 @@ const TONE_COLOR: Record<StatTone, string | undefined> = {
   danger: "var(--ant-color-money-negative)",
 };
 
+/**
+ * Ukuran nilai kartu.
+ *
+ * `number` (bawaan) = 30px, ukuran untuk ANGKA — itu isi mayoritas kartu ini.
+ * `phrase` = 18px, untuk nilai yang berupa KATA atau untaian nominal antar-mata
+ * uang; lihat catatan pencabutan `valueClassName` di kepala berkas.
+ */
+type StatSize = "number" | "phrase";
+
+const SIZE_CLASS: Record<StatSize, string> = {
+  number: "text-3xl",
+  phrase: "text-lg",
+};
+
 interface StatCardProps {
   title: string;
   value: number | string;
   href?: string;
   tone?: StatTone;
-  /**
-   * Jalur lama berbasis kelas Tailwind, masih dipakai `/platform` yang belum
-   * dikonversi. Pemanggil baru memakai `tone`.
-   */
-  valueClassName?: string;
+  size?: StatSize;
   /**
    * Baris kedua di bawah angkanya — konteks yang membuat angka itu bisa
    * ditindaklanjuti ("jatuh tempo 31 Agu 2026", "2 tagihan"). Sengaja teks,
@@ -72,7 +96,7 @@ export function StatCard({
   value,
   href,
   tone = "neutral",
-  valueClassName,
+  size = "number",
   hint,
 }: StatCardProps) {
   const content = (
@@ -84,7 +108,7 @@ export function StatCard({
         {/* `text-foreground` tetap sebagai warna DASAR; gaya sebaris menimpanya
             hanya ketika `tone` memang menyebut arah. */}
         <p
-          className={cn("text-3xl font-bold text-foreground tabular-nums", valueClassName)}
+          className={cn(SIZE_CLASS[size], "font-bold text-foreground tabular-nums")}
           style={TONE_COLOR[tone] === undefined ? undefined : { color: TONE_COLOR[tone] }}
         >
           {value}

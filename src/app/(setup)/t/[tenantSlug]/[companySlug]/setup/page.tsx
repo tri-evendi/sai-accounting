@@ -16,6 +16,21 @@
  * kembali. Karena itu HANYA cabang ringkasan yang membawa tautan kembali ke
  * Beranda — cabang wizard sengaja tidak: di sana gerbang setup memang belum
  * mengizinkan halaman lain, dan tautan yang memantul justru jebakan yang sama.
+ *
+ * ── Dua sumber warna di berkas ini, dan garis yang memisahkannya (#200) ───
+ * Server component: tanpa `antd`, tanpa `theme.useToken()`. Variabel `--ant-…`
+ * hanya teratasi DI DALAM sebuah komponen AntD (#227), dan di halaman ini yang
+ * menjadi pembawanya adalah `Card`. Jadi:
+ *
+ *  • di dalam `Card` (daftar identitas, tabel jurnal, tautan neraca) → token
+ *    AntD lewat `--ant-…`, sama seperti beranda (#199);
+ *  • di LUARnya (pita "penyiapan selesai" yang berdiri sendiri di atas kartu
+ *    pertama) → token `:root` aplikasi, karena di sana `--ant-…` akan jatuh
+ *    diam-diam ke warisan.
+ *
+ * Pita itu adalah calon issue tersendiri: sebuah primitif `Notice` (AntD
+ * `Alert` sebagai daun client) akan menghapus cabang kedua di atas — lihat
+ * badan PR issue ini.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -35,6 +50,34 @@ import { SetupWizard } from "./setup-wizard";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Pita "penyiapan selesai" — DI LUAR `Card`, jadi token `:root` aplikasi.
+ * Ikon + kalimat, bukan warna sendirian (MASTER.md §Anti-Patterns).
+ */
+const DONE_NOTE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  marginBottom: 24,
+  padding: "12px 16px",
+  borderRadius: 8,
+  border: "1px solid var(--success)",
+  background: "var(--success-soft)",
+  fontSize: 14,
+  color: "var(--success-strong)",
+};
+
+/** Label istilah di daftar identitas — di dalam `Card`, jadi token AntD. */
+const TERM: React.CSSProperties = {
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text-secondary)",
+};
+
+const DEFINITION: React.CSSProperties = {
+  margin: 0,
+  color: "var(--ant-color-text)",
+};
 
 export default async function SetupPage({
   params,
@@ -56,50 +99,53 @@ export default async function SetupPage({
       : null;
 
     return (
-      <div className="w-full">
+      <div style={{ width: "100%" }}>
         <PageHeader
-          className="mb-0"
           title={t("setup.title")}
           actions={
             <Button asChild variant="outline">
               <Link href="/dashboard">
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                <ArrowLeft aria-hidden="true" />
                 {t("setup.backToApp")}
               </Link>
             </Button>
           }
         />
 
-        <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+        <div style={DONE_NOTE}>
+          <CheckCircle2 size={20} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
           <span>{t("setup.doneNote")}</span>
         </div>
 
-        <Card className="mb-6">
+        <Card style={{ marginBottom: 24 }}>
           <CardHeader>
             <CardTitle>{t("setup.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-3 text-sm">
+            <dl
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                margin: 0,
+                fontSize: "var(--ant-font-size)",
+              }}
+            >
               <div>
-                <dt className="font-medium text-muted-foreground">{t("common.name")}</dt>
-                <dd className="text-foreground">{settings.name}</dd>
+                <dt style={TERM}>{t("common.name")}</dt>
+                <dd style={DEFINITION}>{settings.name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">{t("common.address")}</dt>
-                <dd className="text-foreground">{settings.address || "—"}</dd>
+                <dt style={TERM}>{t("common.address")}</dt>
+                <dd style={DEFINITION}>{settings.address || "—"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("setup.baseCurrencyLabel")}
-                </dt>
-                <dd className="text-foreground">{settings.baseCurrency}</dd>
+                <dt style={TERM}>{t("setup.baseCurrencyLabel")}</dt>
+                <dd style={DEFINITION}>{settings.baseCurrency}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("setup.fiscalYearStartLabel")}
-                </dt>
-                <dd className="text-foreground">{formatDate(settings.fiscalYearStart)}</dd>
+                <dt style={TERM}>{t("setup.fiscalYearStartLabel")}</dt>
+                <dd style={DEFINITION}>{formatDate(settings.fiscalYearStart)}</dd>
               </div>
             </dl>
           </CardContent>
@@ -127,10 +173,20 @@ export default async function SetupPage({
                     align: "left",
                     render: (_v, l: (typeof journal.lines)[number]) => (
                       <>
-                        <span className="text-muted-foreground">{l.account.code}</span>{" "}
+                        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                          {l.account.code}
+                        </span>{" "}
                         {l.account.name}
                         {l.memo ? (
-                          <span className="block text-xs text-muted-foreground">{l.memo}</span>
+                          <span
+                            style={{
+                              display: "block",
+                              fontSize: "var(--ant-font-size-sm)",
+                              color: "var(--ant-color-text-secondary)",
+                            }}
+                          >
+                            {l.memo}
+                          </span>
                         ) : null}
                       </>
                     ),
@@ -162,9 +218,19 @@ export default async function SetupPage({
                 rowKey={(l) => l.id}
                 size="small"
               />
-              <p className="mt-4 text-sm text-muted-foreground">
+              <p
+                style={{
+                  marginTop: "var(--ant-margin)",
+                  marginBottom: 0,
+                  fontSize: "var(--ant-font-size)",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("setup.reflectedBefore")}{" "}
-                <Link href="/reports" className="text-primary underline">
+                <Link
+                  href="/reports"
+                  style={{ color: "var(--ant-color-link)", textDecoration: "underline" }}
+                >
                   {t("reports.balanceSheetTitle")}
                 </Link>{" "}
                 {t("setup.reflectedAfter", { date: formatDate(settings.fiscalYearStart) })}
@@ -190,7 +256,7 @@ export default async function SetupPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <PageHeader
         title={t("setup.wizardTitle")}
         description={t("setup.wizardDescription")}

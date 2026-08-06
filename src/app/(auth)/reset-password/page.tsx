@@ -12,6 +12,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Alert, Flex, Typography, theme } from "antd";
 import { KeyRound } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -19,8 +20,11 @@ import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useT } from "@/lib/i18n/client";
 
+const { Text } = Typography;
+
 function ResetPasswordForm() {
   const t = useT();
+  const { token: designToken } = theme.useToken();
   const token = useSearchParams().get("token") ?? "";
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -60,14 +64,18 @@ function ResetPasswordForm() {
   }
 
   const footer = (
-    <p className="text-center text-xs text-muted-foreground">
+    <Flex justify="center">
       <Link
         href={done ? "/login" : "/forgot-password"}
-        className="font-medium text-primary underline-offset-4 hover:underline"
+        style={{
+          color: designToken.colorLink,
+          fontSize: designToken.fontSizeSM,
+          fontWeight: 500,
+        }}
       >
         {done ? t("auth.resetPassword.goLogin") : t("auth.resetPassword.requestNew")}
       </Link>
-    </p>
+    </Flex>
   );
 
   return (
@@ -75,53 +83,54 @@ function ResetPasswordForm() {
       heading={t("auth.resetPassword.heading")}
       description={t("auth.resetPassword.description")}
       error={error}
-      icon={<KeyRound className="h-5 w-5" aria-hidden />}
+      icon={<KeyRound size={20} aria-hidden />}
       footer={footer}
     >
       {done ? (
-        <div role="status" className="space-y-2 rounded-lg border border-border bg-success-soft p-4">
-          <p className="text-sm font-medium text-success-strong">
-            {t("auth.resetPassword.successTitle")}
-          </p>
-          <p className="text-sm leading-relaxed text-success-strong">
-            {t("auth.resetPassword.successBody")}
-          </p>
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("auth.resetPassword.successTitle")}
+          description={t("auth.resetPassword.successBody")}
+        />
       ) : !token ? (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("auth.resetPassword.missingToken")}
-        </p>
+        <Text type="secondary">{t("auth.resetPassword.missingToken")}</Text>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <PasswordInput
-            id="newPassword"
-            name="newPassword"
-            label={t("auth.resetPassword.newPassword")}
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={128}
-            autoFocus
-            disabled={loading}
-            aria-invalid={error ? true : undefined}
-          />
-          <PasswordInput
-            id="confirmPassword"
-            name="confirmPassword"
-            label={t("auth.resetPassword.confirm")}
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={128}
-            disabled={loading}
-            aria-invalid={error ? true : undefined}
-          />
-          <p className="text-xs text-muted-foreground">{t("auth.changePassword.hint")}</p>
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? t("auth.resetPassword.submitting") : t("auth.resetPassword.submit")}
-          </Button>
+        <form onSubmit={handleSubmit}>
+          <Flex vertical gap={designToken.marginMD}>
+            <PasswordInput
+              id="newPassword"
+              name="newPassword"
+              label={t("auth.resetPassword.newPassword")}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              autoFocus
+              disabled={loading}
+              aria-invalid={error ? true : undefined}
+            />
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              label={t("auth.resetPassword.confirm")}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              disabled={loading}
+              aria-invalid={error ? true : undefined}
+            />
+            <Text type="secondary" style={{ fontSize: designToken.fontSizeSM }}>
+              {t("auth.changePassword.hint")}
+            </Text>
+            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+              {loading ? t("auth.resetPassword.submitting") : t("auth.resetPassword.submit")}
+            </Button>
+          </Flex>
         </form>
       )}
     </AuthShell>

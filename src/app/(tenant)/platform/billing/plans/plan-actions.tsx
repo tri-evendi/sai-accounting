@@ -23,10 +23,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Flex, Typography, theme } from "antd";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+const { Text } = Typography;
 
 interface PlanActionProps {
   planKey: string;
@@ -54,6 +58,8 @@ export function PlanAction({
   periodDays,
 }: PlanActionProps) {
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,9 +110,9 @@ export function PlanAction({
   }
 
   return (
-    <div className="space-y-2">
+    <Flex vertical gap={token.marginXS}>
       <Button
-        className="w-full"
+        style={{ width: "100%" }}
         variant={isUpgrade ? "default" : "outline"}
         disabled={busy}
         onClick={() => setConfirming(true)}
@@ -115,36 +121,46 @@ export function PlanAction({
       </Button>
 
       {message && (
-        <div className="space-y-2">
-          <p className="text-sm leading-relaxed text-success-strong">{message}</p>
+        <Flex vertical gap={token.marginXS}>
+          {/* `role="status"`: kalimat ini satu-satunya umpan balik dari sebuah
+              permintaan yang tidak memindahkan halaman ke mana pun. */}
+          <Text role="status" style={{ color: money.colorMoneyPositive, lineHeight: 1.625 }}>
+            {message}
+          </Text>
           {/* Tagihan baru hidup di halaman tagihan — di sanalah tombol bayarnya
               (VA/QRIS) sudah ada, bukan disalin ke sini menjadi jalur kedua. */}
-          <Button asChild variant="outline" size="sm" className="w-full">
+          <Button asChild variant="outline" size="sm" style={{ width: "100%" }}>
             <a href="/platform/billing">{t("platform.planChangeGoToInvoice")}</a>
           </Button>
-        </div>
+        </Flex>
       )}
 
       {error && (
-        <div role="alert" className="space-y-1">
-          <p className="text-sm leading-relaxed text-destructive-strong">{error}</p>
+        <Flex vertical gap={token.marginXXS} role="alert">
+          {/* `colorMoneyNegative`, bukan `colorError`: ini TEKS 14px, dan
+              `colorError` AntD hanya 3,27:1 sebagai teks (MASTER.md). */}
+          <Text style={{ color: money.colorMoneyNegative, lineHeight: 1.625 }}>{error}</Text>
           {blocked?.companies && (
-            <p className="text-sm tabular-nums text-destructive-strong">
+            <Text
+              style={{ color: money.colorMoneyNegative, fontVariantNumeric: "tabular-nums" }}
+            >
               {t("platform.planChangeCompaniesOver", {
                 used: blocked.companies.used,
                 max: blocked.companies.max,
               })}
-            </p>
+            </Text>
           )}
           {blocked?.users && (
-            <p className="text-sm tabular-nums text-destructive-strong">
+            <Text
+              style={{ color: money.colorMoneyNegative, fontVariantNumeric: "tabular-nums" }}
+            >
               {t("platform.planChangeUsersOver", {
                 used: blocked.users.used,
                 max: blocked.users.max,
               })}
-            </p>
+            </Text>
           )}
-        </div>
+        </Flex>
       )}
 
       <ConfirmDialog
@@ -167,6 +183,6 @@ export function PlanAction({
         confirmLabel={t("platform.planChangeSelect")}
         onConfirm={submit}
       />
-    </div>
+    </Flex>
   );
 }

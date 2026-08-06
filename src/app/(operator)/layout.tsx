@@ -7,13 +7,27 @@
  * menjadi aplikasi kedua kelak tinggal memindahkan folder, bukan mengurai
  * jalinan.
  *
+ * ⚠ Konsol ini berjalan di domain terpisah (`ops.`) dan TIDAK BOLEH mewarisi
+ * konteks perusahaan. Berkas ini karena itu tidak mengimpor satu pun modul
+ * bertenant/bercompany — juga tidak "sekadar untuk tampilan". Konversi AntD
+ * (#200) tidak menambah satu impor pun: warnanya token `:root` aplikasi dan
+ * primitif yang sudah ada.
+ *
  * Kerangka ini TIDAK menjadi penjaga (pola grup lain: penjaga per halaman,
  * ditegakkan tests/authz-coverage) — ia hanya membaca sesi secara opsional
  * untuk chrome: tanpa sesi (halaman login) kepala tampil polos tanpa menu.
  *
- * Kepala GELAP di kedua tema (token permukaan-gelap `sidebar`, pola panel
+ * Kepala GELAP di kedua tema (token permukaan-gelap `--sidebar`, pola panel
  * brand AuthShell) — pembeda visual yang disengaja: satu pandangan cukup
  * untuk tahu Anda sedang di bidang operator, bukan di aplikasi pelanggan.
+ *
+ * ── Kenapa tombol keluarnya `secondary`, bukan garis di atas gelap (#200) ──
+ * Bentuk lamanya adalah `outline` yang tepi & teksnya ditimpa kelas khusus
+ * permukaan gelap, berikut dua keadaan hover. Gaya sebaris tidak bisa membawa
+ * hover, dan menuliskannya sebagai aturan CSS tersendiri hanya untuk satu
+ * tombol berarti melawan spesifisitas gaya AntD di satu berkas. Tombol default
+ * AntD di atas bilah gelap sudah terbaca sebagai kendali dan mempertahankan
+ * SELURUH keadaan interaktifnya — itu yang dipilih.
  */
 
 import { ShieldCheck } from "lucide-react";
@@ -27,31 +41,58 @@ import { operatorLogout } from "./operator/actions";
 
 export const dynamic = "force-dynamic";
 
+/** Lebar isi konsol — bekas `max-w-6xl`. */
+const CONTENT_MAX = 1152;
+
+const BAR: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: 12,
+  minHeight: 56,
+  width: "100%",
+  maxWidth: CONTENT_MAX,
+  margin: "0 auto",
+  padding: "8px 16px",
+};
+
 export default async function OperatorLayout({ children }: { children: React.ReactNode }) {
   const [session, t] = await Promise.all([optionalOperatorSession(), getT()]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border bg-sidebar text-sidebar-foreground">
-        <div className="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-2">
-          <ShieldCheck className="h-5 w-5 shrink-0 text-primary-foreground/90" aria-hidden="true" />
-          <span className="text-sm font-semibold tracking-tight">{t("operator.consoleTitle")}</span>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        background: "var(--background)",
+      }}
+    >
+      <header
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "var(--sidebar)",
+          color: "var(--sidebar-foreground)",
+        }}
+      >
+        <div style={BAR}>
+          <ShieldCheck size={20} style={{ flexShrink: 0 }} aria-hidden="true" />
+          <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {t("operator.consoleTitle")}
+          </span>
           {/* Sejak #155 konsol ini MENULIS — penandanya berganti dari
               "hanya-baca" menjadi peringatan bahwa setiap tindakan terekam
               atas nama operator yang sedang masuk. */}
           <Badge variant="warning">{t("operator.auditedBadge")}</Badge>
           {session && (
-            <div className="ml-auto flex items-center gap-3">
-              <span className="hidden text-xs text-sidebar-foreground/70 sm:inline">
+            <div
+              style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <span style={{ fontSize: 12, opacity: 0.7 }}>
                 {t("operator.signedInAs", { name: session.operator.name })}
               </span>
               <form action={operatorLogout}>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="sm"
-                  className="border-sidebar-foreground/30 bg-transparent text-sidebar-foreground hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
-                >
+                <Button type="submit" variant="secondary" size="sm">
                   {t("operator.logout")}
                 </Button>
               </form>
@@ -61,8 +102,8 @@ export default async function OperatorLayout({ children }: { children: React.Rea
       </header>
 
       {session && (
-        <div className="border-b border-border bg-card">
-          <div className="mx-auto w-full max-w-6xl px-4">
+        <div style={{ borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
+          <div style={{ width: "100%", maxWidth: CONTENT_MAX, margin: "0 auto", padding: "0 16px" }}>
             <OperatorNav
               ariaLabel={t("operator.consoleTitle")}
               items={[
@@ -92,7 +133,17 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <main
+        style={{
+          width: "100%",
+          maxWidth: CONTENT_MAX,
+          flex: 1,
+          margin: "0 auto",
+          padding: "24px 16px",
+        }}
+      >
+        {children}
+      </main>
     </div>
   );
 }

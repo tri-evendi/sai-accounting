@@ -66,6 +66,15 @@ Kolom nominal di beranda pernah memakai `text-success` pada sel `text-sm` — be
 
 **Penjaga lint mengenal sisi arah.** Pola di `eslint.config.mjs` semula hanya mencocokkan `border-` yang langsung diikuti warna, sehingga `border-l-4 border-l-blue-500` (garis aksen kiri kartu — justru bentuk paling umum) lolos berbulan-bulan dan tidak ikut berganti di tema gelap. Pola itu kini mencakup `border-l-`, `border-t-`, `bg-x-`, dst. Kalau muncul bentuk penulisan warna baru yang lolos, **perbaiki polanya**, bukan hanya kelasnya — satu kelas yang diperbaiki akan kembali lewat PR berikutnya.
 
+### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
+
+**Server component boleh memakai warna token, dan tidak perlu menyeberang jadi client untuk itu.** `AntdProvider` memberi `cssVar` sebuah kunci tetap (`ANTD_CSS_VAR_KEY` di `src/lib/theme/antd-tokens.ts`) dan root layout memasang kunci itu sebagai kelas di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri di `<head>` pada HTML pertama dan diwarisi seluruh dokumen — juga oleh pohon yang tidak punya satu pun komponen AntD di atasnya.
+
+- **Bentuknya:** `style={{ color: "var(--ant-color-text-secondary)" }}`. Nama variabel = nama token dalam kebab-case, berawalan `--ant-` (`colorMoneyPositive` → `--ant-color-money-positive`) — termasuk token kustom #186/#207/#208. Nilai berjarak sudah membawa satuannya (`--ant-padding` = `16px`).
+- **`theme.useToken()` hanya untuk yang memang butuh NILAINYA** (menghitung, membandingkan, meneruskan ke pustaka chart). Memanggilnya demi warna saja berarti menaikkan sebuah berkas ke `"use client"` tanpa imbalan — dan `tests/rsc-boundary.test.ts` mengunci angkanya.
+- **Pergantian tema tetap hidup:** kedua tema memakai selektor yang sama, jadi toggle menimpa isi bloknya alih-alih menumpuk blok kedua. Server component ikut berganti warna tanpa dirender ulang.
+- Aturan lama tetap berlaku di atasnya: warna **tidak pernah** penanda tunggal, dan ambang kontrasnya tidak berubah. Buktinya SSR ada di `tests/antd-css-var-ssr.test.tsx`.
+
 *Dark mode:* surface naik ke `#0F172A`/`#1E293B`, rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap ada di blok `.dark` (kontras 8,5–10,6:1). Kelas `.dark` dipasang **root layout dari cookie** (`src/lib/theme/`), jadi sudah menempel pada HTML pertama — tidak ada kedipan sebelum hydrate.
 
 **Dua jebakan token yang sudah memakan korban** — palet gelap membuat beberapa token bernilai SAMA, dan komponen yang mengandalkan selisihnya diam-diam runtuh saat tema berganti:

@@ -158,8 +158,26 @@ const SRC = join(__dirname, "..", "src");
  * `variance-badge.tsx` tetap server component meski ikut dikonversi di issue
  * yang sama. `aging.tsx` tidak boleh menyeberang sama sekali — ia mengimpor
  * `AGING_BUCKETS` dari `lib/receivables.ts`, yang menarik Prisma.
+ *
+ * 158 sejak #227 (2026-08-06) — **angka ini TURUN untuk pertama kalinya sejak
+ * epik #206 dimulai**, dan itu bukan kebetulan melainkan hasil yang dikejar.
+ * `components/shared/document-chain-timeline.tsx` kembali menjadi server
+ * component: satu-satunya alasannya menyeberang di #194 adalah warna, dan #227
+ * menghapus alasan itu.
+ *
+ * Yang berubah bukan komponennya melainkan LAPISAN TEMANYA: `AntdProvider`
+ * memberi `cssVar` sebuah kunci tetap (`ANTD_CSS_VAR_KEY`) dan root layout
+ * memasang kunci itu di `<html>`, jadi blok `.sai-tokens{--ant-…}` yang selama
+ * ini sudah ikut di HTML pertama — `extractStyle` memang mengeluarkannya,
+ * berlawanan dengan catatan #194 — akhirnya punya pemikul yang diwarisi
+ * SELURUH dokumen, bukan hanya pohon di bawah sebuah komponen AntD. Server
+ * component karena itu boleh menulis `var(--ant-color-success-bg)` biasa.
+ *
+ * Ukur ulangnya ada di `tests/antd-css-var-ssr.test.tsx`, yang membuktikannya
+ * dari string SSR — bukan dari layar, karena kedipan warna justru tidak
+ * terlihat kalau kotaknya kecil dan cepat.
  */
-const AMBANG_KLIEN = 159;
+const AMBANG_KLIEN = 158;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -285,7 +303,6 @@ const KLIEN_TERSAHKAN = [
   "components/shared/currency-rate-fields.tsx",
   "components/shared/dashboard-charts.tsx",
   "components/shared/delete-document-button.tsx",
-  "components/shared/document-chain-timeline.tsx",
   "components/shared/document-preview.tsx",
   "components/shared/due-date-field.tsx",
   "components/shared/invoice-fx-fields.tsx",

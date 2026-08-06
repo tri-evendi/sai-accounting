@@ -25,16 +25,18 @@
  *  • **Primitif yang mewarnai dirinya sendiri** — `Badge` (token `Tag`),
  *    `Money` (token uang #186), `Card` (permukaan & tepi AntD). Ketiganya
  *    komponen client yang dirender sebagai DAUN, jadi batas RSC tidak bergeser.
- *  • **Variabel CSS `--ant-…`**, TAPI hanya untuk simpul yang berada DI DALAM
- *    (atau berupa) sebuah komponen AntD. `ConfigProvider` v6 menuliskan setiap
- *    token sebagai variabel, namun ia memasangnya pada elemen ber-kelas
- *    `css-var-root` yang digambar komponen AntD sendiri — bukan pada `:root`.
- *    Di luar pohon itu variabelnya TIDAK teratasi dan warnanya jatuh diam-diam
- *    ke warisan. Karena itu `AgeCell` dan kedua catatan kaki di bawah sengaja
- *    TIDAK berwarna sendiri: hierarkinya dibawa UKURAN (`<small>`) dan KATA,
- *    bukan warna. Lihat catatan di laporan issue ini tentang menaikkan
- *    `cssVar` ke `:root` di `AntdProvider` — itu yang akan membuka jalan bagi
- *    warna token di server component tanpa satu pun hook.
+ *  • **Variabel CSS `--ant-…`**, dan sejak issue #227 itu berlaku di mana pun
+ *    di dokumen — bukan lagi hanya di dalam pohon sebuah komponen AntD.
+ *    `AntdProvider` memberi `cssVar` sebuah KUNCI tetap dan root layout
+ *    memasang kunci itu di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri
+ *    di HTML pertama dan diwarisi seluruh halaman. Alasan lengkap beserta
+ *    urutan penyisipannya di `lib/theme/antd-tokens.ts`.
+ *
+ * `AgeCell` dan kedua catatan kaki di bawah karena itu MENDAPAT kembali warna
+ * hierarkinya (`--ant-color-text-secondary`, dan amber #186 untuk catatan
+ * dokumen tanpa kurs) — hilang di #194 karena jalan di atas belum ada. Yang
+ * TIDAK berubah: warna tetap bukan penanda tunggal. Ukuran (`<small>`), kata,
+ * dan ikon tetap membawa maknanya sendiri.
  */
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -139,10 +141,10 @@ export async function AgeCell({ days, fromIssue }: { days: number; fromIssue: bo
       <span style={{ fontVariantNumeric: "tabular-nums" }}>
         {t("aging.ageDays", { days: shown })}
       </span>
-      {/* `<small>` dan bukan warna: lihat catatan `css-var-root` di kepala
-          berkas. Penandanya ukuran + kata, dan keterbacaannya justru naik —
-          keterangan ini sekarang memakai warna teks penuh, bukan abu. */}
-      <small>{label}</small>
+      {/* `<small>` DAN warna sekunder — dua penanda, bukan satu. Warnanya
+          kembali sejak #227; sebelum itu barisnya memakai warna teks penuh dan
+          kedua baris terbaca sama pentingnya. */}
+      <small style={{ color: "var(--ant-color-text-secondary)" }}>{label}</small>
     </span>
   );
 }
@@ -218,7 +220,7 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
           {bucketCard(t("aging.totalOutstanding"), total, true)}
         </Card>
       </div>
-      <p style={{ margin: 0, marginTop: CARD_GAP }}>
+      <p style={{ margin: 0, marginTop: CARD_GAP, color: "var(--ant-color-text-secondary)" }}>
         <small>
           {t("aging.baseNote")} {caption}
         </small>
@@ -226,12 +228,21 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
       {/*
        * Dokumen tanpa kurs TIDAK ikut ditotal, dan jumlah yang dikecualikan
        * selalu disebutkan (MASTER.md: nilai tak diketahui ditulis kosong, tak
-       * pernah 0). Penandanya ikon tanda tanya + kata yang ditebalkan; warnanya
-       * tidak bisa datang dari token di sini (lihat kepala berkas), dan warna
-       * memang tidak pernah boleh jadi penanda tunggal.
+       * pernah 0). Penandanya ikon tanda tanya + kata yang ditebalkan; warna
+       * amber (`colorMoneyPending` #186, min 6,23:1) adalah penanda KETIGA,
+       * bukan satu-satunya — ia kembali sejak #227 membuat token terbaca di
+       * server component.
        */}
       {unresolved > 0 && (
-        <p style={{ margin: 0, display: "flex", alignItems: "flex-start", gap: ICON_GAP }}>
+        <p
+          style={{
+            margin: 0,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: ICON_GAP,
+            color: "var(--ant-color-money-pending)",
+          }}
+        >
           <HelpCircle size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
           <small>
             {t("aging.unresolvedBefore", { count: unresolved })}

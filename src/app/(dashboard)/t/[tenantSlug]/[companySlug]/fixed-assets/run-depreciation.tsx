@@ -6,23 +6,31 @@
  * Pick a month, post depreciation for every active asset that has not yet been
  * depreciated that period. Idempotent server-side, so re-running a posted month
  * is safe; a closed period is refused with the server's not-saved notice.
+ *
+ * Dikonversi ke token Ant Design pada issue #197 — kulitnya saja.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Spin, theme } from "antd";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** Lebar pemilih bulan & tahun (`w-36` / `w-28` lama). */
+const MONTH_WIDTH = 144;
+const YEAR_WIDTH = 112;
 
 export function RunDepreciation() {
   const router = useRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
   const months = monthNames(useDictionary());
   const now = new Date();
 
@@ -65,40 +73,46 @@ export function RunDepreciation() {
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <CalendarClock className="h-5 w-5 text-primary" aria-hidden="true" />
-          {t("fixedAssets.runTitle")}
-        </div>
-        <div className="w-36">
-          <Select
-            id="dep-month"
-            label={t("fixedAssets.monthField")}
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            options={months.map((m, i) => ({ value: String(i + 1), label: m }))}
-          />
-        </div>
-        <div className="w-28">
-          <Select
-            id="dep-year"
-            label={t("fixedAssets.yearField")}
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            options={years.map((y) => ({ value: String(y), label: String(y) }))}
-          />
-        </div>
-        <Button onClick={run} disabled={running} className="cursor-pointer">
-          {running && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          {t("fixedAssets.runAction")}
-        </Button>
+    <Card>
+      <div style={{ padding: token.padding }}>
+        <Flex wrap align="flex-end" gap={token.marginSM}>
+          <Flex
+            align="center"
+            gap={token.marginXS}
+            style={{ minHeight: token.controlHeight, fontWeight: token.fontWeightStrong }}
+          >
+            <CalendarClock size={token.fontSizeLG} aria-hidden="true" />
+            {t("fixedAssets.runTitle")}
+          </Flex>
+          <div style={{ width: MONTH_WIDTH }}>
+            <Select
+              id="dep-month"
+              label={t("fixedAssets.monthField")}
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              options={months.map((m, i) => ({ value: String(i + 1), label: m }))}
+            />
+          </div>
+          <div style={{ width: YEAR_WIDTH }}>
+            <Select
+              id="dep-year"
+              label={t("fixedAssets.yearField")}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              options={years.map((y) => ({ value: String(y), label: String(y) }))}
+            />
+          </div>
+          <Button onClick={run} disabled={running}>
+            {running && <Spin size="small" />}
+            {t("fixedAssets.runAction")}
+          </Button>
+        </Flex>
+        {error && (
+          <div role="alert" style={{ marginTop: token.marginSM }}>
+            <Alert type="error" showIcon message={error} />
+          </div>
+        )}
       </div>
-      {error && (
-        <p className="mt-3 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-          {error}
-        </p>
-      )}
     </Card>
   );
 }

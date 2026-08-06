@@ -7,19 +7,36 @@
  * beban) terisi dari kategori dan bisa di-override. Nilai penyusutan bulanan
  * ditampilkan langsung agar pengguna melihat dampaknya sebelum menyimpan.
  * Registrasi TIDAK memposting jurnal — penyusutan & pelepasan yang menjurnal.
+ *
+ * Dikonversi ke token Ant Design pada issue #197 — kulitnya saja; state,
+ * penjaga, dan aritmetika penyusutannya tidak disentuh.
  */
 import { useMemo, useState } from "react";
+import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
 import { straightLineMonthly } from "@/lib/depreciation";
 import { useT } from "@/lib/i18n/client";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi isian yang runtuh sendiri — pengganti `sm:grid-cols-2`/`sm:grid-cols-3`.
+ * `max(minimum, (100% − gutter)/n)` menahan jumlah kolomnya di `n`.
+ */
+const FIELD_MIN = 240;
+const columnGrid = (columns: number, gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${
+    gap * (columns - 1)
+  }px) / ${columns})), 1fr))`,
+});
 
 export interface AccountOption {
   id: number;
@@ -58,6 +75,7 @@ export function AssetForm({
   const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   const first = categories[0];
   const [categoryId, setCategoryId] = useState(first ? String(first.id) : "");
@@ -81,6 +99,9 @@ export function AssetForm({
 
   const acctOptions = (opts: AccountOption[]) =>
     opts.map((a) => ({ value: String(a.id), label: `${a.code} · ${a.name}` }));
+
+  /** Isian angka — rata kanan + `tabular-nums`, seperti kolom uang. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 
   function applyCategory(id: string) {
     setCategoryId(id);
@@ -143,9 +164,10 @@ export function AssetForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card className="p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit}>
+      <Card style={{ marginBottom: token.marginLG }}>
+        <div style={{ padding: token.paddingLG }}>
+        <div style={columnGrid(2, token.margin)}>
           <Select
             id="categoryId"
             label={t("fixedAssets.colCategory")}
@@ -184,7 +206,7 @@ export function AssetForm({
             type="number"
             step="0.01"
             min="0"
-            className="text-right tabular-nums"
+            style={numberStyle}
             label={t("fixedAssets.costField")}
             value={acquisitionCost}
             onChange={(e) => setAcquisitionCost(e.target.value)}
@@ -195,7 +217,7 @@ export function AssetForm({
             type="number"
             step="0.01"
             min="0"
-            className="text-right tabular-nums"
+            style={numberStyle}
             label={t("fixedAssets.residualField")}
             value={residualValue}
             onChange={(e) => setResidualValue(e.target.value)}
@@ -206,7 +228,7 @@ export function AssetForm({
             type="number"
             min="1"
             step="1"
-            className="text-right tabular-nums"
+            style={numberStyle}
             label={t("fixedAssets.lifeMonthsField")}
             value={usefulLifeMonths}
             onChange={(e) => setUsefulLifeMonths(e.target.value)}
@@ -224,7 +246,7 @@ export function AssetForm({
           />
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div style={{ ...columnGrid(3, token.margin), marginTop: token.margin }}>
           <Select
             id="assetAccountId"
             label={t("fixedAssets.assetAccountField")}
@@ -251,44 +273,57 @@ export function AssetForm({
           />
         </div>
 
+        {/* Penyusutan bulanan lewat `Money` (#186): nilai yang belum bisa
+            dihitung tidak dirender sebagai Rp 0 — barisnya memang tak muncul. */}
         {monthly != null && (
-          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            {t("fixedAssets.monthlyPreview")}{" "}
-            <strong className="text-foreground">{formatCurrency(monthly, "IDR")}</strong>
-          </p>
+          <Typography.Paragraph style={{ marginTop: token.margin, marginBottom: 0 }}>
+            <Typography.Text type="secondary">{t("fixedAssets.monthlyPreview")} </Typography.Text>
+            <Money
+              value={monthly}
+              currency="IDR"
+              style={{ fontWeight: token.fontWeightStrong }}
+            />
+          </Typography.Paragraph>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
+        {/* Catatan "registrasi tidak menjurnal": ikon + kata, bukan warna. */}
+        <Flex
+          align="flex-start"
+          gap={token.marginXS}
+          style={{
+            marginTop: token.margin,
+            padding: token.paddingXS,
+            borderRadius: token.borderRadius,
+            border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+            background: token.colorFillQuaternary,
+          }}
+        >
+          <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
             {t("fixedAssets.noJournalBefore")} <strong>{t("fixedAssets.noJournalNot")}</strong>{" "}
             {t("fixedAssets.noJournalMiddle")}{" "}
             <strong>{t("fixedAssets.noJournalDepreciation")}</strong> {t("fixedAssets.noJournalAnd")}{" "}
             <strong>{t("fixedAssets.noJournalDisposal")}</strong> {t("fixedAssets.noJournalTail")}
-          </span>
-        </p>
+          </Typography.Text>
+        </Flex>
 
         {error && (
-          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {error}
-          </p>
+          <div role="alert" style={{ marginTop: token.margin }}>
+            <Alert type="error" showIcon message={error} />
+          </div>
         )}
+        </div>
       </Card>
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving} className="cursor-pointer">
-          {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+      <Flex wrap gap={token.marginXS}>
+        <Button type="submit" disabled={saving}>
+          {saving && <Spin size="small" />}
           {t("fixedAssets.saveAsset")}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="cursor-pointer"
-          onClick={() => router.push("/fixed-assets")}
-        >
+        <Button type="button" variant="ghost" onClick={() => router.push("/fixed-assets")}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
     </form>
   );
 }

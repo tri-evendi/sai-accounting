@@ -2,18 +2,36 @@
 
 /**
  * Kategori aset tetap — buat kategori dengan default metode, umur, & akun (issue #28).
+ *
+ * Dikonversi ke token Ant Design pada issue #197: yang berubah hanya kulitnya —
+ * kisi isian, jarak, dan galat formulir. Mesin formulirnya (state + `apiFetch`)
+ * tidak disentuh.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Spin, theme } from "antd";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { Loader2 } from "lucide-react";
 import type { AccountOption } from "../new/asset-form";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi isian yang runtuh sendiri: `max(minimum, (100% − gutter)/n)` menahan
+ * jumlah kolomnya di `n`, sehingga di 1440px ia tidak diam-diam berkembang.
+ * Pengganti `sm:grid-cols-2` / `sm:grid-cols-3`.
+ */
+const FIELD_MIN = 240;
+const columnGrid = (columns: number, gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${
+    gap * (columns - 1)
+  }px) / ${columns})), 1fr))`,
+});
 
 export function CategoryForm({
   assetAccounts,
@@ -29,6 +47,7 @@ export function CategoryForm({
   const router = useRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   const [name, setName] = useState("");
   const [months, setMonths] = useState("");
@@ -46,6 +65,9 @@ export function CategoryForm({
 
   const acctOptions = (opts: AccountOption[]) =>
     opts.map((a) => ({ value: String(a.id), label: `${a.code} · ${a.name}` }));
+
+  /** Umur manfaat adalah hitungan bulan — rata kanan + tabular-nums, tanpa Rp. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,79 +105,99 @@ export function CategoryForm({
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">{t("fixedAssets.newCategory")}</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            id="cat-name"
-            label={t("fixedAssets.categoryNameField")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("fixedAssets.categoryNamePlaceholder")}
-            required
-          />
-          <Input
-            id="cat-months"
-            type="number"
-            min="1"
-            step="1"
-            className="text-right tabular-nums"
-            label={t("fixedAssets.defaultLifeField")}
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-            required
-          />
-          <Select
-            id="cat-method"
-            label={t("fixedAssets.defaultMethodField")}
-            value="straight_line"
-            disabled
-            onChange={() => {}}
-            options={[
-              { value: "straight_line", label: t("depreciationMethod.straight_line") },
-            ]}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Select
-            id="cat-asset"
-            label={t("fixedAssets.assetAccountField")}
-            value={assetAccountId}
-            onChange={(e) => setAssetAccountId(e.target.value)}
-            options={acctOptions(assetAccounts)}
-            placeholder={t("fixedAssets.pickAccount")}
-            required
-          />
-          <Select
-            id="cat-accum"
-            label={t("fixedAssets.accumulatedAccountField")}
-            value={accumulatedAccountId}
-            onChange={(e) => setAccumulatedAccountId(e.target.value)}
-            options={acctOptions(accumulatedAccounts)}
-            placeholder={t("fixedAssets.pickAccount")}
-            required
-          />
-          <Select
-            id="cat-expense"
-            label={t("fixedAssets.expenseAccountField")}
-            value={expenseAccountId}
-            onChange={(e) => setExpenseAccountId(e.target.value)}
-            options={acctOptions(expenseAccounts)}
-            placeholder={t("fixedAssets.pickAccount")}
-            required
-          />
-        </div>
-        {error && (
-          <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={saving} className="cursor-pointer">
-          {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          {t("fixedAssets.saveCategory")}
-        </Button>
-      </form>
+    <Card>
+      <div style={{ padding: token.paddingLG }}>
+        <h2
+          style={{
+            margin: 0,
+            marginBottom: token.margin,
+            fontSize: token.fontSizeLG,
+            fontWeight: token.fontWeightStrong,
+          }}
+        >
+          {t("fixedAssets.newCategory")}
+        </h2>
+        <form onSubmit={handleSubmit}>
+          <Flex vertical gap={token.margin}>
+            <div style={columnGrid(2, token.margin)}>
+              <Input
+                id="cat-name"
+                label={t("fixedAssets.categoryNameField")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("fixedAssets.categoryNamePlaceholder")}
+                required
+              />
+              <Input
+                id="cat-months"
+                type="number"
+                min="1"
+                step="1"
+                style={numberStyle}
+                label={t("fixedAssets.defaultLifeField")}
+                value={months}
+                onChange={(e) => setMonths(e.target.value)}
+                required
+              />
+              <Select
+                id="cat-method"
+                label={t("fixedAssets.defaultMethodField")}
+                value="straight_line"
+                disabled
+                onChange={() => {}}
+                options={[
+                  { value: "straight_line", label: t("depreciationMethod.straight_line") },
+                ]}
+              />
+            </div>
+            <div style={columnGrid(3, token.margin)}>
+              <Select
+                id="cat-asset"
+                label={t("fixedAssets.assetAccountField")}
+                value={assetAccountId}
+                onChange={(e) => setAssetAccountId(e.target.value)}
+                options={acctOptions(assetAccounts)}
+                placeholder={t("fixedAssets.pickAccount")}
+                required
+              />
+              <Select
+                id="cat-accum"
+                label={t("fixedAssets.accumulatedAccountField")}
+                value={accumulatedAccountId}
+                onChange={(e) => setAccumulatedAccountId(e.target.value)}
+                options={acctOptions(accumulatedAccounts)}
+                placeholder={t("fixedAssets.pickAccount")}
+                required
+              />
+              <Select
+                id="cat-expense"
+                label={t("fixedAssets.expenseAccountField")}
+                value={expenseAccountId}
+                onChange={(e) => setExpenseAccountId(e.target.value)}
+                options={acctOptions(expenseAccounts)}
+                placeholder={t("fixedAssets.pickAccount")}
+                required
+              />
+            </div>
+            {error && (
+              /* `Alert` AntD: ikon + teks `colorText` di atas `colorErrorBg`,
+                 jadi maknanya tidak bergantung warna. `role="alert"` tetap
+                 milik kita — AntD tidak memasangnya. */
+              <div role="alert">
+                <Alert type="error" showIcon message={error} />
+              </div>
+            )}
+            <div>
+              <Button type="submit" disabled={saving}>
+                {/* `Spin` menghormati `prefers-reduced-motion` lewat token gerak
+                    AntD; `Loader2 animate-spin` tidak. */}
+                {saving && <Spin size="small" />}
+                {t("fixedAssets.saveCategory")}
+              </Button>
+            </div>
+          </Flex>
+        </form>
+      </div>
     </Card>
   );
 }

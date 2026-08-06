@@ -1,28 +1,30 @@
 /**
  * Aset per lokasi (issue #28) — active assets grouped by location, with cost,
  * accumulated depreciation and book value per location.
+ *
+ * Dikonversi ke token Ant Design pada issue #197. **Tetap server component**;
+ * baris totalnya kini `summary` milik `StaticTable`, dipetakan per KUNCI kolom
+ * sehingga ia tak bisa meleset satu kolom.
  */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
-import { getFixedAssets, groupByLocation } from "@/lib/fixed-assets";
+import { getFixedAssets, groupByLocation, type LocationGroup } from "@/lib/fixed-assets";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { moneyColumn } from "@/components/ui/money-column";
+import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { MapPin } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+const SECTION_GAP = 24;
+const EMPTY_ICON_SIZE = 48;
 
 export default async function AssetsByLocationPage({
   params,
@@ -44,6 +46,42 @@ export default async function AssetsByLocationPage({
     { count: 0, cost: 0, accumulated: 0, book: 0 }
   );
 
+  const columns: SaiColumns<LocationGroup> = [
+    {
+      key: "location",
+      dataIndex: "location",
+      title: t("fixedAssets.colLocation"),
+      align: "left",
+      render: (_v, g) =>
+        g.location ?? (
+          // Aset tanpa lokasi tercatat — dikatakan, bukan dikosongkan.
+          <span style={{ color: "var(--ant-color-text-secondary)" }}>
+            {t("fixedAssets.noLocation")}
+          </span>
+        ),
+    },
+    qtyColumn<LocationGroup>({
+      dataIndex: "count",
+      title: t("fixedAssets.colAssetCount"),
+      sorter: false,
+    }),
+    moneyColumn<LocationGroup>({
+      dataIndex: "cost",
+      title: t("fixedAssets.colCost"),
+      sorter: false,
+    }),
+    moneyColumn<LocationGroup>({
+      dataIndex: "accumulated",
+      title: t("fixedAssets.colAccumulated"),
+      sorter: false,
+    }),
+    moneyColumn<LocationGroup>({
+      dataIndex: "book",
+      title: t("fixedAssets.colBookValue"),
+      sorter: false,
+    }),
+  ];
+
   return (
     <div>
       <PageHeader
@@ -57,7 +95,7 @@ export default async function AssetsByLocationPage({
 
       {groups.length === 0 ? (
         <EmptyState
-          icon={<MapPin className="h-12 w-12" />}
+          icon={<MapPin size={EMPTY_ICON_SIZE} />}
           title={t("fixedAssets.emptyActiveTitle")}
           description={t("fixedAssets.emptyActiveDescription")}
           actionLabel={t("fixedAssets.addNew")}
@@ -65,59 +103,32 @@ export default async function AssetsByLocationPage({
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("fixedAssets.colLocation")}</TableHead>
-                <TableHead className="text-right">{t("fixedAssets.colAssetCount")}</TableHead>
-                <TableHead className="text-right">{t("fixedAssets.colCost")}</TableHead>
-                <TableHead className="text-right">{t("fixedAssets.colAccumulated")}</TableHead>
-                <TableHead className="text-right">{t("fixedAssets.colBookValue")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups.map((g) => (
-                <TableRow key={g.location ?? "__none__"}>
-                  <TableCell className="font-medium text-foreground">
-                    {g.location ?? <span className="text-muted-foreground">{t("fixedAssets.noLocation")}</span>}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">{g.count}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={g.cost} currency="IDR" />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={g.accumulated} currency="IDR" />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={g.book} currency="IDR" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="font-semibold hover:bg-transparent">
-                <TableCell className="text-foreground">{t("common.total")}</TableCell>
-                <TableCell className="text-right tabular-nums text-foreground">{totals.count}</TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={totals.cost} currency="IDR" />
-                </TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={totals.accumulated} currency="IDR" />
-                </TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={totals.book} currency="IDR" />
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
+          <StaticTable<LocationGroup>
+            columns={columns}
+            rows={groups}
+            rowKey={(g) => g.location ?? "__none__"}
+            summary={{
+              location: t("common.total"),
+              count: (
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{totals.count}</span>
+              ),
+              cost: <Money value={totals.cost} currency="IDR" />,
+              accumulated: <Money value={totals.accumulated} currency="IDR" />,
+              book: <Money value={totals.book} currency="IDR" />,
+            }}
+          />
         </Card>
       )}
 
-      <p className="mt-6 text-sm text-muted-foreground">
-        <Link href="/fixed-assets" className="text-primary hover:underline">
-          {t("fixedAssets.backToList")}
-        </Link>
-      </p>
+      {/* Tautan kembali berdiri di LUAR `<Card>`, tempat `--ant-color-link`
+          tidak teratasi (lihat kepala `shared/aging.tsx`). Karena itu ia
+          `Button asChild variant="link"`: warnanya dari AntD sendiri, dan
+          target sentuhnya ikut naik ke ukuran kendali. */}
+      <div style={{ marginTop: SECTION_GAP }}>
+        <Button asChild variant="link" size="sm">
+          <Link href="/fixed-assets">{t("fixedAssets.backToList")}</Link>
+        </Button>
+      </div>
     </div>
   );
 }

@@ -4,20 +4,30 @@
  * Read-only: nothing here writes and nothing here posts. Balances come from the
  * source documents via `@/lib/receivables`, whose header explains why every
  * cross-document total is expressed in IDR base.
+ *
+ * ── Konversi ke token Ant Design (issue #197, fase C5) ─────────────────────
+ * **Tetap server component**, jadi `antd` tidak boleh diimpor di sini
+ * (`tests/rsc-boundary.test.ts`) dan `theme.useToken()` tidak tersedia. Warna
+ * datang dari dua sumber saja: primitif yang mewarnai dirinya sendiri (`Money`,
+ * `Badge`, `Card`) dan variabel `--ant-…` yang HANYA dipakai di dalam pohon
+ * komponen AntD — di sini selalu di dalam `<Card>`. Alasan panjangnya ada di
+ * kepala `components/shared/aging.tsx`.
+ *
+ * **Kolomnya tetap disusun dari `agingColumns()`.** Tabelnya kini `StaticTable`
+ * (#189), yang berarti kolom menjadi DATA — dan justru karena itu godaan
+ * menuliskan daftar kolom kedua di sini menjadi besar. Tidak: `columnFor()` di
+ * bawah memetakan SATU id kolom ke satu kolom tabel, dan urutannya datang dari
+ * penentu yang sama yang dipakai PDF dan lembar sebarnya. Pratinjau yang
+ * memperlihatkan kolom berbeda dari berkasnya adalah bug yang baru ditutup.
  */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
-import { getReceivables } from "@/lib/receivables";
+import { getReceivables, type ReceivableRow } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -25,6 +35,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@/lib/utils";
+import { Receipt } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
@@ -32,6 +43,30 @@ import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Jarak yang tidak bisa dibaca dari token di sini — berkas ini tanpa hook dan
+ * tanpa `antd`. Nilainya SAMA dengan token yang seharusnya dipakai, dan
+ * disebut supaya #203 bisa menukarnya tanpa menebak: `marginLG` 24,
+ * `marginXS` 8, `margin` 16.
+ */
+const SECTION_GAP = 24;
+const LINK_GAP_X = 20;
+const LINK_GAP_Y = 8;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+/** `max-w-56` lama: syarat pembayaran teks bebas yang dipotong, bukan dibiarkan
+ *  mendorong lebar kolom dokumen. */
+const TERMS_MAX_WIDTH = 224;
+
+/** Keterangan kecil di bawah isi sel — ukuran & warna sekunder, bukan warna saja. */
+const subtleStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-secondary)",
+};
+
+const numericStyle: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
 
 function todayISO() {
   const d = new Date();
@@ -86,10 +121,146 @@ export default async function ReceivablesPage({
     outstanding: t("common.remainingIdr"),
   };
 
+  /** Satu id kolom -> satu kolom tabel; tidak ada daftar kolom kedua. */
+  function columnFor(id: AgingColumnId): SaiColumns<ReceivableRow>[number] {
+    switch (id) {
+      case "documentNo":
+        return {
+          key: id,
+          dataIndex: "documentNo",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => (
+            <>
+              <Link href={r.href} style={{ color: "var(--ant-color-link)" }}>
+                {r.documentNo}
+              </Link>
+              <span style={subtleStyle}>
+                {r.kind === "invoice"
+                  ? t("receivables.docTypeInvoice")
+                  : t("receivables.docTypeContract")}
+              </span>
+              {/* Free text, straight from top1/top2 — informational only. */}
+              {r.terms && (
+                <span
+                  style={{
+                    ...subtleStyle,
+                    maxWidth: TERMS_MAX_WIDTH,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={r.terms}
+                >
+                  {r.terms}
+                </span>
+              )}
+            </>
+          ),
+        };
+      case "date":
+        return {
+          key: id,
+          dataIndex: "date",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => <span style={numericStyle}>{formatDateShort(r.date)}</span>,
+        };
+      case "dueDate":
+        return {
+          key: id,
+          dataIndex: "dueDate",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) =>
+            r.dueDate ? (
+              <span style={numericStyle}>{formatDateShort(r.dueDate)}</span>
+            ) : (
+              // Tanpa jatuh tempo bukan "0 hari lagi" — dikatakan sebagai kata.
+              <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                {t("common.notFilledIn")}
+              </span>
+            ),
+        };
+      case "age":
+        return {
+          key: id,
+          dataIndex: "ageDays",
+          title: HEADERS[id],
+          align: "left",
+          // `AgeCell` menandai umur SEJAK APA ia dihitung di setiap baris —
+          // "30 hari sejak diterbitkan" dan "30 hari lewat jatuh tempo" adalah
+          // dua pernyataan berbeda yang tak boleh berbagi satu angka telanjang.
+          render: (_v, r) => <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />,
+        };
+      case "status":
+        return {
+          key: id,
+          dataIndex: "status",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => <PaymentStatusBadge status={r.status} />,
+        };
+      case "total":
+        return {
+          key: id,
+          dataIndex: "total",
+          title: HEADERS[id],
+          align: "right",
+          render: (_v, r) => (
+            <>
+              <Money value={r.total} currency={r.currency} />
+              {r.currency !== "IDR" && <span style={subtleStyle}>{r.currency}</span>}
+            </>
+          ),
+        };
+      case "outstanding":
+        return {
+          key: id,
+          dataIndex: "outstandingBase",
+          title: HEADERS[id],
+          align: "right",
+          render: (_v, r) => (
+            <>
+              {/* Dokumen valas tanpa kurs TIDAK punya nilai IDR. Ia disebut
+                  dengan kata — menuliskannya 0 menyusutkan total tanpa suara. */}
+              {r.outstandingBase == null ? (
+                <span style={{ color: "var(--ant-color-money-pending)" }}>
+                  {t("common.rateMissing")}
+                </span>
+              ) : (
+                <Money
+                  value={r.outstandingBase}
+                  currency="IDR"
+                  style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+                />
+              )}
+              {/* Only shown when every payment shared the document's currency —
+                  otherwise there is no single-currency remainder to state. */}
+              {r.outstanding != null && r.currency !== "IDR" && (
+                <span style={subtleStyle}>
+                  <Money value={r.outstanding} currency={r.currency} />
+                </span>
+              )}
+            </>
+          ),
+        };
+      case "party":
+      default:
+        return {
+          key: "party",
+          dataIndex: "partyName",
+          title: HEADERS.party,
+          align: "left",
+        };
+    }
+  }
+
+  const columns: SaiColumns<ReceivableRow> = cols.map(columnFor);
+
   return (
     <div>
       <PageHeader
-        className="mb-2"
         title={<TermTooltip term="piutang">{t("receivables.title")}</TermTooltip>}
         actions={
           <>
@@ -107,7 +278,15 @@ export default async function ReceivablesPage({
         }
       />
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
-      <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          columnGap: LINK_GAP_X,
+          rowGap: LINK_GAP_Y,
+          marginBottom: SECTION_GAP,
+        }}
+      >
         <LearnMore term="piutang" />
         <LearnMore term="umur_piutang" />
         <LearnMore term="jatuh_tempo" />
@@ -125,125 +304,17 @@ export default async function ReceivablesPage({
       <PartyTotals rows={byParty} title={t("receivables.partyTotalsTitle")} />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {cols.map((c) => (
-                <TableHead
-                  key={c}
-                  className={c === "total" || c === "outstanding" ? "text-right" : undefined}
-                >
-                  {HEADERS[c]}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={`${r.kind}-${r.id}`}>
-                {cols.map((c) => {
-                  switch (c) {
-                    case "party":
-                      return (
-                        <TableCell key={c} className="text-foreground">
-                          {r.partyName}
-                        </TableCell>
-                      );
-                    case "documentNo":
-                      return (
-                        <TableCell key={c}>
-                          <Link
-                            href={r.href}
-                            className="text-primary hover:underline cursor-pointer transition-colors"
-                          >
-                            {r.documentNo}
-                          </Link>
-                          <span className="block text-xs text-muted-foreground">
-                            {r.kind === "invoice"
-                              ? t("receivables.docTypeInvoice")
-                              : t("receivables.docTypeContract")}
-                          </span>
-                          {/* Free text, straight from top1/top2 — informational only. */}
-                          {r.terms && (
-                            <span
-                              className="block text-xs text-muted-foreground max-w-56 truncate"
-                              title={r.terms}
-                            >
-                              {r.terms}
-                            </span>
-                          )}
-                        </TableCell>
-                      );
-                    case "date":
-                      return (
-                        <TableCell key={c} className="text-foreground tabular-nums">
-                          {formatDateShort(r.date)}
-                        </TableCell>
-                      );
-                    case "dueDate":
-                      return (
-                        <TableCell key={c} className="text-foreground tabular-nums">
-                          {r.dueDate ? (
-                            formatDateShort(r.dueDate)
-                          ) : (
-                            <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
-                          )}
-                        </TableCell>
-                      );
-                    case "age":
-                      return (
-                        <TableCell key={c} className="text-foreground">
-                          <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                        </TableCell>
-                      );
-                    case "status":
-                      return (
-                        <TableCell key={c}>
-                          <PaymentStatusBadge status={r.status} />
-                        </TableCell>
-                      );
-                    case "total":
-                      return (
-                        <TableCell key={c} className="text-right text-foreground tabular-nums">
-                          <Money value={r.total} currency={r.currency} />
-                          {r.currency !== "IDR" && (
-                            <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                          )}
-                        </TableCell>
-                      );
-                    case "outstanding":
-                      return (
-                        <TableCell
-                          key={c}
-                          className="text-right font-medium text-foreground tabular-nums"
-                        >
-                          {r.outstandingBase == null ? (
-                            <span className="text-warning-strong">{t("common.rateMissing")}</span>
-                          ) : (
-                            <Money value={r.outstandingBase} currency="IDR" />
-                          )}
-                          {/* Only shown when every payment shared the document's currency —
-                              otherwise there is no single-currency remainder to state. */}
-                          {r.outstanding != null && r.currency !== "IDR" && (
-                            <span className="block text-xs text-muted-foreground">
-                              <Money value={r.outstanding} currency={r.currency} />
-                            </span>
-                          )}
-                        </TableCell>
-                      );
-                  }
-                })}
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                  {overdueOnly ? t("receivables.emptyOverdue") : t("receivables.emptyAll")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable<ReceivableRow>
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => `${r.kind}-${r.id}`}
+          empty={
+            <EmptyState
+              icon={<Receipt size={EMPTY_ICON_SIZE} />}
+              title={overdueOnly ? t("receivables.emptyOverdue") : t("receivables.emptyAll")}
+            />
+          }
+        />
       </Card>
     </div>
   );

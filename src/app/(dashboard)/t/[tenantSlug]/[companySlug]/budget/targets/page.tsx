@@ -15,6 +15,9 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
+/** `marginLG` AntD (24) — angka, karena berkas ini server component. */
+const SECTION_GAP = 24;
+
 export default async function SalesTargetsPage({
   params,
   searchParams,
@@ -59,7 +62,7 @@ export default async function SalesTargetsPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("budget.breadcrumb"), href: "/budget" },
@@ -69,7 +72,7 @@ export default async function SalesTargetsPage({
         description={t("budget.targetsDescription")}
       />
 
-      <div className="mb-6">
+      <div style={{ marginBottom: SECTION_GAP }}>
         <PeriodPicker year={year} month={month} />
       </div>
 

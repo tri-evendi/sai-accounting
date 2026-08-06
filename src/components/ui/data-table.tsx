@@ -33,6 +33,12 @@
  * 3. **Baris total.** Dipetakan per kunci kolom lewat prop `summary`, bentuk
  *    yang sama persis dengan `StaticTable`, supaya sebuah tabel bisa berpindah
  *    varian tanpa baris totalnya ikut ditulis ulang.
+ * 4. **`rowStyle` (issue #229).** AntD hanya punya `onRow`, sekantong atribut
+ *    DOM. `StaticTable` tidak boleh menerima itu (penangan kejadian tidak bisa
+ *    dikirim dari halaman server), jadi KEDUA perender memakai bentuk yang
+ *    lebih sempit dan sama — gaya per baris — dan di sinilah ia diterjemahkan
+ *    menjadi `onRow`. Tanpa bentuk yang sama, tabel yang menandai barisnya
+ *    (mis. "belum dibaca") terkunci pada satu varian.
  */
 
 import { Table as AntTable } from "antd";
@@ -68,6 +74,18 @@ interface DataTableProps<T> {
   scrollX?: number | string;
   className?: string;
   size?: "small" | "middle" | "large";
+  /**
+   * Gaya per BARIS — bentuk yang sama persis dengan `StaticTable.rowStyle`,
+   * sengaja lebih sempit dari `onRow` AntD. Lihat butir 4 di kepala berkas.
+   */
+  rowStyle?: (row: T, index: number) => React.CSSProperties | undefined;
+  /**
+   * Judul kolom tetap terbaca saat isinya digulir. Di sini ia dipasang lewat
+   * `scroll.y` AntD, yang memberi badan tabel tinggi tetap dan headernya
+   * sendiri — mekanisme yang berbeda dari `StaticTable` (yang membatasi
+   * pembungkus gesernya), tetapi hasil yang sama di layar.
+   */
+  maxHeight?: number | string;
 }
 
 export function DataTable<T extends object>({
@@ -80,6 +98,8 @@ export function DataTable<T extends object>({
   scrollX = "max-content",
   className,
   size = "middle",
+  rowStyle,
+  maxHeight,
 }: DataTableProps<T>) {
   /*
    * `className` kolom dipindahkan ke `onCell`, supaya ia hanya mengenai SEL —
@@ -101,7 +121,12 @@ export function DataTable<T extends object>({
       columns={antdColumns as ColumnsType<T>}
       dataSource={data as T[]}
       rowKey={rowKey}
-      scroll={{ x: scrollX }}
+      scroll={maxHeight === undefined ? { x: scrollX } : { x: scrollX, y: maxHeight }}
+      onRow={
+        rowStyle === undefined
+          ? undefined
+          : (record, index) => ({ style: rowStyle(record, index ?? 0) })
+      }
       locale={empty === undefined ? undefined : { emptyText: empty }}
       pagination={
         pageSize

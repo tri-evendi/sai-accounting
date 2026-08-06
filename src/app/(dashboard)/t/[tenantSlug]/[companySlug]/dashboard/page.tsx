@@ -683,22 +683,15 @@ export default async function DashboardPage({
         actions={<InventoryExportAction />}
       >
         {/*
-          * Kartu angka kondisi stok TIDAK lagi berwarna, dan itu keputusan yang
-          * dipaksa batas RSC (issue #227). `StatCard` hanya menerima
-          * `valueClassName: string` — sebuah kelas Tailwind — dan berkas ini
-          * tidak boleh lagi menulis satu pun. Menyeberangkan beranda menjadi
-          * client demi tiga warna berarti seluruh kueri buku besarnya pindah ke
-          * peramban; itu harga yang jauh lebih besar dari yang dibeli.
+          * Warna kartu kondisi stok KEMBALI (issue #229), dan berkas ini tetap
+          * server component tanpa satu pun kelas Tailwind: `tone` mewarnai
+          * dirinya sendiri dari token uang AntD di dalam `StatCard`. Lihat
+          * kepala `components/dashboard/stat-card.tsx` — termasuk kenapa ia
+          * masih boleh dirender di server.
           *
-          * Yang HILANG hanya warnanya. Penanda utamanya tetap ada dan memang
-          * tidak pernah boleh warna: judul kartunya sendiri menyebut keadaannya
-          * ("Stok Sehat" / "Stok Menipis" / "Stok Habis"), dan tiap kartu
-          * menaut ke halaman yang bisa menindaklanjutinya.
-          *
-          * Jalan keluar yang benar dicatat di laporan issue ini: `StatCard`
-          * perlu prop `tone` yang mewarnai dirinya sendiri dari token AntD —
-          * satu perubahan di `components/dashboard/stat-card.tsx`, bukan kelas
-          * yang ditulis ulang di pemanggilnya.
+          * Warnanya tetap BUKAN penanda tunggal: judul kartunya sendiri
+          * menyebut keadaannya ("Stok Sehat" / "Stok Menipis" / "Stok Habis"),
+          * dan tiap kartu menaut ke halaman yang bisa menindaklanjutinya.
           */}
         <div style={autoGrid(STAT_CARD_BASIS)}>
           <StatCard title={t("dashboard.statItems")} value={stockHealth.totalItems} href="/inventory" />
@@ -706,16 +699,19 @@ export default async function DashboardPage({
             title={t("dashboard.statHealthy")}
             value={stockHealth.healthy}
             href="/inventory"
+            tone="success"
           />
           <StatCard
             title={t("dashboard.statLow")}
             value={stockHealth.lowStock}
             href="/inventory/opname"
+            tone="warning"
           />
           <StatCard
             title={t("dashboard.statEmpty")}
             value={stockHealth.empty}
             href="/inventory/opname"
+            tone="danger"
           />
         </div>
 
@@ -847,19 +843,21 @@ export default async function DashboardPage({
         >
           <div style={autoGrid(STAT_CARD_BASIS)}>
             <StatCard title={t("nav.items.contracts")} value={contractCount} href="/contracts" />
-            {/* Warna angka "menunggu" ikut hilang bersama `valueClassName` —
-                alasannya sama dengan kartu stok di atas; katanya tetap
-                "Menunggu", dan kartunya menaut ke daftar yang sudah tersaring. */}
+            {/* "Menunggu" = amber, lewat `tone` (issue #229). Katanya tetap
+                "Menunggu" dan kartunya menaut ke daftar yang sudah tersaring,
+                jadi warnanya menambah hierarki — bukan memikul maknanya. */}
             <StatCard
               title={t("dashboard.statPendingContracts")}
               value={pendingContracts}
               href="/contracts?status=pending"
+              tone="warning"
             />
             <StatCard title={t("nav.items.invoices")} value={invoiceCount} href="/invoices" />
             <StatCard
               title={t("dashboard.statPendingInvoices")}
               value={pendingInvoices}
               href="/invoices?status=pending"
+              tone="warning"
             />
             <StatCard title={t("nav.items.suppliers")} value={supplierCount} href="/suppliers" />
           </div>

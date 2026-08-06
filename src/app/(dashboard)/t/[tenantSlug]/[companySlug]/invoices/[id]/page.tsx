@@ -7,9 +7,11 @@
  * `<Card>` AntD. Peringatan "pembayaran belum berkurs" memakai ikon + kata,
  * bukan warna — aturan yang sama dengan `shared/aging.tsx`.
  *
- * Kaki tabel barang punya EMPAT baris (DPP, PPN, Total, dasar IDR), jadi
- * tabelnya tetap primitif `Table` JSX: `StaticTable.summary` adalah satu baris
- * per tabel. Perataan & warnanya lewat `style`, jadi nol `className`.
+ * Kaki tabel barang punya EMPAT baris (DPP, PPN, Total, dasar IDR). Sampai
+ * issue #229 `StaticTable.summary` hanya menerima SATU baris, dan itulah
+ * satu-satunya alasan tabel barang bertahan sebagai primitif JSX; sejak
+ * `summary` menerima LARIK baris, ia ikut pindah. Perataan & warnanya lewat
+ * `style`, jadi nol `className`.
  */
 
 import { notFound } from "next/navigation";
@@ -23,18 +25,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { AlertTriangle, Banknote } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
 import { toBase } from "@/lib/receivables";
@@ -173,6 +166,125 @@ export default async function InvoiceDetailPage({
         <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.note}</span>
       ),
     },
+  ];
+
+  const itemRows = invoice.items.map((item) => ({
+    id: item.id,
+    itemName: item.itemName,
+    unit: item.unit || "-",
+    quantity: Number(item.quantity),
+    price: Number(item.price),
+    total: Number(item.quantity) * Number(item.price),
+  }));
+
+  const itemColumns: SaiColumns<(typeof itemRows)[number]> = [
+    { key: "itemName", dataIndex: "itemName", title: t("common.item"), align: "left" },
+    {
+      key: "unit",
+      dataIndex: "unit",
+      title: t("common.unit"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.unit}</span>
+      ),
+    },
+    {
+      // KUANTITAS (`Decimal(15,3)`) — id-ID dengan desimalnya utuh, tanpa "Rp".
+      // 12,5 kg tidak boleh membulat jadi Rp 13.
+      key: "quantity",
+      dataIndex: "quantity",
+      title: t("common.quantity"),
+      align: "right",
+      render: (_v, row) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatNumber(row.quantity)}</span>
+      ),
+    },
+    {
+      key: "price",
+      dataIndex: "price",
+      title: t("common.price"),
+      align: "right",
+      render: (_v, row) => <Money value={row.price} currency={currency} />,
+    },
+    {
+      key: "total",
+      dataIndex: "total",
+      title: t("common.total"),
+      align: "right",
+      render: (_v, row) => (
+        <Money
+          style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+          value={row.total}
+          currency={currency}
+        />
+      ),
+    },
+  ];
+
+  /**
+   * Kaki tabel barang: EMPAT baris (DPP, PPN, Total, dasar IDR). Sampai issue
+   * #229 `StaticTable.summary` hanya menerima SATU baris, dan itulah satu-satunya
+   * alasan tabel ini bertahan sebagai primitif JSX. `colSpan` menaruh labelnya
+   * membentang di atas empat kolom pertama, rata kanan menempel pada angkanya.
+   */
+  const labelCell = (content: React.ReactNode) => ({
+    content,
+    colSpan: 4,
+    align: "right" as const,
+  });
+  const mutedLabel: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+  const strong: React.CSSProperties = { fontWeight: "var(--ant-font-weight-strong)" };
+  /*
+   * Kaki ini RINCIAN, bukan satu baris total: bawaan tebal milik `StaticTable`
+   * dimatikan per baris, dan yang tebal hanya sel yang memang menyatakannya.
+   */
+  const plainRow: React.CSSProperties = { fontWeight: "normal" };
+
+  const itemSummary = [
+    {
+      style: plainRow,
+      cells: {
+        itemName: labelCell(<span style={mutedLabel}>{t("invoices.dpp")}</span>),
+        total: <Money value={subtotal} currency={currency} />,
+      },
+    },
+    {
+      style: plainRow,
+      cells: {
+        itemName: labelCell(<span style={mutedLabel}>{ppnLabel}</span>),
+        total: <Money value={taxAmount} currency={currency} />,
+      },
+    },
+    {
+      // Garis tebal memisahkan rincian pajak dari angka yang ditagihkan.
+      style: { ...plainRow, borderTop: "2px solid var(--ant-color-border-secondary)" },
+      cells: {
+        itemName: labelCell(
+          <span style={strong}>{t("invoices.totalCurrency", { currency })}</span>
+        ),
+        total: <Money style={strong} value={totalValue} currency={currency} />,
+      },
+    },
+    ...(isForeign
+      ? [
+          {
+            style: plainRow,
+            cells: {
+              itemName: labelCell(<span style={mutedLabel}>{t("common.ledgerBaseIdr")}</span>),
+              // Tanpa kurs, nilai dasarnya BELUM DIKETAHUI — ditulis dengan
+              // kata, tidak pernah Rp 0.
+              total:
+                baseAmount != null ? (
+                  <Money value={baseAmount} currency="IDR" />
+                ) : (
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {t("common.rateMissing")}
+                  </span>
+                ),
+            },
+          },
+        ]
+      : []),
   ];
 
   /** Satu pasang istilah–nilai pada kartu "Informasi Faktur". */
@@ -339,113 +451,16 @@ export default async function InvoiceDetailPage({
       {/* Items */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader><CardTitle>{t("invoices.goodsTitle")}</CardTitle></CardHeader>
-        <Table>
-          <TableHeader>
-            {/* `hover:bg-transparent` lama diganti gaya SEBARIS — gaya sebaris
-                mengalahkan selektor apa pun, termasuk `:hover`. */}
-            <TableRow style={{ background: "transparent" }}>
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead>{t("common.unit")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.quantity")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.price")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.total")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoice.items.map((item) => {
-              const itemTotal = Number(item.quantity) * Number(item.price);
-              return (
-                <TableRow key={item.id}>
-                  <TableCell>{item.itemName}</TableCell>
-                  <TableCell style={{ color: "var(--ant-color-text-secondary)" }}>
-                    {item.unit || "-"}
-                  </TableCell>
-                  {/* KUANTITAS (`Decimal(15,3)`) — id-ID dengan desimalnya utuh,
-                      tanpa "Rp". 12,5 kg tidak boleh membulat jadi Rp 13. */}
-                  <TableCell
-                    style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {formatNumber(Number(item.quantity))}
-                  </TableCell>
-                  <TableCell style={{ padding: 0 }}>
-                    <MoneyCell value={Number(item.price)} currency={currency} />
-                  </TableCell>
-                  <TableCell style={{ padding: 0 }}>
-                    <MoneyCell
-                      style={{ fontWeight: "var(--ant-font-weight-strong)" }}
-                      value={itemTotal}
-                      currency={currency}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-          <TableFooter style={{ background: "transparent", fontWeight: "normal" }}>
-            <TableRow style={{ background: "transparent", borderBottomWidth: 0 }}>
-              <TableCell
-                colSpan={4}
-                style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
-              >
-                {t("invoices.dpp")}
-              </TableCell>
-              <TableCell style={{ padding: 0 }}>
-                <MoneyCell value={subtotal} currency={currency} />
-              </TableCell>
-            </TableRow>
-            <TableRow style={{ background: "transparent", borderBottomWidth: 0 }}>
-              <TableCell
-                colSpan={4}
-                style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
-              >
-                {ppnLabel}
-              </TableCell>
-              <TableCell style={{ padding: 0 }}>
-                <MoneyCell value={taxAmount} currency={currency} />
-              </TableCell>
-            </TableRow>
-            <TableRow
-              style={{
-                background: "transparent",
-                borderBottomWidth: 0,
-                borderTop: "2px solid var(--ant-color-border-secondary)",
-              }}
-            >
-              <TableCell
-                colSpan={4}
-                style={{ textAlign: "right", fontWeight: "var(--ant-font-weight-strong)" }}
-              >
-                {t("invoices.totalCurrency", { currency })}
-              </TableCell>
-              <TableCell style={{ padding: 0 }}>
-                <MoneyCell
-                  style={{ fontWeight: "var(--ant-font-weight-strong)" }}
-                  value={totalValue}
-                  currency={currency}
-                />
-              </TableCell>
-            </TableRow>
-            {isForeign && (
-              <TableRow style={{ background: "transparent", borderBottomWidth: 0 }}>
-                <TableCell
-                  colSpan={4}
-                  style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
-                >
-                  {t("common.ledgerBaseIdr")}
-                </TableCell>
-                {/* Tanpa kurs, nilai dasarnya BELUM DIKETAHUI — ditulis dengan
-                    kata, tidak pernah Rp 0. */}
-                <TableCell style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                  {baseAmount != null ? (
-                    <Money value={baseAmount} currency="IDR" />
-                  ) : (
-                    t("common.rateMissing")
-                  )}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableFooter>
-        </Table>
+        <StaticTable
+          columns={itemColumns}
+          rows={itemRows}
+          rowKey={(row) => row.id}
+          summary={itemSummary}
+          /* Kaki tabel ini BUKAN baris total tebal: ia rincian, dan barisnya
+             mengatur tebalnya sendiri. Garis pemisah dari isi tetap 1px —
+             yang 2px hanya baris "Total". */
+          summaryStyle={{ borderTopWidth: 1 }}
+        />
       </Card>
 
       {/* Payments */}

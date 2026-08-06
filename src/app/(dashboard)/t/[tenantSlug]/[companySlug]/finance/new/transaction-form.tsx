@@ -13,6 +13,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
+import { Alert, Flex, theme, Typography } from "antd";
 import { useSearchParams } from "next/navigation";
 import { useAppRouter } from "@/components/ui/app-link";
 import { useSession } from "next-auth/react";
@@ -20,22 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { AlertCircle, ArrowDownLeft, ArrowUpRight, BookText, Info, Lock } from "lucide-react";
+import { Money } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { ArrowDownLeft, ArrowUpRight, BookText, Info, Lock } from "lucide-react";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
-import { cn } from "@/lib/utils";
 import type { CashType } from "@/lib/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { resolveSubmitFailure } from "@/lib/form-sections";
@@ -65,6 +60,31 @@ const ARAH_HEADING_KEYS = {
   default: { title: "finance.headingDefaultTitle", description: "finance.headingDefaultDesc" },
 } as const;
 
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`. `max(280px, (100% − gutter)/2)` menahan jumlah kolomnya di
+ * DUA, dan titik patahnya jatuh tepat di 576px (`sm` AntD).
+ *
+ * Tetap CSS grid, bukan `Row`/`Col`: `CostCenterField` membentang dengan
+ * `gridColumn: "1 / -1"` yang diberikan pemanggilnya — di dalam `Col` flexbox
+ * properti itu tak berarti apa-apa dan ia akan berhenti membentang tanpa satu
+ * galat pun (pelajaran yang sama dengan `FULL_ROW` di #195).
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+const FULL_ROW: React.CSSProperties = { gridColumn: "1 / -1" };
+
+/** Satu baris pratinjau jurnal — bukan data tersimpan, hanya cermin mesinnya. */
+interface JournalLine {
+  account: string;
+  debit: number;
+  credit: number;
+}
+
 function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
   const router = useAppRouter();
   const searchParams = useSearchParams();
@@ -78,6 +98,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     description: t(headingKeys.description),
   };
   const { data: session } = useSession();
+  const { token } = theme.useToken();
   // issue #11 — when Mode Akuntan is OFF we hide debit/kredit terminology; when
   // ON we keep it and add a read-only "Lihat jurnal" preview. Display-only: the
   // POST payload and posting engine are identical either way.
@@ -114,7 +135,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const counterAccount = accounts.find((a) => String(a.id) === counterAccountId);
   const isMoneyIn = Number(debit) > 0;
   const cashSideLabel = t("finance.cashSide", { type: cashLabels[type] });
-  const journalPreview =
+  const journalPreview: JournalLine[] | null =
     value > 0 && counterAccount
       ? isMoneyIn
         ? [
@@ -259,35 +280,65 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     .filter(Boolean)
     .join(" · ");
 
+  /** Isian nominal — rata kanan + `tabular-nums`, seperti kolom uang. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+  /**
+   * Isian yang ditonjolkan aksi cepat (`?arah=masuk`/`keluar`). Penandanya
+   * BUKAN warna saja: isian itu juga yang mendapat `autoFocus`, dan kalimat
+   * bantuan di bawahnya menyebut arahnya dengan kata + panah.
+   */
+  const highlight = (active: boolean, color: string): React.CSSProperties =>
+    active ? { borderColor: color, boxShadow: `0 0 0 ${token.lineWidth}px ${color}` } : {};
+
+  const journalColumns: SaiColumns<JournalLine> = [
+    { key: "account", dataIndex: "account", title: t("common.account"), align: "left" },
+    {
+      key: "debit",
+      dataIndex: "debit",
+      title: t("common.debit"),
+      align: "right",
+      // Sisi yang tidak dipakai baris ini bukan "nol rupiah" melainkan bukan-nilai.
+      render: (_v, line) => (line.debit > 0 ? <Money value={line.debit} currency="IDR" /> : "—"),
+    },
+    {
+      key: "credit",
+      dataIndex: "credit",
+      title: t("common.credit"),
+      align: "right",
+      render: (_v, line) => (line.credit > 0 ? <Money value={line.credit} currency="IDR" /> : "—"),
+    },
+  ];
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
-        className="mb-1"
         breadcrumbs={[{ label: t("finance.title"), href: "/finance" }, { label: heading.title }]}
         title={<TermTooltip term="kas_bank">{heading.title}</TermTooltip>}
         description={heading.description}
       />
-      <LearnMore term="kas_bank" className="mt-1 mb-6" label={t("finance.learnMore")} />
+      <div style={{ marginBottom: token.marginLG }}>
+        <LearnMore term="kas_bank" label={t("finance.learnMore")} />
+      </div>
 
       {error && (
-        <div
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-          role="alert"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        /* `Alert` AntD: ikon + teks `colorText` di atas `colorErrorBg`, jadi
+           maknanya tidak bergantung warna. `role="alert"` tetap milik kita. */
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("finance.detailsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div style={twoColumnGrid(token.margin)}>
               <Select
-                id="type" name="type" label={t("finance.filterType")}
+                id="type"
+                name="type"
+                label={t("finance.filterType")}
                 value={type}
                 onChange={(e) => setType(e.target.value as CashType)}
                 options={[
@@ -307,13 +358,24 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span>{periodIssue}</span>
-                  </p>
+                  <Flex
+                    align="flex-start"
+                    gap={token.marginXXS}
+                    role="alert"
+                    style={{ marginTop: token.marginXXS }}
+                  >
+                    <Lock
+                      size={token.fontSizeSM}
+                      aria-hidden="true"
+                      style={{ flexShrink: 0, marginTop: 2 }}
+                    />
+                    <Typography.Text style={{ fontSize: token.fontSizeSM }}>
+                      {periodIssue}
+                    </Typography.Text>
+                  </Flex>
                 )}
               </div>
-              <div className="sm:col-span-2">
+              <div style={FULL_ROW}>
                 <Input id="description" name="description" label={t("common.description")} required />
               </div>
 
@@ -325,18 +387,20 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   step="0.01"
                   min="0"
                   autoFocus={arah === "masuk"}
-                  className={cn(
-                    "text-right tabular-nums",
-                    arah === "masuk" && "border-success ring-1 ring-success"
-                  )}
+                  style={{
+                    ...numberStyle,
+                    ...highlight(arah === "masuk", token.colorMoneyPositive ?? token.colorSuccess),
+                  }}
                   label={accountantOn ? t("finance.labelDebitAccountant") : t("finance.colMoneyIn")}
                   value={debit}
                   onChange={(e) => setDebit(e.target.value)}
                 />
-                <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
-                  <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{t("finance.hintIncrease")}</span>
-                </p>
+                <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
+                  <ArrowDownLeft size={token.fontSizeSM} aria-hidden="true" />
+                  <Typography.Text style={{ fontSize: token.fontSizeSM }}>
+                    {t("finance.hintIncrease")}
+                  </Typography.Text>
+                </Flex>
               </div>
               <div>
                 <Input
@@ -346,21 +410,23 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   step="0.01"
                   min="0"
                   autoFocus={arah === "keluar"}
-                  className={cn(
-                    "text-right tabular-nums",
-                    arah === "keluar" && "border-destructive ring-1 ring-destructive"
-                  )}
+                  style={{
+                    ...numberStyle,
+                    ...highlight(arah === "keluar", token.colorMoneyNegative ?? token.colorError),
+                  }}
                   label={accountantOn ? t("finance.labelCreditAccountant") : t("finance.colMoneyOut")}
                   value={credit}
                   onChange={(e) => setCredit(e.target.value)}
                 />
-                <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
-                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{t("finance.hintDecrease")}</span>
-                </p>
+                <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
+                  <ArrowUpRight size={token.fontSizeSM} aria-hidden="true" />
+                  <Typography.Text style={{ fontSize: token.fontSizeSM }}>
+                    {t("finance.hintDecrease")}
+                  </Typography.Text>
+                </Flex>
               </div>
 
-              <div className="sm:col-span-2">
+              <div style={FULL_ROW}>
                 <Select
                   id="counterAccountId"
                   name="counterAccountId"
@@ -376,9 +442,13 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   }))}
                   required
                 />
-                <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>
+                <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
+                  <Info
+                    size={token.fontSizeSM}
+                    aria-hidden="true"
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                  />
+                  <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                     {accountantOn ? (
                       <>
                         {t("finance.counterHintAccountant")} <em>{t("finance.exampleElectricity")}</em>,{" "}
@@ -392,31 +462,47 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                         {t("finance.exampleTail")}
                       </>
                     )}
-                  </span>
-                </p>
+                  </Typography.Text>
+                </Flex>
               </div>
 
-              <CostCenterField
-                className="sm:col-span-2"
-                costCenters={costCenters}
-                value={costCenterId}
-                onChange={setCostCenterId}
-              />
+              {/* `CostCenterField` hanya menerima `className`, bukan `style`,
+                  jadi rentang penuhnya dipasang lewat pembungkus. */}
+              <div style={FULL_ROW}>
+                <CostCenterField
+                  costCenters={costCenters}
+                  value={costCenterId}
+                  onChange={setCostCenterId}
+                />
+              </div>
             </div>
 
             {value > 0 && (
-              <div className="mt-4 flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-                <span className="text-muted-foreground">{t("finance.baseValueLabel")}</span>
-                <span className="font-medium text-foreground tabular-nums">
-                  {isForeign && !Number(rate)
-                    ? t("finance.fillRateFirst")
-                    : new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: "IDR",
-                        maximumFractionDigits: 0,
-                      }).format(baseValue)}
-                </span>
-              </div>
+              <Flex
+                align="center"
+                justify="space-between"
+                style={{
+                  marginTop: token.margin,
+                  padding: token.paddingXS,
+                  borderRadius: token.borderRadius,
+                  background: token.colorFillQuaternary,
+                }}
+              >
+                <Typography.Text type="secondary">{t("finance.baseValueLabel")}</Typography.Text>
+                {/* Valas tanpa kurs TIDAK punya nilai IDR: dikatakan dengan
+                    kalimat, tidak pernah dirender sebagai Rp 0. */}
+                {isForeign && !Number(rate) ? (
+                  <Typography.Text style={{ fontWeight: token.fontWeightStrong }}>
+                    {t("finance.fillRateFirst")}
+                  </Typography.Text>
+                ) : (
+                  <Money
+                    value={baseValue}
+                    currency="IDR"
+                    style={{ fontWeight: token.fontWeightStrong }}
+                  />
+                )}
+              </Flex>
             )}
 
             {/* issue #11 — "Lihat jurnal": read-only preview of the entry the
@@ -424,119 +510,114 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 in Mode Akuntan; it renders the engine's own rule, changing
                 nothing about what is posted. */}
             {accountantOn && journalPreview && (
-              <div className="mt-4 rounded-md border border-border bg-card">
-                <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium text-foreground">
-                  <BookText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <div
+                style={{
+                  marginTop: token.margin,
+                  borderRadius: token.borderRadius,
+                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  overflow: "hidden",
+                }}
+              >
+                <Flex
+                  align="center"
+                  gap={token.marginXS}
+                  style={{
+                    padding: token.paddingXS,
+                    borderBottom: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                    fontWeight: token.fontWeightStrong,
+                  }}
+                >
+                  <BookText size={token.fontSize} aria-hidden="true" />
                   {t("finance.journalPreviewTitle")}
-                </div>
-                {/* Tabel pratinjau ringkas: padding rapat menimpa bawaan primitif
-                    agar tampilannya sama dengan sebelum migrasi. */}
-                <Table>
-                  <TableHeader>
-                    <TableRow className="text-xs hover:bg-transparent">
-                      <TableHead className="h-auto px-3 py-1.5 text-xs">{t("common.account")}</TableHead>
-                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">
-                        {t("common.debit")}
-                      </TableHead>
-                      <TableHead className="h-auto px-3 py-1.5 text-right text-xs">
-                        {t("common.credit")}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {journalPreview.map((line, i) => (
-                      <TableRow key={i} className="hover:bg-transparent">
-                        <TableCell className="px-3 py-1.5 text-foreground">{line.account}</TableCell>
-                        <TableCell className="px-3 py-1.5 text-right tabular-nums text-foreground">
-                          {line.debit > 0
-                            ? new Intl.NumberFormat("id-ID").format(line.debit)
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="px-3 py-1.5 text-right tabular-nums text-foreground">
-                          {line.credit > 0
-                            ? new Intl.NumberFormat("id-ID").format(line.credit)
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <p className="px-3 py-2 text-xs text-muted-foreground">
+                </Flex>
+                {/* `StaticTable` `size="small"` — pratinjau ringkas; tak ada
+                    sortir/filter yang dibeli dengan `DataTable` (#189). */}
+                <StaticTable<JournalLine>
+                  columns={journalColumns}
+                  rows={journalPreview}
+                  rowKey={(line) => line.account}
+                  size="small"
+                />
+                <Typography.Paragraph
+                  type="secondary"
+                  style={{ margin: 0, padding: token.paddingXS, fontSize: token.fontSizeSM }}
+                >
                   {t("finance.journalPreviewNote", { currency })}
-                </p>
+                </Typography.Paragraph>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* ── Detail lengkap (issue #4) — tertutup secara default ── */}
-        <DisclosureSection
-          className="mb-6"
-          description={t("finance.advancedDescription")}
-          summary={advancedSummary}
-          open={advancedOpen}
-          onOpenChange={setAdvancedOpen}
-          invalid={advancedInvalid}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              id="currency" name="currency" label={t("common.currency")}
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              options={[
-                { value: "IDR", label: t("finance.currencyIdrOption") },
-                { value: "USD", label: "USD" },
-                { value: "CNY", label: "CNY" },
-              ]}
-            />
-            {isForeign ? (
-              <div>
-                <Input
-                  id="rate"
-                  name="rate"
-                  type="number"
-                  step="0.000001"
-                  min="0"
-                  className="text-right tabular-nums"
-                  label={
-                    <TermTooltip term="kurs">{t("finance.rateLabel", { currency })}</TermTooltip>
-                  }
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                  required
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("finance.rateHint")}
-                </p>
-              </div>
-            ) : (
-              <div />
-            )}
-            <div className="sm:col-span-2">
-              <Input
-                id="note"
-                name="note"
-                label={t("common.notesOptional")}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
+        <div style={{ marginBottom: token.marginLG }}>
+          <DisclosureSection
+            description={t("finance.advancedDescription")}
+            summary={advancedSummary}
+            open={advancedOpen}
+            onOpenChange={setAdvancedOpen}
+            invalid={advancedInvalid}
+          >
+            <div style={twoColumnGrid(token.margin)}>
+              <Select
+                id="currency"
+                name="currency"
+                label={t("common.currency")}
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                options={[
+                  { value: "IDR", label: t("finance.currencyIdrOption") },
+                  { value: "USD", label: "USD" },
+                  { value: "CNY", label: "CNY" },
+                ]}
               />
+              {isForeign ? (
+                <div>
+                  <Input
+                    id="rate"
+                    name="rate"
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    style={numberStyle}
+                    label={
+                      <TermTooltip term="kurs">{t("finance.rateLabel", { currency })}</TermTooltip>
+                    }
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    required
+                  />
+                  <Typography.Paragraph
+                    type="secondary"
+                    style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+                  >
+                    {t("finance.rateHint")}
+                  </Typography.Paragraph>
+                </div>
+              ) : (
+                <div />
+              )}
+              <div style={FULL_ROW}>
+                <Input
+                  id="note"
+                  name="note"
+                  label={t("common.notesOptional")}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
-        </DisclosureSection>
+          </DisclosureSection>
+        </div>
 
-        <div className="flex gap-3">
-          <Button type="submit" className="cursor-pointer" disabled={loading}>
+        <Flex wrap gap={token.marginSM}>
+          <Button type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("finance.submit")}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="cursor-pointer"
-            onClick={() => router.push("/finance")}
-          >
+          <Button type="button" variant="secondary" onClick={() => router.push("/finance")}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

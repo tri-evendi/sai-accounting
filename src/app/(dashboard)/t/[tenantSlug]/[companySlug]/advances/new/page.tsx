@@ -34,7 +34,7 @@ export default async function NewAdvancePage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("advances.title"), href: "/advances" },

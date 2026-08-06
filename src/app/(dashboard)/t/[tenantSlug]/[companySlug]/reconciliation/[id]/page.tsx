@@ -1,4 +1,5 @@
 import { Link } from "@/components/ui/app-link";
+import { Button } from "@/components/ui/button";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { notFound } from "next/navigation";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -8,6 +9,9 @@ import { ReconciliationWorkspace } from "./reconciliation-workspace";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** `margin` AntD (16) — angka, karena berkas ini server component. */
+const BACKLINK_GAP = 16;
 
 export default async function ReconciliationDetailPage({
   params,
@@ -48,10 +52,14 @@ export default async function ReconciliationDetailPage({
 
   return (
     <div>
-      <div className="mb-4">
-        <Link href="/reconciliation" className="text-sm text-primary hover:underline">
-          {t("reconciliation.backToList")}
-        </Link>
+      {/* Tautan kembali berdiri di LUAR pohon komponen AntD, tempat
+          `--ant-color-link` tidak teratasi (lihat kepala `shared/aging.tsx`).
+          Karena itu ia `Button asChild variant="link"`: warnanya dari AntD
+          sendiri, dan target sentuhnya ikut naik ke ukuran kendali. */}
+      <div style={{ marginBottom: BACKLINK_GAP }}>
+        <Button asChild variant="link" size="sm">
+          <Link href="/reconciliation">{t("reconciliation.backToList")}</Link>
+        </Button>
       </div>
 
       <ReconciliationWorkspace

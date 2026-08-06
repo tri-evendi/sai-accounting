@@ -5,17 +5,25 @@
  *
  * Disposal posts the removal + laba/rugi pelepasan journal; the gain/loss is
  * previewed live against the current book value. A move posts no journal.
+ *
+ * Dikonversi ke token Ant Design pada issue #197. Pratinjau laba/rugi kini
+ * lewat `Money signed`: tandanya (+/−) dan katanya ("Laba"/"Rugi") yang
+ * membedakan arah — warna hanya saluran ketiga.
  */
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
-import { ArrowRightLeft, Banknote, Loader2 } from "lucide-react";
+import { ArrowRightLeft, Banknote } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** Dua kartu berdampingan di layar lebar, menumpuk di bawah ~2×320px. */
+const PANEL_BASIS = 320;
 
 function todayISO() {
   const d = new Date();
@@ -28,6 +36,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
   const router = useRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   // Disposal
   const [dDate, setDDate] = useState(todayISO());
@@ -99,77 +108,159 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
     }
   }
 
+  const panelStyle: React.CSSProperties = { padding: token.paddingLG };
+  const headingStyle: React.CSSProperties = {
+    margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: token.marginXS,
+    fontSize: token.fontSizeLG,
+    fontWeight: token.fontWeightStrong,
+  };
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="p-6">
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
-          <ArrowRightLeft className="h-5 w-5 text-primary" aria-hidden="true" />
-          {t("fixedAssets.moveTitle")}
-        </h2>
-        <p className="mb-4 text-xs text-muted-foreground">{t("fixedAssets.moveHint")}</p>
-        <form onSubmit={transfer} className="space-y-3">
-          <Input id="t-date" type="date" label={t("common.date")} value={tDate} onChange={(e) => setTDate(e.target.value)} required />
-          <Input
-            id="t-loc"
-            label={t("fixedAssets.moveToField")}
-            value={toLocation}
-            onChange={(e) => setToLocation(e.target.value)}
-            placeholder={t("fixedAssets.moveToPlaceholder")}
-            required
-          />
-          <Input id="t-note" label={t("common.notesOptional")} value={tNote} onChange={(e) => setTNote(e.target.value)} maxLength={500} />
-          {tError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{tError}</p>}
-          <Button type="submit" variant="secondary" disabled={moving} className="cursor-pointer">
-            {moving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-            {t("fixedAssets.moveAction")}
-          </Button>
-        </form>
+    <div
+      style={{
+        display: "grid",
+        gap: token.margin,
+        gridTemplateColumns: `repeat(auto-fit, minmax(${PANEL_BASIS}px, 1fr))`,
+      }}
+    >
+      <Card>
+        <div style={panelStyle}>
+          <h2 style={headingStyle}>
+            <ArrowRightLeft size={token.fontSizeHeading5} aria-hidden="true" />
+            {t("fixedAssets.moveTitle")}
+          </h2>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ marginTop: token.marginXXS, marginBottom: token.margin, fontSize: token.fontSizeSM }}
+          >
+            {t("fixedAssets.moveHint")}
+          </Typography.Paragraph>
+          <form onSubmit={transfer}>
+            <Flex vertical gap={token.marginSM}>
+              <Input
+                id="t-date"
+                type="date"
+                label={t("common.date")}
+                value={tDate}
+                onChange={(e) => setTDate(e.target.value)}
+                required
+              />
+              <Input
+                id="t-loc"
+                label={t("fixedAssets.moveToField")}
+                value={toLocation}
+                onChange={(e) => setToLocation(e.target.value)}
+                placeholder={t("fixedAssets.moveToPlaceholder")}
+                required
+              />
+              <Input
+                id="t-note"
+                label={t("common.notesOptional")}
+                value={tNote}
+                onChange={(e) => setTNote(e.target.value)}
+                maxLength={500}
+              />
+              {tError && (
+                <div role="alert">
+                  <Alert type="error" showIcon message={tError} />
+                </div>
+              )}
+              <div>
+                <Button type="submit" variant="secondary" disabled={moving}>
+                  {moving && <Spin size="small" />}
+                  {t("fixedAssets.moveAction")}
+                </Button>
+              </div>
+            </Flex>
+          </form>
+        </div>
       </Card>
 
-      <Card className="p-6">
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
-          <Banknote className="h-5 w-5 text-primary" aria-hidden="true" />
-          {t("fixedAssets.disposeTitle")}
-        </h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          {t("fixedAssets.disposeHint")}
-        </p>
-        <form onSubmit={dispose} className="space-y-3">
-          <Input id="d-date" type="date" label={t("fixedAssets.disposeDateField")} value={dDate} onChange={(e) => setDDate(e.target.value)} required />
-          <Input
-            id="d-proceeds"
-            type="number"
-            step="0.01"
-            min="0"
-            className="text-right tabular-nums"
-            label={t("fixedAssets.disposeProceedsField")}
-            value={proceeds}
-            onChange={(e) => setProceeds(e.target.value)}
-            placeholder={t("fixedAssets.disposeProceedsPlaceholder")}
-          />
-          <Input id="d-note" label={t("common.notesOptional")} value={dNote} onChange={(e) => setDNote(e.target.value)} maxLength={500} />
-          <p className="text-sm text-muted-foreground tabular-nums">
-            {t("fixedAssets.currentBookValue")} <strong className="text-foreground">{formatCurrency(bookValue, "IDR")}</strong>
-          </p>
-          {gainLoss != null && (
-            <p className="text-sm tabular-nums">
-              {gainLoss >= 0 ? (
-                <span className="text-success-strong">
-                  {t("fixedAssets.disposalGain")} <strong>{formatCurrency(gainLoss, "IDR")}</strong>
-                </span>
-              ) : (
-                <span className="text-destructive-strong">
-                  {t("fixedAssets.disposalLoss")} <strong>({formatCurrency(Math.abs(gainLoss), "IDR")})</strong>
-                </span>
+      <Card>
+        <div style={panelStyle}>
+          <h2 style={headingStyle}>
+            <Banknote size={token.fontSizeHeading5} aria-hidden="true" />
+            {t("fixedAssets.disposeTitle")}
+          </h2>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ marginTop: token.marginXXS, marginBottom: token.margin, fontSize: token.fontSizeSM }}
+          >
+            {t("fixedAssets.disposeHint")}
+          </Typography.Paragraph>
+          <form onSubmit={dispose}>
+            <Flex vertical gap={token.marginSM}>
+              <Input
+                id="d-date"
+                type="date"
+                label={t("fixedAssets.disposeDateField")}
+                value={dDate}
+                onChange={(e) => setDDate(e.target.value)}
+                required
+              />
+              <Input
+                id="d-proceeds"
+                type="number"
+                step="0.01"
+                min="0"
+                style={numberStyle}
+                label={t("fixedAssets.disposeProceedsField")}
+                value={proceeds}
+                onChange={(e) => setProceeds(e.target.value)}
+                placeholder={t("fixedAssets.disposeProceedsPlaceholder")}
+              />
+              <Input
+                id="d-note"
+                label={t("common.notesOptional")}
+                value={dNote}
+                onChange={(e) => setDNote(e.target.value)}
+                maxLength={500}
+              />
+              <Typography.Paragraph style={{ margin: 0 }}>
+                <Typography.Text type="secondary">
+                  {t("fixedAssets.currentBookValue")}{" "}
+                </Typography.Text>
+                <Money
+                  value={bookValue}
+                  currency="IDR"
+                  style={{ fontWeight: token.fontWeightStrong }}
+                />
+              </Typography.Paragraph>
+              {/* Hasil pelepasan belum diisi = belum ada laba/rugi untuk
+                  dinyatakan; barisnya tidak muncul, dan tidak pernah "Rp 0". */}
+              {gainLoss != null && (
+                <Typography.Paragraph style={{ margin: 0 }}>
+                  <Typography.Text>
+                    {gainLoss >= 0
+                      ? t("fixedAssets.disposalGain")
+                      : t("fixedAssets.disposalLoss")}{" "}
+                  </Typography.Text>
+                  <Money
+                    value={gainLoss}
+                    currency="IDR"
+                    signed
+                    style={{ fontWeight: token.fontWeightStrong }}
+                  />
+                </Typography.Paragraph>
               )}
-            </p>
-          )}
-          {dError && <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">{dError}</p>}
-          <Button type="submit" variant="danger" disabled={disposing} className="cursor-pointer">
-            {disposing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-            {t("fixedAssets.disposeAction")}
-          </Button>
-        </form>
+              {dError && (
+                <div role="alert">
+                  <Alert type="error" showIcon message={dError} />
+                </div>
+              )}
+              <div>
+                <Button type="submit" variant="danger" disabled={disposing}>
+                  {disposing && <Spin size="small" />}
+                  {t("fixedAssets.disposeAction")}
+                </Button>
+              </div>
+            </Flex>
+          </form>
+        </div>
       </Card>
     </div>
   );

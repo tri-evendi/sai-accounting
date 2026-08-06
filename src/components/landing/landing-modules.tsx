@@ -34,6 +34,8 @@
  * paling merusak kepercayaan: halaman yang dibaca sebelum orang percaya.
  */
 import { CheckOutlined } from "@ant-design/icons";
+import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
+import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BUSINESS_MODULES, CORE_MODULE, MODULE_META } from "@/lib/business-modules";
@@ -51,63 +53,98 @@ export async function LandingModules() {
   ];
 
   return (
-    <section
-      id="modul"
-      className="scroll-mt-20 border-t border-border py-16 sm:py-24"
-    >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {t("landing.modulesHeading")}
-          </h2>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-            {t("landing.modulesBody")}
-          </p>
-        </div>
+    <LandingSection id="modul">
+      <LandingSectionIntro title={t("landing.modulesHeading")}>
+        {t("landing.modulesBody")}
+      </LandingSectionIntro>
 
-        {/* Strip fakta: tiga angka yang menjawab "seberapa banyak" sebelum
-            orang menyusuri sepuluh kartu di bawahnya. */}
-        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-          {facts.map((fact) => (
-            <div
-              key={fact.label}
-              className="rounded-xl border border-border bg-card px-5 py-4"
+      {/* Strip fakta: tiga angka yang menjawab "seberapa banyak" sebelum
+          orang menyusuri sepuluh kartu di bawahnya. */}
+      <dl style={{ ...landingGrid(3, 200), margin: 0, marginTop: "var(--ant-margin-lg)" }}>
+        {facts.map((fact) => (
+          <div
+            key={fact.label}
+            style={{
+              borderRadius: "var(--ant-border-radius-lg)",
+              border: "1px solid var(--ant-color-border-secondary)",
+              background: "var(--ant-color-bg-container)",
+              padding: "var(--ant-padding)",
+            }}
+          >
+            <dt style={{ ...LANDING_NOTE }}>{fact.label}</dt>
+            <dd
+              style={{
+                margin: 0,
+                marginTop: "var(--ant-margin-xxs)",
+                fontSize: "var(--ant-font-size-heading-3)",
+                fontWeight: "var(--ant-font-weight-strong)",
+                fontVariantNumeric: "tabular-nums",
+              }}
             >
-              <dt className="text-sm text-muted-foreground">{fact.label}</dt>
-              <dd className="mt-1 text-2xl font-bold tabular-nums text-foreground">{fact.value}</dd>
-            </div>
-          ))}
-        </dl>
+              {fact.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {BUSINESS_MODULES.map((module) => {
-            const meta = MODULE_META[module];
-            const core = module === CORE_MODULE;
-            return (
-              <li key={module}>
-                <Card className="h-full">
-                  <CardContent className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CheckOutlined className="shrink-0 text-success" aria-hidden style={{ fontSize: 16 }} />
-                      <h3 className="text-base font-semibold text-foreground">{t(meta.labelKey)}</h3>
-                      {core && <Badge variant="success">{t("landing.modulesCore")}</Badge>}
-                    </div>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {t(meta.descriptionKey)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
+      <ul
+        style={{
+          ...landingGrid(3, 260),
+          listStyle: "none",
+          margin: 0,
+          marginTop: "var(--ant-margin)",
+          padding: 0,
+        }}
+      >
+        {BUSINESS_MODULES.map((module) => {
+          const meta = MODULE_META[module];
+          const core = module === CORE_MODULE;
+          return (
+            <li key={module}>
+              <Card style={{ height: "100%" }}>
+                <CardContent>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: "var(--ant-margin-xs)",
+                    }}
+                  >
+                    <CheckOutlined
+                      aria-hidden="true"
+                      style={{
+                        flexShrink: 0,
+                        color: "var(--ant-color-money-positive)",
+                        fontSize: "var(--ant-font-size-lg)",
+                      }}
+                    />
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: "var(--ant-font-size-lg)",
+                        fontWeight: "var(--ant-font-weight-strong)",
+                      }}
+                    >
+                      {t(meta.labelKey)}
+                    </h3>
+                    {core && <Badge variant="success">{t("landing.modulesCore")}</Badge>}
+                  </div>
+                  <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-xs)" }}>
+                    {t(meta.descriptionKey)}
+                  </p>
+                </CardContent>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
 
-        {/* Modul dinyalakan per PERUSAHAAN, bukan per akun — dan itu keputusan
-            yang layak disebut sebelum mendaftar, bukan kejutan sesudahnya. */}
-        <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
-          {t("landing.modulesNote")}
-        </p>
-      </div>
-    </section>
+      {/* Modul dinyalakan per PERUSAHAAN, bukan per akun — dan itu keputusan
+          yang layak disebut sebelum mendaftar, bukan kejutan sesudahnya. */}
+      <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-lg)" }}>
+        {t("landing.modulesNote")}
+      </p>
+    </LandingSection>
   );
 }

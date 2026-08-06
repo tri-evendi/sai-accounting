@@ -248,6 +248,39 @@ menu yang dibacakan dua kali.
 
 ---
 
+## Pemasaran vs App: batas dua dunia (issue #245)
+
+Aplikasi ini punya **dua permukaan yang tidak boleh saling meniru**: halaman pendaratan publik `/` (dibaca orang yang belum punya akun) dan app internal (dikerjakan orang yang sudah masuk delapan jam sehari). Sampai epik #206, batas itu dijaga sebuah **kebetulan mekanis** — dua dunia memakai kelas Tailwind yang kelihatan berbeda, jadi menyalin gaya pemasaran ke halaman internal sudah terasa janggal saat menulisnya. Setelah keduanya berdiri di atas token AntD yang sama, kejanggalan itu hilang: `fontSize: "var(--ant-font-size-heading-1)"` di halaman piutang dan di hero pendaratan terlihat persis sama.
+
+Karena itu batasnya kini dinyatakan **dalam token, dan dijaga tes** (`tests/landing-boundary.test.ts`) — bukan sebagai satu butir larangan.
+
+### Yang membuat sebuah halaman "pemasaran" — empat dimensi
+
+| Dimensi | Pendaratan `/` | App internal |
+|---|---|---|
+| **Skala hero** | satu `<h1>` `--sai-landing-font-size-hero`: 30px → **≈53px** di ≥576px, yaitu `fontSizeHeading1 × 1,4` | langit-langitnya `fontSizeHeading1` (38px) lewat `PageHeader`; tidak ada teks yang melampauinya |
+| **Bobot CTA** | aksi yang SAMA diulang tiga kali (hero, tiap kartu paket, penutup), `Button size="lg"`, primer + garis berpasangan, melebar penuh di layar sempit | aksi utama muncul **sekali**, di `PageHeader.actions` |
+| **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | Density 6/10: 24px (`--space-lg`) antar-bagian |
+| **Lebar maksimum** | kolom baca 42rem, seksi 72rem, **di tengah** | lebar penuh area kerja — tabel 12 kolom tidak dipotong demi ukuran baca |
+
+### Pendaratan BOLEH punya token sendiri — sebagai turunan, dan berpagar
+
+Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya jalan menuju hero 53px adalah angka yang diketik langsung di sebuah `style`, dan angka seperti itu bisa disalin ke mana saja tanpa meninggalkan jejak yang bisa dicari siapa pun. Dua syarat yang membuat izin ini tidak berkembang menjadi paletnya sendiri:
+
+1. **Setiap nilai turunan token AntD** — `calc()` di atas `--ant-font-size-*`, `--ant-margin-*`, `--ant-padding-*`. Skala tipografi app bergeser ⇒ skala pemasaran ikut bergeser; ia tidak bisa menyimpang menjadi tipografi kedua. Yang bukan turunan hanya **tiga lebar baca** (72/48/42rem) dan bobot/tracking display, karena app internal memang tidak punya token untuk "kolom baca" — ia tidak pernah membutuhkannya.
+2. **Deklarasinya terkurung di `[data-landing]`**, bukan `:root`. Blok itu (`src/components/landing/landing-scale.ts`, dipasang `LandingShell`) hanya ikut ke dokumen yang merender komponen pendaratan. Menyalin `var(--sai-landing-font-size-hero)` ke halaman internal karena itu **tidak menghasilkan hero** — ia menghasilkan properti yang tidak pernah teratasi, dan teksnya diam-diam mewarisi ukuran induknya.
+
+### Penjaganya (`tests/landing-boundary.test.ts`)
+
+- **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya satu: `src/app/page.tsx`. Menambah pintu kedua = satu baris di `PINTU_MASUK` yang terlihat di diff.
+- **Sebaliknya juga:** berkas pendaratan hanya boleh mengimpor `@/components/ui`, `@/lib`, dan sesama berkas pendaratan. Halaman ini dibaca tanpa sesi; setiap impor ke app internal adalah jalan bagi kode ber-`auth()`/ber-Prisma ikut ke permukaan publik.
+- **`--sai-landing-` dan `data-landing` tidak boleh muncul di satu berkas pun di luar direktori itu**, dan akarnya dipasang tepat satu berkas (`landing-shell.tsx`).
+- **Blok skalanya tidak boleh dideklarasikan pada selektor global** (`:root`/`html`/`body`/`*`) — justru pengurungan itulah yang membuat batas ini mekanisme, bukan imbauan.
+
+Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
+
+---
+
 ## Anti-Patterns (JANGAN)
 - ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
 - ❌ Dua paket ikon di satu layar; ❌ `h-4 w-4`/`size-4`/prop `size` pada ikon → lihat "Ikon" di bawah.
@@ -256,7 +289,7 @@ menu yang dibacakan dua kali.
 - ❌ Placeholder sebagai pengganti label.
 - ❌ Teks < 14px untuk data penting; kontras < 4.5:1.
 - ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
-- ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA "Start trial") di app internal.
+- ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
 - ❌ Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
 - ❌ Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `src/lib/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
 

@@ -11,7 +11,7 @@
 
 import { Link } from "@/components/ui/app-link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { theme } from "antd";
 
 export interface OperatorNavItem {
   href: string;
@@ -22,9 +22,13 @@ export interface OperatorNavItem {
 
 export function OperatorNav({ items, ariaLabel }: { items: OperatorNavItem[]; ariaLabel: string }) {
   const pathname = usePathname();
+  const { token } = theme.useToken();
 
   return (
-    <nav aria-label={ariaLabel} className="flex gap-1 overflow-x-auto">
+    <nav
+      aria-label={ariaLabel}
+      style={{ display: "flex", gap: token.marginXXS, overflowX: "auto" }}
+    >
       {items.map((item) => {
         const active =
           pathname === item.href ||
@@ -36,12 +40,22 @@ export function OperatorNav({ items, ariaLabel }: { items: OperatorNavItem[]; ar
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "inline-flex min-h-10 items-center border-b-2 px-3 text-sm font-medium transition-colors duration-200",
-              active
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              /* Target sentuh minimum MASTER.md; sama dengan `controlHeight`. */
+              minHeight: token.controlHeight,
+              paddingInline: token.paddingSM,
+              /* Garis bawah SELALU digambar — yang berubah warnanya, bukan
+                 ketebalannya. Tab aktif yang menambah 2px pada baris akan
+                 menggeser tetangganya setiap kali halaman berganti. */
+              borderBottom: `${token.lineWidthBold}px solid ${
+                active ? token.colorPrimary : "transparent"
+              }`,
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+              color: active ? token.colorText : token.colorTextSecondary,
+            }}
           >
             {item.label}
           </Link>

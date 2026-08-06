@@ -22,19 +22,44 @@
  * untuk formulir pendek, sedangkan wizard ini punya tabel saldo awal, daftar
  * modul, dan panel neraca berjalan — kartu selebar itu akan menyiksanya. Yang
  * dipinjam adalah PRINSIPNYA (kepala ramping, tanpa navigasi), bukan markup-nya.
+ *
+ * ── Setelah AntD (issue #240, fase C9) ────────────────────────────────────
+ * ⚠ Berkas ini KERANGKA: ia digambar di sekeliling setiap layar penyiapan, dan
+ * satu jarak yang bergeser di sini bergeser di semuanya sekaligus — tanpa satu
+ * tes pun yang berbunyi. Yang berubah karena itu ditahan seminimal mungkin.
+ *
+ * Kepalanya kini `Layout.Header` AntD, yang latarnya memang gelap (`headerBg`
+ * `#001529`) — peran yang sama dengan `bg-sidebar` sebelumnya, dan permukaan
+ * yang sama dengan `Layout.Sider theme="dark"` milik chrome dasbor (#193).
+ * Karena bidangnya SELALU gelap di kedua tema, teksnya memakai
+ * `colorTextLightSolid` dan anak tangga netral tema GELAP (#207) — bukan token
+ * yang ikut berbalik bersama tema, yang di tema terang akan menghilang.
  */
 
 import { signOut, useSession } from "next-auth/react";
+import { Flex, Layout, theme } from "antd";
 
 import { BrandMark } from "@/components/ui/brand-mark";
 import { UserMenu } from "@/components/layout/user-menu";
 import { PageLoader } from "@/components/ui/loading";
 import { APP_NAME } from "@/lib/constants";
+import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
+
+/** `max-w-5xl` — lebar isi wizard, sama untuk kepala dan badannya. */
+const MAX_WIDTH = 1024;
+
+const TRUNCATE: React.CSSProperties = {
+  display: "block",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
 
 export function SetupShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const t = useT();
+  const { token } = theme.useToken();
 
   if (status === "loading") {
     return <PageLoader message={t("common.loadingSession")} />;
@@ -45,21 +70,51 @@ export function SetupShell({ children }: { children: React.ReactNode }) {
   if (!session) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted">
+    <Layout style={{ minHeight: "100vh" }}>
       {/* Kepala ramping: identitas aplikasi + jalan keluar. Tidak ada navigasi. */}
-      <header className="border-b border-border bg-sidebar">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 lg:px-6">
-          <div className="flex min-w-0 items-center gap-3">
+      <Layout.Header
+        style={{
+          height: "auto",
+          lineHeight: token.lineHeight,
+          paddingInline: 0,
+          borderBottom: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+        }}
+      >
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={token.margin}
+          style={{
+            width: "100%",
+            maxWidth: MAX_WIDTH,
+            margin: "0 auto",
+            paddingInline: token.padding,
+            paddingBlock: token.paddingSM,
+          }}
+        >
+          <Flex align="center" gap={token.marginSM} style={{ minWidth: 0 }}>
             <BrandMark size="sm" />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-sidebar-foreground">
+            <span style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  ...TRUNCATE,
+                  fontWeight: token.fontWeightStrong,
+                  color: token.colorTextLightSolid,
+                }}
+              >
                 {APP_NAME}
               </span>
-              <span className="block truncate text-xs text-sidebar-foreground/70">
+              <span
+                style={{
+                  ...TRUNCATE,
+                  fontSize: token.fontSizeSM,
+                  color: NEUTRAL_TEXT_DARK.colorTextTertiary,
+                }}
+              >
                 {t("setup.shellSubtitle")}
               </span>
             </span>
-          </div>
+          </Flex>
 
           <UserMenu
             userName={session.user.name}
@@ -69,10 +124,20 @@ export function SetupShell({ children }: { children: React.ReactNode }) {
             role={session.user.role ?? ""}
             onSignOut={() => signOut({ callbackUrl: "/login" })}
           />
-        </div>
-      </header>
+        </Flex>
+      </Layout.Header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 lg:px-6 lg:py-8">{children}</main>
-    </div>
+      <Layout.Content
+        style={{
+          width: "100%",
+          maxWidth: MAX_WIDTH,
+          margin: "0 auto",
+          paddingInline: token.padding,
+          paddingBlock: token.paddingLG,
+        }}
+      >
+        {children}
+      </Layout.Content>
+    </Layout>
   );
 }

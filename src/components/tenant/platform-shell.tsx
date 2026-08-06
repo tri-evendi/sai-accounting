@@ -7,7 +7,7 @@
  * Aplikasi ini punya dua kerangka yang sudah mapan, dan halaman tingkat tenant
  * tidak cocok di keduanya:
  *
- *   `AuthShell`      satu tugas, satu kartu `max-w-md` (masuk, ganti sandi).
+ *   `AuthShell`      satu tugas, satu kartu sempit (masuk, ganti sandi).
  *                    Permukaan tenant membawa ENAM urusan; 448px membuat tabel
  *                    tagihan lima kolom menggeser dirinya sendiri secara
  *                    mendatar bahkan di layar 1440px.
@@ -20,9 +20,9 @@
  *                    sengaja setipis `(auth)`.
  *
  * Karena itu kulit ketiga: BENTUK panel admin yang sama dengan dasbor —
- * sidebar gelap `w-64`, bilah atas `h-16`, isi yang menggulung sendiri — tapi
- * menunya disusun dari KEWENANGAN TINGKAT TENANT yang dioper `layout.tsx`,
- * bukan dari peran di sebuah PT.
+ * menu samping gelap, bilah atas, isi yang menggulung sendiri — tapi menunya
+ * disusun dari KEWENANGAN TINGKAT TENANT yang dioper `layout.tsx`, bukan dari
+ * peran di sebuah PT.
  *
  * ⚠ Daftar menunya DIOPER, tidak dihitung di sini. Menyusunnya di dalam kulit
  * berarti kulit harus tahu matriks izin, dan itu menaruh keputusan "siapa
@@ -51,20 +51,59 @@
  * punya chrome aplikasi: di dasbor keempatnya tinggal di Navbar/menu akun yang
  * belum ada pada tahap ini (MASTER.md §Orientasi Perusahaan mewajibkan layar
  * tanpa chrome punya jalan keluar).
+ *
+ * ══ SETELAH ANTD (issue #240, fase C9) ═════════════════════════════════════
+ * ⚠ Berkas ini KERANGKA — ia digambar di sekeliling setiap halaman `/platform`,
+ * jadi satu jarak yang bergeser di sini bergeser di semuanya sekaligus.
+ *
+ * Susunannya kini `Layout` + `Layout.Sider`/`Drawer` + `Layout.Header`, mengikuti
+ * chrome dasbor (#193) berkas demi berkas — dan itu BUKAN sekadar keseragaman.
+ * Versi sebelumnya satu `<aside>` yang dipakai dua kali: kolom tetap di layar
+ * lebar, dan laci yang digeser `-translate-x-full` di layar sempit. Menggeser
+ * bukan menyembunyikan, jadi butir menunya tetap ada di urutan fokus; kelas
+ * `invisible` adalah tambalan untuk itu, dan tambalan itu tidak punya padanan
+ * gaya sebaris. Yang menggantikannya lebih kuat daripada kelasnya:
+ * `destroyOnHidden` membuat laci tertutup harfiah `return null` — tidak ada DOM
+ * sama sekali. **`forceRender` JANGAN pernah ditambahkan**; satu prop itu
+ * mengembalikan bug aslinya secara utuh.
+ *
+ * Escape kini milik `Drawer` (`keyboard` bawaan `true`), yang juga mengembalikan
+ * fokus ke pemicunya setelah menutup — hal yang tidak dilakukan pendengar
+ * `keydown` tulisan tangan yang dihapus di sini. Tirainya `colorBgMask` AntD,
+ * konstanta `rgba(0,0,0,0.45)` di KEDUA algoritma, jadi jebakan "tirai yang ikut
+ * berbalik menjadi kabut putih di tema gelap" tidak bisa kembali.
+ *
+ * Lebar mana yang "lebar" datang dari `Grid.useBreakpoint()` (`lg` = 992px,
+ * bukan 1024px milik Tailwind).
  */
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
+import type { MenuProps } from "antd";
+import { Menu as MenuIcon, X } from "lucide-react";
 
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { cn } from "@/lib/utils";
+import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
+
+/** `w-64` — lebar menu samping, sama dengan chrome dasbor. */
+const LEBAR_MENU = 256;
+/** `h-16` — tinggi kepala, sama dengan chrome dasbor. */
+const TINGGI_KEPALA = 64;
+/** `max-w-6xl` — lebar isi halaman. */
+const LEBAR_ISI = 1152;
+
+const TRUNCATE: React.CSSProperties = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
 
 export interface PlatformNavItem {
   href: string;
@@ -83,157 +122,243 @@ interface PlatformShellProps {
   account?: React.ReactNode;
 }
 
+/**
+ * Isi menu samping — dipakai apa adanya sebagai kolom tetap DAN sebagai isi
+ * laci. Selalu `Layout.Sider`, termasuk di dalam `Drawer`: dengan begitu latar
+ * gelapnya datang dari token `Layout` AntD sendiri, bukan dari nilai warna yang
+ * harus ditulis ulang di sini.
+ */
+function PanelMenu({
+  nav,
+  activeHref,
+  onClose,
+  tampilkanTutup,
+}: {
+  nav: PlatformNavItem[];
+  activeHref: string | null;
+  onClose: () => void;
+  tampilkanTutup: boolean;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+
+  /*
+   * Sasaran klik satu BARIS penuh, bukan hanya lebar teksnya.
+   *
+   * Butir menu ini dulu `<Link>` yang MENGISI barisnya; di dalam item AntD
+   * tautannya hanya setinggi & selebar tulisannya, jadi sisa baris akan mati
+   * kalau dibiarkan. Penangan ini menutup sisa itu — dan sengaja MUNDUR bila
+   * kliknya memang mendarat di tautannya, supaya satu klik tidak menavigasi
+   * dua kali. Sama persis dengan menu samping dasbor (#193).
+   */
+  const klikBaris: MenuProps["onClick"] = ({ key, domEvent }) => {
+    onClose();
+    const target = domEvent.target as HTMLElement | null;
+    if (target?.closest?.("a")) return;
+    router.push(key);
+  };
+
+  const items: MenuProps["items"] = nav.map((item) => ({
+    key: item.href,
+    label: (
+      <Link
+        href={item.href}
+        onClick={onClose}
+        aria-current={item.href === activeHref ? "page" : undefined}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: token.marginSM,
+          color: "inherit",
+        }}
+      >
+        <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+          {item.icon}
+        </span>
+        <span style={TRUNCATE}>{item.label}</span>
+      </Link>
+    ),
+  }));
+
+  return (
+    <Layout.Sider
+      width={LEBAR_MENU}
+      theme="dark"
+      style={{
+        height: "100%",
+        borderInlineEnd: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+      }}
+    >
+      <Flex vertical style={{ height: "100%" }}>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={token.marginXS}
+          style={{
+            height: TINGGI_KEPALA,
+            flexShrink: 0,
+            paddingInline: token.paddingLG,
+            borderBottom: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+          }}
+        >
+          <Flex
+            align="center"
+            gap={token.marginXS}
+            style={{
+              minWidth: 0,
+              fontSize: token.fontSizeLG,
+              fontWeight: token.fontWeightStrong,
+              /* Bidang ini gelap di KEDUA tema, jadi warnanya tidak boleh ikut
+                 tema — `colorTextLightSolid` adalah token AntD untuk "teks di
+                 atas bidang pekat". */
+              color: token.colorTextLightSolid,
+            }}
+          >
+            <BrandMark size="sm" />
+            <span style={TRUNCATE}>{APP_NAME}</span>
+          </Flex>
+          {tampilkanTutup && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label={t("sidebar.closeMenu")}
+              style={{ color: token.colorTextLightSolid, flexShrink: 0 }}
+            >
+              <X size={20} aria-hidden="true" />
+            </Button>
+          )}
+        </Flex>
+
+        <nav
+          aria-label={t("sidebar.mainMenu")}
+          style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBlock: token.paddingXS }}
+        >
+          <Menu
+            mode="inline"
+            theme="dark"
+            items={items}
+            selectedKeys={activeHref ? [activeHref] : []}
+            onClick={klikBaris}
+            style={{ borderInlineEnd: 0 }}
+          />
+        </nav>
+
+        <Flex
+          vertical
+          style={{
+            flexShrink: 0,
+            paddingInline: token.paddingLG,
+            paddingBlock: token.paddingSM,
+            borderTop: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+            fontSize: token.fontSizeSM,
+            /* Sama alasannya dengan tombol tutup: bidangnya selalu gelap, jadi
+               teks redupnya memakai anak tangga netral tema GELAP (#207). */
+            color: NEUTRAL_TEXT_DARK.colorTextTertiary,
+          }}
+        >
+          <span>
+            &copy; {new Date().getFullYear()} {APP_NAME}
+          </span>
+          <span>v{APP_VERSION}</span>
+        </Flex>
+      </Flex>
+    </Layout.Sider>
+  );
+}
+
 export function PlatformShell({ children, tenantName, nav, account }: PlatformShellProps) {
   const t = useT();
   const pathname = usePathname();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
+  const lebar = screens.lg ?? false;
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isActive = (item: PlatformNavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  const activeHref = nav.find(isActive)?.href ?? null;
 
-  /* Escape menutup laci — aturan yang sama dengan laci dasbor: lapisan yang
-   * menutupi seluruh layar tidak boleh hanya bisa ditutup dengan menyentuh
-   * tirainya. */
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen]);
+  const panel = (
+    <PanelMenu
+      nav={nav}
+      activeHref={activeHref}
+      onClose={() => setMenuOpen(false)}
+      tampilkanTutup={!lebar}
+    />
+  );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Tirai layar sempit — di sana sidebar adalah laci, bukan kolom.
-       *
-       * ⚠ HITAM, BUKAN `bg-foreground/50`. Tirai yang memakai `--foreground`
-       * IKUT BERBALIK bersama tema: di tema gelap `--foreground` adalah #F8FAFC,
-       * jadi "tirai" itu menjadi kabut PUTIH 50% — halaman di baliknya justru
-       * menjadi lebih terang saat laci dibuka, kebalikan dari yang seharusnya
-       * dilakukan sebuah scrim. Ini persis jebakan "tinjau di KEDUA tema" di
-       * MASTER.md §Color Palette: dari kodenya kelas itu terlihat paling benar
-       * di antara semua pilihan, sebab ia satu-satunya yang lolos penjaga token
-       * tanpa pengecualian.
-       *
-       * Scrim memang bukan permukaan bertema — ia bayangan. Sidebar dasbor
-       * sudah lama benar dengan `bg-black/50` + pengecualian setempat; di sini
-       * pengecualian yang sama yang berlaku, bukan token yang salah. */}
-      {menuOpen && (
-        <div
-          // eslint-disable-next-line no-restricted-syntax
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setMenuOpen(false)}
-          aria-hidden="true"
-        />
+    <Layout style={{ height: "100vh" }}>
+      {/* Kolom tetap: laci tidak pernah ikut dirender, jadi tidak ada salinan
+          kedua menu ini di mana pun. */}
+      {lebar ? (
+        panel
+      ) : (
+        <Drawer
+          placement="left"
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          size={LEBAR_MENU}
+          closable={false}
+          /* ⚠ Inilah yang membuat laci tertutup benar-benar tidak ada di DOM —
+             lihat catatan di kepala berkas. Jangan tambahkan `forceRender`. */
+          destroyOnHidden
+          styles={{ body: { padding: 0 } }}
+        >
+          {panel}
+        </Drawer>
       )}
 
-      {/* ⚠ LACI TERTUTUP TIDAK BOLEH TETAP BISA DI-TAB.
-       *
-       * `-translate-x-full` hanya MENGGESER laci ke luar layar; butir menunya
-       * tetap ada di pohon dan tetap urutan fokus. Di layar sempit itu berarti
-       * pengguna keyboard menekan Tab dari bilah atas dan fokusnya menghilang
-       * ke dalam lima tautan yang tidak terlihat di mana pun — beberapa tekanan
-       * tanpa satu pun ring fokus di layar, lalu ia mendarat di suatu tempat
-       * tanpa tahu bagaimana ia sampai.
-       *
-       * `invisible` mencabutnya dari urutan fokus (dan dari pembaca layar);
-       * `lg:visible` mengembalikannya di lebar tempat laci memang menjadi kolom
-       * tetap. Transisinya tetap `transform` saja: saat MEMBUKA, visibilitas
-       * menyala lebih dulu lalu geserannya beranimasi seperti sebelumnya. */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:visible lg:translate-x-0",
-          menuOpen ? "translate-x-0" : "invisible -translate-x-full"
-        )}
-      >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-6">
-          <div className="flex min-w-0 items-center gap-2.5 text-lg font-bold">
-            <BrandMark size="sm" />
-            <span className="truncate">{APP_NAME}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMenuOpen(false)}
-            aria-label={t("sidebar.closeMenu")}
-            className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </Button>
-        </div>
-
-        <nav aria-label={t("sidebar.mainMenu")} className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-1">
-            {nav.map((item) => {
-              const active = isActive(item);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                      active
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                    )}
-                  >
-                    <span className="shrink-0" aria-hidden="true">
-                      {item.icon}
-                    </span>
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <p className="shrink-0 border-t border-sidebar-border px-6 py-4 text-xs text-sidebar-foreground/60">
-          &copy; {new Date().getFullYear()} {APP_NAME}
-          {" · v"}
-          {APP_VERSION}
-        </p>
-      </aside>
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMenuOpen(true)}
-              aria-label={t("sidebar.mainMenu")}
-              className="lg:hidden"
-            >
-              <Menu className="h-5 w-5" aria-hidden="true" />
-            </Button>
+      <Layout>
+        <Layout.Header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: token.marginSM,
+            height: TINGGI_KEPALA,
+            flexShrink: 0,
+            lineHeight: token.lineHeight,
+            paddingInline: token.padding,
+            fontSize: token.fontSize,
+            background: token.colorBgContainer,
+            borderBottom: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+          }}
+        >
+          <Flex align="center" gap={token.marginXS} style={{ minWidth: 0 }}>
+            {!lebar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMenuOpen(true)}
+                aria-label={t("sidebar.mainMenu")}
+              >
+                <MenuIcon size={20} aria-hidden="true" />
+              </Button>
+            )}
             {/* Orientasi "akun siapa" — sejajar `CompanyIndicator` di dasbor,
                 dan yang menyempit di layar sempit adalah NAMANYA, bukan target
                 sentuh aksi di kanan (MASTER.md §Orientasi Perusahaan). */}
-            <p className="truncate text-sm font-medium text-foreground" title={tenantName}>
+            <p
+              style={{ ...TRUNCATE, margin: 0, fontWeight: 500, color: token.colorText }}
+              title={tenantName}
+            >
               {tenantName}
             </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          </Flex>
+          <Flex align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
             <LocaleToggle />
-            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
             <ThemeToggle />
-            {account && (
-              <>
-                <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
-                {account}
-              </>
-            )}
-          </div>
-        </header>
+            {account}
+          </Flex>
+        </Layout.Header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
-        </main>
-      </div>
-    </div>
+        <Layout.Content style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: token.padding }}>
+          <div style={{ width: "100%", maxWidth: LEBAR_ISI, margin: "0 auto" }}>{children}</div>
+        </Layout.Content>
+      </Layout>
+    </Layout>
   );
 }

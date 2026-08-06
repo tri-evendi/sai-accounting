@@ -466,8 +466,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 </Flex>
               </div>
 
-              {/* `CostCenterField` hanya menerima `className`, bukan `style`,
-                  jadi rentang penuhnya dipasang lewat pembungkus. */}
+              {/* `CostCenterField` tidak menerima gaya penempatan sama sekali
+                  (propnya dicabut di #240), jadi rentang penuhnya dipasang
+                  lewat pembungkus. */}
               <div style={FULL_ROW}>
                 <CostCenterField
                   costCenters={costCenters}

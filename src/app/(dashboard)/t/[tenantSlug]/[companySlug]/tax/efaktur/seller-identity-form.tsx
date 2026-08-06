@@ -12,8 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Save } from "lucide-react";
+import { Col, Row } from "antd";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** `margin` 16 — jarak antar isian. */
+const FIELD_GAP = 16;
+const ICON_SIZE = 16;
 
 export function SellerIdentityForm({
   initial,
@@ -50,23 +55,32 @@ export function SellerIdentityForm({
     }
   }
 
+  /*
+   * Kisi 24 kolom AntD, bukan `sm:grid-cols-2`: NPWP dan nama pajak berbagi
+   * satu baris di layar ≥576px (`sm` AntD, titik patah yang sama dengan
+   * kelasnya dulu), sedangkan alamat & tombol simpan selalu satu baris penuh.
+   */
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Input
-        id="npwp"
-        label={t("tax.npwpField")}
-        value={npwp}
-        onChange={(e) => setNpwp(e.target.value)}
-        maxLength={30}
-      />
-      <Input
-        id="taxName"
-        label={t("tax.taxNameField")}
-        value={taxName}
-        onChange={(e) => setTaxName(e.target.value)}
-        maxLength={150}
-      />
-      <div className="sm:col-span-2">
+    <Row gutter={[FIELD_GAP, FIELD_GAP]}>
+      <Col xs={24} sm={12}>
+        <Input
+          id="npwp"
+          label={t("tax.npwpField")}
+          value={npwp}
+          onChange={(e) => setNpwp(e.target.value)}
+          maxLength={30}
+        />
+      </Col>
+      <Col xs={24} sm={12}>
+        <Input
+          id="taxName"
+          label={t("tax.taxNameField")}
+          value={taxName}
+          onChange={(e) => setTaxName(e.target.value)}
+          maxLength={150}
+        />
+      </Col>
+      <Col span={24}>
         <Input
           id="taxAddress"
           label={t("tax.taxAddressField")}
@@ -74,13 +88,13 @@ export function SellerIdentityForm({
           onChange={(e) => setTaxAddress(e.target.value)}
           maxLength={1000}
         />
-      </div>
-      <div className="sm:col-span-2">
+      </Col>
+      <Col span={24}>
         <Button type="button" onClick={handleSave} disabled={saving}>
-          <Save className="mr-1.5 h-4 w-4" aria-hidden="true" />
+          <Save size={ICON_SIZE} style={{ marginInlineEnd: 6 }} aria-hidden="true" />
           {saving ? t("common.saving") : t("tax.saveIdentity")}
         </Button>
-      </div>
-    </div>
+      </Col>
+    </Row>
   );
 }

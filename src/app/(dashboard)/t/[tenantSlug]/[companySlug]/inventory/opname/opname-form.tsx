@@ -11,22 +11,29 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Flex } from "antd";
 import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input, TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaticTable } from "@/components/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { useToast } from "@/components/ui/toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { SearchX } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
+const SECTION_GAP = 16;
+const CONTROL_GAP = 12;
+/** `w-56` / `w-28` lama — lebar kotak cari & kotak hitungan fisik. */
+const SEARCH_WIDTH = 224;
+const COUNT_WIDTH = 112;
+const EMPTY_ICON_SIZE = 48;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
 
 export interface OpnameItem {
   id: number;
@@ -108,127 +115,171 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
     }
   }
 
+  const columns: SaiColumns<OpnameItem> = [
+    {
+      ...textColumn<OpnameItem>({ dataIndex: "name", title: t("common.item") }),
+      render: (raw) => <span style={{ fontWeight: STRONG }}>{String(raw)}</span>,
+    },
+    {
+      ...textColumn<OpnameItem>({ dataIndex: "unit", title: t("common.unit") }),
+      render: (raw) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {raw ? String(raw) : "-"}
+        </span>
+      ),
+    },
+    qtyColumn<OpnameItem>({
+      dataIndex: "currentStock",
+      title: t("inventory.colSystemStock"),
+    }),
+    {
+      key: "physical",
+      title: t("inventory.colPhysicalCount"),
+      align: "right",
+      render: (_v, it) => (
+        <TextInput
+          type="number"
+          inputMode="decimal"
+          step="any"
+          min="0"
+          value={counts[it.id] ?? ""}
+          onChange={(e) => setCounts((c) => ({ ...c, [it.id]: e.target.value }))}
+          placeholder={String(it.currentStock)}
+          aria-label={t("inventory.physicalCountAria", { name: it.name })}
+          style={{
+            width: COUNT_WIDTH,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        />
+      ),
+    },
+    {
+      key: "variance",
+      title: t("inventory.colVariance"),
+      align: "right",
+      render: (_v, it) => {
+        const raw = counts[it.id];
+        const has = raw !== undefined && raw.trim() !== "" && !Number.isNaN(Number(raw));
+        const variance = has ? Number(raw) - it.currentStock : null;
+        if (variance === null) {
+          return <span style={{ color: "var(--ant-color-text-secondary)" }}>—</span>;
+        }
+        if (variance === 0) {
+          return (
+            <span style={{ color: "var(--ant-color-text-secondary)" }}>
+              {t("inventory.varianceMatch")}
+            </span>
+          );
+        }
+        // Tanda "+"/"−" adalah penanda non-warnanya; warnanya token UANG (#186),
+        // yang lolos 4,5:1 sebagai teks 14px.
+        return (
+          <span
+            style={{
+              fontVariantNumeric: "tabular-nums",
+              color:
+                variance > 0
+                  ? "var(--ant-color-money-positive)"
+                  : "var(--ant-color-money-negative)",
+            }}
+          >
+            {variance > 0 ? "+" : ""}
+            {formatNumber(variance)}
+          </span>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-foreground">
-            {t("inventory.opnameDateField")}
-          </span>
-          {/* Tak bisa menghitung fisik di masa depan; hitungan mundur sah —
-              server membandingkannya dengan saldo buku per tanggal itu. */}
-          <TextInput
-            type="date"
-            value={date}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-foreground">
-            {t("inventory.opnameSearchLabel")}
-          </span>
-          <TextInput
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("inventory.opnameSearchPlaceholder")}
-            className="w-56"
-          />
-        </label>
+    <Flex vertical gap={SECTION_GAP}>
+      <Flex wrap align="flex-end" gap={CONTROL_GAP}>
+        {/* Tak bisa menghitung fisik di masa depan; hitungan mundur sah —
+            server membandingkannya dengan saldo buku per tanggal itu. */}
+        <Input
+          id="opname-date"
+          type="date"
+          label={t("inventory.opnameDateField")}
+          value={date}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        <Input
+          id="opname-search"
+          type="search"
+          label={t("inventory.opnameSearchLabel")}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("inventory.opnameSearchPlaceholder")}
+          style={{ width: SEARCH_WIDTH }}
+        />
         {/* Cetak DULU, hitung, baru ketik — urutan itulah alasan tombolnya ada
             di sebelah tanggalnya, bukan di kepala halaman. */}
-        <div className="flex flex-col gap-1">
+        <Flex vertical gap={4}>
           <OpnameSheetPDFButton items={items} date={date} showSystemQty={showSystemQty} />
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={showSystemQty}
-              onChange={(e) => setShowSystemQty(e.target.checked)}
-              className="h-3.5 w-3.5 accent-primary"
-            />
+          {/* `Checkbox` AntD MEMANG sebuah `<label>` yang membungkus isian dan
+              katanya — jadi kotak centang telanjang + label rakitan tangan tidak
+              lagi diperlukan. */}
+          <Checkbox
+            checked={showSystemQty}
+            onCheckedChange={setShowSystemQty}
+            style={{ fontSize: "var(--ant-font-size-sm)", color: "var(--ant-color-text-secondary)" }}
+          >
             {t("inventory.opnameSheetIncludeSystem")}
-          </label>
-        </div>
-        <p className="text-sm text-muted-foreground">
+          </Checkbox>
+        </Flex>
+        <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
           {t("inventory.opnameHint")}
         </p>
-      </div>
+      </Flex>
 
       {/* Angka yang sudah diketik tapi kini tersembunyi penyaring TETAP ikut
           terkirim. Mengirim nilai yang tak terlihat di layar adalah cara
           termudah membuat penyesuaian yang tak seorang pun merasa membuatnya —
           jadi jumlahnya disebutkan, bukan didiamkan. */}
       {hiddenChanged > 0 && (
-        <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+        <p
+          style={{
+            margin: 0,
+            padding: "8px 12px",
+            borderRadius: "var(--ant-border-radius)",
+            background: "var(--ant-color-warning-bg)",
+            color: "var(--ant-color-money-pending)",
+          }}
+        >
           {t("inventory.opnameHiddenCounts", { count: hiddenChanged })}
         </p>
       )}
 
-      <div className="rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead>{t("common.unit")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colSystemStock")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colPhysicalCount")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colVariance")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visible.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                  {t("inventory.opnameNoMatch", { query })}
-                </TableCell>
-              </TableRow>
-            )}
-            {visible.map((it) => {
-              const raw = counts[it.id];
-              const has = raw !== undefined && raw.trim() !== "" && !Number.isNaN(Number(raw));
-              const variance = has ? Number(raw) - it.currentStock : null;
-              return (
-                <TableRow key={it.id}>
-                  <TableCell className="font-medium text-foreground">{it.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{it.unit || "-"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatNumber(it.currentStock)}</TableCell>
-                  <TableCell className="text-right">
-                    <TextInput
-                      type="number"
-                      inputMode="decimal"
-                      step="any"
-                      min="0"
-                      value={raw ?? ""}
-                      onChange={(e) =>
-                        setCounts((c) => ({ ...c, [it.id]: e.target.value }))
-                      }
-                      placeholder={String(it.currentStock)}
-                      aria-label={t("inventory.physicalCountAria", { name: it.name })}
-                      className="w-28 text-right tabular-nums"
-                    />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {variance === null ? (
-                      <span className="text-muted-foreground">—</span>
-                    ) : variance === 0 ? (
-                      <span className="text-muted-foreground">{t("inventory.varianceMatch")}</span>
-                    ) : (
-                      <span className={variance > 0 ? "text-success" : "text-destructive"}>
-                        {variance > 0 ? "+" : ""}
-                        {formatNumber(variance)}
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+      <div
+        style={{
+          borderRadius: "var(--ant-border-radius-lg)",
+          border: "1px solid var(--ant-color-border-secondary)",
+          overflow: "hidden",
+        }}
+      >
+        {/*
+         * `StaticTable`, bukan `DataTable`: barisnya memang berisi isian, tapi
+         * tak satu pun kendali TABEL (sortir, saring, paginasi seketika) yang
+         * dibutuhkan — penyaring namanya ada di atas, dan hitungannya disimpan
+         * di state berkunci id barang.
+         */}
+        <StaticTable<OpnameItem>
+          columns={columns}
+          rows={visible}
+          rowKey={(it) => it.id}
+          empty={
+            <EmptyState
+              icon={<SearchX size={EMPTY_ICON_SIZE} />}
+              title={t("inventory.opnameNoMatch", { query })}
+            />
+          }
+        />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
+      <Flex align="center" justify="space-between" gap={CONTROL_GAP}>
+        <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
           {changed.length === 0
             ? t("inventory.noVariance")
             : t("inventory.varianceCount", { count: changed.length })}
@@ -245,7 +296,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
             </Button>
           }
         />
-      </div>
-    </div>
+      </Flex>
+    </Flex>
   );
 }

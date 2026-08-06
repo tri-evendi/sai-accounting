@@ -67,7 +67,6 @@ export interface PageHeaderProps {
   badge?: ReactNode;
   /** Tombol aksi rata-kanan, mis. "+ Buat Tagihan" (opsional). */
   actions?: ReactNode;
-  className?: string;
 }
 
 export function PageHeader({
@@ -76,12 +75,11 @@ export function PageHeader({
   description,
   badge,
   actions,
-  className,
 }: PageHeaderProps) {
   const { token } = theme.useToken();
 
   return (
-    <header className={className} style={{ marginBottom: token.marginLG }}>
+    <header style={{ marginBottom: token.marginLG }}>
       {breadcrumbs && breadcrumbs.length > 0 && (
         <Breadcrumb
           style={{ marginBottom: token.margin }}

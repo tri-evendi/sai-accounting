@@ -5,7 +5,7 @@
  *
  * Cangkangnya sendiri tertinggal saat #193 memindahkan Sidebar ke
  * `Layout.Sider` dan Navbar ke `Layout.Header`: keduanya sudah AntD, tetapi
- * masih berdiri di dalam `<div className="flex …">` tulisan tangan. Berkas ini
+ * masih berdiri di dalam sebuah `<div>` flex tulisan tangan. Berkas ini
  * bukan halaman dan bukan komponen, jadi ia tidak masuk lingkup issue mana pun
  * — dan tiga kelas terakhirnya diselesaikan di sini, dengan susunan yang SAMA
  * dengan `tenant/platform-shell.tsx` (`Layout` > `Sider` + `Layout` > `Header`

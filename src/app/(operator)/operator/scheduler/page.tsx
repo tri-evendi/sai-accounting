@@ -10,8 +10,10 @@
  * ── Setelah AntD (issue #200) ────────────────────────────────────────────
  * Tabel putaran pindah ke `StaticTable` (aturan #189: sepuluh baris terakhir,
  * tanpa satu pun kendali interaktif — tidak ada yang dibeli dengan rc-table).
- * Warnanya token `:root` aplikasi karena konsol ini tidak menggambar komponen
- * AntD di atas isinya (#227); `Badge` dan `EmptyState` mewarnai dirinya sendiri.
+ * Warnanya variabel token AntD `var(--ant-…)` (#203) — teratasi walau konsol
+ * ini tidak menggambar satu pun komponen AntD di atas isinya, sebab sejak #227
+ * kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout; `Badge` dan
+ * `EmptyState` mewarnai dirinya sendiri.
  *
  * Kolom "Galat" tetap MERAH HANYA saat angkanya bukan nol, dan angkanya sendiri
  * yang jadi penanda utama — warna bukan sinyal tunggal (MASTER.md).
@@ -33,17 +35,17 @@ const H1: React.CSSProperties = {
   fontSize: 24,
   fontWeight: 700,
   letterSpacing: "-0.025em",
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
-const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--muted-foreground)" };
+const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
 
 const NOTICE: React.CSSProperties = {
   ...MUTED,
   padding: 12,
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--muted)",
+  border: "1px solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-fill-quaternary)",
   lineHeight: 1.625,
 };
 
@@ -51,7 +53,7 @@ const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
 
 const NOWRAP_MUTED: React.CSSProperties = {
   whiteSpace: "nowrap",
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 function formatDateTime(d: Date): string {
@@ -69,7 +71,7 @@ function RunList({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+      <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--ant-color-text)" }}>
         {heading}
       </h3>
       {items.length === 0 ? (
@@ -84,7 +86,7 @@ function RunList({
             margin: 0,
             paddingInlineStart: 20,
             fontSize: 14,
-            color: "var(--foreground)",
+            color: "var(--ant-color-text)",
           }}
         >
           {items.map((item, index) => (
@@ -154,7 +156,7 @@ export default async function OperatorSchedulerPage() {
       align: "right",
       render: (_v, run) =>
         run.errorCount > 0 ? (
-          <span style={{ ...TABULAR, fontWeight: 500, color: "var(--destructive-strong)" }}>
+          <span style={{ ...TABULAR, fontWeight: 500, color: "var(--ant-color-money-negative)" }}>
             {run.errorCount}
           </span>
         ) : (
@@ -189,12 +191,12 @@ export default async function OperatorSchedulerPage() {
                 gap: 16,
                 padding: 16,
                 borderRadius: 12,
-                border: "1px solid var(--border)",
-                background: "var(--card)",
+                border: "1px solid var(--ant-color-border-secondary)",
+                background: "var(--ant-color-bg-container)",
               }}
             >
               <h2
-                style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--foreground)" }}
+                style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ant-color-text)" }}
               >
                 {t("operator.scheduler.lastRunHeading", {
                   date: formatDateTime(latest.startedAt),

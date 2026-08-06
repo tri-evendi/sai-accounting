@@ -26,7 +26,7 @@
  *      terlihat persis seperti kerusakan render.
  *   3. **Ada kotak bertinggi terbatas yang MENGGULUNG.** `position: sticky`
  *      dihitung terhadap ancestor scroll container terdekat. Pembungkus geser
- *      milik primitif `Table` (`overflow-x-auto`, tinggi mengikuti isi) adalah
+ *      milik primitif `Table` (gulungan mendatar, tinggi mengikuti isi) adalah
  *      scroll container yang tidak pernah menggulung vertikal — jadi tanpa
  *      `maxHeight`, mata pertama menempel pada sesuatu yang ikut naik bersama
  *      halaman.
@@ -122,12 +122,14 @@ describe("matriks izin — header tetap terbaca saat digulir", () => {
      *
      * Sejak #229 keduanya satu kotak yang sama, jadi keduanya dibaca dari satu
      * markup: kalau `table.tsx` kelak berhenti membungkus tabelnya dengan
-     * `overflow-x-auto`, seluruh alasan `maxHeight` ada ikut berubah.
+     * gulungan mendatar, seluruh alasan `maxHeight` ada ikut berubah.
+     *
+     * Sejak #203 gayanya sebaris, bukan kelas `overflow-x-auto`.
      */
     const markup = stickyMarkup();
-    expect(markup).toContain("overflow-x-auto");
+    expect(markup).toContain("overflow-x:auto");
     expect(markup).toContain("max-height:70vh");
-    expect(source("src/components/ui/table.tsx")).toContain("overflow-x-auto");
+    expect(source("src/components/ui/table.tsx")).toContain('overflowX: "auto"');
   });
 
   it("tanpa `sticky`, sel judul tidak membawa gaya lengket sama sekali", () => {

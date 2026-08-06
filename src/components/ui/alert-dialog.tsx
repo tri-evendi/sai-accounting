@@ -43,7 +43,6 @@ import {
   DialogTrigger,
   type DialogContentProps,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 
 const AlertDialog = Dialog;
 const AlertDialogTrigger = DialogTrigger;
@@ -68,7 +67,7 @@ type AlertDialogContentProps = Omit<
   "role" | "padded" | "maskClosable" | "showClose"
 >;
 
-function AlertDialogContent({ className, ...props }: AlertDialogContentProps) {
+function AlertDialogContent({ size = "xs", ...props }: AlertDialogContentProps) {
   return (
     <DialogContent
       role="alertdialog"
@@ -80,18 +79,43 @@ function AlertDialogContent({ className, ...props }: AlertDialogContentProps) {
        * tiga rupa berbeda di dialog yang justru menuntut jawaban jelas.
        */
       showClose={false}
-      className={cn("max-w-md", className)}
+      /* 448px — lebar `max-w-md` yang dipakai konfirmasi sejak sebelum
+         migrasi. Sebuah kalimat tanya beserta dua tombolnya tidak boleh
+         selebar formulir; dialog yang harus dijawab justru paling perlu
+         dibaca sekali lihat. */
+      size={size}
       {...props}
     />
   );
 }
 
-function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-2", className)} {...props} />;
+function AlertDialogHeader({ style, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ant-margin-xs)",
+        ...style,
+      }}
+      {...props}
+    />
+  );
 }
 
-function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("mt-6 flex justify-end gap-3", className)} {...props} />;
+function AlertDialogFooter({ style, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "var(--ant-margin-sm)",
+        marginTop: "var(--ant-margin-lg)",
+        ...style,
+      }}
+      {...props}
+    />
+  );
 }
 
 /**
@@ -120,20 +144,12 @@ const DESCRIPTION_STYLE: React.CSSProperties = {
   margin: 0,
 };
 
-function AlertDialogTitle({ className, style, ...props }: React.ComponentProps<"h2">) {
-  return (
-    <DialogTitle className={className} style={{ ...TITLE_STYLE, ...style }} {...props} />
-  );
+function AlertDialogTitle({ style, ...props }: React.ComponentProps<"h2">) {
+  return <DialogTitle style={{ ...TITLE_STYLE, ...style }} {...props} />;
 }
 
-function AlertDialogDescription({ className, style, ...props }: React.ComponentProps<"p">) {
-  return (
-    <DialogDescription
-      className={className}
-      style={{ ...DESCRIPTION_STYLE, ...style }}
-      {...props}
-    />
-  );
+function AlertDialogDescription({ style, ...props }: React.ComponentProps<"p">) {
+  return <DialogDescription style={{ ...DESCRIPTION_STYLE, ...style }} {...props} />;
 }
 
 export {

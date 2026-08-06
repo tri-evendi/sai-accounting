@@ -72,7 +72,8 @@ interface DataTableProps<T> {
    * lewat sebuah prop.
    */
   scrollX?: number | string;
-  className?: string;
+  /** Gaya akar tabel — pengganti `className` yang dicabut di #203. */
+  style?: React.CSSProperties;
   size?: "small" | "middle" | "large";
   /**
    * Gaya per BARIS — bentuk yang sama persis dengan `StaticTable.rowStyle`,
@@ -96,27 +97,31 @@ export function DataTable<T extends object>({
   pageSize,
   summary,
   scrollX = "max-content",
-  className,
+  style,
   size = "middle",
   rowStyle,
   maxHeight,
 }: DataTableProps<T>) {
   /*
-   * `className` kolom dipindahkan ke `onCell`, supaya ia hanya mengenai SEL —
-   * sama seperti di `StaticTable`. Diteruskan apa adanya, AntD memakainya untuk
-   * sel BESERTA header, dan kolom laporan yang berwarna menurut arah angkanya
-   * ("Masuk" hijau, "Keluar" merah) akan ikut mewarnai judul kolomnya. Dua
-   * perender yang menggayai header secara berbeda adalah cara paling halus
-   * sebuah tabel berubah rupa hanya karena variannya diganti.
+   * `cellStyle` kolom dipindahkan ke `onCell`, supaya ia hanya mengenai SEL —
+   * sama seperti di `StaticTable`. Diteruskan sebagai `style` kolom, AntD
+   * memakainya untuk sel BESERTA header, dan kolom laporan yang berwarna
+   * menurut arah angkanya ("Masuk" hijau, "Keluar" merah) akan ikut mewarnai
+   * judul kolomnya. Dua perender yang menggayai header secara berbeda adalah
+   * cara paling halus sebuah tabel berubah rupa hanya karena variannya diganti.
+   *
+   * `cellStyle` juga DIKELUARKAN dari sisa propnya: ia prop milik kontrak kolom
+   * repo ini, bukan milik `ColumnType` AntD, dan meneruskannya ke rc-table
+   * hanya menitipkan kunci yang tak akan pernah dibaca siapa pun.
    */
-  const antdColumns = columns.map(({ className: cellClassName, ...rest }) => ({
+  const antdColumns = columns.map(({ cellStyle, ...rest }) => ({
     ...rest,
-    onCell: cellClassName === undefined ? undefined : () => ({ className: cellClassName }),
+    onCell: cellStyle === undefined ? undefined : () => ({ style: cellStyle }),
   }));
 
   return (
     <AntTable<T>
-      className={className}
+      style={style}
       size={size}
       columns={antdColumns as ColumnsType<T>}
       dataSource={data as T[]}

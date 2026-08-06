@@ -140,7 +140,7 @@ export function ConfirmDialog({
   return (
     <>
       {trigger && (
-        <span className="contents" onClick={() => setOpen(true)}>
+        <span style={{ display: "contents" }} onClick={() => setOpen(true)}>
           {trigger}
         </span>
       )}
@@ -155,10 +155,17 @@ export function ConfirmDialog({
            */
           keyboard={!loading}
         >
-          <div className="flex items-start gap-3">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "var(--ant-margin-sm)",
+            }}
+          >
             <span
-              className="mt-0.5 shrink-0"
               style={{
+                marginTop: 2,
+                flexShrink: 0,
                 color:
                   confirmVariant === "danger"
                     ? "var(--ant-color-error)"
@@ -170,7 +177,7 @@ export function ConfirmDialog({
             {/* `messageId` di pembungkus, BUKAN mengganti id milik
                 `AlertDialogDescription` — id itu dipakai `aria-describedby`
                 dialognya. */}
-            <div className="min-w-0" id={messageId}>
+            <div style={{ minWidth: 0 }} id={messageId}>
               <AlertDialogTitle>{title}</AlertDialogTitle>
               <AlertDialogDescription style={{ marginTop: 8 }}>
                 {message}
@@ -179,11 +186,11 @@ export function ConfirmDialog({
           </div>
 
           {confirmPhrase && (
-            <div className="mt-4">
+            <div style={{ marginTop: "var(--ant-margin)" }}>
               <label
                 htmlFor={phraseId}
-                className="block"
                 style={{
+                  display: "block",
                   fontSize: "var(--ant-font-size)",
                   color: "var(--ant-color-text-secondary)",
                 }}
@@ -228,7 +235,6 @@ export function ConfirmDialog({
             <Button
               variant="secondary"
               size="sm"
-              className="cursor-pointer"
               onClick={() => setOpen(false)}
               disabled={loading}
             >
@@ -238,7 +244,6 @@ export function ConfirmDialog({
               ref={confirmRef}
               variant={confirmVariant}
               size="sm"
-              className="cursor-pointer"
               onClick={handleConfirm}
               disabled={loading || !phraseSatisfied}
             >

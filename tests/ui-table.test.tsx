@@ -54,11 +54,12 @@ const renderData = (props: Partial<Parameters<typeof DataTable<Row>>[0]> = {}) =
 /* ───────────────────────── StaticTable (server) ───────────────────────── */
 
 describe("StaticTable — varian server", () => {
-  it("membungkus dirinya dengan overflow-x-auto", () => {
+  it("membungkus dirinya dengan pembungkus geser mendatar", () => {
     // Inilah yang menjaga aturan responsif MASTER.md: yang menggulung adalah
-    // kotak tabelnya, bukan halamannya.
+    // kotak tabelnya, bukan halamannya. Sejak #203 gayanya sebaris, bukan
+    // kelas `overflow-x-auto`.
     const html = renderStatic();
-    expect(html).toContain("overflow-x-auto");
+    expect(html).toContain("overflow-x:auto");
     expect(html).toContain('data-slot="table-container"');
   });
 
@@ -83,8 +84,8 @@ describe("StaticTable — varian server", () => {
     // Header dan sel sama-sama membawa perataannya, jadi angka tidak pernah
     // berdiri di bawah judul yang rata kiri.
     const headerCells = html.slice(html.indexOf("<thead"), html.indexOf("</thead>"));
-    expect(headerCells).toContain("text-right");
-    expect(html).toContain("text-right");
+    expect(headerCells).toContain("text-align:right");
+    expect(html).toContain("text-align:right");
   });
 
   it("menampilkan empty state ketika tidak ada baris", () => {
@@ -186,8 +187,10 @@ describe("StaticTable — baris seksi & subtotal di dalam tbody", () => {
     const th = tubuh.slice(tubuh.indexOf("<th"));
     expect(th).toContain("font-weight:inherit");
     // Gaya sel ISI, bukan gaya `TableHead` (tinggi baris judul 44px).
-    expect(th.slice(0, th.indexOf(">"))).toContain("px-6 py-3");
-    expect(th.slice(0, th.indexOf(">"))).not.toContain("h-11");
+    expect(th.slice(0, th.indexOf(">"))).toContain(
+      "padding-inline:var(--ant-padding-lg);padding-block:var(--ant-padding-sm)"
+    );
+    expect(th.slice(0, th.indexOf(">"))).not.toContain("height:44px");
   });
 
   it("kolom yang tidak disebut tetap digambar dari barisnya", () => {
@@ -319,18 +322,21 @@ describe("kontrak kolom", () => {
     }
   });
 
-  it("kelas SEL tidak bocor ke header — di kedua varian", () => {
+  it("gaya SEL tidak bocor ke header — di kedua varian", () => {
     /*
      * Kolom laporan kerap berwarna menurut arah angkanya ("Masuk" hijau,
-     * "Keluar" merah). Kalau kelas itu ikut ke `<th>`, judul kolomnya ikut
+     * "Keluar" merah). Kalau gaya itu ikut ke `<th>`, judul kolomnya ikut
      * berwarna dan berubah menjadi penanda status palsu — dan karena warnanya
      * masuk akal di mata, tidak ada yang melaporkannya sebagai bug.
+     *
+     * Sampai #203 bentuknya `className` berisi kelas Tailwind; ia berganti
+     * menjadi `cellStyle` bersama pencabutan Tailwind.
      */
     const berwarna = [
       qtyColumn<{ masuk: number }>({
         dataIndex: "masuk",
         title: "Masuk",
-        className: "text-success-strong",
+        cellStyle: { color: "var(--ant-color-money-positive)" },
       }),
     ];
     const baris = [{ masuk: 5 }];
@@ -345,9 +351,9 @@ describe("kontrak kolom", () => {
     for (const html of [statis, interaktif]) {
       const header = html.slice(html.indexOf("<thead"), html.indexOf("</thead>"));
       expect(header).toContain("Masuk");
-      expect(header).not.toContain("text-success-strong");
+      expect(header).not.toContain("--ant-color-money-positive");
       // Selnya tetap mendapatkannya — kalau tidak, tesnya menguji ketiadaan.
-      expect(html).toContain("text-success-strong");
+      expect(html).toContain("--ant-color-money-positive");
     }
   });
 

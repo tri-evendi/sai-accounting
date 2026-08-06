@@ -18,26 +18,56 @@
  * satu `<label>` — dan ia dipakai `Input`, `Select`, dan `PasswordInput`, yaitu
  * dasar hampir setiap formulir.
  *
- * Kelas Tailwind-nya sengaja dibiarkan: tanpa komponen AntD di bawahnya tidak
- * ada token komponen untuk menggantikannya, dan menyalakan `theme.useToken()`
- * di sini akan mengembalikan berkas ini menjadi modul client demi tiga
- * deklarasi gaya. Keduanya lenyap bersama Tailwind di issue #203.
+ * Kelas Tailwind-nya dicabut di issue #203 dan diganti gaya sebaris dari
+ * variabel `--ant-*`. Berkas ini TETAP server-safe: variabelnya diwarisi dari
+ * `<html>` (issue #227), jadi tidak perlu `theme.useToken()` — dan karena itu
+ * tidak perlu menjadi modul client demi lima deklarasi gaya.
  */
 
-import { cn } from "@/lib/utils";
+const LABEL_STYLE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
+  color: "var(--ant-color-text)",
+  // Label kerap diklik ganda untuk memfokuskan isiannya; tanpa ini yang terjadi
+  // justru teks labelnya tersorot.
+  userSelect: "none",
+};
 
-function Label({ className, ...props }: React.ComponentProps<"label">) {
+function Label({ style, ...props }: React.ComponentProps<"label">) {
+  return <label data-slot="label" style={{ ...LABEL_STYLE, ...style }} {...props} />;
+}
+
+/**
+ * Tanda "wajib" — SATU implementasi untuk seluruh keluarga isian.
+ *
+ * Tinggal di sini, bukan di `form.tsx`, karena `Input`, `Select`, dan
+ * `PasswordInput` juga menggambarnya dan ketiganya TIDAK boleh mengimpor
+ * `form.tsx`: berkas itu menyeret `react-hook-form` menyeberangi batas client
+ * untuk setiap isian di aplikasi, termasuk yang berdiri di luar pola `Form`.
+ *
+ * Warnanya `colorMoneyNegative` (#186), bukan `colorError` AntD: yang terakhir
+ * berkontras 3,27:1 sebagai teks di tema terang — di bawah 4,5:1 untuk huruf
+ * 14px. Aturan yang sama berlaku untuk setiap teks galat di aplikasi ini.
+ *
+ * Kata " (wajib)" disembunyikan dari mata lewat `[data-sr-only]` (globals.css),
+ * bukan disembunyikan dari semua orang: tanda bintang sendirian tidak
+ * dibacakan pembaca layar sebagai "wajib".
+ */
+function RequiredMark() {
   return (
-    <label
-      data-slot="label"
-      className={cn(
-        "flex items-center gap-1 text-sm font-medium text-foreground select-none",
-        "group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
+    <>
+      <span
+        aria-hidden="true"
+        style={{ marginInlineStart: 2, color: "var(--ant-color-money-negative)" }}
+      >
+        *
+      </span>
+      <span data-sr-only> (wajib)</span>
+    </>
   );
 }
 
-export { Label };
+export { Label, RequiredMark };

@@ -9,13 +9,17 @@
  *
  * ── Satu hal yang HILANG dan disengaja: `[&>td]:align-top` ────────────────
  * Baris pembayaran bisa membawa daftar alokasi bertingkat, jadi tabel lama
- * meratakan semua selnya ke ATAS lewat satu kelas varian. `SaiColumn` hanya
- * menerima `className` (Tailwind — dilarang di gelombang ini) dan tidak
- * menerima `style`, sedangkan `rowStyle` `StaticTable` memasang gayanya pada
- * `<tr>` — dan `vertical-align: top` di sana kalah dari `align-middle` milik
- * `TableCell`. Jadi baris tinggi kini rata TENGAH, sama seperti bawaan tabel
- * AntD. Ini dicatat sebagai calon issue (prop `style` per kolom di
- * `table-columns.tsx`), bukan diakali dengan menulis markup tabel sendiri.
+ * meratakan semua selnya ke ATAS lewat satu kelas varian. Saat gelombang ini
+ * dikerjakan `SaiColumn` hanya menerima `className` (Tailwind — dilarang di
+ * sini) dan `rowStyle` `StaticTable` memasang gayanya pada `<tr>`, tempat
+ * `vertical-align: top` kalah dari perataan tengah milik `TableCell`. Jadi
+ * baris tinggi kini rata TENGAH, sama seperti bawaan tabel AntD.
+ *
+ * Alat untuk mengembalikannya SUDAH ADA sejak #203: `SaiColumn.cellStyle`
+ * memasang gaya pada SELnya. Yang belum dilakukan hanyalah menyetel
+ * `verticalAlign: "top"` pada kolom-kolom tabel ini — perubahan tampilan yang
+ * pantas berdiri sebagai perubahannya sendiri, bukan diselipkan ke dalam PR
+ * pencabutan Tailwind.
  */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";

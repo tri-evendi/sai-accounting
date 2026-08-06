@@ -18,15 +18,13 @@
  *
  * Untuk kartu biasa itu tidak terasa. Untuk kartu yang DIRINYA SENDIRI adalah
  * wadah tata letak, ia memutus hubungan induk–anak yang justru jadi alasan
- * kelasnya ditulis. Contoh nyata, kartu KPI beranda:
- *
- *     <Card className="flex h-full flex-col p-5">   …   <Link className="mt-auto">
- *
- * `mt-auto` mendorong tautan "Lihat detail →" ke dasar kartu supaya keempat
- * kartu dalam satu baris memiliki tautan yang sejajar. Dengan `.ant-card-body`
- * di antaranya, `flex-col` berlaku pada SATU anak dan `mt-auto` kehilangan
- * ruang untuk mendorong — tautannya naik, dan hanya terlihat kalau seseorang
- * membuka beranda dan memperhatikan garis dasarnya.
+ * gayanya ditulis. Contoh nyata, kartu KPI beranda: kartunya sebuah kolom
+ * flex setinggi penuh, dan tautan "Lihat detail →" di dasarnya didorong ke
+ * bawah dengan margin atas `auto` supaya keempat kartu dalam satu baris
+ * memiliki tautan yang sejajar. Dengan `.ant-card-body` di antaranya, arah
+ * kolom itu berlaku pada SATU anak dan margin `auto` kehilangan ruang untuk
+ * mendorong — tautannya naik, dan hanya terlihat kalau seseorang membuka
+ * beranda dan memperhatikan garis dasarnya.
  *
  * Karena itu badan kartu dipasang `display: contents`: kotaknya tidak
  * digambar, sedangkan anak-anaknya tetap menjadi anak TATA LETAK dari
@@ -42,23 +40,32 @@
  * kembali, itu SATU token di `ConfigProvider` (`components.Card.borderRadiusLG`)
  * — bukan kelas yang ditulis ulang di 107 berkas.
  *
- * ── Kenapa sub-komponennya MASIH memakai kelas Tailwind ────────────────────
- * Ini bagian yang paling mudah salah, jadi ditulis eksplisit. Menerjemahkan
- * padding `CardContent` menjadi `style={{padding: token.paddingLG}}` terlihat
- * lebih "AntD" dan akan diam-diam merusak ±30 pemanggil: gaya sebaris SELALU
- * menang atas kelas, sehingga `<CardContent className="px-0 py-0">` (4 tempat),
- * `py-6`, `pt-0`, `pb-3`, dan `<CardTitle className="text-sm …">` (10 tempat)
- * berhenti berlaku — tanpa satu pun galat, di tempat yang hanya terlihat kalau
- * halamannya dibuka. Selama pemanggilnya masih menimpa lewat `className`,
- * lapisan yang bisa ditimpa `className` harus tetap kelas. Keduanya berganti
- * bersamaan di fase C, dan kelas terakhirnya hilang di #203.
+ * ── Sub-komponennya: dari kelas Tailwind ke gaya sebaris (issue #203) ──────
+ * Sampai fase C berkas ini sengaja MEMPERTAHANKAN kelas Tailwind pada
+ * sub-komponennya, karena ±30 pemanggil menimpa padding dan ukuran hurufnya
+ * lewat `className` (`px-0 py-0`, `pt-0`, `pb-3`, `text-sm`) — dan gaya sebaris
+ * selalu menang atas kelas, jadi menukarnya lebih awal akan membatalkan
+ * penimpaan itu tanpa satu pun galat.
+ *
+ * Fase C memindahkan seluruh pemanggil itu ke `style`, sehingga syaratnya
+ * terpenuhi dan pertukarannya bisa dilakukan di sini tanpa korban: gaya bawaan
+ * ditulis LEBIH DULU dan `style` pemanggil disebar SESUDAHNYA, jadi penimpaan
+ * per properti tetap bekerja persis seperti sebelumnya.
  */
 
 import { Card as AntdCard } from "antd";
 
-import { cn } from "@/lib/utils";
-
 type DivProps = React.ComponentProps<"div">;
+
+/** Sisi kotak kartu — sesumbu dengan padding sel tabel (24px), supaya kartu
+ *  berisi tabel tidak memperlihatkan dua tepi yang berbeda. */
+const BOX: React.CSSProperties = {
+  paddingInline: "var(--ant-padding-lg)",
+  paddingBlock: "var(--ant-padding)",
+};
+
+/** Tepi kartu = `colorBorderSecondary`, token yang sama dengan tepi `Card` AntD. */
+const DIVIDER = "1px solid var(--ant-color-border-secondary)";
 
 /**
  * Badan kartu tidak menggambar kotak — lihat catatan tata letak di kepala
@@ -67,53 +74,65 @@ type DivProps = React.ComponentProps<"div">;
  */
 const BODY_STYLES = { body: { display: "contents" } } as const;
 
-function Card({ className, ...props }: DivProps) {
-  return (
-    <AntdCard data-slot="card" className={className} styles={BODY_STYLES} {...props} />
-  );
+function Card(props: DivProps) {
+  return <AntdCard data-slot="card" styles={BODY_STYLES} {...props} />;
 }
 
-function CardHeader({ className, ...props }: DivProps) {
+function CardHeader({ style, ...props }: DivProps) {
   return (
     <div
       data-slot="card-header"
-      className={cn("border-b border-border px-6 py-4", className)}
+      style={{ ...BOX, borderBottom: DIVIDER, ...style }}
       {...props}
     />
   );
 }
 
-function CardContent({ className, ...props }: DivProps) {
-  return (
-    <div data-slot="card-content" className={cn("px-6 py-4", className)} {...props} />
-  );
+function CardContent({ style, ...props }: DivProps) {
+  return <div data-slot="card-content" style={{ ...BOX, ...style }} {...props} />;
 }
 
-function CardFooter({ className, ...props }: DivProps) {
+function CardFooter({ style, ...props }: DivProps) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("flex items-center gap-3 border-t border-border px-6 py-4", className)}
+      style={{
+        ...BOX,
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--ant-margin-sm)",
+        borderTop: DIVIDER,
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
+function CardTitle({ style, ...props }: React.ComponentProps<"h3">) {
   return (
     <h3
       data-slot="card-title"
-      className={cn("text-lg font-semibold text-foreground", className)}
+      style={{
+        fontSize: "var(--ant-font-size-lg)",
+        fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+        color: "var(--ant-color-text)",
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
+function CardDescription({ style, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      style={{
+        fontSize: "var(--ant-font-size)",
+        color: "var(--ant-color-text-secondary)",
+        ...style,
+      }}
       {...props}
     />
   );

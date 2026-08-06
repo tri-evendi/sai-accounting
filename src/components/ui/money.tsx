@@ -18,12 +18,12 @@
  * Kelas seperti `text-success-strong` hidup di lapisan token yang BERBEDA dari
  * `ConfigProvider`. Dua lapisan warna untuk satu angka berarti ada hari di mana
  * keduanya tidak sepakat — dan yang kalah selalu yang tidak terlihat di kode.
- * Semua warna di sini berasal dari token AntD; `className` pemanggil tetap
- * diteruskan (untuk ukuran/berat huruf), tapi komponen ini tidak menulis satu
- * pun kelas sendiri.
+ * Semua warna di sini berasal dari token AntD; sejak #203 komponen ini tidak
+ * menulis maupun meneruskan satu pun kelas — ukuran dan berat huruf diatur
+ * pemanggil lewat `style`.
  *
  * Contoh:
- *   <TableCell className="p-0"><MoneyCell value={1234567} currency="IDR" /></TableCell>
+ *   <TableCell style={{ padding: 0 }}><MoneyCell value={1234567} currency="IDR" /></TableCell>
  *   // -> "Rp 1.234.567", rata kanan, tabular-nums
  *   <MoneyCell value={-50000} />
  *   // -> "-Rp 50.000" merah; tanda minus = penanda non-warna
@@ -137,19 +137,17 @@ function Money({
 
 /**
  * Isi sel tabel untuk kolom nominal: `Money` + perataan kanan + padding sel.
- * Dipakai sebagai anak `<TableCell className="p-0">` atau langsung sebagai
+ * Dipakai sebagai anak `<TableCell>` tanpa padding, atau langsung sebagai
  * renderer kolom di `DataTable`.
  *
  * Padding diambil dari token AntD (`paddingSM`/`paddingLG` = 12px/24px), jadi
  * ia ikut kalau kerapatan tabel diubah lewat tema. Pemanggil yang butuh baris
- * lebih rapat menimpanya lewat `style` (mis. `style={{ paddingBlock: 8 }}`) —
- * bukan lewat `className`, karena gaya sebaris selalu menang atas kelas.
+ * lebih rapat menimpanya lewat `style` (mis. `style={{ paddingBlock: 8 }}`).
  */
-function MoneyCell({ className, style, ...props }: MoneyProps) {
+function MoneyCell({ style, ...props }: MoneyProps) {
   const { token } = theme.useToken();
   return (
     <div
-      className={className}
       style={{
         paddingBlock: token.paddingSM,
         paddingInline: token.paddingLG,

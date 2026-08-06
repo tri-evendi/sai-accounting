@@ -10,10 +10,10 @@
  * Warna karena itu datang dari dua sumber saja — sama seperti `shared/aging.tsx`:
  *  • primitif yang mewarnai dirinya sendiri (`Button`, `Badge`, `StatusBadge`,
  *    `EmptyState`), yang dirender sebagai DAUN client;
- *  • variabel `--ant-…`, TAPI hanya untuk simpul yang berada di dalam sebuah
- *    komponen AntD — `ConfigProvider` memasang variabelnya pada elemen
- *    ber-kelas `css-var-root` yang digambar komponen AntD sendiri, bukan pada
- *    `:root`. Di dalam `<Card>` (AntD) variabelnya teratasi; di luar tidak.
+ *  • variabel `--ant-…`, yang sejak #227 teratasi di SELURUH dokumen: root
+ *    layout memasang kelas pemikul blok token (`ANTD_CSS_VAR_KEY`) pada
+ *    `<html>`, jadi simpul di luar komponen AntD mana pun tetap mewarisinya.
+ *    Catatan lama "hanya di dalam `<Card>`" sudah tidak berlaku.
  *
  * Tabelnya kini `StaticTable` (#189): kolom sebagai data, dirender di server.
  */
@@ -224,7 +224,7 @@ export default async function ContractsPage({
     <div>
       {/*
        * Tombol aksi tetap `<Link><Button/></Link>`, BUKAN `Button asChild`.
-       * Keduanya menghapus `className` yang jadi sasaran issue ini, tetapi
+       * Keduanya menghapus kelas yang jadi sasaran issue ini, tetapi
        * `asChild` merender `<a href>` milik AntD — pemuatan halaman PENUH
        * (lihat catatan `asChild` di `ui/button.tsx`). Untuk perpindahan di
        * dalam modul yang sama, itu menukar satu kelas Tailwind dengan satu

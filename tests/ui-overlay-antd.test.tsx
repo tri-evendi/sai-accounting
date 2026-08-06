@@ -165,11 +165,17 @@ const TOKENS = {
 } as const;
 
 /**
- * Latar HALAMAN aplikasi ini di kedua tema (`--background` di `globals.css`),
- * bukan hanya latar bawaan AntD. Selama fase B halamannya masih digambar
- * Tailwind, jadi tirai AntD memang jatuh di atas warna-warna ini.
+ * Dua permukaan gelap yang BUKAN token halaman, dan karena itu tetap harus
+ * diuji terpisah dari `colorBgLayout` di bawah.
+ *
+ * Sampai #203 keduanya adalah `--background` milik `globals.css` di kedua tema;
+ * token itu sudah dicabut dan latar halaman kini `colorBgLayout` AntD, yang
+ * sudah ikut diuji bersama permukaan lain. Yang tersisa di sini adalah
+ * `#001529` — permukaan `Layout.Sider theme="dark"`, gelap permanen di KEDUA
+ * tema, satu-satunya bidang yang bisa membuat tirai terlihat "menerangkan"
+ * kalau maskernya kelak berubah menjadi kabut putih.
  */
-const PAGE_BACKGROUND = { light: "#F8FAFC", dark: "#0F172A" } as const;
+const PAGE_BACKGROUND = { light: "#001529", dark: "#001529" } as const;
 
 describe("tirai dialog — arahnya diperiksa di KEDUA tema", () => {
   it("`colorBgMask` adalah warna yang SAMA di terang dan gelap", () => {

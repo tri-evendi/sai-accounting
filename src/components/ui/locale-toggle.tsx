@@ -64,7 +64,7 @@ const VISUALLY_HIDDEN: React.CSSProperties = {
   border: 0,
 };
 
-export function LocaleToggle({ className }: { className?: string }) {
+export function LocaleToggle() {
   const active = useLocale();
   const router = useRouter();
   const t = useT();
@@ -73,7 +73,6 @@ export function LocaleToggle({ className }: { className?: string }) {
 
   return (
     <Segmented<Locale>
-      className={className}
       /* Nama kelompoknya diganti karena bawaan rc-segmented adalah string
          Inggris yang ditanam di kodenya ("segmented control") — ia akan
          diumumkan apa adanya justru di pemilih BAHASA. */

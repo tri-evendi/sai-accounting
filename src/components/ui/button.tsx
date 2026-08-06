@@ -49,6 +49,36 @@
  * dipakai di 46 tempat lain di aplikasi ini; itu utang yang layak dibayar di
  * fase C, bukan alasan untuk menambahnya 36 lagi.)
  *
+ * ── ⚠ `asChild` TIDAK AMAN dipanggil dari SERVER COMPONENT (temuan #203) ───
+ * Ini bug produksi yang baru terlihat, jadi ditulis panjang — orang berikutnya
+ * tidak akan menebaknya benar.
+ *
+ * `asChild` harus MEMBACA prop anaknya (`href`, label) untuk memasangnya di
+ * `<a>` milik AntD. Ketika pemanggilnya server component, anak itu menyeberangi
+ * batas RSC lebih dulu: `<Link>` adalah komponen client, jadi Flight
+ * menserialisasinya sebagai REFERENSI client, dan sisi SSR baru mengubahnya
+ * menjadi elemen setelah chunk-nya termuat. Selama belum, React menyerahkannya
+ * sebagai simpul **`lazy`** — `{$$typeof: Symbol(react.lazy), _payload, _init}`
+ * — yang `React.isValidElement()`-nya `false` dan tidak punya `.props` untuk
+ * dibaca. `React.Children.only()` melemparkan
+ * "expected to receive a single React element child", dan pada halaman statis
+ * itu MEMATIKAN `next build`.
+ *
+ * Terukur pada #203: pada satu build, `/privacy` (dua `Button asChild`) lolos
+ * dan `/terms` — halaman kembarnya, pola JSX yang sama persis — gagal pada
+ * tombol KEDUAnya saja. Yang menentukan bukan kodenya melainkan urutan
+ * pemuatan chunk, dan urutan itu bergeser setiap kali graf modul berubah:
+ * di #203 pemicunya sekadar delapan paket yang dicabut dari `package.json`.
+ * Artinya ini bukan bug yang bisa "sudah diperbaiki" — ia hanya sedang tidak
+ * menyala.
+ *
+ * Karena itu **server component memakai `<Button href>` langsung**, bentuk yang
+ * tidak membaca anaknya sama sekali dan menghasilkan `<a>` yang identik.
+ * `asChild` tetap ada untuk komponen client, tempat anaknya selalu elemen
+ * sungguhan; dan bila ia toh menerima simpul `lazy`, ia kini menggambar
+ * tautannya apa adanya alih-alih mematikan halamannya. Menghapus `asChild`
+ * seluruhnya (36 pemanggil pindah ke `href`) adalah pekerjaan tersendiri.
+ *
  * Yang HILANG karena pemetaan ini: navigasi sisi-klien dan prefetch `next/link`
  * untuk ke-36 tautan itu — semuanya kini pemuatan halaman penuh. Ke-36 tautan
  * itu adalah perpindahan antar-layar besar (pendaratan -> daftar, wisaya ->
@@ -68,7 +98,6 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 
 import { scopedHref } from "@/components/ui/app-link";
-import { cn } from "@/lib/utils";
 
 type ButtonVariant =
   | "primary"
@@ -141,26 +170,41 @@ type NativeButtonProps = Omit<React.ComponentProps<"button">, "color" | "type">;
 type ButtonProps = NativeButtonProps & {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Merender tautan anaknya sebagai tombolnya — lihat komentar kepala berkas. */
+  /**
+   * Merender tautan anaknya sebagai tombolnya — lihat komentar kepala berkas.
+   *
+   * **Hanya untuk komponen client.** Dari server component pakai `href` di
+   * bawah: `asChild` membaca prop anaknya, dan anak yang menyeberangi batas RSC
+   * bisa tiba sebagai simpul `lazy` yang tidak punya prop untuk dibaca.
+   */
   asChild?: boolean;
+  /**
+   * Menjadikan tombolnya sebuah TAUTAN — `<a class="ant-btn">`, bentuk anchor
+   * AntD sendiri. Ini bentuk yang aman di kedua sisi batas RSC, dan satu-satunya
+   * yang boleh dipakai server component.
+   *
+   * Jalurnya sama dengan `asChild`: nilainya melewati `scopedHref()` supaya
+   * jalur bertenant tidak kembali menempuh pantulan 307 (#157).
+   */
+  href?: string;
   /** `type` HTML, bukan `type` AntD. Dipetakan ke `htmlType`. */
   type?: "button" | "submit" | "reset";
 };
 
-function Button({ asChild = false, ...props }: ButtonProps) {
+function Button({ asChild = false, href, ...props }: ButtonProps) {
   /*
-   * Dua komponen, bukan satu dengan percabangan di dalam: hanya jalur `asChild`
+   * Tiga komponen, bukan satu dengan percabangan di dalam: hanya jalur tautan
    * yang butuh `usePathname()`, dan memanggil hook itu di SETIAP tombol berarti
-   * 128 berkas ikut berlangganan perubahan alamat demi tiga tautan yang
+   * 128 berkas ikut berlangganan perubahan alamat demi tautan yang
    * membutuhkannya.
    */
+  if (href !== undefined) return <ButtonLink href={href} {...props} />;
   return asChild ? <ButtonAnchor {...props} /> : <ButtonElement {...props} />;
 }
 
 function ButtonElement({
   variant = "primary",
   size = "md",
-  className,
   type,
   ref,
   ...rest
@@ -170,7 +214,6 @@ function ButtonElement({
       {...VARIANTS[variant]}
       {...SIZES[size]}
       htmlType={type}
-      className={className}
       /*
        * `ref` tetap ditandatangani `HTMLButtonElement` di luar (satu pemanggil,
        * `confirm-dialog.tsx`, memfokuskan tombol konfirmasinya lewat ref).
@@ -204,57 +247,83 @@ const LINK_ONLY = new Set([
 type AnchorChildProps = {
   href?: unknown;
   children?: React.ReactNode;
-  className?: string;
 } & Record<string, unknown>;
 
-function ButtonAnchor({
+/**
+ * Bentuk anchor AntD: satu `<a class="ant-btn">`, bukan `<a>` membungkus
+ * `<button>`. Dipakai oleh `<Button href>` (jalur langsung, aman di server) dan
+ * oleh `asChild` setelah ia membaca `href` anaknya.
+ */
+function ButtonLink({
   variant = "primary",
   size = "md",
-  className,
+  href,
   children,
   type,
   ref,
   ...rest
 }: Omit<ButtonProps, "asChild">) {
   /*
-   * `type` sengaja diambil dari `rest` lalu dibuang: pada `<a>` atribut itu
-   * berarti tipe MIME dokumen tujuan, bukan "kirim formulir". Diteruskan apa
-   * adanya, tombol tautan mewarisi `type="submit"` yang tak berarti apa-apa dan
-   * menyesatkan siapa pun yang membaca DOM-nya.
+   * `type` sengaja diambil lalu dibuang: pada `<a>` atribut itu berarti tipe
+   * MIME dokumen tujuan, bukan "kirim formulir". Diteruskan apa adanya, tombol
+   * tautan mewarisi `type="submit"` yang tak berarti apa-apa dan menyesatkan
+   * siapa pun yang membaca DOM-nya.
    */
   void type;
   const pathname = usePathname();
-  const child = React.Children.only(children) as React.ReactElement<AnchorChildProps>;
-  const {
-    href,
-    children: label,
-    className: childClassName,
-    ...childRest
-  } = child.props;
-
-  const anchorProps = Object.fromEntries(
-    Object.entries(childRest).filter(([key]) => !LINK_ONLY.has(key))
-  );
 
   return (
     <AntdButton
       {...VARIANTS[variant]}
       {...SIZES[size]}
       /*
-       * `href` bertipe `UrlObject` juga sah bagi `next/link`, tapi tidak dipakai
-       * satu pun dari 36 pemanggil — dan menebak isinya lebih berisiko daripada
-       * membiarkannya kosong (sama seperti alasan `app-link.tsx` melewatkan
-       * bentuk itu). Tanpa `href`, AntD merender `<button>`: tetap bisa ditekan,
-       * hanya tidak menavigasi — kegagalan yang terlihat, bukan yang senyap.
+       * Tanpa `href`, AntD merender `<button>`: tetap bisa ditekan, hanya tidak
+       * menavigasi — kegagalan yang terlihat, bukan yang senyap.
        */
-      href={typeof href === "string" ? scopedHref(href, pathname) : undefined}
-      className={cn(className, childClassName)}
+      href={href === undefined ? undefined : scopedHref(href, pathname)}
       ref={ref as React.Ref<HTMLButtonElement | HTMLAnchorElement>}
       {...rest}
+    >
+      {children}
+    </AntdButton>
+  );
+}
+
+function ButtonAnchor({ children, ...rest }: Omit<ButtonProps, "asChild">) {
+  /*
+   * Simpul `lazy` = anak yang belum selesai menyeberangi batas RSC; alasan
+   * lengkapnya di kepala berkas. Ia tidak punya `.props`, jadi `href`-nya tidak
+   * bisa dibaca — dan `React.Children.only()` di sini akan MELEMPAR dan
+   * mematikan seluruh halaman.
+   *
+   * Yang digambar sebagai gantinya adalah tautannya apa adanya: kehilangan
+   * kulit tombol, tetapi tetap tautan yang benar dan tetap bisa ditekan. Ini
+   * JARING PENGAMAN, bukan jalur yang boleh diandalkan — server component
+   * memakai `<Button href>`, yang tidak pernah membaca anaknya.
+   */
+  if (!React.isValidElement(children)) return <>{children}</>;
+
+  const child = children as React.ReactElement<AnchorChildProps>;
+  const { href, children: label, ...childRest } = child.props;
+
+  const anchorProps = Object.fromEntries(
+    Object.entries(childRest).filter(([key]) => !LINK_ONLY.has(key))
+  );
+
+  return (
+    <ButtonLink
+      {...rest}
+      /*
+       * `href` bertipe `UrlObject` juga sah bagi `next/link`, tapi tidak dipakai
+       * satu pun pemanggil — dan menebak isinya lebih berisiko daripada
+       * membiarkannya kosong (sama seperti alasan `app-link.tsx` melewatkan
+       * bentuk itu).
+       */
+      href={typeof href === "string" ? href : undefined}
       {...anchorProps}
     >
       {label}
-    </AntdButton>
+    </ButtonLink>
   );
 }
 

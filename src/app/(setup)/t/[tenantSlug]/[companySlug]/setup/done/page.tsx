@@ -21,9 +21,10 @@
  * ke depan, tanpa ~40 menu yang belum ada isinya. Tombol utamanya adalah pintu
  * keluar dari kerangka itu.
  *
- * Pembagian sumber warnanya sama dengan `../page.tsx` (issue #200): di dalam
- * `Card` token AntD lewat `--ant-…`, di luarnya token `:root` aplikasi karena
- * variabel AntD tidak teratasi di sana (#227).
+ * Sumber warnanya sama dengan `../page.tsx` (issue #203): seluruhnya token AntD
+ * lewat `var(--ant-…)`, di dalam maupun di luar `Card` — sejak #227 kelas
+ * `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, jadi variabelnya tidak
+ * lagi bergantung pada ada-tidaknya komponen AntD di atasnya.
  */
 import { Link } from "@/components/ui/app-link";
 import { redirect } from "next/navigation";
@@ -40,7 +41,7 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
-/** Pita "sudah dibukukan" — DI LUAR `Card`, jadi token `:root` aplikasi. */
+/** Pita "sudah dibukukan" — DI LUAR `Card`, tapi tetap token AntD (kepala). */
 const DONE_BANNER: React.CSSProperties = {
   display: "flex",
   alignItems: "flex-start",
@@ -48,10 +49,10 @@ const DONE_BANNER: React.CSSProperties = {
   marginBottom: 24,
   padding: "12px 16px",
   borderRadius: 8,
-  border: "1px solid var(--success)",
-  background: "var(--success-soft)",
+  border: "1px solid var(--ant-color-success-border)",
+  background: "var(--ant-color-success-bg)",
   fontSize: 14,
-  color: "var(--success-strong)",
+  color: "var(--ant-color-money-positive)",
 };
 
 /**

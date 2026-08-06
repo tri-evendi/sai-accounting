@@ -84,10 +84,9 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
-import { Label } from "@/components/ui/label";
+import { Label, RequiredMark } from "@/components/ui/label";
 import { useDictionary } from "@/lib/i18n/client";
 import { translateMessage } from "@/lib/i18n/validation";
-import { cn } from "@/lib/utils";
 
 const Form = FormProvider;
 
@@ -153,26 +152,18 @@ const useFormField = () => {
   };
 };
 
-/**
- * Tanda "wajib" — SATU implementasi untuk kedua jalur render label.
+/*
+ * Tanda "wajib" dipakai dari `label.tsx`, bukan ditulis ulang di sini — lihat
+ * alasannya di sana.
  *
- * Sengaja BUKAN `required` milik `Form.Item`: tanda bintang AntD digambar
- * `::before` di DEPAN teks label, sedangkan `Input`/`Select` komposit di repo
- * ini menaruhnya di BELAKANG. Dua konvensi berdampingan di layar yang sama
- * terbaca sebagai cacat, bukan sebagai gaya — dan mematikan tanda AntD
- * memerlukan `requiredMark` yang hanya bisa datang dari `<Form>` AntD
- * (`ItemHolder` membacanya dari konteks, bukan dari prop).
+ * Yang penting untuk berkas INI: ia sengaja BUKAN `required` milik
+ * `Form.Item`. Tanda bintang AntD digambar `::before` di DEPAN teks label,
+ * sedangkan `Input`/`Select` komposit di repo ini menaruhnya di BELAKANG. Dua
+ * konvensi berdampingan di layar yang sama terbaca sebagai cacat, bukan
+ * sebagai gaya — dan mematikan tanda AntD memerlukan `requiredMark` yang hanya
+ * bisa datang dari `<Form>` AntD (`ItemHolder` membacanya dari konteks, bukan
+ * dari prop).
  */
-function RequiredMark() {
-  return (
-    <>
-      <span aria-hidden="true" className="ml-0.5 text-destructive">
-        *
-      </span>
-      <span className="sr-only"> (wajib)</span>
-    </>
-  );
-}
 
 type FormLabelProps = React.ComponentProps<typeof Label> & { required?: boolean };
 
@@ -219,11 +210,16 @@ function liftLabel(children: React.ReactNode) {
  * `tsc` daripada mendarat diam-diam di simpul yang salah.
  */
 interface FormItemProps {
-  className?: string;
+  /**
+   * Gaya simpul TERLUAR (`.ant-form-item`) — pengganti `className` yang dicabut
+   * di #203. Dipakai oleh field yang harus membentang sendiri; di dalam
+   * `Row`/`Col` AntD hal itu biasanya cukup dengan `Col span={24}`.
+   */
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 }
 
-function FormItem({ className, children }: FormItemProps) {
+function FormItem({ style, children }: FormItemProps) {
   const id = useId();
   const { error } = useFieldState();
   const { label, required, content } = liftLabel(children);
@@ -235,7 +231,7 @@ function FormItem({ className, children }: FormItemProps) {
           akan menunjuk elemen yang salah. Penanda simpul ini adalah kelas
           AntD sendiri, `.ant-form-item`. */}
       <AntdForm.Item
-        className={className}
+        style={style}
         /* Label di atas isian. Tanpa ini `Form.Item` memakai tata letak
            horizontal bawaan konteks kosong, dan labelnya duduk di kiri isian —
            bentuk yang tidak dipakai satu pun formulir di aplikasi ini. */
@@ -248,9 +244,12 @@ function FormItem({ className, children }: FormItemProps) {
         validateStatus={error ? "error" : undefined}
       >
         {/* Jarak 4px antara isian, deskripsi, dan pesan galat — sebelumnya
-            milik `FormItem` sendiri (`grid gap-1`). AntD hanya menyediakan
-            jarak antara LABEL dan isian, bukan di dalam slot kendali. */}
-        <div data-slot="form-item-content" className="grid gap-1">
+            milik `FormItem` sendiri. AntD hanya menyediakan jarak antara LABEL
+            dan isian, bukan di dalam slot kendali. */}
+        <div
+          data-slot="form-item-content"
+          style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}
+        >
           {content}
         </div>
       </AntdForm.Item>
@@ -263,13 +262,16 @@ function FormItem({ className, children }: FormItemProps) {
  * `FormField`. Tetap `<label htmlFor>` yang benar, jadi mengkliknya tetap
  * memfokuskan isian.
  */
-function FormLabel({ className, required, children, ...props }: FormLabelProps) {
+function FormLabel({ required, children, style, ...props }: FormLabelProps) {
   const { error, formItemId } = useFormField();
   return (
     <Label
       data-slot="form-label"
       data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
+      /* Label ikut memerah saat fieldnya ditolak — penanda kedua di samping
+         pesan di bawahnya, untuk mata yang menyapu formulir panjang. Warnanya
+         `colorMoneyNegative`, bukan `colorError`; alasannya di `label.tsx`. */
+      style={error ? { color: "var(--ant-color-money-negative)", ...style } : style}
       htmlFor={formItemId}
       {...props}
     >
@@ -298,13 +300,17 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot.Root>) {
   );
 }
 
-function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
+function FormDescription({ style, ...props }: React.ComponentProps<"p">) {
   const { formDescriptionId } = useFormField();
   return (
     <p
       data-slot="form-description"
       id={formDescriptionId}
-      className={cn("text-sm text-muted-foreground", className)}
+      style={{
+        fontSize: "var(--ant-font-size)",
+        color: "var(--ant-color-text-secondary)",
+        ...style,
+      }}
       {...props}
     />
   );
@@ -323,11 +329,11 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
  * ditampilkan apa adanya, dan kunci `validation.*` yang kamusnya belum termuat
  * jatuh ke kalimat bahasa Indonesia — tidak pernah ke kunci mentah di layar.
  *
- * Warnanya tetap `text-destructive`, BUKAN `colorError` AntD: yang terakhir
+ * Warnanya `colorMoneyNegative` (#186), BUKAN `colorError` AntD: yang terakhir
  * berkontras 3,27:1 sebagai teks 14px (diukur di `lib/theme/antd-tokens.ts`),
  * di bawah ambang 4,5:1. Alasan yang sama sudah tertulis di `input.tsx`.
  */
-function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
+function FormMessage({ style, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField();
   const dictionary = useDictionary();
   const body = error ? translateMessage(dictionary, String(error?.message ?? "")) : props.children;
@@ -341,7 +347,11 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
       // Diumumkan ke pembaca layar begitu muncul (temuan audit: error dulu
       // hanya teks, tak pernah diumumkan).
       role="alert"
-      className={cn("text-sm text-destructive", className)}
+      style={{
+        fontSize: "var(--ant-font-size)",
+        color: "var(--ant-color-money-negative)",
+        ...style,
+      }}
       {...props}
     >
       {body}

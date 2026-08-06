@@ -33,19 +33,31 @@
 
 import { Link } from "@/components/ui/app-link";
 import { BookOutlined } from "@ant-design/icons";
-import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
 import { useT } from "@/lib/i18n/client";
+
+/**
+ * Dua keadaan yang tidak punya bentuk sebaris — garis bawah saat disorot dan
+ * cincin fokus papan ketik. Cincinnya digambar sendiri karena ini `<a>`
+ * telanjang, bukan komponen AntD: `genFocusStyle()` AntD tidak menyentuhnya.
+ * Warnanya `colorPrimaryBorder`, token yang SAMA yang dipakai setiap cincin
+ * fokus AntD dan yang dinaikkan ke `colorBrandText` di issue #187 — jadi fokus
+ * di sini tidak bisa berpisah rupa dari fokus di tombol sebelahnya.
+ */
+const LEARN_MORE_RULES = `
+[data-learn-more]:hover{text-decoration:underline}
+[data-learn-more]:focus{outline:none}
+[data-learn-more]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:1px}
+`;
 
 interface LearnMoreProps {
   /** Kunci entri kamus, mis. "piutang". */
   term: string;
   /** Teks tautan; standarnya "Pelajari ini: <label>". */
   label?: string;
-  className?: string;
 }
 
-export function LearnMore({ term, label, className }: LearnMoreProps) {
+export function LearnMore({ term, label }: LearnMoreProps) {
   // Hook dipanggil SEBELUM early-return: aturan hooks React melarang
   // pemanggilan bersyarat.
   const t = useT();
@@ -54,20 +66,28 @@ export function LearnMore({ term, label, className }: LearnMoreProps) {
   if (!entry) return null;
 
   return (
-    <Link
-      href={glossaryHref(entry.key)}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md text-sm font-medium",
-        "cursor-pointer transition-colors duration-150 hover:underline",
-        // Cincin fokus tetap kelas: ini `<a>` telanjang, bukan komponen AntD,
-        // jadi `genFocusStyle()` AntD tidak menyentuhnya.
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        className
-      )}
-      style={{ color: "var(--ant-color-link)" }}
-    >
-      <BookOutlined aria-hidden="true" style={{ fontSize: 16 }} />
-      {label ?? t("learnMore.label", { term: entry.label })}
-    </Link>
+    <>
+      <style href="sai-learn-more" precedence="default">
+        {LEARN_MORE_RULES}
+      </style>
+      <Link
+        data-learn-more
+        href={glossaryHref(entry.key)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          borderRadius: "var(--ant-border-radius)",
+          fontSize: "var(--ant-font-size)",
+          fontWeight: 500,
+          cursor: "pointer",
+          transition: "color 150ms",
+          color: "var(--ant-color-link)",
+        }}
+      >
+        <BookOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+        {label ?? t("learnMore.label", { term: entry.label })}
+      </Link>
+    </>
   );
 }

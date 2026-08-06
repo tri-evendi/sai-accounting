@@ -1,296 +1,433 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
 /*
- * Token desain SAI Accounting — sumber kebenaran: design-system/sai-accounting/MASTER.md
- * Nama variabel mengikuti konvensi shadcn (mis. --primary, bukan --color-primary);
- * pemetaan ke utility Tailwind v4 dilakukan lewat blok @theme inline di bawah.
+ * Gaya global — satu-satunya CSS bertulis tangan yang tersisa (issue #203).
+ *
+ * ── Apa yang hilang dari berkas ini, dan kenapa ────────────────────────────
+ * Sampai #203 berkas ini memuat 158 deklarasi token semantik (`--primary`,
+ * `--success-soft`, `--destructive-strong`, palet `.dark` lengkap) plus tiga
+ * `@import` Tailwind. Semuanya dicabut: identitas visual aplikasi ini kini
+ * datang dari `ConfigProvider` Ant Design, yang menulis SELURUH tokennya
+ * sebagai variabel `--ant-*` ke HTML pertama dan menggantungnya pada kelas
+ * `ANTD_CSS_VAR_KEY` di `<html>` (issue #227 — alasan lengkapnya di
+ * `lib/theme/antd-tokens.ts`). Dua lapisan token untuk satu warna berarti ada
+ * hari di mana keduanya tidak sepakat, dan yang kalah selalu yang tidak
+ * terlihat di kode.
+ *
+ * ── Apa yang TIDAK boleh hilang bersamanya: RESET ──────────────────────────
+ * Ini bagian yang paling mudah salah pada issue penghapusan, jadi ditulis
+ * eksplisit. `@import "tailwindcss"` tidak hanya membawa kelas utilitas; ia
+ * membawa **preflight**, dan seluruh aplikasi ini berdiri di atasnya. Terukur
+ * pada pohon sumber saat #203 dikerjakan: 180 `<p>`, 40 `<h2>`, 26 `<li>`,
+ * 17 `<ul>`, 14 `<dl>` — semuanya ditulis TANPA gaya sendiri karena preflight
+ * sudah menihilkan margin bawaan peramban, mematikan butir daftar, dan
+ * membuat `<h1>`–`<h6>` mewarisi ukuran serta tebal hurufnya.
+ *
+ * Menghapus Tailwind tanpa mengganti preflight karena itu bukan pembersihan
+ * melainkan perubahan tata letak di ratusan halaman sekaligus — tanpa satu pun
+ * galat, dan tanpa cara meninjaunya satu per satu. Blok "Reset" di bawah adalah
+ * preflight Tailwind v4 yang disalin dan diselesaikan menjadi CSS biasa
+ * (fungsi `--theme(...)` diganti nilai konkretnya). Ia sengaja disalin apa
+ * adanya, bukan ditulis ulang lebih ringkas: yang dibutuhkan di sini adalah
+ * KESAMAAN dengan yang sudah berjalan, bukan reset yang lebih baik.
+ *
+ * `antd/dist/reset.css` sudah dipertimbangkan dan DITOLAK sebagai pengganti:
+ * ia reset bergaya normalize (heading tetap 2em dan tetap bermargin, `<ul>`
+ * tetap berbutir), jadi memakainya justru menghasilkan pergeseran yang sedang
+ * dihindari. AntD sendiri tidak membutuhkannya — komponen AntD membawa gayanya
+ * sendiri lewat CSS-in-JS.
  */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  /*
-   * Pasangan "soft/strong" untuk penanda status di atas permukaan terang
-   * (badge Lunas/Sebagian/Jatuh Tempo). Warna penuh --success/--warning/
-   * --destructive dipakai untuk isian pekat & ikon; di atas latar sangat
-   * terang warna itu TIDAK lolos kontras 4.5:1 (mis. #16A34A di atas
-   * success/10 hanya 2,96:1), jadi teks badge memakai varian -strong.
-   */
-  --color-success-soft: var(--success-soft);
-  --color-success-strong: var(--success-strong);
-  --color-warning-soft: var(--warning-soft);
-  --color-warning-strong: var(--warning-strong);
-  --color-destructive-soft: var(--destructive-soft);
-  --color-destructive-strong: var(--destructive-strong);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  /* Radius MASTER.md: kontrol 8px (rounded-md), card 12px (rounded-lg), modal 16px (rounded-xl) */
-  --radius-sm: calc(var(--radius) - 0.25rem);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 0.25rem);
-  --radius-xl: calc(var(--radius) + 0.5rem);
-  --radius-2xl: calc(var(--radius) + 0.75rem);
-  --radius-3xl: calc(var(--radius) + 1rem);
-  --radius-4xl: calc(var(--radius) + 1.5rem);
-  /* Shadow MASTER.md */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  /*
-   * Animasi buka overlay (#51). Durasi 200ms sesuai rentang 150–250ms
-   * MASTER.md; menutup tanpa animasi agar dialog tidak terasa lamban.
-   * `prefers-reduced-motion` dihormati di blok @layer base bawah.
-   */
-  --animate-overlay-in: overlay-in 200ms ease-out;
-  --animate-panel-in: panel-in 200ms ease-out;
-  --animate-dialog-in: dialog-in 200ms ease-out;
+/* ------------------------------------------------------------------------ */
+/* Reset — preflight Tailwind v4, diselesaikan menjadi CSS biasa             */
+/* ------------------------------------------------------------------------ */
 
-  @keyframes dialog-in {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.96);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-  @keyframes overlay-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes panel-in {
-    from {
-      opacity: 0;
-      transform: translateY(4px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-}
-
-:root {
-  /* Warna — tabel Color Palette MASTER.md (light-first) */
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #1e40af;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --success: #16a34a;
-  --success-foreground: #ffffff;
-  --warning: #d97706;
-  --warning-foreground: #ffffff;
-  /* Soft/strong badge — kontras terverifikasi 6,4–6,8:1 (MASTER: ≥ 4.5:1) */
-  --success-soft: #dcfce7;
-  --success-strong: #166534;
-  --warning-soft: #fef3c7;
-  --warning-strong: #92400e;
-  --destructive-soft: #fee2e2;
-  --destructive-strong: #991b1b;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #1e40af;
-  --chart-1: #1e40af;
-  --chart-2: #16a34a;
-  --chart-3: #d97706;
-  --chart-4: #dc2626;
-  --chart-5: #64748b;
-  /* Radius dasar: kontrol 8px */
-  --radius: 0.5rem;
-  /* Sidebar gelap sebagai aksen (sesuai app) */
-  --sidebar: #0f172a;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #1e40af;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #93c5fd;
-  /* Spacing MASTER.md (Density 6/10) — referensi; utility Tailwind tetap skala default */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
+/*
+ * 1. Padding & border tidak menambah lebar elemen.
+ * 2. Nihilkan margin & padding bawaan peramban.
+ * 3. Nihilkan seluruh border (lebar 0, gaya solid) — inilah yang membuat
+ *    `border: 1px solid …` sebaris di seluruh app cukup menulis satu sisi.
+ */
+*,
+::after,
+::before,
+::backdrop,
+::file-selector-button {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
 }
 
 /*
- * Dark mode = fase lanjut MASTER.md — blok disiapkan tetapi TIDAK diaktifkan
- * (tidak ada elemen dengan class .dark; light-first tetap default).
- * Surface dinaikkan ke #0F172A / #1E293B sesuai MASTER.
+ * Font dasar aplikasi ikut di sini, menggantikan `html { @apply font-sans }`
+ * yang lama. Inter (MASTER.md) dipilih karena `tabular-nums`-nya; variabelnya
+ * dipasang `next/font` lewat `className` root layout.
  */
-.dark {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #1e293b;
-  --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #334155;
-  --secondary-foreground: #f8fafc;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #334155;
-  --accent-foreground: #f8fafc;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --success: #22c55e;
-  --success-foreground: #052e16;
-  --warning: #f59e0b;
-  --warning-foreground: #451a03;
-  /* Soft/strong badge versi gelap — kontras terverifikasi 8,5–10,6:1 */
-  --success-soft: #052e16;
-  --success-strong: #86efac;
-  --warning-soft: #451a03;
-  --warning-strong: #fcd34d;
-  --destructive-soft: #450a0a;
-  --destructive-strong: #fca5a5;
-  --border: #334155;
-  --input: #334155;
-  --ring: #93c5fd;
-  --chart-1: #60a5fa;
-  --chart-2: #4ade80;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
-  --chart-5: #94a3b8;
-  --sidebar: #0f172a;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #93c5fd;
+html,
+:host {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  -webkit-tap-highlight-color: transparent;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-  /*
-   * Aksara Han (bahasa Mandarin) — fondasi i18n.
-   *
-   * Inter dimuat dengan subset `latin` saja, jadi tidak punya satu pun aksara
-   * Tionghoa. Aturan ini dipicu oleh `<html lang="zh">` yang dipasang root
-   * layout, dan menaruh Inter TETAP DI DEPAN: huruf & angka Latin terus dilayani
-   * Inter (sehingga `tabular-nums` untuk nominal tetap bekerja persis sama di
-   * ketiga bahasa, sesuai MASTER.md), sementara aksara Han — yang tidak ada di
-   * Inter — jatuh ke font CJK bawaan sistem pembaca.
-   *
-   * Sengaja TANPA webfont Han: alasan biaya build ada di komentar
-   * `src/app/layout.tsx` (Noto Sans SC = 101 berkas woff2 diunduh saat build).
-   * Urutan di bawah mencakup Mac/iOS, Windows, lalu Android/Linux, jadi
-   * praktis setiap perangkat nyata sudah terlayani.
-   *
-   * Spesifisitasnya (0,1,1) menang atas `html { @apply font-sans }` (0,0,1),
-   * jadi urutannya di dalam layer tidak jadi soal.
-   */
-  html:lang(zh) {
-    font-family:
-      var(--font-inter),
-      "PingFang SC",
-      "Hiragino Sans GB",
-      "Microsoft YaHei",
-      "Noto Sans CJK SC",
-      "Source Han Sans SC",
-      sans-serif;
-  }
-  /*
-   * Angka keuangan sejajar (MASTER.md): semua sel tabel memakai tabular-nums
-   * secara default; untuk angka di luar tabel (kartu KPI dll.) gunakan
-   * utility `tabular-nums` bawaan Tailwind.
-   */
-  td,
-  th {
-    font-variant-numeric: tabular-nums;
-  }
-  /*
-   * Anti-Pattern MASTER.md: animasi tidak boleh dipaksakan. Overlay Radix (#51)
-   * memakai animasi CSS, jadi penghormatan `prefers-reduced-motion` ditegakkan
-   * di sini sekali untuk semua — bukan per komponen.
-   */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-  }
+hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+  text-decoration: underline dotted;
+}
+
+/* Heading mewarisi ukuran & tebal — hierarki ditentukan gayanya, bukan tagnya. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Tautan digayai secara opt-in; `Link` app-link.tsx yang mewarnainya. */
+a {
+  color: inherit;
+  -webkit-text-decoration: inherit;
+  text-decoration: inherit;
+}
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+  font-size: 1em;
+}
+
+small {
+  font-size: 80%;
+}
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+table {
+  text-indent: 0;
+  border-color: inherit;
+  border-collapse: collapse;
+}
+
+:-moz-focusring {
+  outline: auto;
+}
+
+progress {
+  vertical-align: baseline;
+}
+
+summary {
+  display: list-item;
+}
+
+/* Daftar tanpa butir — 17 `<ul>` di app ini dipakai sebagai wadah tata letak. */
+ol,
+ul,
+menu {
+  list-style: none;
+}
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  vertical-align: middle;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+optgroup,
+textarea,
+::file-selector-button {
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 0;
+  background-color: transparent;
+  opacity: 1;
+}
+
+:where(select:is([multiple], [size])) optgroup {
+  font-weight: bolder;
+}
+
+:where(select:is([multiple], [size])) optgroup option {
+  padding-inline-start: 20px;
+}
+
+::file-selector-button {
+  margin-inline-end: 4px;
+}
+
+::placeholder {
+  opacity: 1;
+}
+
+textarea {
+  resize: vertical;
+}
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+::-webkit-date-and-time-value {
+  min-height: 1lh;
+  text-align: inherit;
+}
+
+::-webkit-datetime-edit {
+  display: inline-flex;
+}
+
+::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+::-webkit-datetime-edit,
+::-webkit-datetime-edit-year-field,
+::-webkit-datetime-edit-month-field,
+::-webkit-datetime-edit-day-field,
+::-webkit-datetime-edit-hour-field,
+::-webkit-datetime-edit-minute-field,
+::-webkit-datetime-edit-second-field,
+::-webkit-datetime-edit-millisecond-field,
+::-webkit-datetime-edit-meridiem-field {
+  padding-block: 0;
+}
+
+::-webkit-calendar-picker-indicator {
+  line-height: 1;
+}
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+button,
+input:where([type="button"], [type="reset"], [type="submit"]),
+::file-selector-button {
+  appearance: button;
+}
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+[hidden]:where(:not([hidden="until-found"])) {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Permukaan halaman & tipografi dasar                                      */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Latar dan warna teks halaman datang dari token AntD, bukan lagi dari
+ * `--background`/`--foreground`. Keduanya teratasi di sini karena `<html>`
+ * memikul kelas `ANTD_CSS_VAR_KEY`; nilai cadangannya sengaja ditulis supaya
+ * halaman galat Next yang dirender DI LUAR `AntdRegistry` tidak kehilangan
+ * latar sama sekali.
+ */
+body {
+  background: var(--ant-color-bg-layout, #f5f5f5);
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
 }
 
 /*
- * Blok penyelaras warna `sonner` (#51) DIHAPUS di issue #190: toast kini
- * `message` Ant Design, dan warnanya datang dari token `ConfigProvider` — tidak
- * ada lagi elemen `[data-sonner-toaster]` di halaman mana pun untuk diwarnai.
- * Paketnya sendiri masih terdaftar di package.json tetapi sudah tidak diimpor
- * satu berkas pun; pencabutannya menunggu pembersihan dependensi #203.
+ * Aksara Han (bahasa Mandarin) — fondasi i18n.
+ *
+ * Inter dimuat dengan subset `latin` saja, jadi tidak punya satu pun aksara
+ * Tionghoa. Aturan ini dipicu oleh `<html lang="zh">` yang dipasang root
+ * layout, dan menaruh Inter TETAP DI DEPAN: huruf & angka Latin terus dilayani
+ * Inter (sehingga `tabular-nums` untuk nominal tetap bekerja persis sama di
+ * ketiga bahasa, sesuai MASTER.md), sementara aksara Han — yang tidak ada di
+ * Inter — jatuh ke font CJK bawaan sistem pembaca.
+ *
+ * Sengaja TANPA webfont Han: alasan biaya build ada di komentar
+ * `src/app/layout.tsx` (Noto Sans SC = 101 berkas woff2 diunduh saat build).
+ * Urutan di bawah mencakup Mac/iOS, Windows, lalu Android/Linux, jadi
+ * praktis setiap perangkat nyata sudah terlayani.
  */
+html:lang(zh) {
+  font-family:
+    var(--font-inter),
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    "Source Han Sans SC",
+    sans-serif;
+}
+
+/*
+ * Angka keuangan sejajar (MASTER.md): semua sel tabel memakai tabular-nums
+ * secara default; untuk angka di luar tabel (kartu KPI dll.) pakai
+ * `style={{ fontVariantNumeric: "tabular-nums" }}`.
+ */
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Sembunyi-dari-mata, terbaca-oleh-pembaca-layar. Menggantikan `sr-only`
+ * Tailwind, dan ia memang harus tetap berupa ATURAN: dipakai oleh tiga
+ * primitif formulir untuk kata " (wajib)" di belakang tanda bintang, dan
+ * menyalin tujuh deklarasi ini sebagai gaya sebaris ke tiga tempat adalah cara
+ * paling mudah salah satu di antaranya menyimpang diam-diam.
+ *
+ * Sasarannya ATRIBUT, bukan kelas — pola yang sama dengan `[data-landing-*]`
+ * pada halaman pendaratan: `src/` tidak lagi menyisakan satu pun `className`,
+ * dan atribut membuat setiap aturan bisa dilacak balik ke komponen yang
+ * memasangnya.
+ */
+[data-sr-only] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/*
+ * Anti-Pattern MASTER.md: animasi tidak boleh dipaksakan. Ditegakkan di sini
+ * sekali untuk semua — termasuk untuk animasi milik komponen AntD, yang tidak
+ * bisa dijangkau dari sisi pemanggil.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Sisa `.dark` — SATU-SATUNYA, dan ia memang memikul sesuatu                */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Kelas `.dark` TIDAK dicabut di #203, dan ini alasannya — dibaca sebelum
+ * seseorang menghapusnya sebagai "peninggalan Tailwind".
+ *
+ * Untuk pilihan tema terang/gelap yang EKSPLISIT, kelas ini memang tidak lagi
+ * dibutuhkan: cookie dibaca root layout di server, `AntdProvider` memilih
+ * algoritmanya dari sana, dan blok `--ant-*` yang benar sudah ikut pada HTML
+ * pertama. Yang tersisa adalah pilihan **"ikut sistem"**.
+ *
+ * Preferensi OS hidup di peramban dan tak terlihat dari server, jadi HTML
+ * pertama untuk pengguna itu SELALU membawa token tema terang. Yang
+ * memperbaikinya sebelum cat pertama hanyalah skrip sinkron di `<head>`
+ * (`themeScript()`), dan satu-satunya yang bisa dilakukan skrip sekecil itu
+ * adalah memasang sebuah kelas. Tanpa aturan di bawah, pengguna ber-OS gelap
+ * mendapat halaman PUTIH PENUH sampai hydrate selesai — pada aplikasi
+ * akuntansi yang dibuka berkali-kali sehari, itu kilatan yang terasa.
+ *
+ * Yang ditimpa sengaja hanya DUA variabel, yaitu dua yang benar-benar mengecat
+ * halaman kosong sebelum satu pun komponen AntD hadir: latar dan warna teks.
+ * Sisa tokennya (batas, teks sekunder, permukaan kartu) tetap bernilai terang
+ * selama satu frame itu — itu kekurangan yang jujur, dan memperbaikinya berarti
+ * mengirim SELURUH blok token gelap dari server untuk pilihan `system`, yaitu
+ * pekerjaan #205, bukan pekerjaan issue penghapusan.
+ *
+ * Nilainya bukan warna baru: keduanya token gelap Ant Design apa adanya
+ * (`colorBgLayout` dan `colorText` dari `theme.darkAlgorithm`), jadi untuk
+ * pengguna tema gelap EKSPLISIT aturan ini menimpa nilai dengan nilai yang
+ * sama persis dan tidak mengubah apa pun. `tests/theme.test.ts` menghitung
+ * ulang keduanya dari paket `antd` yang terpasang setiap kali suite berjalan —
+ * versi AntD baru tidak bisa membuat keduanya menyimpang diam-diam.
+ *
+ * Spesifisitas `html.dark` (0,1,1) sengaja lebih tinggi daripada `.sai-tokens`
+ * (0,1,0) yang berdiri di elemen yang SAMA; kalau tidak, blok token terang
+ * yang datang belakangan akan memenangkannya.
+ */
+html.dark {
+  --ant-color-bg-layout: #000000;
+  --ant-color-text: rgba(255, 255, 255, 0.85);
+}
+
+/*
+ * Tinggi penuh untuk kerangka aplikasi — pengganti `h-full` / `min-h-full`
+ * yang dulu ditulis sebagai kelas di root layout. Ia harus tinggal di sini,
+ * bukan sebagai gaya sebaris: `min-height: 100%` pada `<body>` hanya berarti
+ * sesuatu bila induknya PUNYA tinggi, jadi keduanya adalah satu aturan
+ * berpasangan dan memisahkannya ke dua tempat adalah cara paling mudah salah
+ * satunya terhapus sendirian.
+ */
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+}

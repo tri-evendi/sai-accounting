@@ -45,10 +45,10 @@ export default function DashboardLoading() {
         <div style={{ ...BAR, height: 16, width: 384, maxWidth: "100%" }} />
       </div>
       {/*
-        Isi utama. `className="p-0"` yang dulu ada di sini DIHAPUS, bukan
+        Isi utama. Padding nol yang dulu dikirim dari sini DIHAPUS, bukan
         diterjemahkan: badan `Card` sudah `display: contents` (lihat kepala
         `ui/card.tsx`), jadi kotaknya tidak digambar dan padding-nya tidak
-        pernah berlaku — kelas itu sudah tidak mengatur apa pun sebelum PR ini.
+        pernah berlaku — ia sudah tidak mengatur apa pun sebelum PR ini.
       */}
       <Card>
         <TableSkeleton rows={6} cols={5} />

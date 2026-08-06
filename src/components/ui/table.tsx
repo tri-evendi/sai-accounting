@@ -1,15 +1,15 @@
 /**
- * Table (issue #52) — primitif tabel shadcn/ui, satu sumber gaya untuk 50
- * tabel transaksi yang sebelumnya menyalin-tempel kelas Tailwind sendiri.
+ * Table (issue #52) — primitif tabel, satu sumber gaya untuk 50 tabel
+ * transaksi yang sebelumnya menyalin-tempel gayanya sendiri.
  *
- * **Sengaja TANPA `"use client"`.** shadcn menandai berkas ini `"use client"`
- * secara konvensi, padahal isinya tidak memakai hook sama sekali. Di app ini
+ * **Sengaja TANPA `"use client"`.** Berkas ini tidak memakai hook sama
+ * sekali, dan itu yang membuatnya boleh berdiri di server. Di app ini
  * 46 dari 66 pemakai primitif tabel adalah server component yang mengambil
  * datanya langsung dari Prisma; menandainya client akan menyeret semuanya ke
  * bundel client tanpa alasan. Jadi penanda itu dilepas — komponen ini murni
  * presentasional dan aman di kedua sisi.
  *
- * `Table` membawa pembungkus `overflow-x-auto` bawaan: tabel lebar menggulung
+ * `Table` membawa pembungkus geser mendatar bawaan: tabel lebar menggulung
  * DI DALAM kotaknya, bukan membuat seluruh halaman menggulung mendatar di
  * layar 375px (aturan responsif MASTER.md).
  *
@@ -28,11 +28,20 @@
  * Keduanya berbagi kontrak kolom yang sama (`table-columns.tsx`), jadi sebuah
  * tabel bisa berpindah varian tanpa kolomnya ditulis ulang.
  *
- * **Rencana pensiun.** Ekspor JSX di bawah (`Table`/`TableRow`/`TableCell`/…)
- * masih dipakai langsung oleh 66 berkas; fase C (#193–#200) memindahkannya ke
- * `StaticTable`/`DataTable` satu modul per PR. Setelah berkas terakhir pindah,
- * ekspor ini berhenti menjadi API publik dan kelas Tailwind di dalamnya
- * diganti token AntD di #203 — sampai saat itu keduanya sah hidup berdampingan.
+ * **Pensiunnya sudah terjadi.** Ekspor JSX di bawah dulu dipakai langsung oleh
+ * 66 berkas; fase C (#193–#200) memindahkan semuanya ke `StaticTable`/
+ * `DataTable`. Yang tersisa memakainya secara langsung tinggal tiga — dua
+ * matriks izin dan `shared/aging.tsx` — dan ketiganya memakai `style`, bukan
+ * `className`. Karena itu prop `className` DICABUT di #203 bersama kelas
+ * Tailwind-nya: gaya di berkas ini kini sebaris dari token AntD.
+ *
+ * ── Yang TIDAK bisa menjadi gaya sebaris, dan rumahnya ─────────────────────
+ * Tiga hal: `:hover` baris, `:last-child` (baris terakhir tanpa garis bawah),
+ * dan pengecualian hover untuk baris "tidak ada data". Ketiganya keadaan yang
+ * hanya hidup di CSS. Rumahnya satu blok `<style href precedence>` di dalam
+ * `Table` — React 19 meniadakan gandanya dan menaikkannya ke `<head>`, jadi
+ * seratus tabel tetap menghasilkan satu aturan. Sasarannya `data-slot`, atribut
+ * yang memang sudah dipasang setiap primitif di bawah, bukan kelas baru.
  *
  * ── Header lengket: kenapa ia butuh DUA bagian (issue #229) ────────────────
  * Ini bagian yang paling mudah salah, jadi ditulis eksplisit — ia menggantikan
@@ -40,7 +49,7 @@
  * pemanggil pada #199.
  *
  * `position: sticky` dihitung terhadap **ancestor scroll container TERDEKAT**,
- * bukan terhadap viewport. Pembungkus `overflow-x-auto` di bawah SELALU sebuah
+ * bukan terhadap viewport. Pembungkus geser di bawah SELALU sebuah
  * scroll container (menurut CSS, `overflow-y: visible` ikut berubah menjadi
  * `auto` begitu sumbu lain bukan `visible`), tetapi tinggi bawaannya mengikuti
  * isi — jadi ia tidak pernah benar-benar menggulung vertikal: `top: 0` menempel
@@ -60,16 +69,73 @@
  * PROPERTI KUSTOM CSS — satu-satunya nilai yang benar-benar DIWARISI dari
  * pembungkus ke `<th>` di dalamnya.
  *
- * Bawaannya `var(--ant-color-bg-container)`, yang teratasi selama tabelnya
- * berada di dalam sebuah komponen AntD (di app ini hampir selalu `Card`;
- * `ConfigProvider` v6 memasang variabelnya pada elemen ber-kelas `css-var-root`
- * yang digambar komponen AntD sendiri, BUKAN pada `:root` — aturan yang sama
- * dengan `components/shared/aging.tsx`). Pemanggil yang berdiri di LUAR pohon
- * itu — kedua matriks izin — mengirim `token.colorBgContainer` lewat
- * `stickyHeadBackground`, dan itulah satu-satunya alasan prop itu ada.
+ * Bawaannya `var(--ant-color-bg-container)`, yang sejak #227 teratasi di mana
+ * pun: root layout memasang kelas pemikul blok token (`ANTD_CSS_VAR_KEY`) pada
+ * `<html>`, jadi tabel di LUAR komponen AntD mana pun tetap mewarisinya.
+ *
+ * Prop `stickyHeadBackground` tetap ada, dan bukan sisa: kedua matriks izin
+ * berdiri di atas permukaan yang bukan `colorBgContainer`, dan sel judul yang
+ * menempel harus berlatar sama dengan permukaan di belakangnya — kalau tidak,
+ * baris yang lewat terbaca menembus judul kolom.
  */
 
-import { cn } from "@/lib/utils";
+/**
+ * Aturan yang tidak punya bentuk sebaris — lihat catatan di kepala berkas.
+ *
+ * Hover DIBATASI ke baris di dalam `<tbody>`: baris judul dan baris kaki tidak
+ * boleh menyala saat kursor lewat, karena keduanya bukan data yang bisa
+ * ditunjuk. Pengecualiannya baris "tidak ada data", yang berada di dalam
+ * `<tbody>` tetapi juga bukan data — ia menandai dirinya `data-hover="off"`.
+ */
+const TABLE_RULES = `
+[data-slot="table-body"] > [data-slot="table-row"]:hover{background:var(--ant-color-fill-quaternary)}
+[data-slot="table-body"] > [data-slot="table-row"][data-hover="off"]:hover{background:transparent}
+[data-slot="table-body"] > [data-slot="table-row"]:last-child{border-bottom-width:0}
+[data-slot="table-footer"] > [data-slot="table-row"]{border-bottom-width:0}
+`;
+
+/** Pembungkus geser: tabel lebar menggulung DI DALAM kotaknya (MASTER.md). */
+const CONTAINER_STYLE: React.CSSProperties = {
+  position: "relative",
+  width: "100%",
+  overflowX: "auto",
+};
+
+const TABLE_STYLE: React.CSSProperties = {
+  width: "100%",
+  captionSide: "bottom",
+  fontSize: "var(--ant-font-size)",
+};
+
+/**
+ * Kisi tabel memakai `colorBorderSecondary`, bukan `colorBorder` — token yang
+ * sama yang dipakai `Table` AntD sendiri (`Table.borderColor`), sehingga kedua
+ * perender menggambar kisi yang identik. Kontrasnya diputuskan di issue #208.
+ */
+const ROW_BORDER = "1px solid var(--ant-color-border-secondary)";
+
+/**
+ * Sel judul kolom. Tingginya 44px — target sentuh MASTER.md, sekaligus yang
+ * membuat baris judul jelas lebih tinggi dari baris isi (12+12). Warnanya
+ * sekunder: judul kolom menamai angka di bawahnya dan tidak boleh bersaing
+ * dengannya.
+ */
+const HEAD_STYLE: React.CSSProperties = {
+  height: 44,
+  paddingInline: "var(--ant-padding-lg)",
+  textAlign: "left",
+  verticalAlign: "middle",
+  fontWeight: 500,
+  whiteSpace: "nowrap",
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** Sel isi: 24px mendatar (sesumbu dengan judul), 12px vertikal. */
+const CELL_STYLE: React.CSSProperties = {
+  paddingInline: "var(--ant-padding-lg)",
+  paddingBlock: "var(--ant-padding-sm)",
+  verticalAlign: "middle",
+};
 
 /**
  * Properti kustom yang menyalurkan warna permukaan dari pembungkus `Table` ke
@@ -112,91 +178,87 @@ interface TableProps extends React.ComponentProps<"table"> {
 }
 
 function Table({
-  className,
   maxHeight,
   containerStyle,
   stickyHeadBackground,
   stickyHeadBorderColor,
+  style,
   ...props
 }: TableProps) {
   /*
-   * Dirakit bersyarat, bukan disebar tanpa syarat: 66 berkas merender `Table`
-   * tanpa satu pun prop di atas, dan `style={{}}` yang selalu ada mengubah
-   * markup mereka tanpa alasan.
+   * Dirakit bersyarat, bukan disebar tanpa syarat: sebagian besar pemanggil
+   * merender `Table` tanpa satu pun prop di atas, dan gaya pembungkus yang
+   * selalu memuat kunci tambahan mengubah markup mereka tanpa alasan.
    */
-  const style: React.CSSProperties = { ...containerStyle };
-  if (maxHeight !== undefined) style.maxHeight = maxHeight;
+  const wrapper: React.CSSProperties = { ...CONTAINER_STYLE, ...containerStyle };
+  if (maxHeight !== undefined) wrapper.maxHeight = maxHeight;
   if (stickyHeadBackground !== undefined) {
-    (style as Record<string, string>)[STICKY_HEAD_BG] = stickyHeadBackground;
+    (wrapper as Record<string, string>)[STICKY_HEAD_BG] = stickyHeadBackground;
   }
   if (stickyHeadBorderColor !== undefined) {
-    (style as Record<string, string>)[STICKY_HEAD_LINE] = stickyHeadBorderColor;
+    (wrapper as Record<string, string>)[STICKY_HEAD_LINE] = stickyHeadBorderColor;
   }
 
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-      style={Object.keys(style).length === 0 ? undefined : style}
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+    <div data-slot="table-container" style={wrapper}>
+      <style href="sai-table" precedence="default">
+        {TABLE_RULES}
+      </style>
+      <table data-slot="table" style={{ ...TABLE_STYLE, ...style }} {...props} />
     </div>
   );
 }
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return (
-    <thead
-      data-slot="table-header"
-      className={cn("[&_tr]:border-b [&_tr]:border-border", className)}
-      {...props}
-    />
-  );
+function TableHeader(props: React.ComponentProps<"thead">) {
+  // Garis pemisah judul–isi datang dari `TableRow` di dalamnya, bukan dari
+  // sini: satu tempat yang menggambar garis baris, bukan dua yang bisa
+  // menyimpang.
+  return <thead data-slot="table-header" {...props} />;
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
-  return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
-  );
+function TableBody(props: React.ComponentProps<"tbody">) {
+  return <tbody data-slot="table-body" {...props} />;
 }
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+function TableFooter({ style, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn(
-        "border-t border-border bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className
-      )}
+      /*
+       * Garis atas DUA piksel: kaki tabel memisahkan total dari data, dan garis
+       * setebal kisi biasa membuatnya terbaca sebagai baris data terakhir.
+       * Latarnya sengaja tanpa isian — angka totalnya sudah dibedakan tebal
+       * huruf, dan bidang berwarna di dasar setiap tabel membuat halaman
+       * laporan terlihat berpita.
+       */
+      style={{
+        borderTop: `2px solid var(--ant-color-border-secondary)`,
+        fontWeight: 500,
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+function TableRow({ style, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn(
-        "border-b border-border transition-colors duration-150 motion-reduce:transition-none",
-        "hover:bg-muted/50 data-[state=selected]:bg-muted",
-        className
-      )}
+      style={{
+        borderBottom: ROW_BORDER,
+        // Hover-nya sendiri hidup di `TABLE_RULES`; yang bisa ditulis sebaris
+        // hanya transisinya. `prefers-reduced-motion` ditegakkan sekali untuk
+        // semua di `globals.css`, jadi tidak ada penawar per komponen.
+        transition: "background-color 150ms",
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
 function TableHead({
-  className,
   sticky,
   style,
   ...props
@@ -211,14 +273,13 @@ function TableHead({
   return (
     <th
       data-slot="table-head"
-      className={cn(
-        "h-11 px-6 text-left align-middle font-medium whitespace-nowrap text-muted-foreground",
-        "[&:has([role=checkbox])]:pr-0",
-        className
-      )}
       // Gaya pemanggil MENIMPA gaya lengketnya: kolom masih boleh mengatur
       // lebar & perataannya sendiri tanpa kehilangan sifat menempelnya.
-      style={sticky ? { ...STICKY_HEAD_STYLE, ...style } : style}
+      style={
+        sticky
+          ? { ...HEAD_STYLE, ...STICKY_HEAD_STYLE, ...style }
+          : { ...HEAD_STYLE, ...style }
+      }
       {...props}
     />
   );
@@ -236,56 +297,61 @@ function TableHead({
  * sel tanpa konteks, dan tak satu pun angka di bawahnya terhubung ke judulnya.
  * Yang benar `<th scope="colgroup">` / `<th scope="row">`.
  *
- * `TableHead` tidak bisa dipakai untuk itu: ia sel judul KOLOM, dan dari enam
- * kelasnya EMPAT salah di tengah badan tabel — `h-11` (tinggi 44px, sedangkan
- * baris isi 12px+12px), tanpa `py-3` (jadi tingginya HANYA berasal dari h-11),
- * `text-muted-foreground` (judul seksi jadi LEBIH pudar dari akun di bawahnya —
- * hierarki terbalik), dan `whitespace-nowrap` (label "Total Liabilitas +
- * Ekuitas" tak boleh membungkus, memaksa tabel menggeser mendatar di 375px).
- * Memakainya berarti membatalkan empat dari enam kelasnya di sisi pemanggil —
+ * `TableHead` tidak bisa dipakai untuk itu: ia sel judul KOLOM, dan dari lima
+ * deklarasinya EMPAT salah di tengah badan tabel — `height: 44` (sedangkan
+ * baris isi 12px+12px), tanpa `paddingBlock` (jadi tingginya HANYA berasal dari
+ * `height`), `colorTextSecondary` (judul seksi jadi LEBIH pudar dari akun di
+ * bawahnya — hierarki terbalik), dan `whiteSpace: nowrap` (label "Total
+ * Liabilitas + Ekuitas" tak boleh membungkus, memaksa tabel menggeser mendatar
+ * di 375px). Memakainya berarti membatalkan empat dari lima di sisi pemanggil —
  * gaya bersama yang seluruhnya ditimpa bukan gaya bersama.
  *
  * ── Dua penawar bawaan UA ──────────────────────────────────────────────────
- * Preflight Tailwind v4 TIDAK menyentuh `<th>` (diperiksa pada 4.2.2), jadi
- * bawaan peramban `th { font-weight: bold; text-align: center }` tetap berlaku
- * dan sebuah `<th>` akan tampil TEBAL dan DI TENGAH di tengah badan tabel.
- * Keduanya dinetralkan ke `inherit` supaya sel bertag `th` tampil persis sama
- * dengan `<td>` yang digantikannya: perataan datang dari kolomnya, tebal huruf
- * dari BARISnya — aturan yang sama dengan sel lain. Gaya pemanggil ditulis
+ * Reset di `globals.css` TIDAK menyentuh `<th>` — sama seperti preflight
+ * Tailwind yang digantikannya — jadi bawaan peramban
+ * `th { font-weight: bold; text-align: center }` tetap berlaku dan sebuah
+ * `<th>` akan tampil TEBAL dan DI TENGAH di tengah badan tabel. Keduanya
+ * dinetralkan ke `inherit` supaya sel bertag `th` tampil persis sama dengan
+ * `<td>` yang digantikannya: perataan datang dari kolomnya, tebal huruf dari
+ * BARISnya — aturan yang sama dengan sel lain. Gaya pemanggil ditulis
  * SESUDAHNYA, jadi ia tetap bisa menimpa keduanya.
  */
 function TableCell({
-  className,
   scope,
   style,
   ...props
 }: React.ComponentProps<"td"> & { scope?: "row" | "col" | "rowgroup" | "colgroup" }) {
-  const classes = cn(
-    "px-6 py-3 align-middle",
-    "[&:has([role=checkbox])]:pr-0",
-    className
-  );
-
   if (scope === undefined) {
-    return <td data-slot="table-cell" className={classes} style={style} {...props} />;
+    return (
+      <td data-slot="table-cell" style={{ ...CELL_STYLE, ...style }} {...props} />
+    );
   }
 
   return (
     <th
       data-slot="table-cell"
       scope={scope}
-      className={classes}
-      style={{ fontWeight: "inherit", textAlign: "inherit", ...style }}
+      style={{
+        ...CELL_STYLE,
+        fontWeight: "inherit",
+        textAlign: "inherit",
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-function TableCaption({ className, ...props }: React.ComponentProps<"caption">) {
+function TableCaption({ style, ...props }: React.ComponentProps<"caption">) {
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      style={{
+        marginTop: "var(--ant-margin)",
+        fontSize: "var(--ant-font-size)",
+        color: "var(--ant-color-text-secondary)",
+        ...style,
+      }}
       {...props}
     />
   );

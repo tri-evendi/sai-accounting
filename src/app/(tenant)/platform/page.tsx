@@ -41,12 +41,16 @@
  * aktif — pelanggan baru yang belum punya satu pun PT, dan pemilik yang
  * seluruh PT-nya sedang hanya-baca, justru pemakai terpentingnya.
  *
- * ══ DUA SUMBER WARNA, DAN GARIS YANG MEMISAHKANNYA (issue #200) ════════════
- * Server component: tanpa `antd`, tanpa `theme.useToken()`. Variabel `--ant-…`
- * hanya teratasi DI DALAM sebuah komponen AntD (#227), dan di halaman ini
- * pembawanya adalah `Card`. Jadi isi kartu memakai token AntD, sedangkan pita
- * "hanya-baca" yang berdiri sendiri di atas kartu pertama memakai token `:root`
- * aplikasi. Kartu angkanya (`StatCard`, `QuotaMeter`) mewarnai dirinya sendiri.
+ * ══ SATU SUMBER WARNA (issue #203) ═════════════════════════════════════════
+ * Server component: tanpa `antd`, tanpa `theme.useToken()`. Dulu berkas ini
+ * memakai DUA sumber — token AntD di dalam `Card`, token `:root` aplikasi untuk
+ * pita "hanya-baca" yang berdiri sendiri di atas kartu pertama — karena
+ * variabel `--ant-…` dikira hanya teratasi di dalam komponen AntD. Sejak #227
+ * itu tidak berlaku lagi: kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root
+ * layout, jadi variabelnya teratasi di dalam maupun di luar `Card`. Seluruh
+ * berkas kini satu sumber, token AntD — dan memang harus, sebab #203 mencabut
+ * token `:root` itu dari `globals.css`. Kartu angkanya (`StatCard`,
+ * `QuotaMeter`) mewarnai dirinya sendiri.
  */
 import Link from "next/link";
 import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
@@ -70,15 +74,15 @@ import { tenantPath } from "@/lib/tenant-routes";
 
 export const dynamic = "force-dynamic";
 
-/** Pita penangguhan — DI LUAR `Card`, jadi token `:root` aplikasi. */
+/** Pita penangguhan — DI LUAR `Card`, tapi tetap token AntD (lihat kepala). */
 const READ_ONLY_NOTE: React.CSSProperties = {
   display: "flex",
   gap: 12,
   padding: 16,
   borderRadius: 8,
-  border: "1px solid var(--warning)",
-  background: "var(--warning-soft)",
-  color: "var(--warning-strong)",
+  border: "1px solid var(--ant-color-warning-border)",
+  background: "var(--ant-color-warning-bg)",
+  color: "var(--ant-color-money-pending)",
 };
 
 /**
@@ -234,7 +238,7 @@ export default async function PlatformPage() {
                 margin: "0 0 12px",
                 fontSize: 18,
                 fontWeight: 600,
-                color: "var(--foreground)",
+                color: "var(--ant-color-text)",
               }}
             >
               {t("tenantSettings.usageHeading")}

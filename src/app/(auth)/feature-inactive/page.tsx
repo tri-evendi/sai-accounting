@@ -21,11 +21,13 @@
  * layar penjelas tanpa satu pun kendali adalah jalan buntu (MASTER.md
  * §Orientasi Perusahaan).
  *
- * ── Warna (issue #200) ───────────────────────────────────────────────────
- * Server component di dalam `AuthShell` yang belum dikonversi: tanpa `antd`,
- * dan tanpa komponen AntD di atasnya sehingga `--ant-…` tidak teratasi (#227).
- * Kalimatnya karena itu memakai token `:root` aplikasi — token yang sama
- * dengan kulitnya. Tombolnya mewarnai dirinya sendiri.
+ * ── Warna (issue #203) ───────────────────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimatnya
+ * memakai variabel token AntD `var(--ant-…)`, yang teratasi walau tak ada satu
+ * pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, bukan oleh komponen AntD. Token `:root` aplikasi
+ * yang dulu dipakai sudah dicabut `globals.css` oleh #203. Tombolnya mewarnai
+ * dirinya sendiri.
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,14 +47,14 @@ const BODY_TEXT: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 /** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
 const EXIT_ROW: React.CSSProperties = {
   marginTop: 24,
   paddingTop: 20,
-  borderTop: "1px solid var(--border)",
+  borderTop: "1px solid var(--ant-color-border-secondary)",
 };
 
 export default async function FeatureInactivePage({

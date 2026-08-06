@@ -31,10 +31,9 @@
 
 import { Input, type InputRef } from "antd";
 
-import { isInvalidField } from "@/components/ui/input";
+import { describedByWith, isInvalidField } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useId } from "react";
-import { cn } from "@/lib/utils";
 
 type PasswordFieldProps = Omit<
   React.ComponentProps<"input">,
@@ -67,7 +66,6 @@ function PasswordField({ invalid, ...props }: PasswordFieldProps) {
 }
 
 function PasswordInput({
-  className,
   label,
   error,
   id,
@@ -80,18 +78,24 @@ function PasswordInput({
   const errorId = `${inputId}-error`;
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
       {label && <Label htmlFor={inputId}>{label}</Label>}
       <PasswordField
         id={inputId}
         disabled={disabled}
         invalid={Boolean(error)}
-        aria-describedby={cn(describedBy, error && errorId) || undefined}
-        className={className}
+        aria-describedby={describedByWith(describedBy, error && errorId)}
         {...props}
       />
       {error && (
-        <p id={errorId} role="alert" className="text-sm text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          style={{
+            fontSize: "var(--ant-font-size)",
+            color: "var(--ant-color-money-negative)",
+          }}
+        >
           {error}
         </p>
       )}

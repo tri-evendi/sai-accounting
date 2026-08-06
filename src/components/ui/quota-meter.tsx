@@ -54,7 +54,6 @@ export interface QuotaMeterProps {
   valueLabel: string;
   /** Kata keadaan saat hampir/sudah penuh — WAJIB bila `used >= max * 0.8`. */
   stateLabel?: string;
-  className?: string;
 }
 
 /** Ambang keparahan. 80% = masih bisa direncanakan; 100% = sudah menghalangi. */
@@ -66,7 +65,6 @@ export function QuotaMeter({
   max,
   valueLabel,
   stateLabel,
-  className,
 }: QuotaMeterProps) {
   const { token } = theme.useToken();
   const money = moneyPalette(token);
@@ -94,7 +92,6 @@ export function QuotaMeter({
 
   return (
     <div
-      className={className}
       style={{
         borderRadius: token.borderRadiusLG,
         border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,

@@ -3,11 +3,15 @@
  *
  * Ditulis sebagai bentuk MINIMUM yang benar-benar dipanggil aplikasi ini, bukan
  * tipe internal `@ant-design/icons`: peta ikon (menu samping, Pusat Laporan,
- * pemilih tema) hanya perlu tahu bahwa nilainya bisa dirender dengan `style`,
- * `className`, dan `aria-hidden`. Komponen `@ant-design/icons` menerima ketiganya
+ * pemilih tema) hanya perlu tahu bahwa nilainya bisa dirender dengan `style`
+ * dan `aria-hidden`. Komponen `@ant-design/icons` menerima keduanya
  * (`IconBaseProps extends React.HTMLProps<HTMLSpanElement>`), jadi ia tetap
  * bisa ditaruh di sini tanpa mengimpor jalur `lib/components/AntdIcon` yang
  * bukan bagian dari permukaan publik paketnya.
+ *
+ * `className` DICABUT dari bentuk ini di #203: tak ada lagi lembar gaya yang
+ * memaknainya, dan sebuah prop kelas yang tersisa hanya mengundang orang
+ * menuliskan kelas yang tidak akan pernah berlaku.
  *
  * **Jangan menambahkan `size` di sini.** `React.HTMLProps` memang mengizinkan
  * `size` (atribut HTML untuk `<input>`/`<select>`), jadi `<InfoCircleOutlined
@@ -18,7 +22,6 @@
 import type { AriaAttributes, ComponentType, CSSProperties } from "react";
 
 export type IconComponent = ComponentType<{
-  className?: string;
   style?: CSSProperties;
   "aria-hidden"?: AriaAttributes["aria-hidden"];
 }>;

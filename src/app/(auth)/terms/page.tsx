@@ -9,19 +9,20 @@
  * Indonesia dengan sengaja — terjemahan informatif menyusul bila diperlukan,
  * naskah mengikatnya tetap satu.
  *
- * ── Kenapa halaman ini TIDAK memakai token AntD (issue #200) ──────────────
+ * ── Warnanya token AntD, tanpa mengimpor `antd` (issue #203) ──────────────
  * Ia server component `force-static` yang berdiri sendiri: tidak ada kulit,
- * tidak ada satu pun komponen AntD di atas isinya selain dua tombol di kaki.
- * Variabel `--ant-…` karena itu tidak teratasi di sini (#227), dan `antd` tidak
- * boleh diimpor server component (`tests/rsc-boundary.test.ts`). Yang dipakai
- * adalah token `:root` aplikasi dari `globals.css` — sumber yang sama dengan
- * tabel palet MASTER.md, benar di kedua tema.
+ * tidak ada satu pun komponen AntD di atas isinya selain dua tombol di kaki,
+ * dan `antd` sendiri tidak boleh diimpor server component
+ * (`tests/rsc-boundary.test.ts`). Yang dipakai karena itu adalah variabel CSS
+ * tokennya — sah di sini sejak #227, ketika kelas `ANTD_CSS_VAR_KEY`
+ * ("sai-tokens") pindah ke `<html>` di root layout: variabelnya tidak lagi
+ * bergantung pada ada-tidaknya komponen AntD di atas halaman. Token `:root`
+ * aplikasi yang dulu dipakai sudah dicabut dari `globals.css` oleh #203.
  *
  * Ia juga bukan permukaan pemasaran meski publik: tanpa hero, tanpa CTA, satu
  * kolom teks selebar 42rem. Yang boleh bergaya pendaratan hanyalah `/`, dan
  * aturannya ditulis terpisah di `design-system/sai-accounting/pages/landing.md`.
  */
-import Link from "next/link";
 import { WarningOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
@@ -32,7 +33,7 @@ export const dynamic = "force-static";
 const PAGE: React.CSSProperties = {
   minHeight: "100vh",
   padding: "40px 16px",
-  background: "var(--background)",
+  background: "var(--ant-color-bg-layout)",
 };
 
 const ARTICLE: React.CSSProperties = {
@@ -48,33 +49,33 @@ const H1: React.CSSProperties = {
   fontSize: 24,
   fontWeight: 700,
   letterSpacing: "-0.025em",
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const H2: React.CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 600,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const META: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 const CODE: React.CSSProperties = {
   borderRadius: 4,
   padding: "2px 6px",
-  background: "var(--muted)",
+  background: "var(--ant-color-fill-quaternary)",
 };
 
 const P: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 /** Spanduk draf — ikon + kata "DRAF", bukan warna sendirian. */
@@ -83,10 +84,10 @@ const DRAFT_BANNER: React.CSSProperties = {
   gap: 12,
   padding: 16,
   borderRadius: 8,
-  border: "1px solid var(--warning)",
-  background: "var(--warning-soft)",
+  border: "1px solid var(--ant-color-warning-border)",
+  background: "var(--ant-color-warning-bg)",
   fontSize: 14,
-  color: "var(--warning-strong)",
+  color: "var(--ant-color-money-pending)",
 };
 
 const FOOTER: React.CSSProperties = {
@@ -94,7 +95,7 @@ const FOOTER: React.CSSProperties = {
   flexWrap: "wrap",
   gap: 12,
   paddingTop: 24,
-  borderTop: "1px solid var(--border)",
+  borderTop: "1px solid var(--ant-color-border-secondary)",
 };
 
 export default function TermsPage() {
@@ -159,11 +160,17 @@ export default function TermsPage() {
         </section>
 
         <footer style={FOOTER}>
-          <Button asChild variant="outline">
-            <Link href="/privacy">Kebijakan Privasi</Link>
+          {/* `href` LANGSUNG, bukan `asChild` membungkus `<Link>`: berkas ini
+              server component, dan `asChild` harus membaca prop anaknya —
+              anak yang menyeberangi batas RSC bisa tiba sebagai simpul `lazy`
+              tanpa prop, yang mematikan prerender halaman ini. Alasan
+              lengkapnya di kepala `ui/button.tsx`; keluarannya `<a>` yang sama
+              persis. */}
+          <Button href="/privacy" variant="outline">
+            Kebijakan Privasi
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/register">Kembali ke pendaftaran</Link>
+          <Button href="/register" variant="outline">
+            Kembali ke pendaftaran
           </Button>
         </footer>
       </article>

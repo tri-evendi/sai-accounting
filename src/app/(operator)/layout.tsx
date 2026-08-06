@@ -10,16 +10,18 @@
  * ⚠ Konsol ini berjalan di domain terpisah (`ops.`) dan TIDAK BOLEH mewarisi
  * konteks perusahaan. Berkas ini karena itu tidak mengimpor satu pun modul
  * bertenant/bercompany — juga tidak "sekadar untuk tampilan". Konversi AntD
- * (#200) tidak menambah satu impor pun: warnanya token `:root` aplikasi dan
- * primitif yang sudah ada.
+ * (#200, dilanjutkan #203) tidak menambah satu impor pun: warnanya variabel
+ * token AntD (`var(--ant-…)`, teratasi di seluruh dokumen karena `<html>`
+ * memikul kelas `ANTD_CSS_VAR_KEY` sejak #227) dan primitif yang sudah ada.
  *
  * Kerangka ini TIDAK menjadi penjaga (pola grup lain: penjaga per halaman,
  * ditegakkan tests/authz-coverage) — ia hanya membaca sesi secara opsional
  * untuk chrome: tanpa sesi (halaman login) kepala tampil polos tanpa menu.
  *
- * Kepala GELAP di kedua tema (token permukaan-gelap `--sidebar`, pola panel
- * brand AuthShell) — pembeda visual yang disengaja: satu pandangan cukup
- * untuk tahu Anda sedang di bidang operator, bukan di aplikasi pelanggan.
+ * Kepala GELAP di kedua tema (`#001529` — permukaan yang sama dengan panel
+ * brand `AuthShell` dan menu samping dasbor; lihat catatan di tempatnya di
+ * bawah) — pembeda visual yang disengaja: satu pandangan cukup untuk tahu
+ * Anda sedang di bidang operator, bukan di aplikasi pelanggan.
  *
  * ── Kenapa tombol keluarnya `secondary`, bukan garis di atas gelap (#200) ──
  * Bentuk lamanya adalah `outline` yang tepi & teksnya ditimpa kelas khusus
@@ -64,14 +66,22 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "var(--background)",
+        background: "var(--ant-color-bg-layout)",
       }}
     >
       <header
         style={{
-          borderBottom: "1px solid var(--border)",
-          background: "var(--sidebar)",
-          color: "var(--sidebar-foreground)",
+          borderBottom: "1px solid var(--ant-color-border-secondary)",
+          /* `#001529` ditulis LITERAL, dan itu disengaja: ini nilai
+             `Layout.siderBg` bawaan AntD — permukaan yang sama persis dengan
+             `Layout.Sider theme="dark"` milik `AuthShell` dan menu samping
+             dasbor, sehingga bidang gelap operator tidak menyimpang sendiri.
+             Tidak ada variabel yang bisa dirujuk: variabel token KOMPONEN AntD
+             baru ada bila komponennya benar-benar dirender, dan chrome operator
+             ini tidak menggambar satu pun `Layout.Sider`. Kalau `Layout.siderBg`
+             kelak diubah, ubah juga di sini. */
+          background: "#001529",
+          color: "var(--ant-color-text-light-solid)",
         }}
       >
         <div style={BAR}>
@@ -101,7 +111,12 @@ export default async function OperatorLayout({ children }: { children: React.Rea
       </header>
 
       {session && (
-        <div style={{ borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
+        <div
+          style={{
+            borderBottom: "1px solid var(--ant-color-border-secondary)",
+            background: "var(--ant-color-bg-container)",
+          }}
+        >
           <div style={{ width: "100%", maxWidth: CONTENT_MAX, margin: "0 auto", padding: "0 16px" }}>
             <OperatorNav
               ariaLabel={t("operator.consoleTitle")}

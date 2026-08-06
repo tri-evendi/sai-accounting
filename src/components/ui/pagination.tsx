@@ -68,10 +68,24 @@ export function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between border-t border-border px-6 py-3">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderTop: "1px solid var(--ant-color-border-secondary)",
+        paddingInline: "var(--ant-padding-lg)",
+        paddingBlock: "var(--ant-padding-sm)",
+      }}
+    >
       {/* "Halaman 2 dari 9" — pada daftar panjang, nomor halaman saja tidak
           menjawab "masih berapa lagi". Dipertahankan dari versi sebelum #189. */}
-      <p className="text-sm text-muted-foreground">
+      <p
+        style={{
+          fontSize: "var(--ant-font-size)",
+          color: "var(--ant-color-text-secondary)",
+        }}
+      >
         {t("table.page", { page: currentPage, pages: totalPages })}
       </p>
       <AntPagination

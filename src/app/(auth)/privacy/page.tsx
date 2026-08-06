@@ -9,10 +9,10 @@
  * docs/COMPLIANCE.md.
  *
  * Gaya & alasan tokennya sama persis dengan `/terms` — lihat catatan kepala di
- * sana (issue #200): server component tanpa kulit, jadi warnanya token `:root`
- * aplikasi, bukan variabel `--ant-…` yang tak akan teratasi di luar pohon AntD.
+ * sana (issue #200, diperbarui #203): server component tanpa kulit, warnanya
+ * variabel token AntD `var(--ant-…)`, yang teratasi juga di luar pohon AntD
+ * karena `<html>` memikul kelas `ANTD_CSS_VAR_KEY` sejak #227.
  */
-import Link from "next/link";
 import { WarningOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
@@ -23,7 +23,7 @@ export const dynamic = "force-static";
 const PAGE: React.CSSProperties = {
   minHeight: "100vh",
   padding: "40px 16px",
-  background: "var(--background)",
+  background: "var(--ant-color-bg-layout)",
 };
 
 const ARTICLE: React.CSSProperties = {
@@ -39,33 +39,33 @@ const H1: React.CSSProperties = {
   fontSize: 24,
   fontWeight: 700,
   letterSpacing: "-0.025em",
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const H2: React.CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 600,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const META: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 const CODE: React.CSSProperties = {
   borderRadius: 4,
   padding: "2px 6px",
-  background: "var(--muted)",
+  background: "var(--ant-color-fill-quaternary)",
 };
 
 const P: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const DRAFT_BANNER: React.CSSProperties = {
@@ -73,10 +73,10 @@ const DRAFT_BANNER: React.CSSProperties = {
   gap: 12,
   padding: 16,
   borderRadius: 8,
-  border: "1px solid var(--warning)",
-  background: "var(--warning-soft)",
+  border: "1px solid var(--ant-color-warning-border)",
+  background: "var(--ant-color-warning-bg)",
   fontSize: 14,
-  color: "var(--warning-strong)",
+  color: "var(--ant-color-money-pending)",
 };
 
 const FOOTER: React.CSSProperties = {
@@ -84,7 +84,7 @@ const FOOTER: React.CSSProperties = {
   flexWrap: "wrap",
   gap: 12,
   paddingTop: 24,
-  borderTop: "1px solid var(--border)",
+  borderTop: "1px solid var(--ant-color-border-secondary)",
 };
 
 export default function PrivacyPage() {
@@ -147,11 +147,14 @@ export default function PrivacyPage() {
         </section>
 
         <footer style={FOOTER}>
-          <Button asChild variant="outline">
-            <Link href="/terms">Syarat &amp; Ketentuan</Link>
+          {/* `href` LANGSUNG — lihat catatan kembarnya di `terms/page.tsx`:
+              `asChild` membaca prop anaknya, dan dari server component anak itu
+              bisa tiba sebagai simpul `lazy` tanpa prop. */}
+          <Button href="/terms" variant="outline">
+            Syarat &amp; Ketentuan
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/register">Kembali ke pendaftaran</Link>
+          <Button href="/register" variant="outline">
+            Kembali ke pendaftaran
           </Button>
         </footer>
       </article>

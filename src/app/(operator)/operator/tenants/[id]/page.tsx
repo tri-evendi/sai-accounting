@@ -23,11 +23,14 @@
  * `moneyColumn`, jadi aturan uang MASTER.md ditegakkan pembantunya alih-alih
  * diketik ulang per sel.
  *
- * Warnanya token `:root` aplikasi: konsol operator sengaja tidak menggambar
- * satu pun komponen AntD di atas isinya (kerangkanya tidak mengimpor apa pun
- * dari sisi pelanggan), jadi variabel `--ant-…` tidak akan teratasi di sini
- * (#227). Yang mewarnai dirinya sendiri — `Badge`, `Button`, `Money` — tetap
- * memakai token AntD karena masing-masing dirender sebagai daun client.
+ * Warnanya variabel token AntD `var(--ant-…)` (#203). Konsol operator sengaja
+ * tidak menggambar satu pun komponen AntD di atas isinya — kerangkanya tidak
+ * mengimpor apa pun dari sisi pelanggan — dan itu dulu berarti variabel AntD
+ * tak teratasi di sini. Tidak lagi sejak #227: kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, bukan oleh elemen yang digambar komponen AntD.
+ * Token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css` oleh
+ * #203. Yang mewarnai dirinya sendiri — `Badge`, `Button`, `Money` — memakai
+ * token yang sama karena masing-masing dirender sebagai daun client.
  */
 
 import Link from "next/link";
@@ -54,13 +57,13 @@ function formatDate(d: Date): string {
 
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
-const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--muted-foreground)" };
+const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
 
 const H2: React.CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 600,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const H3: React.CSSProperties = {
@@ -68,7 +71,7 @@ const H3: React.CSSProperties = {
   paddingTop: 8,
   fontSize: 14,
   fontWeight: 600,
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const SECTION: React.CSSProperties = {
@@ -92,22 +95,22 @@ const NOTICE: React.CSSProperties = {
   ...MUTED,
   padding: 12,
   borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--muted)",
+  border: "1px solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-fill-quaternary)",
   lineHeight: 1.625,
 };
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-      <dt style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{label}</dt>
+    <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--ant-color-border-secondary)" }}>
+      <dt style={{ fontSize: 14, color: "var(--ant-color-text-secondary)" }}>{label}</dt>
       <dd
         style={{
           margin: "4px 0 0",
           fontSize: 14,
           fontWeight: 500,
           fontVariantNumeric: "tabular-nums",
-          color: "var(--foreground)",
+          color: "var(--ant-color-text)",
         }}
       >
         {value}
@@ -148,7 +151,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colInvoiceNumber"),
       align: "left",
       render: (_v, invoice) => (
-        <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{invoice.number}</span>
+        <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>{invoice.number}</span>
       ),
     },
     {
@@ -156,7 +159,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colIssueDate"),
       align: "left",
       render: (_v, invoice) => (
-        <span style={{ color: "var(--muted-foreground)" }}>{formatDate(invoice.issueDate)}</span>
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatDate(invoice.issueDate)}</span>
       ),
     },
     {
@@ -164,7 +167,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colDueDate"),
       align: "left",
       render: (_v, invoice) => (
-        <span style={{ color: "var(--muted-foreground)" }}>{formatDate(invoice.dueDate)}</span>
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatDate(invoice.dueDate)}</span>
       ),
     },
     /* Nominal lewat `moneyColumn`, dan mata uangnya DIBACA PER BARIS: tagihan
@@ -191,7 +194,7 @@ export default async function OperatorTenantDetailPage({
       align: "left",
       render: (_v, invoice) =>
         invoice.payments.length === 0 ? (
-          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>
+          <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>—</span>
         ) : (
           <ul
             style={{
@@ -202,7 +205,7 @@ export default async function OperatorTenantDetailPage({
               margin: 0,
               padding: 0,
               fontSize: 12,
-              color: "var(--muted-foreground)",
+              color: "var(--ant-color-text-secondary)",
             }}
           >
             {invoice.payments.map((payment) => (
@@ -229,7 +232,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colCompanyName"),
       align: "left",
       render: (_v, company) => (
-        <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{company.name}</span>
+        <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>{company.name}</span>
       ),
     },
     {
@@ -237,7 +240,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colCompanySlug"),
       align: "left",
       render: (_v, company) => (
-        <span style={{ color: "var(--muted-foreground)" }}>{company.slug}</span>
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{company.slug}</span>
       ),
     },
     {
@@ -257,7 +260,7 @@ export default async function OperatorTenantDetailPage({
       title: t("operator.tenant.colCompanyUsers"),
       align: "right",
       render: (_v, company) => (
-        <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--foreground)" }}>
+        <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ant-color-text)" }}>
           {company.userCount}
         </span>
       ),
@@ -282,7 +285,7 @@ export default async function OperatorTenantDetailPage({
               fontSize: 24,
               fontWeight: 700,
               letterSpacing: "-0.025em",
-              color: "var(--foreground)",
+              color: "var(--ant-color-text)",
             }}
           >
             {tenant.name}
@@ -298,7 +301,7 @@ export default async function OperatorTenantDetailPage({
           >
             {statusLabel(tenant.status)}
           </Badge>
-          <span style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{tenant.slug}</span>
+          <span style={{ fontSize: 14, color: "var(--ant-color-text-secondary)" }}>{tenant.slug}</span>
         </div>
       </div>
 

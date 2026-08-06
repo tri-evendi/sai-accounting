@@ -17,13 +17,16 @@
  * perusahaan aktif, sedangkan setiap halaman dasbor menuntutnya. Menaruhnya di
  * dalam dasbor akan membuatnya memantul ke dirinya sendiri tanpa henti.
  *
- * ── Warna di berkas ini (issue #200) ─────────────────────────────────────
- * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Isinya juga
- * dirender DI DALAM `AuthShell`, yang belum dikonversi dan karena itu belum
- * menggambar satu pun komponen AntD di atas anak-anaknya — variabel `--ant-…`
- * tidak akan teratasi di sini (#227). Kalimat penjelasnya memakai token `:root`
- * aplikasi, token yang SAMA yang dipakai kulitnya, supaya keduanya tidak bisa
- * berpisah warna. Tombolnya sendiri sudah mewarnai dirinya (primitif `Button`).
+ * ── Warna di berkas ini (issue #203) ─────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimat
+ * penjelasnya karena itu memakai variabel token AntD, dan itu SAH walau tak
+ * ada satu pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY`
+ * ("sai-tokens") dipikul `<html>` oleh root layout — bukan oleh elemen yang
+ * digambar komponen AntD — sehingga `var(--ant-…)` teratasi di seluruh
+ * dokumen. Token `:root` aplikasi bukan lagi pilihan: #203 mencabutnya dari
+ * `globals.css`, dan `AuthShell` pun kini berdiri di atas token AntD, jadi
+ * kulit dan isinya tetap tidak bisa berpisah warna. Tombolnya sendiri sudah
+ * mewarnai dirinya (primitif `Button`).
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -52,7 +55,7 @@ const BODY_TEXT: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 const FULL_WIDTH: React.CSSProperties = { width: "100%" };

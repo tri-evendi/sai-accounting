@@ -9,19 +9,24 @@
  * Dirender DI DALAM `SetupShell` (kepala ramping sudah tergambar oleh layout),
  * jadi yang perlu ditahan hanya ruang isinya: kepala halaman + panel wizard.
  *
- * ── Warna & denyut (issue #200) ──────────────────────────────────────────
- * Server component, jadi tanpa `antd`; dan `SetupShell` di atasnya belum
- * menggambar satu pun komponen AntD, sehingga variabel `--ant-…` tidak akan
- * teratasi di sini (#227). Warnanya karena itu token `:root` aplikasi. Denyut
- * dan `prefers-reduced-motion` ditulis sebagai satu aturan CSS ber-`href` +
- * `precedence` — gaya sebaris tidak bisa membawa media query, dan React 19
- * meniadakan gandanya. Sasarannya atribut `data-*`, bukan kelas.
+ * ── Warna & denyut (issue #203) ──────────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Warnanya
+ * tetap token AntD lewat `var(--ant-…)`: sejak #227 kelas `ANTD_CSS_VAR_KEY`
+ * ("sai-tokens") dipasang root layout pada `<html>`, bukan pada elemen yang
+ * digambar komponen AntD, jadi variabelnya teratasi juga di sini — di mana
+ * `SetupShell` di atasnya belum menggambar satu pun komponen AntD. Token
+ * `:root` aplikasi sudah dicabut dari `globals.css` oleh #203 dan tidak boleh
+ * dirujuk lagi. Denyut dan `prefers-reduced-motion` ditulis sebagai satu aturan
+ * CSS ber-`href` + `precedence` — gaya sebaris tidak bisa membawa media query,
+ * dan React 19 meniadakan gandanya. Sasarannya atribut `data-*`, bukan kelas.
  */
 
-/** Balok kerangka. Warnanya `--border`, satu tingkat lebih tegas dari
- *  `--muted`: panel wisaya berdiri di atas kartu, bukan di atas halaman. */
+/** Balok kerangka. Warnanya `fillSecondary`, bukan `fillQuaternary`: yang
+ *  terakhir itu latar halus untuk bidang lebar, dan sebagai BALOK di atas
+ *  panel wisaya ia praktis tak terlihat — kerangka yang tak terlihat sama
+ *  saja dengan layar kosong. */
 function bar(width: number | string, height: number, radius = 4): React.CSSProperties {
-  return { width, height, borderRadius: radius, background: "var(--border)" };
+  return { width, height, borderRadius: radius, background: "var(--ant-color-fill-secondary)" };
 }
 
 export default function SetupLoading() {
@@ -52,8 +57,8 @@ export default function SetupLoading() {
         style={{
           padding: 24,
           borderRadius: 8,
-          border: "1px solid var(--border)",
-          background: "var(--card)",
+          border: "1px solid var(--ant-color-border-secondary)",
+          background: "var(--ant-color-bg-container)",
         }}
       >
         <div style={bar(160, 20)} />

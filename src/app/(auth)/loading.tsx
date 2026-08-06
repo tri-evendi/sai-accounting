@@ -13,17 +13,19 @@
  * kamus bahasa mana pun dipilih, dan menebak bahasanya lebih buruk daripada
  * diam.
  *
- * ── Warnanya token APLIKASI, bukan token AntD (issue #200) ────────────────
+ * ── Warnanya token AntD lewat `var(--ant-…)` (issue #203) ─────────────────
  * Berkas ini server component dan karena itu tidak boleh mengimpor `antd`
  * (dijaga `tests/rsc-boundary.test.ts`), jadi `theme.useToken()` tak tersedia.
- * Jalan keluar biasa — variabel `--ant-…` — juga TIDAK berlaku di sini:
- * `ConfigProvider` v6 memasang variabelnya pada elemen ber-kelas
- * `css-var-root` yang digambar komponen AntD sendiri, dan kerangka ini tidak
- * punya satu pun komponen AntD di atasnya (lihat #227). Yang dipakai karena itu
- * adalah token `:root` aplikasi (`--card`, `--muted`, `--sidebar`, …) yang
- * memang dideklarasikan `globals.css` untuk kedua tema — token yang SAMA yang
- * masih dipakai `AuthShell`, sehingga kerangka dan isinya tidak bisa berpisah
- * warna selama kulitnya belum ikut dikonversi.
+ * Yang dipakai sebagai gantinya adalah variabel CSS-nya, dan itu SAH di sini:
+ * sejak #227 kelas `ANTD_CSS_VAR_KEY` ("sai-tokens") dipikul `<html>` sendiri
+ * oleh root layout — bukan oleh elemen yang digambar komponen AntD — sehingga
+ * `var(--ant-…)` teratasi di seluruh dokumen, termasuk pada kerangka yang tidak
+ * punya satu pun komponen AntD di atasnya. Token `:root` aplikasi (`--card`,
+ * `--muted`, …) tidak lagi dipakai: #203 mencabutnya dari `globals.css`, dan
+ * merujuknya sekarang berarti warna yang jatuh diam-diam ke warisan.
+ *
+ * Satu-satunya nilai warna yang ditulis literal adalah `#001529` pada panel
+ * brand dan kepala layar sempit — alasannya ditulis di tempatnya.
  *
  * ── Denyut & titik patah lewat `<style>`, bukan kelas utilitas ────────────
  * Dua hal yang gaya sebaris memang tidak bisa lakukan — `@media` dan
@@ -42,9 +44,12 @@
  * sama.
  */
 
-/** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda. */
+/** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda.
+ *  Warnanya `fillSecondary`, bukan `fillQuaternary`: yang terakhir itu latar
+ *  halus untuk bidang lebar, dan sebagai BALOK di atas kartu ia praktis tak
+ *  terlihat — kerangka yang tak terlihat sama saja dengan layar kosong. */
 function bar(width: number | string, height: number): React.CSSProperties {
-  return { width, height, borderRadius: 4, background: "var(--muted)" };
+  return { width, height, borderRadius: 4, background: "var(--ant-color-fill-secondary)" };
 }
 
 export default function AuthLoading() {
@@ -55,7 +60,7 @@ export default function AuthLoading() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "var(--background)",
+        background: "var(--ant-color-bg-layout)",
       }}
     >
       <style href="sai-auth-skeleton" precedence="default">{`
@@ -86,7 +91,16 @@ export default function AuthLoading() {
             flexBasis: "29.166667%",
             maxWidth: 384,
             flexShrink: 0,
-            background: "var(--sidebar)",
+            /* `#001529` ditulis LITERAL, dan itu disengaja: ini nilai
+               `Layout.siderBg` bawaan AntD — permukaan yang sama persis dengan
+               `Layout.Sider theme="dark"` milik `AuthShell` dan menu samping
+               dasbor, yang akan menggantikan bidang ini begitu isinya tiba.
+               Tidak ada variabel yang bisa dirujuk: variabel token KOMPONEN
+               AntD baru ada bila komponennya benar-benar dirender, sedangkan
+               kerangka muat ini justru dirender MENGGANTIKAN halaman yang
+               merendernya. Kalau `Layout.siderBg` kelak diubah, ubah juga di
+               sini. */
+            background: "#001529",
           }}
         />
 
@@ -96,8 +110,11 @@ export default function AuthLoading() {
             data-auth-topbar
             style={{
               padding: "20px 24px",
-              borderBottom: "1px solid var(--border)",
-              background: "var(--sidebar)",
+              borderBottom: "1px solid var(--ant-color-border-secondary)",
+              /* Literal, alasan yang sama dengan panel brand di atas:
+                 `Layout.siderBg` AntD tidak punya variabel selama komponennya
+                 belum dirender. */
+              background: "#001529",
             }}
           >
             <div
@@ -105,7 +122,7 @@ export default function AuthLoading() {
                 width: 160,
                 height: 20,
                 borderRadius: 4,
-                background: "color-mix(in srgb, var(--sidebar-foreground) 20%, transparent)",
+                background: "color-mix(in srgb, var(--ant-color-text-light-solid) 20%, transparent)",
               }}
             />
             <div
@@ -114,7 +131,7 @@ export default function AuthLoading() {
                 width: 224,
                 height: 16,
                 borderRadius: 4,
-                background: "color-mix(in srgb, var(--sidebar-foreground) 10%, transparent)",
+                background: "color-mix(in srgb, var(--ant-color-text-light-solid) 10%, transparent)",
               }}
             />
           </div>
@@ -136,8 +153,8 @@ export default function AuthLoading() {
                   gap: 20,
                   padding: 32,
                   borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  background: "var(--card)",
+                  border: "1px solid var(--ant-color-border-secondary)",
+                  background: "var(--ant-color-bg-container)",
                 }}
               >
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

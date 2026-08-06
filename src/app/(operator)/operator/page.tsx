@@ -15,11 +15,14 @@
  * akan menyalin ulang seluruh baris ke peramban (±80 KB gzip) untuk sortir yang
  * URL-nya justru lebih berguna dipakai.
  *
- * Warnanya token `:root` aplikasi, bukan `--ant-…`: konsol ini tidak punya satu
- * pun komponen AntD di atas isinya (kerangkanya sendiri sengaja tanpa impor
- * apa pun dari sisi pelanggan), jadi variabel AntD tidak akan teratasi di sini
- * (#227). Yang mewarnai dirinya sendiri — `Badge`, `Button`, `EmptyState` —
- * tetap memakai token AntD karena masing-masing dirender sebagai daun client.
+ * Warnanya variabel token AntD `var(--ant-…)` (#203). Konsol ini memang tidak
+ * punya satu pun komponen AntD di atas isinya — kerangkanya sengaja tanpa impor
+ * apa pun dari sisi pelanggan — tapi itu tidak lagi menghalangi: sejak #227
+ * kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, bukan oleh elemen
+ * yang digambar komponen AntD, jadi variabelnya teratasi di seluruh dokumen.
+ * Token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css` oleh
+ * #203. Yang mewarnai dirinya sendiri — `Badge`, `Button`, `EmptyState` — tetap
+ * memakai token AntD karena masing-masing dirender sebagai daun client.
  */
 
 import Link from "next/link";
@@ -45,8 +48,8 @@ function formatDate(d: Date): string {
 
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
-/** Teks sekunder di dalam sel — token `:root`, lihat catatan kepala berkas. */
-const MUTED: React.CSSProperties = { color: "var(--muted-foreground)" };
+/** Teks sekunder di dalam sel — token AntD, lihat catatan kepala berkas. */
+const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
 const MUTED_TABULAR: React.CSSProperties = {
   ...MUTED,
   fontVariantNumeric: "tabular-nums",
@@ -79,7 +82,7 @@ export default async function OperatorTenantsPage({
       render: (_v, tenant) => (
         <Link
           href={`/operator/tenants/${tenant.id}`}
-          style={{ color: "var(--primary)", fontWeight: 500 }}
+          style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
         >
           {tenant.name}
         </Link>
@@ -147,7 +150,7 @@ export default async function OperatorTenantsPage({
             fontSize: 24,
             fontWeight: 700,
             letterSpacing: "-0.025em",
-            color: "var(--foreground)",
+            color: "var(--ant-color-text)",
           }}
         >
           {t("operator.tenants.heading")} ({tenants.length})

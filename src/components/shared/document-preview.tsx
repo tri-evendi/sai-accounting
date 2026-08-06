@@ -73,18 +73,14 @@ export function DocumentPreview({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/*
-       * SATU-SATUNYA `className` yang tersisa di berkas ini, dan ia bukan gaya
-       * melainkan UKURAN PANEL. `DialogContent` (#190) memaku lebarnya lewat
-       * `cn("max-w-2xl", className)` dan tidak menerima `style` maupun prop
-       * lebar; 2xl (672px) untuk sebuah lembar A4 berarti dokumennya dibaca
-       * dalam kolom yang lebih sempit daripada dokumennya sendiri.
+       * `size="lg"` (1024px), bukan bawaan `md` (672px): lembar A4 yang dibaca
+       * dalam kolom lebih sempit daripada dokumennya sendiri adalah pratinjau
+       * yang gagal justru pada satu hal yang diminta darinya.
        *
-       * Menambah prop `width`/`size` ke `DialogContent` adalah perbaikan yang
-       * benar, tetapi `components/ui/**` di luar ruang lingkup issue ini —
-       * dicatat di laporan, bukan dikerjakan diam-diam di sini.
-       *
-       * Yang TIDAK lagi lewat kelas: `p-0` (sudah bawaan `padded={false}`) dan
-       * `h-[92vh]`, yang kini tinggal di pembungkus `Flex` di bawah.
+       * Dulu ukurannya dikirim sebagai kelas `max-w-5xl`; prop `size` yang
+       * menggantikannya (#194) menjadi SATU-SATUNYA cara sejak #203 mencabut
+       * Tailwind. Padding badan sudah nol lewat bawaan `padded={false}`, dan
+       * tingginya tinggal di pembungkus `Flex` di bawah.
        */}
       <DialogContent size="lg">
         <Flex vertical style={{ height: PREVIEW_HEIGHT }}>

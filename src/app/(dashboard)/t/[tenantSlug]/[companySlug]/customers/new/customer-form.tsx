@@ -23,8 +23,9 @@
  * Konversi C4 menyentuh KULITNYA saja: `grid gap-4 sm:grid-cols-2` menjadi
  * `Row`/`Col`, jarak menjadi token, dan galat formulir menjadi `Alert` AntD.
  * Satu hal yang TIDAK bisa dilakukan dan perlu diketahui penyunting berikutnya:
- * `FormItem` hanya menerima `className`, tidak `style` — jadi field yang harus
- * membentang penuh dibungkus `Col span={24}`, bukan diberi `gridColumn` sendiri.
+ * `FormItem` tidak menerima prop tata letak apa pun selain gaya simpul
+ * terluarnya — jadi field yang harus membentang penuh dibungkus `Col
+ * span={24}`, bukan diberi `gridColumn` sendiri.
  */
 
 import { useForm, type Resolver } from "react-hook-form";

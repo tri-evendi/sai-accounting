@@ -88,6 +88,56 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  /**
+   * `@ant-design/icons` TIDAK BOLEH diimpor lewat barrel-nya di lapisan RSC.
+   * Baris ini yang membuat `next build` bisa selesai — jangan hapus tanpa
+   * membaca alasannya, dan jangan menukarnya dengan `optimizePackageImports`.
+   *
+   * Barrel paket itu (`es/index.js`, dan padanan CJS-nya `lib/index.js` yang
+   * dipakai lewat kondisi `node`) baris pertamanya memuat
+   * `./components/Context`, dan `components/Context.js` memanggil
+   * `createContext` DI TINGKAT MODUL tanpa `"use client"`. Build React untuk
+   * server component tidak mengekspor `createContext` sama sekali (bandingkan
+   * `react/react.react-server.js`: ada `forwardRef`, `memo`, `use`, `cache` —
+   * tidak ada `createContext`). Jadi begitu satu server component menyentuh
+   * barrel itu, modulnya dievaluasi di lapisan RSC dan mati sebagai
+   * `TypeError: (0 , a.r(...).createContext) is not a function` — yang muncul
+   * sebagai "Failed to collect page data for /setup-required", halaman pertama
+   * yang kebetulan dikumpulkan, bukan halaman yang bersalah.
+   *
+   * Berkas ikonnya SENDIRI aman di server: `es/icons/PlusOutlined.js` hanya
+   * memakai `React.createElement` + `React.forwardRef`, dan komponen dasarnya
+   * (`components/AntdIconLight.js`) sudah memikul `"use client"` dari
+   * paketnya — jadi ia berhenti sebagai DAUN client persis seperti primitif
+   * kita sendiri. Yang beracun hanya barrel-nya. `modularizeImports` menulis
+   * ulang setiap `import { PlusOutlined } from "@ant-design/icons"` menjadi
+   * `import PlusOutlined from "@ant-design/icons/PlusOutlined"` (peta
+   * `exports` paket: `"./*"` → `./es/icons/*.js`), sehingga barrel itu tidak
+   * pernah dimuat oleh siapa pun.
+   *
+   * Yang sudah dicoba dan TIDAK menyembuhkan: `optimizePackageImports:
+   * ["@ant-design/icons"]`. Optimasi itu hanya berlaku untuk berkas yang
+   * SELURUH ekspornya adalah re-ekspor; begitu ada satu deklarasi lain, ia
+   * menyerah dan mengembalikan `export * from "<barrel>"` (baca komentar
+   * `build/webpack/loaders/next-barrel-loader.js`, bagian "Non-Barrel Files").
+   * Barrel ikon ini punya dua-duanya sekaligus — `import Context from
+   * "./components/Context"` dan `export const IconProvider = Context.Provider`
+   * — jadi ia memang tidak memenuhi syarat, dan barrel-nya tetap dimuat utuh.
+   * `modularizeImports` tidak menganalisis apa pun: transform sintaksis murni
+   * di SWC, jadi bentuk barrel tidak relevan baginya. Terukur 2026-08-06:
+   * tanpa baris ini build gagal di `/setup-required`, dengan baris ini build
+   * hijau, tanpa satu pun perubahan lain.
+   *
+   * KONSEKUENSINYA di sisi kode: transform ini hanya mengenali impor BERNAMA.
+   * `import Icon from "@ant-design/icons"` atau `import * as Icons from …`
+   * lolos begitu saja dan mengembalikan bug ini diam-diam. Penjaganya ada di
+   * `tests/icon-rsc-boundary.test.ts`: ia menolak kedua bentuk itu, dan
+   * sekaligus memastikan setiap nama yang diimpor benar-benar punya berkas
+   * `es/icons/<Nama>.js` untuk didarati transform.
+   */
+  modularizeImports: {
+    "@ant-design/icons": { transform: "@ant-design/icons/{{member}}" },
+  },
   experimental: {
     optimizePackageImports: [
       "lucide-react",

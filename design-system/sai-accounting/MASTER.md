@@ -236,6 +236,25 @@ Warna ikut jalur yang sama: `style={{ color: … }}` atau kelas token yang sudah
 (`text-muted-foreground`), bukan prop `color` — dan ambangnya tetap 3:1 (ikon = grafis
 non-teks), dengan aturan **warna tak pernah penanda tunggal**.
 
+### Impor ikon SELALU bernama — `import { XOutlined } from "@ant-design/icons"`
+
+Bukan gaya, melainkan syarat supaya aplikasi ini bisa di-build. Barrel paket itu
+memanggil `createContext` di tingkat modul tanpa `"use client"`, dan build React
+untuk server component tidak punya `createContext` — satu server component yang
+menyentuh barrel-nya menjatuhkan seluruh `next build` dengan galat yang menunjuk
+halaman acak (`Failed to collect page data for /setup-required`). `next.config.ts`
+karena itu menulis ulang setiap impor **bernama** menjadi jalur dalam paket,
+sehingga barrel-nya tak pernah dimuat; ikonnya sendiri tetap aman sebagai daun
+client. Penulisan ulang itu hanya mengenali `{ … }`:
+
+- ✅ `import { PlusOutlined, SaveOutlined } from "@ant-design/icons";`
+- ❌ `import Icon from "@ant-design/icons";` · ❌ `import * as Icons from "@ant-design/icons";`
+- ❌ `IconProvider` / `getTwoToneColor` / `createFromIconfontCN` — bukan ikon, tidak
+  punya berkasnya sendiri, dan lolos `tsc` sebelum menggagalkan build.
+
+`tests/icon-rsc-boundary.test.ts` menolak ketiga bentuk itu; alasan lengkapnya di
+komentar `modularizeImports` pada `next.config.ts`.
+
 ### Ikon dekoratif tetap `aria-hidden`
 
 Ikon AntD merender `<span role="img" aria-label="…">` — **ia dibacakan pembaca layar

@@ -69,9 +69,15 @@ const RAW_BUTTON_ALLOWLIST = new Set([
    * entri basi" di bawah yang akan berteriak kalau ada yang mengembalikannya
    * tanpa alasan baru.
    */
-  // Lapisan tur berpemandu: tombolnya melayang di atas overlay dengan
-  // penempatan & z-index sendiri.
-  "components/help/guided-tour.tsx",
+  /*
+   * ── Entri tur berpemandu DIKELUARKAN di issue #224 ───────────────────────
+   * Alasannya dulu "tombolnya melayang di atas overlay dengan penempatan &
+   * z-index sendiri" — dan overlay itulah yang lenyap: `guided-tour.tsx` kini
+   * `Tour` AntD, jadi penempatan, z-index, tirai, dan panah penunjuk datang
+   * dari komponennya. Yang tersisa untuk ditulis sendiri adalah satu tombol
+   * "Lewati" di `actionsRender`, dan tombol biasa di dalam kartu biasa tidak
+   * punya alasan apa pun untuk melewati primitif.
+   */
   // Penanda langkah wizard: kembaran interaktif dari <div> di sebelahnya, harus
   // tampil identik (kartu dua baris, tinggi mengikuti isi) — `Button` memaksa
   // tinggi 40px, `justify-center`, dan `whitespace-nowrap`.

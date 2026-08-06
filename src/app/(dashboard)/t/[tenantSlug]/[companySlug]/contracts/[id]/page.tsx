@@ -32,18 +32,9 @@ import { DeleteDocumentButton } from "@/components/shared/delete-document-button
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
 import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
@@ -152,6 +143,108 @@ export default async function ContractDetailPage({
       {formatNumber(value)}
     </span>
   );
+
+  const itemRows = contract.items.map((item) => ({
+    id: item.id,
+    itemName: item.itemName,
+    bags: Number(item.bags),
+    kgPerBag: Number(item.kgPerBag),
+    pricePerKg: Number(item.pricePerKg),
+    total: Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg),
+  }));
+
+  const itemColumns: SaiColumns<(typeof itemRows)[number]> = [
+    { key: "itemName", dataIndex: "itemName", title: t("common.item"), align: "left" },
+    // Bags & kg/bag adalah KUANTITAS (`Decimal(15,3)`) — id-ID dengan
+    // desimalnya utuh, tanpa "Rp".
+    {
+      key: "bags",
+      dataIndex: "bags",
+      title: t("common.bags"),
+      align: "right",
+      render: (_v, row) => qty(row.bags),
+    },
+    {
+      key: "kgPerBag",
+      dataIndex: "kgPerBag",
+      title: t("common.kgPerBag"),
+      align: "right",
+      render: (_v, row) => qty(row.kgPerBag),
+    },
+    {
+      key: "pricePerKg",
+      dataIndex: "pricePerKg",
+      title: t("contracts.pricePerKg"),
+      align: "right",
+      render: (_v, row) => qty(row.pricePerKg),
+    },
+    {
+      key: "total",
+      dataIndex: "total",
+      title: t("common.total"),
+      align: "right",
+      render: (_v, row) => (
+        <Money
+          style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+          value={row.total}
+          currency={contract.currency}
+        />
+      ),
+    },
+  ];
+
+  /**
+   * Kaki tabel barang: DUA baris — nilai kontrak, lalu nilai dasar buku besar
+   * (IDR) untuk dokumen valas. `StaticTable.summary` menerima LARIK baris sejak
+   * issue #229; sebelumnya ia satu baris per tabel, dan itulah satu-satunya
+   * alasan tabel ini bertahan sebagai primitif JSX.
+   */
+  const itemSummary = [
+    {
+      cells: {
+        itemName: {
+          content: t("contracts.totalValue"),
+          colSpan: 4,
+          align: "right" as const,
+        },
+        total: (
+          <Money
+            style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+            value={totalValue}
+            currency={contract.currency}
+          />
+        ),
+      },
+    },
+    ...(isForeign
+      ? [
+          {
+            style: { fontWeight: "normal" as const },
+            cells: {
+              itemName: {
+                content: (
+                  <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                    {t("common.ledgerBaseIdr")}
+                  </span>
+                ),
+                colSpan: 4,
+                align: "right" as const,
+              },
+              // Tanpa kurs, nilainya BELUM DIKETAHUI — dan itu ditulis dengan
+              // kata, bukan Rp 0.
+              total:
+                baseAmount != null ? (
+                  <Money value={baseAmount} currency="IDR" />
+                ) : (
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {t("common.rateMissing")}
+                  </span>
+                ),
+            },
+          },
+        ]
+      : []),
+  ];
 
   const outstandingColumns: SaiColumns<ContractLineOutstanding> = [
     { key: "itemName", dataIndex: "itemName", title: t("common.item"), align: "left" },
@@ -622,91 +715,20 @@ export default async function ContractDetailPage({
         </CardContent>
       </Card>
 
-      {/* Items.
-          Tetap primitif `Table` JSX dan BUKAN `StaticTable`, dengan alasan yang
-          bisa diperiksa: kakinya punya DUA baris — nilai kontrak, lalu nilai
-          dasar buku besar (IDR) untuk dokumen valas. `StaticTable.summary`
-          adalah satu baris per tabel; memakainya berarti memindahkan baris
-          kedua ke luar tabel, yaitu mengubah tata letak demi kerapian kode.
-          Perataan & warna di bawah lewat `style`, jadi berkas ini tetap nol
-          `className`. */}
+      {/* Items. Pindah ke `StaticTable` di issue #229: kakinya punya DUA baris
+          (nilai kontrak, lalu nilai dasar buku besar IDR untuk dokumen valas),
+          dan `summary` kini menerima larik baris. Perataan & warna lewat
+          `style`, jadi berkas ini tetap nol `className`. */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            {/* `hover:bg-transparent` lama diganti gaya SEBARIS: gaya sebaris
-                mengalahkan selektor apa pun, termasuk `:hover`, jadi baris
-                judul & baris total tetap tidak menyala saat disentuh kursor —
-                tanpa satu pun kelas. */}
-            <TableRow style={{ background: "transparent" }}>
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.bags")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.kgPerBag")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("contracts.pricePerKg")}</TableHead>
-              <TableHead style={{ textAlign: "right" }}>{t("common.total")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contract.items.map((item) => {
-              const itemTotal = Number(item.bags) * Number(item.kgPerBag) * Number(item.pricePerKg);
-              return (
-                <TableRow key={item.id}>
-                  <TableCell>{item.itemName}</TableCell>
-                  {/* Bags & kg/bag adalah KUANTITAS (`Decimal(15,3)`) — id-ID
-                      dengan desimalnya utuh, tanpa "Rp". */}
-                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.bags))}</TableCell>
-                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.kgPerBag))}</TableCell>
-                  <TableCell style={{ textAlign: "right" }}>{qty(Number(item.pricePerKg))}</TableCell>
-                  <TableCell style={{ padding: 0 }}>
-                    <MoneyCell
-                      style={{ fontWeight: "var(--ant-font-weight-strong)" }}
-                      value={itemTotal}
-                      currency={contract.currency}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-          <TableFooter style={{ background: "transparent", borderTopWidth: 2 }}>
-            <TableRow style={{ background: "transparent" }}>
-              <TableCell
-                colSpan={4}
-                style={{ textAlign: "right", fontWeight: "var(--ant-font-weight-strong)" }}
-              >
-                {t("contracts.totalValue")}
-              </TableCell>
-              <TableCell style={{ padding: 0 }}>
-                <MoneyCell
-                  style={{ fontWeight: "var(--ant-font-weight-strong)" }}
-                  value={totalValue}
-                  currency={contract.currency}
-                />
-              </TableCell>
-            </TableRow>
-            {isForeign && (
-              <TableRow style={{ background: "transparent" }}>
-                <TableCell
-                  colSpan={4}
-                  style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
-                >
-                  {t("common.ledgerBaseIdr")}
-                </TableCell>
-                <TableCell style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                  {/* Tanpa kurs, nilainya BELUM DIKETAHUI — dan itu ditulis
-                      dengan kata, bukan Rp 0. */}
-                  {baseAmount != null ? (
-                    <Money value={baseAmount} currency="IDR" />
-                  ) : (
-                    t("common.rateMissing")
-                  )}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableFooter>
-        </Table>
+        <StaticTable
+          columns={itemColumns}
+          rows={itemRows}
+          rowKey={(row) => row.id}
+          summary={itemSummary}
+        />
       </Card>
 
       {/* Payments */}

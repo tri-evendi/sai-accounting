@@ -22,14 +22,7 @@ import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
 import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
@@ -118,48 +111,57 @@ export default async function SetupPage({
               <CardTitle>{t("setup.openingJournalTitle", { number: journal.number })}</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat
-                  sengaja menimpa bawaan primitif agar sama dengan tampilan
-                  sebelum migrasi. */}
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-auto py-2 pr-4 pl-0">{t("common.account")}</TableHead>
-                    <TableHead className="h-auto py-2 pr-4 pl-0 text-right">
-                      {t("journal.colDebitIdr")}
-                    </TableHead>
-                    <TableHead className="h-auto px-0 py-2 text-right">
-                      {t("journal.colCreditIdr")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {journal.lines.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="py-2 pr-4 pl-0 text-foreground">
-                        <span className="text-muted-foreground">{l.account.code}</span> {l.account.name}
+              {/*
+                * Tabel ringkas lewat `size="small"` (issue #229). Sebelum prop
+                * itu ada, kerapatan hanya bisa dicapai dengan menimpa padding
+                * primitif kelas demi kelas di setiap sel — sembilan kelas
+                * Tailwind untuk sesuatu yang `DataTable` sudah punya, dan yang
+                * karena itu memaksa memilih perender menurut GAYA alih-alih
+                * menurut kebutuhan interaktivitas (kebalikan dari aturan #189).
+                */}
+              <StaticTable
+                columns={[
+                  {
+                    key: "account",
+                    title: t("common.account"),
+                    align: "left",
+                    render: (_v, l: (typeof journal.lines)[number]) => (
+                      <>
+                        <span className="text-muted-foreground">{l.account.code}</span>{" "}
+                        {l.account.name}
                         {l.memo ? (
                           <span className="block text-xs text-muted-foreground">{l.memo}</span>
                         ) : null}
-                      </TableCell>
-                      <TableCell className="py-2 pr-4 pl-0 text-right tabular-nums text-foreground">
-                        {Number(l.baseDebit) > 0 ? (
-                          <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="px-0 py-2 text-right tabular-nums text-foreground">
-                        {Number(l.baseCredit) > 0 ? (
-                          <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "debit",
+                    title: t("journal.colDebitIdr"),
+                    align: "right",
+                    render: (_v, l: (typeof journal.lines)[number]) =>
+                      Number(l.baseDebit) > 0 ? (
+                        <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
+                      ) : (
+                        "—"
+                      ),
+                  },
+                  {
+                    key: "credit",
+                    title: t("journal.colCreditIdr"),
+                    align: "right",
+                    render: (_v, l: (typeof journal.lines)[number]) =>
+                      Number(l.baseCredit) > 0 ? (
+                        <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
+                      ) : (
+                        "—"
+                      ),
+                  },
+                ]}
+                rows={journal.lines}
+                rowKey={(l) => l.id}
+                size="small"
+              />
               <p className="mt-4 text-sm text-muted-foreground">
                 {t("setup.reflectedBefore")}{" "}
                 <Link href="/reports" className="text-primary underline">

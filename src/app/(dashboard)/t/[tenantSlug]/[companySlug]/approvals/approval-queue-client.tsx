@@ -16,12 +16,13 @@
  * jarak & ukuran lewat `theme.useToken()`, warna lewat primitif yang mewarnai
  * dirinya sendiri (`Money`, `Badge`) atau lewat token langsung.
  *
- * Satu tabel SENGAJA tetap memakai primitif JSX `Table`, bukan `DataTable`:
- * "Pengajuan Saya". Alasannya ada di komentar di tempatnya — singkatnya, baris
- * yang belum dibaca ditandai LATAR BARIS, dan tak satu pun dari kedua perender
- * tabel (`StaticTable`/`DataTable`) meneruskan gaya per baris. Mengonversinya
- * sekarang berarti menghapus satu-satunya penanda "ini keputusan baru" di
- * permukaan yang justru berfungsi sebagai notifikasi.
+ * ── "Pengajuan Saya" ikut pindah perender (issue #229) ─────────────────────
+ * Tabel itu dulu SATU-SATUNYA yang tertinggal di primitif JSX `Table`: baris
+ * yang belum dibaca ditandai LATAR BARIS, dan kedua perender hanya meneruskan
+ * gaya per KOLOM. Prop `rowStyle` menutup lubang itu, jadi tabelnya kini
+ * `StaticTable` — bukan `DataTable`, karena aturan #189 memilih perender
+ * menurut kebutuhan INTERAKTIVITAS: daftar ini pendek, tidak diurutkan, dan
+ * tidak disaring; yang dibutuhkannya cuma dirender.
  */
 
 import { useMemo, useState } from "react";
@@ -46,17 +47,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { StaticTable } from "@/components/ui/static-table";
 import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
@@ -70,6 +64,16 @@ import { apiFetch } from "@/lib/api-fetch";
 const RESUBMIT_NOTE_WIDTH = 224;
 /** Panjang minimum catatan sebelum tombol Tolak hidup (alasan wajib ditulis). */
 const REJECT_NOTE_MIN = 5;
+
+/**
+ * Keputusan yang sudah dibuat tapi belum dibuka pemohonnya — inilah yang
+ * ditandai latar baris di "Pengajuan Saya", dan yang dihitung lencana kartunya.
+ * Satu definisi untuk keduanya supaya lencana tidak pernah menghitung baris
+ * yang tidak ditandai (atau sebaliknya).
+ */
+function isUnread(row: ApprovalRequestView) {
+  return (row.status === "approved" || row.status === "rejected") && row.readAt === null;
+}
 
 /** Badge per status — ikon + teks, tak pernah warna saja (MASTER.md §2). */
 function StatusBadge({ status, label }: { status: string; label: string }) {
@@ -322,9 +326,129 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
     }
   }
 
-  const unread = mine.filter(
-    (r) => (r.status === "approved" || r.status === "rejected") && r.readAt === null
-  );
+  const unread = mine.filter(isUnread);
+
+  /*
+   * Kolom "Pengajuan Saya". SENGAJA tidak di-`useMemo`: ia menutup `notes`,
+   * `busyId`, dan `markRead`/`resubmit`, yang berubah pada setiap ketikan di
+   * kotak catatan — sebuah memo dengan daftar ketergantungan itu menghitung
+   * ulang setiap kali juga, hanya dengan satu perbandingan tambahan.
+   */
+  const mineColumns: SaiColumns<ApprovalRequestView> = [
+    {
+      key: "documentNo",
+      dataIndex: "documentNo",
+      title: t("common.document"),
+      render: (_value, row) => (
+        <>
+          <DocumentTitle row={row} />
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", fontSize: token.fontSizeSM }}
+          >
+            {row.message}
+          </Typography.Text>
+        </>
+      ),
+    },
+    {
+      key: "createdAt",
+      dataIndex: "createdAt",
+      title: t("approvals.colSubmitted"),
+      render: (_value, row) => (
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            color: token.colorTextSecondary,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {formatDate(row.createdAt)}
+        </span>
+      ),
+    },
+    // Mata uang dibaca PER BARIS: pengajuan bisa bercampur IDR & valas, dan
+    // menyeragamkannya di judul kolom akan mencetak "Rp" di atas angka USD.
+    moneyColumn<ApprovalRequestView>({
+      dataIndex: "amount",
+      title: t("approvals.colValue"),
+      currency: (row) => row.currency,
+      sorter: false,
+    }),
+    {
+      key: "status",
+      dataIndex: "status",
+      title: t("common.status"),
+      render: (_value, row) => <StatusBadge status={row.status} label={row.statusLabel} />,
+    },
+    {
+      key: "decidedAt",
+      dataIndex: "decidedAt",
+      title: t("approvals.colDecision"),
+      render: (_value, row) =>
+        row.decidedAt ? (
+          <div style={{ color: token.colorTextSecondary }}>
+            <span
+              style={{
+                display: "block",
+                whiteSpace: "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {formatDate(row.decidedAt)}
+            </span>
+            <span style={{ display: "block", fontSize: token.fontSizeSM }}>
+              {t("approvals.resubmittedBy", { name: row.decidedByName ?? "" })}
+            </span>
+            {row.decisionNote && (
+              <span style={{ display: "block", fontSize: token.fontSizeSM }}>
+                “{row.decisionNote}”
+              </span>
+            )}
+          </div>
+        ) : (
+          <span style={{ color: token.colorTextSecondary }}>—</span>
+        ),
+    },
+    {
+      key: "actions",
+      title: "",
+      align: "right",
+      render: (_value, row) => (
+        <Flex vertical align="flex-end" gap={token.marginXS}>
+          {isUnread(row) && row.requestedById === currentUserId && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busyId === row.id}
+              onClick={() => markRead(row)}
+            >
+              <MailOpen aria-hidden="true" />
+              {t("approvals.markRead")}
+            </Button>
+          )}
+          {/* issue #44 — dokumen yang ditolak tidak lagi buntu: perbaiki
+              dokumennya, lalu ajukan ulang di sini. */}
+          {row.status === "rejected" && (
+            <>
+              <Input
+                id={`resubmit-note-${row.id}`}
+                label={t("common.notesOptional")}
+                placeholder={t("approvals.resubmitNotePlaceholder")}
+                value={notes[row.id] ?? ""}
+                onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                style={{ width: RESUBMIT_NOTE_WIDTH }}
+              />
+              <Button size="sm" disabled={busyId === row.id} onClick={() => resubmit(row)}>
+                <RotateCcw aria-hidden="true" />
+                {t("approvals.resubmit")}
+              </Button>
+            </>
+          )}
+        </Flex>
+      ),
+    },
+  ];
 
   return (
     <Flex vertical gap={token.marginLG}>
@@ -526,130 +650,23 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
             </Typography.Paragraph>
           ) : (
             /*
-             * TETAP primitif JSX `Table`, bukan `DataTable` — dan alasannya satu
-             * baris di bawah: `TableRow` yang belum dibaca mendapat LATAR
-             * sendiri. Baik `StaticTable` maupun `DataTable` hanya meneruskan
-             * gaya per KOLOM (lewat `onCell` di `DataTable`); tak satu pun
-             * meneruskan gaya per BARIS, sehingga mengonversinya sekarang akan
-             * menghapus satu-satunya penanda "ini keputusan baru" — di kartu
-             * yang justru berperan sebagai notifikasi in-app.
+             * Penanda "belum dibaca" adalah LATAR BARIS, dan itu satu-satunya
+             * tanda "ini keputusan baru" di kartu yang berperan sebagai
+             * notifikasi in-app. Sampai #229 tak satu pun perender meneruskan
+             * gaya per BARIS, jadi tabel ini terkunci di primitif JSX;
+             * `rowStyle` yang membebaskannya.
              *
-             * Yang dibutuhkan agar tabel ini bisa ikut pindah adalah satu prop
-             * `rowStyle`/`onRow` di kedua perender; itu perubahan di
-             * `src/components/ui/**` dan ditulis di laporan issue ini, bukan
-             * dikerjakan di sini.
+             * Warnanya bukan penanda tunggal: baris yang sama membawa tombol
+             * "Tandai sudah dibaca", dan lencana di kepala kartu menghitungnya.
              */
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("common.document")}</TableHead>
-                  <TableHead>{t("approvals.colSubmitted")}</TableHead>
-                  <TableHead style={{ textAlign: "right" }}>{t("approvals.colValue")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                  <TableHead>{t("approvals.colDecision")}</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mine.map((row) => {
-                  const isUnread =
-                    (row.status === "approved" || row.status === "rejected") &&
-                    row.readAt === null;
-                  return (
-                    <TableRow
-                      key={row.id}
-                      style={isUnread ? { background: token.colorWarningBg } : undefined}
-                    >
-                      <TableCell>
-                        <DocumentTitle row={row} />
-                        <Typography.Text type="secondary" style={{ display: "block", fontSize: token.fontSizeSM }}>
-                          {row.message}
-                        </Typography.Text>
-                      </TableCell>
-                      <TableCell
-                        style={{
-                          whiteSpace: "nowrap",
-                          color: token.colorTextSecondary,
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {formatDate(row.createdAt)}
-                      </TableCell>
-                      <TableCell style={{ padding: 0 }}>
-                        <MoneyCell value={row.amount} currency={row.currency} />
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={row.status} label={row.statusLabel} />
-                      </TableCell>
-                      <TableCell style={{ color: token.colorTextSecondary }}>
-                        {row.decidedAt ? (
-                          <>
-                            <span
-                              style={{
-                                display: "block",
-                                whiteSpace: "nowrap",
-                                fontVariantNumeric: "tabular-nums",
-                              }}
-                            >
-                              {formatDate(row.decidedAt)}
-                            </span>
-                            <span style={{ display: "block", fontSize: token.fontSizeSM }}>
-                              {t("approvals.resubmittedBy", { name: row.decidedByName ?? "" })}
-                            </span>
-                            {row.decisionNote && (
-                              <span style={{ display: "block", fontSize: token.fontSizeSM }}>
-                                “{row.decisionNote}”
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell style={{ textAlign: "right" }}>
-                        <Flex vertical align="flex-end" gap={token.marginXS}>
-                          {isUnread && row.requestedById === currentUserId && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyId === row.id}
-                              onClick={() => markRead(row)}
-                            >
-                              <MailOpen aria-hidden="true" />
-                              {t("approvals.markRead")}
-                            </Button>
-                          )}
-                          {/* issue #44 — dokumen yang ditolak tidak lagi buntu:
-                              perbaiki dokumennya, lalu ajukan ulang di sini. */}
-                          {row.status === "rejected" && (
-                            <>
-                              <Input
-                                id={`resubmit-note-${row.id}`}
-                                label={t("common.notesOptional")}
-                                placeholder={t("approvals.resubmitNotePlaceholder")}
-                                value={notes[row.id] ?? ""}
-                                onChange={(e) =>
-                                  setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
-                                }
-                                style={{ width: RESUBMIT_NOTE_WIDTH }}
-                              />
-                              <Button
-                                size="sm"
-                                disabled={busyId === row.id}
-                                onClick={() => resubmit(row)}
-                              >
-                                <RotateCcw aria-hidden="true" />
-                                {t("approvals.resubmit")}
-                              </Button>
-                            </>
-                          )}
-                        </Flex>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <StaticTable
+              columns={mineColumns}
+              rows={mine}
+              rowKey={(row) => row.id}
+              rowStyle={(row) =>
+                isUnread(row) ? { background: token.colorWarningBg } : undefined
+              }
+            />
           )}
         </CardContent>
       </Card>

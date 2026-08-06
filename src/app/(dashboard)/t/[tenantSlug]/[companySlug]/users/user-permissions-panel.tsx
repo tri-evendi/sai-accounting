@@ -22,11 +22,13 @@
  * (tidak pernah warna saja); izin anti-lockout dinonaktifkan dengan ikon
  * gembok + penjelasan; simpan/reset lewat dialog konfirmasi; hasil lewat toast.
  *
- * ── Header lengket (issue #199) ────────────────────────────────────────────
+ * ── Header lengket (issue #199, dipindah ke primitifnya di #229) ───────────
  * Daftar izin panjang: begitu digulir, judul kolom "Untuk pengguna ini" keluar
- * layar dan pemilih tri-state kehilangan artinya. Cara kerjanya dijelaskan di
- * `matrixScrollBox`/`stickyHead` di bawah — sama persis dengan matriks
- * `/permissions`, dan dikunci `tests/permission-matrix-sticky.test.tsx`.
+ * layar dan pemilih tri-state kehilangan artinya. Sejak #229 mekanismenya milik
+ * primitif tabel — `<Table maxHeight>` + `<TableHead sticky>`, yang HARUS
+ * dipakai bersama (alasannya di kepala `components/ui/table.tsx`) — dan berkas
+ * sementara `permissions/matrix-sticky.ts` sudah dihapus. Sama persis dengan
+ * matriks `/permissions`, dan dikunci `tests/permission-matrix-sticky.test.tsx`.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -59,14 +61,15 @@ import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i1
 import { Lock, RotateCcw, Save, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
-import {
-  MATRIX_MAX_HEIGHT,
-  matrixScrollBox,
-  stickyHead,
-} from "../permissions/matrix-sticky";
 
 /** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[560px]`. */
 const MATRIX_MIN_WIDTH = 560;
+/**
+ * Tinggi maksimum kotak matriks — angka yang sama dengan matriks `/permissions`
+ * dan atas alasan yang sama: `vh`, karena yang menentukan berapa banyak baris
+ * yang muat adalah tinggi LAYAR.
+ */
+const MATRIX_MAX_HEIGHT = "70vh";
 /** Lebar kolom pemilih tri-state — bekas `w-64`. */
 const CHOICE_COLUMN_WIDTH = 256;
 /** Lebar minimum kolom nama izin — bekas `min-w-[280px]`. */
@@ -367,42 +370,48 @@ export function UserPermissionsPanel({
           </Flex>
         </Flex>
 
-        <div
+        {/* Satu kotak, bukan dua — lihat catatan yang sama di
+            `permissions/permissions-client.tsx`. `stickyHead*` dikirim
+            eksplisit karena panel ini berdiri di luar pohon komponen AntD. */}
+        <Table
           data-permission-matrix="user"
-          style={{
-            ...matrixScrollBox(token),
-            maxHeight: MATRIX_MAX_HEIGHT,
+          style={{ minWidth: MATRIX_MIN_WIDTH }}
+          maxHeight={MATRIX_MAX_HEIGHT}
+          containerStyle={{
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: token.borderRadiusLG,
+            background: token.colorBgContainer,
           }}
+          stickyHeadBackground={token.colorBgContainer}
+          stickyHeadBorderColor={token.colorBorderSecondary}
         >
-          <Table style={{ minWidth: MATRIX_MIN_WIDTH }}>
-            <TableHeader>
-              <TableRow>
-                <TableHead style={{ ...stickyHead(token), minWidth: PERMISSION_COLUMN_MIN }}>
-                  {t("users.colPermission")}
-                </TableHead>
-                <TableHead style={{ ...stickyHead(token), width: CHOICE_COLUMN_WIDTH }}>
-                  {t("users.colForThisUser")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visibleGroups.map((group) => (
-                <UserPermissionGroupRows
-                  key={group.resource}
-                  label={group.label}
-                  permissions={group.permissions}
-                  draft={draft}
-                  roleSet={roleSet}
-                  lockedSet={lockedSet}
-                  onChange={setChoice}
-                  disabled={saving}
-                  permissionText={permissionText}
-                  t={t}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+          <TableHeader>
+            <TableRow>
+              <TableHead sticky style={{ minWidth: PERMISSION_COLUMN_MIN }}>
+                {t("users.colPermission")}
+              </TableHead>
+              <TableHead sticky style={{ width: CHOICE_COLUMN_WIDTH }}>
+                {t("users.colForThisUser")}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleGroups.map((group) => (
+              <UserPermissionGroupRows
+                key={group.resource}
+                label={group.label}
+                permissions={group.permissions}
+                draft={draft}
+                roleSet={roleSet}
+                lockedSet={lockedSet}
+                onChange={setChoice}
+                disabled={saving}
+                permissionText={permissionText}
+                t={t}
+              />
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       <ConfirmDialog

@@ -24,10 +24,12 @@
  * baris judul kelompok harus dipalsukan lewat `onCell colSpan` — lebih banyak
  * kode, untuk hasil yang sama.
  *
- * Yang justru dibutuhkan matriks ini dan tidak diberikan kedua perender adalah
- * header yang tetap terbaca saat digulir: satu kotak centang tanpa nama peran
- * di atasnya tidak berarti apa-apa. Mekanismenya di `matrix-sticky.ts`; ia
- * butuh DUA hal sekaligus dan keduanya dikunci
+ * Yang justru dibutuhkan matriks ini adalah header yang tetap terbaca saat
+ * digulir: satu kotak centang tanpa nama peran di atasnya tidak berarti
+ * apa-apa. Sejak issue #229 mekanismenya milik PRIMITIFNYA — `<Table maxHeight>`
+ * + `<TableHead sticky>` — dan berkas sementara `matrix-sticky.ts` yang dulu
+ * merakitnya di sini sudah dihapus. Keduanya tetap harus dipakai BERSAMA
+ * (alasannya di kepala `components/ui/table.tsx`), dan itu dikunci
  * `tests/permission-matrix-sticky.test.tsx`.
  *
  * `Checkbox` tetap dipakai dalam bentuk terkendalinya yang lama
@@ -67,10 +69,16 @@ import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
 import { Lock, PackageX, RotateCcw, Save } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
-import { MATRIX_MAX_HEIGHT, matrixScrollBox, stickyHead } from "./matrix-sticky";
 
 /** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[640px]`. */
 const MATRIX_MIN_WIDTH = 640;
+/**
+ * Tinggi maksimum kotak matriks. `vh` dan bukan piksel: yang menentukan berapa
+ * banyak baris yang muat adalah tinggi LAYAR, dan angka piksel tetap akan
+ * memotong matriks di layar besar sekaligus melewati batas layar kecil. 70%
+ * menyisakan ruang untuk kepala halaman, legenda, dan tombol simpan.
+ */
+const MATRIX_MAX_HEIGHT = "70vh";
 /** Lebar satu kolom peran — bekas `w-32`. */
 const ROLE_COLUMN_WIDTH = 128;
 /** Lebar minimum kolom nama izin — bekas `min-w-[280px]`. */
@@ -359,49 +367,61 @@ export function PermissionsClient() {
         </Flex>
       </Flex>
 
-      <div
+      {/*
+       * Kotak gulung & header lengket kini SATU kotak, bukan dua: `maxHeight`
+       * membatasi pembungkus geser milik primitif itu sendiri. `containerStyle`
+       * membawa tepi & sudut yang dulu digambar pembungkus tambahan.
+       *
+       * `stickyHead*` dikirim eksplisit karena matriks ini TIDAK berada di
+       * dalam satu pun komponen AntD, sehingga bawaan `var(--ant-…)` milik
+       * primitif tidak akan teratasi di sini — lihat kepala `ui/table.tsx`.
+       */}
+      <Table
         data-permission-matrix="role"
-        style={{ ...matrixScrollBox(token), maxHeight: MATRIX_MAX_HEIGHT }}
+        style={{ minWidth: MATRIX_MIN_WIDTH }}
+        maxHeight={MATRIX_MAX_HEIGHT}
+        containerStyle={{
+          border: `1px solid ${token.colorBorderSecondary}`,
+          borderRadius: token.borderRadiusLG,
+          background: token.colorBgContainer,
+        }}
+        stickyHeadBackground={token.colorBgContainer}
+        stickyHeadBorderColor={token.colorBorderSecondary}
       >
-        <Table style={{ minWidth: MATRIX_MIN_WIDTH }}>
-          <TableHeader>
-            <TableRow>
-              <TableHead style={{ ...stickyHead(token), minWidth: PERMISSION_COLUMN_MIN }}>
-                {t("users.colPermission")}
+        <TableHeader>
+          <TableRow>
+            <TableHead sticky style={{ minWidth: PERMISSION_COLUMN_MIN }}>
+              {t("users.colPermission")}
+            </TableHead>
+            {(data?.roles ?? []).map((r) => (
+              <TableHead
+                key={r.key}
+                sticky
+                style={{ width: ROLE_COLUMN_WIDTH, textAlign: "center" }}
+              >
+                {r.label}
               </TableHead>
-              {(data?.roles ?? []).map((r) => (
-                <TableHead
-                  key={r.key}
-                  style={{
-                    ...stickyHead(token),
-                    width: ROLE_COLUMN_WIDTH,
-                    textAlign: "center",
-                  }}
-                >
-                  {r.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleGroups.map((group) => (
-              <PermissionGroupRows
-                key={group.resource}
-                label={group.label}
-                permissions={group.permissions}
-                roleKeys={roleKeys}
-                labelOf={labelOf}
-                draft={draft}
-                isBaselineAllowed={isBaselineAllowed}
-                onToggle={toggleCell}
-                disabled={saving}
-                permissionText={permissionText}
-                t={t}
-              />
             ))}
-          </TableBody>
-        </Table>
-      </div>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleGroups.map((group) => (
+            <PermissionGroupRows
+              key={group.resource}
+              label={group.label}
+              permissions={group.permissions}
+              roleKeys={roleKeys}
+              labelOf={labelOf}
+              draft={draft}
+              isBaselineAllowed={isBaselineAllowed}
+              onToggle={toggleCell}
+              disabled={saving}
+              permissionText={permissionText}
+              t={t}
+            />
+          ))}
+        </TableBody>
+      </Table>
 
       <ConfirmDialog
         open={confirmSave}

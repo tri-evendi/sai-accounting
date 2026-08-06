@@ -33,13 +33,112 @@
  * `StaticTable`/`DataTable` satu modul per PR. Setelah berkas terakhir pindah,
  * ekspor ini berhenti menjadi API publik dan kelas Tailwind di dalamnya
  * diganti token AntD di #203 — sampai saat itu keduanya sah hidup berdampingan.
+ *
+ * ── Header lengket: kenapa ia butuh DUA bagian (issue #229) ────────────────
+ * Ini bagian yang paling mudah salah, jadi ditulis eksplisit — ia menggantikan
+ * `permissions/matrix-sticky.ts`, solusi sementara yang dirakit di sisi
+ * pemanggil pada #199.
+ *
+ * `position: sticky` dihitung terhadap **ancestor scroll container TERDEKAT**,
+ * bukan terhadap viewport. Pembungkus `overflow-x-auto` di bawah SELALU sebuah
+ * scroll container (menurut CSS, `overflow-y: visible` ikut berubah menjadi
+ * `auto` begitu sumbu lain bukan `visible`), tetapi tinggi bawaannya mengikuti
+ * isi — jadi ia tidak pernah benar-benar menggulung vertikal: `top: 0` menempel
+ * di puncak tabel, tabelnya ikut naik bersama halaman, dan headernya tetap
+ * hilang. Sticky yang terlihat benar di kode dan tidak melakukan apa pun di
+ * layar.
+ *
+ * Karena itu `maxHeight` dan `<TableHead sticky>` HARUS dipakai bersama; salah
+ * satu saja tidak menghasilkan apa-apa. `maxHeight` membatasi pembungkus geser
+ * itu sendiri — satu kotak, bukan dua seperti solusi lama — sehingga ia mulai
+ * menggulung vertikal dan `top: 0` punya sesuatu untuk ditempeli.
+ *
+ * ── Warna sel judul lengket, di berkas yang tak boleh memakai hook ─────────
+ * Sel judul yang menempel WAJIB berlatar pekat; tanpa itu baris yang lewat di
+ * belakangnya terbaca menembus judul kolom. Berkas ini server-safe dan karena
+ * itu tidak bisa memanggil `theme.useToken()`, jadi warnanya disalurkan lewat
+ * PROPERTI KUSTOM CSS — satu-satunya nilai yang benar-benar DIWARISI dari
+ * pembungkus ke `<th>` di dalamnya.
+ *
+ * Bawaannya `var(--ant-color-bg-container)`, yang teratasi selama tabelnya
+ * berada di dalam sebuah komponen AntD (di app ini hampir selalu `Card`;
+ * `ConfigProvider` v6 memasang variabelnya pada elemen ber-kelas `css-var-root`
+ * yang digambar komponen AntD sendiri, BUKAN pada `:root` — aturan yang sama
+ * dengan `components/shared/aging.tsx`). Pemanggil yang berdiri di LUAR pohon
+ * itu — kedua matriks izin — mengirim `token.colorBgContainer` lewat
+ * `stickyHeadBackground`, dan itulah satu-satunya alasan prop itu ada.
  */
 
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * Properti kustom yang menyalurkan warna permukaan dari pembungkus `Table` ke
+ * setiap `<TableHead sticky>` di bawahnya. Bukan variabel global: nilainya
+ * dipasang per tabel, sehingga dua tabel di satu halaman bisa berdiri di atas
+ * permukaan yang berbeda.
+ */
+const STICKY_HEAD_BG = "--sai-table-head-bg";
+const STICKY_HEAD_LINE = "--sai-table-head-line";
+
+/**
+ * Gaya sel judul yang menempel. `boxShadow` (bukan `border-bottom`) karena
+ * batas milik BARIS judul menggulung bersama tabelnya — yang menempel hanyalah
+ * selnya — sehingga garis pemisah judul–isi akan hilang persis saat ia paling
+ * dibutuhkan.
+ */
+const STICKY_HEAD_STYLE: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 1,
+  background: `var(${STICKY_HEAD_BG}, var(--ant-color-bg-container))`,
+  boxShadow: `inset 0 -1px 0 var(${STICKY_HEAD_LINE}, var(--ant-color-border-secondary))`,
+};
+
+interface TableProps extends React.ComponentProps<"table"> {
+  /**
+   * Tinggi maksimum KOTAK GULUNG. Tanpa ini pembungkus geser setinggi isinya
+   * dan tidak pernah menggulung vertikal — lihat catatan header lengket di
+   * kepala berkas. Pakai satuan relatif (`70vh`): yang menentukan berapa banyak
+   * baris yang muat adalah tinggi LAYAR, dan angka piksel tetap akan memotong
+   * tabel di layar besar sekaligus melewati batas layar kecil.
+   */
+  maxHeight?: number | string;
+  /** Gaya pembungkus geser — tepi, sudut, latar kotaknya. */
+  containerStyle?: React.CSSProperties;
+  /** Lihat catatan "Warna sel judul lengket" di kepala berkas. */
+  stickyHeadBackground?: string;
+  /** Warna garis pemisah judul–isi saat judulnya menempel. */
+  stickyHeadBorderColor?: string;
+}
+
+function Table({
+  className,
+  maxHeight,
+  containerStyle,
+  stickyHeadBackground,
+  stickyHeadBorderColor,
+  ...props
+}: TableProps) {
+  /*
+   * Dirakit bersyarat, bukan disebar tanpa syarat: 66 berkas merender `Table`
+   * tanpa satu pun prop di atas, dan `style={{}}` yang selalu ada mengubah
+   * markup mereka tanpa alasan.
+   */
+  const style: React.CSSProperties = { ...containerStyle };
+  if (maxHeight !== undefined) style.maxHeight = maxHeight;
+  if (stickyHeadBackground !== undefined) {
+    (style as Record<string, string>)[STICKY_HEAD_BG] = stickyHeadBackground;
+  }
+  if (stickyHeadBorderColor !== undefined) {
+    (style as Record<string, string>)[STICKY_HEAD_LINE] = stickyHeadBorderColor;
+  }
+
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto"
+      style={Object.keys(style).length === 0 ? undefined : style}
+    >
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
@@ -96,7 +195,19 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({
+  className,
+  sticky,
+  style,
+  ...props
+}: React.ComponentProps<"th"> & {
+  /**
+   * Sel judul menempel di puncak kotak gulung. Hanya berguna bersama
+   * `<Table maxHeight>` — sendirian ia tidak melakukan apa pun; alasannya di
+   * kepala berkas.
+   */
+  sticky?: boolean;
+}) {
   return (
     <th
       data-slot="table-head"
@@ -105,6 +216,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
         "[&:has([role=checkbox])]:pr-0",
         className
       )}
+      // Gaya pemanggil MENIMPA gaya lengketnya: kolom masih boleh mengatur
+      // lebar & perataannya sendiri tanpa kehilangan sifat menempelnya.
+      style={sticky ? { ...STICKY_HEAD_STYLE, ...style } : style}
       {...props}
     />
   );

@@ -16,6 +16,7 @@
  */
 import Link from "next/link";
 
+import { LANDING_NAV_HEIGHT } from "@/components/landing/landing-scale";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
@@ -27,25 +28,68 @@ export async function LandingNav() {
   const t = await getT();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header
+      style={{
+        position: "sticky",
+        top: 0,
+        /* Di atas isi halaman, di bawah overlay AntD (`zIndexPopupBase` 1000)
+           dan di bawah tautan lewati-ke-isi yang harus menutupi bilah ini saat
+           difokuskan. */
+        zIndex: 40,
+        borderBottom: "1px solid var(--ant-color-border-secondary)",
+        /* Nyaris pekat, bukan pekat: isi yang lewat di baliknya terbaca sebagai
+           gulungan, bukan sebagai lompatan. `backdrop-filter` hanya penyedap —
+           peramban yang tak mendukungnya tetap mendapat latar 92%. */
+        background: "color-mix(in srgb, var(--ant-color-bg-container) 92%, transparent)",
+        backdropFilter: "blur(8px)",
+      }}
+    >
       <nav
         aria-label={APP_NAME}
-        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"
+        style={{
+          display: "flex",
+          height: LANDING_NAV_HEIGHT,
+          width: "100%",
+          maxWidth: "var(--sai-landing-measure)",
+          marginInline: "auto",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "var(--ant-margin)",
+          paddingInline: "var(--sai-landing-gutter)",
+        }}
       >
-        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+        <Link
+          href="/"
+          data-landing-brand=""
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--ant-margin-xs)",
+            color: "var(--ant-color-text)",
+            textDecoration: "none",
+          }}
+        >
           <BrandMark size="sm" />
-          <span className="text-base font-semibold text-foreground">{APP_NAME}</span>
+          <span
+            style={{
+              fontSize: "var(--ant-font-size-lg)",
+              fontWeight: "var(--ant-font-weight-strong)",
+            }}
+          >
+            {APP_NAME}
+          </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ant-margin-xs)" }}>
           {/* Di layar sempit dua sakelar ini disembunyikan agar tombol MASUK
               dan DAFTAR — satu-satunya hal yang benar-benar dituju orang di
               sini — tidak menyusut di bawah target sentuh 40px. Gantinya
-              dirender di KAKI halaman dengan `sm:hidden` (lihat `page.tsx`),
-              jadi tidak pernah ada ukuran layar yang kehilangan keduanya:
+              dirender di KAKI halaman oleh `[data-landing-chrome-narrow]`,
+              pasangan yang saling meniadakan di titik patah yang sama, jadi
+              tidak pernah ada ukuran layar yang kehilangan keduanya:
               pengunjung ponsel yang belum punya akun tidak punya menu akun
               untuk mengganti bahasa. */}
-          <div className="hidden items-center gap-2 sm:flex">
+          <div data-landing-chrome="">
             <LocaleToggle />
             <ThemeToggle />
           </div>

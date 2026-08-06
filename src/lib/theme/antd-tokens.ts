@@ -86,6 +86,78 @@ declare module "antd/es/theme/interface/alias" {
   }
 }
 
+/* ------------------------------------------------------------------------ */
+/* Token sebagai VARIABEL CSS yang sampai ke server component (issue #227)    */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Kelas pembawa blok variabel token AntD — dipasang pada `<html>`.
+ *
+ * ── Masalah yang diselesaikannya ──────────────────────────────────────────
+ * Server component yang butuh WARNA, bukan interaktivitas, sebelumnya hanya
+ * punya dua pilihan: menyeberang jadi client demi `theme.useToken()` (itu yang
+ * terjadi pada `document-chain-timeline.tsx` di #194), atau kehilangan warnanya
+ * (itu yang terjadi pada `aging.tsx`). Keduanya harga yang tidak perlu dibayar.
+ *
+ * ── Yang sebenarnya terjadi, terukur ──────────────────────────────────────
+ * Catatan #194 dan #227 menyimpulkan `extractStyle()` tidak memuat blok
+ * variabelnya sama sekali. **Kesimpulan itu keliru, dan kekeliruannya satu
+ * kata.** Diukur ulang terhadap `antd` 6.5.3 + `@ant-design/cssinjs` 2.1.2 yang
+ * terpasang (`tests/antd-css-var-ssr.test.tsx` menghitungnya setiap kali suite
+ * berjalan):
+ *
+ *  1. **`cssVar` sudah MENYALA sebagai bawaan di AntD v6.** Tanpa opsi apa pun,
+ *     `ConfigProvider` sudah menulis seluruh token sebagai variabel.
+ *  2. **`extractStyle()` MEMUAT blok itu** — `types` bawaannya
+ *     `['style','token','cssVar']`, dan cabang `token` persis mengeluarkan
+ *     `cssVarsStr` yang di peramban disuntik `updateCSS`. Diukur: blok ~13 kB
+ *     tetap keluar bahkan ketika pohonnya TIDAK memuat satu pun komponen AntD.
+ *  3. Yang tidak pernah ada adalah string `--sai-`: `cssVar.key` menentukan
+ *     **nama KELAS** pemikul blok, sedangkan nama variabelnya ditentukan
+ *     `cssVar.prefix` yang bawaannya `ant`. Pencarian `--sai-` karena itu
+ *     mengembalikan "tidak ada" pada blok yang sebenarnya ada — sebagai
+ *     `.css-var-«useId»{--ant-color-…}`.
+ *
+ * Jadi satu-satunya yang benar-benar hilang adalah PEMIKUL kelasnya: bawaannya
+ * kelas ber-`useId` yang hanya dipasang komponen AntD pada dirinya sendiri, dan
+ * di halaman tanpa komponen AntD di atasnya `var(--ant-…)` memang tidak pernah
+ * teratasi. Memberi `cssVar` sebuah kunci TETAP membuat selektornya bisa
+ * ditebak, dan memasang kunci itu di `<html>` (root layout) membuat seluruh
+ * dokumen mewarisinya.
+ *
+ * ── Kenapa ini tidak mengembalikan kedipan #184 ───────────────────────────
+ * Urutannya, karena orang berikutnya tidak akan menebaknya benar:
+ *
+ *   `AntdRegistry` (root layout) memanggil `extractStyle(cache, {plain, once})`
+ *   di dalam `useServerInsertedHTML`. `ConfigProvider` adalah hal PERTAMA yang
+ *   dirender di bawah registry, jadi entri cache `token%…` sudah ada sebelum
+ *   flush pertama — blok variabelnya ikut pada kepingan HTML pertama, bersama
+ *   gaya komponen, di dalam SATU `<style id="antd-cssinjs">` yang sama.
+ *
+ * Letaknya di dalam blok itu sengaja TIDAK dijaga, dan itu keputusan bukan
+ * kelalaian: terukur, blok variabel justru berdiri SESUDAH gaya komponen. Untuk
+ * properti kustom hal itu tidak berpengaruh — setiap `--ant-…` hanya
+ * dideklarasikan sekali, jadi tidak ada yang bisa saling menimpa, dan satu
+ * elemen `<style>` diurai peramban sekaligus. Yang harus dijaga adalah keduanya
+ * berada di dalam SATU elemen `<style>` yang sama; itulah yang diuji.
+ *
+ * Tidak ada langkah client di jalur itu: `<html class="…">` datang dari server
+ * dan blok variabelnya datang dari server. Yang berjalan setelah hydrate hanya
+ * `updateCSS` milik `useCacheToken`, dan ia memakai kunci hash yang sama
+ * (`css-var-«key»`) — jadi pergantian tema saat berjalan MENIMPA blok yang sama
+ * alih-alih menumpuk blok kedua. Itulah yang membuat toggle tema tetap hidup
+ * untuk server component: nilainya berganti, markup-nya tidak perlu dirender
+ * ulang.
+ *
+ * ── Kenapa namanya bukan `css-var-root` ───────────────────────────────────
+ * Kelas ini ikut menempel pada setiap komponen AntD (AntD memasangnya sendiri
+ * lewat `useCSSVarCls`), jadi ia akan terlihat di markup di mana-mana. Nama
+ * bermerek membuat jelas dari mana ia datang saat seseorang menemukannya di
+ * inspektur; nama generik `css-var-root` terbaca seperti kelas milik pustaka
+ * dan mengundang orang menghapusnya.
+ */
+export const ANTD_CSS_VAR_KEY = "sai-tokens";
+
 export interface MoneyTokens {
   colorMoneyPositive: string;
   colorMoneyNegative: string;

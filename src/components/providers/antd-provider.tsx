@@ -50,6 +50,7 @@ import zhCN from "antd/locale/zh_CN";
 
 import type { Locale } from "@/lib/i18n/config";
 import {
+  ANTD_CSS_VAR_KEY,
   borderTokens,
   brandTextTokens,
   focusRingColor,
@@ -114,6 +115,20 @@ export function AntdProvider({
     return {
       algorithm:
         resolved === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+      /*
+       * Kunci variabel CSS (issue #227). `cssVar` sendiri sudah menyala sebagai
+       * bawaan di AntD v6 — yang ditambahkan di sini hanya KUNCInya, supaya
+       * selektor pemikul blok variabel berhenti menjadi `.css-var-«useId»` yang
+       * hanya dipasang komponen AntD pada dirinya sendiri, dan menjadi kelas
+       * tetap yang root layout pasang di `<html>`.
+       *
+       * Akibatnya satu kalimat: **server component boleh memakai
+       * `var(--ant-…)`**, benar sejak HTML pertama, tanpa satu hook pun dan
+       * tanpa menyeberang jadi client. Alasan lengkap beserta urutan
+       * penyisipannya ada di `lib/theme/antd-tokens.ts` dekat konstanta ini —
+       * baca itu sebelum mengubah apa pun di sekitar sini.
+       */
+      cssVar: { key: ANTD_CSS_VAR_KEY },
       /*
        * Token uang didaftarkan DI SINI, bukan di komponennya (issue #186).
        * Warna teks nominal harus berganti bersama algoritma tema pada saat yang

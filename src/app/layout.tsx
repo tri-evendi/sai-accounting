@@ -7,6 +7,7 @@ import { AntdProvider } from "@/components/providers/antd-provider";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { ANTD_CSS_VAR_KEY } from "@/lib/theme/antd-tokens";
 import { colorScheme, themeClass, themeScript } from "@/lib/theme/config";
 import { ThemeProvider } from "@/lib/theme/client";
 import { getTheme } from "@/lib/theme/server";
@@ -69,7 +70,20 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} h-full ${themeClass(theme)}`}
+      /*
+       * `ANTD_CSS_VAR_KEY` (issue #227) — bukan kelas Tailwind, dan bukan
+       * hiasan. Ia PEMIKUL blok variabel token AntD: `AntdProvider` memberi
+       * `ConfigProvider` kunci yang sama, `AntdRegistry` di bawah menyisipkan
+       * bloknya (`.sai-tokens{--ant-…}`) ke HTML pertama, dan kelas di sini
+       * yang membuat seluruh dokumen mewarisinya — termasuk server component
+       * yang tidak punya satu pun komponen AntD di atasnya.
+       *
+       * Menghapusnya tidak menghasilkan galat apa pun: `var(--ant-…)` hanya
+       * berhenti teratasi dan warnanya jatuh diam-diam ke warisan, di 67 berkas
+       * sekaligus. Alasan lengkap + urutan penyisipannya di
+       * `lib/theme/antd-tokens.ts`.
+       */
+      className={`${inter.variable} h-full ${ANTD_CSS_VAR_KEY} ${themeClass(theme)}`}
       // Ikut mewarnai kontrol BAWAAN peramban (pemilih tanggal wizard, menu
       // select, bilah geser) — bagian yang tidak kita gambar sendiri dan
       // karena itu paling sering tertinggal terang di halaman gelap.

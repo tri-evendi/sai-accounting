@@ -1,13 +1,9 @@
-"use client";
-
-import { Flex, theme } from "antd";
 import { FileText, Truck, Receipt, Wallet, Check, Minus, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
-import { useT } from "@/lib/i18n/client";
+import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 /**
  * Timeline dokumen berantai (issue #15): Kontrak → Surat Jalan → Faktur →
@@ -17,26 +13,25 @@ import { moneyPalette } from "@/lib/theme/antd-tokens";
  * membawa badge BERTEKS dan ikon, jadi ia terbaca sama oleh pengguna buta warna
  * maupun di atas kertas.
  *
- * ── Kenapa ia menyeberang jadi client component (issue #194) ───────────────
- * Sebelumnya server component: ia hanya memformat angka yang sudah dihitung
- * halamannya. Yang mengubahnya adalah WARNA — cincin tahap memakai pasangan
- * latar/teks token (`colorSuccessBg` + `colorMoneyPositive`), dan token AntD
- * hanya bisa dibaca lewat `theme.useToken()`, sebuah hook.
+ * ── Kembali menjadi server component (issue #227) ──────────────────────────
+ * Berkas ini sempat menyeberang jadi client di #194, dan yang memindahkannya
+ * bukan interaktivitas — ia tetap tanpa satu pun penangan kejadian — melainkan
+ * WARNA: cincin tahapnya memakai pasangan token AntD, dan token AntD dulu hanya
+ * bisa dibaca lewat `theme.useToken()`, sebuah hook.
  *
- * Dua jalan lain sudah dicoba dan ditolak:
- *  • Variabel CSS `var(--ant-…)`. Nilainya memang ditulis `ConfigProvider`
- *    (cssVar menyala bawaan di AntD v6), TETAPI hanya pada elemen ber-kelas
- *    `css-var-root` yang dipasang komponen AntD sendiri — dan tak ada satu pun
- *    komponen AntD di atas komponen ini pada pohon halaman kontrak. Variabelnya
- *    karena itu tidak pernah teratasi, dan warnanya diam-diam jatuh ke warisan.
- *  • Mengimpor `Flex` AntD sambil tetap server component. Ditolak penjaga
- *    `tests/rsc-boundary.test.ts`, dan penjaga itu benar: AntD hanya boleh
- *    diimpor dari modul client.
+ * Sejak #227 alasan itu hilang. `AntdProvider` memberi `cssVar` sebuah KUNCI
+ * tetap dan root layout memasang kunci itu di `<html>`, jadi blok
+ * `.sai-tokens{--ant-…}` berdiri di HTML pertama dan diwarisi seluruh dokumen —
+ * termasuk pohon ini, yang tidak punya satu pun komponen AntD di atasnya.
+ * Warnanya karena itu ditulis sebagai `var(--ant-…)` biasa, benar sejak render
+ * pertama dan ikut berganti saat tema diubah tanpa render ulang. Alasan lengkap
+ * beserta urutan penyisipannya di `lib/theme/antd-tokens.ts`.
  *
- * Harganya kecil dan terukur: komponen ini dirender SEKALI per halaman kontrak,
- * dengan empat tahap; propnya adalah data biasa yang halamannya sudah hitung.
- * Halaman kontraknya sendiri TETAP server component — yang menyeberang adalah
- * daun, bukan pengambilan datanya.
+ * Konsekuensi praktisnya: berkas ini **tidak boleh mengimpor `antd`** (dijaga
+ * `tests/rsc-boundary.test.ts`). `Flex` karena itu diganti `display:flex` biasa
+ * dengan jarak dari token yang sama yang dipakai `Flex` sendiri
+ * (`flexGap` = `padding` 16px untuk "middle", `flexGapSM` = `paddingXS` 8px
+ * untuk "small") — bukan angka baru.
  */
 
 /**
@@ -49,6 +44,9 @@ const STAGE_BASIS = 240;
 
 /** Bulatan ikon tahap — sebesar `h-10 w-10` sebelum migrasi. */
 const STAGE_BULLET = 40;
+
+/** Tebal cincin bulatan tahap — dua kali `lineWidth`, jadi ia terbaca sebagai cincin. */
+const RING_WIDTH = 2;
 
 const stageIcons = {
   contract: FileText,
@@ -92,35 +90,26 @@ const statusMark = {
  * TIPIS (`color*Bg`) dengan teks anak tangga uang (#186) — bukan `colorSuccess`
  * pekat sebagai warna teks, yang di ukuran ini hanya 2,21:1.
  *
- * Fungsi, bukan konstanta modul: nilainya token yang berganti bersama tema.
+ * Konstanta modul, bukan fungsi bertoken lagi: nilainya kini nama VARIABEL,
+ * dan variabelnya yang berganti bersama tema — bukan berkas ini.
  */
-type RingToken = ReturnType<typeof theme.useToken>["token"];
-
-function statusRing(
-  status: ChainStatus,
-  token: RingToken,
-  money: ReturnType<typeof moneyPalette>
-): React.CSSProperties {
-  if (status === "selesai") {
-    return {
-      borderColor: token.colorSuccess,
-      background: token.colorSuccessBg,
-      color: money.colorMoneyPositive,
-    };
-  }
-  if (status === "sebagian") {
-    return {
-      borderColor: token.colorWarning,
-      background: token.colorWarningBg,
-      color: money.colorMoneyPending,
-    };
-  }
-  return {
-    borderColor: token.colorBorderSecondary,
-    background: token.colorFillSecondary,
-    color: token.colorTextSecondary,
-  };
-}
+const STATUS_RING: Record<ChainStatus, React.CSSProperties> = {
+  selesai: {
+    borderColor: "var(--ant-color-success)",
+    background: "var(--ant-color-success-bg)",
+    color: "var(--ant-color-money-positive)",
+  },
+  sebagian: {
+    borderColor: "var(--ant-color-warning)",
+    background: "var(--ant-color-warning-bg)",
+    color: "var(--ant-color-money-pending)",
+  },
+  belum: {
+    borderColor: "var(--ant-color-border-secondary)",
+    background: "var(--ant-color-fill-secondary)",
+    color: "var(--ant-color-text-secondary)",
+  },
+};
 
 function stageAmount(stage: ContractChainStage, currency: string): string {
   if (stage.unit === "IDR") {
@@ -129,7 +118,7 @@ function stageAmount(stage: ContractChainStage, currency: string): string {
   return `${formatNumber(stage.done)} / ${formatNumber(stage.target)} kg`;
 }
 
-export function DocumentChainTimeline({
+export async function DocumentChainTimeline({
   stages,
   currency = "IDR",
 }: {
@@ -137,9 +126,7 @@ export function DocumentChainTimeline({
   /** Currency of the money-denominated stage (payments are summed in IDR base). */
   currency?: string;
 }) {
-  const t = useT();
-  const { token } = theme.useToken();
-  const money = moneyPalette(token);
+  const t = await getT();
   return (
     /*
      * Garis penghubung antar-tahap DIHAPUS, bukan dipindahkan. Ia dulu
@@ -151,7 +138,16 @@ export function DocumentChainTimeline({
      * daripada tidak ada garis. Urutannya tetap terbaca: nomor "1." … "4." ada
      * di setiap judul tahap, dan `<ol>`-nya tetap daftar berurutan.
      */
-    <Flex component="ol" wrap gap="middle" style={{ margin: 0, padding: 0, listStyle: "none" }}>
+    <ol
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "var(--ant-padding)",
+        margin: 0,
+        padding: 0,
+        listStyle: "none",
+      }}
+    >
       {stages.map((stage, i) => {
         const Icon = stageIcons[stage.key];
         const Mark = statusMark[stage.status];
@@ -161,18 +157,25 @@ export function DocumentChainTimeline({
             key={stage.key}
             style={{ flex: `1 1 ${STAGE_BASIS}px`, minWidth: 0, listStyle: "none" }}
           >
-            <Flex
-              vertical
-              gap="small"
+            <div
               style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ant-padding-xs)",
                 height: "100%",
-                padding: token.padding,
-                borderRadius: token.borderRadiusLG,
-                border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
-                background: token.colorBgContainer,
+                padding: "var(--ant-padding)",
+                borderRadius: "var(--ant-border-radius-lg)",
+                border: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+                background: "var(--ant-color-bg-container)",
               }}
             >
-              <Flex align="center" gap="small">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--ant-padding-xs)",
+                }}
+              >
                 <span
                   style={{
                     display: "inline-flex",
@@ -183,8 +186,8 @@ export function DocumentChainTimeline({
                     flexShrink: 0,
                     borderRadius: "50%",
                     borderStyle: "solid",
-                    borderWidth: 2,
-                    ...statusRing(stage.status, token, money),
+                    borderWidth: RING_WIDTH,
+                    ...STATUS_RING[stage.status],
                   }}
                 >
                   <Icon size="1em" aria-hidden />
@@ -196,24 +199,31 @@ export function DocumentChainTimeline({
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      fontWeight: token.fontWeightStrong,
+                      fontWeight: "var(--ant-font-weight-strong)",
                     }}
                   >
-                    <span style={{ color: token.colorTextSecondary }}>{i + 1}. </span>
+                    <span style={{ color: "var(--ant-color-text-secondary)" }}>{i + 1}. </span>
                     {t(stageLabelKeys[stage.key])}
                   </p>
                   <p
                     style={{
                       margin: 0,
-                      fontSize: token.fontSizeSM,
-                      color: token.colorTextSecondary,
+                      fontSize: "var(--ant-font-size-sm)",
+                      color: "var(--ant-color-text-secondary)",
                     }}
                   >
                     {t("aging.docCount", { count: stage.count })}
                   </p>
                 </div>
-              </Flex>
-              <Flex align="center" justify="space-between" gap="small">
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--ant-padding-xs)",
+                }}
+              >
                 {/* Ikon berukuran `1em` = `fontSizeSM` milik `Tag`; jaraknya
                     dari `.ant-tag > svg + span`, jadi labelnya wajib `<span>`. */}
                 <Badge variant={badge.variant}>
@@ -226,17 +236,17 @@ export function DocumentChainTimeline({
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                     textAlign: "right",
-                    fontSize: token.fontSizeSM,
+                    fontSize: "var(--ant-font-size-sm)",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
                   {stageAmount(stage, currency)}
                 </span>
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           </li>
         );
       })}
-    </Flex>
+    </ol>
   );
 }

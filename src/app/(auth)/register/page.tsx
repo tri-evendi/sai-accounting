@@ -100,17 +100,13 @@ export default function RegisterPage() {
       }
     >
       {sent ? (
-        /* `role` pada pembungkus: `Alert` AntD hanya meneruskan `aria-*`/`data-*`
-           (lihat catatan di /forgot-password), jadi peran yang dioper langsung
-           akan hilang tanpa galat. */
-        <div role="status" aria-live="polite">
-          <Alert
-            type="success"
-            showIcon
-            message={t("auth.register.sentTitle")}
-            description={t("auth.register.sentBody")}
-          />
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("auth.register.sentTitle")}
+          description={t("auth.register.sentBody")}
+        />
       ) : (
         <form onSubmit={handleSubmit}>
           <Flex vertical gap={token.marginMD}>

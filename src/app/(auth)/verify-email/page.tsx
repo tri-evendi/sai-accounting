@@ -92,11 +92,8 @@ function VerifyEmailInner() {
     >
       {done ? (
         <Flex vertical gap={designToken.margin}>
-          {/* `role` pada pembungkus — `Alert` AntD hanya meneruskan
-              `aria-*`/`data-*`, jadi peran yang dioper langsung akan hilang. */}
-          <div role="status" aria-live="polite">
-            <Alert type="success" showIcon message={t("auth.register.verifiedBody")} />
-          </div>
+          {/* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */}
+          <Alert type="success" showIcon message={t("auth.register.verifiedBody")} />
           {/* Langkah 4 §7.1: layar "buat perusahaan pertama" — tujuannya
               /companies/new (lewat masuk), bukan pemilih perusahaan. */}
           <Button asChild size="lg" style={{ width: "100%" }}>

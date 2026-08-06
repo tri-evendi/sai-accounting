@@ -11,14 +11,24 @@
  * untuk undangan). Yang berbeda hanya apa yang terjadi di server, dan itu
  * tidak pernah terlihat dari luar.
  *
- * ⚠ `role="status"` pada panel "sudah dikirim" bukan hiasan: panel itu adalah
- * SATU-SATUNYA umpan balik dari sebuah permintaan yang tidak memindahkan
- * halaman ke mana pun. Tanpa peran itu, yang menekan "Kirim" mendengar sunyi.
+ * ⚠ Panel "sudah dikirim" adalah SATU-SATUNYA umpan balik dari permintaan yang
+ * tidak memindahkan halaman ke mana pun, jadi ia harus diumumkan pembaca layar.
+ * Itu terjadi — tetapi TIDAK dengan cara yang bisa kita atur, dan itu perlu
+ * ditulis supaya tidak "diperbaiki" dengan pembungkus yang tidak melakukan apa
+ * pun (#200 sempat memasangnya):
  *
- * Perannya dipasang pada PEMBUNGKUS, bukan pada `Alert` — dan itu bukan selera:
- * `Alert` AntD menyaring propnya lewat `pickAttrs(props, { aria: true, data:
- * true })`, sehingga `role` yang dioper ke sana hilang tanpa satu pun galat.
- * Pola yang sama berlaku di seluruh alur auth (#200).
+ *   • `Alert` AntD menuliskan `role="alert"` pada elemen akarnya sendiri, tanpa
+ *     syarat (`antd/lib/alert/Alert.js`, sebelum `...restProps` disebar).
+ *   • `role` yang DIOPER ke `Alert` dibuang — ia menyaring propnya lewat
+ *     `pickAttrs(props, { aria: true, data: true })`, dan `role` bukan `aria-*`.
+ *
+ * Dua hal itu bersama berarti panel ini selalu diumumkan **asertif**, memotong
+ * bacaan yang sedang berjalan, dan `role="status"` yang lebih sopan TIDAK bisa
+ * dicapai selama komponennya `Alert` AntD — membungkusnya dengan `<div
+ * role="status">` hanya menambah wilayah langsung kosong DI LUAR wilayah
+ * asertif yang sudah ada di dalamnya. Jalan keluarnya sebuah primitif `Notice`
+ * sendiri; sampai saat itu, asertif adalah harga yang kita bayar dan bukan
+ * sesuatu yang hilang. Berlaku di seluruh alur auth & operator (#200).
  */
 
 import { useState } from "react";
@@ -86,14 +96,13 @@ export default function ForgotPasswordPage() {
       }
     >
       {sent ? (
-        <div role="status" aria-live="polite">
-          <Alert
-            type="success"
-            showIcon
-            message={t("auth.forgotPassword.sentTitle")}
-            description={t("auth.forgotPassword.sentBody")}
-          />
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("auth.forgotPassword.sentTitle")}
+          description={t("auth.forgotPassword.sentBody")}
+        />
       ) : (
         <form onSubmit={handleSubmit}>
           <Flex vertical gap={token.marginMD}>

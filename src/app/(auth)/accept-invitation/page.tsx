@@ -142,15 +142,13 @@ function AcceptInvitationForm() {
       footer={footer}
     >
       {done ? (
-        /* `role` pada pembungkus — `Alert` AntD hanya meneruskan `aria-*`/`data-*`. */
-        <div role="status" aria-live="polite">
-          <Alert
-            type="success"
-            showIcon
-            message={t("invitations.successTitle")}
-            description={t("invitations.successBody")}
-          />
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("invitations.successTitle")}
+          description={t("invitations.successBody")}
+        />
       ) : !info ? (
         /* Token hilang / tak dikenal / kedaluwarsa / terpakai — SATU kalimat. */
         <Text type="secondary">{t("invitations.invalidToken")}</Text>

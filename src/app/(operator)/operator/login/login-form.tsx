@@ -90,9 +90,8 @@ export function OperatorLoginForm() {
               </Flex>
 
               {state.error && (
-                <div role="alert">
-                  <Alert type="error" showIcon message={state.error} />
-                </div>
+                /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+                <Alert type="error" showIcon message={state.error} />
               )}
 
               <Button type="submit" style={{ width: "100%" }} disabled={pending}>

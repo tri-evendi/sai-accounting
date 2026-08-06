@@ -87,15 +87,13 @@ function ResetPasswordForm() {
       footer={footer}
     >
       {done ? (
-        /* `role` pada pembungkus — `Alert` AntD hanya meneruskan `aria-*`/`data-*`. */
-        <div role="status" aria-live="polite">
-          <Alert
-            type="success"
-            showIcon
-            message={t("auth.resetPassword.successTitle")}
-            description={t("auth.resetPassword.successBody")}
-          />
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("auth.resetPassword.successTitle")}
+          description={t("auth.resetPassword.successBody")}
+        />
       ) : !token ? (
         <Text type="secondary">{t("auth.resetPassword.missingToken")}</Text>
       ) : (

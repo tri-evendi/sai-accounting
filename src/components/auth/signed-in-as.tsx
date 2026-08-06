@@ -19,7 +19,7 @@
 
 import { signOut } from "next-auth/react";
 import { Flex, theme } from "antd";
-import { LogOut } from "lucide-react";
+import { LogoutOutlined } from "@ant-design/icons";
 
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
@@ -40,7 +40,7 @@ export function SignedInAs({ name }: { name: string }) {
         style={{ flexShrink: 0 }}
         onClick={() => void signOut({ callbackUrl: "/login" })}
       >
-        <LogOut size={16} aria-hidden="true" />
+        <LogoutOutlined aria-hidden="true" style={{ fontSize: 16 }} />
         {t("auth.selectCompany.signOut")}
       </Button>
     </Flex>

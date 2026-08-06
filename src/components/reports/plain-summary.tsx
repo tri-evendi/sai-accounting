@@ -19,19 +19,19 @@
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  TrendingUp,
-  TrendingDown,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+  BulbOutlined,
+  FallOutlined,
+  RiseOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
+} from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import type { ReportSummary, SummaryDirection } from "@/lib/report-summary";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 interface DirStyle {
-  Icon: LucideIcon;
+  Icon: IconComponent;
   word: DictionaryKey;
   value: string;
   sign: "" | "+" | "−";
@@ -39,37 +39,37 @@ interface DirStyle {
 
 const DIR: Record<SummaryDirection, DirStyle> = {
   in: {
-    Icon: ArrowDownToLine,
+    Icon: VerticalAlignBottomOutlined,
     word: "moneyDirection.in",
     value: "var(--ant-color-money-positive)",
     sign: "",
   },
   out: {
-    Icon: ArrowUpFromLine,
+    Icon: VerticalAlignTopOutlined,
     word: "moneyDirection.out",
     value: "var(--ant-color-money-negative)",
     sign: "",
   },
   profit: {
-    Icon: TrendingUp,
+    Icon: RiseOutlined,
     word: "moneyDirection.profit",
     value: "var(--ant-color-money-positive)",
     sign: "+",
   },
   loss: {
-    Icon: TrendingDown,
+    Icon: FallOutlined,
     word: "moneyDirection.loss",
     value: "var(--ant-color-money-negative)",
     sign: "−",
   },
   receivable: {
-    Icon: ArrowDownToLine,
+    Icon: VerticalAlignBottomOutlined,
     word: "moneyDirection.receivable",
     value: "var(--ant-color-text)",
     sign: "",
   },
   payable: {
-    Icon: ArrowUpFromLine,
+    Icon: VerticalAlignTopOutlined,
     word: "moneyDirection.payable",
     value: "var(--ant-color-text)",
     sign: "",
@@ -139,10 +139,9 @@ export async function PlainSummary({ summary }: { summary: ReportSummary }) {
     <Card style={CARD}>
       <div style={BODY}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--ant-margin-sm)" }}>
-          <Sparkles
-            size={20}
-            style={{ flexShrink: 0, marginTop: 2, color: "var(--ant-color-link)" }}
+          <BulbOutlined
             aria-hidden="true"
+            style={{ fontSize: 20, flexShrink: 0, marginTop: 2, color: "var(--ant-color-link)" }}
           />
           <div>
             <h2
@@ -176,7 +175,7 @@ export async function PlainSummary({ summary }: { summary: ReportSummary }) {
             return (
               <div key={c.title} style={FIGURE_CARD} title={c.explanation}>
                 <div style={FIGURE_LABEL}>
-                  <Icon size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
+                  <Icon aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
                   <span>{c.title}</span>
                 </div>
                 <p style={{ ...FIGURE_VALUE, color: s.value }}>

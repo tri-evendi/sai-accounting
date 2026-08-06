@@ -46,7 +46,7 @@
 
 import Link from "next/link";
 import { Alert, Col, Flex, Layout, Row, theme } from "antd";
-import { Check } from "lucide-react";
+import { CheckOutlined } from "@ant-design/icons";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
@@ -211,11 +211,14 @@ function BrandPanel() {
                 color: NEUTRAL_TEXT_DARK.colorTextTertiary,
               }}
             >
-              <Check
-                size={16}
-                strokeWidth={3}
-                style={{ marginTop: 2, flexShrink: 0, color: token.colorTextLightSolid }}
+              <CheckOutlined
                 aria-hidden
+                style={{
+                  fontSize: 16,
+                  marginTop: 2,
+                  flexShrink: 0,
+                  color: token.colorTextLightSolid,
+                }}
               />
               <span style={{ maxWidth: LEBAR_TEKS_BRAND }}>{t(`auth.${key}`)}</span>
             </li>

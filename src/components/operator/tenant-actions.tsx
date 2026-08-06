@@ -37,13 +37,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
 import type { GlobalToken } from "antd";
 import {
-  ArrowLeftRight,
-  Banknote,
-  PauseCircle,
-  PlayCircle,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+  DeleteOutlined,
+  DollarCircleOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  SecurityScanOutlined,
+  SwapOutlined,
+} from "@ant-design/icons";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -294,7 +294,7 @@ function MarkPaidPanel({
           style={{ alignSelf: "flex-start" }}
           onClick={() => setOpen(true)}
         >
-          <Banknote size={16} aria-hidden="true" />
+          <DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {t("operator.actions.markPaid.submit")}
         </Button>
       </Flex>
@@ -499,7 +499,7 @@ function ChangePlanPanel({
           style={{ alignSelf: "flex-start" }}
           onClick={() => setOpen(true)}
         >
-          <ArrowLeftRight size={16} aria-hidden="true" />
+          <SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {t("operator.actions.plan.submit")}
         </Button>
       </Flex>
@@ -548,7 +548,7 @@ function ChangePlanPanel({
           <Alert
             type="warning"
             showIcon
-            icon={<ShieldAlert size={16} aria-hidden="true" />}
+            icon={<SecurityScanOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             message={t("operator.actions.plan.quotaWarningTitle")}
             description={
               <>
@@ -683,9 +683,9 @@ function SuspensionPanel({
           onClick={() => setOpen(true)}
         >
           {mode === "suspend" ? (
-            <PauseCircle size={16} aria-hidden="true" />
+            <PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           ) : (
-            <PlayCircle size={16} aria-hidden="true" />
+            <PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           )}
           {submitLabel}
         </Button>
@@ -879,7 +879,7 @@ function DeletionPanel({
           style={{ alignSelf: "flex-start" }}
           disabled={form.formState.isSubmitting || typedSlug !== tenantSlug}
         >
-          <Trash2 size={16} aria-hidden="true" />
+          <DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {form.formState.isSubmitting
             ? t("common.processing")
             : t("operator.actions.deletion.submit")}
@@ -940,7 +940,7 @@ export function TenantActions(props: TenantActionsProps) {
       >
         {props.billingAvailable && (
           <ActionPanel
-            icon={<Banknote size={16} aria-hidden="true" />}
+            icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.markPaid.title")}
             description={t("operator.actions.markPaid.description")}
           >
@@ -950,7 +950,7 @@ export function TenantActions(props: TenantActionsProps) {
 
         {props.billingAvailable && props.plans && props.plans.length > 0 && (
           <ActionPanel
-            icon={<ArrowLeftRight size={16} aria-hidden="true" />}
+            icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.plan.title")}
             description={t("operator.actions.plan.description")}
           >
@@ -967,7 +967,7 @@ export function TenantActions(props: TenantActionsProps) {
 
         {props.billingAvailable && (
           <ActionPanel
-            icon={<PauseCircle size={16} aria-hidden="true" />}
+            icon={<PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.suspension.title")}
             description={t("operator.actions.suspension.description")}
           >
@@ -980,7 +980,7 @@ export function TenantActions(props: TenantActionsProps) {
         )}
 
         <ActionPanel
-          icon={<Trash2 size={16} aria-hidden="true" />}
+          icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
           title={t("operator.actions.deletion.title")}
           description={t("operator.actions.deletion.keptHeading")}
         >

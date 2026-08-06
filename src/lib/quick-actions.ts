@@ -42,7 +42,7 @@ export interface QuickAction {
   /** Kunci kamus untuk `description` (`quickActions.items.*.description`). */
   descriptionKey: DictionaryKey;
   href: string;
-  /** Nama ikon lucide-react; dipetakan ke komponen di panelnya. */
+  /** Nama ikon (kunci peta `ICONS` di panelnya); dipetakan ke komponen di sana. */
   icon: string;
   /** Izin halaman tujuannya — sama dengan `requirePagePermission` di sana. */
   permission: Permission;

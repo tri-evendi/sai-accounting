@@ -28,26 +28,32 @@
 
 import { Link } from "@/components/ui/app-link";
 import {
-  ArrowDownLeft,
-  ArrowRight,
-  Check,
-  ListChecks,
-  PackagePlus,
-  Receipt,
-  Truck,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+  AppstoreAddOutlined,
+  ArrowDownOutlined,
+  ArrowRightOutlined,
+  CheckOutlined,
+  CheckSquareOutlined,
+  FileDoneOutlined,
+  TeamOutlined,
+  TruckOutlined,
+} from "@ant-design/icons";
 
 import { getT } from "@/lib/i18n/server";
+import type { IconComponent } from "@/lib/icons";
 import type { FirstStep, FirstStepProgress } from "@/lib/first-steps";
 
-const ICONS: Record<string, LucideIcon> = {
-  Users,
-  Truck,
-  PackagePlus,
-  Receipt,
-  ArrowDownLeft,
+/**
+ * Nama ikon di `lib/first-steps.ts` tetap NAMA LAMA — modul itu murni
+ * data dan tidak boleh tahu paket ikon mana yang menggambarnya (pola yang sama
+ * dengan `lib/nav.ts` → `layout/sidebar.tsx`, issue #201). Yang berpindah ke
+ * `@ant-design/icons` adalah NILAI peta ini.
+ */
+const ICONS: Record<string, IconComponent> = {
+  Users: TeamOutlined,
+  Truck: TruckOutlined,
+  PackagePlus: AppstoreAddOutlined,
+  Receipt: FileDoneOutlined,
+  ArrowDownLeft: ArrowDownOutlined,
 };
 
 const HEAD_ROW: React.CSSProperties = {
@@ -174,7 +180,10 @@ export async function FirstStepsPanel({
   return (
     <section aria-labelledby="langkah-pertama-judul">
       <div style={HEAD_ROW}>
-        <ListChecks size={20} style={{ color: "var(--ant-color-link)" }} aria-hidden="true" />
+        <CheckSquareOutlined
+          aria-hidden="true"
+          style={{ fontSize: 20, color: "var(--ant-color-link)" }}
+        />
         <h2 id="langkah-pertama-judul" style={TITLE}>
           {t("firstSteps.title")}
         </h2>
@@ -190,7 +199,7 @@ export async function FirstStepsPanel({
 
         <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
           {steps.map((step, index) => {
-            const Icon = ICONS[step.icon] ?? Receipt;
+            const Icon = ICONS[step.icon] ?? FileDoneOutlined;
             const done = progress[step.key] === true;
 
             return (
@@ -217,7 +226,11 @@ export async function FirstStepsPanel({
                     }}
                     aria-hidden="true"
                   >
-                    {done ? <Check size={20} strokeWidth={3} /> : <Icon size={20} />}
+                    {done ? (
+                      <CheckOutlined style={{ fontSize: 20 }} />
+                    ) : (
+                      <Icon style={{ fontSize: 20 }} />
+                    )}
                   </span>
 
                   <span style={{ minWidth: 0, flex: 1 }}>
@@ -241,7 +254,7 @@ export async function FirstStepsPanel({
                     }}
                   >
                     {done ? t("firstSteps.again") : t("firstSteps.start")}
-                    <ArrowRight size={16} aria-hidden="true" />
+                    <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 16 }} />
                   </span>
                 </Link>
               </li>

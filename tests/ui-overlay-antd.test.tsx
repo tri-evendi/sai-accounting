@@ -510,6 +510,86 @@ describe("LearnMore — tautan yang TIDAK boleh memuat ulang halaman", () => {
  * naik, jawabannya bukan menghapusnya: bacalah sumbernya lagi dan pastikan
  * kedua perilaku itu masih ada.
  */
+/**
+ * `styles` Modal — nama bagian yang TIDAK ADA tidak menghasilkan galat apa pun
+ * (issue #204).
+ *
+ * Ini bukan kehati-hatian teoretis; ia sudah terjadi di epik ini. Lebar panel
+ * dulu ditulis sebagai `styles.content`, dan **`content` bukan nama bagian
+ * semantik `Modal` v6 sama sekali**. Bentuk itu lolos `tsc` karena ditulis
+ * sebagai sebaran bersyarat (`...(x ? { content: … } : {})`), yang mematikan
+ * pemeriksaan properti berlebih TypeScript — jadi prop `size` (#194)
+ * sesungguhnya tidak pernah menjepit apa pun selama berbulan-bulan. Yang
+ * benar-benar membatasi lebar saat itu adalah kelas `max-w-*`, dan ketahuannya
+ * baru ketika kelasnya dicabut di #203: pratinjau dokumen meminta `size="lg"`
+ * dan tetap dibaca di dalam kotak 672px.
+ *
+ * Dua hal karena itu dipaku di sini, dan keduanya terhadap paket yang
+ * BENAR-BENAR TERPASANG — bukan terhadap ingatan tentang AntD v6:
+ *
+ *  1. setiap kunci `styles` yang dioper primitif ada di `ModalSemanticType`
+ *     milik `antd/es/modal/interface.d.ts`;
+ *  2. `size` benar-benar sampai ke sebuah nilai lebar yang berbeda per ukuran.
+ *
+ * Tanpa (2), (1) masih bisa hijau sementara ukurannya mendarat di properti
+ * yang benar namanya tapi salah tempatnya.
+ */
+describe("Modal — `styles` hanya memakai nama bagian yang sungguh ada", () => {
+  const require_ = createRequire(import.meta.url);
+
+  /** Nama bagian semantik `styles` menurut tipe `antd` yang terpasang. */
+  const semantik = (() => {
+    const dts = readFileSync(require_.resolve("antd/es/modal/interface.d.ts"), "utf8");
+    const blok = /styles\?:\s*\{([\s\S]*?)\n {4}\};/.exec(dts);
+    expect(blok, "bentuk ModalSemanticType berubah — baca ulang interface.d.ts").toBeTruthy();
+    return new Set([...blok![1].matchAll(/^\s*(\w+)\?:/gm)].map((m) => m[1]));
+  })();
+
+  it("membaca daftar bagian dari paket yang terpasang, bukan dari ingatan", () => {
+    // Penjaga bagi penjaga: parser yang meleset menghasilkan himpunan kosong,
+    // dan tes di bawah lulus tanpa memeriksa apa pun.
+    expect(semantik.size).toBeGreaterThan(5);
+    expect([...semantik]).toContain("body");
+    // Bukti bahwa nama yang dulu dipakai memang TIDAK PERNAH ada.
+    expect([...semantik]).not.toContain("content");
+  });
+
+  it("setiap kunci `styles` yang dioper Dialog adalah bagian yang sungguh ada", () => {
+    render(
+      <Dialog open onOpenChange={() => {}}>
+        <DialogContent size="lg">
+          <DialogTitle>Pratinjau</DialogTitle>
+        </DialogContent>
+      </Dialog>
+    );
+    const styles = lastModal().styles as Record<string, unknown>;
+    const asing = Object.keys(styles).filter((k) => !semantik.has(k));
+    expect(
+      asing,
+      "Nama bagian semantik yang tidak dikenal Modal DIABAIKAN diam-diam — " +
+        "tanpa galat, tanpa peringatan, dan tanpa satu pun tes yang gagal. " +
+        `Yang ada di v6 ini: ${[...semantik].sort().join(" · ")}.`
+    ).toEqual([]);
+  });
+
+  it("prop `size` benar-benar menjepit lebar panel, bukan hanya tercatat", () => {
+    const lebar = (size: "xs" | "lg") => {
+      render(
+        <Dialog open onOpenChange={() => {}}>
+          <DialogContent size={size}>
+            <DialogTitle>Judul</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      );
+      return (lastModal().style as React.CSSProperties).maxWidth;
+    };
+    // Dua ukuran ekstrem: dialog konfirmasi vs pratinjau lembar A4. Kalau
+    // keduanya sama, `size` inert lagi — persis keadaan #194–#203.
+    expect(lebar("xs")).toBe(448);
+    expect(lebar("lg")).toBe(1024);
+  });
+});
+
 describe("perilaku yang datang dari rc-dialog / rc-portal", () => {
   const require_ = createRequire(import.meta.url);
   const source = (spec: string) => readFileSync(require_.resolve(spec), "utf8");

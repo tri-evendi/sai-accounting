@@ -24,8 +24,10 @@
  * `--muted`, …) tidak lagi dipakai: #203 mencabutnya dari `globals.css`, dan
  * merujuknya sekarang berarti warna yang jatuh diam-diam ke warisan.
  *
- * Satu-satunya nilai warna yang ditulis literal adalah `#001529` pada panel
- * brand dan kepala layar sempit — alasannya ditulis di tempatnya.
+ * Satu-satunya warna yang tidak datang dari `var(--ant-…)` adalah permukaan
+ * gelap permanen pada panel brand dan kepala layar sempit; sejak #204 ia
+ * diimpor sebagai `SIDER_BG_DARK` dari `antd-tokens.ts` alih-alih diketik
+ * ulang — alasannya ditulis di tempatnya.
  *
  * ── Denyut & titik patah lewat `<style>`, bukan kelas utilitas ────────────
  * Dua hal yang gaya sebaris memang tidak bisa lakukan — `@media` dan
@@ -43,6 +45,8 @@
  * `AuthShell` berganti titik patah lagi, ganti angka di bawah pada saat yang
  * sama.
  */
+
+import { SIDER_BG_DARK } from "@/lib/theme/antd-tokens";
 
 /** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda.
  *  Warnanya `fillSecondary`, bukan `fillQuaternary`: yang terakhir itu latar
@@ -91,16 +95,14 @@ export default function AuthLoading() {
             flexBasis: "29.166667%",
             maxWidth: 384,
             flexShrink: 0,
-            /* `#001529` ditulis LITERAL, dan itu disengaja: ini nilai
-               `Layout.siderBg` bawaan AntD — permukaan yang sama persis dengan
-               `Layout.Sider theme="dark"` milik `AuthShell` dan menu samping
-               dasbor, yang akan menggantikan bidang ini begitu isinya tiba.
-               Tidak ada variabel yang bisa dirujuk: variabel token KOMPONEN
-               AntD baru ada bila komponennya benar-benar dirender, sedangkan
-               kerangka muat ini justru dirender MENGGANTIKAN halaman yang
-               merendernya. Kalau `Layout.siderBg` kelak diubah, ubah juga di
-               sini. */
-            background: "#001529",
+            /* Permukaan gelap permanen — sama persis dengan `Layout.Sider
+               theme="dark"` milik `AuthShell`, yang akan menggantikan bidang
+               ini begitu isinya tiba. Bukan `var(--ant-layout-sider-bg)`:
+               variabel token KOMPONEN baru ada bila komponennya benar-benar
+               dirender, sedangkan kerangka muat ini justru dirender
+               MENGGANTIKAN halaman yang merendernya. Sejak #204 nilainya
+               berdiri SEKALI, di `antd-tokens.ts`. */
+            background: SIDER_BG_DARK,
           }}
         />
 
@@ -111,10 +113,9 @@ export default function AuthLoading() {
             style={{
               padding: "20px 24px",
               borderBottom: "1px solid var(--ant-color-border-secondary)",
-              /* Literal, alasan yang sama dengan panel brand di atas:
-                 `Layout.siderBg` AntD tidak punya variabel selama komponennya
-                 belum dirender. */
-              background: "#001529",
+              /* Alasan yang sama dengan panel brand di atas: `Layout.siderBg`
+                 AntD tidak punya variabel selama komponennya belum dirender. */
+              background: SIDER_BG_DARK,
             }}
           >
             <div

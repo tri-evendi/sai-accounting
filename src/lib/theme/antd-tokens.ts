@@ -599,6 +599,35 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Permukaan gelap permanen — nilai yang TIDAK punya variabel CSS (#204)     */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `Layout.siderBg` bawaan Ant Design — permukaan gelap permanen aplikasi ini:
+ * menu samping dasbor, panel merek layar masuk, dan kepala konsol operator.
+ * Ketiganya harus bidang yang SAMA PERSIS; dua abu-abu tua yang berbeda 3%
+ * terbaca sebagai cacat, bukan sebagai dua permukaan.
+ *
+ * **Kenapa nilainya ditulis di sini dan bukan dirujuk sebagai `var(--ant-…)`:**
+ * variabel token KOMPONEN AntD baru ada di dokumen bila komponennya benar-benar
+ * dirender. Dua permukaan memakainya justru di tempat yang tidak menggambar
+ * satu pun `Layout.Sider` — kerangka muat `(auth)/loading.tsx`, yang dirender
+ * MENGGANTIKAN halaman yang merendernya, dan chrome `(operator)/layout.tsx`,
+ * yang tidak punya menu samping. Di sana `var(--ant-layout-sider-bg)` tidak
+ * pernah teratasi dan warnanya jatuh diam-diam ke warisan.
+ *
+ * Sampai #204 nilai itu diketik ulang di ketiga tempat, masing-masing dengan
+ * komentar "kalau `Layout.siderBg` berubah, ubah juga di sini" — yaitu
+ * kesepakatan yang hanya berlaku selama seseorang mengingatnya. Sekarang ia
+ * berdiri satu kali, di berkas yang memang rumah setiap nilai warna, dan
+ * `sai/warna-token-antd` menolak salinan berikutnya.
+ *
+ * Tidak bertema: ia sengaja gelap di KEDUA tema. Teks di atasnya karena itu
+ * memakai `colorTextLightSolid`, bukan `colorText`.
+ */
+export const SIDER_BG_DARK = "#001529";
+
+/* ------------------------------------------------------------------------ */
 /* Tirai overlay: yang DIPERIKSA, lalu sengaja TIDAK diganti (issue #190)     */
 /* ------------------------------------------------------------------------ */
 

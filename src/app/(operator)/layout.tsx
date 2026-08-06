@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { OperatorNav } from "@/components/operator/operator-nav";
 import { optionalOperatorSession } from "@/lib/operator/guard";
 import { getT } from "@/lib/i18n/server";
+import { SIDER_BG_DARK } from "@/lib/theme/antd-tokens";
 import { operatorLogout } from "./operator/actions";
 
 export const dynamic = "force-dynamic";
@@ -72,15 +73,14 @@ export default async function OperatorLayout({ children }: { children: React.Rea
       <header
         style={{
           borderBottom: "1px solid var(--ant-color-border-secondary)",
-          /* `#001529` ditulis LITERAL, dan itu disengaja: ini nilai
-             `Layout.siderBg` bawaan AntD — permukaan yang sama persis dengan
-             `Layout.Sider theme="dark"` milik `AuthShell` dan menu samping
-             dasbor, sehingga bidang gelap operator tidak menyimpang sendiri.
-             Tidak ada variabel yang bisa dirujuk: variabel token KOMPONEN AntD
-             baru ada bila komponennya benar-benar dirender, dan chrome operator
-             ini tidak menggambar satu pun `Layout.Sider`. Kalau `Layout.siderBg`
-             kelak diubah, ubah juga di sini. */
-          background: "#001529",
+          /* Permukaan gelap permanen — sama persis dengan `Layout.Sider
+             theme="dark"` milik `AuthShell` dan menu samping dasbor, sehingga
+             bidang gelap operator tidak menyimpang sendiri. Bukan
+             `var(--ant-layout-sider-bg)`: variabel token KOMPONEN baru ada bila
+             komponennya benar-benar dirender, dan chrome operator ini tidak
+             menggambar satu pun `Layout.Sider`. Sejak #204 nilainya berdiri
+             SEKALI, di `antd-tokens.ts`. */
+          background: SIDER_BG_DARK,
           color: "var(--ant-color-text-light-solid)",
         }}
       >

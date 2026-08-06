@@ -2,6 +2,7 @@
 
 /**
  * Re-allocate an existing supplier payment (issue #38).
+ * Dikonversi ke token Ant Design pada issue #196.
  *
  * #37 let a user say which purchases a payment settles, but only while the
  * payment was being created. Getting it wrong — or recording a payment before
@@ -17,24 +18,38 @@
  * The set is always sent whole. Editing an amount, unticking a purchase and
  * allocating a payment that had nothing are then one operation with one
  * outcome, rather than three endpoints that can disagree.
+ *
+ * ── Catatan konversi #196 ───────────────────────────────────────────────────
+ * `Loader2 animate-spin` diganti `Spin` AntD (menghormati
+ * `prefers-reduced-motion` lewat komponennya), dan ketiga pesan galat menjadi
+ * `Alert`. Ringkasan tiga baris di bawah (dibayar / dialokasikan / belum
+ * dialokasikan) tetap `<p>` berpasangan, bukan tabel: ia tiga PERNYATAAN
+ * tentang satu pembayaran, bukan tiga baris data yang sebanding.
  */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Spin, theme } from "antd";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { Link2, Loader2 } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
 const EPSILON = 0.005;
+
+/** Lebar isian nominal alokasi (`w-40` lama = 10rem). */
+const AMOUNT_INPUT_WIDTH = 160;
+/** Lebar maksimum catatan pembelian sebelum dipotong (`max-w-64` lama). */
+const NOTE_MAX_WIDTH = 256;
 
 interface EditablePurchase {
   id: number;
@@ -78,6 +93,7 @@ export function AllocationEditor({
   const router = useRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
   // Arriving from the "Perkiraan" badge on /payables opens the panel straight
   // away, so the user lands on the fix rather than hunting for it. Seeded as
   // initial state rather than set from an effect — the panel is open from the
@@ -177,41 +193,85 @@ export function AllocationEditor({
 
   if (!open) {
     return (
-      <Button variant="ghost" size="sm" onClick={handleOpen} className="cursor-pointer">
-        <Link2 className="h-4 w-4 mr-1" aria-hidden="true" />
+      <Button variant="ghost" size="sm" onClick={handleOpen}>
+        <Link2 aria-hidden="true" />
         {allocatedCount > 0 ? t("suppliers.allocEdit") : t("suppliers.allocate")}
       </Button>
     );
   }
 
+  /** Satu baris ringkasan: istilah di kiri, nominal di kanan. */
+  const totalsLine = (label: string, value: string, emphasised = false) => (
+    <p style={{ margin: 0, display: "flex", justifyContent: "space-between", gap: token.marginXS }}>
+      <span style={{ color: token.colorTextSecondary }}>
+        <small>{label}</small>
+      </span>
+      <span
+        style={{
+          fontWeight: token.fontWeightStrong,
+          fontVariantNumeric: "tabular-nums",
+          color: emphasised ? token.colorErrorText : token.colorText,
+        }}
+      >
+        <small>{value}</small>
+      </span>
+    </p>
+  );
+
   return (
-    <div className="mt-2 rounded-lg border border-border bg-muted p-3 text-left">
-      <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+    <div
+      style={{
+        marginTop: token.marginXS,
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillQuaternary,
+        padding: token.paddingSM,
+        textAlign: "left",
+      }}
+    >
+      <h4
+        style={{
+          margin: 0,
+          marginBottom: token.marginXXS,
+          display: "flex",
+          alignItems: "center",
+          gap: token.marginXXS,
+        }}
+      >
+        <Link2 size="1em" aria-hidden="true" style={{ color: token.colorTextSecondary }} />
         {t("suppliers.allocPanelTitle")}
       </h4>
-      <p className="mb-3 text-xs text-muted-foreground">
-        {t("suppliers.allocPanelHintA")}{" "}
-        <strong>{t("suppliers.allocPanelHintStrong")}</strong>{" "}
-        {t("suppliers.allocPanelHintB")} <strong>{t("suppliers.allocPanelHintStrong2")}</strong>{" "}
-        {t("suppliers.allocPanelHintC")}
+      <p style={{ margin: 0, marginBottom: token.marginSM, color: token.colorTextSecondary }}>
+        <small>
+          {t("suppliers.allocPanelHintA")}{" "}
+          <strong>{t("suppliers.allocPanelHintStrong")}</strong>{" "}
+          {t("suppliers.allocPanelHintB")} <strong>{t("suppliers.allocPanelHintStrong2")}</strong>{" "}
+          {t("suppliers.allocPanelHintC")}
+        </small>
       </p>
 
       {error && (
-        <div className="mb-3 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-          {error}
+        <div role="alert" style={{ marginBottom: token.marginSM }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
       {loading ? (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          {t("suppliers.allocLoading")}
-        </p>
+        <Flex align="center" gap={token.marginXXS} style={{ color: token.colorTextSecondary }}>
+          <Spin size="small" />
+          <small>{t("suppliers.allocLoading")}</small>
+        </Flex>
       ) : !data ? null : data.purchases.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t("suppliers.allocNoPurchases")}</p>
+        <p style={{ margin: 0, color: token.colorTextSecondary }}>
+          <small>{t("suppliers.allocNoPurchases")}</small>
+        </p>
       ) : (
-        <ul className="space-y-2">
+        <Flex
+          vertical
+          gap={token.marginXS}
+          component="ul"
+          style={{ margin: 0, padding: 0, listStyle: "none" }}
+        >
           {data.purchases.map((p) => {
             const checked = alloc[p.id] !== undefined;
             const noRate = p.remainingBase == null;
@@ -227,12 +287,24 @@ export function AllocationEditor({
             return (
               <li
                 key={p.id}
-                className="rounded-md border border-border bg-card p-2.5 transition-colors duration-150 hover:border-border"
+                style={{
+                  borderRadius: token.borderRadius,
+                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  background: token.colorBgContainer,
+                  padding: token.paddingXS,
+                }}
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <label className="flex cursor-pointer items-start gap-2 text-sm">
+                <Flex wrap align="flex-start" justify="space-between" gap={token.marginXS}>
+                  <label
+                    style={{
+                      display: "flex",
+                      cursor: "pointer",
+                      alignItems: "flex-start",
+                      gap: token.marginXS,
+                    }}
+                  >
                     <Checkbox
-                      className="mt-1"
+                      style={{ marginTop: token.marginXXS }}
                       checked={checked}
                       disabled={noRate}
                       onCheckedChange={(v) =>
@@ -252,50 +324,93 @@ export function AllocationEditor({
                       }
                     />
                     <span>
-                      <span className="font-medium text-foreground">TRX-{p.id}</span>
-                      <span className="block text-xs text-muted-foreground tabular-nums">
-                        {formatDateShort(p.date)}
-                        {p.dueDate && (
-                          <> · {t("suppliers.dueShort", { date: formatDateShort(p.dueDate) })}</>
-                        )}
+                      <span style={{ fontWeight: token.fontWeightStrong }}>TRX-{p.id}</span>
+                      <span
+                        style={{
+                          display: "block",
+                          color: token.colorTextSecondary,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        <small>
+                          {formatDateShort(p.date)}
+                          {p.dueDate && (
+                            <> · {t("suppliers.dueShort", { date: formatDateShort(p.dueDate) })}</>
+                          )}
+                        </small>
                       </span>
                       {p.note && (
-                        <span className="block max-w-64 truncate text-xs text-muted-foreground">
-                          {p.note}
+                        <span
+                          style={{
+                            display: "block",
+                            maxWidth: NOTE_MAX_WIDTH,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            color: token.colorTextSecondary,
+                          }}
+                          title={p.note}
+                        >
+                          <small>{p.note}</small>
                         </span>
                       )}
                     </span>
                   </label>
 
-                  <div className="text-right">
-                    <span className="block text-xs text-muted-foreground">
-                      {t("suppliers.outstandingDebt")}
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ display: "block", color: token.colorTextSecondary }}>
+                      <small>{t("suppliers.outstandingDebt")}</small>
                     </span>
-                    <span className="block text-sm font-medium text-foreground tabular-nums">
+                    <span
+                      style={{
+                        display: "block",
+                        fontWeight: token.fontWeightStrong,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {/* Tanpa kurs, nilainya BELUM DIKETAHUI — ditulis dengan
+                          kata, tak pernah Rp 0. */}
                       {noRate ? t("common.rateMissing") : formatCurrency(p.remainingBase!, "IDR")}
                     </span>
-                    <span className="block text-xs text-muted-foreground tabular-nums">
-                      {t("suppliers.lineValue", {
-                        amount: formatCurrency(p.amount, p.currency),
-                      })}
+                    <span
+                      style={{
+                        display: "block",
+                        color: token.colorTextSecondary,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      <small>
+                        {t("suppliers.lineValue", {
+                          amount: formatCurrency(p.amount, p.currency),
+                        })}
+                      </small>
                     </span>
                   </div>
-                </div>
+                </Flex>
 
                 {noRate && (
-                  <p className="mt-1.5 text-xs text-warning-strong">
-                    {t("suppliers.noRateLine")}
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      color: token.colorWarningText,
+                    }}
+                  >
+                    <small>{t("suppliers.noRateLine")}</small>
                   </p>
                 )}
 
                 {checked && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <label
-                      htmlFor={`realloc-${paymentId}-${p.id}`}
-                      className="whitespace-nowrap text-xs text-muted-foreground"
-                    >
-                      {t("suppliers.paidIn", { currency: paymentCurrency })}
-                    </label>
+                  <Flex
+                    align="center"
+                    gap={token.marginXS}
+                    style={{ marginTop: token.marginXS }}
+                  >
+                    <Label htmlFor={`realloc-${paymentId}-${p.id}`}>
+                      <small style={{ whiteSpace: "nowrap", color: token.colorTextSecondary }}>
+                        {t("suppliers.paidIn", { currency: paymentCurrency })}
+                      </small>
+                    </Label>
                     <TextInput
                       id={`realloc-${paymentId}-${p.id}`}
                       type="number"
@@ -305,56 +420,67 @@ export function AllocationEditor({
                       onChange={(e) =>
                         setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
                       }
-                      className="w-40 text-right tabular-nums"
+                      style={{
+                        width: AMOUNT_INPUT_WIDTH,
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
                     />
-                  </div>
+                  </Flex>
                 )}
 
                 {overLine && (
-                  <p className="mt-1.5 text-xs text-destructive-strong" role="alert">
-                    {t("suppliers.allocOverLine")}
+                  <p
+                    role="alert"
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      color: token.colorErrorText,
+                    }}
+                  >
+                    <small>{t("suppliers.allocOverLine")}</small>
                   </p>
                 )}
               </li>
             );
           })}
-        </ul>
+        </Flex>
       )}
 
-      <div className="mt-3 space-y-1 border-t border-border pt-2 text-xs">
-        <p className="flex justify-between">
-          <span className="text-muted-foreground">{t("suppliers.paymentAmount")}</span>
-          <span className="font-medium text-foreground tabular-nums">
-            {formatCurrency(paymentAmount, paymentCurrency)}
-          </span>
-        </p>
-        <p className="flex justify-between">
-          <span className="text-muted-foreground">{t("suppliers.totalAllocated")}</span>
-          <span
-            className={`font-medium tabular-nums ${overAllocated ? "text-destructive-strong" : "text-foreground"}`}
-          >
-            {formatCurrency(total, paymentCurrency)}
-          </span>
-        </p>
-        <p className="flex justify-between">
-          <span className="text-muted-foreground">{t("suppliers.unallocated")}</span>
-          <span className="font-medium text-foreground tabular-nums">
-            {formatCurrency(unallocated, paymentCurrency)}
-          </span>
-        </p>
-      </div>
+      <Flex
+        vertical
+        gap={token.marginXXS}
+        style={{
+          marginTop: token.marginSM,
+          borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+          paddingTop: token.paddingXS,
+        }}
+      >
+        {totalsLine(
+          t("suppliers.paymentAmount"),
+          formatCurrency(paymentAmount, paymentCurrency)
+        )}
+        {totalsLine(
+          t("suppliers.totalAllocated"),
+          formatCurrency(total, paymentCurrency),
+          overAllocated
+        )}
+        {totalsLine(
+          t("suppliers.unallocated"),
+          formatCurrency(unallocated, paymentCurrency)
+        )}
+      </Flex>
 
       {overAllocated && (
-        <p className="mt-2 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-          {t("suppliers.allocOverTotal")}
-        </p>
+        <div role="alert" style={{ marginTop: token.marginXS }}>
+          <Alert type="error" showIcon message={t("suppliers.allocOverTotal")} />
+        </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginSM }}>
         <Button
           type="button"
           size="sm"
-          className="cursor-pointer"
           disabled={saving || loading || overAllocated}
           onClick={() => save(entries)}
         >
@@ -370,28 +496,16 @@ export function AllocationEditor({
             confirmLabel={t("suppliers.allocDelete")}
             onConfirm={() => save([])}
             trigger={
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                className="cursor-pointer"
-                disabled={saving || loading}
-              >
+              <Button type="button" variant="danger" size="sm" disabled={saving || loading}>
                 {t("suppliers.allocDelete")}
               </Button>
             }
           />
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="cursor-pointer"
-          onClick={() => setOpen(false)}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
     </div>
   );
 }

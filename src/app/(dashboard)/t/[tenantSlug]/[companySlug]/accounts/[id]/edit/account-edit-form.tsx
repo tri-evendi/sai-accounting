@@ -1,7 +1,17 @@
 "use client";
 
+/**
+ * Ubah Akun — dikonversi ke token Ant Design pada issue #196.
+ *
+ * Kulitnya saja yang berubah; mesin formulirnya (state lokal + PUT) tidak
+ * disentuh. Isian "Status" tetap ada dan tetap `Aktif`/`Nonaktif`: akun yang
+ * pernah disebut baris jurnal TIDAK dihapus, ia dinonaktifkan — dan layar ini
+ * satu-satunya tempat yang bisa MENGAKTIFKANNYA kembali.
+ */
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +44,7 @@ export function EditAccountForm() {
   const router = useAppRouter();
   const params = useParams<{ id: string }>();
   const t = useT();
+  const { token } = theme.useToken();
   const typeLabels = accountTypeLabels(useDictionary());
   const id = params.id;
 
@@ -105,8 +116,11 @@ export function EditAccountForm() {
 
   if (fetching) return <PageLoader message={t("accounts.loading")} />;
 
+  /** Satu isian per kolom; `sm:grid-cols-2` lama menjadi `Col` yang membungkus. */
+  const half = { xs: 24, sm: 12 } as const;
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("accounts.breadcrumbChart"), href: "/accounts" },
@@ -116,76 +130,92 @@ export function EditAccountForm() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("accounts.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="code"
-                label={t("accounts.codeField")}
-                required
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
-              />
-              <Input
-                id="name"
-                label={t("accounts.nameField")}
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-              <Select
-                id="type"
-                label={t("accounts.typeField")}
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                options={ACCOUNT_TYPES.map((type) => ({ value: type.value, label: typeLabels[type.value] }))}
-              />
-              <Select
-                id="parentId"
-                label={t("accounts.parentField")}
-                value={form.parentId}
-                onChange={(e) => setForm({ ...form, parentId: e.target.value })}
-                options={[
-                  { value: "", label: t("accounts.noParent") },
-                  ...parents.map((p) => ({ value: String(p.id), label: `${p.code} — ${p.name}` })),
-                ]}
-              />
-              <Select
-                id="currency"
-                label={t("common.currency")}
-                value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-              />
-              <Select
-                id="isActive"
-                label={t("common.status")}
-                value={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.value })}
-                options={[
-                  { value: "true", label: t("common.active") },
-                  { value: "false", label: t("common.inactive") },
-                ]}
-              />
-            </div>
+            <Row gutter={[token.margin, token.margin]}>
+              <Col {...half}>
+                <Input
+                  id="code"
+                  label={t("accounts.codeField")}
+                  required
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value })}
+                />
+              </Col>
+              <Col {...half}>
+                <Input
+                  id="name"
+                  label={t("accounts.nameField")}
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+              </Col>
+              <Col {...half}>
+                <Select
+                  id="type"
+                  label={t("accounts.typeField")}
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  options={ACCOUNT_TYPES.map((type) => ({ value: type.value, label: typeLabels[type.value] }))}
+                />
+              </Col>
+              <Col {...half}>
+                <Select
+                  id="parentId"
+                  label={t("accounts.parentField")}
+                  value={form.parentId}
+                  onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+                  options={[
+                    { value: "", label: t("accounts.noParent") },
+                    ...parents.map((p) => ({ value: String(p.id), label: `${p.code} — ${p.name}` })),
+                  ]}
+                />
+              </Col>
+              <Col {...half}>
+                <Select
+                  id="currency"
+                  label={t("common.currency")}
+                  value={form.currency}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                  options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                />
+              </Col>
+              <Col {...half}>
+                {/* Nonaktif, BUKAN hapus — akun yang pernah dijurnal harus tetap
+                    terbaca namanya selamanya. */}
+                <Select
+                  id="isActive"
+                  label={t("common.status")}
+                  value={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.value })}
+                  options={[
+                    { value: "true", label: t("common.active") },
+                    { value: "false", label: t("common.inactive") },
+                  ]}
+                />
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("common.saveChanges")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

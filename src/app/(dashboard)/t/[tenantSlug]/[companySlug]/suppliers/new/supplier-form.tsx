@@ -1,6 +1,12 @@
 "use client";
 
+/**
+ * Pemasok baru — dikonversi ke token Ant Design pada issue #196.
+ * Kulitnya saja; mesin formulirnya (`FormData` + POST) tidak disentuh.
+ */
+
 import { useState } from "react";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +18,7 @@ import { apiFetch } from "@/lib/api-fetch";
 export function NewSupplierForm() {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,8 +51,10 @@ export function NewSupplierForm() {
     }
   }
 
+  const half = { xs: 24, sm: 12 } as const;
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("suppliers.breadcrumb"), href: "/suppliers" },
@@ -55,30 +64,40 @@ export function NewSupplierForm() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader><CardTitle>{t("suppliers.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" name="name" label={t("suppliers.nameField")} required />
-              <Input id="address" name="address" label={t("common.address")} />
-              <Input id="phone" name="phone" label={t("common.phone")} />
-              <Input id="email" name="email" type="email" label={t("common.email")} />
-            </div>
+            <Row gutter={[token.margin, token.margin]}>
+              <Col {...half}>
+                <Input id="name" name="name" label={t("suppliers.nameField")} required />
+              </Col>
+              <Col {...half}>
+                <Input id="address" name="address" label={t("common.address")} />
+              </Col>
+              <Col {...half}>
+                <Input id="phone" name="phone" label={t("common.phone")} />
+              </Col>
+              <Col {...half}>
+                <Input id="email" name="email" type="email" label={t("common.email")} />
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("common.save")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

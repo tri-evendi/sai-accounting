@@ -99,6 +99,14 @@ Aturan yang ikut berlaku di halaman tujuan:
   aman → menipis → habis dan sah → menunggu → dibatalkan. Peta warna berkunci
   teks pernah membuat semua irisan abu-abu begitu labelnya ikut bahasa
   pengguna.
+- **Warna grafik dari token AntD, dan warna SERI memakai token uang #186**
+  (issue #202). Bukan karena kerapian: recharts menulis warna seri sebagai
+  TEKS — `Pie` menyalin `fill` irisan ke label "Aman 62%", dan tooltip
+  bawaannya mewarnai tiap barisnya dengan warna serinya. `colorSuccess` bawaan
+  AntD berada di 2,08:1 di sana. Yang tanpa arah (hitungan, kuantitas) memakai
+  biru/emas, bukan hijau — hijau di aplikasi ini berarti "uang masuk".
+  Tooltip recharts **wajib** diberi `contentStyle`: bawaannya `#fff` mati,
+  kotak putih di halaman gelap. Dikunci `tests/chart-tokens.test.tsx`.
 - **Izin dulu, baru kueri.** Aturan "kueri seksi tersembunyi tidak dijalankan"
   ikut pindah: `/contracts` tidak mengambil baris tagihan (dan tidak merender
   Aktivitas bulanan) tanpa `invoice.read` efektif; `/reports/cash-flow` tidak

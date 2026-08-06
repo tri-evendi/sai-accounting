@@ -55,45 +55,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
-import {
-  LayoutDashboard,
-  FileText,
-  Receipt,
-  Package,
-  PackagePlus,
-  ClipboardCheck,
-  DollarSign,
-  Truck,
-  Users,
-  Upload,
-  Settings,
-  UserCog,
-  BookOpen,
-  BookText,
-  BookMarked,
-  Library,
-  BarChart3,
-  HandCoins,
-  Wallet,
-  Coins,
-  Lock,
-  Scale,
-  Ship,
-  Undo2,
-  Building2,
-  Target,
-  Wand2,
-  FileSpreadsheet,
-  PackageCheck,
-  KeyRound,
-  ShieldCheck,
-  ShoppingCart,
-  SquarePen,
-  Split,
-  X,
-  type LucideIcon,
-} from "lucide-react";
-
+import { AccountBookOutlined, AimOutlined, AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, BranchesOutlined, CloseOutlined, ContainerOutlined, DeliveredProcedureOutlined, DollarOutlined, FileDoneOutlined, FileExcelOutlined, FileTextOutlined, FormOutlined, GlobalOutlined, HomeOutlined, IdcardOutlined, KeyOutlined, LockOutlined, MoneyCollectOutlined, PayCircleOutlined, ProfileOutlined, ReadOutlined, ReconciliationOutlined, RollbackOutlined, SafetyCertificateOutlined, SettingOutlined, ShopOutlined, ShoppingCartOutlined, TeamOutlined, ToolOutlined, TruckOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Link, useAppRouter } from "@/components/ui/app-link";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -128,44 +91,45 @@ const LEBAR_MENU = 256;
 const TINGGI_KEPALA = 64;
 
 /**
- * Nama ikon (data, `lib/nav.ts`) → komponen lucide. Pola yang sama dengan
- * Pusat Laporan; hilang bersama lucide di issue #201.
+ * Nama ikon (data, `lib/nav.ts`) → komponen `@ant-design/icons`. Pola yang sama
+ * dengan Pusat Laporan: kunci tetap nama yang disimpan data, hanya nilainya yang
+ * berpindah paket di issue #201 — supaya `lib/nav.ts` tetap murni data.
  */
-const ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  FileText,
-  Receipt,
-  Package,
-  PackagePlus,
-  ClipboardCheck,
-  DollarSign,
-  Truck,
-  Users,
-  Upload,
-  Settings,
-  UserCog,
-  BookOpen,
-  BookText,
-  BookMarked,
-  Library,
-  BarChart3,
-  HandCoins,
-  Wallet,
-  Coins,
-  Lock,
-  Scale,
-  Ship,
-  Undo2,
-  Building2,
-  Target,
-  Wand2,
-  FileSpreadsheet,
-  PackageCheck,
-  KeyRound,
-  ShieldCheck,
-  ShoppingCart,
-  SquarePen,
-  Split,
+const ICONS: Record<string, IconComponent> = {
+  LayoutDashboard: HomeOutlined,
+  FileText: FileTextOutlined,
+  Receipt: FileDoneOutlined,
+  Package: ContainerOutlined,
+  PackagePlus: AppstoreAddOutlined,
+  ClipboardCheck: AuditOutlined,
+  DollarSign: DollarOutlined,
+  Truck: TruckOutlined,
+  Users: TeamOutlined,
+  Upload: UploadOutlined,
+  Settings: SettingOutlined,
+  UserCog: IdcardOutlined,
+  BookOpen: BookOutlined,
+  BookText: AccountBookOutlined,
+  BookMarked: ReadOutlined,
+  Library: ProfileOutlined,
+  BarChart3: BarChartOutlined,
+  HandCoins: MoneyCollectOutlined,
+  Wallet: WalletOutlined,
+  Coins: PayCircleOutlined,
+  Lock: LockOutlined,
+  Scale: ReconciliationOutlined,
+  Ship: GlobalOutlined,
+  Undo2: RollbackOutlined,
+  Building2: ShopOutlined,
+  Target: AimOutlined,
+  Wand2: ToolOutlined,
+  FileSpreadsheet: FileExcelOutlined,
+  PackageCheck: DeliveredProcedureOutlined,
+  KeyRound: KeyOutlined,
+  ShieldCheck: SafetyCertificateOutlined,
+  ShoppingCart: ShoppingCartOutlined,
+  SquarePen: FormOutlined,
+  Split: BranchesOutlined,
 };
 
 /**
@@ -184,7 +148,7 @@ function barisNav(
   t: TranslateFn,
   jarak: number
 ): NonNullable<MenuProps["items"]>[number] {
-  const Icon = ICONS[item.icon] ?? LayoutDashboard;
+  const Icon = ICONS[item.icon] ?? HomeOutlined;
   return {
     key: item.href,
     label: (
@@ -193,7 +157,7 @@ function barisNav(
         aria-current={aktif ? "page" : undefined}
         style={{ display: "flex", alignItems: "center", gap: jarak, color: "inherit" }}
       >
-        <Icon size={18} style={{ flexShrink: 0 }} aria-hidden="true" />
+        <Icon aria-hidden="true" style={{ fontSize: 18, flexShrink: 0 }} />
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
         >
@@ -334,7 +298,7 @@ function PanelMenu({
                  "teks di atas bidang pekat". */
               style={{ color: token.colorTextLightSolid, flexShrink: 0 }}
             >
-              <X size={20} aria-hidden="true" />
+              <CloseOutlined aria-hidden="true" style={{ fontSize: 20 }} />
             </Button>
           )}
         </Flex>

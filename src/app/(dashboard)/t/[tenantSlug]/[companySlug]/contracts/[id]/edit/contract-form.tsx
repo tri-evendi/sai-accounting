@@ -27,7 +27,7 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { ConsigneeSelect } from "@/components/shared/consignee-select";
-import { Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
@@ -304,7 +304,7 @@ export function EditContractForm() {
             <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
               <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus aria-hidden="true" /> {t("common.addItem")}
+                <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
               </Button>
             </Flex>
           </CardHeader>
@@ -373,7 +373,7 @@ export function EditContractForm() {
                         aria-label={t("common.removeItemRow", { n: i + 1 })}
                         style={{ color: token.colorError }}
                       >
-                        <Trash2 aria-hidden="true" />
+                        <DeleteOutlined aria-hidden="true" />
                       </Button>
                     </Col>
                   </Row>

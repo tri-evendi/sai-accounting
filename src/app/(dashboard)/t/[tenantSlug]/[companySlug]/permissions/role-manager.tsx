@@ -23,7 +23,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Col, Flex, Row, theme, Typography } from "antd";
-import { Plus, Trash2, Lock, Check, Ban } from "lucide-react";
+import { CheckOutlined, DeleteOutlined, LockOutlined, PlusOutlined, StopOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
@@ -139,11 +139,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
         <Flex align="center" gap={token.marginXXS}>
           <Typography.Text strong>{role.label}</Typography.Text>
           {role.isSystem && (
-            <Lock
-              size="1em"
-              color={token.colorTextSecondary}
-              aria-label={t("permissions.systemRoleAria")}
-            />
+            <LockOutlined aria-label={t("permissions.systemRoleAria")} style={{ color: token.colorTextSecondary }} />
           )}
         </Flex>
       ),
@@ -187,12 +183,12 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
             >
               {role.isActive ? (
                 <>
-                  <Ban aria-hidden="true" />
+                  <StopOutlined aria-hidden="true" />
                   {t("permissions.deactivateRole")}
                 </>
               ) : (
                 <>
-                  <Check aria-hidden="true" />
+                  <CheckOutlined aria-hidden="true" />
                   {t("permissions.activateRole")}
                 </>
               )}
@@ -205,7 +201,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
               disabled={busy}
               onClick={() => setDeleteTarget(role)}
             >
-              <Trash2 aria-hidden="true" />
+              <DeleteOutlined aria-hidden="true" />
               {t("common.delete")}
             </Button>
           </Flex>
@@ -266,7 +262,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
               </Col>
               <Col xs={24} sm={4}>
                 <Button type="submit" disabled={busy || !newKey || !newLabel}>
-                  <Plus aria-hidden="true" />
+                  <PlusOutlined aria-hidden="true" />
                   {t("permissions.addRole")}
                 </Button>
               </Col>

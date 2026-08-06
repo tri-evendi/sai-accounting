@@ -36,7 +36,7 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
-import { Info, Users, ReceiptText, Ship } from "lucide-react";
+import { FileDoneOutlined, GlobalOutlined, InfoCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -159,7 +159,7 @@ export function InvoiceCustomerField({
         }))}
       />
       <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
-        <Users size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <TeamOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0 }} />
         <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
           {t("invoices.customerHint")}
         </Typography.Text>
@@ -201,7 +201,7 @@ export function InvoiceFxAdvancedFields({
   /** Kalimat bantuan berikon — bentuk yang sama dipakai empat kali di sini. */
   const hint = (text: string, marginTop: number) => (
     <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop }}>
-      <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+      <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0 }} />
       <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
         {text}
       </Typography.Text>
@@ -248,11 +248,7 @@ export function InvoiceFxAdvancedFields({
           }
         >
           <Flex component="span" align="center" gap={token.marginXXS}>
-            <ReceiptText
-              size={token.fontSize}
-              aria-hidden="true"
-              style={{ color: token.colorTextSecondary }}
-            />
+            <FileDoneOutlined aria-hidden="true" style={{ fontSize: token.fontSize, color: token.colorTextSecondary }} />
             <TermTooltip term="ppn">{t("invoices.taxableLabel")}</TermTooltip>
           </Flex>
         </Checkbox>
@@ -287,11 +283,7 @@ export function InvoiceFxAdvancedFields({
       {(currency !== BASE_CURRENCY || !taxable || effectiveRate === 0) && (
         <div style={sectionBox}>
           <Flex align="center" gap={token.marginXXS}>
-            <Ship
-              size={token.fontSize}
-              aria-hidden="true"
-              style={{ color: token.colorTextSecondary }}
-            />
+            <GlobalOutlined aria-hidden="true" style={{ fontSize: token.fontSize, color: token.colorTextSecondary }} />
             <Typography.Text strong>{t("invoices.pebSectionTitle")}</Typography.Text>
           </Flex>
           {hint(t("invoices.pebHint"), token.marginXXS)}

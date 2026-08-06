@@ -37,8 +37,7 @@ import { cashBankColumns, type CashBankColumnId } from "@/lib/statement-layout";
 import { formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
-import { Landmark } from "lucide-react";
-
+import { BankOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -167,7 +166,7 @@ export default async function CashBankReportPage({
           summary={summary}
           empty={
             <EmptyState
-              icon={<Landmark size={EMPTY_ICON_SIZE} />}
+              icon={<BankOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("reports.noCashMovement")}
             />
           }

@@ -5,7 +5,7 @@ import { signIn, getSession, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Flex, Typography, theme } from "antd";
-import { LogIn } from "lucide-react";
+import { LoginOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ function LoginLoading() {
     <AuthShell
       heading={t("auth.login.heading")}
       description={t("auth.login.description")}
-      icon={<LogIn size={20} aria-hidden />}
+      icon={<LoginOutlined aria-hidden style={{ fontSize: 20 }} />}
     >
       <WaitingLine>{t("common.loading")}</WaitingLine>
     </AuthShell>
@@ -129,7 +129,7 @@ function LoginForm() {
       <AuthShell
         heading={t("auth.login.heading")}
         description={t("auth.login.description")}
-        icon={<LogIn size={20} aria-hidden />}
+        icon={<LoginOutlined aria-hidden style={{ fontSize: 20 }} />}
       >
         <WaitingLine>{t("auth.login.checkingSession")}</WaitingLine>
       </AuthShell>
@@ -141,7 +141,7 @@ function LoginForm() {
       heading={t("auth.login.heading")}
       description={t("auth.login.description")}
       error={error}
-      icon={<LogIn size={20} aria-hidden />}
+      icon={<LoginOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={
         /* Tautan SUNGGUHAN sejak issue #136 — dulu kalimat "hubungi admin
            sistem", jalan buntu bagi pelanggan yang justru dirinya adminnya.

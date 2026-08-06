@@ -13,8 +13,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
-import { UserPlus } from "lucide-react";
-
+import { UserAddOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,7 +137,7 @@ function AcceptInvitationForm() {
           : t("invitations.acceptHeading")
       }
       error={error}
-      icon={<UserPlus size={20} aria-hidden />}
+      icon={<UserAddOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={footer}
     >
       {done ? (

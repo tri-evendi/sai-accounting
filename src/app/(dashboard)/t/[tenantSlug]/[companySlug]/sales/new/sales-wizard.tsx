@@ -76,15 +76,7 @@ import {
   type SalesStepId,
 } from "@/lib/wizard";
 import { useT } from "@/lib/i18n/client";
-import {
-  CheckCircle2,
-  Download,
-  FileText,
-  Package,
-  Plus,
-  Trash2,
-  Truck,
-} from "lucide-react";
+import { CheckCircleOutlined, ContainerOutlined, DeleteOutlined, DownloadOutlined, FileTextOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 // ── Data yang disiapkan server shell ──────────────────────────────────────
@@ -442,11 +434,7 @@ export function SalesWizard({
             {/* Ikon centang memakai warna "uang positif" (#186) — anak tangga
                 yang sudah diukur lolos 4,5:1 di kedua tema. Ia penanda KEDUA;
                 yang pertama adalah judulnya sendiri. */}
-            <CheckCircle2
-              size={token.fontSizeHeading3}
-              aria-hidden="true"
-              style={{ flexShrink: 0, marginTop: 2, color: token.colorMoneyPositive }}
-            />
+            <CheckCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, flexShrink: 0, marginTop: 2, color: token.colorMoneyPositive }} />
             <div style={{ minWidth: 0 }}>
               <Typography.Title level={2} style={{ fontSize: token.fontSizeLG, marginTop: 0 }}>
                 {t("sales.savedTitle")}
@@ -641,7 +629,7 @@ export function SalesWizard({
                     onClick={pullFromContract}
                   >
                     {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
-                    <Download aria-hidden="true" /> {t("invoices.pullContractRemainder")}
+                    <DownloadOutlined aria-hidden="true" /> {t("invoices.pullContractRemainder")}
                   </Button>
                 </Flex>
               </div>
@@ -670,7 +658,7 @@ export function SalesWizard({
                   size="sm"
                   onClick={() => patch((d) => ({ ...d, lines: [...d.lines, emptySalesLine()] }))}
                 >
-                  <Plus aria-hidden="true" /> {t("common.addItemLower")}
+                  <PlusOutlined aria-hidden="true" /> {t("common.addItemLower")}
                 </Button>
               </Flex>
             </CardHeader>
@@ -758,7 +746,7 @@ export function SalesWizard({
                         aria-label={t("common.removeItemRow", { n: i + 1 })}
                         style={{ color: token.colorError }}
                       >
-                        <Trash2 aria-hidden="true" />
+                        <DeleteOutlined aria-hidden="true" />
                       </Button>
                     </Flex>
                     {/* Kalimatnya yang membawa makna; warnanya penanda kedua. */}
@@ -865,7 +853,7 @@ export function SalesWizard({
                     fontWeight: token.fontWeightStrong,
                   }}
                 >
-                  <Truck size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
+                  <TruckOutlined aria-hidden="true" style={{ color: token.colorIcon }} />
                   {t("sales.shipCheckboxA")}{" "}
                   <TermTooltip term="surat_jalan">{t("sales.shipTerm")}</TermTooltip>
                 </span>
@@ -926,7 +914,7 @@ export function SalesWizard({
 
                 {items.length === 0 ? (
                   <EmptyState
-                    icon={<Package size={EMPTY_ICON_SIZE} />}
+                    icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
                     title={t("common.emptyStockTitle")}
                     description={t("sales.emptyStockDescription")}
                     actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
@@ -1158,7 +1146,7 @@ export function SalesWizard({
                     size="sm"
                     onClick={() => patch((d) => applySalesPull(d, "order"))}
                   >
-                    <Download aria-hidden="true" /> {t("sales.pullAll")}
+                    <DownloadOutlined aria-hidden="true" /> {t("sales.pullAll")}
                   </Button>
                   <Button
                     type="button"
@@ -1167,7 +1155,7 @@ export function SalesWizard({
                     disabled={!draft.delivery.include}
                     onClick={() => patch((d) => applySalesPull(d, "delivery"))}
                   >
-                    <Download aria-hidden="true" /> {t("sales.pullShipped")}
+                    <DownloadOutlined aria-hidden="true" /> {t("sales.pullShipped")}
                   </Button>
                 </Flex>
               </Flex>
@@ -1433,7 +1421,7 @@ export function SalesWizard({
                         gap: token.marginXXS,
                       }}
                     >
-                      <Truck size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
+                      <TruckOutlined aria-hidden="true" style={{ color: token.colorIcon }} />
                       {formatNumber(draft.lines.reduce((s, l) => s + shipKg(l), 0))} kg
                     </span>
                   ) : (
@@ -1456,7 +1444,7 @@ export function SalesWizard({
                       gap: token.marginXXS,
                     }}
                   >
-                    <FileText size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
+                    <FileTextOutlined aria-hidden="true" style={{ color: token.colorIcon }} />
                     {t("sales.summaryInvoice", { no: draft.invoice.invoiceNo })}
                   </span>
                 }

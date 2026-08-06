@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Flex, Grid, theme } from "antd";
-import { Calculator } from "lucide-react";
-
+import { CalculatorOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -119,7 +118,7 @@ export function AccountantModeToggle() {
         title={t("accountantMode.toggleTitle")}
       >
         <Flex component="span" align="center" gap={token.marginXXS}>
-          <Calculator size={16} aria-hidden="true" />
+          <CalculatorOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {screens.sm && <span>{t("accountantMode.label")}</span>}
           <Badge
             variant={isOn ? "success" : "default"}

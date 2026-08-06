@@ -28,7 +28,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
-import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
+import { DeleteOutlined, KeyOutlined, UndoOutlined, UserAddOutlined } from "@ant-design/icons";
 import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
@@ -254,7 +254,7 @@ export function UsersClient({
               size="icon"
               title={t("users.revokeInvite")}
             >
-              <Trash2 aria-hidden="true" />
+              <DeleteOutlined aria-hidden="true" />
             </Button>
           }
         />
@@ -324,7 +324,7 @@ export function UsersClient({
             aria-label={t("users.overridesAria", { username: user.username })}
             onClick={() => setPermissionsFor(permissionsFor === user.id ? null : user.id)}
           >
-            <KeyRound aria-hidden="true" />
+            <KeyOutlined aria-hidden="true" />
             {user.overrideCount > 0 && (
               <Badge
                 variant="warning"
@@ -356,7 +356,7 @@ export function UsersClient({
                 size="icon"
                 title={t("users.resetPasswordTooltip")}
               >
-                <RotateCcw aria-hidden="true" />
+                <UndoOutlined aria-hidden="true" />
               </Button>
             }
           />
@@ -372,7 +372,7 @@ export function UsersClient({
                 size="icon"
                 title={t("users.deleteUserTooltip")}
               >
-                <Trash2 aria-hidden="true" />
+                <DeleteOutlined aria-hidden="true" />
               </Button>
             }
           />
@@ -393,7 +393,7 @@ export function UsersClient({
         actions={
           canInvite ? (
             <Button onClick={() => setShowInvite(!showInvite)}>
-              <UserPlus aria-hidden="true" />
+              <UserAddOutlined aria-hidden="true" />
               {showInvite ? t("common.cancel") : t("users.inviteUser")}
             </Button>
           ) : undefined

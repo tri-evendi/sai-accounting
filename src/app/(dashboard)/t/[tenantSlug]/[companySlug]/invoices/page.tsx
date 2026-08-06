@@ -22,7 +22,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
-import { Receipt } from "lucide-react";
+import { FileDoneOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -261,7 +261,7 @@ export default async function InvoicesPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Receipt size={EMPTY_ICON_SIZE} />}
+              icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("invoices.emptyTitle")}
               description={t("invoices.emptyDescription")}
               actionLabel={t("invoices.recordSaleGuided")}

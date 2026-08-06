@@ -23,8 +23,7 @@
  */
 
 import Link from "next/link";
-import { Users } from "lucide-react";
-
+import { TeamOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -193,7 +192,7 @@ export default async function OperatorTenantsPage({
         rowKey={(tenant) => tenant.id}
         empty={
           <EmptyState
-            icon={<Users size={48} aria-hidden="true" />}
+            icon={<TeamOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
             title={t("operator.tenants.empty")}
           />
         }

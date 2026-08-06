@@ -26,7 +26,7 @@ import { toISODate } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@/components/ui/empty-state";
-import { AlertTriangle, Download, Info, FileText, ReceiptText } from "lucide-react";
+import { DownloadOutlined, FileDoneOutlined, FileTextOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -181,7 +181,7 @@ export default async function EfakturPage({
           color: "var(--ant-color-money-pending)",
         }}
       >
-        <Info size={20} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+        <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }} />
         <span>
           {t("tax.disclaimerBefore")} <strong>{t("tax.disclaimerStrong")}</strong>{" "}
           {t("tax.disclaimerAfter")}
@@ -206,11 +206,7 @@ export default async function EfakturPage({
                 color: "var(--ant-color-money-negative)",
               }}
             >
-              <AlertTriangle
-                size={ICON_SIZE}
-                style={{ flexShrink: 0, marginTop: 2 }}
-                aria-hidden="true"
-              />
+              <WarningOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
               <span>
                 {t("tax.npwpMissing")}
               </span>
@@ -316,13 +312,13 @@ export default async function EfakturPage({
                 color: "var(--ant-color-text-secondary)",
               }}
             >
-              <Download size={ICON_SIZE} aria-hidden="true" />
+              <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE }} />
               {t("tax.npwpNeededToDownload")}
             </span>
           ) : (
             <a href={downloadHref} download>
               <Button disabled={rows.length === 0}>
-                <Download size={ICON_SIZE} style={{ marginInlineEnd: 6 }} aria-hidden="true" />
+                <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
                 {t("tax.downloadCsv")}
               </Button>
             </a>
@@ -355,7 +351,7 @@ export default async function EfakturPage({
                 color: "var(--ant-color-money-pending)",
               }}
             >
-              <AlertTriangle size={20} aria-hidden="true" />
+              <WarningOutlined aria-hidden="true" style={{ fontSize: 20 }} />
               {t("tax.problemsTitle", { count: problems.length })}
             </h2>
           </div>
@@ -369,11 +365,7 @@ export default async function EfakturPage({
                   key={p.invoiceNo}
                   style={{ display: "flex", alignItems: "flex-start", gap: 8 }}
                 >
-                  <FileText
-                    size={ICON_SIZE}
-                    style={{ flexShrink: 0, marginTop: 2, color: "var(--ant-color-text-secondary)" }}
-                    aria-hidden="true"
-                  />
+                  <FileTextOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2, color: "var(--ant-color-text-secondary)" }} />
                   <span>{p.invoiceNo}</span>
                   <span style={{ color: "var(--ant-color-money-pending)" }}>
                     {t("tax.missingFields", { fields: p.missing.join(", ") })}
@@ -394,7 +386,7 @@ export default async function EfakturPage({
           rowKey={(row, index) => `${row.nomor_dokumen}-${index}`}
           empty={
             <EmptyState
-              icon={<ReceiptText size={EMPTY_ICON_SIZE} />}
+              icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("tax.emptyTitle")}
               description={t("tax.emptyDescription")}
               actionLabel={canCreateInvoice ? t("tax.emptyAction") : undefined}

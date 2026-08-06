@@ -23,8 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
 import { Flex, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
-import { Check, KeyRound } from "lucide-react";
-
+import { CheckOutlined, KeyOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,7 +143,7 @@ function RequirementList({
               color: token.colorBgContainer,
             }}
           >
-            {rule.met && <Check size={12} strokeWidth={3} />}
+            {rule.met && <CheckOutlined style={{ fontSize: 12 }} />}
           </span>
           <Text style={rule.met ? { color: met } : undefined} type={rule.met ? undefined : "secondary"}>
             {rule.label}
@@ -242,7 +241,7 @@ export default function ChangePasswordPage() {
       heading={t("auth.changePassword.heading")}
       description={t("auth.changePassword.description")}
       error={form.formState.errors.root?.message}
-      icon={<KeyRound size={20} aria-hidden />}
+      icon={<KeyOutlined aria-hidden style={{ fontSize: 20 }} />}
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>

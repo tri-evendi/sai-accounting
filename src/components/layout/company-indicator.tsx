@@ -43,8 +43,7 @@
  */
 
 import { Flex, theme } from "antd";
-import { Building2, ChevronsUpDown } from "lucide-react";
-
+import { ShopOutlined, SwapOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 
@@ -89,11 +88,7 @@ export function CompanyIndicator({
   const label = `${t("navbar.activeCompany")}: ${companyName}`;
   const body = (
     <>
-      <Building2
-        size={16}
-        style={{ flexShrink: 0, color: token.colorTextTertiary }}
-        aria-hidden="true"
-      />
+      <ShopOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0, color: token.colorTextTertiary }} />
       <span style={HANYA_PEMBACA_LAYAR}>{t("navbar.activeCompany")}:</span>
       {/* `title` menyelamatkan nama panjang yang terpotong di layar sempit —
           satu-satunya cara membacanya utuh tanpa membuka menu apa pun. */}
@@ -148,11 +143,7 @@ export function CompanyIndicator({
       }}
     >
       {body}
-      <ChevronsUpDown
-        size={14}
-        style={{ flexShrink: 0, color: token.colorTextTertiary }}
-        aria-hidden="true"
-      />
+      <SwapOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0, color: token.colorTextTertiary }} />
     </Link>
   );
 }

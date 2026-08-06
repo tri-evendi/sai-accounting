@@ -32,7 +32,7 @@
  */
 
 import { Link } from "@/components/ui/app-link";
-import { BookOpen } from "lucide-react";
+import { BookOutlined } from "@ant-design/icons";
 import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
 import { useT } from "@/lib/i18n/client";
@@ -66,7 +66,7 @@ export function LearnMore({ term, label, className }: LearnMoreProps) {
       )}
       style={{ color: "var(--ant-color-link)" }}
     >
-      <BookOpen className="h-4 w-4" aria-hidden="true" />
+      <BookOutlined aria-hidden="true" style={{ fontSize: 16 }} />
       {label ?? t("learnMore.label", { term: entry.label })}
     </Link>
   );

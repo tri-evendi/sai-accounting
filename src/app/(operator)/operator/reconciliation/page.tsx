@@ -17,8 +17,7 @@
  * `Badge` dan `EmptyState` tetap memakai token AntD karena keduanya daun client.
  */
 
-import { CheckCircle2, TriangleAlert } from "lucide-react";
-
+import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -107,17 +106,13 @@ export default async function OperatorReconciliationPage() {
 
           {report.findings.length === 0 ? (
             <div role="status" style={banner("clean")}>
-              <CheckCircle2 size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+              <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
               <span>{t("operator.reconciliation.clean")}</span>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div role="status" style={banner("findings")}>
-                <TriangleAlert
-                  size={16}
-                  style={{ marginTop: 2, flexShrink: 0 }}
-                  aria-hidden="true"
-                />
+                <WarningOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
                 <span>
                   {t("operator.reconciliation.findings", { count: report.findings.length })}
                 </span>

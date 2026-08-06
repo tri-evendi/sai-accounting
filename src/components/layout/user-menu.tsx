@@ -43,22 +43,8 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, Dropdown, Flex, Grid, theme } from "antd";
 import type { MenuProps } from "antd";
-import {
-  Building2,
-  Check,
-  ChevronDown,
-  Languages,
-  LogOut,
-  KeyRound,
-  Monitor,
-  Moon,
-  Palette,
-  ReceiptText,
-  Sun,
-  User,
-  type LucideIcon,
-} from "lucide-react";
-
+import { BgColorsOutlined, CheckOutlined, DesktopOutlined, DownOutlined, FileDoneOutlined, KeyOutlined, LogoutOutlined, MoonOutlined, ShopOutlined, SunOutlined, TranslationOutlined, UserOutlined } from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
@@ -73,7 +59,7 @@ import type { SystemRole } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette, primaryButtonTokens } from "@/lib/theme/antd-tokens";
 
-const THEME_ICONS: Record<Theme, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
+const THEME_ICONS: Record<Theme, IconComponent> = { light: SunOutlined, dark: MoonOutlined, system: DesktopOutlined };
 const THEME_LABELS: Record<Theme, DictionaryKey> = {
   light: "theme.light",
   dark: "theme.dark",
@@ -206,7 +192,7 @@ export function UserMenu({
     alignItems: "center",
     gap: token.marginXXS,
   };
-  const centang = <Check size={16} aria-hidden="true" />;
+  const centang = <CheckOutlined aria-hidden="true" style={{ fontSize: 16 }} />;
   /*
    * Latar avatar memakai isian tombol primer (#186), bukan `colorPrimary`
    * global: inisial di dalamnya adalah TEKS PUTIH, dan putih di atas `#1677ff`
@@ -225,7 +211,7 @@ export function UserMenu({
         <Avatar
           size={36}
           style={{ backgroundColor: latarAvatar, flexShrink: 0 }}
-          icon={abbr ? undefined : <User size={16} aria-hidden="true" />}
+          icon={abbr ? undefined : <UserOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
         >
           {abbr || undefined}
         </Avatar>
@@ -272,7 +258,7 @@ export function UserMenu({
     type: "group",
     label: (
       <span style={judulGrup}>
-        <Languages size={14} aria-hidden="true" />
+        <TranslationOutlined aria-hidden="true" style={{ fontSize: 14 }} />
         {t("userMenu.language")}
       </span>
     ),
@@ -327,7 +313,7 @@ export function UserMenu({
     type: "group",
     label: (
       <span style={judulGrup}>
-        <Palette size={14} aria-hidden="true" />
+        <BgColorsOutlined aria-hidden="true" style={{ fontSize: 14 }} />
         {t("theme.label")}
       </span>
     ),
@@ -341,7 +327,7 @@ export function UserMenu({
         label: (
           <Flex align="center" justify="space-between" gap={token.marginXS}>
             <Flex component="span" align="center" gap={token.marginXXS}>
-              <Icon size={16} aria-hidden="true" />
+              <Icon aria-hidden="true" style={{ fontSize: 16 }} />
               {t(THEME_LABELS[option])}
             </Flex>
             {aktif && centang}
@@ -367,7 +353,7 @@ export function UserMenu({
       ? [
           {
             key: "/select-company",
-            icon: <Building2 size={16} aria-hidden="true" />,
+            icon: <ShopOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
             label: (
               <Link href="/select-company" style={gayaTautan}>
                 {t("auth.selectCompany.switchLabel")}
@@ -386,7 +372,7 @@ export function UserMenu({
       ? [
           {
             key: "/platform",
-            icon: <ReceiptText size={16} aria-hidden="true" />,
+            icon: <FileDoneOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
             label: (
               <Link href="/platform" style={gayaTautan}>
                 {t("userMenu.tenantAccount")}
@@ -397,7 +383,7 @@ export function UserMenu({
       : []),
     {
       key: "/change-password",
-      icon: <KeyRound size={16} aria-hidden="true" />,
+      icon: <KeyOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
       label: (
         <Link href="/change-password" style={gayaTautan}>
           {t("userMenu.changePassword")}
@@ -407,7 +393,7 @@ export function UserMenu({
     {
       key: "sign-out",
       danger: true,
-      icon: <LogOut size={16} aria-hidden="true" />,
+      icon: <LogoutOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
       /* `danger` AntD memberi latar hover merah, tetapi warna TEKS-nya
        * `colorError` (3,27:1 di tema terang) — di bawah 4,5:1 untuk teks 14px.
        * Token uang #186 adalah anak tangga yang sudah diukur untuk peran itu. */
@@ -448,7 +434,7 @@ export function UserMenu({
           <Avatar
             size={28}
             style={{ backgroundColor: latarAvatar, flexShrink: 0 }}
-            icon={abbr ? undefined : <User size={14} aria-hidden="true" />}
+            icon={abbr ? undefined : <UserOutlined aria-hidden="true" style={{ fontSize: 14 }} />}
           >
             {abbr || undefined}
           </Avatar>
@@ -464,16 +450,10 @@ export function UserMenu({
               >
                 {userName}
               </span>
-              <ChevronDown
-                size={16}
-                aria-hidden="true"
-                style={{
-                  flexShrink: 0,
+              <DownOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0,
                   color: token.colorTextTertiary,
                   transition: `transform ${token.motionDurationMid}`,
-                  transform: open ? "rotate(180deg)" : undefined,
-                }}
-              />
+                  transform: open ? "rotate(180deg)" : undefined }} />
             </>
           )}
         </Flex>

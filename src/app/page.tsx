@@ -19,7 +19,7 @@
  * internal"). Halaman ini bukan app internal: ia satu-satunya permukaan yang
  * dibaca orang yang belum punya akun. Aturan yang TETAP berlaku penuh: token
  * semantik (bukan kelas palet mentah), primitif `Button`/`Card`, ikon
- * `lucide-react`, target sentuh 40px, kontras, dan tinjauan di kedua tema.
+ * `@ant-design/icons`, target sentuh 40px, kontras, dan tinjauan di kedua tema.
  * Ketentuannya ditulis di `design-system/sai-accounting/pages/landing.md`,
  * yang meng-override MASTER untuk halaman ini.
  *
@@ -32,8 +32,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, FileText, Languages, ShieldCheck } from "lucide-react";
-
+import { FileTextOutlined, SafetyCertificateOutlined, ShopOutlined, TranslationOutlined } from "@ant-design/icons";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
@@ -56,18 +55,18 @@ export default async function Home() {
 
   const features = [
     {
-      icon: Building2,
+      icon: ShopOutlined,
       title: t("landing.featureCompaniesTitle"),
       body: t("landing.featureCompaniesBody"),
     },
     {
-      icon: ShieldCheck,
+      icon: SafetyCertificateOutlined,
       title: t("landing.featureRolesTitle"),
       body: t("landing.featureRolesBody"),
     },
-    { icon: FileText, title: t("landing.featureTaxTitle"), body: t("landing.featureTaxBody") },
+    { icon: FileTextOutlined, title: t("landing.featureTaxTitle"), body: t("landing.featureTaxBody") },
     {
-      icon: Languages,
+      icon: TranslationOutlined,
       title: t("landing.featureLanguageTitle"),
       body: t("landing.featureLanguageBody"),
     },

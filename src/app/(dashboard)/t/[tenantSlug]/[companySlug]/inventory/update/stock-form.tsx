@@ -21,7 +21,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { AlertCircle, Info, Lock, Package } from "lucide-react";
+import { ContainerOutlined, ExclamationCircleOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -322,7 +322,7 @@ export function StockUpdateForm({
           }}
           role="alert"
         >
-          <AlertCircle size={ICON_SIZE} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+          <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
           <span>{error}</span>
         </div>
       )}
@@ -381,7 +381,7 @@ export function StockUpdateForm({
         <div style={{ padding: "var(--ant-padding-lg)" }}>
           {items.length === 0 ? (
             <EmptyState
-              icon={<Package size={EMPTY_ICON_SIZE} />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("inventory.emptyFormTitle")}
               description={t("inventory.emptyFormDescription")}
             />
@@ -443,11 +443,7 @@ export function StockUpdateForm({
                 />
                 {overStock && selected && (
                   <p style={FIELD_WARNING} role="alert">
-                    <AlertCircle
-                      size={SMALL_ICON_SIZE}
-                      style={{ flexShrink: 0, marginTop: 2 }}
-                      aria-hidden="true"
-                    />
+                    <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
                     <span>
                       {t("inventory.overStockWarning", {
                         qty: formatNumber(selected.currentStock),
@@ -485,11 +481,7 @@ export function StockUpdateForm({
                     color: "var(--ant-color-text-secondary)",
                   }}
                 >
-                  <Info
-                    size={SMALL_ICON_SIZE}
-                    style={{ flexShrink: 0, marginTop: 2 }}
-                    aria-hidden="true"
-                  />
+                  <InfoCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
                   <span>{t("inventory.cogsAutoHint")}</span>
                 </p>
               )}
@@ -505,11 +497,7 @@ export function StockUpdateForm({
                 />
                 {periodIssue && (
                   <p style={FIELD_WARNING} role="alert">
-                    <Lock
-                      size={SMALL_ICON_SIZE}
-                      style={{ flexShrink: 0, marginTop: 2 }}
-                      aria-hidden="true"
-                    />
+                    <LockOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
                     <span>{periodIssue}</span>
                   </p>
                 )}

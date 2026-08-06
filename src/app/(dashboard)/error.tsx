@@ -12,7 +12,7 @@
  */
 import { useEffect } from "react";
 import { Link } from "@/components/ui/app-link";
-import { AlertTriangle } from "lucide-react";
+import { WarningOutlined } from "@ant-design/icons";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
@@ -36,7 +36,7 @@ export default function DashboardError({
     <div className="flex min-h-[60vh] items-center justify-center">
       <Card className="max-w-md p-8 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive-soft">
-          <AlertTriangle className="h-6 w-6 text-destructive-strong" aria-hidden="true" />
+          <WarningOutlined className="text-destructive-strong" aria-hidden="true" style={{ fontSize: 24 }} />
         </div>
         <h1 className="text-lg font-semibold text-foreground">{t("error.title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">

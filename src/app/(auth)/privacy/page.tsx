@@ -13,8 +13,7 @@
  * aplikasi, bukan variabel `--ant-…` yang tak akan teratasi di luar pohon AntD.
  */
 import Link from "next/link";
-import { TriangleAlert } from "lucide-react";
-
+import { WarningOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { PRIVACY_VERSION, isDraftLegalVersion } from "@/lib/legal";
@@ -101,7 +100,7 @@ export default function PrivacyPage() {
 
         {isDraftLegalVersion(PRIVACY_VERSION) && (
           <div role="status" style={DRAFT_BANNER}>
-            <TriangleAlert size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <WarningOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
             <p style={{ margin: 0 }}>
               <strong>DRAF.</strong> Belum ditinjau penasihat hukum. Mekanisme yang disebut di
               bawah sudah berjalan di produk; naskah ini yang belum final.

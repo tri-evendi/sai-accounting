@@ -34,8 +34,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Alert, Flex, theme } from "antd";
-import { MailQuestion } from "lucide-react";
-
+import { MailOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +82,7 @@ export default function ForgotPasswordPage() {
       heading={t("auth.forgotPassword.heading")}
       description={t("auth.forgotPassword.description")}
       error={error}
-      icon={<MailQuestion size={20} aria-hidden />}
+      icon={<MailOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={
         <Flex justify="center">
           <Link

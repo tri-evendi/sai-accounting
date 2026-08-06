@@ -31,8 +31,7 @@
  */
 
 import { Pagination as AntPagination } from "antd";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 
@@ -107,7 +106,7 @@ export function Pagination({
           if (type === "prev") {
             return currentPage > 1 ? (
               <Link href={href} aria-label={t("common.previous")}>
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                <LeftOutlined aria-hidden="true" style={{ fontSize: 16 }} />
               </Link>
             ) : (
               element
@@ -116,7 +115,7 @@ export function Pagination({
           if (type === "next") {
             return currentPage < totalPages ? (
               <Link href={href} aria-label={t("common.next")}>
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                <RightOutlined aria-hidden="true" style={{ fontSize: 16 }} />
               </Link>
             ) : (
               element

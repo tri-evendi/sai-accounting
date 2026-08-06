@@ -21,8 +21,7 @@
  */
 
 import { Flex, Grid, Layout, theme } from "antd";
-import { Menu as MenuIcon } from "lucide-react";
-
+import { MenuOutlined } from "@ant-design/icons";
 import { AccountantModeToggle } from "@/components/layout/accountant-mode-toggle";
 import { CompanyIndicator } from "@/components/layout/company-indicator";
 import { HelpMenu } from "@/components/layout/help-menu";
@@ -91,7 +90,7 @@ export function Navbar({
             onClick={onMenuClick}
             aria-label={t("navbar.openMenu")}
           >
-            <MenuIcon size={20} aria-hidden="true" />
+            <MenuOutlined aria-hidden="true" style={{ fontSize: 20 }} />
           </Button>
         )}
 

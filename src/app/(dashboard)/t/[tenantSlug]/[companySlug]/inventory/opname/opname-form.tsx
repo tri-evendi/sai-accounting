@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
 import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { useToast } from "@/components/ui/toast";
-import { SearchX } from "lucide-react";
+import { SearchOutlined } from "@ant-design/icons";
 import { formatNumber } from "@/lib/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
@@ -271,7 +271,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
           rowKey={(it) => it.id}
           empty={
             <EmptyState
-              icon={<SearchX size={EMPTY_ICON_SIZE} />}
+              icon={<SearchOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("inventory.opnameNoMatch", { query })}
             />
           }

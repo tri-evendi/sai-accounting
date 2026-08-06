@@ -23,7 +23,7 @@ import {
 import { DisclosureSection } from "@/components/ui/disclosure-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { PartnerDraft } from "@/lib/wizard";
-import { UserPlus, Users } from "lucide-react";
+import { TeamOutlined, UserAddOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 
 /** Ikon keadaan kosong — sebesar `h-12 w-12` sebelum migrasi. */
@@ -91,8 +91,8 @@ export function WizardPartnerStep({
             <Row gutter={[token.marginXS, token.marginXS]}>
               {(
                 [
-                  { mode: "existing", label: t("wizard.partner.modeExisting"), icon: Users },
-                  { mode: "new", label: t("wizard.partner.modeNew"), icon: UserPlus },
+                  { mode: "existing", label: t("wizard.partner.modeExisting"), icon: TeamOutlined },
+                  { mode: "new", label: t("wizard.partner.modeNew"), icon: UserAddOutlined },
                 ] as const
               ).map(({ mode, label, icon: Icon }) => {
                 const picked = value.mode === mode;
@@ -130,11 +130,7 @@ export function WizardPartnerStep({
                         checked={picked}
                         onChange={() => onChange({ mode })}
                       />
-                      <Icon
-                        size={token.fontSize}
-                        aria-hidden="true"
-                        style={{ flexShrink: 0, color: token.colorTextSecondary }}
-                      />
+                      <Icon aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, color: token.colorTextSecondary }} />
                       <span>{label}</span>
                     </Flex>
                   </Col>
@@ -158,7 +154,7 @@ export function WizardPartnerStep({
             />
           ) : options.length === 0 ? (
             <EmptyState
-              icon={<Users size={EMPTY_ICON_SIZE} />}
+              icon={<TeamOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("wizard.partner.emptyTitle", { noun })}
               description={t("wizard.partner.emptyDescription", { noun })}
               actionLabel={t("wizard.partner.manageAction", { noun })}

@@ -46,7 +46,7 @@ import {
 } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
-import { AlertTriangle, Banknote, Package, Receipt, Truck } from "lucide-react";
+import { ContainerOutlined, DollarCircleOutlined, FileDoneOutlined, TruckOutlined, WarningOutlined } from "@ant-design/icons";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
 
@@ -405,7 +405,7 @@ export default async function ContractDetailPage({
             <Button>
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button` (`ICON_SIZE`). */}
-              <Receipt aria-hidden="true" /> {t("contracts.createInvoice")}
+              <FileDoneOutlined aria-hidden="true" /> {t("contracts.createInvoice")}
             </Button>
           </Link>
           <Link href={`/contracts/${contract.id}/edit`}>
@@ -468,7 +468,7 @@ export default async function ContractDetailPage({
           rowKey={(row) => row.key}
           empty={
             <EmptyState
-              icon={<Package size={EMPTY_ICON_SIZE} />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("contracts.emptyLinesTitle")}
               description={t("contracts.emptyLinesDescription")}
               actionLabel={t("contracts.emptyLinesAction")}
@@ -497,7 +497,7 @@ export default async function ContractDetailPage({
                 gap: TIGHT_GAP,
               }}
             >
-              <AlertTriangle size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+              <WarningOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
               <small>
                 {totals.unmatchedDeliveredKg > 0 && totals.unmatchedInvoicedKg > 0
                   ? t("contracts.unmatchedBoth", {
@@ -533,7 +533,7 @@ export default async function ContractDetailPage({
             <CardTitle
               style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
             >
-              <Truck size="1em" aria-hidden style={{ color: "var(--ant-color-icon)" }} />
+              <TruckOutlined aria-hidden style={{ color: "var(--ant-color-icon)" }} />
               {t("contracts.deliveryOrdersTitle")}
             </CardTitle>
           </CardHeader>
@@ -596,7 +596,7 @@ export default async function ContractDetailPage({
             <CardTitle
               style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
             >
-              <Receipt size="1em" aria-hidden style={{ color: "var(--ant-color-icon)" }} />
+              <FileDoneOutlined aria-hidden style={{ color: "var(--ant-color-icon)" }} />
               {t("contracts.invoicesTitle")}
             </CardTitle>
           </CardHeader>
@@ -773,11 +773,7 @@ export default async function ContractDetailPage({
                     gap: TIGHT_GAP,
                   }}
                 >
-                  <AlertTriangle
-                    size="1em"
-                    aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 2 }}
-                  />
+                  <WarningOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <small>{t("common.paymentsUnrated", { count: paymentsWithoutRate })}</small>
                 </p>
               )}
@@ -790,7 +786,7 @@ export default async function ContractDetailPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Banknote size={EMPTY_ICON_SIZE} />}
+              icon={<DollarCircleOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("contracts.emptyPaymentsTitle")}
               description={t("contracts.emptyPaymentsDescription")}
             />

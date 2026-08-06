@@ -21,7 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { AlertTriangle, Undo2, Plus, Info } from "lucide-react";
+import { InfoCircleOutlined, PlusOutlined, RollbackOutlined, WarningOutlined } from "@ant-design/icons";
 import { ReturnPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";
@@ -230,7 +230,7 @@ export default async function ReturnsPage({
               gap: TIGHT_GAP,
             }}
           >
-            <AlertTriangle size="1em" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <WarningOutlined aria-hidden="true" style={{ flexShrink: 0 }} />
             <small>{t("common.rateMissing")}</small>
           </span>
         ),
@@ -252,7 +252,7 @@ export default async function ReturnsPage({
           <Link href={`/returns/new?type=${tab}`}>
             <Button>
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
-              <Plus aria-hidden="true" />
+              <PlusOutlined aria-hidden="true" />
               {t("returns.addNew")}
             </Button>
           </Link>
@@ -301,7 +301,7 @@ export default async function ReturnsPage({
           marginBottom: SECTION_GAP,
         }}
       >
-        <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <small>
           {t("returns.noteA")} <strong>{t("returns.noteStrong")}</strong> {t("returns.noteB")}
         </small>
@@ -309,7 +309,7 @@ export default async function ReturnsPage({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={<Undo2 size={EMPTY_ICON_SIZE} />}
+          icon={<RollbackOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={tab === "sales" ? t("returns.emptySales") : t("returns.emptyPurchase")}
           description={t("returns.emptyDescription")}
           actionLabel={t("returns.addNew")}

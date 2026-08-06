@@ -24,7 +24,7 @@
  */
 
 import { useCallback, useId, useRef, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { WarningOutlined } from "@ant-design/icons";
 import type { InputRef } from "antd";
 
 import {
@@ -165,7 +165,7 @@ export function ConfirmDialog({
                     : "var(--ant-color-primary)",
               }}
             >
-              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              <WarningOutlined aria-hidden="true" style={{ fontSize: 20 }} />
             </span>
             {/* `messageId` di pembungkus, BUKAN mengganti id milik
                 `AlertDialogDescription` — id itu dipakai `aria-describedby`

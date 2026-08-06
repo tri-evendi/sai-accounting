@@ -19,7 +19,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Flex, Row, theme, Typography } from "antd";
-import { Ban, Plus, ShieldCheck } from "lucide-react";
+import { PlusOutlined, SafetyCertificateOutlined, StopOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,12 +163,12 @@ export function ApprovalRules({
       render: (_value, rule) =>
         rule.isActive ? (
           <Badge variant="success">
-            <ShieldCheck size="1em" aria-hidden="true" />
+            <SafetyCertificateOutlined aria-hidden="true" />
             <span>{t("common.active")}</span>
           </Badge>
         ) : (
           <Badge variant="default">
-            <Ban size="1em" aria-hidden="true" />
+            <StopOutlined aria-hidden="true" />
             <span>{t("common.inactive")}</span>
           </Badge>
         ),
@@ -189,7 +189,7 @@ export function ApprovalRules({
             onConfirm={() => deactivate(rule)}
             trigger={
               <Button variant="secondary" size="sm" disabled={busy}>
-                <Ban aria-hidden="true" />
+                <StopOutlined aria-hidden="true" />
                 {t("approvals.deactivate")}
               </Button>
             }
@@ -228,11 +228,7 @@ export function ApprovalRules({
                   textAlign: "center",
                 }}
               >
-                <ShieldCheck
-                  size={token.fontSizeHeading3}
-                  color={token.colorTextSecondary}
-                  aria-hidden="true"
-                />
+                <SafetyCertificateOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, color: token.colorTextSecondary }} />
                 <Typography.Text type="secondary">
                   {t("approvals.rulesEmptyTitle")}
                 </Typography.Text>
@@ -322,7 +318,7 @@ export function ApprovalRules({
 
                 <div>
                   <Button type="submit" disabled={busy || minAmount === ""}>
-                    <Plus aria-hidden="true" />
+                    <PlusOutlined aria-hidden="true" />
                     {t("approvals.submitRule")}
                   </Button>
                 </div>

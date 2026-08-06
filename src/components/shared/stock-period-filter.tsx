@@ -23,7 +23,7 @@ import { useRouter } from "next/navigation";
 import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import type { StockPeriodGranularity } from "@/lib/stock-period";
 
@@ -129,7 +129,7 @@ export function StockPeriodFilter({
             disabled={!prevAnchorISO}
             onClick={() => prevAnchorISO && go(granularity, prevAnchorISO)}
           >
-            <ChevronLeft aria-hidden="true" />
+            <LeftOutlined aria-hidden="true" />
           </Button>
           {/* Lebar minimum supaya ◀ ▶ tidak bergeser saat labelnya berganti
               dari "Minggu 3 Agu" ke "September 2026" — panah yang berpindah
@@ -145,7 +145,7 @@ export function StockPeriodFilter({
             disabled={!nextAnchorISO}
             onClick={() => nextAnchorISO && go(granularity, nextAnchorISO)}
           >
-            <ChevronRight aria-hidden="true" />
+            <RightOutlined aria-hidden="true" />
           </Button>
         </Flex>
       )}

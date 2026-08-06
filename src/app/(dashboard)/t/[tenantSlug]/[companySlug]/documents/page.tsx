@@ -11,7 +11,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FileText } from "lucide-react";
+import { FileTextOutlined } from "@ant-design/icons";
 import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -196,7 +196,7 @@ export default async function DocumentsPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<FileText size={EMPTY_ICON_SIZE} />}
+              icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("documents.emptyTitle")}
               description={t("documents.emptyDescription")}
               actionLabel={t("documents.addNew")}

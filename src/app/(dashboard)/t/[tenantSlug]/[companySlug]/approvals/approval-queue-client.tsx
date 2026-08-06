@@ -4,7 +4,7 @@
  * Antrean & keputusan persetujuan (issue #25).
  *
  * MASTER.md: status selalu badge BERTEKS (bukan warna saja), nominal
- * `tabular-nums` rata kanan dengan mata uang eksplisit, ikon lucide (tanpa
+ * `tabular-nums` rata kanan dengan mata uang eksplisit, ikon `@ant-design/icons` (tanpa
  * emoji), aksi destruktif merah + konfirmasi, empty state bermakna.
  *
  * Nilai ditampilkan dua kali dan itu disengaja: dalam mata uang dokumen (yang
@@ -29,16 +29,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, theme, Typography } from "antd";
 import { Link } from "@/components/ui/app-link";
-import {
-  CheckCircle2,
-  ClipboardCheck,
-  ExternalLink,
-  Inbox,
-  MailOpen,
-  RotateCcw,
-  ShieldCheck,
-  XCircle,
-} from "lucide-react";
+import { AuditOutlined, CheckCircleOutlined, CloseCircleOutlined, ExportOutlined, InboxOutlined, MailOutlined, SafetyCertificateOutlined, UndoOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,7 +76,7 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   if (status === "approved") {
     return (
       <Badge variant="success">
-        <CheckCircle2 size="1em" aria-hidden="true" />
+        <CheckCircleOutlined aria-hidden="true" />
         <span>{label}</span>
       </Badge>
     );
@@ -93,14 +84,14 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   if (status === "rejected") {
     return (
       <Badge variant="danger">
-        <XCircle size="1em" aria-hidden="true" />
+        <CloseCircleOutlined aria-hidden="true" />
         <span>{label}</span>
       </Badge>
     );
   }
   return (
     <Badge variant="warning">
-      <ClipboardCheck size="1em" aria-hidden="true" />
+      <AuditOutlined aria-hidden="true" />
       <span>{label}</span>
     </Badge>
   );
@@ -125,7 +116,7 @@ function DocumentTitle({ row }: { row: ApprovalRequestView }) {
       }}
     >
       {text}
-      <ExternalLink size="1em" aria-hidden="true" />
+      <ExportOutlined aria-hidden="true" />
     </Link>
   );
 }
@@ -423,7 +414,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
               disabled={busyId === row.id}
               onClick={() => markRead(row)}
             >
-              <MailOpen aria-hidden="true" />
+              <MailOutlined aria-hidden="true" />
               {t("approvals.markRead")}
             </Button>
           )}
@@ -440,7 +431,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                 style={{ width: RESUBMIT_NOTE_WIDTH }}
               />
               <Button size="sm" disabled={busyId === row.id} onClick={() => resubmit(row)}>
-                <RotateCcw aria-hidden="true" />
+                <UndoOutlined aria-hidden="true" />
                 {t("approvals.resubmit")}
               </Button>
             </>
@@ -472,7 +463,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                 textAlign: "center",
               }}
             >
-              <Inbox size={token.fontSizeHeading3} color={token.colorTextSecondary} aria-hidden="true" />
+              <InboxOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, color: token.colorTextSecondary }} />
               <Typography.Text type="secondary">{t("approvals.inboxEmpty")}</Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                 {t("approvals.inboxEmptyHint")}{" "}
@@ -528,7 +519,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                         <Alert
                           type="warning"
                           style={{ marginTop: token.marginXS }}
-                          icon={<RotateCcw size={token.fontSizeLG} aria-hidden="true" />}
+                          icon={<UndoOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
                           showIcon
                           message={
                             <span>
@@ -589,7 +580,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       onConfirm={() => decide(row, "approve")}
                       trigger={
                         <Button size="sm" disabled={busyId === row.id}>
-                          <CheckCircle2 aria-hidden="true" />
+                          <CheckCircleOutlined aria-hidden="true" />
                           {t("approvals.approve")}
                         </Button>
                       }
@@ -612,7 +603,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                             (notes[row.id]?.trim().length ?? 0) < REJECT_NOTE_MIN
                           }
                         >
-                          <XCircle aria-hidden="true" />
+                          <CloseCircleOutlined aria-hidden="true" />
                           {t("approvals.reject")}
                         </Button>
                       }
@@ -677,7 +668,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
           <CardHeader>
             <CardTitle>
               <Flex align="center" gap={token.marginXS} style={{ display: "inline-flex" }}>
-                <ShieldCheck size="1em" color={token.colorTextSecondary} aria-hidden="true" />
+                <SafetyCertificateOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
                 {t("approvals.historyTitle")}
               </Flex>
             </CardTitle>

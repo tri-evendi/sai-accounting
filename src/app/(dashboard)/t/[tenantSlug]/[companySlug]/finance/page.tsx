@@ -31,7 +31,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import type { CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
-import { CheckCircle2, Wallet } from "lucide-react";
+import { CheckCircleOutlined, WalletOutlined } from "@ant-design/icons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
@@ -234,7 +234,7 @@ export default async function FinancePage({
           <span style={secondary}>—</span>
         ) : r.reconciled ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <CheckCircle2 size="1em" aria-hidden="true" />
+            <CheckCircleOutlined aria-hidden="true" />
             <small>{t("finance.reconMatched")}</small>
           </span>
         ) : (
@@ -447,7 +447,7 @@ export default async function FinancePage({
           rowKey={(r) => r.id}
           empty={
             <EmptyState
-              icon={<Wallet size={EMPTY_ICON_SIZE} />}
+              icon={<WalletOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("finance.emptyTitle")}
               description={t("finance.emptyDescription")}
               actionLabel={t("finance.addNew")}

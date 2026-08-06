@@ -32,7 +32,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FileText, Package } from "lucide-react";
+import { ContainerOutlined, FileTextOutlined } from "@ant-design/icons";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -727,7 +727,7 @@ export default async function DashboardPage({
             rowKey={(_row, index) => index ?? 0}
             empty={
               <EmptyState
-                icon={<Package size={EMPTY_ICON} />}
+                icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON }} />}
                 title={t("dashboard.emptyMovementsTitle")}
                 description={t("dashboard.emptyMovementsDescription")}
                 actionLabel={canUpdateInventory ? t("common.addRemoveStock") : undefined}
@@ -874,7 +874,7 @@ export default async function DashboardPage({
               rowKey={(c) => c.id}
               empty={
                 <EmptyState
-                  icon={<FileText size={EMPTY_ICON} />}
+                  icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON }} />}
                   title={t("contracts.emptyTitle")}
                   description={t("dashboard.emptyContractsDescription")}
                   actionLabel={canCreateContract ? t("contracts.addNew") : undefined}

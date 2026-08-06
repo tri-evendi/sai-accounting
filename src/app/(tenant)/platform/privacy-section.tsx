@@ -26,8 +26,7 @@
 
 import { useEffect, useState } from "react";
 import { Flex, Typography, theme } from "antd";
-import { Download, ShieldAlert } from "lucide-react";
-
+import { DownloadOutlined, SecurityScanOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -131,7 +130,7 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
           </Text>
           <Button asChild variant="outline" style={{ flexShrink: 0 }}>
             <a href="/api/tenant/export" download>
-              <Download aria-hidden="true" />
+              <DownloadOutlined aria-hidden="true" />
               {t("tenantSettings.exportButton")}
             </a>
           </Button>
@@ -185,7 +184,7 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
                   disabled={busy}
                   onClick={() => setConfirming(true)}
                 >
-                  <ShieldAlert aria-hidden="true" />
+                  <SecurityScanOutlined aria-hidden="true" />
                   {t("tenantSettings.deletionRequestButton")}
                 </Button>
               </div>

@@ -34,8 +34,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Link } from "@/components/ui/app-link";
 import { ReverseButton } from "./reverse-button";
 import { getT } from "@/lib/i18n/server";
-import { RotateCcw, Undo2 } from "lucide-react";
-
+import { RollbackOutlined, UndoOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginXS` 8 · `marginXXS` 4 — token AntD sebagai angka (tanpa hook di sini). */
@@ -210,7 +209,7 @@ export default async function JournalDetailPage({
   ];
 
   /** Satu pemberitahuan di atas kartu — ikon + kata, tanpa warna token. */
-  const notice = (Icon: typeof RotateCcw, body: React.ReactNode) => (
+  const notice = (Icon: typeof UndoOutlined, body: React.ReactNode) => (
     <p
       style={{
         margin: 0,
@@ -220,7 +219,7 @@ export default async function JournalDetailPage({
         gap: TIGHT_GAP,
       }}
     >
-      <Icon size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: TIGHT_GAP / 2 }} />
+      <Icon aria-hidden="true" style={{ flexShrink: 0, marginTop: TIGHT_GAP / 2 }} />
       <span>{body}</span>
     </p>
   );
@@ -249,7 +248,7 @@ export default async function JournalDetailPage({
 
       {journal.isReversed &&
         notice(
-          RotateCcw,
+          UndoOutlined,
           journal.reversals[0] ? (
             <>
               {t("journal.reversedByBefore")}{" "}
@@ -266,7 +265,7 @@ export default async function JournalDetailPage({
 
       {journal.reversalOf &&
         notice(
-          Undo2,
+          RollbackOutlined,
           <>
             {t("journal.reversalOfBefore")}{" "}
             {monoLink(`/journal/${journal.reversalOf.id}`, journal.reversalOf.number)}

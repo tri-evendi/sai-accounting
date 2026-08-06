@@ -18,7 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { ArrowRightLeft, Banknote } from "lucide-react";
+import { DollarCircleOutlined, SwapOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -130,7 +130,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       <Card>
         <div style={panelStyle}>
           <h2 style={headingStyle}>
-            <ArrowRightLeft size={token.fontSizeHeading5} aria-hidden="true" />
+            <SwapOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading5 }} />
             {t("fixedAssets.moveTitle")}
           </h2>
           <Typography.Paragraph
@@ -183,7 +183,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
       <Card>
         <div style={panelStyle}>
           <h2 style={headingStyle}>
-            <Banknote size={token.fontSizeHeading5} aria-hidden="true" />
+            <DollarCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading5 }} />
             {t("fixedAssets.disposeTitle")}
           </h2>
           <Typography.Paragraph

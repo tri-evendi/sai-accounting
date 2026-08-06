@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Money } from "@/components/ui/money";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { ArrowDownLeft, ArrowUpRight, BookText, Info, Lock } from "lucide-react";
+import { AccountBookOutlined, ArrowDownOutlined, ArrowUpOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -364,11 +364,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                     role="alert"
                     style={{ marginTop: token.marginXXS }}
                   >
-                    <Lock
-                      size={token.fontSizeSM}
-                      aria-hidden="true"
-                      style={{ flexShrink: 0, marginTop: 2 }}
-                    />
+                    <LockOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM, flexShrink: 0, marginTop: 2 }} />
                     <Typography.Text style={{ fontSize: token.fontSizeSM }}>
                       {periodIssue}
                     </Typography.Text>
@@ -396,7 +392,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   onChange={(e) => setDebit(e.target.value)}
                 />
                 <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
-                  <ArrowDownLeft size={token.fontSizeSM} aria-hidden="true" />
+                  <ArrowDownOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM }} />
                   <Typography.Text style={{ fontSize: token.fontSizeSM }}>
                     {t("finance.hintIncrease")}
                   </Typography.Text>
@@ -419,7 +415,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   onChange={(e) => setCredit(e.target.value)}
                 />
                 <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
-                  <ArrowUpRight size={token.fontSizeSM} aria-hidden="true" />
+                  <ArrowUpOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM }} />
                   <Typography.Text style={{ fontSize: token.fontSizeSM }}>
                     {t("finance.hintDecrease")}
                   </Typography.Text>
@@ -443,11 +439,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   required
                 />
                 <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
-                  <Info
-                    size={token.fontSizeSM}
-                    aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 2 }}
-                  />
+                  <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM, flexShrink: 0, marginTop: 2 }} />
                   <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                     {accountantOn ? (
                       <>
@@ -527,7 +519,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                     fontWeight: token.fontWeightStrong,
                   }}
                 >
-                  <BookText size={token.fontSize} aria-hidden="true" />
+                  <AccountBookOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                   {t("finance.journalPreviewTitle")}
                 </Flex>
                 {/* `StaticTable` `size="small"` — pratinjau ringkas; tak ada

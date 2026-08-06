@@ -30,7 +30,7 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { useToast } from "@/components/ui/toast";
-import { Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -339,7 +339,7 @@ export function AdvanceForm({
             background: token.colorFillQuaternary,
           }}
         >
-          <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
           <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
             {isSales ? (
               <>

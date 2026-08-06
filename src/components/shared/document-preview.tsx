@@ -11,7 +11,7 @@
  */
 import { useRef } from "react";
 import { Flex, theme } from "antd";
-import { Printer, Download } from "lucide-react";
+import { DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import {
   Dialog,
   DialogContent,
@@ -127,16 +127,16 @@ export function DocumentPreview({
               style={{ flexShrink: 0, paddingInlineEnd: token.paddingXL }}
             >
               <Button variant="secondary" size="sm" onClick={handlePrint}>
-                <Printer aria-hidden="true" /> {t("documentPreview.print")}
+                <PrinterOutlined aria-hidden="true" /> {t("documentPreview.print")}
               </Button>
               {onDownload ? (
                 <Button size="sm" onClick={onDownload}>
-                  <Download aria-hidden="true" /> {t("documentPreview.download")}
+                  <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
                 </Button>
               ) : (
                 <a href={src} download>
                   <Button size="sm">
-                    <Download aria-hidden="true" /> {t("documentPreview.download")}
+                    <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
                   </Button>
                 </a>
               )}

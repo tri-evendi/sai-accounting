@@ -122,12 +122,14 @@ const SIZES: Record<ButtonSize, Pick<AntdButtonProps, "size" | "shape">> = {
 };
 
 /**
- * Ikon `lucide-react` di dalam tombol dikecilkan ke 16px kalau pemanggilnya
- * tidak menentukan ukuran sendiri. Ini SATU-SATUNYA kelas Tailwind yang tersisa
- * di berkas ini, dan ia transisional: 7 tombol merender `<Save aria-hidden/>`
- * tanpa kelas ukuran dan mengandalkan primitif lama. `<svg>` lucide tanpa
- * ukuran adalah 24px, yang di dalam tombol 40px terlihat seperti salah render.
- * Baris ini hilang bersama lucide di issue #201.
+ * `<svg>` lucide tanpa ukuran adalah 24px, yang di dalam tombol 40px terlihat
+ * seperti salah render — jadi ikon tanpa kelas ukuran dikecilkan ke 16px di
+ * sini. Ini SATU-SATUNYA kelas Tailwind yang tersisa di berkas ini.
+ *
+ * Ikon `@ant-design/icons` TIDAK membutuhkannya: SVG-nya `1em`, jadi ia sudah
+ * mengikuti `fontSize` tombolnya. Baris ini karena itu hanya melayani 14 berkas
+ * yang masih memakai lucide sampai issue #240 selesai menulis ulangnya; ia
+ * dihapus bersama `lucide-react` dari `package.json` di PR penutup issue #201.
  */
 const ICON_SIZE = "[&_svg:not([class*='size-'])]:size-4";
 

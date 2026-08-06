@@ -12,7 +12,7 @@
 
 import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
-import { CalendarClock } from "lucide-react";
+import { CalendarOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 
 interface DueDateFieldProps {
@@ -45,7 +45,7 @@ export function DueDateField({ defaultValue, value, onChange }: DueDateFieldProp
         gap={token.marginXXS}
         style={{ marginTop: token.marginXXS }}
       >
-        <CalendarClock size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <CalendarOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0 }} />
         <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
           {t("dueDate.hint")}
         </Typography.Text>

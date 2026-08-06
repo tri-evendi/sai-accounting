@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
-import { Package as PackageIcon } from "lucide-react";
+import { ContainerOutlined } from "@ant-design/icons";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -345,7 +345,7 @@ export default async function InventoryPage({
           rowKey={(item) => item.id}
           empty={
             <EmptyState
-              icon={<PackageIcon size={EMPTY_ICON_SIZE} />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("inventory.emptyTitle")}
               description={t("inventory.emptyDescription")}
               actionLabel={t("common.addRemoveStock")}

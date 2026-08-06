@@ -27,8 +27,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Plus, UserCircle } from "lucide-react";
-
+import { PlusOutlined, ShopOutlined, UserOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -102,7 +101,7 @@ export default async function SelectCompanyPage() {
         description={t(
           canCreate ? "auth.selectCompany.noCompanyYetBody" : "auth.selectCompany.noAccessBody"
         )}
-        icon={<Building2 size={20} aria-hidden="true" />}
+        icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
         footer={<SignedInAs name={session.user.name} />}
       >
         {/* Untuk pengguna BIASA keadaan ini hampir selalu berarti akses baru
@@ -116,7 +115,7 @@ export default async function SelectCompanyPage() {
             <p style={BODY_TEXT}>{t("auth.selectCompany.noCompanyYetOwner")}</p>
             <Button asChild style={FULL_WIDTH}>
               <Link href="/companies/new">
-                <Plus aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("companies.newTitle")}
               </Link>
             </Button>
@@ -132,7 +131,7 @@ export default async function SelectCompanyPage() {
     <AuthShell
       heading={t("auth.selectCompany.heading")}
       description={t("auth.selectCompany.description")}
-      icon={<Building2 size={20} aria-hidden="true" />}
+      icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
       footer={
         /*
          * KELUAR HARUS ADA DI SINI, dan ini bukan kelengkapan kosmetik.
@@ -152,7 +151,7 @@ export default async function SelectCompanyPage() {
           {canCreate && (
             <Button asChild variant="outline" style={FULL_WIDTH}>
               <Link href="/companies/new">
-                <Plus aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("companies.newTitle")}
               </Link>
             </Button>
@@ -160,7 +159,7 @@ export default async function SelectCompanyPage() {
           {canOpenPlatform && (
             <Button asChild variant="outline" style={FULL_WIDTH}>
               <Link href="/platform">
-                <UserCircle aria-hidden="true" />
+                <UserOutlined aria-hidden="true" />
                 {t("platform.title")}
               </Link>
             </Button>

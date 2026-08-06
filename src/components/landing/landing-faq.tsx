@@ -30,8 +30,7 @@
  * `aria-expanded`, dan pencarian di dalam halaman (Ctrl+F membuka panelnya di
  * peramban modern) tanpa satu baris skrip.
  */
-import { ChevronDown } from "lucide-react";
-
+import { DownOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
@@ -65,10 +64,7 @@ export async function LandingFaq() {
                       pasangan istilah–penjelasan tetap harus terbaca sebagai
                       daftar definisi oleh pembaca layar. */}
                   <dt>{item.q}</dt>
-                  <ChevronDown
-                    className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
-                    aria-hidden
-                  />
+                  <DownOutlined className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden style={{ fontSize: 20 }} />
                 </summary>
                 <dd className="pb-4 text-sm leading-relaxed text-muted-foreground">{item.a}</dd>
               </details>

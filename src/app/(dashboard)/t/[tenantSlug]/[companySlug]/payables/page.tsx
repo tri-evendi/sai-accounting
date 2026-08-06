@@ -36,7 +36,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@/lib/utils";
-import { ArrowUpFromLine, FileText, Info } from "lucide-react";
+import { FileTextOutlined, InfoCircleOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
@@ -352,7 +352,7 @@ export default async function PayablesPage({
                 }}
               >
                 {/* Direction is stated in words and by the icon — not by colour. */}
-                <ArrowUpFromLine size="1em" aria-hidden="true" />
+                <VerticalAlignTopOutlined aria-hidden="true" />
                 {t("payables.advanceLabel")}
               </p>
               <p
@@ -413,7 +413,7 @@ export default async function PayablesPage({
 
       {estimatedCount > 0 ? (
         <p style={noteStyle}>
-          <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
           <small>
             <strong>{t("payables.estRows", { count: estimatedCount })}</strong>{" "}
             {t("payables.estMarked")}{" "}
@@ -426,7 +426,7 @@ export default async function PayablesPage({
         </p>
       ) : (
         <p style={noteStyle}>
-          <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
           <small>{t("payables.noEstimateNote")}</small>
         </p>
       )}
@@ -440,7 +440,7 @@ export default async function PayablesPage({
           rowKey={(r) => r.id}
           empty={
             <EmptyState
-              icon={<FileText size={EMPTY_ICON_SIZE} />}
+              icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={overdueOnly ? t("payables.emptyOverdue") : t("payables.emptyAll")}
             />
           }

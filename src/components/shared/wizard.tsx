@@ -41,15 +41,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CircleDot,
-  ShieldCheck,
-} from "lucide-react";
-
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, ExclamationCircleOutlined, RightOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 /** Bulatan nomor langkah — sebesar `h-7 w-7` sebelum migrasi. */
 const STEP_BULLET = 28;
 
@@ -183,9 +175,9 @@ export function Wizard({
                   }}
                 >
                   {state === "done" ? (
-                    <Check size={token.fontSize} aria-hidden="true" />
+                    <CheckOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                   ) : state === "current" ? (
-                    <CircleDot size={token.fontSize} aria-hidden="true" />
+                    <RightOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                   ) : (
                     <span style={{ fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
                   )}
@@ -316,7 +308,7 @@ export function Wizard({
           <Alert
             type="error"
             showIcon
-            icon={<AlertCircle size={token.fontSizeLG} aria-hidden="true" />}
+            icon={<ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
             message={t("wizard.blockersTitle")}
             description={
               <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
@@ -341,7 +333,7 @@ export function Wizard({
         }}
       >
         <Button type="button" variant="secondary" onClick={goBack} disabled={index === 0 || busy}>
-          <ArrowLeft aria-hidden="true" /> {t("common.back")}
+          <ArrowLeftOutlined aria-hidden="true" /> {t("common.back")}
         </Button>
 
         {isLast ? (
@@ -357,13 +349,13 @@ export function Wizard({
               </>
             ) : (
               <>
-                <ShieldCheck aria-hidden="true" /> {finishText}
+                <SafetyCertificateOutlined aria-hidden="true" /> {finishText}
               </>
             )}
           </Button>
         ) : (
           <Button type="button" onClick={goNext} disabled={busy}>
-            {t("wizard.next")} <ArrowRight aria-hidden="true" />
+            {t("wizard.next")} <ArrowRightOutlined aria-hidden="true" />
           </Button>
         )}
 

@@ -15,8 +15,7 @@ import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";
 import { TermTooltip } from "@/components/ui/term-tooltip";
-import { PackageOpen, Info } from "lucide-react";
-
+import { HistoryOutlined, InfoCircleOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -222,7 +221,7 @@ export default async function StockMovementPage({
           summary={summary}
           empty={
             <EmptyState
-              icon={<PackageOpen size={EMPTY_ICON_SIZE} />}
+              icon={<HistoryOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("stockMovement.emptyTitle")}
               description={t("stockMovement.emptyDescription")}
             />
@@ -244,7 +243,7 @@ export default async function StockMovementPage({
             color: "var(--ant-color-text-secondary)",
           }}
         >
-          <Info size={ICON_SIZE} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
           <span>{t("stockMovement.dormantNote", { count: report.dormantCount })}</span>
         </p>
       )}

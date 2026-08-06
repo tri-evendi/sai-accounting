@@ -47,7 +47,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { Collapse, theme } from "antd";
 
 import { Badge } from "@/components/ui/badge";
@@ -175,11 +175,7 @@ export function DisclosureSection({
                   <span style={{ fontWeight: token.fontWeightStrong }}>{title}</span>
                   {invalid && (
                     <Badge variant="danger">
-                      <AlertCircle
-                        className="h-3.5 w-3.5"
-                        aria-hidden="true"
-                        style={{ verticalAlign: "-0.2em", marginInlineEnd: token.marginXXS }}
-                      />
+                      <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: 14, verticalAlign: "-0.2em", marginInlineEnd: token.marginXXS }} />
                       {t("disclosure.reviewNeeded")}
                     </Badge>
                   )}

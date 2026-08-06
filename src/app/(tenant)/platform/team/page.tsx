@@ -16,8 +16,7 @@
  * bagi pemilik yang baru saja mendaftar.
  */
 import Link from "next/link";
-import { Mail, Users } from "lucide-react";
-
+import { MailOutlined, TeamOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -57,7 +56,7 @@ export default async function PlatformTeamPage() {
         <CardContent>
           {companies.length === 0 ? (
             <EmptyState
-              icon={<Users size={48} />}
+              icon={<TeamOutlined style={{ fontSize: 48 }} />}
               title={t("auth.selectCompany.noCompanyYetHeading")}
               description={t("auth.selectCompany.noCompanyYetBody")}
               actionLabel={t("companies.newTitle")}
@@ -76,7 +75,7 @@ export default async function PlatformTeamPage() {
                   style={{ width: "100%", justifyContent: "flex-start" }}
                 >
                   <Link href={tenantPath(tenant.tenantSlug, company.slug, "/users")}>
-                    <Mail aria-hidden="true" />
+                    <MailOutlined aria-hidden="true" />
                     <span
                       style={{
                         overflow: "hidden",

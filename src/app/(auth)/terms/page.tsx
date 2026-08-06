@@ -22,8 +22,7 @@
  * aturannya ditulis terpisah di `design-system/sai-accounting/pages/landing.md`.
  */
 import Link from "next/link";
-import { TriangleAlert } from "lucide-react";
-
+import { WarningOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { TERMS_VERSION, isDraftLegalVersion } from "@/lib/legal";
@@ -111,7 +110,7 @@ export default function TermsPage() {
 
         {isDraftLegalVersion(TERMS_VERSION) && (
           <div role="status" style={DRAFT_BANNER}>
-            <TriangleAlert size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <WarningOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
             <p style={{ margin: 0 }}>
               <strong>DRAF.</strong> Dokumen ini belum ditinjau penasihat hukum dan belum
               mengikat sebagai perjanjian. Ia diterbitkan lebih awal supaya setiap

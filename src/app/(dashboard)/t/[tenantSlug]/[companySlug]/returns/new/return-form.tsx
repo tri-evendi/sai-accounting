@@ -33,7 +33,7 @@ import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { Info, Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**
@@ -479,7 +479,7 @@ export function ReturnForm({
                       }
                       aria-label={t("returns.removeRow")}
                     >
-                      <Trash2 aria-hidden="true" />
+                      <DeleteOutlined aria-hidden="true" />
                     </Button>
                   </Col>
                 </Row>
@@ -497,7 +497,7 @@ export function ReturnForm({
                   ])
                 }
               >
-                <Plus aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("returns.addRow")}
               </Button>
             </div>
@@ -537,7 +537,7 @@ export function ReturnForm({
             <Alert
               type="info"
               showIcon
-              icon={<Info aria-hidden="true" />}
+              icon={<InfoCircleOutlined aria-hidden="true" />}
               message={
                 <>
                   {type === "sales" ? (

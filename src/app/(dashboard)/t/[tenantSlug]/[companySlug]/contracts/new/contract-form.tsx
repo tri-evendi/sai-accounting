@@ -56,7 +56,7 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
-import { Trash2, Plus, Lock } from "lucide-react";
+import { DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { Label } from "@/components/ui/label";
 
@@ -286,7 +286,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                     color: token.colorError,
                   }}
                 >
-                  <Lock size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>{periodIssue}</span>
                 </Typography.Paragraph>
               )}
@@ -330,7 +330,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
             <Button type="button" variant="secondary" size="sm" onClick={addItem}>
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button`. */}
-              <Plus aria-hidden="true" /> {t("common.addItem")}
+              <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
             </Button>
           </Flex>
         </CardHeader>
@@ -410,7 +410,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                       disabled={items.length === 1}
                       aria-label={t("common.removeItemRow", { n: i + 1 })}
                     >
-                      <Trash2 aria-hidden="true" />
+                      <DeleteOutlined aria-hidden="true" />
                     </Button>
                   </Col>
                 </Row>

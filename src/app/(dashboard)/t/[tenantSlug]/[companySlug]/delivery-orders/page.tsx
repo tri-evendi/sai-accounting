@@ -20,8 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { Truck, Plus, Info } from "lucide-react";
-
+import { InfoCircleOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /**
@@ -167,7 +166,7 @@ export default async function DeliveryOrdersPage({
             <Button>
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button`. */}
-              <Plus aria-hidden="true" />
+              <PlusOutlined aria-hidden="true" />
               {t("deliveryOrders.addNew")}
             </Button>
           </Link>
@@ -188,7 +187,7 @@ export default async function DeliveryOrdersPage({
           marginBottom: SECTION_GAP,
         }}
       >
-        <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <small>
           {t("deliveryOrders.stockNoteA")} <strong>{t("deliveryOrders.stockNoteStrong")}</strong>{" "}
           {t("deliveryOrders.stockNoteB")}
@@ -217,7 +216,7 @@ export default async function DeliveryOrdersPage({
 
       {orders.length === 0 ? (
         <EmptyState
-          icon={<Truck size={EMPTY_ICON_SIZE} />}
+          icon={<TruckOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("deliveryOrders.emptyTitle")}
           description={t("deliveryOrders.emptyDescription")}
           actionLabel={t("deliveryOrders.addNew")}

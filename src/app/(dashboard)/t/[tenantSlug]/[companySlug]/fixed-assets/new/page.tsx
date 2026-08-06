@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Tags } from "lucide-react";
+import { TagsOutlined } from "@ant-design/icons";
 import { AssetForm } from "./asset-form";
 import { getT } from "@/lib/i18n/server";
 
@@ -42,7 +42,7 @@ export default async function NewFixedAssetPage({
           title={t("fixedAssets.newTitle")}
         />
         <EmptyState
-          icon={<Tags size={EMPTY_ICON_SIZE} />}
+          icon={<TagsOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.noCategoryTitle")}
           description={t("fixedAssets.noCategoryFormDescription")}
           actionLabel={t("fixedAssets.createCategory")}

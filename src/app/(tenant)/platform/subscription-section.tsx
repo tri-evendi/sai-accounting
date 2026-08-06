@@ -41,8 +41,7 @@
  * di sini (#227). Tidak ada satu pun token `:root` aplikasi yang dipakai.
  */
 import Link from "next/link";
-import { CalendarClock } from "lucide-react";
-
+import { CalendarOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -274,7 +273,7 @@ export async function SubscriptionSection({
                   })`,
                 }}
               >
-                <CalendarClock size={20} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden />
+                <CalendarOutlined aria-hidden style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
                 <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
                   <p
                     style={{

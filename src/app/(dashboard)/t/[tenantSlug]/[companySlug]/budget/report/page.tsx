@@ -34,8 +34,7 @@ import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
-import { GaugeCircle, AlertTriangle } from "lucide-react";
-
+import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
@@ -313,7 +312,7 @@ export default async function BudgetReportPage({
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             {/* Ikon peringatan = penanda kedua; angkanya dan katanya yang
                 pertama. Ia hanya muncul ketika memang ada yang diperingatkan. */}
-            {report.totals.alertCount > 0 && <AlertTriangle size="1em" aria-hidden="true" />}
+            {report.totals.alertCount > 0 && <WarningOutlined aria-hidden="true" />}
             {t("budget.alertAccounts", { count: report.totals.alertCount })}
           </span>
         )}
@@ -383,7 +382,7 @@ export default async function BudgetReportPage({
 
       {!hasBudgets ? (
         <EmptyState
-          icon={<GaugeCircle size={EMPTY_ICON_SIZE} />}
+          icon={<DashboardOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("budget.emptyReportTitle")}
           description={t("budget.emptyReportDescription")}
           actionLabel={t("budget.emptyReportAction")}

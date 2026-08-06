@@ -49,8 +49,7 @@
  * di `design-system/sai-accounting/pages/landing.md` berlaku HANYA untuk `/`.
  * Berkas ini juga tidak mengimpor satu pun komponen dari `components/landing/**`.
  */
-import { Check } from "lucide-react";
-
+import { CheckOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -248,15 +247,9 @@ export default async function PlatformPlansPage() {
                             >
                               {/* Centang = IKON (non-teks), jadi warna penuh
                                   `colorSuccess` sah di sini — ambangnya 3:1. */}
-                              <Check
-                                size={16}
-                                style={{
-                                  marginTop: 2,
+                              <CheckOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2,
                                   flexShrink: 0,
-                                  color: "var(--ant-color-success)",
-                                }}
-                                aria-hidden="true"
-                              />
+                                  color: "var(--ant-color-success)" }} />
                               <span style={{ fontVariantNumeric: "tabular-nums" }}>{line}</span>
                             </li>
                           ))}

@@ -38,17 +38,17 @@
 
 import { useId } from "react";
 import { Segmented } from "antd";
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
-
+import { DesktopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import { useT } from "@/lib/i18n/client";
 import { useTheme } from "@/lib/theme/client";
 import { THEMES, type Theme } from "@/lib/theme/config";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
-const ICONS: Record<Theme, LucideIcon> = {
-  light: Sun,
-  dark: Moon,
-  system: Monitor,
+const ICONS: Record<Theme, IconComponent> = {
+  light: SunOutlined,
+  dark: MoonOutlined,
+  system: DesktopOutlined,
 };
 
 const LABELS: Record<Theme, DictionaryKey> = {
@@ -93,7 +93,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         const label = t(LABELS[option]);
         return {
           value: option,
-          icon: <Icon className="h-4 w-4" aria-hidden="true" />,
+          icon: <Icon aria-hidden="true" style={{ fontSize: 16 }} />,
           label: <span style={VISUALLY_HIDDEN}>{label}</span>,
           title: label,
         };

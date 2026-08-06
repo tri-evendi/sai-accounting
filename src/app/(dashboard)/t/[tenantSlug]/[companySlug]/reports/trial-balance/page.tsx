@@ -30,7 +30,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import { resolveAsOf } from "@/lib/report-catalog";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Scale } from "lucide-react";
+import { ReconciliationOutlined } from "@ant-design/icons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 
@@ -144,7 +144,7 @@ export default async function TrialBalancePage({
           ]}
           empty={
             <EmptyState
-              icon={<Scale size={EMPTY_ICON_SIZE} />}
+              icon={<ReconciliationOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("reports.trialBalanceEmptyTitle")}
               description={t("reports.trialBalanceEmptyDescription")}
               actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}

@@ -23,8 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { humanizeFieldMessage } from "@/lib/form-guards";
-import { Trash2 } from "lucide-react";
-
+import { DeleteOutlined } from "@ant-design/icons";
 interface DeleteDocumentButtonProps {
   /** Endpoint DELETE, mis. `/api/contracts/12`. */
   endpoint: string;
@@ -92,7 +91,7 @@ export function DeleteDocumentButton({
          (`iconGap` = `marginXS`) dan primitif `Button` (16px). */
       trigger={
         <Button variant="danger" disabled={busy}>
-          <Trash2 aria-hidden="true" />
+          <DeleteOutlined aria-hidden="true" />
           {label}
         </Button>
       }

@@ -58,8 +58,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Flex, Tour, theme } from "antd";
 import type { TourProps } from "antd";
-import { Compass, X } from "lucide-react";
-
+import { CloseOutlined, CompassOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { tourForPath, tourStorageKey, type TourDef } from "@/lib/tours";
 import { useT } from "@/lib/i18n/client";
@@ -220,7 +219,7 @@ function JudulLangkah({
           color: token.colorLink,
         }}
       >
-        <Compass size={14} aria-hidden="true" />
+        <CompassOutlined aria-hidden="true" style={{ fontSize: 14 }} />
         {namaTur}
       </Flex>
       <span style={{ fontSize: token.fontSizeLG }}>{judul}</span>
@@ -317,12 +316,12 @@ export function GuidedTour() {
        */
       onClose={tutup}
       /*
-       * Ikon tutup dari lucide, seragam dengan chrome aplikasi; bawaan AntD
-       * datang dari @ant-design/icons. `aria-label` menimpa label bawaan AntD
-       * yang berbahasa Inggris — panel meletakkan atribut aria milik `closable`
-       * SETELAH labelnya sendiri.
+       * Ikon tutup ditulis sendiri, seragam dengan chrome aplikasi — bawaan
+       * AntD sama paketnya tapi tanpa `aria-hidden`. `aria-label` menimpa label
+       * bawaan AntD yang berbahasa Inggris — panel meletakkan atribut aria milik
+       * `closable` SETELAH labelnya sendiri.
        */
-      closable={{ closeIcon: <X size={16} aria-hidden="true" />, "aria-label": t("tour.close") }}
+      closable={{ closeIcon: <CloseOutlined aria-hidden="true" style={{ fontSize: 16 }} />, "aria-label": t("tour.close") }}
       /*
        * Penanda langkah bawaan AntD adalah titik-titik: pada tur 5 langkah ia
        * tidak memberi tahu langkah ke berapa, dan tidak terbaca pembaca layar

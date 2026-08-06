@@ -32,7 +32,7 @@ import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/utils";
-import { Boxes, Info, MapPin, Plus, Tags } from "lucide-react";
+import { EnvironmentOutlined, GoldOutlined, InfoCircleOutlined, PlusOutlined, TagsOutlined } from "@ant-design/icons";
 import { RunDepreciation } from "./run-depreciation";
 import { getT } from "@/lib/i18n/server";
 
@@ -203,19 +203,19 @@ export default async function FixedAssetsPage({
           <>
             <Link href="/fixed-assets/by-location">
               <Button variant="secondary">
-                <MapPin aria-hidden="true" />
+                <EnvironmentOutlined aria-hidden="true" />
                 {t("fixedAssets.byLocation")}
               </Button>
             </Link>
             <Link href="/fixed-assets/categories">
               <Button variant="secondary">
-                <Tags aria-hidden="true" />
+                <TagsOutlined aria-hidden="true" />
                 {t("fixedAssets.categories")}
               </Button>
             </Link>
             <Link href="/fixed-assets/new">
               <Button>
-                <Plus aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("fixedAssets.addNew")}
               </Button>
             </Link>
@@ -255,7 +255,7 @@ export default async function FixedAssetsPage({
 
       {!hasCategories ? (
         <EmptyState
-          icon={<Tags size={EMPTY_ICON_SIZE} />}
+          icon={<TagsOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.noCategoryTitle")}
           description={t("fixedAssets.noCategoryDescription")}
           actionLabel={t("fixedAssets.createCategory")}
@@ -269,7 +269,7 @@ export default async function FixedAssetsPage({
             rowKey={(r) => r.id}
             empty={
               <EmptyState
-                icon={<Boxes size={EMPTY_ICON_SIZE} />}
+                icon={<GoldOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
                 title={t("fixedAssets.emptyTitle")}
                 description={t("fixedAssets.emptyDescription")}
                 actionLabel={t("fixedAssets.addNew")}
@@ -290,7 +290,7 @@ export default async function FixedAssetsPage({
           gap: CONTROL_GAP,
         }}
       >
-        <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <small>
           {t("fixedAssets.footnoteBefore")} <strong>{t("fixedAssets.footnoteEntry")}</strong>
           {t("fixedAssets.footnoteAfter")}

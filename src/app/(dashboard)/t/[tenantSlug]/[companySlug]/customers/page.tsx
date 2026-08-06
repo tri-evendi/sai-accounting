@@ -24,8 +24,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { Users } from "lucide-react";
-
+import { TeamOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -159,7 +158,7 @@ export default async function CustomersPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Users size={EMPTY_ICON_SIZE} />}
+              icon={<TeamOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("customers.emptyTitle")}
               description={t("customers.emptyDescription")}
               actionLabel={t("customers.addNew")}

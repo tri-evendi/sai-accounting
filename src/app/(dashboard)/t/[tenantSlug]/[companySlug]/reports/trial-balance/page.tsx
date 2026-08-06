@@ -1,18 +1,29 @@
+/**
+ * Neraca Saldo — saldo debit & kredit tiap akun pada satu tanggal.
+ *
+ * ── Konversi ke `StaticTable` + token AntD (issue #198) ────────────────────
+ * **Tetap server component.** Baris kakinya memakai `colSpan` lewat `summary`
+ * (bentuk `SummaryRow`), jadi label "Total" + lencana seimbang/tak seimbang
+ * tetap membentang di atas dua kolom pertama tanpa satu pun sel mentah.
+ *
+ * Saldo NOL tetap ditulis "—", bukan "Rp 0": nol di sini berarti akun itu tidak
+ * bersaldo di sisi tersebut, dan `Money` sudah menulis "—" untuk nilai yang
+ * tidak ada — jadi selnya tidak lagi punya cabang teks sendiri.
+ *
+ * Satu perbedaan perilaku yang disengaja: baris Total kini hanya muncul bila
+ * ada baris yang ditotal (aturan `StaticTable`). Sebelumnya ia tetap digambar
+ * di bawah keadaan kosong, sebagai "Total Rp 0 · Seimbang" pada buku yang belum
+ * punya satu pun jurnal — pernyataan yang terdengar seperti hasil audit.
+ */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getTrialBalance } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
+import { moneyColumn } from "@/components/ui/money-column";
+import { Money } from "@/components/ui/money";
+import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -24,6 +35,18 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+
+/** Satu baris neraca saldo. */
+type TrialBalanceRow = Awaited<ReturnType<typeof getTrialBalance>>["rows"][number];
+
+/** Kode akun: monospace + tabular supaya digitnya berbaris lurus ke bawah. */
+const CODE_STYLE: React.CSSProperties = {
+  fontFamily: "var(--ant-font-family-code)",
+  fontVariantNumeric: "tabular-nums",
+};
 
 export default async function TrialBalancePage({
   params,
@@ -50,6 +73,42 @@ export default async function TrialBalancePage({
     balanced: tb.balanced,
   };
 
+  const columns: SaiColumns<TrialBalanceRow> = [
+    {
+      ...textColumn<TrialBalanceRow>({ dataIndex: "code", title: t("accounts.colCode") }),
+      render: (raw) => <span style={CODE_STYLE}>{String(raw)}</span>,
+    },
+    textColumn<TrialBalanceRow>({ dataIndex: "name", title: t("accounts.nameField") }),
+    {
+      // Saldo nol = tidak bersaldo di sisi ini; `Money` menulis "—" untuk nilai
+      // yang tidak ada, jadi nolnya diterjemahkan di SINI, sekali.
+      ...moneyColumn<TrialBalanceRow>({ dataIndex: "debit", title: t("common.debit") }),
+      render: (_v, r) => <Money value={r.debit > 0 ? r.debit : undefined} currency="IDR" />,
+    },
+    {
+      ...moneyColumn<TrialBalanceRow>({ dataIndex: "credit", title: t("common.credit") }),
+      render: (_v, r) => <Money value={r.credit > 0 ? r.credit : undefined} currency="IDR" />,
+    },
+  ];
+
+  /** Kaki: label + lencana membentang dua kolom pertama, lalu kedua totalnya. */
+  const totalLabel: SummaryCell = {
+    content: (
+      <span
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+      >
+        {t("common.total")}
+        {tb.balanced ? (
+          <Badge variant="success">{t("reports.balanced")}</Badge>
+        ) : (
+          <Badge variant="danger">{t("reports.unbalanced")}</Badge>
+        )}
+      </span>
+    ),
+    colSpan: 2,
+    scope: "row",
+  };
+
   return (
     <div>
       <PageHeader
@@ -70,63 +129,29 @@ export default async function TrialBalancePage({
       <AsOfFilter basePath="/reports/trial-balance" asOf={asOfISO} />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("accounts.colCode")}</TableHead>
-              <TableHead>{t("accounts.nameField")}</TableHead>
-              <TableHead className="text-right">{t("common.debit")}</TableHead>
-              <TableHead className="text-right">{t("common.credit")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tb.rows.map((r) => (
-              <TableRow key={r.code}>
-                <TableCell className="py-2.5 font-mono text-foreground tabular-nums">{r.code}</TableCell>
-                <TableCell className="py-2.5">{r.name}</TableCell>
-                {/* Saldo nol tampil "—", bukan "Rp 0" — jadi selnya tetap
-                    dirender sendiri dengan `Money` di dalamnya. */}
-                <TableCell className="py-2.5 text-right tabular-nums">
-                  {r.debit > 0 ? <Money value={r.debit} currency="IDR" /> : "—"}
-                </TableCell>
-                <TableCell className="py-2.5 text-right tabular-nums">
-                  {r.credit > 0 ? <Money value={r.credit} currency="IDR" /> : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-            {tb.rows.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="p-0">
-                  <EmptyState
-                    icon={<Scale className="h-12 w-12" />}
-                    title={t("reports.trialBalanceEmptyTitle")}
-                    description={t("reports.trialBalanceEmptyDescription")}
-                    actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}
-                    actionHref={canRecordCash ? "/finance/new" : undefined}
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-          <TableFooter className="border-t-2 bg-transparent">
-            <TableRow className="font-semibold hover:bg-transparent">
-              <TableCell colSpan={2}>
-                {t("common.total")}{" "}
-                {tb.balanced ? (
-                  <Badge variant="success">{t("reports.balanced")}</Badge>
-                ) : (
-                  <Badge variant="danger">{t("reports.unbalanced")}</Badge>
-                )}
-              </TableCell>
-              <TableCell className="p-0">
-                <MoneyCell value={tb.totalDebit} currency="IDR" />
-              </TableCell>
-              <TableCell className="p-0">
-                <MoneyCell value={tb.totalCredit} currency="IDR" />
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
+        <StaticTable<TrialBalanceRow>
+          columns={columns}
+          rows={tb.rows}
+          rowKey={(r) => r.code}
+          summary={[
+            {
+              cells: {
+                code: totalLabel,
+                debit: <Money value={tb.totalDebit} currency="IDR" />,
+                credit: <Money value={tb.totalCredit} currency="IDR" />,
+              },
+            },
+          ]}
+          empty={
+            <EmptyState
+              icon={<Scale size={EMPTY_ICON_SIZE} />}
+              title={t("reports.trialBalanceEmptyTitle")}
+              description={t("reports.trialBalanceEmptyDescription")}
+              actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}
+              actionHref={canRecordCash ? "/finance/new" : undefined}
+            />
+          }
+        />
       </Card>
     </div>
   );

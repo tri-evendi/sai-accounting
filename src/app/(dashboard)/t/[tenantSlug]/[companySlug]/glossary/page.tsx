@@ -16,6 +16,9 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
+/** Panjang baris nyaman untuk kalimat pembuka (`max-w-3xl` lama = 48rem). */
+const DESCRIPTION_MAX_WIDTH = 768;
+
 export default async function GlossaryPage({
   params,
 }: {
@@ -25,11 +28,11 @@ export default async function GlossaryPage({
   const t = await getT();
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <PageHeader
         title={t("nav.items.glossary")}
         description={
-          <span className="block max-w-3xl">
+          <span style={{ display: "block", maxWidth: DESCRIPTION_MAX_WIDTH }}>
             {t("glossary.descriptionBefore", { count: TERM_LIST.length })}{" "}
             <span aria-hidden="true">“?”</span> {t("glossary.descriptionAfter")}
           </span>

@@ -82,9 +82,20 @@ const RAW_BUTTON_ALLOWLIST = new Set([
   // tampil identik (kartu dua baris, tinggi mengikuti isi) — `Button` memaksa
   // tinggi 40px, `justify-center`, dan `whitespace-nowrap`.
   "components/shared/wizard.tsx",
-  // Grup chip filter `aria-pressed`: semantik toggle, belum ada primitifnya
-  // (tidak ada `ToggleGroup` di src/components/ui).
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/glossary/glossary-browser.tsx",
+  /*
+   * ── Entri grup chip Kamus Istilah DIKELUARKAN di issue #198 ──────────────
+   * Alasannya dulu "semantik toggle, belum ada primitifnya (tidak ada
+   * `ToggleGroup` di src/components/ui)". Yang dibutuhkan `glossary-browser`
+   * ternyata bukan ToggleGroup melainkan kelompok pilihan SALING MENIADAKAN —
+   * satu kategori, atau "semua" — dan itu `Segmented` AntD, yang merender
+   * `role="radiogroup"` berisi `<input type="radio">` sungguhan: panah
+   * kiri/kanan berpindah pilihan dan `checked` diumumkan pembaca layar.
+   *
+   * Itu lebih ketat daripada tujuh `aria-pressed` yang berdiri sendiri-sendiri
+   * padahal hanya satu boleh aktif. `<input type="radio">` native memang di
+   * luar aturan ini (lihat MASTER.md), jadi tidak ada pengecualian baru yang
+   * menggantikannya.
+   */
 ]);
 
 function tsxFiles(dir: string): string[] {

@@ -248,7 +248,7 @@ export default async function BalanceSheetPage({
 
       <PlainSummary summary={summary} />
 
-      <div className="mb-4">
+      <div style={{ marginBottom: "var(--ant-margin)" }}>
         {bs.balanced ? (
           <Badge variant="success">{t("reports.balanceSheetBalanced")}</Badge>
         ) : (

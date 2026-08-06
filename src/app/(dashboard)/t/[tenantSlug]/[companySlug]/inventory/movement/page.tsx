@@ -19,6 +19,10 @@ import { PackageOpen, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+const ICON_SIZE = 16;
+
 /** Satu baris laporan — bentuk yang dibaca kolom di bawah. */
 type MovementRow = Awaited<ReturnType<typeof getStockMovementReport>>["rows"][number];
 
@@ -103,14 +107,18 @@ export default async function StockMovementPage({
     closing: t("stockMovement.colClosing"),
   };
   // Masuk hijau / keluar merah mengikuti semantik uang app ini, dan angkanya
-  // sendiri tetap penanda non-warna. Varian `-strong`, bukan warna penuh: ini
-  // sel tabel `text-sm`, yang menuntut 4,5:1 (MASTER.md §Color Palette).
-  const QTY_CLASS: Record<Exclude<StockMovementColumnId, "name" | "unit">, string> = {
-    opening: "text-muted-foreground",
-    movedIn: "text-success-strong",
-    movedOut: "text-destructive-strong",
-    processed: "text-muted-foreground",
-    closing: "font-semibold text-foreground",
+  // sendiri tetap penanda non-warna. Token UANG (`--ant-color-money-*`, #186),
+  // bukan `colorSuccess`/`colorError` bawaan: ini sel tabel 14px, yang menuntut
+  // 4,5:1 — dan warna penuh AntD hanya 2,3:1 di sana.
+  const QTY_STYLE: Record<
+    Exclude<StockMovementColumnId, "name" | "unit">,
+    React.CSSProperties
+  > = {
+    opening: { color: "var(--ant-color-text-secondary)" },
+    movedIn: { color: "var(--ant-color-money-positive)" },
+    movedOut: { color: "var(--ant-color-money-negative)" },
+    processed: { color: "var(--ant-color-text-secondary)" },
+    closing: { fontWeight: "var(--ant-font-weight-strong)" },
   };
   const TOTALS: Record<Exclude<StockMovementColumnId, "name" | "unit">, number> = {
     opening: report.totalOpening,
@@ -125,23 +133,36 @@ export default async function StockMovementPage({
     if (id === "name") {
       return {
         ...textColumn<MovementRow>({ dataIndex: "name", title: HEADERS.name }),
-        className: "font-medium text-foreground",
+        render: (raw) => (
+          <span style={{ fontWeight: "var(--ant-font-weight-strong)" }}>{String(raw)}</span>
+        ),
       };
     }
     if (id === "unit") {
       return {
         ...textColumn<MovementRow>({ dataIndex: "unit", title: HEADERS.unit }),
-        className: "text-muted-foreground",
         // Satuan kosong ditulis "-": selnya memang tak berisi, dan itu berbeda
         // dari satuan yang belum diketahui.
-        render: (raw) => (raw ? String(raw) : "-"),
+        render: (raw) => (
+          <span style={{ color: "var(--ant-color-text-secondary)" }}>
+            {raw ? String(raw) : "-"}
+          </span>
+        ),
       };
     }
-    return qtyColumn<MovementRow>({
-      dataIndex: id,
-      title: HEADERS[id],
-      className: QTY_CLASS[id],
-    });
+    /*
+     * Warnanya dipasang MEMBUNGKUS `qtyColumn`, bukan menggantikannya: aturan
+     * kuantitas (rata kanan · tabular-nums · id-ID · "—" untuk nilai tak
+     * diketahui) tetap milik satu pembantu, dan yang ditambahkan di sini hanya
+     * arah warnanya. Menulis ulang `render` sendiri berarti dua aturan angka.
+     */
+    const base = qtyColumn<MovementRow>({ dataIndex: id, title: HEADERS[id] });
+    return {
+      ...base,
+      render: (raw, row, index) => (
+        <span style={QTY_STYLE[id]}>{base.render?.(raw, row, index)}</span>
+      ),
+    };
   }
 
   const columns: SaiColumns<MovementRow> = cols.map(columnFor);
@@ -201,7 +222,7 @@ export default async function StockMovementPage({
           summary={summary}
           empty={
             <EmptyState
-              icon={<PackageOpen className="h-12 w-12" />}
+              icon={<PackageOpen size={EMPTY_ICON_SIZE} />}
               title={t("stockMovement.emptyTitle")}
               description={t("stockMovement.emptyDescription")}
             />
@@ -213,8 +234,17 @@ export default async function StockMovementPage({
           adalah yang membuat penghilangan itu jujur, bukan membuat daftar barang
           tampak lebih pendek daripada yang sebenarnya. */}
       {report.dormantCount > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 6,
+            marginTop: 12,
+            marginBottom: 0,
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          <Info size={ICON_SIZE} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{t("stockMovement.dormantNote", { count: report.dormantCount })}</span>
         </p>
       )}

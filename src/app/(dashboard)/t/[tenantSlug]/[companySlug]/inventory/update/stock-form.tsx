@@ -13,11 +13,12 @@
  */
 
 import { useState } from "react";
+import { Flex } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AlertCircle, Info, Lock, Package } from "lucide-react";
@@ -42,6 +43,51 @@ import {
 import { findStockShortfalls } from "@/lib/delivery-orders";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
+const SECTION_GAP = 24;
+const FIELD_GAP = 16;
+const CONTROL_GAP = 12;
+/** `w-28` lama — lebar kotak satuan pada formulir barang baru. */
+const UNIT_WIDTH = 112;
+const EMPTY_ICON_SIZE = 48;
+const ICON_SIZE = 16;
+const SMALL_ICON_SIZE = 14;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
+
+/** Kotak pesan sebaris — satu bentuk untuk galat, sukses, dan catatan. */
+const NOTICE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  margin: 0,
+  marginBottom: FIELD_GAP,
+  padding: 12,
+  borderRadius: "var(--ant-border-radius)",
+};
+
+/** Peringatan kecil di bawah isian — ikon + kalimat, warna uang negatif. */
+const FIELD_WARNING: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 4,
+  margin: 0,
+  marginTop: 4,
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-money-negative)",
+};
+
+const HINT: React.CSSProperties = {
+  margin: 0,
+  marginTop: 4,
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-secondary)",
+};
+
+const NUMERIC_FIELD: React.CSSProperties = {
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
 
 export interface StockItemOption {
   id: number;
@@ -240,9 +286,10 @@ export function StockUpdateForm({
   }
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
+      {/* `mb-1` lama tidak pernah berlaku: `PageHeader` menulis `marginBottom`
+          sebaris, dan gaya sebaris selalu menang atas kelas. */}
       <PageHeader
-        className="mb-1"
         // Sub-halaman Stok tanpa remah roti memaksa pengguna kembali lewat menu
         // samping — satu-satunya jalan pulang sebelum ini.
         breadcrumbs={[
@@ -255,60 +302,98 @@ export function StockUpdateForm({
           <Button
             variant="secondary"
             size="sm"
-            className="shrink-0 cursor-pointer"
+            style={{ flexShrink: 0 }}
             onClick={() => setShowNewItem(!showNewItem)}
           >
             {showNewItem ? t("common.cancel") : t("inventory.newItemToggle")}
           </Button>
         }
       />
-      <LearnMore term="hpp" className="mt-1 mb-6" label={t("inventory.learnMoreCogs")} />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="hpp" label={t("inventory.learnMoreCogs")} />
+      </div>
 
       {error && (
         <div
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
+          style={{
+            ...NOTICE,
+            background: "var(--ant-color-error-bg)",
+            color: "var(--ant-color-money-negative)",
+          }}
           role="alert"
         >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <AlertCircle size={ICON_SIZE} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="mb-4 rounded-md bg-success-soft p-3 text-sm text-success-strong" role="status">
+        <div
+          style={{
+            ...NOTICE,
+            background: "var(--ant-color-success-bg)",
+            color: "var(--ant-color-money-positive)",
+          }}
+          role="status"
+        >
           {success}
         </div>
       )}
 
       {/* New Item Form */}
       {showNewItem && (
-        <Card className="mb-6">
-          <CardHeader><CardTitle>{t("inventory.newItemTitle")}</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateItem} className="flex items-end gap-3">
-              <div className="flex-1">
+        <Card style={{ marginBottom: SECTION_GAP }}>
+          <div
+            style={{
+              padding: "var(--ant-padding-lg)",
+              borderBottom: "1px solid var(--ant-color-border-secondary)",
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
+              {t("inventory.newItemTitle")}
+            </h2>
+          </div>
+          <div style={{ padding: "var(--ant-padding-lg)" }}>
+            <Flex component="form" onSubmit={handleCreateItem} align="flex-end" gap={CONTROL_GAP}>
+              <div style={{ flex: 1 }}>
                 <Input id="newItemName" label={t("common.itemName")} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
               </div>
-              <div className="w-28">
+              <div style={{ width: UNIT_WIDTH }}>
                 <Input id="newItemUnit" label={t("common.unit")} value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
               </div>
-              <Button type="submit" size="sm" className="cursor-pointer">{t("common.save")}</Button>
-            </form>
-          </CardContent>
+              <Button type="submit" size="sm">{t("common.save")}</Button>
+            </Flex>
+          </div>
         </Card>
       )}
 
       {/* Stock Update Form */}
       <Card>
-        <CardHeader><CardTitle>{t("inventory.movementTitle")}</CardTitle></CardHeader>
-        <CardContent>
+        <div
+          style={{
+            padding: "var(--ant-padding-lg)",
+            borderBottom: "1px solid var(--ant-color-border-secondary)",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
+            {t("inventory.movementTitle")}
+          </h2>
+        </div>
+        <div style={{ padding: "var(--ant-padding-lg)" }}>
           {items.length === 0 ? (
             <EmptyState
-              icon={<Package className="h-12 w-12" />}
+              icon={<Package size={EMPTY_ICON_SIZE} />}
               title={t("inventory.emptyFormTitle")}
               description={t("inventory.emptyFormDescription")}
             />
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            /* Sengaja `<form>` biasa, bukan `Flex component="form"`: penangannya
+               membaca `e.currentTarget` sebagai `HTMLFormElement`
+               (`new FormData(...)`), sedangkan `Flex` mengetik kejadiannya
+               sebagai `HTMLElement`. Tata letaknya tetap flex sebaris. */
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: "flex", flexDirection: "column", gap: FIELD_GAP }}
+            >
               <div>
                 <Select
                   id="itemId"
@@ -324,7 +409,7 @@ export function StockUpdateForm({
                   required
                 />
                 {selected && (
-                  <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                  <p style={{ ...HINT, fontVariantNumeric: "tabular-nums" }}>
                     {t("inventory.currentStockHint", {
                       qty: formatNumber(selected.currentStock),
                       unit: selected.unit || "kg",
@@ -350,15 +435,19 @@ export function StockUpdateForm({
                   type="number"
                   step="0.01"
                   min="0"
-                  className="text-right tabular-nums"
+                  style={NUMERIC_FIELD}
                   label={t("common.quantity")}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   required
                 />
                 {overStock && selected && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <p style={FIELD_WARNING} role="alert">
+                    <AlertCircle
+                      size={SMALL_ICON_SIZE}
+                      style={{ flexShrink: 0, marginTop: 2 }}
+                      aria-hidden="true"
+                    />
                     <span>
                       {t("inventory.overStockWarning", {
                         qty: formatNumber(selected.currentStock),
@@ -376,17 +465,31 @@ export function StockUpdateForm({
                     type="number"
                     step="0.01"
                     min="0"
-                    className="text-right tabular-nums"
+                    style={NUMERIC_FIELD}
                     label={<TermTooltip term="hpp">{t("inventory.unitCostLabel")}</TermTooltip>}
                     required
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("inventory.unitCostHint")}
-                  </p>
+                  <p style={HINT}>{t("inventory.unitCostHint")}</p>
                 </div>
               ) : (
-                <p className="flex items-start gap-1.5 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <p
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 6,
+                    margin: 0,
+                    padding: "8px 12px",
+                    borderRadius: "var(--ant-border-radius)",
+                    background: "var(--ant-color-fill-quaternary)",
+                    fontSize: "var(--ant-font-size-sm)",
+                    color: "var(--ant-color-text-secondary)",
+                  }}
+                >
+                  <Info
+                    size={SMALL_ICON_SIZE}
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                    aria-hidden="true"
+                  />
                   <span>{t("inventory.cogsAutoHint")}</span>
                 </p>
               )}
@@ -401,8 +504,12 @@ export function StockUpdateForm({
                   required
                 />
                 {periodIssue && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <p style={FIELD_WARNING} role="alert">
+                    <Lock
+                      size={SMALL_ICON_SIZE}
+                      style={{ flexShrink: 0, marginTop: 2 }}
+                      aria-hidden="true"
+                    />
                     <span>{periodIssue}</span>
                   </p>
                 )}
@@ -416,22 +523,21 @@ export function StockUpdateForm({
                 hint={t("costCenters.stockPickerHint")}
               />
 
-              <div className="flex gap-3">
-                <Button type="submit" className="cursor-pointer" disabled={loading}>
+              <Flex gap={CONTROL_GAP}>
+                <Button type="submit" disabled={loading}>
                   {loading ? t("common.saving") : t("inventory.submitMovement")}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
-                  className="cursor-pointer"
                   onClick={() => router.push("/inventory")}
                 >
                   {t("inventory.backToInventory")}
                 </Button>
-              </div>
+              </Flex>
             </form>
           )}
-        </CardContent>
+        </div>
       </Card>
 
       {/* Konfirmasi pengeluaran stok besar (issue #6). */}

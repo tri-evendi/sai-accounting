@@ -4,13 +4,24 @@ import { useState, useEffect } from "react";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Flex } from "antd";
+import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { DOCUMENT_TYPES } from "@/lib/constants";
 import { Upload } from "lucide-react";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
+
+/** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
+const SECTION_GAP = 24;
+const FIELD_GAP = 16;
+const CONTROL_GAP = 12;
+/** Tinggi area jatuhkan-berkas — `h-32` lama. */
+const DROPZONE_HEIGHT = 128;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
+
+const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
 
 interface ContractOption {
   id: number;
@@ -70,7 +81,7 @@ export function UploadClient() {
   }
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <PageHeader
         breadcrumbs={[
           { label: t("nav.items.documents"), href: "/documents" },
@@ -80,44 +91,92 @@ export function UploadClient() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
+        <div
+          style={{
+            margin: 0,
+            marginBottom: FIELD_GAP,
+            padding: 12,
+            borderRadius: "var(--ant-border-radius)",
+            background: "var(--ant-color-error-bg)",
+            color: "var(--ant-color-money-negative)",
+          }}
+          role="alert"
+        >
+          {error}
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
-          <CardHeader><CardTitle>{t("documents.formTitle")}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+        <Card style={{ marginBottom: SECTION_GAP }}>
+          <div
+            style={{
+              padding: "var(--ant-padding-lg)",
+              borderBottom: "1px solid var(--ant-color-border-secondary)",
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
+              {t("documents.formTitle")}
+            </h2>
+          </div>
+          <div style={{ padding: "var(--ant-padding-lg)" }}>
+            <Flex vertical gap={FIELD_GAP}>
               {/* File Input */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                {/* Label ini dulu tidak tertaut ke isian mana pun; `htmlFor`
+                    menautkannya ke isian berkas yang sesungguhnya, jadi
+                    pembaca layar mengumumkan namanya. */}
+                <label
+                  htmlFor="document-file"
+                  style={{ display: "block", marginBottom: 4, fontWeight: STRONG }}
+                >
                   {t("documents.fileField")}
                 </label>
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                      {file ? (
-                        <p className="text-sm text-foreground font-medium">{file.name}</p>
-                      ) : (
-                        <>
-                          <p className="text-sm text-muted-foreground">
-                            {t("documents.pickFile")}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t("documents.fileHint")}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".jpg,.jpeg,.png,.gif,.pdf"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                </div>
+                <label
+                  htmlFor="document-file"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: DROPZONE_HEIGHT,
+                    padding: "20px 16px",
+                    border: "2px dashed var(--ant-color-border)",
+                    borderRadius: "var(--ant-border-radius-lg)",
+                    background: "var(--ant-color-fill-quaternary)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Upload
+                    size={32}
+                    style={{ marginBottom: 8, color: "var(--ant-color-text-secondary)" }}
+                    aria-hidden="true"
+                  />
+                  {file ? (
+                    <p style={{ margin: 0, fontWeight: STRONG }}>{file.name}</p>
+                  ) : (
+                    <>
+                      <p style={{ margin: 0, ...MUTED }}>{t("documents.pickFile")}</p>
+                      <p
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          fontSize: "var(--ant-font-size-sm)",
+                          ...MUTED,
+                        }}
+                      >
+                        {t("documents.fileHint")}
+                      </p>
+                    </>
+                  )}
+                  <input
+                    id="document-file"
+                    type="file"
+                    style={{ display: "none" }}
+                    accept=".jpg,.jpeg,.png,.gif,.pdf"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  />
+                </label>
               </div>
 
               <Select
@@ -141,18 +200,18 @@ export function UploadClient() {
                   label: c.contractNo,
                 }))}
               />
-            </div>
-          </CardContent>
+            </Flex>
+          </div>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex gap={CONTROL_GAP}>
           <Button type="submit" disabled={loading || !file}>
             {loading ? t("documents.uploading") : t("documents.uploadTitle")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/documents")}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

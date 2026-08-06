@@ -30,9 +30,31 @@
  * berkas impor DJP di halamannya sendiri). Bagi mereka dialog menawarkan "Buka"
  * saja — beserta kalimat yang membedakan "belum punya ekspor" dari "ekspornya
  * ada di halamannya".
+ *
+ * ══ KONVERSI ANT DESIGN (issue #198) ═══════════════════════════════════════
+ * Dialognya SUDAH berdiri di atas `Modal` AntD sejak #190 — primitif `Dialog`
+ * adalah `Modal` dengan `footer={null}` dan judul sebagai ANAK. Yang dikerjakan
+ * di sini adalah sisa fase C-nya: nol kelas Tailwind, lebar lewat prop `size`
+ * (#194) alih-alih `max-w-lg`, dan kotak centang lewat `Checkbox` AntD yang
+ * membawa labelnya sendiri.
+ *
+ * Yang SENGAJA tidak dilakukan: memindahkan judul & tombol ke prop `title`/
+ * `footer` milik `Modal` mentah. Pemicunya adalah `DialogTrigger` — sebuah
+ * elemen tombol asli yang membungkus seluruh kartu laporan — dan `Modal` mentah
+ * tidak punya pemicu sama sekali. Menulisnya sendiri berarti tombol MENTAH
+ * (ditolak penjaga primitif) atau `Button` primitif yang memaksa tinggi 40px ke
+ * sebuah kartu. Kartu ber-`onClick` bukan pilihan: ia kehilangan Enter/Spasi
+ * dan urutan Tab, dan tak satu pun tes akan berteriak.
+ *
+ * Satu kelas yang hilang tanpa pengganti sebaris: `focus-visible:ring-2` pada
+ * pemicu. Ia dulu ditulis bersama `focus:outline-none`, jadi keduanya dicabut
+ * BERSAMAAN — yang tersisa adalah cincin fokus bawaan peramban, yang memang
+ * terlihat. Mencabut hanya cincinnya akan menghasilkan tombol tanpa penanda
+ * fokus sama sekali.
  */
 import { useState } from "react";
 import { ArrowRight, Eye, FileSpreadsheet, FileText } from "lucide-react";
+import { Flex } from "antd";
 import {
   Dialog,
   DialogClose,
@@ -51,6 +73,36 @@ import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { useT } from "@/lib/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
+
+/** `padding` 20 · `paddingLG` 16 di kaki — jarak kepala/badan/kaki dialog. */
+const PANE_PADDING = 20;
+const FOOTER_PADDING = 16;
+/** Ruang untuk tombol tutup (X) di pojok kanan atas. */
+const CLOSE_GUTTER = 48;
+const FIELD_GAP = 20;
+const CONTROL_GAP = 12;
+/** Lebar minimum satu kolom isian sebelum kisinya turun sebaris (breakpoint `sm`). */
+const FIELD_MIN_WIDTH = 200;
+/** Target sentuh satu baris pilihan — `min-h-10` lama. */
+const OPTION_ROW: React.CSSProperties = { minHeight: 40, alignItems: "center" };
+const ICON_SIZE = 16;
+
+/**
+ * Pemicu = SELURUH kartu. Tanpa gaya tombol bawaan, tetapi tetap sebuah tombol:
+ * Radix diganti `DialogTrigger` primitif, yang merender elemen tombol asli
+ * jadi Enter/Spasi bekerja dan fokusnya masuk urutan Tab.
+ */
+const TRIGGER_STYLE: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  height: "100%",
+  padding: 0,
+  border: "none",
+  background: "none",
+  textAlign: "start",
+  cursor: "pointer",
+  borderRadius: "var(--ant-border-radius-lg)",
+};
 
 /** Hari ini & awal tahun dalam bentuk ISO — bawaan yang sama dengan `resolvePeriod`. */
 function isoToday(): string {
@@ -178,22 +230,40 @@ export function ReportLaunchDialog({
         dan fokusnya masuk urutan Tab — hal yang hilang kalau kartu ini hanya
         sebuah `div` ber-onClick.
       */}
-      <DialogTrigger className="block h-full w-full cursor-pointer rounded-xl text-left transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none">
-        {children}
-      </DialogTrigger>
+      <DialogTrigger style={TRIGGER_STYLE}>{children}</DialogTrigger>
 
-      <DialogContent className="max-w-lg" aria-describedby={undefined}>
-        <div className="border-b border-border p-5 pr-12">
-          <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
-          <DialogDescription className="mt-1 text-sm text-muted-foreground">
+      <DialogContent size="sm" aria-describedby={undefined}>
+        <div
+          style={{
+            padding: PANE_PADDING,
+            paddingInlineEnd: CLOSE_GUTTER,
+            borderBottom: "1px solid var(--ant-color-border-secondary)",
+          }}
+        >
+          <DialogTitle
+            style={{
+              margin: 0,
+              fontSize: "var(--ant-font-size-lg)",
+              fontWeight: "var(--ant-font-weight-strong)",
+            }}
+          >
+            {title}
+          </DialogTitle>
+          <DialogDescription
+            style={{ margin: 0, marginTop: 4, color: "var(--ant-color-text-secondary)" }}
+          >
             {description}
           </DialogDescription>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        <Flex
+          vertical
+          gap={FIELD_GAP}
+          style={{ flex: 1, overflowY: "auto", padding: PANE_PADDING }}
+        >
           {report.paramKind === "period" && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
+            <Flex vertical gap={CONTROL_GAP}>
+              <Flex wrap gap={8}>
                 <Button type="button" variant="outline" size="sm" onClick={() => preset("month")}>
                   {t("reports.dialog.presetMonth")}
                 </Button>
@@ -203,8 +273,14 @@ export function ReportLaunchDialog({
                 <Button type="button" variant="outline" size="sm" onClick={() => preset("year")}>
                   {t("reports.dialog.presetYear")}
                 </Button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              </Flex>
+              <div
+                style={{
+                  display: "grid",
+                  gap: CONTROL_GAP,
+                  gridTemplateColumns: `repeat(auto-fit, minmax(${FIELD_MIN_WIDTH}px, 1fr))`,
+                }}
+              >
                 <Input
                   id={`${report.id}-from`}
                   type="date"
@@ -220,7 +296,7 @@ export function ReportLaunchDialog({
                   onChange={(e) => setTo(e.target.value)}
                 />
               </div>
-            </div>
+            </Flex>
           )}
 
           {report.paramKind === "as_of" && (
@@ -234,7 +310,7 @@ export function ReportLaunchDialog({
           )}
 
           {report.paramKind === "period_month" && (
-            <div className="space-y-3">
+            <Flex vertical gap={CONTROL_GAP}>
               <Input
                 id={`${report.id}-month`}
                 type="month"
@@ -245,19 +321,21 @@ export function ReportLaunchDialog({
               />
               {/* Setahun penuh memakai bulannya sebagai TAHUN saja — isian bulan
                   dinonaktifkan supaya tidak terlihat seperti pilihan yang
-                  diabaikan. */}
-              <label
-                htmlFor={`${report.id}-whole-year`}
-                className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted"
+                  diabaikan.
+
+                  Labelnya kini milik `Checkbox` AntD (ia MEMANG sebuah
+                  `<label>`), jadi seluruh barisnya tetap bisa ditekan tanpa
+                  `htmlFor` yang dirakit tangan; `minHeight` menjaga target
+                  sentuhnya 40px. */}
+              <Checkbox
+                id={`${report.id}-whole-year`}
+                checked={wholeYear}
+                onCheckedChange={(checked) => setWholeYear(checked === true)}
+                style={OPTION_ROW}
               >
-                <Checkbox
-                  id={`${report.id}-whole-year`}
-                  checked={wholeYear}
-                  onCheckedChange={(checked) => setWholeYear(checked === true)}
-                />
-                <span className="text-sm text-foreground">{t("reports.dialog.wholeYear")}</span>
-              </label>
-            </div>
+                {t("reports.dialog.wholeYear")}
+              </Checkbox>
+            </Flex>
           )}
 
           {showCostCenter && (
@@ -271,38 +349,51 @@ export function ReportLaunchDialog({
           )}
 
           {columnSpecs.length > 0 && (
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-foreground">
+            <fieldset style={{ margin: 0, padding: 0, border: "none" }}>
+              <legend
+                style={{ padding: 0, fontWeight: "var(--ant-font-weight-strong)" }}
+              >
                 {t("reports.dialog.columns")}
               </legend>
-              <p className="text-sm text-muted-foreground">{t("reports.dialog.columnsHint")}</p>
-              <div className="grid gap-1 sm:grid-cols-2">
-                {columnSpecs.map((c) => {
-                  const id = `${report.id}-col-${c.id}`;
-                  return (
-                    // Label membungkus baris penuh: target sentuhnya seluruh
-                    // baris (40px), bukan kotak 20px-nya saja.
-                    <label
-                      key={c.id}
-                      htmlFor={id}
-                      className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted"
-                    >
-                      <Checkbox
-                        id={id}
-                        checked={columns.includes(c.id)}
-                        disabled={c.fixed}
-                        onCheckedChange={(checked) => toggleColumn(c.id, checked === true)}
-                      />
-                      <span className="text-sm text-foreground">{c.label}</span>
-                    </label>
-                  );
-                })}
+              <p
+                style={{
+                  margin: 0,
+                  marginBottom: 8,
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
+                {t("reports.dialog.columnsHint")}
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 4,
+                  gridTemplateColumns: `repeat(auto-fit, minmax(${FIELD_MIN_WIDTH}px, 1fr))`,
+                }}
+              >
+                {/* Kotak centang AntD SUDAH sebuah `<label>` yang membungkus
+                    isian dan katanya, jadi target sentuhnya seluruh baris —
+                    bukan kotak 20px-nya saja. */}
+                {columnSpecs.map((c) => (
+                  <Checkbox
+                    key={c.id}
+                    id={`${report.id}-col-${c.id}`}
+                    checked={columns.includes(c.id)}
+                    disabled={c.fixed}
+                    onCheckedChange={(checked) => toggleColumn(c.id, checked === true)}
+                    style={OPTION_ROW}
+                  >
+                    {c.label}
+                  </Checkbox>
+                ))}
               </div>
             </fieldset>
           )}
 
           {report.paramKind === "none" && !showCostCenter && columnSpecs.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("reports.dialog.noParams")}</p>
+            <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
+              {t("reports.dialog.noParams")}
+            </p>
           )}
 
           {!exportable && (
@@ -310,13 +401,22 @@ export function ReportLaunchDialog({
             // "belum punya ekspor" dan "ekspornya di halamannya, dalam format
             // khusus" adalah dua keadaan berbeda, dan menyamakannya mengirim
             // orang mencari fitur yang sudah dimilikinya.
-            <p className="text-sm text-muted-foreground">
+            <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
               {report.exportOnPage ? t("reports.dialog.exportOnPage") : t("reports.dialog.noExport")}
             </p>
           )}
-        </div>
+        </Flex>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border p-4">
+        <Flex
+          wrap
+          align="center"
+          justify="flex-end"
+          gap={8}
+          style={{
+            padding: FOOTER_PADDING,
+            borderTop: "1px solid var(--ant-color-border-secondary)",
+          }}
+        >
           <DialogClose asChild>
             <Button type="button" variant="ghost">
               {t("common.cancel")}
@@ -330,7 +430,7 @@ export function ReportLaunchDialog({
                 onClick={() => download("pdf")}
                 disabled={busy !== null}
               >
-                <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
+                <FileText size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
                 {busy === "pdf" ? t("pdf.preparing") : t("reports.dialog.exportPdf")}
               </Button>
               <Button
@@ -339,7 +439,7 @@ export function ReportLaunchDialog({
                 onClick={() => download("xlsx")}
                 disabled={busy !== null}
               >
-                <FileSpreadsheet className="mr-1 h-4 w-4" aria-hidden="true" />
+                <FileSpreadsheet size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
                 {busy === "xlsx" ? t("pdf.preparing") : t("reports.dialog.exportExcel")}
               </Button>
             </>
@@ -347,14 +447,14 @@ export function ReportLaunchDialog({
           {report.href && (
             <Button type="button" onClick={openReport} disabled={busy !== null}>
               {exportable ? (
-                <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
+                <Eye size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
               ) : (
-                <ArrowRight className="mr-1 h-4 w-4" aria-hidden="true" />
+                <ArrowRight size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
               )}
               {exportable ? t("reports.dialog.preview") : t("reports.dialog.open")}
             </Button>
           )}
-        </div>
+        </Flex>
       </DialogContent>
     </Dialog>
   );

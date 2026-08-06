@@ -1,24 +1,47 @@
 "use client";
 
+/**
+ * Penyaring di atas laporan — dikonversi ke tata letak Ant Design (issue #198).
+ *
+ * Kedua formulir memakai `Flex component="form"`: yang hilang hanyalah kelas
+ * Tailwind-nya, tidak satu pun perilakunya. `align="flex-end"` tetap penting —
+ * `Input` menaruh labelnya DI ATAS kotak isian, jadi meratakan ke atas akan
+ * membuat tombol "Tampilkan" berdiri sejajar dengan label, bukan dengan kotak
+ * yang ia jalankan.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Flex } from "antd";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
 
+/** `margin` 16 · `marginLG` 24 — jarak antar kendali & jarak ke tabel di bawah. */
+const CONTROL_GAP = 12;
+const SECTION_GAP = 24;
+/** Lebar nyaman pemilih pusat biaya (`min-w-[220px]` lama). */
+const SELECT_MIN_WIDTH = 220;
+
 export function AsOfFilter({ basePath, asOf }: { basePath: string; asOf: string }) {
   const router = useRouter();
   const t = useT();
   const [d, setD] = useState(asOf);
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  function submit(e: React.FormEvent<HTMLElement>) {
     e.preventDefault();
     const p = new URLSearchParams();
     if (d) p.set("asOf", d);
     router.push(`${basePath}?${p.toString()}`);
   }
   return (
-    <form onSubmit={submit} className="mb-6 flex items-end gap-3">
+    <Flex
+      component="form"
+      onSubmit={submit}
+      align="flex-end"
+      gap={CONTROL_GAP}
+      style={{ marginBottom: SECTION_GAP }}
+    >
       <div>
         <Input
           id="asOf"
@@ -29,7 +52,7 @@ export function AsOfFilter({ basePath, asOf }: { basePath: string; asOf: string 
         />
       </div>
       <Button type="submit">{t("common.show")}</Button>
-    </form>
+    </Flex>
   );
 }
 
@@ -60,7 +83,7 @@ export function PeriodFilter({
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
   const [cc, setCc] = useState(costCenter ?? "");
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  function submit(e: React.FormEvent<HTMLElement>) {
     e.preventDefault();
     const p = new URLSearchParams();
     if (f) p.set("from", f);
@@ -69,7 +92,14 @@ export function PeriodFilter({
     router.push(`${basePath}?${p.toString()}`);
   }
   return (
-    <form onSubmit={submit} className="mb-6 flex flex-wrap items-end gap-3">
+    <Flex
+      component="form"
+      onSubmit={submit}
+      wrap
+      align="flex-end"
+      gap={CONTROL_GAP}
+      style={{ marginBottom: SECTION_GAP }}
+    >
       <div>
         <Input
           id="from"
@@ -89,7 +119,7 @@ export function PeriodFilter({
         />
       </div>
       {costCenterOptions && (
-        <div className="min-w-[220px]">
+        <div style={{ minWidth: SELECT_MIN_WIDTH }}>
           <Select
             id="costCenter"
             label={translate("costCenters.filterLabel")}
@@ -100,6 +130,6 @@ export function PeriodFilter({
         </div>
       )}
       <Button type="submit">{translate("common.show")}</Button>
-    </form>
+    </Flex>
   );
 }

@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DocumentPreview } from "@/components/shared/document-preview";
 import { useT } from "@/lib/i18n/client";
 
+/** Ikon di dalam tombol — `h-4 w-4` + `mr-1` lama. */
+const ICON_SIZE = 16;
+const ICON_STYLE: React.CSSProperties = { marginInlineEnd: 4 };
+
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
 
 function kindOf(filename: string): "pdf" | "image" | null {
@@ -36,7 +40,8 @@ export function DocumentPreviewButton({
     return (
       <a href={filepath} target="_blank" rel="noopener noreferrer">
         <Button variant="secondary" size="sm">
-          <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.open")}
+          <ExternalLink size={ICON_SIZE} style={ICON_STYLE} aria-hidden="true" />{" "}
+          {t("documents.open")}
         </Button>
       </a>
     );
@@ -45,7 +50,7 @@ export function DocumentPreviewButton({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Eye className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.preview")}
+        <Eye size={ICON_SIZE} style={ICON_STYLE} aria-hidden="true" /> {t("documents.preview")}
       </Button>
       <DocumentPreview
         open={open}

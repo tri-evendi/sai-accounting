@@ -8,7 +8,7 @@ import {
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -20,6 +20,42 @@ import { OpnameForm } from "./opname-form";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Stok Opname — dikonversi ke token Ant Design (issue #198). **Tetap server
+ * component**; formulir hitung fisiknya (`OpnameForm`) yang menjadi pulau
+ * client, seperti sebelumnya.
+ */
+
+/** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
+const SECTION_GAP = 24;
+const CARD_GAP = 16;
+const STAT_BASIS = 160;
+const EMPTY_ICON_SIZE = 48;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
+
+/** Kartu angka ringkas: keterangan kecil di atas, angkanya besar di bawah. */
+function statCard(label: string, value: number, color?: string) {
+  return (
+    <Card>
+      <div style={{ padding: "var(--ant-padding)" }}>
+        <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>{label}</p>
+        <p
+          style={{
+            margin: 0,
+            marginTop: "var(--ant-margin-xxs)",
+            fontSize: "var(--ant-font-size-heading-3)",
+            fontWeight: STRONG,
+            fontVariantNumeric: "tabular-nums",
+            color,
+          }}
+        >
+          {value}
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 export default async function StockOpnamePage({
   params,
@@ -66,8 +102,9 @@ export default async function StockOpnamePage({
 
   return (
     <div>
+      {/* `mb-1` lama tidak pernah berlaku: `PageHeader` menulis `marginBottom`
+          sebaris, dan gaya sebaris selalu menang atas kelas. */}
       <PageHeader
-        className="mb-1"
         // Sub-halaman Stok tanpa remah roti memaksa pengguna kembali lewat menu
         // samping — satu-satunya jalan pulang sebelum ini.
         breadcrumbs={[
@@ -91,39 +128,49 @@ export default async function StockOpnamePage({
           </>
         }
       />
-      <LearnMore term="stok_opname" className="mt-1 mb-6" />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="stok_opname" />
+      </div>
 
-      <div className="mb-6">
+      <div style={{ marginBottom: SECTION_GAP }}>
         <StockAlertBanner items={lowStockAlerts} />
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statItems")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{stockHealth.totalItems}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statHealthy")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-success">{stockHealth.healthy}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statLow")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-warning">{stockHealth.lowStock}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statEmpty")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-destructive">{stockHealth.empty}</p></CardContent>
-        </Card>
+      <div
+        style={{
+          display: "grid",
+          gap: CARD_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${STAT_BASIS}px, 1fr))`,
+          marginBottom: SECTION_GAP,
+        }}
+      >
+        {statCard(t("dashboard.statItems"), stockHealth.totalItems)}
+        {statCard(
+          t("dashboard.statHealthy"),
+          stockHealth.healthy,
+          "var(--ant-color-money-positive)"
+        )}
+        {statCard(t("dashboard.statLow"), stockHealth.lowStock, "var(--ant-color-money-pending)")}
+        {statCard(t("dashboard.statEmpty"), stockHealth.empty, "var(--ant-color-money-negative)")}
       </div>
 
       {/* Formulir hitung fisik → penyesuaian (issue #57) */}
       <Card>
-        <CardHeader><CardTitle>{t("inventory.opnameFormTitle", { count: totalCount })}</CardTitle></CardHeader>
-        <CardContent>
+        <div
+          style={{
+            padding: "var(--ant-padding-lg)",
+            borderBottom: "1px solid var(--ant-color-border-secondary)",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
+            {t("inventory.opnameFormTitle", { count: totalCount })}
+          </h2>
+        </div>
+        <div style={{ padding: "var(--ant-padding-lg)" }}>
           {opnameItems.length === 0 ? (
             <EmptyState
-              icon={<Package className="h-12 w-12" />}
+              icon={<Package size={EMPTY_ICON_SIZE} />}
               title={t("inventory.emptyTitle")}
               description={t("inventory.opnameEmptyDescription")}
               actionLabel={t("common.addRemoveStock")}
@@ -132,7 +179,7 @@ export default async function StockOpnamePage({
           ) : (
             <OpnameForm items={opnameItems} />
           )}
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

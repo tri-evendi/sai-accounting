@@ -40,7 +40,12 @@ import {
   type BusinessModule,
 } from "@/lib/business-modules";
 import { useT } from "@/lib/i18n/client";
-import { Check, Info, Lock, X } from "lucide-react";
+import {
+  CheckOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
+  LockOutlined,
+} from "@ant-design/icons";
 
 /** Modul non-inti yang DINYALAKAN sebuah preset (inti tak pernah disebut). */
 const presetOn = (category: BusinessCategory): BusinessModule[] =>
@@ -178,16 +183,24 @@ export function ModulePicker({
                       {/* Nyala/mati dibawa IKON + KATA ("Menyalakan:" /
                           "Mematikan:"), jadi warnanya bukan penanda tunggal. */}
                       {side === "on" ? (
-                        <Check
-                          size={12}
-                          style={{ marginTop: 2, flexShrink: 0, color: token.colorSuccessActive }}
+                        <CheckOutlined
                           aria-hidden="true"
+                          style={{
+                            fontSize: 12,
+                            marginTop: 2,
+                            flexShrink: 0,
+                            color: token.colorSuccessActive,
+                          }}
                         />
                       ) : (
-                        <X
-                          size={12}
-                          style={{ marginTop: 2, flexShrink: 0, color: token.colorTextSecondary }}
+                        <CloseOutlined
                           aria-hidden="true"
+                          style={{
+                            fontSize: 12,
+                            marginTop: 2,
+                            flexShrink: 0,
+                            color: token.colorTextSecondary,
+                          }}
                         />
                       )}
                       <span style={{ minWidth: 0, color: token.colorTextSecondary }}>
@@ -290,7 +303,7 @@ export function ModulePicker({
                           color: token.colorTextSecondary,
                         }}
                       >
-                        <Lock size={12} aria-hidden="true" />
+                        <LockOutlined aria-hidden="true" style={{ fontSize: 12 }} />
                         {t("modules.coreLocked")}
                       </span>
                     )}
@@ -326,7 +339,10 @@ export function ModulePicker({
           color: token.colorTextSecondary,
         }}
       >
-        <Info size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+        <InfoCircleOutlined
+          aria-hidden="true"
+          style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }}
+        />
         <span>{t("modules.ledgerNote")}</span>
       </p>
     </div>

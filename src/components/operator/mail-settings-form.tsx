@@ -39,7 +39,12 @@ import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
 import type { GlobalToken } from "antd";
-import { KeyRound, Mail, Send, ShieldAlert } from "lucide-react";
+import {
+  KeyOutlined,
+  MailOutlined,
+  SecurityScanOutlined,
+  SendOutlined,
+} from "@ant-design/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,7 +184,10 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
     <section style={panelBox(token)}>
       <Flex vertical gap={token.marginSM}>
         <Flex align="center" gap={token.marginXS}>
-          <Mail size={16} style={{ color: token.colorTextSecondary }} aria-hidden="true" />
+          <MailOutlined
+            aria-hidden="true"
+            style={{ fontSize: 16, color: token.colorTextSecondary }}
+          />
           <h2
             style={{
               margin: 0,
@@ -198,7 +206,7 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
           <Alert
             type="warning"
             showIcon
-            icon={<ShieldAlert size={16} aria-hidden="true" />}
+            icon={<SecurityScanOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             message={t("operator.mail.keyMissing")}
           />
         )}
@@ -362,7 +370,7 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
                             form.setValue("password", "");
                           }}
                         >
-                          <KeyRound size={16} aria-hidden="true" />
+                          <KeyOutlined aria-hidden="true" style={{ fontSize: 16 }} />
                           {changingPassword
                             ? t("operator.mail.passwordCancel")
                             : t("operator.mail.passwordChange")}
@@ -447,7 +455,10 @@ function TestPanel({ lastTest }: { lastTest: LastTest }) {
     <section style={panelBox(token)}>
       <Flex vertical gap={token.marginSM}>
         <Flex align="center" gap={token.marginXS}>
-          <Send size={16} style={{ color: token.colorTextSecondary }} aria-hidden="true" />
+          <SendOutlined
+            aria-hidden="true"
+            style={{ fontSize: 16, color: token.colorTextSecondary }}
+          />
           <h2
             style={{
               margin: 0,
@@ -494,7 +505,7 @@ function TestPanel({ lastTest }: { lastTest: LastTest }) {
                 variant="secondary"
                 disabled={form.formState.isSubmitting}
               >
-                <Send size={16} aria-hidden="true" />
+                <SendOutlined aria-hidden="true" style={{ fontSize: 16 }} />
                 {form.formState.isSubmitting
                   ? t("common.processing")
                   : t("operator.mail.testSubmit")}

@@ -121,17 +121,20 @@ const SIZES: Record<ButtonSize, Pick<AntdButtonProps, "size" | "shape">> = {
   icon: { size: "middle", shape: "circle" },
 };
 
-/**
- * `<svg>` lucide tanpa ukuran adalah 24px, yang di dalam tombol 40px terlihat
- * seperti salah render — jadi ikon tanpa kelas ukuran dikecilkan ke 16px di
- * sini. Ini SATU-SATUNYA kelas Tailwind yang tersisa di berkas ini.
+/*
+ * ── Tidak ada lagi pengecil ikon di sini, dan itu bukan kelalaian ──────────
  *
- * Ikon `@ant-design/icons` TIDAK membutuhkannya: SVG-nya `1em`, jadi ia sudah
- * mengikuti `fontSize` tombolnya. Baris ini karena itu hanya melayani 14 berkas
- * yang masih memakai lucide sampai issue #240 selesai menulis ulangnya; ia
- * dihapus bersama `lucide-react` dari `package.json` di PR penutup issue #201.
+ * Berkas ini dulu memasang `[&_svg:not([class*='size-'])]:size-4` pada setiap
+ * tombol: `<svg>` paket ikon LAMA tanpa ukuran adalah 24px, yang di dalam
+ * tombol 40px terlihat seperti salah render. Ikon `@ant-design/icons` tidak
+ * membutuhkannya — SVG-nya `1em`, jadi ia sudah mengikuti `fontSize` tombolnya
+ * — dan sejak paket lama dicabut (PR penutup issue #201), aturan itu tidak
+ * punya satu pun ikon yang dilayaninya. **Jangan memasangnya kembali:** ukuran
+ * ikon AntD adalah `font-size`, dan kelas kotak (`size-4`/`h-4 w-4`) mengukur `<span>`
+ * pembungkusnya, bukan SVG di dalamnya — perubahan yang terlihat berhasil di
+ * diff dan tidak berpengaruh apa pun di layar. Lihat "Ikon" di
+ * `design-system/sai-accounting/MASTER.md`.
  */
-const ICON_SIZE = "[&_svg:not([class*='size-'])]:size-4";
 
 type NativeButtonProps = Omit<React.ComponentProps<"button">, "color" | "type">;
 
@@ -167,7 +170,7 @@ function ButtonElement({
       {...VARIANTS[variant]}
       {...SIZES[size]}
       htmlType={type}
-      className={cn(ICON_SIZE, className)}
+      className={className}
       /*
        * `ref` tetap ditandatangani `HTMLButtonElement` di luar (satu pemanggil,
        * `confirm-dialog.tsx`, memfokuskan tombol konfirmasinya lewat ref).
@@ -245,7 +248,7 @@ function ButtonAnchor({
        * hanya tidak menavigasi — kegagalan yang terlihat, bukan yang senyap.
        */
       href={typeof href === "string" ? scopedHref(href, pathname) : undefined}
-      className={cn(ICON_SIZE, className, childClassName)}
+      className={cn(className, childClassName)}
       ref={ref as React.Ref<HTMLButtonElement | HTMLAnchorElement>}
       {...rest}
       {...anchorProps}

@@ -23,26 +23,32 @@
 
 import { Link } from "@/components/ui/app-link";
 import {
-  Receipt,
-  ShoppingCart,
-  ArrowDownLeft,
-  ArrowUpRight,
-  PackagePlus,
-  FileText,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+  AppstoreAddOutlined,
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  FileDoneOutlined,
+  FileTextOutlined,
+  ShoppingCartOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
+import type { IconComponent } from "@/lib/icons";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import type { QuickAction, QuickActionTone } from "@/lib/quick-actions";
 
-const ICONS: Record<string, LucideIcon> = {
-  Receipt,
-  ShoppingCart,
-  ArrowDownLeft,
-  ArrowUpRight,
-  PackagePlus,
-  FileText,
+/**
+ * `lib/quick-actions.ts` tetap menyebut ikon dengan NAMA LAMA: modul itu
+ * murni data dan tidak boleh tahu paket ikon mana yang menggambarnya (pola yang
+ * sama dengan `lib/nav.ts` → `layout/sidebar.tsx`, issue #201). Yang berpindah
+ * ke `@ant-design/icons` adalah NILAI peta ini.
+ */
+const ICONS: Record<string, IconComponent> = {
+  Receipt: FileDoneOutlined,
+  ShoppingCart: ShoppingCartOutlined,
+  ArrowDownLeft: ArrowDownOutlined,
+  ArrowUpRight: ArrowUpOutlined,
+  PackagePlus: AppstoreAddOutlined,
+  FileText: FileTextOutlined,
 };
 
 /**
@@ -161,7 +167,10 @@ export async function QuickActions({ actions }: { actions: QuickAction[] }) {
   return (
     <section data-tour="aksi-cepat" aria-labelledby="aksi-cepat-judul">
       <div style={HEAD_ROW}>
-        <Zap size={20} style={{ color: "var(--ant-color-link)" }} aria-hidden="true" />
+        <ThunderboltOutlined
+          aria-hidden="true"
+          style={{ fontSize: 20, color: "var(--ant-color-link)" }}
+        />
         <h2 id="aksi-cepat-judul" style={TITLE}>
           {t("quickActions.title")}
         </h2>
@@ -170,12 +179,12 @@ export async function QuickActions({ actions }: { actions: QuickAction[] }) {
 
       <div style={GRID}>
         {actions.map((action) => {
-          const Icon = ICONS[action.icon] ?? FileText;
+          const Icon = ICONS[action.icon] ?? FileTextOutlined;
           const tone = TONE_STYLES[action.tone];
           return (
             <Link key={action.key} href={action.href} style={CARD}>
               <span style={{ ...ICON_BOX, background: tone.background, color: tone.color }}>
-                <Icon size={24} aria-hidden="true" />
+                <Icon aria-hidden="true" style={{ fontSize: 24 }} />
               </span>
               <span style={{ minWidth: 0 }}>
                 <span style={ACTION_LABEL}>{t(action.labelKey)}</span>

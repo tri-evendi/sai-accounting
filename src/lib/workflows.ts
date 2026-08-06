@@ -35,7 +35,7 @@ export interface WorkflowStep {
   /** Kunci kamus untuk `description`. */
   descriptionKey: DictionaryKey;
   href: string;
-  /** Nama ikon lucide-react; dipetakan ke komponen di panelnya. */
+  /** Nama ikon (kunci peta `ICONS` di panelnya); dipetakan ke komponen di sana. */
   icon: string;
   /** Izin halaman tujuan — sama dengan `requirePagePermission` di sana. */
   permission: Permission;

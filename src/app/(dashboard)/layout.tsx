@@ -1,8 +1,25 @@
 "use client";
 
+/**
+ * Kerangka dasbor — `Layout` AntD (PR penutup #201/#240).
+ *
+ * Cangkangnya sendiri tertinggal saat #193 memindahkan Sidebar ke
+ * `Layout.Sider` dan Navbar ke `Layout.Header`: keduanya sudah AntD, tetapi
+ * masih berdiri di dalam `<div className="flex …">` tulisan tangan. Berkas ini
+ * bukan halaman dan bukan komponen, jadi ia tidak masuk lingkup issue mana pun
+ * — dan tiga kelas terakhirnya diselesaikan di sini, dengan susunan yang SAMA
+ * dengan `tenant/platform-shell.tsx` (`Layout` > `Sider` + `Layout` > `Header`
+ * + `Content`).
+ *
+ * `Layout.Content` merender `<main>` sendiri, jadi tengara halaman tidak
+ * hilang. Padding isinya mengikuti `Grid.useBreakpoint()` — pengganti
+ * `p-4 lg:p-6`; `lg` AntD adalah 992px, bukan 1024px milik Tailwind, dan itu
+ * satu-satunya pergeseran yang disengaja di sini.
+ */
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { SessionProvider } from "next-auth/react";
+import { Grid, Layout, theme } from "antd";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -15,6 +32,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const t = useT();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
 
   if (status === "loading") {
     return <PageLoader message={t("common.loadingSession")} />;
@@ -34,7 +53,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   if (!role) return <PageLoader message={t("common.loadingSession")} />;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    /*
+     * ⚠ `hasSider` DITULIS, tidak dibiarkan ditebak. `Layout` menyimpulkan
+     * arah barisnya dengan dua cara: anak yang bertipe `Layout.Sider` PERSIS,
+     * atau pendaftaran lewat context yang baru terjadi di `useEffect` milik
+     * `Sider`. `<Sidebar>` di sini pembungkus, bukan `Sider` telanjang — jadi
+     * tanpa prop ini render PERTAMA menumpuk menu di ATAS isi halaman, lalu
+     * melompat ke dua kolom sepersekian detik kemudian, pada setiap pemuatan
+     * penuh dasbor.
+     */
+    <Layout hasSider style={{ height: "100vh" }}>
       <Sidebar
         role={role}
         accountantMode={session.user.accountantMode}
@@ -42,7 +70,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <Layout>
         <Navbar
           userName={session.user.name}
           role={role}
@@ -52,11 +80,19 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           onSignOut={() => signOut({ callbackUrl: "/login" })}
         />
         {/* Konten memenuhi lebar penuh area utama (tanpa batas maks) — sesuai
-            permintaan. Padding tepi tetap agar tidak menempel ke sisi. */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+            permintaan. Padding tepi tetap agar tidak menempel ke sisi.
+            `Layout.Content` merender `<main>`-nya sendiri. */}
+        <Layout.Content
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            padding: screens.lg ? token.paddingLG : token.padding,
+          }}
+        >
           {children}
-        </main>
-      </div>
+        </Layout.Content>
+      </Layout>
       {/* issue #21 — tur panduan: jalan sekali pada kunjungan pertama halaman
           yang punya tur, dan bisa diputar ulang dari menu Bantuan. */}
       <GuidedTour />
@@ -68,7 +104,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         accountantMode={session.user.accountantMode}
         companyCount={session.user.companyCount}
       />
-    </div>
+    </Layout>
   );
 }
 

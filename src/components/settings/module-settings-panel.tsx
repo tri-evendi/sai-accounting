@@ -36,7 +36,7 @@ import {
   type BusinessModule,
 } from "@/lib/business-modules";
 import { useT } from "@/lib/i18n/client";
-import { Save } from "lucide-react";
+import { SaveOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface ModulesResponse {
@@ -182,7 +182,7 @@ export function ModuleSettingsPanel() {
 
             <Flex justify="flex-end" style={{ marginTop: token.margin }}>
               <Button disabled={saving || !isDirty} onClick={() => setConfirm(true)}>
-                <Save aria-hidden="true" />
+                <SaveOutlined aria-hidden="true" />
                 {t("common.saveChanges")}
               </Button>
             </Flex>

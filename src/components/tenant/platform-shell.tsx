@@ -82,7 +82,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
-import { Menu as MenuIcon, X } from "lucide-react";
+import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -226,7 +226,7 @@ function PanelMenu({
               aria-label={t("sidebar.closeMenu")}
               style={{ color: token.colorTextLightSolid, flexShrink: 0 }}
             >
-              <X size={20} aria-hidden="true" />
+              <CloseOutlined aria-hidden="true" style={{ fontSize: 20 }} />
             </Button>
           )}
         </Flex>
@@ -335,7 +335,7 @@ export function PlatformShell({ children, tenantName, nav, account }: PlatformSh
                 onClick={() => setMenuOpen(true)}
                 aria-label={t("sidebar.mainMenu")}
               >
-                <MenuIcon size={20} aria-hidden="true" />
+                <MenuOutlined aria-hidden="true" style={{ fontSize: 20 }} />
               </Button>
             )}
             {/* Orientasi "akun siapa" — sejajar `CompanyIndicator` di dasbor,

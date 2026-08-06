@@ -29,33 +29,39 @@
  */
 import { Link } from "@/components/ui/app-link";
 import {
-  Route,
-  FileText,
-  Receipt,
-  ArrowDownLeft,
-  ArrowUpRight,
-  HandCoins,
-  ShoppingCart,
-  Wallet,
-  Scale,
-  Lock,
-  BarChart3,
-  type LucideIcon,
-} from "lucide-react";
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  BarChartOutlined,
+  FileDoneOutlined,
+  FileTextOutlined,
+  LockOutlined,
+  MoneyCollectOutlined,
+  NodeIndexOutlined,
+  ReconciliationOutlined,
+  ShoppingCartOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import type { Workflow, WorkflowTone } from "@/lib/workflows";
 import type { TranslateFn } from "@/lib/i18n/client";
 
-const ICONS: Record<string, LucideIcon> = {
-  FileText,
-  Receipt,
-  ArrowDownLeft,
-  ArrowUpRight,
-  HandCoins,
-  ShoppingCart,
-  Wallet,
-  Scale,
-  Lock,
-  BarChart3,
+/**
+ * `lib/workflows.ts` tetap menyebut ikon dengan NAMA LAMA: modul itu
+ * murni data dan tidak boleh tahu paket ikon mana yang menggambarnya (pola yang
+ * sama dengan `lib/nav.ts` → `layout/sidebar.tsx`, issue #201). Yang berpindah
+ * ke `@ant-design/icons` adalah NILAI peta ini.
+ */
+const ICONS: Record<string, IconComponent> = {
+  FileText: FileTextOutlined,
+  Receipt: FileDoneOutlined,
+  ArrowDownLeft: ArrowDownOutlined,
+  ArrowUpRight: ArrowUpOutlined,
+  HandCoins: MoneyCollectOutlined,
+  ShoppingCart: ShoppingCartOutlined,
+  Wallet: WalletOutlined,
+  Scale: ReconciliationOutlined,
+  Lock: LockOutlined,
+  BarChart3: BarChartOutlined,
 };
 
 /**
@@ -233,7 +239,10 @@ export function WorkflowGuide({
   return (
     <section data-tour="alur-kerja" aria-labelledby="alur-judul">
       <div style={HEAD_ROW}>
-        <Route size={20} style={{ color: "var(--ant-color-link)" }} aria-hidden="true" />
+        <NodeIndexOutlined
+          aria-hidden="true"
+          style={{ fontSize: 20, color: "var(--ant-color-link)" }}
+        />
         <h2 id="alur-judul" style={TITLE}>
           {t("dashboard.workflowTitle")}
         </h2>
@@ -248,7 +257,7 @@ export function WorkflowGuide({
 
             <ol style={STEPS}>
               {wf.steps.map((step, i) => {
-                const Icon = ICONS[step.icon] ?? FileText;
+                const Icon = ICONS[step.icon] ?? FileTextOutlined;
                 return (
                   <li key={step.href} style={STEP_ITEM}>
                     <Link href={step.href} style={STEP_LINK}>
@@ -261,9 +270,12 @@ export function WorkflowGuide({
                       <span style={{ minWidth: 0 }}>
                         <span style={STEP_LABEL_ROW}>
                           <Icon
-                            size={16}
-                            style={{ flexShrink: 0, color: "var(--ant-color-text-secondary)" }}
                             aria-hidden="true"
+                            style={{
+                              fontSize: 16,
+                              flexShrink: 0,
+                              color: "var(--ant-color-text-secondary)",
+                            }}
                           />
                           <span style={STEP_LABEL}>{t(step.labelKey)}</span>
                           {step.optional && (

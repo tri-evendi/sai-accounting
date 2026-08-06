@@ -7,7 +7,7 @@
  * make the figure legible to somebody who has never read a ledger.
  *
  * ── Colour is never the only signal (MASTER.md §Anti-Patterns) ───────────────
- * Money direction is carried three ways at once: a lucide icon, a word ("Masuk",
+ * Money direction is carried three ways at once: an icon, a word ("Masuk",
  * "Keluar", "Untung", "Rugi", "Belum masuk", "Belum keluar"), and — for the net
  * figure — an explicit +/− sign in front of the amount. Strip the colour out
  * entirely and the card still reads correctly, which is the actual test.
@@ -33,15 +33,15 @@ import { Link } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  HandCoins,
-  HelpCircle,
-  Receipt,
-  TrendingDown,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+  FallOutlined,
+  FileDoneOutlined,
+  MoneyCollectOutlined,
+  QuestionCircleOutlined,
+  RiseOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
+} from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import type { CurrencyBreakdownRow } from "@/lib/dashboard-summary";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -57,7 +57,7 @@ import type { DictionaryKey } from "@/lib/i18n/dictionary";
 export type MoneyDirection = "in" | "out" | "profit" | "loss" | "receivable" | "payable";
 
 interface DirectionStyle {
-  Icon: LucideIcon;
+  Icon: IconComponent;
   /** Word shown next to the icon. Carries the meaning when colour is unavailable. */
   word: DictionaryKey;
   /** Colour of the headline figure. */
@@ -86,42 +86,42 @@ const CHIP_PENDING: React.CSSProperties = {
 
 const DIRECTION: Record<MoneyDirection, DirectionStyle> = {
   in: {
-    Icon: ArrowDownToLine,
+    Icon: VerticalAlignBottomOutlined,
     word: "moneyDirection.in",
     value: "var(--ant-color-money-positive)",
     chip: CHIP_POSITIVE,
     sign: "",
   },
   out: {
-    Icon: ArrowUpFromLine,
+    Icon: VerticalAlignTopOutlined,
     word: "moneyDirection.out",
     value: "var(--ant-color-money-negative)",
     chip: CHIP_NEGATIVE,
     sign: "",
   },
   profit: {
-    Icon: TrendingUp,
+    Icon: RiseOutlined,
     word: "moneyDirection.profit",
     value: "var(--ant-color-money-positive)",
     chip: CHIP_POSITIVE,
     sign: "+",
   },
   loss: {
-    Icon: TrendingDown,
+    Icon: FallOutlined,
     word: "moneyDirection.loss",
     value: "var(--ant-color-money-negative)",
     chip: CHIP_NEGATIVE,
     sign: "−",
   },
   receivable: {
-    Icon: HandCoins,
+    Icon: MoneyCollectOutlined,
     word: "moneyDirection.receivable",
     value: "var(--ant-color-text)",
     chip: CHIP_PENDING,
     sign: "",
   },
   payable: {
-    Icon: Receipt,
+    Icon: FileDoneOutlined,
     word: "moneyDirection.payable",
     value: "var(--ant-color-text)",
     chip: CHIP_PENDING,
@@ -292,7 +292,7 @@ export async function SummaryCard({
           {title}
         </h3>
         <span style={{ ...CHIP_BASE, ...style.chip }}>
-          <Icon size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
+          <Icon aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
           {t(style.word)}
         </span>
       </div>
@@ -324,7 +324,10 @@ export async function SummaryCard({
 
       {unresolved > 0 && (
         <p style={UNRESOLVED}>
-          <HelpCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+          <QuestionCircleOutlined
+            aria-hidden="true"
+            style={{ fontSize: 14, flexShrink: 0, marginTop: 2 }}
+          />
           <span>
             {t("dashboard.unresolvedBefore", { count: unresolved })}{" "}
             <strong>{t("dashboard.unresolvedStrong")}</strong>{" "}

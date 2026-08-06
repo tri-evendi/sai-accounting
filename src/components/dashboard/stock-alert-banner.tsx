@@ -15,7 +15,7 @@
  * dan daftar nama barangnya.
  */
 import { Link } from "@/components/ui/app-link";
-import { AlertTriangle } from "lucide-react";
+import { WarningOutlined } from "@ant-design/icons";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 
@@ -58,10 +58,9 @@ export async function StockAlertBanner({ items }: { items: LowStockAlertItem[] }
   return (
     <div role="alert" style={BANNER}>
       <div style={{ display: "flex", gap: "var(--ant-margin-sm)" }}>
-        <AlertTriangle
-          size={20}
-          style={{ flexShrink: 0, marginTop: 2, color: "var(--ant-color-warning)" }}
+        <WarningOutlined
           aria-hidden="true"
+          style={{ fontSize: 20, flexShrink: 0, marginTop: 2, color: "var(--ant-color-warning)" }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p

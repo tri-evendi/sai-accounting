@@ -26,7 +26,7 @@
 
 import { useEffect, useState } from "react";
 import { Flex, theme, Typography } from "antd";
-import { Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
@@ -109,7 +109,10 @@ export function CostCenterField({
         gap={token.marginXXS}
         style={{ marginTop: token.marginXXS }}
       >
-        <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <InfoCircleOutlined
+          aria-hidden="true"
+          style={{ fontSize: token.fontSize, flexShrink: 0 }}
+        />
         <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
           {hint ?? t("costCenters.pickerHint")}
         </Typography.Text>

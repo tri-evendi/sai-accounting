@@ -224,11 +224,58 @@ function TableHead({
   );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+/**
+ * Sel isi tabel. Dengan `scope` ia berganti tag menjadi `<th scope="…">` —
+ * SATU-SATUNYA perbedaannya adalah tag dan atributnya; gayanya tetap gaya sel
+ * ISI (issue #233).
+ *
+ * ── Kenapa berganti tag di sini, bukan memakai `TableHead` ────────────────
+ * Baris seksi ("ASET LANCAR") dan baris subtotal di TENGAH `<tbody>` bukan sel
+ * data: yang pertama menamai kelompok baris di bawahnya, yang kedua menamai
+ * angka di sebelahnya. Sebagai `<td>` biasa pembaca layar membacakannya sebagai
+ * sel tanpa konteks, dan tak satu pun angka di bawahnya terhubung ke judulnya.
+ * Yang benar `<th scope="colgroup">` / `<th scope="row">`.
+ *
+ * `TableHead` tidak bisa dipakai untuk itu: ia sel judul KOLOM, dan dari enam
+ * kelasnya EMPAT salah di tengah badan tabel — `h-11` (tinggi 44px, sedangkan
+ * baris isi 12px+12px), tanpa `py-3` (jadi tingginya HANYA berasal dari h-11),
+ * `text-muted-foreground` (judul seksi jadi LEBIH pudar dari akun di bawahnya —
+ * hierarki terbalik), dan `whitespace-nowrap` (label "Total Liabilitas +
+ * Ekuitas" tak boleh membungkus, memaksa tabel menggeser mendatar di 375px).
+ * Memakainya berarti membatalkan empat dari enam kelasnya di sisi pemanggil —
+ * gaya bersama yang seluruhnya ditimpa bukan gaya bersama.
+ *
+ * ── Dua penawar bawaan UA ──────────────────────────────────────────────────
+ * Preflight Tailwind v4 TIDAK menyentuh `<th>` (diperiksa pada 4.2.2), jadi
+ * bawaan peramban `th { font-weight: bold; text-align: center }` tetap berlaku
+ * dan sebuah `<th>` akan tampil TEBAL dan DI TENGAH di tengah badan tabel.
+ * Keduanya dinetralkan ke `inherit` supaya sel bertag `th` tampil persis sama
+ * dengan `<td>` yang digantikannya: perataan datang dari kolomnya, tebal huruf
+ * dari BARISnya — aturan yang sama dengan sel lain. Gaya pemanggil ditulis
+ * SESUDAHNYA, jadi ia tetap bisa menimpa keduanya.
+ */
+function TableCell({
+  className,
+  scope,
+  style,
+  ...props
+}: React.ComponentProps<"td"> & { scope?: "row" | "col" | "rowgroup" | "colgroup" }) {
+  const classes = cn(
+    "px-6 py-3 align-middle",
+    "[&:has([role=checkbox])]:pr-0",
+    className
+  );
+
+  if (scope === undefined) {
+    return <td data-slot="table-cell" className={classes} style={style} {...props} />;
+  }
+
   return (
-    <td
+    <th
       data-slot="table-cell"
-      className={cn("px-6 py-3 align-middle", "[&:has([role=checkbox])]:pr-0", className)}
+      scope={scope}
+      className={classes}
+      style={{ fontWeight: "inherit", textAlign: "inherit", ...style }}
       {...props}
     />
   );

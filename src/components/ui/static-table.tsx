@@ -57,6 +57,18 @@
  * tidak akan mengeluh di `tsc` maupun di ESLint; ia gagal saat dirender, di
  * halaman yang kebetulan dibuka. `rowStyle` adalah himpunan bagian yang tetap
  * benar di KEDUA sisi batas, dan itu yang membuatnya boleh ada di sini.
+ *
+ * ── Baris seksi & subtotal DI DALAM badan tabel (issue #233) ───────────────
+ * `colSpan` bertingkat dari #229 hanya hidup di `<tfoot>` — satu kaki di ujung
+ * tabel. Empat laporan keuangan justru butuh baris ber-`colSpan` BERSELANG-
+ * SELING dengan baris akun ("ASET LANCAR" · akun · "Total Aset" · "LIABILITAS"
+ * · …). `rowCells` membukanya, dan sengaja memakai ULANG `SummaryCell`,
+ * penghitung `skip`, serta `mergedCell()` yang sudah ditulis dan diuji untuk
+ * kaki: badan dan kaki menggambar `colSpan` lewat SATU reduksi (`spannedCells`),
+ * jadi tidak ada dua perilaku yang bisa menyimpang diam-diam.
+ *
+ * `rowCells` fungsi MURNI atas barisnya, persis seperti `rowStyle` — berkas ini
+ * tetap server, tetap tanpa JavaScript.
  */
 
 import {
@@ -81,7 +93,13 @@ export type SummaryCell =
   | React.ReactNode
   | {
       content: React.ReactNode;
-      colSpan: number;
+      /**
+       * Berapa kolom yang ditelan sel ini. Bawaannya 1 — sebuah sel boleh
+       * memakai bentuk objek hanya untuk `scope`, tanpa menggabung apa pun
+       * (label subtotal di tabel dua kolom adalah judul BARIS, bukan sel
+       * gabungan).
+       */
+      colSpan?: number;
       /**
        * Perataan sel gabungan. Tanpa ini ia mewarisi perataan kolom PERTAMA
        * yang ditelannya — dan label "Total (USD)" yang membentang di atas empat
@@ -89,6 +107,18 @@ export type SummaryCell =
        * bukan rata kiri seperti kolom "Barang".
        */
       align?: "left" | "right" | "center";
+      /**
+       * Sel ini MENAMAI sesuatu, bukan berisi data — dirender `<th scope="…">`
+       * bergaya sel isi (issue #233; alasannya panjang di `table.tsx`).
+       *
+       *  • `colgroup` — judul kelompok baris di bawahnya ("ASET LANCAR");
+       *  • `row`      — judul baris, mis. label subtotal di sebelah angkanya.
+       *
+       * Tanpa ini baris seksi hanyalah `<td>` ber-`colSpan`: pembaca layar
+       * membacakan "ASET LANCAR" sebagai sel data tanpa konteks di tengah
+       * tabel, dan tak satu pun angka di bawahnya terhubung kepadanya.
+       */
+      scope?: "row" | "colgroup";
     };
 
 /** Satu baris kaki, dipetakan per KUNCI kolom — bentuk yang sama dengan `summary` tunggal. */
@@ -152,6 +182,31 @@ interface StaticTableProps<T> {
    * Sengaja hanya GAYA, bukan `onRow` bergaya AntD — lihat kepala berkas.
    */
   rowStyle?: (row: T, index: number) => React.CSSProperties | undefined;
+  /**
+   * Baris BUKAN-DATA di dalam badan tabel — seksi & subtotal laporan keuangan
+   * (issue #233). Dipetakan per KUNCI kolom, bentuk sel yang sama persis dengan
+   * `summary`, jadi `colSpan`/`align`/`scope` berperilaku identik di badan dan
+   * di kaki.
+   *
+   * `undefined` = baris data biasa, jalur lama persis — itu yang membuat 20-an
+   * pemanggil yang tidak mengirim prop ini tidak berubah sama sekali.
+   *
+   * Kolom yang TIDAK disebut tetap digambar dari barisnya (lihat `spannedCells`),
+   * sehingga baris subtotal cukup mengganti LABELnya:
+   *
+   * ```ts
+   * rowCells={(row) =>
+   *   row.kind === "section"
+   *     ? { item: { content: row.label, colSpan: 2, scope: "colgroup" } }
+   *     : row.kind === "subtotal"
+   *       ? { item: { content: row.label, scope: "row" } }
+   *       : undefined
+   * }
+   * ```
+   *
+   * Sengaja fungsi MURNI atas barisnya, seperti `rowStyle` — lihat kepala berkas.
+   */
+  rowCells?: (row: T, index: number) => Record<string, SummaryCell> | undefined;
   /** Kerapatan sel; `middle` = kerapatan primitif. Lihat `DENSITY`. */
   size?: "small" | "middle" | "large";
   /**
@@ -190,9 +245,79 @@ function summaryRows(
   return Array.isArray(summary) ? summary : [{ cells: summary as Record<string, SummaryCell> }];
 }
 
-/** Bentuk objek sel kaki, atau `undefined` bila selnya isi polos. */
+/**
+ * Bentuk objek sel, atau `undefined` bila selnya isi polos.
+ *
+ * Pembedanya `content` dan bukan lagi `colSpan` (issue #233): sejak `colSpan`
+ * boleh dihilangkan, sebuah sel bisa memakai bentuk objek hanya untuk `scope`.
+ * `content` aman sebagai pembeda — elemen React adalah objek ber-`$$typeof`/
+ * `type`/`props` dan TIDAK pernah punya `content`, dan nilai polos lain (teks,
+ * angka, larik) bukan objek biasa. Bentuk lama `{ content, colSpan }` tetap
+ * cocok, jadi 18 pemanggil kaki lama tidak berubah sedikit pun.
+ */
 function mergedCell(cell: SummaryCell | undefined) {
-  return cell !== null && typeof cell === "object" && "colSpan" in cell ? cell : undefined;
+  return cell !== null && typeof cell === "object" && "content" in cell ? cell : undefined;
+}
+
+/**
+ * SATU reduksi `colSpan` untuk kaki DAN badan (issue #233).
+ *
+ * `colSpan` menelan kolom di kanannya, jadi kolomnya dilewati dengan penghitung
+ * — bukan disaring — supaya sel berikutnya tetap jatuh di kolom yang benar.
+ *
+ * `fallback` adalah satu-satunya hal yang berbeda antara kedua tempat, dan
+ * bedanya bukan selera:
+ *
+ *  • di `<tfoot>` ia `undefined` — kaki tidak punya baris data, jadi kolom yang
+ *    tidak disebut hanya bisa menjadi sel KOSONG. Itu aturan yang sudah ada
+ *    sejak kaki satu baris: baris total tak boleh meleset satu kolom ketika
+ *    pilihan kolom pengguna mengurangi susunannya.
+ *  • di `<tbody>` ia menggambar kolomnya seperti biasa — baris seksi PUNYA
+ *    baris data di belakangnya. Itulah yang membuat baris subtotal cukup
+ *    menyebut LABELnya saja dan angkanya tetap datang dari `moneyColumn`,
+ *    alih-alih halaman menulis ulang aturan uang di sisi `rowCells`. Peta yang
+ *    memaksa sel kosong tetap bisa dibuat: sebut kuncinya dengan isi kosong.
+ */
+function spannedCells<T>(
+  columns: SaiColumns<T>,
+  cells: Record<string, SummaryCell>,
+  density: React.CSSProperties | undefined,
+  fallback?: (column: SaiColumns<T>[number]) => React.ReactNode
+): React.ReactNode[] {
+  return columns.reduce<{ nodes: React.ReactNode[]; skip: number }>(
+    (acc, column) => {
+      if (acc.skip > 0) return { ...acc, skip: acc.skip - 1 };
+      const cell = cells[column.key];
+      const merged = mergedCell(cell);
+      const span = merged?.colSpan ?? 1;
+      const scope = merged?.scope;
+      const align = merged?.align ?? column.align;
+      const content = merged
+        ? merged.content
+        : cell === undefined && fallback
+          ? fallback(column)
+          : (cell as React.ReactNode);
+      acc.nodes.push(
+        <TableCell
+          key={column.key}
+          scope={scope}
+          colSpan={span === 1 ? undefined : span}
+          /*
+           * Sel bertag `th` mengambil perataannya lewat GAYA SEBARIS, bukan
+           * lewat `alignClass`: penawar bawaan UA di `table.tsx` juga sebaris,
+           * dan gaya sebaris selalu menang atas kelas. Menyerahkannya ke kelas
+           * berarti `text-right` diam-diam kalah oleh `textAlign: inherit`.
+           */
+          className={cn(scope ? undefined : alignClass(align), column.className)}
+          style={scope ? { ...density, textAlign: align } : density}
+        >
+          {content}
+        </TableCell>
+      );
+      return { nodes: acc.nodes, skip: span - 1 };
+    },
+    { nodes: [], skip: 0 }
+  ).nodes;
 }
 
 export function StaticTable<T>({
@@ -204,6 +329,7 @@ export function StaticTable<T>({
   summaryClassName,
   summaryStyle,
   rowStyle,
+  rowCells,
   size = "middle",
   sticky,
   maxHeight,
@@ -255,19 +381,26 @@ export function StaticTable<T>({
             </TableCell>
           </TableRow>
         ) : (
-          rows.map((row, index) => (
-            <TableRow key={rowKey(row, index)} style={rowStyle?.(row, index)}>
-              {columns.map((column) => (
-                <TableCell
-                  key={column.key}
-                  className={cn(alignClass(column.align), column.className)}
-                  style={density}
-                >
-                  {cellContent(column, row, index)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
+          rows.map((row, index) => {
+            const cells = rowCells?.(row, index);
+            return (
+              <TableRow key={rowKey(row, index)} style={rowStyle?.(row, index)}>
+                {cells === undefined
+                  ? columns.map((column) => (
+                      <TableCell
+                        key={column.key}
+                        className={cn(alignClass(column.align), column.className)}
+                        style={density}
+                      >
+                        {cellContent(column, row, index)}
+                      </TableCell>
+                    ))
+                  : spannedCells(columns, cells, density, (column) =>
+                      cellContent(column, row, index)
+                    )}
+              </TableRow>
+            );
+          })
         )}
       </TableBody>
 
@@ -284,38 +417,10 @@ export function StaticTable<T>({
               )}
               style={line.style}
             >
-              {
-                /*
-                 * `colSpan` menelan kolom di kanannya, jadi kolomnya dilewati
-                 * dengan penghitung — bukan disaring — supaya sel berikutnya
-                 * tetap jatuh di kolom yang benar. Kolom yang tidak disebut
-                 * tetap mendapat SEL-nya sendiri, aturan yang sama dengan kaki
-                 * satu baris: baris total tak boleh meleset satu kolom.
-                 */
-                columns.reduce<{ nodes: React.ReactNode[]; skip: number }>(
-                  (acc, column) => {
-                    if (acc.skip > 0) return { ...acc, skip: acc.skip - 1 };
-                    const cell = line.cells[column.key];
-                    const merged = mergedCell(cell);
-                    const span = merged?.colSpan ?? 1;
-                    acc.nodes.push(
-                      <TableCell
-                        key={column.key}
-                        colSpan={span === 1 ? undefined : span}
-                        className={cn(
-                          alignClass(merged?.align ?? column.align),
-                          column.className
-                        )}
-                        style={density}
-                      >
-                        {merged ? merged.content : (cell as React.ReactNode)}
-                      </TableCell>
-                    );
-                    return { nodes: acc.nodes, skip: span - 1 };
-                  },
-                  { nodes: [], skip: 0 }
-                ).nodes
-              }
+              {/* Tanpa `fallback`: kaki tidak punya baris data, jadi kolom yang
+                  tidak disebut hanya bisa menjadi sel kosong — lihat
+                  `spannedCells`. */}
+              {spannedCells(columns, line.cells, density)}
             </TableRow>
           ))}
         </TableFooter>

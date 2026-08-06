@@ -115,6 +115,118 @@ describe("StaticTable — varian server", () => {
   });
 });
 
+/* ─────────── Baris seksi & subtotal di dalam badan (issue #233) ─────────── */
+
+describe("StaticTable — baris seksi & subtotal di dalam tbody", () => {
+  const laporan: Row[] = [
+    { doc: "ASET LANCAR", amount: null },
+    { doc: "INV-1", amount: 9000 },
+    { doc: "Jumlah Aset Lancar", amount: 9000 },
+  ];
+
+  const rowCells = (row: Row) =>
+    row.doc === "ASET LANCAR"
+      ? { doc: { content: row.doc, colSpan: 2, scope: "colgroup" as const } }
+      : row.doc.startsWith("Jumlah")
+        ? { doc: { content: row.doc, scope: "row" as const } }
+        : undefined;
+
+  const body = (html: string) =>
+    html.slice(html.indexOf("<tbody"), html.indexOf("</tbody>"));
+
+  /*
+   * Terukur pada react-dom 19: perender server MENULIS `colSpan="2"` apa
+   * adanya — pada `<td>` maupun `<th>` — bukan `colspan` huruf kecil. Nama
+   * atribut HTML tidak peka huruf besar-kecil, jadi peramban tetap membacanya
+   * sebagai `colspan`; yang tidak boleh adalah tes ini menyangka sebaliknya
+   * lalu gagal karena hal yang benar.
+   */
+  const COLSPAN_2 = /colspan="2"/i;
+
+  it("tanpa rowCells badan tabel tidak berubah sedikit pun", () => {
+    /*
+     * Inilah janji yang menjaga 20-an pemanggil lama: prop yang tidak dikirim
+     * berarti jalur lama PERSIS — tidak ada `<th>` yang menyelinap ke badan,
+     * dan jumlah selnya tetap baris × kolom.
+     */
+    const tubuh = body(renderStatic());
+    expect(tubuh).not.toContain("<th");
+    expect(tubuh.match(/<td/g)).toHaveLength(rows.length * columns.length);
+  });
+
+  it("baris seksi membentang seluruh kolom di tengah badan tabel", () => {
+    const tubuh = body(renderStatic({ rows: laporan, rowCells }));
+    expect(tubuh).toMatch(COLSPAN_2);
+    expect(tubuh).toContain("ASET LANCAR");
+    // Baris akun di bawahnya tetap dua sel — `colSpan` tidak menular.
+    const akun = tubuh.slice(tubuh.indexOf("INV-1"));
+    expect(akun.slice(0, akun.indexOf("</tr>")).match(/<td/g)).toHaveLength(1);
+  });
+
+  it("baris seksi adalah <th scope=\"colgroup\">, bukan sel data", () => {
+    /*
+     * Tanpa ini "ASET LANCAR" dibacakan pembaca layar sebagai satu sel data
+     * tanpa konteks di tengah tabel, dan tak satu pun angka di bawahnya
+     * terhubung ke judulnya. Tidak ada tes LAIN yang akan berteriak kalau ini
+     * kembali menjadi `<td colSpan>` — itu sebabnya tes ini ada.
+     */
+    const tubuh = body(renderStatic({ rows: laporan, rowCells }));
+    expect(tubuh).toMatch(/<th[^>]*scope="colgroup"/);
+    expect(tubuh).toMatch(/<th[^>]*scope="row"/);
+  });
+
+  it("sel bertag th tampil seperti sel isi, bukan seperti judul kolom", () => {
+    /*
+     * Preflight Tailwind TIDAK menyentuh `<th>`, jadi bawaan peramban
+     * `font-weight: bold; text-align: center` akan membuat baris seksi tebal &
+     * DI TENGAH kalau tidak dinetralkan. Perataan datang dari kolomnya, tebal
+     * huruf dari barisnya — sama seperti sel lain.
+     */
+    const tubuh = body(renderStatic({ rows: laporan, rowCells }));
+    const th = tubuh.slice(tubuh.indexOf("<th"));
+    expect(th).toContain("font-weight:inherit");
+    // Gaya sel ISI, bukan gaya `TableHead` (tinggi baris judul 44px).
+    expect(th.slice(0, th.indexOf(">"))).toContain("px-6 py-3");
+    expect(th.slice(0, th.indexOf(">"))).not.toContain("h-11");
+  });
+
+  it("kolom yang tidak disebut tetap digambar dari barisnya", () => {
+    /*
+     * Beda yang disengaja dari `<tfoot>` (yang tidak punya baris data): baris
+     * subtotal cukup mengganti LABELnya, dan angkanya tetap datang dari
+     * `moneyColumn`. Kalau kolomnya ikut dikosongkan, setiap halaman laporan
+     * harus menulis ulang aturan uang di sisi `rowCells` — dua aturan uang.
+     */
+    const tubuh = body(renderStatic({ rows: laporan, rowCells }));
+    const subtotal = tubuh.slice(tubuh.indexOf("Jumlah Aset Lancar"));
+    expect(subtotal).toContain("9.000");
+    expect(subtotal).toContain("font-variant-numeric:tabular-nums");
+  });
+
+  it("baris tanpa peta tetap baris data biasa di tabel yang sama", () => {
+    // Barisnya dipotong tepat pada `</tr>`-nya sendiri: tanpa itu potongan
+    // ikut memuat `<th>` milik baris subtotal SESUDAHNYA, dan tesnya gagal
+    // karena hal yang benar.
+    const tubuh = body(renderStatic({ rows: laporan, rowCells }));
+    const sisa = tubuh.slice(tubuh.indexOf("INV-1"));
+    const akun = sisa.slice(0, sisa.indexOf("</tr>"));
+    expect(akun).not.toContain("<th");
+  });
+
+  it("kaki memakai reduksi colSpan yang sama — satu perilaku, bukan dua", () => {
+    // `scope` dan `colSpan` yang sama harus bekerja di kedua ujung tabel;
+    // kalau badan dan kaki punya perendernya masing-masing, keduanya akan
+    // menyimpang tanpa ada yang gagal.
+    const html = renderStatic({
+      summary: [{ cells: { doc: { content: "Total", colSpan: 2, scope: "row" as const } } }],
+    });
+    const foot = html.slice(html.indexOf("<tfoot"));
+    expect(foot).toMatch(/<th[^>]*scope="row"/);
+    expect(foot).toMatch(COLSPAN_2);
+    expect(foot).not.toContain("<td");
+  });
+});
+
 /* ───────────────────────── DataTable (client, AntD) ───────────────────── */
 
 describe("DataTable — varian interaktif di atas AntD", () => {

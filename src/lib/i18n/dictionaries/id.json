@@ -1637,6 +1637,7 @@
     "currentNetIncome": "Akumulasi Laba/Rugi",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
+    "colStatementAmount": "Jumlah (IDR)",
     "incomeStatementTitle": "Laba / Rugi",
     "sectionRevenue": "Pendapatan",
     "sectionCogs": "Beban Pokok Penjualan",

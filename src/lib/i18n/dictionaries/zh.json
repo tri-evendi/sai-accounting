@@ -1637,6 +1637,7 @@
     "currentNetIncome": "累计利润",
     "totalAssets": "资产合计",
     "totalLiabilitiesEquity": "负债与所有者权益合计",
+    "colStatementAmount": "金额 (IDR)",
     "incomeStatementTitle": "利润表",
     "sectionRevenue": "营业收入",
     "sectionCogs": "营业成本",

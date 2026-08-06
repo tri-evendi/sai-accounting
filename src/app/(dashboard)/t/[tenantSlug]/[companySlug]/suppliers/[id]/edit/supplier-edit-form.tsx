@@ -1,7 +1,13 @@
 "use client";
 
+/**
+ * Ubah Pemasok — dikonversi ke token Ant Design pada issue #196.
+ * Kulitnya saja; mesin formulirnya (state lokal + PUT) tidak disentuh.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +22,7 @@ export function EditSupplierForm() {
   const router = useAppRouter();
   const params = useParams();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -66,8 +73,10 @@ export function EditSupplierForm() {
 
   if (fetching) return <PageLoader message={t("suppliers.loading")} />;
 
+  const half = { xs: 24, sm: 12 } as const;
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("suppliers.breadcrumb"), href: "/suppliers" },
@@ -76,41 +85,69 @@ export function EditSupplierForm() {
         title={t("suppliers.editTitle")}
       />
 
-      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
+      {error && (
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader><CardTitle>{t("suppliers.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="name" label={t("suppliers.nameField")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input id="address" label={t("common.address")} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              <Input id="phone" label={t("common.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Input id="email" type="email" label={t("common.email")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Row gutter={[token.margin, token.margin]}>
+              <Col {...half}>
+                <Input id="name" label={t("suppliers.nameField")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </Col>
+              <Col {...half}>
+                <Input id="address" label={t("common.address")} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              </Col>
+              <Col {...half}>
+                <Input id="phone" label={t("common.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </Col>
+              <Col {...half}>
+                <Input id="email" type="email" label={t("common.email")} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </Col>
               {/* Nonaktif lewat DELETE sudah lama ada; tanpa toggle ini tidak
                   ada layar yang bisa MENGAKTIFKAN kembali (audit 2026-07). */}
-              <label htmlFor="isActive" className="flex cursor-pointer items-start gap-2">
-                <Checkbox
-                  id="isActive"
-                  className="mt-0.5"
-                  checked={form.isActive}
-                  onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
-                />
-                <span className="text-sm text-foreground">
-                  {t("common.active")}
-                  <span className="block text-xs text-muted-foreground">
-                    {t("suppliers.activeHint")}
+              <Col {...half}>
+                <label
+                  htmlFor="isActive"
+                  style={{
+                    display: "flex",
+                    cursor: "pointer",
+                    alignItems: "flex-start",
+                    gap: token.marginXS,
+                  }}
+                >
+                  <Checkbox
+                    id="isActive"
+                    style={{ marginTop: token.marginXXS / 2 }}
+                    checked={form.isActive}
+                    onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
+                  />
+                  <span>
+                    {t("common.active")}
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: token.fontSizeSM,
+                        color: token.colorTextSecondary,
+                      }}
+                    >
+                      {t("suppliers.activeHint")}
+                    </span>
                   </span>
-                </span>
-              </label>
-            </div>
+                </label>
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.save")}</Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

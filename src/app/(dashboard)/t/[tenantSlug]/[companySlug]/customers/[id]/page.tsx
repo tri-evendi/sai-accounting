@@ -1,3 +1,11 @@
+/**
+ * Rincian Pelanggan — dikonversi ke token Ant Design pada issue #196.
+ *
+ * **Tetap server component**, jadi tanpa `antd` dan tanpa `theme.useToken()`.
+ * `sm:grid-cols-2` diganti daftar istilah–nilai yang MEMBUNGKUS sendiri: satu
+ * kolom di 375px, dua atau lebih begitu ruangnya ada — pola yang sama dengan
+ * `invoices/[id]/page.tsx` (#195).
+ */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Link } from "@/components/ui/app-link";
@@ -10,6 +18,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** Lebar dasar satu pasang istilah–nilai. */
+const INFO_BASIS = 240;
+/** `marginLG` 24 − `marginXS` 8 — jarak antar pasangan pada daftar info. */
+const INFO_GAP = 16;
 
 export default async function CustomerDetailPage({
   params,
@@ -28,8 +41,23 @@ export default async function CustomerDetailPage({
 
   if (!customer) notFound();
 
+  /** Satu pasang istilah–nilai pada kartu informasi. */
+  const infoItem = (label: React.ReactNode, value: React.ReactNode) => (
+    <div style={{ flex: `1 1 ${INFO_BASIS}px`, minWidth: 0 }}>
+      <dt
+        style={{
+          color: "var(--ant-color-text-secondary)",
+          fontWeight: "var(--ant-font-weight-strong)",
+        }}
+      >
+        {label}
+      </dt>
+      <dd style={{ margin: 0 }}>{value}</dd>
+    </div>
+  );
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[{ label: t("customers.breadcrumb"), href: "/customers" }, { label: customer.name }]}
         title={customer.name}
@@ -48,37 +76,17 @@ export default async function CustomerDetailPage({
       <Card>
         <CardHeader><CardTitle>{t("customers.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.name")}</dt>
-              <dd className="text-sm text-foreground">{customer.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("customers.pic")}</dt>
-              <dd className="text-sm text-foreground">{customer.pic || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.address")}</dt>
-              <dd className="text-sm text-foreground">{customer.address || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.phone")}</dt>
-              <dd className="text-sm text-foreground">{customer.phone || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.email")}</dt>
-              <dd className="text-sm text-foreground">{customer.email || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.vat")}</dt>
-              <dd className="text-sm text-foreground">
-                {customer.taxExempt ? t("customers.taxExemptLabel") : t("customers.taxable")}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.createdAt")}</dt>
-              <dd className="text-sm text-foreground">{formatDate(customer.createdAt)}</dd>
-            </div>
+          <dl style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: INFO_GAP }}>
+            {infoItem(t("common.name"), customer.name)}
+            {infoItem(t("customers.pic"), customer.pic || "-")}
+            {infoItem(t("common.address"), customer.address || "-")}
+            {infoItem(t("common.phone"), customer.phone || "-")}
+            {infoItem(t("common.email"), customer.email || "-")}
+            {infoItem(
+              t("common.vat"),
+              customer.taxExempt ? t("customers.taxExemptLabel") : t("customers.taxable")
+            )}
+            {infoItem(t("common.createdAt"), formatDate(customer.createdAt))}
           </dl>
         </CardContent>
       </Card>

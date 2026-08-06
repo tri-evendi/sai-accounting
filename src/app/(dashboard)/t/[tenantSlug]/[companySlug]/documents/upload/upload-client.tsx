@@ -8,7 +8,7 @@ import { Flex } from "antd";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { DOCUMENT_TYPES } from "@/lib/constants";
-import { Upload } from "lucide-react";
+import { UploadOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
@@ -147,11 +147,7 @@ export function UploadClient() {
                     cursor: "pointer",
                   }}
                 >
-                  <Upload
-                    size={32}
-                    style={{ marginBottom: 8, color: "var(--ant-color-text-secondary)" }}
-                    aria-hidden="true"
-                  />
+                  <UploadOutlined aria-hidden="true" style={{ fontSize: 32, marginBottom: 8, color: "var(--ant-color-text-secondary)" }} />
                   {file ? (
                     <p style={{ margin: 0, fontWeight: STRONG }}>{file.name}</p>
                   ) : (

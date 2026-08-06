@@ -49,8 +49,7 @@
  * aplikasi. Kartu angkanya (`StatCard`, `QuotaMeter`) mewarnai dirinya sendiri.
  */
 import Link from "next/link";
-import { AlertTriangle, Building2, Plus } from "lucide-react";
-
+import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -216,7 +215,7 @@ export default async function PlatformPage() {
             kebetulan kuning. */}
         {readOnly && (
           <div role="status" style={READ_ONLY_NOTE}>
-            <AlertTriangle size={16} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <WarningOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.625 }}>
               {t("tenantSettings.readOnlyNote")}
             </p>
@@ -333,7 +332,7 @@ export default async function PlatformPage() {
           <CardContent>
             <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
               <span style={iconBox(40)} aria-hidden="true">
-                <Building2 size={20} />
+                <ShopOutlined style={{ fontSize: 20 }} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <p
@@ -386,7 +385,7 @@ export default async function PlatformPage() {
             {canCreate && companies.length > 0 && (
               <Button asChild variant="outline" size="sm" style={{ flexShrink: 0 }}>
                 <Link href="/companies/new">
-                  <Plus aria-hidden="true" />
+                  <PlusOutlined aria-hidden="true" />
                   {t("companies.newTitle")}
                 </Link>
               </Button>
@@ -405,7 +404,7 @@ export default async function PlatformPage() {
                */
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <EmptyState
-                  icon={<Building2 size={48} />}
+                  icon={<ShopOutlined style={{ fontSize: 48 }} />}
                   title={t(
                     canCreate
                       ? "auth.selectCompany.noCompanyYetHeading"
@@ -449,7 +448,7 @@ export default async function PlatformPage() {
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
                         <span style={iconBox(36)} aria-hidden="true">
-                          <Building2 size={16} />
+                          <ShopOutlined style={{ fontSize: 16 }} />
                         </span>
                         <div style={{ minWidth: 0 }}>
                           <p

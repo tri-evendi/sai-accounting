@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { Save } from "lucide-react";
+import { SaveOutlined } from "@ant-design/icons";
 import { Col, Row } from "antd";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
@@ -91,7 +91,7 @@ export function SellerIdentityForm({
       </Col>
       <Col span={24}>
         <Button type="button" onClick={handleSave} disabled={saving}>
-          <Save size={ICON_SIZE} style={{ marginInlineEnd: 6 }} aria-hidden="true" />
+          <SaveOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
           {saving ? t("common.saving") : t("tax.saveIdentity")}
         </Button>
       </Col>

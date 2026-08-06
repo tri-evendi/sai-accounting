@@ -13,8 +13,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
-import { KeyRound } from "lucide-react";
-
+import { KeyOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -83,7 +82,7 @@ function ResetPasswordForm() {
       heading={t("auth.resetPassword.heading")}
       description={t("auth.resetPassword.description")}
       error={error}
-      icon={<KeyRound size={20} aria-hidden />}
+      icon={<KeyOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={footer}
     >
       {done ? (

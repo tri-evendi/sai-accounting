@@ -36,7 +36,7 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { ArrowDownLeft, ArrowUpRight, Link2, Plus } from "lucide-react";
+import { ArrowDownOutlined, ArrowUpOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
@@ -190,7 +190,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Plus aria-hidden="true" /> {t("suppliers.addTransaction")}
+        <PlusOutlined aria-hidden="true" /> {t("suppliers.addTransaction")}
       </Button>
     );
   }
@@ -249,9 +249,9 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               }}
             >
               {isPurchase ? (
-                <ArrowUpRight size="1em" aria-hidden="true" />
+                <ArrowUpOutlined aria-hidden="true" />
               ) : (
-                <ArrowDownLeft size="1em" aria-hidden="true" />
+                <ArrowDownOutlined aria-hidden="true" />
               )}
               <small>
                 {isPurchase ? t("suppliers.txEffectPurchase") : t("suppliers.txEffectPayment")}
@@ -365,7 +365,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                     fontWeight: token.fontWeightStrong,
                   }}
                 >
-                  <Link2 size="1em" aria-hidden="true" style={{ color: token.colorTextSecondary }} />
+                  <LinkOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
                   {t("suppliers.txAllocLegend")}
                 </legend>
 

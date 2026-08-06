@@ -17,8 +17,7 @@
  * yang jadi penanda utama — warna bukan sinyal tunggal (MASTER.md).
  */
 
-import { CalendarClock } from "lucide-react";
-
+import { CalendarOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
@@ -175,7 +174,7 @@ export default async function OperatorSchedulerPage() {
         <p style={NOTICE}>{t("operator.scheduler.unavailable")}</p>
       ) : runs.length === 0 ? (
         <EmptyState
-          icon={<CalendarClock size={48} aria-hidden="true" />}
+          icon={<CalendarOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
           title={t("operator.scheduler.empty")}
         />
       ) : (

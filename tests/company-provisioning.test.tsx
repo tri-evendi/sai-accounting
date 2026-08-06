@@ -288,7 +288,7 @@ describe("kemajuan penyediaan: yang ditampilkan harus sungguhan", () => {
      * `ProvisionAnnouncer`.
      */
     expect(html).toContain(MONEY_TOKENS_LIGHT.colorMoneyNegative);
-    expect(html).toContain("lucide-triangle-alert");
+    expect(html).toContain("anticon-warning");
     // 2 dari 4 — pengguna tetap tahu sejauh mana ia sampai sebelum gagal.
     expect(html).toContain("2/4");
   });

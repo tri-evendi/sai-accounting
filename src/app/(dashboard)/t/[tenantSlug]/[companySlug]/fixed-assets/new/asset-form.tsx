@@ -22,7 +22,7 @@ import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { straightLineMonthly } from "@/lib/depreciation";
 import { useT } from "@/lib/i18n/client";
-import { Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**
@@ -298,7 +298,7 @@ export function AssetForm({
             background: token.colorFillQuaternary,
           }}
         >
-          <Info size={token.fontSize} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
           <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
             {t("fixedAssets.noJournalBefore")} <strong>{t("fixedAssets.noJournalNot")}</strong>{" "}
             {t("fixedAssets.noJournalMiddle")}{" "}

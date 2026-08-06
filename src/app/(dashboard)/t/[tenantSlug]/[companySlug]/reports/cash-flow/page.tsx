@@ -36,7 +36,7 @@ import { PlainSummary } from "@/components/reports/plain-summary";
 import { resolvePeriod } from "@/lib/report-catalog";
 import { cashFlowSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ArrowDownLeft, ArrowUpRight, AlertTriangle, Minus } from "lucide-react";
+import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined, WarningOutlined } from "@ant-design/icons";
 import type { CashFlowGroup } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
@@ -111,13 +111,13 @@ function Flow({ amount, t }: { amount: number; t: T }) {
           color: "var(--ant-color-text-secondary)",
         }}
       >
-        <Minus size={ICON_SIZE} aria-hidden="true" />
+        <MinusOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE }} />
         <span style={VISUALLY_HIDDEN}>{t("reports.flowNil")}</span>
       </span>
     );
   }
   const inflow = amount > 0;
-  const Icon = inflow ? ArrowDownLeft : ArrowUpRight;
+  const Icon = inflow ? ArrowDownOutlined : ArrowUpOutlined;
   return (
     <span
       style={{
@@ -131,7 +131,7 @@ function Flow({ amount, t }: { amount: number; t: T }) {
           : "var(--ant-color-money-negative)",
       }}
     >
-      <Icon size={ICON_SIZE} style={{ flexShrink: 0 }} aria-hidden="true" />
+      <Icon aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0 }} />
       <span style={VISUALLY_HIDDEN}>{inflow ? t("reports.flowIn") : t("reports.flowOut")}</span>
       <span>
         {inflow ? "+" : "−"}
@@ -316,11 +316,7 @@ export default async function CashFlowPage({
                 {row.label}
                 {row.review && (
                   <Badge variant="warning">
-                    <AlertTriangle
-                      size={12}
-                      style={{ marginInlineEnd: 4 }}
-                      aria-hidden="true"
-                    />
+                    <WarningOutlined aria-hidden="true" style={{ fontSize: 12, marginInlineEnd: 4 }} />
                     {t("reports.needsReview")}
                   </Badge>
                 )}
@@ -444,11 +440,7 @@ export default async function CashFlowPage({
           }}
         >
           <div style={{ display: "flex", gap: 12, padding: "var(--ant-padding-lg)" }}>
-            <AlertTriangle
-              size={20}
-              style={{ flexShrink: 0, marginTop: 2, color: "var(--ant-color-money-pending)" }}
-              aria-hidden="true"
-            />
+            <WarningOutlined aria-hidden="true" style={{ fontSize: 20, flexShrink: 0, marginTop: 2, color: "var(--ant-color-money-pending)" }} />
             <p style={{ margin: 0, color: "var(--ant-color-money-pending)" }}>
               <span style={{ fontWeight: STRONG }}>
                 {t("reports.unratedWarningStrong", { count: cf.suspectUnrated })}

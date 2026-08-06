@@ -23,7 +23,7 @@ import { useToast } from "@/components/ui/toast";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { SalesTargetListRow } from "@/lib/budget-report";
-import { Trash2, Target } from "lucide-react";
+import { AimOutlined, DeleteOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -169,7 +169,7 @@ export function SalesTargetClient({
                 period: period(r.year, r.month),
               })}
             >
-              {deleting === r.id ? <Spin size="small" /> : <Trash2 aria-hidden="true" />}
+              {deleting === r.id ? <Spin size="small" /> : <DeleteOutlined aria-hidden="true" />}
               {translate("common.delete")}
             </Button>
           }
@@ -280,7 +280,7 @@ export function SalesTargetClient({
 
       {targets.length === 0 ? (
         <EmptyState
-          icon={<Target size={EMPTY_ICON_SIZE} />}
+          icon={<AimOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={translate("budget.emptyTargetTitle")}
           description={translate("budget.emptyTargetDescription")}
         />

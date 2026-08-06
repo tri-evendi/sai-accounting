@@ -18,7 +18,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { Ship } from "lucide-react";
+import { GlobalOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 
 export const dynamic = "force-dynamic";
@@ -158,7 +158,7 @@ export default async function ConsigneesPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Ship size={EMPTY_ICON_SIZE} />}
+              icon={<GlobalOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("consignees.emptyTitle")}
               description={t("consignees.emptyDescription")}
               actionLabel={t("consignees.addNew")}

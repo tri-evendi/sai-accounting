@@ -35,7 +35,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { formatDateShort } from "@/lib/utils";
-import { HandCoins, Info, Trash2 } from "lucide-react";
+import { DeleteOutlined, InfoCircleOutlined, MoneyCollectOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
@@ -261,7 +261,7 @@ export function AdvanceCompensationSection({
           {busyId === a.id ? (
             <Spin size="small" style={{ color: "inherit" }} />
           ) : (
-            <Trash2 aria-hidden="true" />
+            <DeleteOutlined aria-hidden="true" />
           )}
           Batalkan
         </Button>
@@ -378,7 +378,7 @@ export function AdvanceCompensationSection({
       {advances.length === 0 ? (
         <Alert
           type="info"
-          icon={<Info size={token.fontSizeLG} aria-hidden="true" />}
+          icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
           showIcon
           message={
             applied.length > 0
@@ -459,7 +459,7 @@ export function AdvanceCompensationSection({
                 {saving ? (
                   <Spin size="small" style={{ color: "inherit" }} />
                 ) : (
-                  <HandCoins aria-hidden="true" />
+                  <MoneyCollectOutlined aria-hidden="true" />
                 )}
                 Kompensasi Uang Muka
               </Button>

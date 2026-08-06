@@ -32,8 +32,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { moneyColumn } from "@/components/ui/money-column";
@@ -271,7 +270,7 @@ export default async function OperatorTenantDetailPage({
         <div>
           <Button asChild variant="ghost" size="sm">
             <Link href="/operator">
-              <ArrowLeft aria-hidden="true" />
+              <ArrowLeftOutlined aria-hidden="true" />
               {t("operator.tenant.back")}
             </Link>
           </Button>

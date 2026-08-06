@@ -25,7 +25,7 @@ import { moneyColumn } from "@/components/ui/money-column";
 import { Money } from "@/components/ui/money";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Info, FileBarChart } from "lucide-react";
+import { FundOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { PartyRecapResult, PartyRecapRow } from "@/lib/party-recap";
 import type { PartyRecapColumnId } from "@/lib/statement-layout";
 
@@ -199,7 +199,7 @@ export function PartyRecapTable({
   return (
     <>
       <Note style={{ marginBottom: NOTE_MARGIN }}>
-        <Info size={ICON_SIZE} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+        <InfoCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
         <span>{labels.grossNote}</span>
       </Note>
 
@@ -209,7 +209,7 @@ export function PartyRecapTable({
           rows={rows}
           rowKey={(r) => r.partyId ?? "none"}
           summary={summary}
-          empty={<EmptyState icon={<FileBarChart size={EMPTY_ICON_SIZE} />} title={labels.empty} />}
+          empty={<EmptyState icon={<FundOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />} title={labels.empty} />}
         />
       </Card>
 

@@ -36,8 +36,7 @@
 
 import { Flex, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
-import { CheckCircle2, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
-
+import { CheckCircleOutlined, ClockCircleOutlined, LoadingOutlined, WarningOutlined } from "@ant-design/icons";
 import { Progress } from "@/components/ui/progress";
 import { useT } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
@@ -72,11 +71,20 @@ export interface ProvisionState {
  * ber-`href` + `precedence` (React 19 meniadakan gandanya) yang menyasar
  * atribut `data-spin`, bukan kelas. Gaya sebaris tidak bisa membawa media
  * query, dan `prefers-reduced-motion` adalah media query.
+ *
+ * `[data-spin][data-spin]` di aturan reduced-motion **bukan salah ketik.**
+ * Sejak ikonnya `LoadingOutlined` (#201), AntD sendiri memasang
+ * `.anticon-spin{animation:loadingCircle …}` pada span yang sama, dengan
+ * kekhususan yang PERSIS sama seperti `[data-spin]` — jadi yang menang cuma
+ * urutan penyisipan `<style>`, dan urutan itu tidak kita kendalikan. Selektor
+ * yang digandakan menaikkan kekhususannya satu tingkat sehingga sakelar
+ * matinya selalu menang; tanpa itu, pengguna yang meminta gerak minimum tetap
+ * melihat ikon berputar di sebagian render.
  */
 export const SPIN_RULE = `
 [data-spin]{animation:sai-spin 1s linear infinite}
 @keyframes sai-spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){[data-spin]{animation:none}}
+@media (prefers-reduced-motion:reduce){[data-spin][data-spin]{animation:none}}
 `;
 
 function statusOf(phase: ProvisionPhase, state: ProvisionState): StepStatus {
@@ -228,34 +236,17 @@ function StepIcon({ status, token }: { status: StepStatus; token: GlobalToken })
 
   if (status === "done")
     return (
-      <CheckCircle2
-        size={16}
-        style={{ ...base, color: money.colorMoneyPositive }}
-        aria-hidden="true"
-      />
+      <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: money.colorMoneyPositive }} />
     );
   if (status === "error")
     return (
-      <TriangleAlert
-        size={16}
-        style={{ ...base, color: money.colorMoneyNegative }}
-        aria-hidden="true"
-      />
+      <WarningOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: money.colorMoneyNegative }} />
     );
   if (status === "active")
     return (
-      <Loader2
-        data-spin
-        size={16}
-        style={{ ...base, color: token.colorPrimary }}
-        aria-hidden="true"
-      />
+      <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: 16, ...base, color: token.colorPrimary }} />
     );
   return (
-    <CircleDashed
-      size={16}
-      style={{ ...base, color: token.colorTextSecondary }}
-      aria-hidden="true"
-    />
+    <ClockCircleOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: token.colorTextSecondary }} />
   );
 }

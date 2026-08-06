@@ -16,7 +16,7 @@ import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BookText } from "lucide-react";
+import { AccountBookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Link } from "@/components/ui/app-link";
@@ -195,7 +195,7 @@ export default async function JournalPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<BookText size={EMPTY_ICON_SIZE} />}
+              icon={<AccountBookOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("journal.emptyTitle")}
               description={t("journal.emptyDescription")}
               actionLabel={t("journal.emptyAction")}

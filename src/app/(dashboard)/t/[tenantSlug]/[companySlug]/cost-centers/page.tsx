@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { Split } from "lucide-react";
+import { BranchesOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 
 export const dynamic = "force-dynamic";
@@ -176,7 +176,7 @@ export default async function CostCentersPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Split size={EMPTY_ICON_SIZE} />}
+              icon={<BranchesOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("costCenters.emptyTitle")}
               description={t("costCenters.emptyDescription")}
               actionLabel={t("costCenters.addNew")}

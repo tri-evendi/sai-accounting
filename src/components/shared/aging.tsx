@@ -42,13 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Money, MoneyCell } from "@/components/ui/money";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  CircleDashed,
-  CircleSlash,
-  HelpCircle,
-} from "lucide-react";
+import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
 
@@ -84,12 +78,12 @@ const PARTY_ROW_PADDING = 10;
 
 const STATUS_STYLE: Record<
   PaymentStatus,
-  { variant: "default" | "success" | "warning" | "danger"; Icon: typeof CheckCircle2 }
+  { variant: "default" | "success" | "warning" | "danger"; Icon: typeof CheckCircleOutlined }
 > = {
-  paid: { variant: "success", Icon: CheckCircle2 },
-  partial: { variant: "warning", Icon: CircleDashed },
-  unpaid: { variant: "default", Icon: CircleSlash },
-  overdue: { variant: "danger", Icon: AlertTriangle },
+  paid: { variant: "success", Icon: CheckCircleOutlined },
+  partial: { variant: "warning", Icon: ClockCircleOutlined },
+  unpaid: { variant: "default", Icon: MinusCircleOutlined },
+  overdue: { variant: "danger", Icon: WarningOutlined },
 };
 
 export async function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
@@ -105,7 +99,7 @@ export async function PaymentStatusBadge({ status }: { status: PaymentStatus }) 
     // Ikon `1em` = `fontSizeSM` milik `Tag`; jaraknya dari aturan
     // `.ant-tag > svg + span` AntD — karena itu labelnya wajib `<span>`.
     <Badge variant={variant}>
-      <Icon size="1em" aria-hidden="true" />
+      <Icon aria-hidden="true" />
       <span>{labels[status]}</span>
     </Badge>
   );
@@ -243,7 +237,7 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
             color: "var(--ant-color-money-pending)",
           }}
         >
-          <HelpCircle size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <QuestionCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
           <small>
             {t("aging.unresolvedBefore", { count: unresolved })}
             <strong> {t("aging.unresolvedStrong")}</strong>

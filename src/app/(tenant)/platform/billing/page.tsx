@@ -14,8 +14,7 @@
  * Query di bawahnya karena itu tidak perlu bersyarat sama sekali.
  */
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
+import { ArrowRightOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -66,7 +65,7 @@ export default async function PlatformBillingPage() {
           <Button asChild variant="outline" size="sm">
             <Link href="/platform/billing/plans">
               {t("platform.plansViewLabel")}
-              <ArrowRight aria-hidden="true" />
+              <ArrowRightOutlined aria-hidden="true" />
             </Link>
           </Button>
         }
@@ -101,7 +100,7 @@ export default async function PlatformBillingPage() {
               <Button asChild style={{ flexShrink: 0 }}>
                 <Link href="/platform/billing/plans">
                   {t("platform.plansViewLabel")}
-                  <ArrowRight aria-hidden="true" />
+                  <ArrowRightOutlined aria-hidden="true" />
                 </Link>
               </Button>
             </div>

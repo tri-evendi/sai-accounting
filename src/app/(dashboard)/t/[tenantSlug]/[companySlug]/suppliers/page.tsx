@@ -22,8 +22,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
-import { Truck } from "lucide-react";
-
+import { TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `marginXS` 8 — token AntD sebagai angka (tanpa hook di sini). */
@@ -174,7 +173,7 @@ export default async function SuppliersPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Truck size={EMPTY_ICON_SIZE} />}
+              icon={<TruckOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("suppliers.emptyTitle")}
               description={t("suppliers.emptyDescription")}
               actionLabel={t("suppliers.addNew")}

@@ -32,7 +32,7 @@ import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Receipt } from "lucide-react";
+import { FileDoneOutlined } from "@ant-design/icons";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
 import { SupplierAdvancePanel } from "./advance-panel";
@@ -360,7 +360,7 @@ export default async function SupplierDetailPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Receipt size={EMPTY_ICON_SIZE} />}
+              icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("suppliers.emptyTxTitle")}
               description={t("suppliers.emptyTxDescription")}
             />

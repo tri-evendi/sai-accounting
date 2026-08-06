@@ -33,8 +33,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Dropdown, Flex, Grid, theme } from "antd";
 import type { MenuProps } from "antd";
-import { HelpCircle, BookMarked, Compass } from "lucide-react";
-
+import { CompassOutlined, QuestionCircleOutlined, ReadOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
 import { GLOSSARY_PATH } from "@/lib/labels";
@@ -76,7 +75,7 @@ export function HelpMenu() {
   const items: MenuProps["items"] = [
     {
       key: "glossary",
-      icon: <BookMarked size={16} aria-hidden="true" />,
+      icon: <ReadOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
       style: BARIS_DUA_BARIS,
       label: (
         <Link href={GLOSSARY_PATH} style={{ display: "block", color: "inherit" }}>
@@ -88,7 +87,7 @@ export function HelpMenu() {
     tour
       ? {
           key: "replay-tour",
-          icon: <Compass size={16} aria-hidden="true" />,
+          icon: <CompassOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
           style: BARIS_DUA_BARIS,
           onClick: () => {
             setOpen(false);
@@ -126,7 +125,7 @@ export function HelpMenu() {
           aria-label={t("helpMenu.trigger")}
         >
           <Flex component="span" align="center" gap={token.marginXXS}>
-            <HelpCircle size={16} aria-hidden="true" />
+            <QuestionCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
             {screens.sm && <span>{t("helpMenu.trigger")}</span>}
           </Flex>
         </Button>

@@ -29,7 +29,7 @@ import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { formatDateShort } from "@/lib/utils";
-import { HandCoins, Info, Plus } from "lucide-react";
+import { InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -222,7 +222,7 @@ export default async function AdvancesPage({
         actions={
           <Link href="/advances/new">
             <Button>
-              <Plus aria-hidden="true" />
+              <PlusOutlined aria-hidden="true" />
               {t("advances.record")}
             </Button>
           </Link>
@@ -277,7 +277,7 @@ export default async function AdvancesPage({
           gap: CONTROL_GAP,
         }}
       >
-        <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <small>
           {t("advances.noteBefore")} <strong>{t("advances.noteSalesAccount")}</strong>{" "}
           {t("advances.noteLiability")} <strong>{t("advances.notePurchaseAccount")}</strong>{" "}
@@ -294,7 +294,7 @@ export default async function AdvancesPage({
           rowKey={(r) => r.id}
           empty={
             <EmptyState
-              icon={<HandCoins size={EMPTY_ICON_SIZE} />}
+              icon={<MoneyCollectOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("advances.emptyTitle")}
               description={t("advances.emptyDescription")}
               actionLabel={t("advances.record")}

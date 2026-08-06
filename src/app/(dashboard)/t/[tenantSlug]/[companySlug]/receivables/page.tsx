@@ -35,7 +35,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@/lib/utils";
-import { Receipt } from "lucide-react";
+import { FileDoneOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
@@ -310,7 +310,7 @@ export default async function ReceivablesPage({
           rowKey={(r) => `${r.kind}-${r.id}`}
           empty={
             <EmptyState
-              icon={<Receipt size={EMPTY_ICON_SIZE} />}
+              icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={overdueOnly ? t("receivables.emptyOverdue") : t("receivables.emptyAll")}
             />
           }

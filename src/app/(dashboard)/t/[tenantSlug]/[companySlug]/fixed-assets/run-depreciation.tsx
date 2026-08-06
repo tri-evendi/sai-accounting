@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { CalendarClock } from "lucide-react";
+import { CalendarOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
@@ -81,7 +81,7 @@ export function RunDepreciation() {
             gap={token.marginXS}
             style={{ minHeight: token.controlHeight, fontWeight: token.fontWeightStrong }}
           >
-            <CalendarClock size={token.fontSizeLG} aria-hidden="true" />
+            <CalendarOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />
             {t("fixedAssets.runTitle")}
           </Flex>
           <div style={{ width: MONTH_WIDTH }}>

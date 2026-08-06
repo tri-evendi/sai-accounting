@@ -38,7 +38,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { Link2 } from "lucide-react";
+import { LinkOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
@@ -194,7 +194,7 @@ export function AllocationEditor({
   if (!open) {
     return (
       <Button variant="ghost" size="sm" onClick={handleOpen}>
-        <Link2 aria-hidden="true" />
+        <LinkOutlined aria-hidden="true" />
         {allocatedCount > 0 ? t("suppliers.allocEdit") : t("suppliers.allocate")}
       </Button>
     );
@@ -238,7 +238,7 @@ export function AllocationEditor({
           gap: token.marginXXS,
         }}
       >
-        <Link2 size="1em" aria-hidden="true" style={{ color: token.colorTextSecondary }} />
+        <LinkOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
         {t("suppliers.allocPanelTitle")}
       </h4>
       <p style={{ margin: 0, marginBottom: token.marginSM, color: token.colorTextSecondary }}>

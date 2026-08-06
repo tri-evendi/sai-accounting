@@ -39,7 +39,7 @@
 import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 import { useRef, useState } from "react";
-import { HelpCircle, ArrowRight } from "lucide-react";
+import { ArrowRightOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import {
   Popover,
   PopoverContent,
@@ -133,7 +133,7 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
               background: open ? "var(--ant-color-primary-bg)" : "transparent",
             }}
           >
-            <HelpCircle className="h-4 w-4" aria-hidden="true" />
+            <QuestionCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -189,7 +189,7 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
               style={{ color: "var(--ant-color-link)" }}
             >
               {t("term.learnMore")}
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 12 }} />
             </Link>
           )}
         </PopoverContent>

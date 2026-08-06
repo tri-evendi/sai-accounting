@@ -25,8 +25,8 @@
  * Akun-T tanpa entri sempat lolos keterbacaan, tapi hasilnya huruf "T" —
  * inisial yang salah untuk produk bernama SAI.
  *
- * Sengaja geometri sendiri, bukan ikon lucide: ikon adalah kosakata
- * ANTARMUKA (`Receipt`, `Wallet`, dan seterusnya, MASTER.md), dan meminjam
+ * Sengaja geometri sendiri, bukan ikon dari set ikon: ikon adalah kosakata
+ * ANTARMUKA (`FileDoneOutlined`, `WalletOutlined`, dan seterusnya, MASTER.md), dan meminjam
  * satu di antaranya sebagai lambang produk berarti lambang itu akan muncul
  * lagi di tengah layar sebagai tombol.
  *

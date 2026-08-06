@@ -34,7 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ListTree } from "lucide-react";
+import { ApartmentOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 
@@ -260,13 +260,13 @@ export default async function AccountsPage({
           empty={
             q ? (
               <EmptyState
-                icon={<ListTree size={EMPTY_ICON_SIZE} />}
+                icon={<ApartmentOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
                 title={t("accounts.emptySearchTitle")}
                 description={t("accounts.emptySearchDescription", { query: q })}
               />
             ) : (
               <EmptyState
-                icon={<ListTree size={EMPTY_ICON_SIZE} />}
+                icon={<ApartmentOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
                 title={t("accounts.emptyTitle")}
                 description={t("accounts.emptyDescription")}
                 actionLabel={t("accounts.importFromExcel")}

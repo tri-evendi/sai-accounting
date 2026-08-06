@@ -53,7 +53,7 @@
  * fokus sama sekali.
  */
 import { useState } from "react";
-import { ArrowRight, Eye, FileSpreadsheet, FileText } from "lucide-react";
+import { ArrowRightOutlined, EyeOutlined, FileExcelOutlined, FileTextOutlined } from "@ant-design/icons";
 import { Flex } from "antd";
 import {
   Dialog,
@@ -430,7 +430,7 @@ export function ReportLaunchDialog({
                 onClick={() => download("pdf")}
                 disabled={busy !== null}
               >
-                <FileText size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
+                <FileTextOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 4 }} />
                 {busy === "pdf" ? t("pdf.preparing") : t("reports.dialog.exportPdf")}
               </Button>
               <Button
@@ -439,7 +439,7 @@ export function ReportLaunchDialog({
                 onClick={() => download("xlsx")}
                 disabled={busy !== null}
               >
-                <FileSpreadsheet size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
+                <FileExcelOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 4 }} />
                 {busy === "xlsx" ? t("pdf.preparing") : t("reports.dialog.exportExcel")}
               </Button>
             </>
@@ -447,9 +447,9 @@ export function ReportLaunchDialog({
           {report.href && (
             <Button type="button" onClick={openReport} disabled={busy !== null}>
               {exportable ? (
-                <Eye size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
+                <EyeOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 4 }} />
               ) : (
-                <ArrowRight size={ICON_SIZE} style={{ marginInlineEnd: 4 }} aria-hidden="true" />
+                <ArrowRightOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 4 }} />
               )}
               {exportable ? t("reports.dialog.preview") : t("reports.dialog.open")}
             </Button>

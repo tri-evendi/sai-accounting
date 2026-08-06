@@ -21,8 +21,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Lock } from "lucide-react";
-
+import { LockOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -77,7 +76,7 @@ export default async function SetupRequiredPage() {
     <AuthShell
       heading={t("auth.setupRequired.heading")}
       description={t("auth.setupRequired.description")}
-      icon={<Lock size={20} aria-hidden="true" />}
+      icon={<LockOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p style={BODY_TEXT}>{t("auth.setupRequired.body")}</p>

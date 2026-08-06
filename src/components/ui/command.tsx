@@ -28,7 +28,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { Search } from "lucide-react";
+import { SearchOutlined } from "@ant-design/icons";
 import { cn } from "@/lib/utils";
 
 function Command({
@@ -52,7 +52,7 @@ function CommandInput({
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-      <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <SearchOutlined className="shrink-0 text-muted-foreground" aria-hidden="true" style={{ fontSize: 16 }} />
       <CommandPrimitive.Input
         className={cn(
           "w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",

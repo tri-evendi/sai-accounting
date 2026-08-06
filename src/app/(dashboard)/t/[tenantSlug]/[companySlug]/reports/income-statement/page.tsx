@@ -47,8 +47,7 @@ import { formatDate, formatNumber } from "@/lib/utils";
 import type { StatementLine } from "@/lib/reports";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
-import { Info } from "lucide-react";
-
+import { InfoCircleOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
@@ -373,7 +372,7 @@ export default async function IncomeStatementPage({
         >
           <p style={{ margin: 0 }}>{t("costCenters.filterNote")}</p>
           <p style={{ display: "flex", alignItems: "flex-start", gap: 6, margin: 0 }}>
-            <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+            <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0, marginTop: 2 }} />
             <span>{t("costCenters.filterScopeNote")}</span>
           </p>
         </div>

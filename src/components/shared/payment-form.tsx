@@ -46,7 +46,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 import { BASE_CURRENCY, CURRENCY_VALUES } from "@/lib/validations/fx";
-import { DollarSign } from "lucide-react";
+import { DollarOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface PaymentFormProps {
@@ -164,7 +164,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <DollarSign aria-hidden="true" /> {t("payments.addPayment")}
+        <DollarOutlined aria-hidden="true" /> {t("payments.addPayment")}
       </Button>
     );
   }

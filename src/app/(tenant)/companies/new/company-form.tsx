@@ -30,8 +30,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
-import { CheckCircle2, Loader2 } from "lucide-react";
-
+import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/i18n/client";
@@ -203,7 +202,7 @@ export function CompanyForm({
           <Alert
             type="success"
             showIcon
-            icon={<CheckCircle2 size={20} aria-hidden="true" />}
+            icon={<CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
             message={t("companies.doneTitle")}
             description={t("companies.doneBody")}
           />
@@ -337,7 +336,7 @@ export function CompanyForm({
 
         <Flex align="center" gap={token.marginSM}>
           <Button type="submit" disabled={running || !name.trim() || !effectiveSlug}>
-            {running && <Loader2 data-spin size={16} aria-hidden="true" />}
+            {running && <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: 16 }} />}
             {running ? t("companies.creating") : t("companies.create")}
           </Button>
           {running && <Text type="secondary">{t("companies.dontClose")}</Text>}

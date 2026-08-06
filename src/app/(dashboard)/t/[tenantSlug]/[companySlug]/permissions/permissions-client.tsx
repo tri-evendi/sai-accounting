@@ -66,7 +66,7 @@ import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
-import { Lock, PackageX, RotateCcw, Save } from "lucide-react";
+import { CloseSquareOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
@@ -290,11 +290,11 @@ export function PermissionsClient() {
               disabled={saving || (savedOverrideCount === 0 && !isDirty)}
               onClick={() => setConfirmReset(true)}
             >
-              <RotateCcw aria-hidden="true" />
+              <UndoOutlined aria-hidden="true" />
               {t("permissions.resetToDefault")}
             </Button>
             <Button disabled={saving || !isDirty} onClick={requestSave}>
-              <Save aria-hidden="true" />
+              <SaveOutlined aria-hidden="true" />
               {t("common.saveChanges")}
             </Button>
           </>
@@ -327,7 +327,7 @@ export function PermissionsClient() {
         <Alert
           type="info"
           style={{ marginBottom: token.margin }}
-          icon={<PackageX size={token.fontSizeLG} aria-hidden="true" />}
+          icon={<CloseSquareOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
           showIcon
           message={t("modules.permissionsNotice", { count: hiddenRowCount })}
         />
@@ -362,7 +362,7 @@ export function PermissionsClient() {
           {t("permissions.legendMarkedAfter")}
         </Flex>
         <Flex align="center" gap={token.marginXXS}>
-          <Lock size="1em" aria-hidden="true" />
+          <LockOutlined aria-hidden="true" />
           {t("permissions.legendLocked")}
         </Flex>
       </Flex>
@@ -540,7 +540,7 @@ function PermissionGroupRows({
                       gap={token.marginXXS}
                       style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}
                     >
-                      <Lock size="1em" aria-hidden="true" />
+                      <LockOutlined aria-hidden="true" />
                       {t("permissions.lockedShort")}
                     </Flex>
                   )}

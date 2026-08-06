@@ -71,7 +71,7 @@ import {
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
-import { Trash2, Plus, Download, Info, Lock } from "lucide-react";
+import { DeleteOutlined, DownloadOutlined, InfoCircleOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**
@@ -478,7 +478,7 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.contract.length === 0}
                   onClick={() => pull("contract")}
                 >
-                  <Download aria-hidden /> {t("invoices.pullContractRemainder")}
+                  <DownloadOutlined aria-hidden /> {t("invoices.pullContractRemainder")}
                 </Button>
                 <Button
                   type="button"
@@ -487,7 +487,7 @@ export function NewInvoiceForm({
                   disabled={!outstanding || outstanding.pull.delivery.length === 0}
                   onClick={() => pull("delivery")}
                 >
-                  <Download aria-hidden /> {t("invoices.pullShipped")}
+                  <DownloadOutlined aria-hidden /> {t("invoices.pullShipped")}
                 </Button>
               </Flex>
             </div>
@@ -535,7 +535,7 @@ export function NewInvoiceForm({
                 gap={token.marginXXS}
                 style={{ marginTop: token.marginSM }}
               >
-                <Info size={token.fontSize} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+                <InfoCircleOutlined aria-hidden style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
                 <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                   {pullNote}
                 </Typography.Text>
@@ -576,7 +576,7 @@ export function NewInvoiceForm({
                       color: token.colorError,
                     }}
                   >
-                    <Lock size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span>{periodIssue}</span>
                   </Typography.Paragraph>
                 )}
@@ -598,7 +598,7 @@ export function NewInvoiceForm({
                 <TermTooltip term="faktur">{t("invoices.goodsSoldTitle")}</TermTooltip>
               </CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus aria-hidden /> {t("common.addItem")}
+                <PlusOutlined aria-hidden /> {t("common.addItem")}
               </Button>
             </Flex>
           </CardHeader>
@@ -676,7 +676,7 @@ export function NewInvoiceForm({
                           disabled={items.length === 1}
                           aria-label={t("common.removeItemRow", { n: i + 1 })}
                         >
-                          <Trash2 aria-hidden />
+                          <DeleteOutlined aria-hidden />
                         </Button>
                       </Col>
                     </Row>

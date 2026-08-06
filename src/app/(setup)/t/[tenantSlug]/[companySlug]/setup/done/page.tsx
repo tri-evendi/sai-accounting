@@ -27,8 +27,7 @@
  */
 import { Link } from "@/components/ui/app-link";
 import { redirect } from "next/navigation";
-import { ArrowRight, BookOpenCheck, CheckCircle2, Scale } from "lucide-react";
-
+import { AccountBookOutlined, ArrowRightOutlined, CheckCircleOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { requirePagePermission } from "@/lib/page-auth";
 import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
@@ -101,7 +100,7 @@ export default async function SetupDonePage({
       <PageHeader title={t("setup.doneTitle")} description={t("setup.doneDescription")} />
 
       <div style={DONE_BANNER}>
-        <CheckCircle2 size={20} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+        <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
         <p style={{ margin: 0 }}>
           {t("setup.doneBanner", { date: formatDate(settings.fiscalYearStart) })}
         </p>
@@ -158,13 +157,13 @@ export default async function SetupDonePage({
             >
               <Button asChild variant="outline">
                 <Link href={`/journal/${journal.id}`}>
-                  <BookOpenCheck aria-hidden="true" />
+                  <AccountBookOutlined aria-hidden="true" />
                   {t("setup.doneViewJournal", { number: journal.number })}
                 </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/reports/balance-sheet">
-                  <Scale aria-hidden="true" />
+                  <ReconciliationOutlined aria-hidden="true" />
                   {t("reports.balanceSheetTitle")}
                 </Link>
               </Button>
@@ -176,7 +175,7 @@ export default async function SetupDonePage({
       <Button asChild size="lg">
         <Link href="/dashboard">
           {t("setup.doneStartWorking")}
-          <ArrowRight aria-hidden="true" />
+          <ArrowRightOutlined aria-hidden="true" />
         </Link>
       </Button>
     </div>

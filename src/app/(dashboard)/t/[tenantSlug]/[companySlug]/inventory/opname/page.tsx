@@ -15,7 +15,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Package } from "lucide-react";
+import { ContainerOutlined } from "@ant-design/icons";
 import { OpnameForm } from "./opname-form";
 import { getT } from "@/lib/i18n/server";
 
@@ -170,7 +170,7 @@ export default async function StockOpnamePage({
         <div style={{ padding: "var(--ant-padding-lg)" }}>
           {opnameItems.length === 0 ? (
             <EmptyState
-              icon={<Package size={EMPTY_ICON_SIZE} />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("inventory.emptyTitle")}
               description={t("inventory.opnameEmptyDescription")}
               actionLabel={t("common.addRemoveStock")}

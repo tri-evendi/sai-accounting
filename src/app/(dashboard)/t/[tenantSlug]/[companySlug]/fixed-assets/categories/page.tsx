@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
 import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 
-import { Tags } from "lucide-react";
+import { TagsOutlined } from "@ant-design/icons";
 import { CategoryForm } from "./category-form";
 import { getT } from "@/lib/i18n/server";
 
@@ -137,7 +137,7 @@ export default async function CategoriesPage({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={<Tags size={EMPTY_ICON_SIZE} />}
+          icon={<TagsOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.emptyCategoryTitle")}
           description={t("fixedAssets.emptyCategoryDescription")}
         />

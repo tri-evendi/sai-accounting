@@ -4,24 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ReportLaunchDialog } from "@/components/reports/report-launch-dialog";
 import { costCenterFilterOptions } from "@/lib/cost-center-options";
-import {
-  BookText,
-  TrendingUp,
-  Scale,
-  Waves,
-  Target,
-  HandCoins,
-  Wallet,
-  Users,
-  Truck,
-  Package,
-  PackageOpen,
-  Landmark,
-  FileSpreadsheet,
-  FileBarChart,
-  ArrowRight,
-  type LucideIcon,
-} from "lucide-react";
+import { AccountBookOutlined, AimOutlined, ArrowRightOutlined, BankOutlined, ContainerOutlined, FileExcelOutlined, FundOutlined, HistoryOutlined, MoneyCollectOutlined, ReconciliationOutlined, RiseOutlined, TeamOutlined, TransactionOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import { reportsByCategory, type ReportDefinition } from "@/lib/report-catalog";
 import { PageHeader } from "@/components/ui/page-header";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -63,21 +47,28 @@ const GROUP_GAP = 40;
 const ICON_SIZE = 24;
 const ARROW_SIZE = 16;
 
-/** lucide icon names referenced by the catalogue → components (keeps the catalogue pure). */
-const ICONS: Record<string, LucideIcon> = {
-  BookText,
-  TrendingUp,
-  Scale,
-  Waves,
-  Target,
-  HandCoins,
-  Wallet,
-  Users,
-  Truck,
-  Package,
-  PackageOpen,
-  Landmark,
-  FileSpreadsheet,
+/**
+ * Icon names referenced by the catalogue → components (keeps the catalogue pure).
+ *
+ * Kunci tetap nama lama (`lib/report-catalog.ts` menyimpannya sebagai string);
+ * hanya nilainya yang berpindah ke `@ant-design/icons` di issue #201. Peta ini
+ * satu-satunya tempat 16 laporan mendapatkan ikonnya — jangan menyebarkan impor
+ * ikon ke katalognya.
+ */
+const ICONS: Record<string, IconComponent> = {
+  BookText: AccountBookOutlined,
+  TrendingUp: RiseOutlined,
+  Scale: ReconciliationOutlined,
+  Waves: TransactionOutlined,
+  Target: AimOutlined,
+  HandCoins: MoneyCollectOutlined,
+  Wallet: WalletOutlined,
+  Users: TeamOutlined,
+  Truck: TruckOutlined,
+  Package: ContainerOutlined,
+  PackageOpen: HistoryOutlined,
+  Landmark: BankOutlined,
+  FileSpreadsheet: FileExcelOutlined,
 };
 
 /**
@@ -105,7 +96,7 @@ function ReportCard({
   t: (key: "reports.comingSoon" | "reports.openReport") => string;
   costCenterOptions: { value: string; label: string }[];
 }) {
-  const Icon = ICONS[report.icon] ?? FileBarChart;
+  const Icon = ICONS[report.icon] ?? FundOutlined;
   const soon = report.status === "coming_soon";
   const text = catalogText(dictionary, report.id);
   const title = text?.title ?? report.title;
@@ -134,13 +125,7 @@ function ReportCard({
         <div
           style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}
         >
-          <Icon
-            size={ICON_SIZE}
-            style={{
-              color: soon ? "var(--ant-color-text-secondary)" : "var(--ant-color-link)",
-            }}
-            aria-hidden="true"
-          />
+          <Icon aria-hidden="true" style={{ fontSize: ICON_SIZE, color: soon ? "var(--ant-color-text-secondary)" : "var(--ant-color-link)" }} />
           {soon && <Badge variant="default">{t("reports.comingSoon")}</Badge>}
         </div>
         <h3
@@ -169,7 +154,7 @@ function ReportCard({
               color: "var(--ant-color-link)",
             }}
           >
-            {t("reports.openReport")} <ArrowRight size={ARROW_SIZE} aria-hidden="true" />
+            {t("reports.openReport")} <ArrowRightOutlined aria-hidden="true" style={{ fontSize: ARROW_SIZE }} />
           </span>
         )}
       </div>

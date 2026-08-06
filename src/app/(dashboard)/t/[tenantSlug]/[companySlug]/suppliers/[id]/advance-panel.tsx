@@ -52,8 +52,7 @@ import {
 } from "@/app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { ArrowUpFromLine, HandCoins, Info, Plus, X } from "lucide-react";
-
+import { CloseOutlined, InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 /** One purchase this supplier's advances can be compensated into. */
 export interface PurchaseTargetView {
   id: number;
@@ -225,7 +224,7 @@ export function SupplierAdvancePanel({
         color: token.colorTextSecondary,
       }}
     >
-      <Info size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: token.marginXXS }} />
+      <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: token.marginXXS }} />
       <small>{body}</small>
     </p>
   );
@@ -245,7 +244,7 @@ export function SupplierAdvancePanel({
               color: token.colorText,
             }}
           >
-            <ArrowUpFromLine size="1em" aria-hidden="true" />
+            <VerticalAlignTopOutlined aria-hidden="true" />
             {t("suppliers.introMoneyOut")}
           </span>{" "}
           {t("suppliers.introA")} <strong>{t("suppliers.introBefore")}</strong>{" "}
@@ -331,7 +330,7 @@ export function SupplierAdvancePanel({
               {t("suppliers.recordAdvanceTo", { name: supplier.name })}
             </h4>
             <Button type="button" variant="ghost" size="sm" onClick={() => setRecording(false)}>
-              <X aria-hidden="true" />
+              <CloseOutlined aria-hidden="true" />
               {t("common.close")}
             </Button>
           </Flex>
@@ -348,7 +347,7 @@ export function SupplierAdvancePanel({
       ) : (
         <div>
           <Button type="button" size="sm" onClick={() => setRecording(true)}>
-            <Plus aria-hidden="true" />
+            <PlusOutlined aria-hidden="true" />
             {t("suppliers.recordAdvance")}
           </Button>
         </div>
@@ -401,7 +400,7 @@ export function SupplierAdvancePanel({
             gap: token.marginXXS,
           }}
         >
-          <HandCoins size="1em" aria-hidden="true" style={{ color: token.colorTextSecondary }} />
+          <MoneyCollectOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
           {t("suppliers.compensateTitle")}
         </h4>
         <p

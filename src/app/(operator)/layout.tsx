@@ -30,8 +30,7 @@
  * SELURUH keadaan interaktifnya — itu yang dipilih.
  */
 
-import { ShieldCheck } from "lucide-react";
-
+import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OperatorNav } from "@/components/operator/operator-nav";
@@ -76,7 +75,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         }}
       >
         <div style={BAR}>
-          <ShieldCheck size={20} style={{ flexShrink: 0 }} aria-hidden="true" />
+          <SafetyCertificateOutlined aria-hidden="true" style={{ fontSize: 20, flexShrink: 0 }} />
           <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em" }}>
             {t("operator.consoleTitle")}
           </span>

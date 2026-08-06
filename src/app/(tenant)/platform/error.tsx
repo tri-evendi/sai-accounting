@@ -29,8 +29,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Flex, Typography, theme } from "antd";
-import { AlertTriangle } from "lucide-react";
-
+import { WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
@@ -72,7 +71,7 @@ export default function PlatformError({
                 color: moneyPalette(token).colorMoneyNegative,
               }}
             >
-              <AlertTriangle size={24} aria-hidden="true" />
+              <WarningOutlined aria-hidden="true" style={{ fontSize: 24 }} />
             </Flex>
 
             <Flex vertical gap={token.marginXXS}>

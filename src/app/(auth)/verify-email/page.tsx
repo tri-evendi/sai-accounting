@@ -21,8 +21,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
-import { BadgeCheck, MailCheck } from "lucide-react";
-
+import { CheckCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
@@ -87,7 +86,7 @@ function VerifyEmailInner() {
       heading={done ? t("auth.register.verifiedTitle") : t("auth.register.verifyHeading")}
       description={done ? undefined : t("auth.register.verifyDescription")}
       error={error}
-      icon={done ? <BadgeCheck size={20} aria-hidden /> : <MailCheck size={20} aria-hidden />}
+      icon={done ? <CheckCircleOutlined aria-hidden style={{ fontSize: 20 }} /> : <MailOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={footer}
     >
       {done ? (

@@ -8,7 +8,7 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · **shadcn/ui + CVA** di `src/components/ui` (Radix di baliknya untuk overlay) · form `react-hook-form` + `zod` · tabel `@tanstack/react-table` · ikon `lucide-react` · chart `recharts`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, …) — kelas palet mentah (`bg-blue-600`) ditolak lint (issue #54).
+**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · **shadcn/ui + CVA** di `src/components/ui` (Radix di baliknya untuk overlay) · form `react-hook-form` + `zod` · tabel `@tanstack/react-table` · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, …) — kelas palet mentah (`bg-blue-600`) ditolak lint (issue #54).
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
@@ -202,8 +202,55 @@ Tanda wajib `*` tetap digambar aplikasi ini (di BELAKANG teks label, sama sepert
 
 ---
 
+## Ikon (issue #201)
+
+**Satu paket, satu bahasa bentuk: `@ant-design/icons`.** Dua set ikon berdampingan
+di satu layar terbaca sebagai cacat sebelum terbaca sebagai gaya — lucide bergaris
+2px seragam, AntD campuran outlined/filled/two-tone. `lucide-react` diganti
+seluruhnya di issue #201; **jangan memasangnya kembali**, dan jangan menambah set
+ikon ketiga (emoji tetap terlarang).
+
+Varian yang dipakai adalah **`…Outlined`**. `…Filled` dan `…TwoTone` hanya boleh
+dipakai kalau memang ada alasan yang ditulis: isian pekat di antara ikon bergaris
+akan menarik mata ke tempat yang tidak penting.
+
+### Ukuran = `font-size`. Selalu. Tidak pernah kelas kotak.
+
+SVG di dalam ikon AntD berukuran `1em`, dan pembungkusnya `<span>` — jadi:
+
+| | |
+|---|---|
+| **Bawaan (mayoritas)** | **Jangan sebut ukuran.** Ikonnya mengikuti ukuran teks di sebelahnya: di dalam `Button`, `Menu`, `Tag`, atau paragraf, ia otomatis benar. |
+| **Harus beda dari teksnya** (ikon empty state 48px, ikon kepala callout 20px) | `style={{ fontSize: 20 }}` — sekali, di tempat itu. |
+| **JANGAN** | `className="h-4 w-4"` / `size-4` / prop `size={16}`. |
+
+Dua alasan larangan itu, dan keduanya diam:
+- `h-4 w-4` mengukur **span**-nya, bukan `<svg width="1em">` di dalamnya. Kelasnya
+  terpasang, ikonnya tidak berubah ukuran — perubahan yang terlihat berhasil di diff
+  dan tidak berpengaruh apa pun di layar.
+- `size={16}` **lolos `tsc`**: props ikon AntD turun dari `React.HTMLProps<HTMLSpanElement>`,
+  yang memang punya `size` (atribut HTML `<input>`/`<select>`). Ia mendarat sebagai
+  atribut `size="16"` di `<span>` dan tidak mengatur apa pun.
+
+Warna ikut jalur yang sama: `style={{ color: … }}` atau kelas token yang sudah ada
+(`text-muted-foreground`), bukan prop `color` — dan ambangnya tetap 3:1 (ikon = grafis
+non-teks), dengan aturan **warna tak pernah penanda tunggal**.
+
+### Ikon dekoratif tetap `aria-hidden`
+
+Ikon AntD merender `<span role="img" aria-label="…">` — **ia dibacakan pembaca layar
+secara bawaan**, berbeda dari `<svg>` lucide yang bisu. Setiap ikon yang hanya
+mengulang teks di sebelahnya karena itu **wajib** `aria-hidden="true"`; `aria-hidden`
+diteruskan ke span dan menang atas `aria-label` bawaan. Ikon yang berdiri SENDIRI
+sebagai satu-satunya isi tombol tidak diberi `aria-hidden` melainkan tombolnya yang
+diberi `aria-label`. Tidak ada tes yang gagal kalau ini terlewat — yang terjadi hanya
+menu yang dibacakan dua kali.
+
+---
+
 ## Anti-Patterns (JANGAN)
-- ❌ Emoji sebagai ikon → pakai `lucide-react`.
+- ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
+- ❌ Dua paket ikon di satu layar; ❌ `h-4 w-4`/`size-4`/prop `size` pada ikon → lihat "Ikon" di bawah.
 - ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan.
 - ❌ Placeholder sebagai pengganti label.
@@ -241,7 +288,7 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 ---
 
 ## Pre-Delivery Checklist (UI apa pun)
-- [ ] Ikon SVG konsisten (lucide-react), tanpa emoji.
+- [ ] Ikon SVG konsisten (`@ant-design/icons`), tanpa emoji; ukurannya `font-size`, dekoratif tetap `aria-hidden`.
 - [ ] `cursor-pointer` di semua elemen klik; hover transisi 150–250ms.
 - [ ] Kontras teks ≥ 4.5:1; fokus keyboard terlihat; `prefers-reduced-motion` dihormati.
 - [ ] Nominal: tabular-nums, rata kanan, format id-ID, mata uang eksplisit, negatif jelas (merah/kurung).

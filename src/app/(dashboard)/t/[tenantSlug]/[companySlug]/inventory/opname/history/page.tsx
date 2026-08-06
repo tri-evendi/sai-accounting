@@ -13,8 +13,7 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { ClipboardCheck } from "lucide-react";
-
+import { AuditOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /**
@@ -146,7 +145,7 @@ export default async function OpnameHistoryPage({
       {history.sessions.length === 0 ? (
         <Card>
           <EmptyState
-            icon={<ClipboardCheck size={EMPTY_ICON_SIZE} />}
+            icon={<AuditOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
             title={t("opnameHistory.emptyTitle")}
             description={t("opnameHistory.emptyDescription")}
             actionLabel={t("nav.items.inventoryOpname")}

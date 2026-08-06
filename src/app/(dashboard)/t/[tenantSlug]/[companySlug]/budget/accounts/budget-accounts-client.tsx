@@ -25,7 +25,7 @@ import { useToast } from "@/components/ui/toast";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { BudgetListRow } from "@/lib/budget-report";
-import { Trash2, ClipboardList } from "lucide-react";
+import { DeleteOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -175,7 +175,7 @@ export function BudgetAccountsClient({
                 period: period(b.year, b.month),
               })}
             >
-              {deleting === b.id ? <Spin size="small" /> : <Trash2 aria-hidden="true" />}
+              {deleting === b.id ? <Spin size="small" /> : <DeleteOutlined aria-hidden="true" />}
               {t("common.delete")}
             </Button>
           }
@@ -272,7 +272,7 @@ export function BudgetAccountsClient({
 
       {budgets.length === 0 ? (
         <EmptyState
-          icon={<ClipboardList size={EMPTY_ICON_SIZE} />}
+          icon={<OrderedListOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("budget.emptyBudgetTitle")}
           description={t("budget.emptyBudgetDescription")}
         />

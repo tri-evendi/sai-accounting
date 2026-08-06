@@ -6,7 +6,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Card } from "@/components/ui/card";
-import { ClipboardList, Target, GaugeCircle } from "lucide-react";
+import { AimOutlined, DashboardOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
@@ -29,19 +29,19 @@ export default async function BudgetHubPage({
   const surfaces = [
     {
       href: "/budget/report",
-      icon: GaugeCircle,
+      icon: DashboardOutlined,
       title: t("budget.surfaceReportTitle"),
       desc: t("budget.surfaceReportDesc"),
     },
     {
       href: "/budget/accounts",
-      icon: ClipboardList,
+      icon: OrderedListOutlined,
       title: t("budget.surfaceAccountsTitle"),
       desc: t("budget.surfaceAccountsDesc"),
     },
     {
       href: "/budget/targets",
-      icon: Target,
+      icon: AimOutlined,
       title: t("budget.surfaceTargetsTitle"),
       desc: t("budget.surfaceTargetsDesc"),
     },
@@ -69,9 +69,8 @@ export default async function BudgetHubPage({
                     teratasi — lihat kepala `shared/aging.tsx`. Ia dekoratif:
                     judul kartunya yang membawa maknanya. */}
                 <s.icon
-                  size="1.5em"
                   aria-hidden="true"
-                  style={{ color: "var(--ant-color-primary)" }}
+                  style={{ fontSize: "1.5em", color: "var(--ant-color-primary)" }}
                 />
                 <h2
                   style={{

@@ -38,7 +38,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
-import { Download, Upload, FileSpreadsheet } from "lucide-react";
+import { DownloadOutlined, FileExcelOutlined, UploadOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
@@ -211,7 +211,7 @@ export function ImportAccountsForm() {
             <div>
               <a href={endpoint} download>
                 <Button variant="secondary" type="button">
-                  <Download aria-hidden="true" />
+                  <DownloadOutlined aria-hidden="true" />
                   {t("accounts.downloadTemplate")}
                 </Button>
               </a>
@@ -249,11 +249,7 @@ export function ImportAccountsForm() {
                   textAlign: "center",
                 }}
               >
-                <FileSpreadsheet
-                  size={DROPZONE_ICON_SIZE}
-                  aria-hidden="true"
-                  style={{ color: token.colorTextSecondary }}
-                />
+                <FileExcelOutlined aria-hidden="true" style={{ fontSize: DROPZONE_ICON_SIZE, color: token.colorTextSecondary }} />
                 <span style={{ fontWeight: token.fontWeightStrong, color: token.colorText }}>
                   {file ? file.name : t("accounts.filePlaceholder")}
                 </span>
@@ -282,7 +278,7 @@ export function ImportAccountsForm() {
 
               <Flex wrap align="center" gap={token.marginSM}>
                 <Button type="submit" disabled={loading || !file}>
-                  <Upload aria-hidden="true" />
+                  <UploadOutlined aria-hidden="true" />
                   {loading ? t("accounts.importing") : t("accounts.importSubmit")}
                 </Button>
                 <Button variant="secondary" type="button" onClick={() => router.push("/accounts")}>

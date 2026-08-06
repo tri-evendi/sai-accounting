@@ -23,8 +23,7 @@
 
 import { useActionState } from "react";
 import { Alert, Flex, Typography, theme } from "antd";
-import { KeyRound } from "lucide-react";
-
+import { KeyOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,7 +49,7 @@ export function OperatorLoginForm() {
         <Flex vertical gap={token.marginLG}>
           <Flex vertical gap={token.marginXXS}>
             <Flex align="center" gap={token.marginXS}>
-              <KeyRound size={20} style={{ color: token.colorPrimary }} aria-hidden="true" />
+              <KeyOutlined aria-hidden="true" style={{ fontSize: 20, color: token.colorPrimary }} />
               <Title level={1} style={{ fontSize: token.fontSizeHeading4, marginBlock: 0 }}>
                 {t("operator.login.heading")}
               </Title>

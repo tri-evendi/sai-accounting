@@ -31,7 +31,7 @@ import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
-import { BookMarked, PackageX } from "lucide-react";
+import { CloseSquareOutlined, ReadOutlined } from "@ant-design/icons";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
@@ -99,7 +99,7 @@ export function SettingsClient({
         <Alert
           type="info"
           showIcon
-          icon={<PackageX size={token.fontSizeLG} aria-hidden="true" />}
+          icon={<CloseSquareOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
           style={blockGap}
           message={
             <>
@@ -172,7 +172,7 @@ export function SettingsClient({
             <Typography.Text type="secondary">{t("settings.helpDescription")}</Typography.Text>
             <Button asChild variant="secondary">
               <Link href={GLOSSARY_PATH}>
-                <BookMarked aria-hidden="true" />
+                <ReadOutlined aria-hidden="true" />
                 {t("settings.openGlossary")}
               </Link>
             </Button>

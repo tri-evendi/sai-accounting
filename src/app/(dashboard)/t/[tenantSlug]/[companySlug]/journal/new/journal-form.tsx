@@ -43,7 +43,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
-import { Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
@@ -326,7 +326,7 @@ export function NewJournalForm() {
           disabled={lines.length <= 2}
           onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== index))}
         >
-          <Trash2 aria-hidden="true" />
+          <DeleteOutlined aria-hidden="true" />
         </Button>
       ),
     },
@@ -448,7 +448,7 @@ export function NewJournalForm() {
                 size="sm"
                 onClick={() => setLines((prev) => [...prev, emptyLine()])}
               >
-                <Plus aria-hidden="true" /> {t("journal.addRow")}
+                <PlusOutlined aria-hidden="true" /> {t("journal.addRow")}
               </Button>
             </div>
           </CardContent>

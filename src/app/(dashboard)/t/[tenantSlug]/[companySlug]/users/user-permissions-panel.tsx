@@ -58,7 +58,7 @@ import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
-import { Lock, RotateCcw, Save, X } from "lucide-react";
+import { CloseOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
@@ -250,7 +250,7 @@ export function UserPermissionsPanel({
         <Flex align="flex-start" justify="space-between" gap={token.margin} style={{ padding: token.paddingLG }}>
           <Alert type="error" showIcon message={loadError} style={{ flex: 1 }} />
           <Button variant="outline" size="sm" onClick={onClose}>
-            <X aria-hidden="true" />
+            <CloseOutlined aria-hidden="true" />
             {t("common.close")}
           </Button>
         </Flex>
@@ -302,15 +302,15 @@ export function UserPermissionsPanel({
               disabled={saving || (savedOverrideCount === 0 && !isDirty)}
               onClick={() => setConfirmReset(true)}
             >
-              <RotateCcw aria-hidden="true" />
+              <UndoOutlined aria-hidden="true" />
               {t("users.followRoleFully")}
             </Button>
             <Button size="sm" disabled={saving || !isDirty} onClick={requestSave}>
-              <Save aria-hidden="true" />
+              <SaveOutlined aria-hidden="true" />
               {t("common.save")}
             </Button>
             <Button variant="secondary" size="sm" disabled={saving} onClick={onClose}>
-              <X aria-hidden="true" />
+              <CloseOutlined aria-hidden="true" />
               {t("common.close")}
             </Button>
           </Flex>
@@ -365,7 +365,7 @@ export function UserPermissionsPanel({
             {t("users.legendMarkedAfter")}
           </Flex>
           <Flex align="center" gap={token.marginXXS}>
-            <Lock size="1em" aria-hidden="true" />
+            <LockOutlined aria-hidden="true" />
             {t("users.legendLocked")}
           </Flex>
         </Flex>
@@ -536,7 +536,7 @@ function UserPermissionGroupRows({
                     gap={token.marginXXS}
                     style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}
                   >
-                    <Lock size="1em" aria-hidden="true" />
+                    <LockOutlined aria-hidden="true" />
                     {t("users.lockedShort")}
                   </Flex>
                 )}

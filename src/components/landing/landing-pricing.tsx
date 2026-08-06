@@ -24,8 +24,7 @@
  * boleh mengosongkan halaman yang menjelaskan produknya.
  */
 import Link from "next/link";
-import { Check } from "lucide-react";
-
+import { CheckOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -134,19 +133,19 @@ export async function LandingPricing() {
                              dirundingkan. Memajangnya berarti menjanjikan
                              angka yang belum disepakati siapa pun. */
                           <li className="flex items-start gap-2">
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                            <CheckOutlined className="mt-0.5 shrink-0 text-success" aria-hidden style={{ fontSize: 16 }} />
                             <span>{t("landing.pricingContactQuota")}</span>
                           </li>
                         ) : (
                           <>
                             <li className="flex items-start gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                              <CheckOutlined className="mt-0.5 shrink-0 text-success" aria-hidden style={{ fontSize: 16 }} />
                               <span className="tabular-nums">
                                 {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
                               </span>
                             </li>
                             <li className="flex items-start gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                              <CheckOutlined className="mt-0.5 shrink-0 text-success" aria-hidden style={{ fontSize: 16 }} />
                               <span className="tabular-nums">
                                 {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
                               </span>

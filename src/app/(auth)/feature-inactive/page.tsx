@@ -29,8 +29,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PackageX } from "lucide-react";
-
+import { CloseSquareOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -83,7 +82,7 @@ export default async function FeatureInactivePage({
     <AuthShell
       heading={t("modules.inactiveTitle")}
       description={t("modules.sectionTitle")}
-      icon={<PackageX size={20} aria-hidden="true" />}
+      icon={<CloseSquareOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p style={BODY_TEXT}>

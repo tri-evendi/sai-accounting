@@ -38,7 +38,7 @@ import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
-import { FileText } from "lucide-react";
+import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -338,7 +338,7 @@ export default async function ContractsPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<FileText size={EMPTY_ICON_SIZE} />}
+              icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("contracts.emptyTitle")}
               description={t("contracts.emptyDescription")}
               actionLabel={t("contracts.addNew")}

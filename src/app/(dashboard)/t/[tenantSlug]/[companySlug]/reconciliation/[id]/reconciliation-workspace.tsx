@@ -31,17 +31,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  AlertTriangle,
-  Lock,
-  LockOpen,
-  Link2,
-  Unlink,
-  Upload,
-} from "lucide-react";
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutlined, LinkOutlined, LockOutlined, UnlockOutlined, UploadOutlined, WarningOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 
 const EPSILON = 0.005;
@@ -98,10 +88,10 @@ interface Summary {
  */
 function Amount({ value, currency }: { value: number; currency: string }) {
   const inflow = value >= 0;
-  const Icon = inflow ? ArrowDownLeft : ArrowUpRight;
+  const Icon = inflow ? ArrowDownOutlined : ArrowUpOutlined;
   return (
     <Flex align="center" justify="flex-end" gap={4} style={{ display: "inline-flex" }}>
-      <Icon size="0.875em" aria-hidden="true" />
+      <Icon aria-hidden="true" style={{ fontSize: "0.875em" }} />
       <Money value={value} currency={currency} signed />
     </Flex>
   );
@@ -338,7 +328,7 @@ export function ReconciliationWorkspace({
             disabled={busy}
             onClick={() => doUnmatch(l.id)}
           >
-            <Unlink aria-hidden="true" /> {t("reconciliation.unmatchAction")}
+            <DisconnectOutlined aria-hidden="true" /> {t("reconciliation.unmatchAction")}
           </Button>
         ),
     },
@@ -374,7 +364,7 @@ export function ReconciliationWorkspace({
           <>
             {locked ? (
               <Badge variant="success">
-                <Lock size="1em" aria-hidden="true" />
+                <LockOutlined aria-hidden="true" />
                 <span>{t("reconciliation.statusLocked")}</span>
               </Badge>
             ) : (
@@ -388,11 +378,11 @@ export function ReconciliationWorkspace({
             >
               {locked ? (
                 <>
-                  <LockOpen aria-hidden="true" /> {t("reconciliation.reopen")}
+                  <UnlockOutlined aria-hidden="true" /> {t("reconciliation.reopen")}
                 </>
               ) : (
                 <>
-                  <Lock aria-hidden="true" /> {t("reconciliation.lockAction")}
+                  <LockOutlined aria-hidden="true" /> {t("reconciliation.lockAction")}
                 </>
               )}
             </Button>
@@ -466,12 +456,12 @@ export function ReconciliationWorkspace({
           <Flex align="center" gap={token.marginXS} style={{ marginTop: token.marginSM }}>
             {summary.complete ? (
               <>
-                <CheckCircle2 size={token.fontSize} aria-hidden="true" />
+                <CheckCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                 <span>{t("reconciliation.summaryComplete")}</span>
               </>
             ) : (
               <>
-                <AlertTriangle size={token.fontSize} aria-hidden="true" />
+                <WarningOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                 <span>
                   {t("reconciliation.summaryIncomplete", {
                     book: summary.unmatchedBookCount,
@@ -548,13 +538,13 @@ export function ReconciliationWorkspace({
               disabled={busy || selectedBook == null || selectedLine == null}
               onClick={doMatch}
             >
-              <Link2 aria-hidden="true" /> {t("reconciliation.matchAction")}
+              <LinkOutlined aria-hidden="true" /> {t("reconciliation.matchAction")}
             </Button>
             {selectedBookRow && selectedLineRow && !amountsAgree && (
               // Peringatan yang TIDAK menghalangi: dua nominal boleh berbeda
               // (biaya bank), tapi selisihnya harus disebut sebelum dicocokkan.
               <Flex align="center" gap={token.marginXXS}>
-                <AlertTriangle size={token.fontSize} aria-hidden="true" />
+                <WarningOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                 <span>
                   {t("reconciliation.amountsDiffer", {
                     book: formatCurrency(selectedBookRow.amount, currency),
@@ -664,7 +654,7 @@ export function ReconciliationWorkspace({
                   color: token.colorLink,
                 }}
               >
-                <Upload size={token.fontSize} aria-hidden="true" />
+                <UploadOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                 {t("reconciliation.importCsv")}
                 <input
                   type="file"

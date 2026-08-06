@@ -22,7 +22,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { canEffective } from "@/lib/authz-effective";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { AlertTriangle, Banknote } from "lucide-react";
+import { DollarCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
@@ -498,11 +498,7 @@ export default async function InvoiceDetailPage({
                     gap: TIGHT_GAP,
                   }}
                 >
-                  <AlertTriangle
-                    size="1em"
-                    aria-hidden="true"
-                    style={{ flexShrink: 0, marginTop: 2 }}
-                  />
+                  <WarningOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <small>{t("common.paymentsUnrated", { count: unratedCount })}</small>
                 </p>
               )}
@@ -515,7 +511,7 @@ export default async function InvoiceDetailPage({
           rowKey={(row) => row.id}
           empty={
             <EmptyState
-              icon={<Banknote size={EMPTY_ICON_SIZE} />}
+              icon={<DollarCircleOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("invoices.emptyPaymentsTitle")}
               description={t("invoices.emptyPaymentsDescription")}
             />

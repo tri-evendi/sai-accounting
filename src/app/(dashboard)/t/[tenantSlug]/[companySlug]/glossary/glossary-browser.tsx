@@ -30,7 +30,7 @@
 import { Link } from "@/components/ui/app-link";
 import { useMemo, useState } from "react";
 import { Flex, Segmented } from "antd";
-import { Search, ArrowUpRight } from "lucide-react";
+import { ArrowUpOutlined, SearchOutlined } from "@ant-design/icons";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -86,17 +86,11 @@ export function GlossaryBrowser() {
         <div style={{ position: "relative", maxWidth: SEARCH_MAX_WIDTH }}>
           {/* Ikon diikat ke sisi BAWAH agar tetap sejajar dengan kotak isian,
               karena <Input> menaruh labelnya di atas kotak. */}
-          <Search
-            size={ICON_SIZE}
-            style={{
-              position: "absolute",
+          <SearchOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, position: "absolute",
               bottom: 12,
               insetInlineStart: 12,
               pointerEvents: "none",
-              color: "var(--ant-color-text-secondary)",
-            }}
-            aria-hidden="true"
-          />
+              color: "var(--ant-color-text-secondary)" }} />
           <Input
             id="cari-istilah"
             label={t("glossary.searchLabel")}
@@ -205,7 +199,7 @@ export function GlossaryBrowser() {
                             }}
                           >
                             {t("glossary.openInApp")}
-                            <ArrowUpRight size={ICON_SIZE} aria-hidden="true" />
+                            <ArrowUpOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE }} />
                           </Link>
                         )}
                       </div>

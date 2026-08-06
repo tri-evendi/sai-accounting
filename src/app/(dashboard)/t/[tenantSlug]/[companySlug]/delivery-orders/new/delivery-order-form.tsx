@@ -36,7 +36,7 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
-import { Lock, Package, Trash2, Plus } from "lucide-react";
+import { ContainerOutlined, DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**
@@ -358,7 +358,7 @@ export function DeliveryOrderForm({
                     color: token.colorError,
                   }}
                 >
-                  <Lock size="1em" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>{periodIssue}</span>
                 </Typography.Paragraph>
               )}
@@ -427,14 +427,14 @@ export function DeliveryOrderForm({
           <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
             <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-              <Plus aria-hidden="true" /> {t("common.addItem")}
+              <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
             </Button>
           </Flex>
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
-              icon={<Package size={EMPTY_ICON_SIZE} />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("common.emptyStockTitle")}
               description={t("deliveryOrders.emptyStockDescription")}
               actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
@@ -503,7 +503,7 @@ export function DeliveryOrderForm({
                         disabled={lines.length === 1}
                         aria-label={t("common.removeItemRow", { n: i + 1 })}
                       >
-                        <Trash2 aria-hidden="true" />
+                        <DeleteOutlined aria-hidden="true" />
                       </Button>
                     </Col>
                   </Row>

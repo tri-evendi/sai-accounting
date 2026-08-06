@@ -43,7 +43,7 @@ import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { CURRENCIES } from "@/lib/constants";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { SetupWizard } from "./setup-wizard";
@@ -105,7 +105,7 @@ export default async function SetupPage({
           actions={
             <Button asChild variant="outline">
               <Link href="/dashboard">
-                <ArrowLeft aria-hidden="true" />
+                <ArrowLeftOutlined aria-hidden="true" />
                 {t("setup.backToApp")}
               </Link>
             </Button>
@@ -113,7 +113,7 @@ export default async function SetupPage({
         />
 
         <div style={DONE_NOTE}>
-          <CheckCircle2 size={20} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+          <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
           <span>{t("setup.doneNote")}</span>
         </div>
 

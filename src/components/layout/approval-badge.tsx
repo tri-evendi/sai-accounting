@@ -31,8 +31,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Badge, theme } from "antd";
-import { BellRing } from "lucide-react";
-
+import { BellOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
@@ -113,11 +112,7 @@ export function ApprovalBadge() {
         count={total}
         color={urgent ? money.colorMoneyPending : money.colorMoneyInfo}
       >
-        <BellRing
-          size={20}
-          style={{ display: "block", color: token.colorTextTertiary }}
-          aria-hidden="true"
-        />
+        <BellOutlined aria-hidden="true" style={{ fontSize: 20, display: "block", color: token.colorTextTertiary }} />
       </Badge>
     </Link>
   );

@@ -1,4 +1,4 @@
-import { FileText, Truck, Receipt, Wallet, Check, Minus, Clock } from "lucide-react";
+import { CheckOutlined, ClockCircleOutlined, FileDoneOutlined, FileTextOutlined, MinusOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
@@ -49,10 +49,10 @@ const STAGE_BULLET = 40;
 const RING_WIDTH = 2;
 
 const stageIcons = {
-  contract: FileText,
-  delivery: Truck,
-  invoice: Receipt,
-  payment: Wallet,
+  contract: FileTextOutlined,
+  delivery: TruckOutlined,
+  invoice: FileDoneOutlined,
+  payment: WalletOutlined,
 } as const;
 
 const statusBadge: Record<
@@ -78,9 +78,9 @@ const stageLabelKeys: Record<ContractChainStage["key"], DictionaryKey> = {
 };
 
 const statusMark = {
-  selesai: Check,
-  sebagian: Clock,
-  belum: Minus,
+  selesai: CheckOutlined,
+  sebagian: ClockCircleOutlined,
+  belum: MinusOutlined,
 } as const;
 
 /**
@@ -190,7 +190,7 @@ export async function DocumentChainTimeline({
                     ...STATUS_RING[stage.status],
                   }}
                 >
-                  <Icon size="1em" aria-hidden />
+                  <Icon aria-hidden />
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <p
@@ -224,10 +224,11 @@ export async function DocumentChainTimeline({
                   gap: "var(--ant-padding-xs)",
                 }}
               >
-                {/* Ikon berukuran `1em` = `fontSizeSM` milik `Tag`; jaraknya
-                    dari `.ant-tag > svg + span`, jadi labelnya wajib `<span>`. */}
+                {/* Ikon `@ant-design/icons` sudah `1em` tanpa disebut, jadi ia
+                    mengikuti `fontSizeSM` milik `Tag`; jaraknya dari
+                    `.ant-tag > svg + span`, jadi labelnya wajib `<span>`. */}
                 <Badge variant={badge.variant}>
-                  <Mark size="1em" aria-hidden />
+                  <Mark aria-hidden />
                   <span>{t(badge.labelKey)}</span>
                 </Badge>
                 <span

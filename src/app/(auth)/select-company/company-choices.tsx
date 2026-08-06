@@ -21,8 +21,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Flex, Typography, theme } from "antd";
-import { Building2, Check } from "lucide-react";
-
+import { CheckOutlined, ShopOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
 import { tenantPath } from "@/lib/tenant-routes";
@@ -105,7 +104,7 @@ export function CompanyChoices({
                       color: token.colorTextSecondary,
                     }}
                   >
-                    <Building2 size={16} aria-hidden="true" />
+                    <ShopOutlined aria-hidden="true" style={{ fontSize: 16 }} />
                   </Flex>
                   <div style={{ minWidth: 0 }}>
                     <Text strong ellipsis style={{ display: "block" }}>
@@ -131,7 +130,7 @@ export function CompanyChoices({
                       color: token.colorTextSecondary,
                     }}
                   >
-                    <Check size={14} aria-hidden="true" />
+                    <CheckOutlined aria-hidden="true" style={{ fontSize: 14 }} />
                     {t("auth.selectCompany.currentLabel")}
                   </Flex>
                 ) : (

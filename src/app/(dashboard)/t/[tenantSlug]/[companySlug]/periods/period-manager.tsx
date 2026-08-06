@@ -24,14 +24,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Lock,
-  LockOpen,
-  RefreshCw,
-  XCircle,
-} from "lucide-react";
+import { CheckCircleOutlined, CloseCircleOutlined, LockOutlined, ReloadOutlined, UnlockOutlined, WarningOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,22 +147,22 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
    */
   const CHECK_STYLES: Record<
     PeriodCheck["status"],
-    { Icon: typeof CheckCircle2; icon: string; text: string; labelKey: keyof typeof CHECK_LABEL_KEYS }
+    { Icon: typeof CheckCircleOutlined; icon: string; text: string; labelKey: keyof typeof CHECK_LABEL_KEYS }
   > = {
     ok: {
-      Icon: CheckCircle2,
+      Icon: CheckCircleOutlined,
       icon: token.colorSuccess,
       text: token.colorSuccessText,
       labelKey: "ok",
     },
     warning: {
-      Icon: AlertTriangle,
+      Icon: WarningOutlined,
       icon: token.colorWarning,
       text: token.colorWarningText,
       labelKey: "warning",
     },
     blocker: {
-      Icon: XCircle,
+      Icon: CloseCircleOutlined,
       icon: token.colorError,
       text: token.colorErrorText,
       labelKey: "blocker",
@@ -179,12 +172,12 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
   const statusBadge = (status: string, translate: TranslateFn) =>
     status === "closed" ? (
       <Badge variant="danger">
-        <Lock size="1em" aria-hidden="true" />
+        <LockOutlined aria-hidden="true" />
         <span>{translate("periods.statusClosed")}</span>
       </Badge>
     ) : (
       <Badge variant="success">
-        <LockOpen size="1em" aria-hidden="true" />
+        <UnlockOutlined aria-hidden="true" />
         <span>{translate("periods.statusOpen")}</span>
       </Badge>
     );
@@ -264,7 +257,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
           }
           empty={
             <EmptyState
-              icon={<Lock size={EMPTY_ICON_SIZE} />}
+              icon={<LockOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("periods.emptyList")}
             />
           }
@@ -286,7 +279,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                 onClick={() => loadSummary(selected.year, selected.month)}
                 aria-label={t("periods.reloadSummary")}
               >
-                <RefreshCw aria-hidden="true" />
+                <ReloadOutlined aria-hidden="true" />
               </Button>
             )}
           </Flex>
@@ -382,11 +375,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                   const Icon = style.Icon;
                   return (
                     <li key={c.id} style={{ display: "flex", gap: token.marginSM }}>
-                      <Icon
-                        size="1em"
-                        aria-hidden="true"
-                        style={{ flexShrink: 0, marginTop: token.marginXXS, color: style.icon }}
-                      />
+                      <Icon aria-hidden="true" style={{ flexShrink: 0, marginTop: token.marginXXS, color: style.icon }} />
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: 0, fontWeight: token.fontWeightStrong }}>
                           {c.label}{" "}
@@ -452,7 +441,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                             size="sm"
                             disabled={busy || reason.trim().length < MIN_REASON_LENGTH}
                           >
-                            <LockOpen aria-hidden="true" />
+                            <UnlockOutlined aria-hidden="true" />
                             {t("periods.reopenButton")}
                           </Button>
                         }
@@ -489,7 +478,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         onConfirm={onClose}
                         trigger={
                           <Button size="sm" disabled={busy || !summary.canClose}>
-                            <Lock aria-hidden="true" />
+                            <LockOutlined aria-hidden="true" />
                             {t("periods.closeAction")}
                           </Button>
                         }

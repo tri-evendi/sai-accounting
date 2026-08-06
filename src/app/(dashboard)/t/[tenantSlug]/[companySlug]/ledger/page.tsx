@@ -31,7 +31,7 @@ import { LedgerFilter } from "./ledger-filter";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BookOpen } from "lucide-react";
+import { BookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 
@@ -297,7 +297,7 @@ export default async function LedgerPage({
              */}
             {ledger.rows.length === 0 && (
               <EmptyState
-                icon={<BookOpen size={EMPTY_ICON_SIZE} />}
+                icon={<BookOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
                 title={t("ledger.emptyTitle")}
                 description={t("ledger.emptyDescription")}
                 actionLabel={canRecordCash ? t("ledger.emptyAction") : undefined}

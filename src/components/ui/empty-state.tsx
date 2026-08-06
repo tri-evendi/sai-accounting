@@ -18,7 +18,7 @@
  *
  * ── `image` diberi tinggi otomatis ────────────────────────────────────────
  * Slot gambar `Empty` bertinggi tetap (±100px), dirancang untuk ilustrasi SVG
- * bawaannya. 45 pemanggil di aplikasi ini menitipkan ikon `lucide-react` 48px
+ * bawaannya. 45 pemanggil di aplikasi ini menitipkan ikon `@ant-design/icons` 48px
  * ke slot itu; dibiarkan, ikonnya mengambang di tengah kotak 100px dan seluruh
  * blok kosong tampak lebih tinggi dari sebelumnya. `styles.image` mengembalikan
  * tingginya mengikuti isi.
@@ -31,8 +31,7 @@
  */
 
 import { Empty, theme } from "antd";
-import { Package } from "lucide-react";
-
+import { ContainerOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 
@@ -60,7 +59,7 @@ export function EmptyState({
         // Tinggi mengikuti isi — lihat catatan `image` di kepala berkas.
         image: { height: "auto", marginBottom: token.margin, color: token.colorTextSecondary },
       }}
-      image={icon ?? <Package className="h-12 w-12" />}
+      image={icon ?? <ContainerOutlined style={{ fontSize: 48 }} />}
       description={
         <>
           {/* Tetap sebuah heading: keadaan kosong sering menjadi satu-satunya

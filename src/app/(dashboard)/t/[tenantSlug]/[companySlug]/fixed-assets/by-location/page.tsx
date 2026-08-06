@@ -18,7 +18,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
-import { MapPin } from "lucide-react";
+import { EnvironmentOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +95,7 @@ export default async function AssetsByLocationPage({
 
       {groups.length === 0 ? (
         <EmptyState
-          icon={<MapPin size={EMPTY_ICON_SIZE} />}
+          icon={<EnvironmentOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.emptyActiveTitle")}
           description={t("fixedAssets.emptyActiveDescription")}
           actionLabel={t("fixedAssets.addNew")}

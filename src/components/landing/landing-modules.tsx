@@ -33,8 +33,7 @@
  * akan salah pada perubahan berikutnya, dan salahnya persis di tempat yang
  * paling merusak kepercayaan: halaman yang dibaca sebelum orang percaya.
  */
-import { Check } from "lucide-react";
-
+import { CheckOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BUSINESS_MODULES, CORE_MODULE, MODULE_META } from "@/lib/business-modules";
@@ -89,7 +88,7 @@ export async function LandingModules() {
                 <Card className="h-full">
                   <CardContent className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Check className="size-4 shrink-0 text-success" aria-hidden />
+                      <CheckOutlined className="shrink-0 text-success" aria-hidden style={{ fontSize: 16 }} />
                       <h3 className="text-base font-semibold text-foreground">{t(meta.labelKey)}</h3>
                       {core && <Badge variant="success">{t("landing.modulesCore")}</Badge>}
                     </div>

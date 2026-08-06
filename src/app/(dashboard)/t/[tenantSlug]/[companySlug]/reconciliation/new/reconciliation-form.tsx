@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -104,11 +104,7 @@ export function NewReconciliationForm() {
               <Col xs={24} sm={12}>
                 <Flex align="flex-end" style={{ height: "100%" }}>
                   <Flex align="flex-start" gap={token.marginXXS}>
-                    <Info
-                      size={token.fontSize}
-                      aria-hidden="true"
-                      style={{ flexShrink: 0, marginTop: 2 }}
-                    />
+                    <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
                     <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                       {t("reconciliation.oneAccountHint")}
                     </Typography.Text>

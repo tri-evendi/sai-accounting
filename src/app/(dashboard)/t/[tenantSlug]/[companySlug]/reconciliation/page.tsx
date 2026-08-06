@@ -18,7 +18,7 @@ import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { Pagination } from "@/components/ui/pagination";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
-import { Lock, Scale } from "lucide-react";
+import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { PageHeader } from "@/components/ui/page-header";
@@ -120,7 +120,7 @@ export default async function ReconciliationListPage({
       render: (_v, r) =>
         r.status === "locked" ? (
           <Badge variant="success">
-            <Lock size="1em" aria-hidden="true" />
+            <LockOutlined aria-hidden="true" />
             <span>{t("reconciliation.statusLocked")}</span>
           </Badge>
         ) : (
@@ -178,7 +178,7 @@ export default async function ReconciliationListPage({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={<Scale size={EMPTY_ICON_SIZE} />}
+          icon={<ReconciliationOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("reconciliation.emptyTitle")}
           description={t("reconciliation.emptyDescription")}
           actionLabel={t("reconciliation.emptyAction")}

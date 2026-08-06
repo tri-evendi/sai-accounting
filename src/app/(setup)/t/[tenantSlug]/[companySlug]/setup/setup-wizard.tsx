@@ -33,17 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import {
-  Loader2,
-  Info,
-  Plus,
-  Trash2,
-  CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
-  RotateCcw,
-  Save,
-} from "lucide-react";
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { ModulePicker } from "@/components/settings/module-picker";
@@ -90,7 +80,7 @@ const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
 const SPIN_RULE = `
 [data-spin]{animation:sai-spin 1s linear infinite}
 @keyframes sai-spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){[data-spin]{animation:none}}
+@media (prefers-reduced-motion:reduce){[data-spin][data-spin]{animation:none}}
 `;
 
 interface CashRow {
@@ -541,7 +531,7 @@ export function SetupWizard({
          */}
         {(step > 0 || hasMeaningfulDraft) && (
           <Flex align="center" gap={token.marginXXS}>
-            <Save size={14} style={{ flexShrink: 0, color: token.colorTextSecondary }} aria-hidden="true" />
+            <SaveOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0, color: token.colorTextSecondary }} />
             <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
               {t("setup.draftSaved")}
             </Text>
@@ -559,7 +549,7 @@ export function SetupWizard({
         {steps.map((label, i) => (
           <li key={label} aria-current={i === step ? "step" : undefined} style={pillStyle(i)}>
             {i < step ? (
-              <CheckCircle2 size={16} aria-hidden="true" />
+              <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
             ) : (
               <span style={TABULAR}>{i + 1}.</span>
             )}
@@ -682,7 +672,7 @@ export function SetupWizard({
              */}
             <Alert
               type="info"
-              icon={<RotateCcw size={16} aria-hidden="true" />}
+              icon={<UndoOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
               showIcon
               message={t("modules.stepReversible")}
             />
@@ -741,7 +731,7 @@ export function SetupWizard({
             </Row>
             <Alert
               type="info"
-              icon={<Info size={16} aria-hidden="true" />}
+              icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
               showIcon
               message={
                 <>
@@ -758,7 +748,7 @@ export function SetupWizard({
             <StepTitle token={token}>{t("setup.coaTitle")}</StepTitle>
             <Alert
               type="success"
-              icon={<CheckCircle2 size={16} aria-hidden="true" />}
+              icon={<CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
               showIcon
               message={
                 <>
@@ -970,7 +960,7 @@ export function SetupWizard({
             <BalancePanel totals={totals} t={t} token={token} />
             <Alert
               type="info"
-              icon={<Info size={16} aria-hidden="true" />}
+              icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
               showIcon
               message={
                 <>
@@ -1042,14 +1032,14 @@ export function SetupWizard({
             setStep((s) => Math.max(0, s - 1));
           }}
         >
-          <ArrowLeft aria-hidden="true" />
+          <ArrowLeftOutlined aria-hidden="true" />
           {t("common.back")}
         </Button>
 
         {step < steps.length - 1 ? (
           <Button type="button" disabled={saving} onClick={goNext}>
             {t("setup.next")}
-            <ArrowRight aria-hidden="true" />
+            <ArrowRightOutlined aria-hidden="true" />
           </Button>
         ) : (
           <Button
@@ -1074,7 +1064,7 @@ export function SetupWizard({
  * gandanya) yang menyasar atribut `data-spin`, bukan sebuah kelas.
  */
 function Spinner({ size }: { size: number }) {
-  return <Loader2 data-spin size={size} style={{ flexShrink: 0 }} aria-hidden="true" />;
+  return <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: size, flexShrink: 0 }} />;
 }
 
 function Section({
@@ -1123,7 +1113,7 @@ function Section({
           style={{ marginTop: token.marginSM }}
           onClick={onAdd}
         >
-          <Plus aria-hidden="true" />
+          <PlusOutlined aria-hidden="true" />
           {addLabel}
         </Button>
       )}
@@ -1254,7 +1244,7 @@ function PartnerSection({
 function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <Button type="button" variant="ghost" size="icon" onClick={onClick} aria-label={label}>
-      <Trash2 aria-hidden="true" />
+      <DeleteOutlined aria-hidden="true" />
     </Button>
   );
 }
@@ -1300,12 +1290,12 @@ function BalancePanel({
         {/* Ketiga keadaan membawa IKON + KALIMAT; warnanya penanda kedua. */}
         {totals.unrated > 0 ? (
           <Flex align="center" gap={token.marginXS} style={{ color: money.colorMoneyPending }}>
-            <Info size={16} style={{ flexShrink: 0 }} aria-hidden="true" />
+            <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }} />
             <span>{t("setup.unratedWarning", { count: totals.unrated })}</span>
           </Flex>
         ) : totals.hasAny ? (
           <Flex align="center" gap={token.marginXS} style={{ color: money.colorMoneyPositive }}>
-            <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" />
+            <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }} />
             <span style={TABULAR}>
               {t("setup.balanced", { amount: formatCurrency(totals.assets, "IDR") })}
             </span>

@@ -60,7 +60,7 @@ import {
   type PurchaseStepId,
 } from "@/lib/wizard";
 import { useT } from "@/lib/i18n/client";
-import { CheckCircle2, PackagePlus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { AppstoreAddOutlined, CheckCircleOutlined, DeleteOutlined, PlusOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 // Pemasok tidak lagi dikirim sebagai daftar statis (audit: `take: 500`
@@ -278,11 +278,7 @@ export function PurchaseWizard({
           <Flex align="flex-start" gap={token.marginSM}>
             {/* Warna centang dari token uang positif (#186) — penanda KEDUA;
                 yang pertama adalah judulnya. */}
-            <CheckCircle2
-              size={token.fontSizeHeading3}
-              aria-hidden="true"
-              style={{ flexShrink: 0, marginTop: 2, color: token.colorMoneyPositive }}
-            />
+            <CheckCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, flexShrink: 0, marginTop: 2, color: token.colorMoneyPositive }} />
             <div style={{ minWidth: 0 }}>
               <Typography.Title level={2} style={{ fontSize: token.fontSizeLG, marginTop: 0 }}>
                 {t("purchases.savedTitle")}
@@ -387,7 +383,7 @@ export function PurchaseWizard({
                 size="sm"
                 onClick={() => patch((d) => ({ ...d, lines: [...d.lines, emptyPurchaseLine()] }))}
               >
-                <Plus aria-hidden="true" /> {t("common.addItemLower")}
+                <PlusOutlined aria-hidden="true" /> {t("common.addItemLower")}
               </Button>
             </Flex>
             <Typography.Text
@@ -484,7 +480,7 @@ export function PurchaseWizard({
                     aria-label={t("common.removeItemRow", { n: i + 1 })}
                     style={{ color: token.colorError }}
                   >
-                    <Trash2 aria-hidden="true" />
+                    <DeleteOutlined aria-hidden="true" />
                   </Button>
                 </Flex>
                 {line.itemId == null && (
@@ -558,7 +554,7 @@ export function PurchaseWizard({
                     fontWeight: token.fontWeightStrong,
                   }}
                 >
-                  <PackagePlus size="1em" aria-hidden="true" style={{ color: token.colorIcon }} />
+                  <AppstoreAddOutlined aria-hidden="true" style={{ color: token.colorIcon }} />
                   {t("purchases.receiptCheckboxA")}{" "}
                   <TermTooltip term="persediaan">{t("purchases.receiptTerm")}</TermTooltip>
                 </span>
@@ -722,7 +718,7 @@ export function PurchaseWizard({
                   gap: token.marginXXS,
                 }}
               >
-                <ShoppingCart size="1em" aria-hidden="true" style={{ flexShrink: 0 }} />
+                <ShoppingCartOutlined aria-hidden="true" style={{ flexShrink: 0 }} />
                 <span>
                   {t("purchases.detailHintA")}{" "}
                   <TermTooltip term="utang">{t("purchases.detailHintTerm")}</TermTooltip>{" "}

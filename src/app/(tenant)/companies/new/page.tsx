@@ -12,8 +12,7 @@
  * menuntut peran per-PT, bisa dibuka sebelum PT pertama ada.
  */
 import Link from "next/link";
-import { Building2 } from "lucide-react";
-
+import { ShopOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
@@ -44,7 +43,7 @@ export default async function NewCompanyPage() {
     <AuthShell
       heading={t("companies.newTitle")}
       description={t("companies.newDescription")}
-      icon={<Building2 size={20} aria-hidden="true" />}
+      icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
       footer={
         /* JALAN KELUAR. Layar ini berdiri sebelum aplikasi, tanpa chrome apa
            pun — tanpa tautan ini satu-satunya tindakan yang mungkin adalah

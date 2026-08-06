@@ -79,7 +79,7 @@ function OneField({ label, required, description, message }: FieldProbe) {
         control={form.control}
         name="date"
         render={({ field }) => (
-          <FormItem className="sm:col-span-2">
+          <FormItem style={{ gridColumn: "span 2" }}>
             {label !== undefined && <FormLabel required={required}>{label}</FormLabel>}
             <FormControl>
               <TextInput {...field} />
@@ -121,11 +121,22 @@ describe("FormItem berdiri di atas Form.Item AntD", () => {
     expect(html).toContain("ant-form-item-label");
   });
 
-  it("className pemanggil mendarat di simpul terluar, bukan di baris dalam", () => {
-    // 6 pemakai menaruh `sm:col-span-2` di sini; kalau ia mendarat di dalam,
-    // tata letak dua kolom berhenti bekerja tanpa satu galat pun.
+  it("gaya pemanggil mendarat di simpul terluar, bukan di baris dalam", () => {
+    /*
+     * `Form.Item` AntD menyebarkan SISA propnya ke baris DALAM
+     * (`.ant-form-item-row`), bukan ke simpul terluar — itu sebabnya props
+     * `FormItem` dipersempit (lihat `form.tsx`). Yang dikunci di sini adalah
+     * bahwa jalan keluar yang disediakan benar-benar mengenai simpul terluar:
+     * field yang harus membentang mengatur kolomnya SENDIRI, dan gaya yang
+     * mendarat di baris dalam tidak akan membentangkan apa pun — tanpa satu
+     * galat pun.
+     *
+     * Sampai #203 bentuknya `className="sm:col-span-2"`; ia berganti menjadi
+     * gaya sebaris bersama pencabutan Tailwind.
+     */
     const html = render({ label: "Tanggal" });
-    expect(html.startsWith('<div class="ant-form-item sm:col-span-2')).toBe(true);
+    expect(html.startsWith('<div class="ant-form-item')).toBe(true);
+    expect(html.slice(0, html.indexOf(">"))).toContain("grid-column:span 2");
   });
 
   it("keadaan error menular ke isian AntD di dalamnya", () => {

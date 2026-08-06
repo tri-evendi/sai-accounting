@@ -60,10 +60,16 @@ export default async function RootLayout({
   const locale = await getLocale();
   const dictionary = await getDictionary(locale);
   /*
-   * Tema ikut dibaca DI SERVER, dari cookie yang sama-sama tampilan-saja.
-   * Kelas `.dark` karena itu sudah menempel pada HTML pertama — tidak ada
-   * kedipan terang sebelum hydrate, dan tidak ada ketidakcocokan hydrate yang
-   * lahir dari membaca localStorage setelah render pertama.
+   * Tema ikut dibaca DI SERVER, dari cookie yang sama-sama tampilan-saja —
+   * jadi algoritma AntD yang benar sudah dipilih sebelum HTML pertama dikirim,
+   * dan tidak ada ketidakcocokan hydrate yang lahir dari membaca localStorage
+   * setelah render pertama.
+   *
+   * Sejak #203 kelas `.dark` yang ikut terpasang di bawah bukan lagi pemikul
+   * palet: seluruh warna datang dari blok token AntD. Yang tersisa untuknya
+   * hanya dua variabel di `globals.css`, dan satu-satunya keadaan yang
+   * benar-benar membutuhkannya adalah pilihan "ikut sistem" — lihat blok
+   * `html.dark` di sana sebelum menghapusnya.
    */
   const theme = await getTheme();
 
@@ -79,11 +85,19 @@ export default async function RootLayout({
        * yang tidak punya satu pun komponen AntD di atasnya.
        *
        * Menghapusnya tidak menghasilkan galat apa pun: `var(--ant-…)` hanya
-       * berhenti teratasi dan warnanya jatuh diam-diam ke warisan, di 67 berkas
-       * sekaligus. Alasan lengkap + urutan penyisipannya di
+       * berhenti teratasi dan warnanya jatuh diam-diam ke warisan, di seluruh
+       * pohon sekaligus. Alasan lengkap + urutan penyisipannya di
        * `lib/theme/antd-tokens.ts`.
+       *
+       * Tiga kelas, dan tak satu pun kelas GAYA — sejak #203 tidak ada lagi
+       * lembar utilitas yang bisa memaknainya. `inter.variable` menaruh
+       * `--font-inter`; `ANTD_CSS_VAR_KEY` memikul blok token; `themeClass`
+       * menyalakan satu-satunya sisa `.dark` di `globals.css`, yang isinya
+       * hanya dua variabel dan alasannya tertulis di sana. Tinggi penuh
+       * (`h-full` lama) juga pindah ke `globals.css`, karena ia berpasangan
+       * dengan `min-height` milik `<body>`.
        */
-      className={`${inter.variable} h-full ${ANTD_CSS_VAR_KEY} ${themeClass(theme)}`}
+      className={`${inter.variable} ${ANTD_CSS_VAR_KEY} ${themeClass(theme)}`}
       // Ikut mewarnai kontrol BAWAAN peramban (pemilih tanggal wizard, menu
       // select, bilah geser) — bagian yang tidak kita gambar sendiri dan
       // karena itu paling sering tertinggal terang di halaman gelap.
@@ -102,7 +116,7 @@ export default async function RootLayout({
           <script dangerouslySetInnerHTML={{ __html: themeScript() }} />
         )}
       </head>
-      <body className="min-h-full">
+      <body>
         {/*
          * AntdRegistry mengumpulkan gaya CSS-in-JS yang dipakai render ini dan
          * menyisipkannya ke HTML lewat `useServerInsertedHTML` — sebelum

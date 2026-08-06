@@ -25,8 +25,8 @@ import { Skeleton, Spin, theme } from "antd";
 
 import { useT } from "@/lib/i18n/client";
 
-export function Spinner({ className }: { className?: string }) {
-  return <Spin size="small" className={className} />;
+export function Spinner() {
+  return <Spin size="small" />;
 }
 
 export function PageLoader({ message }: { message?: string }) {

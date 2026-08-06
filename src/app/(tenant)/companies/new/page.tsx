@@ -23,16 +23,16 @@ import { CompanyForm } from "./company-form";
 export const dynamic = "force-dynamic";
 
 /**
- * Kalimat penjelas. Server component di dalam `AuthShell` yang belum
- * dikonversi, jadi tidak ada komponen AntD di atasnya dan variabel `--ant-…`
- * tidak akan teratasi (#227) — warnanya token `:root` aplikasi, sumber yang
- * sama dengan kulitnya.
+ * Kalimat penjelas. Server component, jadi tanpa `theme.useToken()`; warnanya
+ * variabel token AntD, yang teratasi walau tak ada komponen AntD di atasnya —
+ * sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, bukan
+ * oleh elemen yang digambar komponen AntD (#203).
  */
 const BODY_TEXT: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 export default async function NewCompanyPage() {

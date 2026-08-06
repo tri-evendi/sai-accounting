@@ -239,7 +239,6 @@ function PopoverAnchor({ children }: { children?: React.ReactNode }) {
 const PLACEMENT_ONLY = new Set(["side", "align", "sideOffset", "collisionPadding"]);
 
 function PopoverContent({
-  className,
   onOpenAutoFocus,
   style,
   ...props
@@ -284,7 +283,6 @@ function PopoverContent({
        * urutan Tab sebagai perhentian tersendiri.
        */
       tabIndex={-1}
-      className={className}
       style={{ outline: "none", ...style }}
       {...domProps}
     />

@@ -31,19 +31,16 @@ import { Progress as AntdProgress } from "antd";
 export function Progress({
   value,
   label,
-  className,
 }: {
   /** 0–1. Nilai di luar rentang dijepit — bukan dibiarkan memecah tata letak. */
   value: number;
   /** Wajib: pembaca layar butuh tahu bilah ini MENGUKUR APA. */
   label: string;
-  className?: string;
 }) {
   const clamped = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 
   return (
     <AntdProgress
-      className={className}
       percent={Math.round(clamped * 100)}
       showInfo={false}
       size="small"

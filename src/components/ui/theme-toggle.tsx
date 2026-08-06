@@ -70,14 +70,13 @@ const VISUALLY_HIDDEN: React.CSSProperties = {
   border: 0,
 };
 
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle() {
   const { theme, changeTheme } = useTheme();
   const t = useT();
   const name = useId();
 
   return (
     <Segmented<Theme>
-      className={className}
       /*
        * `Segmented` sudah merender `role="radiogroup"` sendiri — yang perlu
        * diganti hanya namanya: bawaannya string Inggris yang ditanam di dalam

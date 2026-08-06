@@ -64,11 +64,11 @@ import { Select as AntdSelect, type SelectProps as AntdSelectProps } from "antd"
 
 import {
   antdSize,
+  describedByWith,
   isInvalidField,
   type BareFieldProps,
 } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Label, RequiredMark } from "@/components/ui/label";
 
 /**
  * Di 375px daftar AntD menampilkan ±6 baris sekaligus. Di bawah ambang ini
@@ -130,7 +130,6 @@ function selectChangeEvent(
  * dalam `FormControl` (MASTER.md §Konvensi Form aturan 4).
  */
 function NativeSelect({
-  className,
   style,
   options,
   placeholder,
@@ -205,9 +204,8 @@ function NativeSelect({
        */
       {...(props as AntdSelectProps<string, SelectOption>)}
       id={id}
-      className={className}
-      // `<select>` lama memakai `block w-full`; AntD tidak melebar sendiri, jadi
-      // lebar penuh dipasang di sini dan tetap bisa ditimpa `style` pemanggil.
+      // `<select>` lama melebar penuh; AntD tidak melebar sendiri, jadi lebar
+      // penuh dipasang di sini dan tetap bisa ditimpa `style` pemanggil.
       style={{ width: "100%", ...style }}
       size={antdSize(fieldSize)}
       status={isInvalid ? "error" : undefined}
@@ -246,7 +244,6 @@ function NativeSelect({
 }
 
 function Select({
-  className,
   label,
   error,
   id,
@@ -261,7 +258,7 @@ function Select({
   const isInvalid = invalid ?? Boolean(error);
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
       {label && (
         <Label htmlFor={selectId}>
           {label}
@@ -269,26 +266,25 @@ function Select({
               validasi native sudah tidak ada di sini (lihat butir 3 di kepala
               berkas), jadi ini satu-satunya penanda "wajib" sebelum server
               menolak. */}
-          {required && (
-            <>
-              <span aria-hidden="true" className="ml-0.5 text-destructive">
-                *
-              </span>
-              <span className="sr-only"> (wajib)</span>
-            </>
-          )}
+          {required && <RequiredMark />}
         </Label>
       )}
       <NativeSelect
         id={selectId}
         invalid={isInvalid}
         required={required}
-        aria-describedby={cn(describedBy, error && errorId) || undefined}
-        className={className}
+        aria-describedby={describedByWith(describedBy, error && errorId)}
         {...props}
       />
       {error && (
-        <p id={errorId} role="alert" className="text-sm text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          style={{
+            fontSize: "var(--ant-font-size)",
+            color: "var(--ant-color-money-negative)",
+          }}
+        >
           {error}
         </p>
       )}

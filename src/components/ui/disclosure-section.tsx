@@ -72,7 +72,6 @@ interface DisclosureSectionProps {
   /** Tandai bahwa ada isian bermasalah di dalam (setelah simpan ditolak). */
   invalid?: boolean;
   children: React.ReactNode;
-  className?: string;
 }
 
 export function DisclosureSection({
@@ -84,7 +83,6 @@ export function DisclosureSection({
   onOpenChange,
   invalid = false,
   children,
-  className,
 }: DisclosureSectionProps) {
   const t = useT();
   const { token } = theme.useToken();
@@ -145,7 +143,6 @@ export function DisclosureSection({
   return (
     <div onKeyDown={handleKeyDown}>
       <Collapse
-        className={className}
         activeKey={expanded ? [PANEL_KEY] : []}
         onChange={(keys) => handleOpenChange(keys.length > 0)}
         /* Satu-satunya warna yang ditulis komponen ini: batas merah saat ada

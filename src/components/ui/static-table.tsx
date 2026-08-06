@@ -35,8 +35,8 @@
  * Yang pensiun BUKAN berkas ini, melainkan pemakaian LANGSUNG primitif JSX
  * (`<TableRow><TableCell/>`) di halaman: fase C memindahkan 66 berkas itu ke
  * `StaticTable` atau `DataTable`, dan sesudahnya `table.tsx` tinggal menjadi
- * lapisan gaya internal yang hanya dipanggil dua perender ini. Gaya Tailwind
- * di dalamnya diganti token AntD di #203 — lihat catatan di `table.tsx`.
+ * lapisan gaya internal. Itu sudah terjadi; gaya Tailwind di dalamnya diganti
+ * gaya sebaris dari token AntD di #203 — lihat catatan di `table.tsx`.
  *
  * ── Empat prop yang membuka konversi yang tersisa (issue #229) ─────────────
  * Keempatnya lahir dari tabel NYATA yang tidak bisa pindah perender tanpanya,
@@ -81,7 +81,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { cn } from "@/lib/utils";
 
 /**
  * Sel baris kaki. Bentuk polos = isi sel; bentuk objek dipakai ketika satu
@@ -126,12 +125,11 @@ export interface SummaryRow {
   cells: Record<string, SummaryCell>;
   /** Gaya baris — mis. garis atas tebal untuk baris Total, atau berat huruf biasa. */
   style?: React.CSSProperties;
-  className?: string;
 }
 
 /**
  * Kerapatan sel. `middle` (bawaan) SENGAJA bukan angka AntD melainkan padding
- * primitifnya sendiri (`px-6 py-3`): 18 tabel sudah memakainya hari ini, dan
+ * primitifnya sendiri (24px mendatar, 12px vertikal): 18 tabel memakainya, dan
  * sebuah prop kerapatan tidak boleh mengubah rupa tabel yang tidak memintanya.
  *
  * `small` memakai `cellPaddingBlockSM`/`cellPaddingInlineSM` AntD apa adanya.
@@ -170,8 +168,6 @@ interface StaticTableProps<T> {
    * dan berarti "satu baris" — 18 pemanggil lama tidak berubah.
    */
   summary?: Record<string, React.ReactNode> | readonly SummaryRow[];
-  /** Kelas tambahan untuk SETIAP baris total (mis. garis atas tebal). */
-  summaryClassName?: string;
   /** Gaya `<tfoot>` — mis. mengubah tebal garis pemisahnya dari isi tabel. */
   summaryStyle?: React.CSSProperties;
   /**
@@ -216,7 +212,8 @@ interface StaticTableProps<T> {
   sticky?: boolean;
   /** Tinggi maksimum kotak gulung, mis. `"70vh"`. */
   maxHeight?: number | string;
-  className?: string;
+  /** Gaya elemen `<table>` — pengganti `className` yang dicabut di #203. */
+  style?: React.CSSProperties;
 }
 
 /** Nilai sel: `render` bila ada, kalau tidak nilai `dataIndex` apa adanya. */
@@ -230,8 +227,19 @@ function cellContent<T>(
   return raw as React.ReactNode;
 }
 
-function alignClass(align: SaiColumns<unknown>[number]["align"]) {
-  return align === "right" ? "text-right" : align === "center" ? "text-center" : undefined;
+/**
+ * Perataan kolom sebagai GAYA, bukan kelas (issue #203). `left` sengaja
+ * menghasilkan `undefined`: itu perataan bawaan sel, dan menuliskannya berarti
+ * menimpa `textAlign` yang mungkin datang dari `cellStyle` kolomnya.
+ */
+function alignStyle(
+  align: SaiColumns<unknown>[number]["align"]
+): React.CSSProperties | undefined {
+  return align === "right"
+    ? { textAlign: "right" }
+    : align === "center"
+      ? { textAlign: "center" }
+      : undefined;
 }
 
 /**
@@ -303,13 +311,17 @@ function spannedCells<T>(
           scope={scope}
           colSpan={span === 1 ? undefined : span}
           /*
-           * Sel bertag `th` mengambil perataannya lewat GAYA SEBARIS, bukan
-           * lewat `alignClass`: penawar bawaan UA di `table.tsx` juga sebaris,
-           * dan gaya sebaris selalu menang atas kelas. Menyerahkannya ke kelas
-           * berarti `text-right` diam-diam kalah oleh `textAlign: inherit`.
+           * Sel bertag `th` menyebut perataannya EKSPLISIT, termasuk saat
+           * `align` tidak diberikan: penawar bawaan UA di `table.tsx`
+           * (`textAlign: "inherit"`) berdiri di gaya yang sama, jadi tanpa
+           * penyebutan itu sel judul baris akan mewarisi perataan barisnya
+           * alih-alih memakai perataan kolomnya.
            */
-          className={cn(scope ? undefined : alignClass(align), column.className)}
-          style={scope ? { ...density, textAlign: align } : density}
+          style={
+            scope
+              ? { ...density, textAlign: align ?? "left", ...column.cellStyle }
+              : { ...density, ...alignStyle(align), ...column.cellStyle }
+          }
         >
           {content}
         </TableCell>
@@ -326,32 +338,31 @@ export function StaticTable<T>({
   rowKey,
   empty,
   summary,
-  summaryClassName,
   summaryStyle,
   rowStyle,
   rowCells,
   size = "middle",
   sticky,
   maxHeight,
-  className,
+  style,
 }: StaticTableProps<T>) {
   const density = DENSITY[size];
-  // `h-11` primitif memaksa tinggi baris judul; kerapatan yang bukan bawaan
-  // harus melepasnya, kalau tidak sel judul tetap 44px di tabel ringkas.
+  // Tinggi 44px milik primitif memaksa tinggi baris judul; kerapatan yang bukan
+  // bawaan harus melepasnya, kalau tidak sel judul tetap 44px di tabel ringkas.
   const headDensity =
     density === undefined ? undefined : { ...density, height: "auto" as const };
   const foot = summaryRows(summary);
 
   return (
-    <Table className={className} maxHeight={maxHeight}>
+    <Table style={style} maxHeight={maxHeight}>
       <TableHeader>
-        <TableRow className="hover:bg-transparent">
+        <TableRow>
           {columns.map((column) => (
             <TableHead
               key={column.key}
               sticky={sticky}
               /*
-               * `column.className` SENGAJA tidak ikut ke sini — ia menggayai
+               * `column.cellStyle` SENGAJA tidak ikut ke sini — ia menggayai
                * SEL, dan sel laporan kerap berwarna menurut arah angkanya
                * ("Masuk" hijau, "Keluar" merah). Menerapkannya ke header akan
                * mewarnai judul kolomnya juga, yang mengubah judul menjadi
@@ -359,12 +370,11 @@ export function StaticTable<T>({
                * PERATAAN, karena angka rata kanan di bawah judul rata kiri
                * terbaca seperti kolom yang berbeda.
                */
-              className={alignClass(column.align)}
-              style={
-                column.width === undefined
-                  ? headDensity
-                  : { ...headDensity, width: column.width }
-              }
+              style={{
+                ...headDensity,
+                ...alignStyle(column.align),
+                ...(column.width === undefined ? undefined : { width: column.width }),
+              }}
             >
               {column.title}
             </TableHead>
@@ -374,9 +384,11 @@ export function StaticTable<T>({
 
       <TableBody>
         {rows.length === 0 ? (
-          <TableRow className="hover:bg-transparent">
-            {/* `p-0` supaya EmptyState memakai lebarnya sendiri, bukan padding sel. */}
-            <TableCell colSpan={columns.length} className="p-0">
+          // `data-hover="off"`: baris ini bukan data, jadi ia tidak boleh
+          // menyala saat kursor lewat (aturannya di `table.tsx`).
+          <TableRow data-hover="off">
+            {/* Tanpa padding supaya EmptyState memakai lebarnya sendiri. */}
+            <TableCell colSpan={columns.length} style={{ padding: 0 }}>
               {empty}
             </TableCell>
           </TableRow>
@@ -389,8 +401,11 @@ export function StaticTable<T>({
                   ? columns.map((column) => (
                       <TableCell
                         key={column.key}
-                        className={cn(alignClass(column.align), column.className)}
-                        style={density}
+                        style={{
+                          ...density,
+                          ...alignStyle(column.align),
+                          ...column.cellStyle,
+                        }}
                       >
                         {cellContent(column, row, index)}
                       </TableCell>
@@ -406,16 +421,11 @@ export function StaticTable<T>({
 
       {/* Baris total hanya masuk akal bila ada baris yang ditotal. */}
       {foot.length > 0 && rows.length > 0 && (
-        <TableFooter className="border-t-2 bg-transparent" style={summaryStyle}>
+        <TableFooter style={summaryStyle}>
           {foot.map((line, lineIndex) => (
             <TableRow
               key={lineIndex}
-              className={cn(
-                "border-b-0 font-bold hover:bg-transparent",
-                summaryClassName,
-                line.className
-              )}
-              style={line.style}
+              style={{ fontWeight: 700, ...line.style }}
             >
               {/* Tanpa `fallback`: kaki tidak punya baris data, jadi kolom yang
                   tidak disebut hanya bisa menjadi sel kosong — lihat

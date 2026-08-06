@@ -17,20 +17,19 @@
  * Beranda — cabang wizard sengaja tidak: di sana gerbang setup memang belum
  * mengizinkan halaman lain, dan tautan yang memantul justru jebakan yang sama.
  *
- * ── Dua sumber warna di berkas ini, dan garis yang memisahkannya (#200) ───
- * Server component: tanpa `antd`, tanpa `theme.useToken()`. Variabel `--ant-…`
- * hanya teratasi DI DALAM sebuah komponen AntD (#227), dan di halaman ini yang
- * menjadi pembawanya adalah `Card`. Jadi:
+ * ── Satu sumber warna di berkas ini (#203) ───────────────────────────────
+ * Server component: tanpa `antd`, tanpa `theme.useToken()`. Berkas ini dulu
+ * punya DUA sumber — token AntD di dalam `Card`, token `:root` aplikasi untuk
+ * pita "penyiapan selesai" yang berdiri sendiri di atas kartu pertama — dengan
+ * alasan bahwa `--ant-…` hanya teratasi di dalam komponen AntD. Alasan itu
+ * gugur sejak #227: kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout,
+ * bukan oleh elemen yang digambar komponen AntD, jadi `var(--ant-…)` teratasi
+ * sama saja di dalam maupun di luar `Card`. Seluruh berkas kini token AntD —
+ * dan memang harus, sebab #203 mencabut token `:root` itu dari `globals.css`.
  *
- *  • di dalam `Card` (daftar identitas, tabel jurnal, tautan neraca) → token
- *    AntD lewat `--ant-…`, sama seperti beranda (#199);
- *  • di LUARnya (pita "penyiapan selesai" yang berdiri sendiri di atas kartu
- *    pertama) → token `:root` aplikasi, karena di sana `--ant-…` akan jatuh
- *    diam-diam ke warisan.
- *
- * Pita itu adalah calon issue tersendiri: sebuah primitif `Notice` (AntD
- * `Alert` sebagai daun client) akan menghapus cabang kedua di atas — lihat
- * badan PR issue ini.
+ * Pita itu tetap calon issue tersendiri, tapi alasannya kini soal bentuk, bukan
+ * warna: sebuah primitif `Notice` (AntD `Alert` sebagai daun client) akan
+ * menggantikan gaya sebaris yang ditulis tangan di bawah.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -52,8 +51,8 @@ import { getT } from "@/lib/i18n/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Pita "penyiapan selesai" — DI LUAR `Card`, jadi token `:root` aplikasi.
- * Ikon + kalimat, bukan warna sendirian (MASTER.md §Anti-Patterns).
+ * Pita "penyiapan selesai" — DI LUAR `Card`, tapi tetap token AntD (lihat
+ * kepala). Ikon + kalimat, bukan warna sendirian (MASTER.md §Anti-Patterns).
  */
 const DONE_NOTE: React.CSSProperties = {
   display: "flex",
@@ -62,10 +61,10 @@ const DONE_NOTE: React.CSSProperties = {
   marginBottom: 24,
   padding: "12px 16px",
   borderRadius: 8,
-  border: "1px solid var(--success)",
-  background: "var(--success-soft)",
+  border: "1px solid var(--ant-color-success-border)",
+  background: "var(--ant-color-success-bg)",
   fontSize: 14,
-  color: "var(--success-strong)",
+  color: "var(--ant-color-money-positive)",
 };
 
 /** Label istilah di daftar identitas — di dalam `Card`, jadi token AntD. */

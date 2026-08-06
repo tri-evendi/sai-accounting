@@ -104,7 +104,7 @@ export function SearchableSelect({
   const t = useT();
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
       {label && <Label htmlFor={id}>{label}</Label>}
       <Select<string, SearchableOption>
         data-slot="searchable-select"

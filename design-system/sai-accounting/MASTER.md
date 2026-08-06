@@ -8,7 +8,7 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · Tailwind CSS v4 · **shadcn/ui + CVA** di `src/components/ui` (Radix di baliknya untuk overlay) · form `react-hook-form` + `zod` · tabel `@tanstack/react-table` · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Warna hanya dari token semantik** (`bg-primary`, `text-muted-foreground`, …) — kelas palet mentah (`bg-blue-600`) ditolak lint (issue #54).
+**Stack:** Next.js 16 (App Router) · **Ant Design v6** (`ConfigProvider` + CSS-in-JS) di `src/components/ui` · form `react-hook-form` + `zod` · tabel `StaticTable` (server) / `DataTable` (AntD, client) · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Tanpa Tailwind, tanpa lembar kelas apa pun sejak issue #203** - gaya ditulis SEBARIS (`style={{...}}`), warnanya `var(--ant-...)` atau `theme.useToken()`, dan nilai warna mentah (hex, `rgb()`) tidak ditulis di luar `src/lib/theme/antd-tokens.ts`.
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
@@ -22,49 +22,68 @@
 
 ---
 
-## Color Palette (light-first, token → `globals.css`)
+## Color Palette (light-first) - token **Ant Design**, satu lapisan saja
 
-Nama variabel mengikuti konvensi shadcn (didefinisikan di `src/app/globals.css`; utility Tailwind: `bg-primary`, `text-success`, `border-border`, dst.).
+Sampai issue #203 aplikasi ini punya paletnya sendiri: 158 variabel bergaya
+shadcn di `src/app/globals.css` (`--primary`, `--muted-foreground`,
+`--success-soft`, ...) beserta utility Tailwind yang memakainya (`bg-primary`,
+`text-muted-foreground`). **Lapisan itu sudah tidak ada.** Warna kini datang
+dari SATU tempat: token `ConfigProvider` Ant Design, ditambah sedikit token
+kustom yang lahir dari pengukuran kontras.
 
-| Role | Hex | CSS Variable | Catatan |
-|------|-----|--------------|---------|
-| Primary (brand/aksi) | `#1E40AF` | `--primary` | Trust blue |
-| On Primary | `#FFFFFF` | `--primary-foreground` | |
-| Background | `#F8FAFC` | `--background` | Abu sangat terang |
-| Surface / Card | `#FFFFFF` | `--card` | |
-| Foreground (teks) | `#0F172A` | `--foreground` | Kontras ≥ 4.5:1 |
-| Muted (teks sekunder) | `#64748B` | `--muted-foreground` | |
-| Border | `#E2E8F0` | `--border` | |
-| **Positif / Uang Masuk / Lunas** | `#16A34A` | `--success` | Hijau |
-| **Negatif / Uang Keluar / Jatuh Tempo** | `#DC2626` | `--destructive` | Merah (utility `bg-destructive`/`text-destructive`) |
-| **Menunggu / Peringatan** | `#D97706` | `--warning` | Amber |
-| Sidebar (gelap, aksen) | `#0F172A` | `--sidebar` | Sesuai app |
-| Ring (fokus) | `#1E40AF` | `--ring` | Fokus a11y wajib terlihat |
+- **Sumber angkanya:** `src/lib/theme/antd-tokens.ts`. Di sanalah setiap hex
+  ditulis, beserta rasio kontras terhitungnya - dan `tests/money-tokens.test.ts`
+  serta `tests/antd-css-var-ssr.test.tsx` menghitung ulang angka itu dari paket
+  `antd` yang benar-benar terpasang setiap kali suite berjalan. Tabel warna
+  TIDAK disalin ke berkas ini lagi: dua salinan angka kontras adalah dua angka
+  yang akan berselisih pada versi AntD berikutnya, dan yang salah adalah yang
+  tidak diuji.
+- **Cara memakainya:** `style={{ color: "var(--ant-color-text-secondary)" }}`,
+  atau `theme.useToken()` bila nilainya memang perlu dihitung. Nama variabel =
+  nama token dalam kebab-case berawalan `--ant-`.
+- **Identitas mereknya bawaan AntD** (`colorPrimary` `#1677ff`), keputusan epik
+  #206. `#1E40AF` lama tidak dikembalikan.
 
-### Pasangan status "soft / strong" (badge & penanda di atas permukaan terang)
+### Peta peran -> token
 
-Warna penuh di atas cocok untuk isian pekat, ikon, dan garis — **bukan** untuk teks kecil di atas latar sangat terang. Menaruh `--success` di atas `success/10` hanya menghasilkan kontras **2,96:1** (warning 2,86:1, destructive 4,13:1), jauh di bawah ambang 4.5:1 di bawah. Karena itu badge status memakai pasangan khusus:
+| Peran | Token |
+|-------|-------|
+| Latar halaman | `colorBgLayout` |
+| Permukaan kartu / tabel | `colorBgContainer` |
+| Permukaan melayang (modal, popover) | `colorBgElevated` |
+| Teks utama | `colorText` |
+| Teks penjelas / label kolom | `colorTextSecondary` |
+| Kisi tabel & tepi kartu | `colorBorderSecondary` (#208) |
+| Batas kendali (`Input`, `Select`) | `colorBorder` (#208) |
+| Garis pemisah dekoratif (`Divider`) | `colorSplit` (#208) |
+| Cincin fokus papan ketik | `colorPrimaryBorder` (#187) |
+| Tautan & teks merek | `colorLink` / `colorBrandText` (#186) |
+| Permukaan gelap permanen (sidebar, panel merek) | `Layout.Sider theme="dark"` (`#001529`) |
 
-| Peran | Latar | Teks | Kontras |
-|-------|-------|------|---------|
-| Lunas / positif | `--success-soft` `#DCFCE7` | `--success-strong` `#166534` | 6,49:1 |
-| Menunggu / sebagian | `--warning-soft` `#FEF3C7` | `--warning-strong` `#92400E` | 6,37:1 |
-| Jatuh tempo / negatif | `--destructive-soft` `#FEE2E2` | `--destructive-strong` `#991B1B` | 6,80:1 |
-| Netral | `--muted` `#F1F5F9` | `--foreground` `#0F172A` | 16,30:1 |
+### Warna uang & status - token kustom, dan alasannya aritmetika
 
-Utility: `bg-success-soft text-success-strong`, dst. Badge tetap **wajib berteks** — pasangan ini mengatur warna, bukan menggantikan kata.
+Anak tangga ke-6 palet AntD (`colorSuccess` `#52c41a`, `colorWarning` `#faad14`,
+`colorError` `#ff4d4f`) dipilih AntD untuk **isian dan ikon**, bukan untuk teks
+14px. Diukur: 2,27:1 - 1,90:1 - 3,27:1 di tema terang, semuanya gagal 4,5:1.
+Karena itu peran TEKS memakai anak tangga yang lebih jauh dari latarnya, diambil
+dari palet AntD sendiri (green-8 / red-8 / gold-9 / blue-7):
 
-**Aturannya tidak berhenti di badge — ia berlaku untuk TEKS BERWARNA apa pun.** Di atas `--card` putih, warna penuh gagal ambang teks biasa: `--success` #16A34A hanya **3,30:1** dan `--warning` #D97706 **3,19:1** (hanya `--destructive` #DC2626 lolos, 4,83:1). Yang menyelamatkannya selama ini adalah ukuran, bukan warnanya:
+| Peran | Token |
+|-------|-------|
+| Uang masuk / saldo positif / lunas | `colorMoneyPositive` |
+| Uang keluar / saldo negatif / jatuh tempo | `colorMoneyNegative` |
+| Menunggu / sebagian | `colorMoneyPending` |
+| Informasional | `colorMoneyInfo` |
 
-| Tempat | Ambang | Boleh |
-|--------|--------|-------|
-| Angka besar (`text-2xl`/`text-3xl` **tebal** ≥ 18,66px bold) | 3:1 (teks besar) | `text-success` / `text-warning` |
-| **Sel tabel & teks 14px** (primitif `Table` = `text-sm`) | **4,5:1** | **hanya** `-strong` (7,1–8,3:1) |
-| Ikon & isian pekat | 3:1 (non-teks) | warna penuh |
+Keempatnya juga menjadi warna teks `Tag` (issue #187) dan warna teks galat
+formulir. **`colorSuccess`/`colorWarning`/`colorError` bawaan tetap dipakai apa
+adanya** untuk isian pekat, ikon berlatar, dan `Progress` - di sana ambangnya
+3:1 non-teks.
 
-Kolom nominal di beranda pernah memakai `text-success` pada sel `text-sm` — benar warnanya, gagal kontrasnya. **Kolom uang berwarna memakai `text-success-strong` / `text-destructive-strong`.**
-
-**Penjaga lint mengenal sisi arah.** Pola di `eslint.config.mjs` semula hanya mencocokkan `border-` yang langsung diikuti warna, sehingga `border-l-4 border-l-blue-500` (garis aksen kiri kartu — justru bentuk paling umum) lolos berbulan-bulan dan tidak ikut berganti di tema gelap. Pola itu kini mencakup `border-l-`, `border-t-`, `bg-x-`, dst. Kalau muncul bentuk penulisan warna baru yang lolos, **perbaiki polanya**, bukan hanya kelasnya — satu kelas yang diperbaiki akan kembali lewat PR berikutnya.
+**Aturan yang tidak berubah sedikit pun:** warna **tidak pernah** penanda
+tunggal (badge wajib berteks, angka negatif wajib bertanda minus), ambang 4,5:1
+untuk teks <= 18px, 3:1 untuk grafis non-teks, dan kolom uang berwarna memakai
+token uang di atas - bukan `colorSuccess` bawaan.
 
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
@@ -75,16 +94,11 @@ Kolom nominal di beranda pernah memakai `text-success` pada sel `text-sm` — be
 - **Pergantian tema tetap hidup:** kedua tema memakai selektor yang sama, jadi toggle menimpa isi bloknya alih-alih menumpuk blok kedua. Server component ikut berganti warna tanpa dirender ulang.
 - Aturan lama tetap berlaku di atasnya: warna **tidak pernah** penanda tunggal, dan ambang kontrasnya tidak berubah. Buktinya SSR ada di `tests/antd-css-var-ssr.test.tsx`.
 
-*Dark mode:* surface naik ke `#0F172A`/`#1E293B`, rasio kontras & semantik warna tetap sama. Pasangan soft/strong versi gelap ada di blok `.dark` (kontras 8,5–10,6:1). Kelas `.dark` dipasang **root layout dari cookie** (`src/lib/theme/`), jadi sudah menempel pada HTML pertama — tidak ada kedipan sebelum hydrate.
+*Dark mode:* algoritma gelap AntD, dipilih `AntdProvider` dari cookie yang dibaca root layout, jadi blok token yang benar sudah ikut pada HTML pertama tanpa kedipan sebelum hydrate. Semantik warna dan ambang kontrasnya tidak berubah antar-tema; nilai gelapnya berdiri di sebelah nilai terangnya di `antd-tokens.ts`.
 
-**Dua jebakan token yang sudah memakan korban** — palet gelap membuat beberapa token bernilai SAMA, dan komponen yang mengandalkan selisihnya diam-diam runtuh saat tema berganti:
+Satu pengecualian yang tersisa: pilihan **"ikut sistem"**. Preferensi OS tak terlihat dari server, jadi HTML pertamanya selalu membawa token terang; yang memperbaikinya sebelum cat pertama adalah skrip sinkron di `<head>` yang memasang kelas `.dark`, dan dua variabel di `globals.css` yang menempel pada kelas itu (latar halaman + warna teks). Sisa tokennya baru benar setelah hydrate - dicatat sebagai kekurangan yang diketahui, bukan sebagai desain.
 
-| Token | Terang | Gelap | Akibatnya |
-|-------|--------|-------|-----------|
-| `--muted` / `--secondary` | `#F1F5F9` / `#F1F5F9` | **`#334155` / `#334155`** | Sakelar aktif (varian `secondary`) di atas latar `bg-muted` jadi tak terlihat sama sekali |
-| `--sidebar` / `--background` | `#0F172A` / `#F8FAFC` | **`#0F172A` / `#0F172A`** | Panel gelap melebur dengan halaman; pembagian kolomnya hilang |
-
-Karena itu: **latar halaman memakai `bg-background`, bukan `bg-muted`** (kartu harus lebih terang dari halamannya di kedua tema), dan **batas antar-bidang yang sewarna di tema gelap wajib punya `border`**, bukan hanya mengandalkan beda warna. Tinjau UI baru di KEDUA tema sebelum menyerahkannya.
+**Jebakan "dua bidang sewarna" TETAP berlaku, hanya nilainya yang berganti:** di tema gelap sidebar `#001529` dan `colorBgContainer` `#141414` berkontras ~1,4:1, sedangkan `colorBgLayout` gelap adalah `#000000` yang nyaris sama dengan keduanya. Karena itu **batas antar-bidang yang sewarna wajib punya `border`** - itulah alasan `colorBorderSecondary` dinaikkan sampai lolos 3:1 di issue #208 - dan kartu berdiri di atas `colorBgLayout`, bukan di atas isian abu-abu lain. Tinjau UI baru di KEDUA tema sebelum menyerahkannya.
 
 ---
 
@@ -137,7 +151,7 @@ Sejak buku besar tiap PT hidup di basis datanya sendiri, satu pertanyaan berdiri
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.
-- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` shadcn (lihat "Konvensi Form" di bawah) — bukan `useState` manual.
+- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` di `src/components/ui/form.tsx` (RHF sebagai mesin, `Form.Item` AntD sebagai kulit - lihat "Konvensi Form" di bawah), bukan `useState` manual.
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
 
@@ -222,19 +236,19 @@ SVG di dalam ikon AntD berukuran `1em`, dan pembungkusnya `<span>` — jadi:
 |---|---|
 | **Bawaan (mayoritas)** | **Jangan sebut ukuran.** Ikonnya mengikuti ukuran teks di sebelahnya: di dalam `Button`, `Menu`, `Tag`, atau paragraf, ia otomatis benar. |
 | **Harus beda dari teksnya** (ikon empty state 48px, ikon kepala callout 20px) | `style={{ fontSize: 20 }}` — sekali, di tempat itu. |
-| **JANGAN** | `className="h-4 w-4"` / `size-4` / prop `size={16}`. |
+| **JANGAN** | prop `size={16}`, atau `width`/`height` sebaris. |
 
 Dua alasan larangan itu, dan keduanya diam:
-- `h-4 w-4` mengukur **span**-nya, bukan `<svg width="1em">` di dalamnya. Kelasnya
-  terpasang, ikonnya tidak berubah ukuran — perubahan yang terlihat berhasil di diff
-  dan tidak berpengaruh apa pun di layar.
+- Ukuran KOTAK (dulu `h-4 w-4`, kini `width`/`height` sebaris) mengenai **span**-nya,
+  bukan `<svg width="1em">` di dalamnya: ukurannya terpasang, ikonnya tidak berubah -
+  perubahan yang terlihat berhasil di diff dan tidak berpengaruh apa pun di layar.
 - `size={16}` **lolos `tsc`**: props ikon AntD turun dari `React.HTMLProps<HTMLSpanElement>`,
   yang memang punya `size` (atribut HTML `<input>`/`<select>`). Ia mendarat sebagai
   atribut `size="16"` di `<span>` dan tidak mengatur apa pun.
 
-Warna ikut jalur yang sama: `style={{ color: … }}` atau kelas token yang sudah ada
-(`text-muted-foreground`), bukan prop `color` — dan ambangnya tetap 3:1 (ikon = grafis
-non-teks), dengan aturan **warna tak pernah penanda tunggal**.
+Warna ikut jalur yang sama: `style={{ color: "var(--ant-color-text-secondary)" }}`,
+bukan prop `color` - dan ambangnya tetap 3:1 (ikon = grafis non-teks), dengan aturan
+**warna tak pernah penanda tunggal**.
 
 ### Impor ikon SELALU bernama — `import { XOutlined } from "@ant-design/icons"`
 
@@ -269,7 +283,7 @@ menu yang dibacakan dua kali.
 
 ## Pemasaran vs App: batas dua dunia (issue #245)
 
-Aplikasi ini punya **dua permukaan yang tidak boleh saling meniru**: halaman pendaratan publik `/` (dibaca orang yang belum punya akun) dan app internal (dikerjakan orang yang sudah masuk delapan jam sehari). Sampai epik #206, batas itu dijaga sebuah **kebetulan mekanis** — dua dunia memakai kelas Tailwind yang kelihatan berbeda, jadi menyalin gaya pemasaran ke halaman internal sudah terasa janggal saat menulisnya. Setelah keduanya berdiri di atas token AntD yang sama, kejanggalan itu hilang: `fontSize: "var(--ant-font-size-heading-1)"` di halaman piutang dan di hero pendaratan terlihat persis sama.
+Aplikasi ini punya **dua permukaan yang tidak boleh saling meniru**: halaman pendaratan publik `/` (dibaca orang yang belum punya akun) dan app internal (dikerjakan orang yang sudah masuk delapan jam sehari). Sampai epik #206, batas itu dijaga sebuah **kebetulan mekanis** - dua dunia memakai kelas Tailwind yang kelihatan berbeda, jadi menyalin gaya pemasaran ke halaman internal sudah terasa janggal saat menulisnya. Kebetulan itu ikut hilang bersama Tailwind di #203. Setelah keduanya berdiri di atas token AntD yang sama, kejanggalan itu hilang: `fontSize: "var(--ant-font-size-heading-1)"` di halaman piutang dan di hero pendaratan terlihat persis sama.
 
 Karena itu batasnya kini dinyatakan **dalam token, dan dijaga tes** (`tests/landing-boundary.test.ts`) — bukan sebagai satu butir larangan.
 
@@ -348,9 +362,9 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - [ ] Form: label terlihat, validasi inline, helper text, progressive disclosure.
 - [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
 - [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>`/`<Breadcrumb>` manual); label breadcrumb = label menu samping.
-- [ ] Reuse komponen `src/components/ui` (shadcn/CVA); token warna/spacing dari variabel (bukan hex mentah).
-- [ ] **Dilihat di tema TERANG dan GELAP** — lihat dua jebakan token di bagian Color Palette; sewarna-nya `--muted`/`--secondary` dan `--sidebar`/`--background` di tema gelap tidak terlihat dari kode.
+- [ ] Reuse komponen `src/components/ui`; warna & jarak dari token AntD (`var(--ant-...)` atau `theme.useToken()`), bukan hex mentah.
+- [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `#001529` dengan permukaan gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
-- [ ] Tabel lewat primitif `Table` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, antar aksi `gap-2`) — penjaga `tests/design-system-primitives.test.ts` hijau.
-- [ ] **Tanpa kelas palet mentah** (`bg-blue-600`, `text-gray-500`, …) — `bun run lint` hijau (penjaga token menolaknya).
+- [ ] Tabel lewat `StaticTable`/`DataTable` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`) - penjaga `tests/design-system-primitives.test.ts` hijau.
+- [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.

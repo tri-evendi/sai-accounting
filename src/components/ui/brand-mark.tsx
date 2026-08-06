@@ -38,43 +38,41 @@
  * yang perlu diganti hanya `<svg>` di bawah.
  */
 
-import { cn } from "@/lib/utils";
-
 /**
  * Ukuran kotaknya. `md` (40px) memenuhi target sentuh minimum MASTER.md untuk
  * saat lambangnya sekaligus menjadi tautan.
  */
 type BrandMarkSize = "sm" | "md" | "lg";
 
-const BOX: Record<BrandMarkSize, string> = {
-  sm: "h-8 w-8 rounded-lg",
-  md: "h-10 w-10 rounded-lg",
-  lg: "h-12 w-12 rounded-xl",
+const BOX: Record<BrandMarkSize, React.CSSProperties> = {
+  sm: { width: 32, height: 32, borderRadius: "var(--ant-border-radius-lg)" },
+  md: { width: 40, height: 40, borderRadius: "var(--ant-border-radius-lg)" },
+  lg: { width: 48, height: 48, borderRadius: "var(--ant-border-radius-lg)" },
 };
 
-const GLYPH: Record<BrandMarkSize, string> = {
-  sm: "h-4 w-4",
-  md: "h-5 w-5",
-  lg: "h-6 w-6",
-};
+/** Ukuran gambarnya di dalam kotak — selalu setengah tinggi kotaknya. */
+const GLYPH: Record<BrandMarkSize, number> = { sm: 16, md: 20, lg: 24 };
 
-export function BrandMark({
-  size = "md",
-  className,
-}: {
-  size?: BrandMarkSize;
-  className?: string;
-}) {
+export function BrandMark({ size = "md" }: { size?: BrandMarkSize }) {
   return (
     <span
-      className={cn(
-        "flex shrink-0 items-center justify-center bg-primary text-primary-foreground",
-        BOX[size],
-        className
-      )}
+      style={{
+        ...BOX[size],
+        display: "flex",
+        flexShrink: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--ant-color-primary)",
+        color: "var(--ant-color-text-light-solid)",
+      }}
       aria-hidden="true"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" className={GLYPH[size]}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        width={GLYPH[size]}
+        height={GLYPH[size]}
+      >
         {/*
          * Satu path, dua subpath, `evenodd` — bukan dua persegi bertumpuk.
          * Punggung buku adalah LUBANG yang ditembus warna kotak di belakangnya,

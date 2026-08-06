@@ -31,12 +31,14 @@ import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 /*
- * ── Warna (issue #200) ─────────────────────────────────────────────────────
- * Server component di dalam `AuthShell` yang belum dikonversi: tanpa `antd`,
- * dan tanpa satu pun komponen AntD di atasnya sehingga variabel `--ant-…`
- * tidak teratasi (#227). Kalimatnya memakai token `:root` aplikasi — token yang
- * sama dengan kulitnya, jadi keduanya tidak bisa berpisah warna. Tombolnya
- * mewarnai dirinya sendiri lewat primitif `Button`.
+ * ── Warna (issue #203) ─────────────────────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimatnya
+ * memakai variabel token AntD `var(--ant-…)`, dan itu tetap teratasi walau tak
+ * ada satu pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY`
+ * dipikul `<html>` oleh root layout, bukan oleh elemen yang digambar komponen
+ * AntD. Token `:root` aplikasi yang dulu dipakai sudah dicabut dari
+ * `globals.css` oleh #203. Tombolnya mewarnai dirinya sendiri lewat primitif
+ * `Button`.
  */
 
 /** Kalimat penjelas — bekas `text-sm leading-relaxed text-muted-foreground`. */
@@ -44,14 +46,14 @@ const BODY_TEXT: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 /** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
 const EXIT_ROW: React.CSSProperties = {
   marginTop: 24,
   paddingTop: 20,
-  borderTop: "1px solid var(--border)",
+  borderTop: "1px solid var(--ant-color-border-secondary)",
 };
 
 export default async function SetupRequiredPage() {

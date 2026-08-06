@@ -110,7 +110,7 @@ const LINE_INDENT: React.CSSProperties = {
 };
 
 const CODE_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
+  fontFamily: "var(--ant-font-family-code)",
   marginInlineEnd: 8,
   color: "var(--ant-color-text-secondary)",
 };

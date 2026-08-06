@@ -185,15 +185,57 @@ describe("Button — pemetaan prop", () => {
     expect(md).not.toContain("ant-btn-lg");
   });
 
-  it("meneruskan className, disabled, dan atribut aria", () => {
+  it("meneruskan style, disabled, dan atribut aria", () => {
+    // Sampai #203 yang diteruskan adalah `className`; propnya dicabut bersama
+    // Tailwind, dan `style` menggantikannya sebagai satu-satunya jalan keluar.
     const html = render(
-      <Button className="w-full" disabled aria-label="Simpan faktur">
+      <Button style={{ width: "100%" }} disabled aria-label="Simpan faktur">
         x
       </Button>
     );
-    expect(html).toContain("w-full");
+    expect(html).toContain("width:100%");
     expect(html).toContain("disabled");
     expect(html).toContain('aria-label="Simpan faktur"');
+  });
+});
+
+describe("Button href — bentuk tautan yang aman di server component", () => {
+  /*
+   * Ditambahkan di #203 setelah `next build` mati di `/terms`.
+   *
+   * `asChild` harus MEMBACA prop anaknya. Dari server component anak itu
+   * menyeberangi batas RSC lebih dulu, dan bisa tiba sebagai simpul `lazy`
+   * yang `isValidElement`-nya `false` dan tidak punya `.props` — lalu
+   * `React.Children.only()` melempar dan prerender halamannya mati. Yang
+   * menentukan bukan kodenya melainkan urutan pemuatan chunk: pada build yang
+   * sama `/privacy` lolos dan `/terms`, kembarannya, gagal.
+   *
+   * `href` tidak membaca anaknya sama sekali, jadi ia tidak bisa mengalami itu.
+   * Yang dikunci di sini adalah kesetaraan keluarannya dengan `asChild` —
+   * kalau keduanya berbeda rupa, "pakai `href` di server" berhenti menjadi
+   * saran yang aman.
+   */
+  it("merender SATU <a href>, sama seperti asChild", () => {
+    const html = render(
+      <Button href="/platform" variant="outline">
+        Platform
+      </Button>
+    );
+    expect(html).toContain("<a");
+    expect(html).toContain('href="/platform"');
+    expect(html).not.toContain("<button");
+    expect(html).toContain("Platform");
+    expect(html).toContain("ant-btn");
+  });
+
+  it("anak yang tidak bisa dibaca TIDAK mematikan halaman", () => {
+    /*
+     * Jaring pengaman untuk simpul `lazy` di atas. Sebuah string bukan elemen,
+     * persis seperti simpul `lazy` bagi `isValidElement` — dan yang diuji
+     * adalah bahwa `asChild` menggambar sesuatu alih-alih melempar.
+     */
+    expect(() => render(<Button asChild>teks polos</Button>)).not.toThrow();
+    expect(render(<Button asChild>teks polos</Button>)).toContain("teks polos");
   });
 });
 

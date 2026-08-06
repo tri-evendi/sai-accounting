@@ -62,8 +62,8 @@ type BadgeProps = React.ComponentProps<"span"> & {
   variant?: BadgeVariant;
 };
 
-function Badge({ variant = "default", className, ...props }: BadgeProps) {
-  return <Tag {...VARIANTS[variant]} className={className} {...props} />;
+function Badge({ variant = "default", ...props }: BadgeProps) {
+  return <Tag {...VARIANTS[variant]} {...props} />;
 }
 
 export { Badge };

@@ -131,7 +131,7 @@ export function ServerSearchableSelect({
   }, [open, query, fetchUrl, searchParam]);
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
       {label && <Label htmlFor={id}>{label}</Label>}
       <Select<string, PickerOption>
         data-slot="server-searchable-select"

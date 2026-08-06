@@ -27,24 +27,27 @@ function formatDateTime(d: Date): string {
 }
 
 /*
- * Warna di berkas ini memakai token `:root` aplikasi, bukan `--ant-…` (#200):
- * konsol operator tidak menggambar satu pun komponen AntD di atas isinya, jadi
- * variabel AntD tidak akan teratasi di sini (#227). Formulirnya sendiri
- * (`MailSettingsForm`) adalah komponen client dan mewarnai dirinya.
+ * Warna di berkas ini memakai variabel token AntD `var(--ant-…)` (#203). Konsol
+ * operator memang tidak menggambar satu pun komponen AntD di atas isinya, tapi
+ * itu tidak lagi jadi penghalang: sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, jadi variabelnya teratasi di seluruh dokumen —
+ * sementara token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css`
+ * oleh #203. Formulirnya sendiri (`MailSettingsForm`) adalah komponen client dan
+ * mewarnai dirinya.
  */
 const H1: React.CSSProperties = {
   margin: 0,
   fontSize: 24,
   fontWeight: 700,
   letterSpacing: "-0.025em",
-  color: "var(--foreground)",
+  color: "var(--ant-color-text)",
 };
 
 const LEAD: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.625,
-  color: "var(--muted-foreground)",
+  color: "var(--ant-color-text-secondary)",
 };
 
 export default async function OperatorMailPage() {

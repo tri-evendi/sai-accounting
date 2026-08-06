@@ -45,8 +45,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
+
+/**
+ * Tiga hal yang tidak punya bentuk sebaris, dan ketiganya bukan hiasan:
+ *
+ *  • **`::after`** — area sentuh ~40px di sekeliling ikon "?" tanpa mengubah
+ *    tinggi baris teksnya. Ikon 20px sendirian di bawah ambang target sentuh
+ *    MASTER.md, dan membesarkan ikonnya akan merusak baris yang memuatnya.
+ *  • **cincin fokus** — ini `<button>` telanjang, bukan komponen AntD, jadi
+ *    `genFocusStyle()` AntD tidak menyentuhnya. Warnanya `colorPrimaryBorder`,
+ *    token yang sama dengan cincin fokus AntD (#187).
+ *  • **garis bawah saat disorot** pada tautan "Pelajari selengkapnya".
+ */
+const TERM_RULES = `
+[data-term-trigger]::after{content:"";position:absolute;inset:-10px}
+[data-term-trigger]:focus{outline:none}
+[data-term-trigger]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:1px}
+[data-term-link]:hover{text-decoration:underline}
+`;
 
 /** Jeda sebelum panel hover ditutup — cukup untuk menyeberangi celah 8px. */
 const HOVER_CLOSE_DELAY_MS = 150;
@@ -64,12 +81,13 @@ interface TermTooltipProps {
   term: string;
   /** Label yang tampil. Bila kosong, dipakai label bahasa tugas dari kamus. */
   children?: React.ReactNode;
-  className?: string;
+  /** Gaya pembungkus label + ikon — pengganti `className` yang dicabut di #203. */
+  style?: React.CSSProperties;
   /** Sembunyikan tautan "Pelajari selengkapnya" (mis. di dalam halaman kamus). */
   hideGlossaryLink?: boolean;
 }
 
-export function TermTooltip({ term, children, className, hideGlossaryLink }: TermTooltipProps) {
+export function TermTooltip({ term, children, style, hideGlossaryLink }: TermTooltipProps) {
   const t = useT();
   const entry = getTerm(term);
   const [open, setOpen] = useState(false);
@@ -102,10 +120,19 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
 
   return (
     <span
-      className={cn("inline-flex items-center gap-1 align-middle", className)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "var(--ant-margin-xxs)",
+        verticalAlign: "middle",
+        ...style,
+      }}
       onMouseEnter={openFromHover}
       onMouseLeave={scheduleClose}
     >
+      <style href="sai-term-tooltip" precedence="default">
+        {TERM_RULES}
+      </style>
       <span>{label}</span>
       <Popover
         open={open}
@@ -118,17 +145,19 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
         <PopoverTrigger asChild>
           <button
             type="button"
+            data-term-trigger
             aria-label={`Penjelasan istilah: ${entry.label}`}
-            className={cn(
-              "relative inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full",
-              "transition-colors duration-150",
-              // Cincin fokus tetap kelas: ini `<button>` telanjang, bukan
-              // komponen AntD, jadi `genFocusStyle()` AntD tidak menyentuhnya.
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-              // Area sentuh ~40px tanpa mengubah tinggi baris teks.
-              "after:absolute after:-inset-2.5 after:content-['']"
-            )}
             style={{
+              position: "relative",
+              display: "inline-flex",
+              width: 20,
+              height: 20,
+              flexShrink: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              cursor: "pointer",
+              transition: "color 150ms, background-color 150ms",
               color: open ? "var(--ant-color-primary)" : "var(--ant-color-text-tertiary)",
               background: open ? "var(--ant-color-primary-bg)" : "transparent",
             }}
@@ -139,8 +168,16 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
         <PopoverContent
           align="start"
           side="bottom"
-          className="w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3 text-left font-normal normal-case"
-          style={{ maxHeight: PANEL_MAX_HEIGHT }}
+          style={{
+            width: 288,
+            maxWidth: "calc(100vw - 1rem)",
+            maxHeight: PANEL_MAX_HEIGHT,
+            overflowY: "auto",
+            padding: "var(--ant-padding-sm)",
+            textAlign: "left",
+            fontWeight: 400,
+            textTransform: "none",
+          }}
           // Pembukaan via hover tidak boleh mencuri fokus dari yang sedang
           // diketik; pembukaan via papan ketik/klik justru butuh fokus masuk
           // supaya tautan di dalam panel terjangkau.
@@ -151,32 +188,53 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
           onMouseLeave={scheduleClose}
         >
           <span
-            className="block text-xs font-semibold uppercase tracking-wide"
-            style={{ color: "var(--ant-color-text-tertiary)" }}
+            style={{
+              display: "block",
+              fontSize: "var(--ant-font-size-sm)",
+              fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--ant-color-text-tertiary)",
+            }}
           >
             {t("term.badge")}
           </span>
           <span
-            className="mt-0.5 block text-sm font-semibold"
-            style={{ color: "var(--ant-color-text)" }}
+            style={{
+              display: "block",
+              marginTop: 2,
+              fontSize: "var(--ant-font-size)",
+              fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+              color: "var(--ant-color-text)",
+            }}
           >
             {entry.term}
           </span>
           <span
-            className="mt-1.5 block text-sm leading-relaxed"
-            style={{ color: "var(--ant-color-text-secondary)" }}
+            style={{
+              display: "block",
+              marginTop: 6,
+              fontSize: "var(--ant-font-size)",
+              lineHeight: 1.625,
+              color: "var(--ant-color-text-secondary)",
+            }}
           >
             {entry.definisi}
           </span>
           {entry.contoh && (
             <span
-              className="mt-2 block rounded-md p-2 text-xs leading-relaxed"
               style={{
+                display: "block",
+                marginTop: "var(--ant-margin-xs)",
+                padding: "var(--ant-padding-xs)",
+                borderRadius: "var(--ant-border-radius)",
+                fontSize: "var(--ant-font-size-sm)",
+                lineHeight: 1.625,
                 background: "var(--ant-color-fill-quaternary)",
                 color: "var(--ant-color-text-secondary)",
               }}
             >
-              <span className="font-medium" style={{ color: "var(--ant-color-text)" }}>
+              <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>
                 {t("term.example")}{" "}
               </span>
               {entry.contoh}
@@ -184,9 +242,17 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
           )}
           {!hideGlossaryLink && (
             <Link
+              data-term-link
               href={glossaryHref(entry.key)}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
-              style={{ color: "var(--ant-color-link)" }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--ant-margin-xxs)",
+                marginTop: "var(--ant-margin-xs)",
+                fontSize: "var(--ant-font-size-sm)",
+                fontWeight: 500,
+                color: "var(--ant-color-link)",
+              }}
             >
               {t("term.learnMore")}
               <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 12 }} />

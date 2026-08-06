@@ -21,18 +21,26 @@
  * Ia tinggal DI DALAM `platform/layout.tsx`, jadi sidebar, bilah atas, dan
  * penanda akun tetap ada selama menunggu — yang berkedip hanya area isi.
  *
- * ── Warna & denyut (issue #200) ──────────────────────────────────────────
+ * ── Warna & denyut (issue #203) ──────────────────────────────────────────
  * Server component, jadi tanpa `antd`. Sebagian kerangka ini berdiri DI LUAR
- * `Card` (kepala halaman, baris kartu ringkasan) dan di sana variabel `--ant-…`
- * tidak teratasi (#227) — supaya kerangkanya tidak setengah berwarna token
- * aplikasi dan setengah token AntD, SELURUHNYA memakai token `:root` aplikasi.
+ * `Card` (kepala halaman, baris kartu ringkasan), dan itu dulu jadi alasan
+ * memakai token `:root` aplikasi — supaya warnanya tidak setengah token
+ * aplikasi, setengah token AntD. Alasan itu gugur sejak #227: kelas
+ * `ANTD_CSS_VAR_KEY` ("sai-tokens") dipikul `<html>` oleh root layout, bukan
+ * oleh elemen yang digambar komponen AntD, jadi `var(--ant-…)` teratasi sama
+ * saja di dalam maupun di luar `Card`. SELURUHNYA karena itu token AntD — dan
+ * memang harus, sebab #203 mencabut token `:root` itu dari `globals.css`.
  * Denyut & `prefers-reduced-motion` lewat satu aturan CSS ber-`href` +
  * `precedence` yang menyasar atribut `data-skeleton`, bukan kelas.
  */
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
+/** Balok kerangka. Warnanya `fillSecondary`, bukan `fillQuaternary`: yang
+ *  terakhir itu latar halus untuk bidang lebar, dan sebagai BALOK di atas
+ *  kartu ia praktis tak terlihat — kerangka yang tak terlihat sama saja
+ *  dengan layar kosong. */
 function bar(width: number | string, height: number, radius = 4): React.CSSProperties {
-  return { width, height, borderRadius: radius, background: "var(--muted)" };
+  return { width, height, borderRadius: radius, background: "var(--ant-color-fill-secondary)" };
 }
 
 export default function PlatformLoading() {
@@ -70,8 +78,8 @@ export default function PlatformLoading() {
               style={{
                 padding: 16,
                 borderRadius: 8,
-                border: "1px solid var(--border)",
-                background: "var(--card)",
+                border: "1px solid var(--ant-color-border-secondary)",
+                background: "var(--ant-color-bg-container)",
               }}
             >
               <div style={bar(96, 16)} />

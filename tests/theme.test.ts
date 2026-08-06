@@ -12,6 +12,10 @@
  *    wizard penyiapan, menu select) — bagian yang tidak kita gambar sendiri
  *    dan karena itu paling mudah tertinggal putih di halaman gelap.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { theme as antdTheme } from "antd";
 import { describe, expect, it } from "vitest";
 import {
   DARK_CLASS,
@@ -91,5 +95,59 @@ describe("themeScript", () => {
   it("satu baris tanpa tag penutup yang bisa memutus <script>", () => {
     expect(themeScript()).not.toContain("</");
     expect(themeScript()).not.toContain("\n");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Sisa `.dark` di globals.css — dua variabel, dan keduanya dihitung   */
+/* ------------------------------------------------------------------ */
+
+describe("blok `html.dark` di globals.css", () => {
+  const css = readFileSync(
+    join(__dirname, "..", "src", "app", "globals.css"),
+    "utf8"
+  );
+  /** Ruang di dalam `rgba(...)` dibuang; AntD menuliskannya tanpa spasi. */
+  const rapat = css.replace(/,\s+/g, ",");
+  const gelap = antdTheme.getDesignToken({ algorithm: antdTheme.darkAlgorithm });
+
+  /*
+   * Issue #203 mencabut seluruh palet `.dark` dari `globals.css` — kecuali dua
+   * variabel, karena pilihan tema "ikut sistem" tidak punya kanal lain sebelum
+   * hydrate: preferensi OS tak terlihat dari server, jadi HTML pertama selalu
+   * membawa token TERANG dan hanya skrip sebelum-cat yang bisa memperbaikinya,
+   * dengan memasang sebuah kelas. Alasan lengkapnya di blok itu sendiri.
+   *
+   * Bahayanya: dua nilai warna yang ditulis tangan di CSS adalah dua nilai yang
+   * bisa menyimpang dari palet AntD tanpa satu pun galat — dan yang menyimpang
+   * hanya terlihat oleh pengguna "ikut sistem" ber-OS gelap, yaitu justru
+   * kelompok yang paling jarang membuka laporan bug. Tes ini menghitung ulang
+   * keduanya dari paket `antd` yang benar-benar terpasang setiap kali suite
+   * berjalan, jadi versi AntD baru tidak bisa menggesernya diam-diam.
+   */
+  it("nilainya PERSIS token gelap Ant Design, bukan warna karangan", () => {
+    expect(rapat).toContain(`--ant-color-bg-layout: ${gelap.colorBgLayout}`);
+    expect(rapat).toContain(`--ant-color-text: ${gelap.colorText}`);
+  });
+
+  it("menempel pada kelas yang sama dengan yang dipasang `themeClass`", () => {
+    // `html.dark`, bukan `.dark`: spesifisitasnya (0,1,1) harus mengalahkan
+    // `.sai-tokens` (0,1,0) yang berdiri di elemen yang SAMA — kalau tidak,
+    // blok token terang yang datang belakangan yang menang.
+    expect(css).toContain(`html.${DARK_CLASS} {`);
+  });
+
+  it("tidak ada palet lama yang tertinggal", () => {
+    // Token semantik era Tailwind (#203). Satu saja yang tersisa berarti ada
+    // permukaan yang masih diwarnai dua lapisan sekaligus.
+    for (const mati of [
+      "--primary:",
+      "--muted-foreground:",
+      "--success-soft:",
+      "--destructive-strong:",
+      "--sidebar:",
+    ]) {
+      expect(css).not.toContain(mati);
+    }
   });
 });

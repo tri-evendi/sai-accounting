@@ -48,7 +48,6 @@ import * as React from "react";
 import { Modal } from "antd";
 
 import { useT } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------------ */
 /* Keadaan buka/tutup — konteks yang menggantikan `Dialog.Root` Radix         */
@@ -112,14 +111,10 @@ const DialogLabellingContext = React.createContext<DialogLabelling | null>(null)
 /* Pemicu & penutup                                                           */
 /* ------------------------------------------------------------------------ */
 
-function DialogTrigger({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"button">) {
+function DialogTrigger({ children, ...props }: React.ComponentProps<"button">) {
   const { setOpen } = useDialogState();
   return (
-    <button type="button" className={className} onClick={() => setOpen(true)} {...props}>
+    <button type="button" onClick={() => setOpen(true)} {...props}>
       {children}
     </button>
   );
@@ -132,7 +127,6 @@ function DialogTrigger({
  */
 function DialogClose({
   asChild = false,
-  className,
   children,
   ...props
 }: React.ComponentProps<"button"> & { asChild?: boolean }) {
@@ -152,7 +146,7 @@ function DialogClose({
   }
 
   return (
-    <button type="button" className={className} onClick={close} {...props}>
+    <button type="button" onClick={close} {...props}>
       {children}
     </button>
   );
@@ -163,44 +157,28 @@ function DialogClose({
 /* ------------------------------------------------------------------------ */
 
 /**
- * Lebar & tinggi tetap ditentukan KELAS pemanggil, bukan prop `width` AntD.
+ * Lebar dialog sebagai PROP (#194), dan sejak #203 SATU-SATUNYA cara mengatur
+ * lebarnya.
  *
- * Ketiga pemanggilnya menulis `max-w-lg`, `max-w-5xl`, `sm:max-w-lg`, dan
- * `h-[92vh]` — dan `width` AntD adalah `width` CSS, yang tidak bisa dikalahkan
- * `max-width` sebuah kelas. Karena itu lebarnya diserahkan ke `calc` yang sama
- * dengan primitif lama (`w-[calc(100vw-2rem)]`), dan `max-w-*` pemanggil yang
- * menjepitnya — persis seperti sebelum migrasi. `cn()` memakai tailwind-merge,
- * jadi `max-w-lg` pemanggil menggantikan `max-w-2xl` bawaan di sini, bukan
- * bertumpuk dengannya.
+ * Sampai fase C selesai, lebar ditentukan kelas pemanggil (`max-w-lg`,
+ * `max-w-5xl`) yang menjepit `width: calc(100vw - 2rem)` di bawah. Bentuk itu
+ * ikut dicabut bersama Tailwind — sebuah kelas yang tidak dikenal lembar gaya
+ * mana pun tidak gagal, ia hanya berhenti menjepit, dan dialog konfirmasi
+ * diam-diam melebar sampai lebar bawaannya.
  *
- * Baris ini adalah utang fase C yang disengaja: ia hilang bersama Tailwind di
- * issue #203, ketika ketiga pemanggilnya memakai `width` AntD.
- */
-const CONTENT_BASE = "max-w-2xl";
-
-/**
- * Lebar dialog sebagai PROP, jalan keluar dari paragraf di atas (#194).
- *
- * Selama pemanggil hanya bisa mengatur lebar lewat `max-w-*`, setiap dialog
- * non-standar di fase C harus membawa satu kelas Tailwind — dan `document-
- * preview` membuktikan biayanya: lembar A4 dibaca di dalam kotak 672px karena
- * itulah bawaan yang bisa dikalahkan sebuah kelas.
- *
- * Nilainya piksel, bukan kelas, dan dipasang sebagai `maxWidth` sebaris.
- * Sengaja `maxWidth` dan bukan `width`: lebar sesungguhnya tetap
- * `calc(100vw - 2rem)`, jadi di 375px dialog tetap menyesuaikan layar alih-alih
- * memaksa 1024px dan menggeser halaman.
- *
- * Pemanggil yang masih mengirim `max-w-*` lewat `className` tetap bekerja —
- * `size` hanya berlaku bila disebut. Keduanya hidup berdampingan sampai #203
- * mencabut Tailwind.
+ * Nilainya piksel dan dipasang sebagai `maxWidth` sebaris. Sengaja `maxWidth`
+ * dan bukan `width`: lebar sesungguhnya tetap `calc(100vw - 2rem)`, jadi di
+ * 375px dialog tetap menyesuaikan layar alih-alih memaksa 1024px dan menggeser
+ * halaman.
  */
 const CONTENT_MAX_WIDTH = {
-  /** Setara `max-w-lg` — konfirmasi, formulir pendek. */
+  /** Setara `max-w-md` lama — dialog konfirmasi (`AlertDialog`). */
+  xs: 448,
+  /** Setara `max-w-lg` lama — formulir pendek. */
   sm: 512,
-  /** Setara `max-w-2xl` — bawaan, sama dengan sebelum prop ini ada. */
+  /** Setara `max-w-2xl` lama — BAWAAN, sama dengan sebelum prop ini ada. */
   md: 672,
-  /** Setara `max-w-5xl` — pratinjau dokumen; lembar A4 butuh ruang. */
+  /** Setara `max-w-5xl` lama — pratinjau dokumen; lembar A4 butuh ruang. */
   lg: 1024,
 } as const;
 
@@ -231,7 +209,6 @@ export function writeDialogAria(
 }
 
 interface DialogContentProps {
-  className?: string;
   children?: React.ReactNode;
   /**
    * Diterima dan diabaikan dengan anggun. Dulu ini cara Radix mengatakan
@@ -251,24 +228,20 @@ interface DialogContentProps {
   padded?: boolean;
   /** Internal: `ConfirmDialog` menahan Escape selama prosesnya berjalan. */
   keyboard?: boolean;
-  /**
-   * Lebar maksimum dialog. Tak diisi = seperti sebelumnya (kelas pemanggil yang
-   * menentukan, bawaan `max-w-2xl`). Lihat `CONTENT_MAX_WIDTH`.
-   */
+  /** Lebar maksimum dialog; bawaannya `md` (672px). Lihat `CONTENT_MAX_WIDTH`. */
   size?: DialogSize;
   /** Internal: dijalankan sekali setiap dialog terbuka, setelah panelnya ada. */
   onOpenAutoFocus?: () => void;
 }
 
 function DialogContent({
-  className,
   children,
   showClose = true,
   maskClosable = true,
   role = "dialog",
   padded = false,
   keyboard = true,
-  size,
+  size = "md",
   onOpenAutoFocus,
 }: DialogContentProps) {
   const { open, setOpen } = useDialogState();
@@ -331,12 +304,25 @@ function DialogContent({
         footer={null}
         panelRef={setPanel}
         width="calc(100vw - 2rem)"
-        className={cn(CONTENT_BASE, className)}
+        /*
+         * `style` mendarat di PANEL (`.ant-modal`) — Modal meneruskannya ke
+         * `style` milik rc-dialog, tempat `width` di atas juga ditulis. Jadi
+         * inilah satu-satunya tempat sebuah `maxWidth` bisa menjepit lebar itu.
+         *
+         * ⚠ Sebelumnya lebarnya ditulis sebagai `styles.content`, dan
+         * **`content` bukan nama bagian semantik `Modal` AntD v6** (yang ada:
+         * root · header · body · footer · container · title · wrapper · mask ·
+         * close). Bentuk lamanya lolos `tsc` hanya karena ditulis sebagai
+         * sebaran bersyarat, yang mematikan pemeriksaan properti berlebih —
+         * jadi prop `size` (#194) sesungguhnya tidak pernah mengubah apa pun,
+         * dan yang benar-benar menjepit lebar selama ini adalah kelas
+         * `max-w-*`. Ketahuan justru saat kelasnya dicabut: pratinjau dokumen
+         * meminta `size="lg"` dan tetap dibaca dalam kotak 672px.
+         */
+        style={{ maxWidth: CONTENT_MAX_WIDTH[size] }}
         styles={{
-          /* `size` menang atas kelas karena gaya sebaris memang menang — itu
-             sebabnya ia hanya ditulis saat pemanggil menyebutnya. */
-          ...(size ? { content: { maxWidth: CONTENT_MAX_WIDTH[size] } } : {}),
-          /* Tinggi mengikuti kelas pemanggil (`h-[92vh]`) sampai ke isinya. */
+          /* Tinggi panel mengalir sampai ke isinya; batas atasnya `maxHeight`
+             pada badan di bawah. */
           container: { display: "flex", flexDirection: "column", height: "100%" },
           body: {
             display: "flex",
@@ -364,16 +350,16 @@ function DialogContent({
 /* Judul & deskripsi                                                          */
 /* ------------------------------------------------------------------------ */
 
-function DialogTitle({ className, ...props }: React.ComponentProps<"h2">) {
+function DialogTitle(props: React.ComponentProps<"h2">) {
   const labelling = React.useContext(DialogLabellingContext);
   labelling?.register("title");
-  return <h2 id={labelling?.titleId} className={className} {...props} />;
+  return <h2 id={labelling?.titleId} {...props} />;
 }
 
-function DialogDescription({ className, ...props }: React.ComponentProps<"p">) {
+function DialogDescription(props: React.ComponentProps<"p">) {
   const labelling = React.useContext(DialogLabellingContext);
   labelling?.register("description");
-  return <p id={labelling?.descriptionId} className={className} {...props} />;
+  return <p id={labelling?.descriptionId} {...props} />;
 }
 
 export { Dialog, DialogTrigger, DialogClose, DialogContent, DialogTitle, DialogDescription };

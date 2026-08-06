@@ -20,7 +20,7 @@
  * keputusan tersendiri (issue #192), bukan efek samping migrasi kulit.
  *
  * ── Yang TIDAK ikut pindah ke AntD, dengan sengaja ────────────────────────
- * Pesan error komposit tetap `<p className="text-sm text-destructive">`, bukan
+ * Teks error komposit memakai `colorMoneyNegative` (#186), bukan
  * `token.colorError`. Alasannya terukur dan sudah tertulis di
  * `lib/theme/antd-tokens.ts`: `colorError` terang berkontras 3,27:1 sebagai
  * TEKS — di bawah 4,5:1 untuk huruf 14px. Menukar teks error yang sekarang
@@ -39,8 +39,7 @@
 import { useId } from "react";
 import { Input as AntdInput, type InputRef } from "antd";
 
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Label, RequiredMark } from "@/components/ui/label";
 
 /**
  * Ukuran kontrol. `md` = bawaan provider (`controlHeight: 40`, target sentuh
@@ -66,6 +65,19 @@ function isInvalidField(
   ariaInvalid: React.AriaAttributes["aria-invalid"]
 ): boolean {
   return Boolean(invalid) || ariaInvalid === true || ariaInvalid === "true";
+}
+
+/**
+ * Gabungkan `aria-describedby` milik pemanggil dengan id pesan galat isian ini.
+ *
+ * Dulu `cn()` yang mengerjakannya — sebuah penggabung KELAS yang kebetulan juga
+ * menggabungkan string. `cn()` ikut dicabut bersama Tailwind di #203, dan
+ * penggantinya sengaja bernama sesuai pekerjaannya: yang digabung di sini
+ * adalah daftar id, dan `undefined` harus tetap `undefined` supaya atributnya
+ * benar-benar tidak ditulis (atribut kosong menunjuk elemen yang tak ada).
+ */
+function describedByWith(...ids: (string | false | undefined)[]): string | undefined {
+  return ids.filter(Boolean).join(" ") || undefined;
 }
 
 type BareFieldProps = {
@@ -96,9 +108,9 @@ type InputProps = Omit<React.ComponentProps<"input">, "size" | "prefix" | "ref">
  * Tanpa `prefix`/`suffix`/`allowClear`, AntD merender `<input class="ant-input">`
  * apa adanya — tanpa `<span>` pembungkus. `id` dan `aria-*` mendarat di `<input>`
  * dalam kedua bentuk (itu yang membuat `PasswordField`, yang SELALU punya suffix,
- * tetap benar pautannya), tetapi `className` berpindah ke pembungkus begitu
- * affix muncul. Karena 69 pemanggil mengoper `className` untuk mengatur lebar
- * isian, bentuk telanjang di sini dijaga tetap telanjang.
+ * tetap benar pautannya), tetapi `style` berpindah ke pembungkus begitu affix
+ * muncul. Karena pemanggil mengoper `style` untuk mengatur lebar isian, bentuk
+ * telanjang di sini dijaga tetap telanjang.
  */
 function TextInput({ fieldSize, invalid, ...props }: TextInputProps) {
   const isInvalid = isInvalidField(invalid, props["aria-invalid"]);
@@ -115,7 +127,6 @@ function TextInput({ fieldSize, invalid, ...props }: TextInputProps) {
 }
 
 function Input({
-  className,
   label,
   error,
   id,
@@ -133,30 +144,29 @@ function Input({
   const required = props.required;
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
       {label && (
         <Label htmlFor={inputId}>
           {label}
-          {required && (
-            <>
-              <span aria-hidden="true" className="ml-0.5 text-destructive">
-                *
-              </span>
-              <span className="sr-only"> (wajib)</span>
-            </>
-          )}
+          {required && <RequiredMark />}
         </Label>
       )}
       <TextInput
         id={inputId}
         fieldSize={fieldSize}
         invalid={isInvalid}
-        aria-describedby={cn(describedBy, error && errorId) || undefined}
-        className={className}
+        aria-describedby={describedByWith(describedBy, error && errorId)}
         {...props}
       />
       {error && (
-        <p id={errorId} role="alert" className="text-sm text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          style={{
+            fontSize: "var(--ant-font-size)",
+            color: "var(--ant-color-money-negative)",
+          }}
+        >
           {error}
         </p>
       )}
@@ -164,5 +174,5 @@ function Input({
   );
 }
 
-export { Input, TextInput, antdSize, isInvalidField };
+export { Input, TextInput, antdSize, isInvalidField, describedByWith };
 export type { InputProps, TextInputProps, FieldSize, BareFieldProps };

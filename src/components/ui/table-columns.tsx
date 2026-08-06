@@ -76,7 +76,16 @@ export interface SaiColumn<T> {
    * di sana memang dilakukan query, bukan kolom.
    */
   sorter?: boolean | ((a: T, b: T) => number);
-  className?: string;
+  /**
+   * Gaya SEL — bukan gaya header. Dipakai kolom laporan yang berwarna menurut
+   * arah angkanya ("Masuk" hijau, "Keluar" merah); kedua perender menjaga agar
+   * ia tidak bocor ke `<th>` (lihat `static-table.tsx` dan `data-table.tsx`).
+   *
+   * Sampai #203 bentuknya `className` berisi kelas Tailwind. Ia berganti
+   * menjadi gaya sebaris bersama pencabutan Tailwind: kelas yang tidak dikenal
+   * lembar gaya mana pun tidak akan pernah gagal — ia hanya berhenti mewarnai.
+   */
+  cellStyle?: React.CSSProperties;
 }
 
 export type SaiColumns<T> = SaiColumn<T>[];
@@ -139,15 +148,15 @@ export function qtyColumn<T>({
   key,
   sorter = true,
   width,
-  className,
-}: ColumnBase<T> & { className?: string }): SaiColumn<T> {
+  cellStyle,
+}: ColumnBase<T> & { cellStyle?: React.CSSProperties }): SaiColumn<T> {
   return {
     key: key ?? dataIndex,
     dataIndex,
     title,
     align: "right",
     width,
-    className,
+    cellStyle,
     sorter: sorter === true ? numericSorter<T>(dataIndex) : sorter,
     render: (raw) => (
       <span style={{ fontVariantNumeric: "tabular-nums" }}>

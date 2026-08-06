@@ -9,7 +9,7 @@ Bookkeeping and accounting system for businesses in Indonesia — double-entry j
 - Next.js 16 (App Router)
 - MySQL / MariaDB + Prisma
 - NextAuth (credentials)
-- Tailwind CSS
+- Ant Design v6 (tanpa Tailwind sejak issue #203 — gaya sebaris di atas token AntD)
 - **Bun** sebagai pemasang paket & peluncur skrip; **Node** tetap runtime-nya
 
 ## Prasyarat

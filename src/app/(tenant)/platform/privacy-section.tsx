@@ -128,11 +128,12 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
           <Text type="secondary" style={{ flex: "1 1 260px", lineHeight: 1.625 }}>
             {t("tenantSettings.exportBody")}
           </Text>
-          <Button asChild variant="outline" style={{ flexShrink: 0 }}>
-            <a href="/api/tenant/export" download>
-              <DownloadOutlined aria-hidden="true" />
-              {t("tenantSettings.exportButton")}
-            </a>
+          {/* `download` menempel di TOMBOLNYA sekarang, bukan di `<a>` anaknya
+              — `Button href` merender `<a>` itu sendiri, jadi atribut anchor
+              apa pun harus ikut pindah ke sini atau ia hilang tanpa suara. */}
+          <Button href="/api/tenant/export" download variant="outline" style={{ flexShrink: 0 }}>
+            <DownloadOutlined aria-hidden="true" />
+            {t("tenantSettings.exportButton")}
           </Button>
         </Flex>
       </CardContent>

@@ -361,9 +361,9 @@ export default async function ContractDetailPage({
 
   return (
     <div>
-      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `Button asChild`):
-          `asChild` merender `<a href>` AntD, yaitu pemuatan halaman PENUH —
-          lihat catatan `asChild` di `ui/button.tsx`. */}
+      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `<Button href>`):
+          `href` merender `<a href>` AntD, yaitu pemuatan halaman PENUH —
+          lihat catatan `href` di `ui/button.tsx`. */}
       <PageHeader
         breadcrumbs={[
           { label: t("contracts.breadcrumb"), href: "/contracts" },

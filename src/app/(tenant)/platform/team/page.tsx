@@ -15,7 +15,6 @@
  * Tanpa satu pun PT, kalimatnya yang menjelaskan — dan itu keadaan yang nyata
  * bagi pemilik yang baru saja mendaftar.
  */
-import Link from "next/link";
 import { MailOutlined, TeamOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,22 +69,20 @@ export default async function PlatformTeamPage() {
               {companies.map((company) => (
                 <Button
                   key={company.companyId}
-                  asChild
+                  href={tenantPath(tenant.tenantSlug, company.slug, "/users")}
                   variant="outline"
                   style={{ width: "100%", justifyContent: "flex-start" }}
                 >
-                  <Link href={tenantPath(tenant.tenantSlug, company.slug, "/users")}>
-                    <MailOutlined aria-hidden="true" />
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {t("platform.inviteTo", { company: company.name })}
-                    </span>
-                  </Link>
+                  <MailOutlined aria-hidden="true" />
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {t("platform.inviteTo", { company: company.name })}
+                  </span>
                 </Button>
               ))}
             </div>

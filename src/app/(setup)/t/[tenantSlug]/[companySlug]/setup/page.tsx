@@ -102,11 +102,9 @@ export default async function SetupPage({
         <PageHeader
           title={t("setup.title")}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">
-                <ArrowLeftOutlined aria-hidden="true" />
-                {t("setup.backToApp")}
-              </Link>
+            <Button href="/dashboard" variant="outline">
+              <ArrowLeftOutlined aria-hidden="true" />
+              {t("setup.backToApp")}
             </Button>
           }
         />

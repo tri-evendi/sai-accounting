@@ -148,8 +148,9 @@ export default function PrivacyPage() {
 
         <footer style={FOOTER}>
           {/* `href` LANGSUNG — lihat catatan kembarnya di `terms/page.tsx`:
-              `asChild` membaca prop anaknya, dan dari server component anak itu
-              bisa tiba sebagai simpul `lazy` tanpa prop. */}
+              tombol yang membungkus tautannya harus membaca prop anaknya, dan
+              dari server component anak itu bisa tiba sebagai simpul `lazy`
+              tanpa prop. */}
           <Button href="/terms" variant="outline">
             Syarat &amp; Ketentuan
           </Button>

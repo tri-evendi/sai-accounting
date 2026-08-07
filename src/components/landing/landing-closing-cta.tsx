@@ -11,8 +11,6 @@
  * satu janji, satu kalimat. Dua kalimat untuk tombol yang menuju tempat yang
  * sama akan berbeda pada hari salah satunya disunting.
  */
-import Link from "next/link";
-
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Button } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
@@ -26,8 +24,8 @@ export async function LandingClosingCta() {
         {t("landing.ctaBody")}
       </LandingSectionIntro>
       <div style={{ marginTop: "var(--sai-landing-cta-space)" }}>
-        <Button asChild size="lg">
-          <Link href="/register">{t("landing.heroPrimary")}</Link>
+        <Button href="/register" size="lg">
+          {t("landing.heroPrimary")}
         </Button>
       </div>
     </LandingSection>

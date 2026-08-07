@@ -13,7 +13,6 @@
  * sampai ke berkas ini, sebab penjaga di baris pertama sudah memantulkannya.
  * Query di bawahnya karena itu tidak perlu bersyarat sama sekali.
  */
-import Link from "next/link";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -62,11 +61,9 @@ export default async function PlatformBillingPage() {
           { label: t("tenantSettings.title") },
         ]}
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/platform/billing/plans">
-              {t("platform.plansViewLabel")}
-              <ArrowRightOutlined aria-hidden="true" />
-            </Link>
+          <Button href="/platform/billing/plans" variant="outline" size="sm">
+            {t("platform.plansViewLabel")}
+            <ArrowRightOutlined aria-hidden="true" />
           </Button>
         }
       />
@@ -97,11 +94,9 @@ export default async function PlatformBillingPage() {
               <p style={{ ...CARD_BODY, flex: "1 1 260px" }}>
                 {t("platform.plansDescription")}
               </p>
-              <Button asChild style={{ flexShrink: 0 }}>
-                <Link href="/platform/billing/plans">
-                  {t("platform.plansViewLabel")}
-                  <ArrowRightOutlined aria-hidden="true" />
-                </Link>
+              <Button href="/platform/billing/plans" style={{ flexShrink: 0 }}>
+                {t("platform.plansViewLabel")}
+                <ArrowRightOutlined aria-hidden="true" />
               </Button>
             </div>
           </CardContent>

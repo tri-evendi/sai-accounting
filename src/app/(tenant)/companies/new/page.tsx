@@ -11,7 +11,6 @@
  * dengan /select-company, layar "di antara buku-buku": tanpa sidebar yang
  * menuntut peran per-PT, bisa dibuka sebelum PT pertama ada.
  */
-import Link from "next/link";
 import { ShopOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -48,8 +47,8 @@ export default async function NewCompanyPage() {
         /* JALAN KELUAR. Layar ini berdiri sebelum aplikasi, tanpa chrome apa
            pun — tanpa tautan ini satu-satunya tindakan yang mungkin adalah
            membuat perusahaan. */
-        <Button asChild variant="outline" style={{ width: "100%" }}>
-          <Link href="/select-company">{t("common.back")}</Link>
+        <Button href="/select-company" variant="outline" style={{ width: "100%" }}>
+          {t("common.back")}
         </Button>
       }
     >

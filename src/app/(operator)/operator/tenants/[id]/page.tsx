@@ -33,7 +33,6 @@
  * token yang sama karena masing-masing dirender sebagai daun client.
  */
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
@@ -271,11 +270,9 @@ export default async function OperatorTenantDetailPage({
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div style={SECTION}>
         <div>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/operator">
-              <ArrowLeftOutlined aria-hidden="true" />
-              {t("operator.tenant.back")}
-            </Link>
+          <Button href="/operator" variant="ghost" size="sm">
+            <ArrowLeftOutlined aria-hidden="true" />
+            {t("operator.tenant.back")}
           </Button>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>

@@ -93,12 +93,10 @@ export async function LandingNav() {
             <LocaleToggle />
             <ThemeToggle />
           </div>
-          <Button asChild variant="ghost">
-            <Link href="/login">{t("landing.signIn")}</Link>
+          <Button href="/login" variant="ghost">
+            {t("landing.signIn")}
           </Button>
-          <Button asChild>
-            <Link href="/register">{t("landing.signUp")}</Link>
-          </Button>
+          <Button href="/register">{t("landing.signUp")}</Button>
         </div>
       </nav>
     </header>

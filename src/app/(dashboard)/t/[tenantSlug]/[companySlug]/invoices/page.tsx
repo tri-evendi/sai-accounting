@@ -178,8 +178,8 @@ export default async function InvoicesPage({
 
   return (
     <div>
-      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `Button asChild`):
-          `asChild` merender `<a href>` AntD, yaitu pemuatan halaman PENUH. */}
+      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `<Button href>`):
+          `href` merender `<a href>` AntD, yaitu pemuatan halaman PENUH. */}
       <PageHeader
         title={<TermTooltip term="faktur">{t("invoices.title", { count: totalCount })}</TermTooltip>}
         actions={

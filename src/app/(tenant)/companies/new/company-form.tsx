@@ -224,13 +224,13 @@ export function CompanyForm({
            * Penjaga di halaman setup tetap yang memutuskan boleh-tidaknya —
            * pintasan ini tidak melewati apa pun (keanggotaan pembuatnya sudah
            * dibuat bersamaan dengan perusahaannya). */}
-          <Button asChild>
-            <a href={`/t/${tenantSlug}/${createdSlug}/setup`}>{t("companies.openSetup")}</a>
+          <Button href={`/t/${tenantSlug}/${createdSlug}/setup`}>
+            {t("companies.openSetup")}
           </Button>
           {/* Perpindahan perusahaan lewat pemilih — pemuatan penuh, sama
               seperti jalur lainnya (lihat CompanyChoices). */}
-          <Button asChild variant="outline">
-            <a href="/select-company">{t("companies.openPicker")}</a>
+          <Button href="/select-company" variant="outline">
+            {t("companies.openPicker")}
           </Button>
           <Button
             variant="outline"

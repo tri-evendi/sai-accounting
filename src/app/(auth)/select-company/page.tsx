@@ -28,7 +28,6 @@
  * kulit dan isinya tetap tidak bisa berpisah warna. Tombolnya sendiri sudah
  * mewarnai dirinya (primitif `Button`).
  */
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PlusOutlined, ShopOutlined, UserOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
@@ -116,11 +115,9 @@ export default async function SelectCompanyPage() {
         {canCreate ? (
           <div style={{ display: "flex", flexDirection: "column", gap: STACK_MD }}>
             <p style={BODY_TEXT}>{t("auth.selectCompany.noCompanyYetOwner")}</p>
-            <Button asChild style={FULL_WIDTH}>
-              <Link href="/companies/new">
-                <PlusOutlined aria-hidden="true" />
-                {t("companies.newTitle")}
-              </Link>
+            <Button href="/companies/new" style={FULL_WIDTH}>
+              <PlusOutlined aria-hidden="true" />
+              {t("companies.newTitle")}
             </Button>
           </div>
         ) : (
@@ -152,19 +149,15 @@ export default async function SelectCompanyPage() {
          */
         <div style={{ display: "flex", flexDirection: "column", gap: STACK_SM }}>
           {canCreate && (
-            <Button asChild variant="outline" style={FULL_WIDTH}>
-              <Link href="/companies/new">
-                <PlusOutlined aria-hidden="true" />
-                {t("companies.newTitle")}
-              </Link>
+            <Button href="/companies/new" variant="outline" style={FULL_WIDTH}>
+              <PlusOutlined aria-hidden="true" />
+              {t("companies.newTitle")}
             </Button>
           )}
           {canOpenPlatform && (
-            <Button asChild variant="outline" style={FULL_WIDTH}>
-              <Link href="/platform">
-                <UserOutlined aria-hidden="true" />
-                {t("platform.title")}
-              </Link>
+            <Button href="/platform" variant="outline" style={FULL_WIDTH}>
+              <UserOutlined aria-hidden="true" />
+              {t("platform.title")}
             </Button>
           )}
           <SignedInAs name={session.user.name} />

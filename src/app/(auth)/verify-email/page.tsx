@@ -95,20 +95,18 @@ function VerifyEmailInner() {
           <Alert type="success" showIcon message={t("auth.register.verifiedBody")} />
           {/* Langkah 4 §7.1: layar "buat perusahaan pertama" — tujuannya
               /companies/new (lewat masuk), bukan pemilih perusahaan. */}
-          <Button asChild size="lg" style={{ width: "100%" }}>
-            <Link href="/login?callbackUrl=%2Fcompanies%2Fnew">
-              {t("auth.register.verifiedCta")}
-            </Link>
+          <Button href="/login?callbackUrl=%2Fcompanies%2Fnew" size="lg" style={{ width: "100%" }}>
+            {t("auth.register.verifiedCta")}
           </Button>
         </Flex>
       ) : alreadyRegistered ? (
         <Flex vertical gap={designToken.margin}>
           <Text type="secondary">{t("auth.register.alreadyRegistered")}</Text>
-          <Button asChild style={{ width: "100%" }}>
-            <Link href="/login">{t("auth.login.submit")}</Link>
+          <Button href="/login" style={{ width: "100%" }}>
+            {t("auth.login.submit")}
           </Button>
-          <Button asChild variant="outline" style={{ width: "100%" }}>
-            <Link href="/forgot-password">{t("auth.forgotPassword.heading")}</Link>
+          <Button href="/forgot-password" variant="outline" style={{ width: "100%" }}>
+            {t("auth.forgotPassword.heading")}
           </Button>
         </Flex>
       ) : !token ? (

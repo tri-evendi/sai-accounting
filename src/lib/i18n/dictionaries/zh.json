@@ -3311,7 +3311,11 @@
     "mailFromRequired": "发件人地址为必填项",
     "mailHostRequired": "使用 SMTP 传输方式时必须填写 SMTP 主机",
     "mailPortRequired": "使用 SMTP 传输方式时必须填写 SMTP 端口",
-    "mailPortInvalid": "端口必须是 1–65535 之间的数字"
+    "mailPortInvalid": "端口必须是 1–65535 之间的数字",
+    "amountRequired": "请填写金额",
+    "amountNotNegative": "金额不能为负数",
+    "amountTooLarge": "金额过大",
+    "categoryRequired": "请选择类别"
   },
   "modules": {
     "sectionTitle": "业务模块",

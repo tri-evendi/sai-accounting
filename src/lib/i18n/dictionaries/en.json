@@ -3311,7 +3311,11 @@
     "mailFromRequired": "Sender address is required",
     "mailHostRequired": "SMTP host is required for the SMTP transport",
     "mailPortRequired": "SMTP port is required for the SMTP transport",
-    "mailPortInvalid": "Port must be a number between 1 and 65535"
+    "mailPortInvalid": "Port must be a number between 1 and 65535",
+    "amountRequired": "Amount is required",
+    "amountNotNegative": "Amount must not be negative",
+    "amountTooLarge": "Amount is too large",
+    "categoryRequired": "Please choose a category"
   },
   "modules": {
     "sectionTitle": "Business Modules",

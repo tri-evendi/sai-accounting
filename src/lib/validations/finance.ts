@@ -18,8 +18,14 @@ export const cashTransactionSchema = z
     date: z.string().min(1, vmsg("validation.dateRequired")),
     description: z.string().min(1, vmsg("validation.descriptionRequired")).max(255).trim(),
     currency: currencyEnum.default("IDR"),
-    debit: z.coerce.number().min(0).default(0),
-    credit: z.coerce.number().min(0).default(0),
+    /*
+     * Pesan pada `min(0)` bukan hiasan: sejak #216 formulir kas memvalidasi
+     * dengan skema INI di client, jadi kalimat inilah yang dibaca pengguna saat
+     * ia mengetik nominal negatif — sebelumnya pesan itu datang dari penjaga
+     * terpisah di formulir, yang kini tidak ada lagi.
+     */
+    debit: z.coerce.number().min(0, vmsg("validation.amountNotNegative")).default(0),
+    credit: z.coerce.number().min(0, vmsg("validation.amountNotNegative")).default(0),
     // Persisted to cash_movements.rate; drives base_amount and the journal.
     rate: rateField,
     /**

@@ -201,6 +201,9 @@ describe("buildReportSheet — trial balance & cash flow", () => {
       period: "Periode",
       groups: [
         {
+          // `category` wajib sejak issue #241 — bentuk laporan bergantung
+          // padanya, bukan pada label yang bisa saja sudah diterjemahkan.
+          category: "uncategorised",
           label: "Belum Terkategori",
           lines: [{ code: "9-999", name: "Akun Aneh", inflow: 250_000.25, outflow: 0, net: 250_000.25 }],
           inflow: 250_000.25,
@@ -223,6 +226,108 @@ describe("buildReportSheet — trial balance & cash flow", () => {
     // The uncategorised section is present, never dropped.
     const heading = sheet.rows.find((r) => r[0]?.value === "Belum Terkategori");
     expect(heading).toBeDefined();
+  });
+
+  /*
+   * Kelompok TANPA akun (issue #241). Lembar sebar dulu melewatinya
+   * (`if (g.lines.length === 0) continue`) sementara layar tetap mencetaknya —
+   * beda bentuk yang paling terlihat pengguna, karena periode tanpa mutasi
+   * investasi kehilangan seluruh seksinya di lampiran. Sekarang ketiga
+   * permukaan mencetaknya; kesamaannya sendiri dijaga
+   * `tests/cash-flow-shape.test.ts`, dan di sini dikunci apa yang harus
+   * TERBACA di berkas Excel-nya.
+   */
+  it("mencetak seksi tanpa akun berikut alasannya, bukan melewatinya", () => {
+    const sheet = buildReportSheet({
+      kind: "cash-flow",
+      period: "Periode",
+      groups: [
+        {
+          category: "investing",
+          label: "Aktivitas Investasi",
+          lines: [],
+          inflow: 0,
+          outflow: 0,
+          net: 0,
+        },
+      ],
+      totalInflow: 0,
+      totalOutflow: 0,
+      netChange: 0,
+      openingCash: 500_000,
+      closingCash: 500_000,
+      reconciled: true,
+      suspectUnrated: 0,
+    });
+    const labels = sheet.rows.map((r) => r[0].value);
+    expect(labels).toContain("Aktivitas Investasi");
+    expect(labels).toContain("Tidak ada pergerakan kas pada periode ini.");
+    expect(labels).toContain("Jumlah Aktivitas Investasi");
+  });
+
+  /*
+   * Kas awal & akhir adalah baris tabel — kolom "Masuk"/"Keluar" tidak berlaku
+   * bagi keduanya, jadi selnya KOSONG dan bukan nol (Prinsip Inti MASTER.md).
+   * Subtotal nol tetap angka nol: satu-satunya alasan lembar sebar ada adalah
+   * agar kolomnya bisa dijumlah, dan "-" mematikan `SUM`.
+   */
+  it("mengosongkan kolom yang tak berlaku, tapi menyimpan nol sebagai angka", () => {
+    const sheet = buildReportSheet({
+      kind: "cash-flow",
+      period: "Periode",
+      groups: [
+        {
+          category: "operating",
+          label: "Aktivitas Operasi",
+          lines: [{ code: "4-100", name: "Penjualan", inflow: 750_000, outflow: 0, net: 750_000 }],
+          inflow: 750_000,
+          outflow: 0,
+          net: 750_000,
+        },
+      ],
+      totalInflow: 750_000,
+      totalOutflow: 0,
+      netChange: 750_000,
+      openingCash: 250_000,
+      closingCash: 1_000_000,
+      reconciled: true,
+      suspectUnrated: 0,
+    });
+    const opening = sheet.rows[0];
+    expect(opening[0].value).toBe("Kas & setara kas awal periode");
+    expect(opening[1].value).toBeNull();
+    expect(opening[2].value).toBeNull();
+    expect(opening[3].value).toBe(250_000);
+
+    const line = sheet.rows.find((r) => r[0].value === "4-100  Penjualan")!;
+    expect(line[2].value).toBe(0);
+    expect(line[3].value).toBe(750_000);
+  });
+
+  /*
+   * Judul kolom kini datang dari `CASH_FLOW_HEADERS`, bersama PDF. Kolom
+   * pertama berganti dari "Keterangan" ke judul yang dipakai layar; itu
+   * perubahan yang TERLIHAT di berkas ekspor, dan disengaja.
+   */
+  it("memakai judul kolom yang sama dengan cetakan", () => {
+    const sheet = buildReportSheet({
+      kind: "cash-flow",
+      period: "Periode",
+      groups: [],
+      totalInflow: 0,
+      totalOutflow: 0,
+      netChange: 0,
+      openingCash: 0,
+      closingCash: 0,
+      reconciled: true,
+      suspectUnrated: 0,
+    });
+    expect(sheet.columns.map((c) => c.header)).toEqual([
+      "Sumber / Penggunaan Kas",
+      "Kas Masuk (IDR)",
+      "Kas Keluar (IDR)",
+      "Bersih (IDR)",
+    ]);
   });
 });
 

@@ -23,6 +23,8 @@ import {
   agingColumns,
   budgetColumns,
   cashBankColumns,
+  cashFlowLayout,
+  cashFlowReconciliationNote,
   incomeStatementLayout,
   partyRecapColumns,
   stockMovementColumns,
@@ -30,11 +32,14 @@ import {
   AGING_HEADERS,
   BUDGET_HEADERS,
   CASH_BANK_HEADERS,
+  CASH_FLOW_COLUMNS,
+  CASH_FLOW_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
   type BudgetColumnId,
   type CashBankColumnId,
+  type CashFlowColumnId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
@@ -232,59 +237,54 @@ function buildTrialBalanceSheet(
   };
 }
 
+/**
+ * Lebar kolom Arus Kas, sejajar dengan `CASH_FLOW_COLUMNS`. Lebarnya urusan
+ * lembar sebar sendiri (PDF mengatur kolomnya lain); judulnya TIDAK — itu
+ * datang dari `CASH_FLOW_HEADERS` bersama cetakan.
+ */
+const CASH_FLOW_WIDTHS: Record<CashFlowColumnId, number> = {
+  item: 44,
+  inflow: 20,
+  outflow: 20,
+  net: 20,
+};
+
 function buildCashFlowSheet(
   p: Extract<StatementPayload, { kind: "cash-flow" }>
 ): SheetModel {
-  const rows: SheetCell[][] = [
-    [text("Kas & setara kas awal periode", true), text(null), text(null), money(p.openingCash, true)],
-  ];
-  // Empty groups are skipped; a non-empty "Belum Terkategori" prints like any
-  // other section — never merged into operating, never omitted (mirrors the PDF).
-  for (const g of p.groups) {
-    if (g.lines.length === 0) continue;
-    rows.push(headingRow(g.label, 4));
-    for (const l of g.lines) {
-      rows.push([
-        text(`${l.code}  ${l.name}`.trim()),
-        money(l.inflow),
-        money(l.outflow),
-        money(l.net),
-      ]);
-    }
-    rows.push([
-      text(`Jumlah ${g.label}`, true),
-      money(g.inflow, true),
-      money(g.outflow, true),
-      money(g.net, true),
-    ]);
-  }
-  rows.push([
-    text("Kas & setara kas akhir periode", true),
-    text(null),
-    text(null),
-    money(p.closingCash, true),
-  ]);
-  rows.push([
-    text(
-      p.reconciled
-        ? "Kenaikan / Penurunan Kas (cocok dengan buku besar)"
-        : "Kenaikan / Penurunan Kas (TIDAK COCOK)",
-      true
-    ),
-    money(p.totalInflow, true),
-    money(p.totalOutflow, true),
-    money(p.netChange, true),
-  ]);
+  // Bentuknya seluruhnya milik `cashFlowLayout()` — kelompok mana yang tampil,
+  // urutan barisnya, dan kolom mana yang berlaku per baris (issue #241).
+  const rows = cashFlowLayout(p).map((r): SheetCell[] => {
+    const bold = r.kind !== "line";
+    const label =
+      r.kind === "total"
+        ? `${r.label} ${cashFlowReconciliationNote(p.reconciled)}`
+        : r.label;
+    /*
+     * Nol tetap ANGKA nol di sini, bukan "-" seperti di layar dan PDF. Ini
+     * pengecualian yang disengaja: satu-satunya alasan lembar sebar ada adalah
+     * agar kolomnya bisa dijumlah, dan sebuah "-" di tengah kolom mematikan
+     * `SUM`. Yang TIDAK BERLAKU tetap sel kosong (`null`), bukan nol —
+     * "kas awal periode" bukan arus masuk sebesar nol rupiah.
+     */
+    const amount = (value: number | null): SheetCell =>
+      value === null ? text(null) : money(value, bold);
+    return [
+      // Baris kelompok membentang sendiri di kolom pertama, seperti `headingRow`.
+      text(label, bold),
+      amount(r.inflow),
+      amount(r.outflow),
+      amount(r.net),
+    ];
+  });
   return {
     name: "Arus Kas",
     title: "Laporan Arus Kas",
     period: p.period,
-    columns: [
-      { header: "Keterangan", width: 44 },
-      { header: "Kas Masuk (IDR)", width: 20 },
-      { header: "Kas Keluar (IDR)", width: 20 },
-      { header: "Bersih (IDR)", width: 20 },
-    ],
+    columns: CASH_FLOW_COLUMNS.map((c) => ({
+      header: CASH_FLOW_HEADERS[c],
+      width: CASH_FLOW_WIDTHS[c],
+    })),
     rows,
   };
 }

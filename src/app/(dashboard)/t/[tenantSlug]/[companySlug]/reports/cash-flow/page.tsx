@@ -2,18 +2,23 @@
  * Arus Kas — dikonversi ke `StaticTable.rowCells` + token AntD (issue #198),
  * mengikuti pola yang dibuktikan Neraca di #233.
  *
- * ── Tiga hal yang sengaja TIDAK berubah ───────────────────────────────────
- *  • **Arah kas tidak pernah disampaikan warna saja.** `Flow` tetap membawa
- *    ikon panah + tanda +/− + teks tersembunyi ("masuk"/"keluar"), dan nol
- *    tetap tampil sebagai "–" berlabel "Nihil", bukan "Rp 0".
- *  • **Kelompok "Belum Terkategori"** tetap berpita peringatan dengan lencana
- *    BERTEKS, bukan sekadar latar kuning.
- *  • **Grafik tren** tetap 6 bulan terakhir dan tetap per mata uang.
+ * ── Bentuk tabelnya TIDAK lagi ditentukan di sini (issue #241) ─────────────
+ * Laporan ini pernah digambar tiga kali dengan tiga bentuk berbeda — halaman,
+ * lembar sebar, dan PDF masing-masing memutuskan kolomnya dan nasib kelompok
+ * kosongnya sendiri. Sekarang tabelnya `<CashFlowStatement>`, yang memakan
+ * `payload` yang SAMA dengan tombol PDF dan tombol Excel di sebelahnya, dan
+ * bentuknya datang dari `cashFlowLayout()`. Halaman ini tinggal menyusun
+ * halamannya: penyaring periode, ringkasan bahasa awam, kartu ringkas, tabel,
+ * rincian per akun kas, dan grafik tren.
  *
- * Yang berubah: baris kelompok & subtotal kini baris `rowCells` di dalam badan
- * tabel — judul kelompok `scope="colgroup"`, label subtotal `scope="row"` —
- * bukan `<TableCell colSpan>` mentah yang dibacakan pembaca layar sebagai sel
- * data tanpa konteks. **Halaman tetap server component.**
+ * ── Yang sengaja TIDAK berubah ────────────────────────────────────────────
+ *  • **Grafik tren** tetap 6 bulan terakhir dan tetap per mata uang.
+ *  • **Kartu ringkas** kas awal / perubahan / kas akhir tetap di atas tabel.
+ *    Sejak #241 ketiga angka itu juga menjadi BARIS di dalam tabel — di ketiga
+ *    permukaan — jadi kartunya mengulang baris yang ada, bukan menjadi bentuk
+ *    keempat yang hanya hidup di layar.
+ *
+ * **Halaman tetap server component.**
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -24,23 +29,23 @@ import { cashFlowSeriesByCurrency, chartPeriodStart } from "@/lib/chart-data";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { CashFlowChart } from "@/components/shared/dashboard-charts";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
-import { Money } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
+import {
+  CashFlowStatement,
+  Flow,
+  type CashFlowPayload,
+} from "@/components/reports/cash-flow-statement";
 import { resolvePeriod } from "@/lib/report-catalog";
 import { cashFlowSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined, WarningOutlined } from "@ant-design/icons";
-import type { CashFlowGroup } from "@/lib/reports";
-import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { WarningOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -48,135 +53,13 @@ export const dynamic = "force-dynamic";
 const SECTION_GAP = 24;
 const CARD_GAP = 16;
 const STAT_BASIS = 220;
-const ICON_SIZE = 14;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
-
-/** Terbaca pembaca layar, tak memakan ruang di layar. */
-const VISUALLY_HIDDEN: React.CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  margin: -1,
-  padding: 0,
-  overflow: "hidden",
-  clip: "rect(0 0 0 0)",
-  whiteSpace: "nowrap",
-  border: 0,
-};
-
-const LINE_INDENT: React.CSSProperties = {
-  paddingInlineStart: 24,
-  color: "var(--ant-color-text-secondary)",
-};
 
 const CODE_STYLE: React.CSSProperties = {
   fontFamily: "var(--ant-font-family-code)",
   marginInlineEnd: 8,
   color: "var(--ant-color-text-secondary)",
 };
-
-/** Baris kelompok biasa vs kelompok yang minta ditinjau. */
-const GROUP_ROW: React.CSSProperties = {
-  background: "var(--ant-color-fill-quaternary)",
-  fontWeight: STRONG,
-};
-const GROUP_ROW_REVIEW: React.CSSProperties = {
-  background: "var(--ant-color-warning-bg)",
-  fontWeight: STRONG,
-};
-const SUBTOTAL_ROW: React.CSSProperties = { fontWeight: STRONG };
-
-/**
- * Money with an explicit direction. Colour alone never carries the meaning — an
- * arrow icon and a +/− sign say the same thing, per the design system's
- * "jangan pernah mengandalkan warna saja".
- *
- * Sengaja BUKAN `Money`/`MoneyCell` (issue #52): pewarnaan di sini mengikuti
- * arah kas (masuk hijau / keluar merah, token uang #186) dan selalu disertai
- * ikon panah + tanda +/−, sedangkan `Money` hanya mewarnai nilai negatif. Nol
- * pun tampil sebagai ikon "–" berlabel "Nihil", bukan "Rp 0".
- */
-type T = (key: DictionaryKey, values?: Record<string, string | number>) => string;
-
-function Flow({ amount, t }: { amount: number; t: T }) {
-  if (Math.round(amount * 100) === 0) {
-    return (
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 4,
-          fontVariantNumeric: "tabular-nums",
-          color: "var(--ant-color-text-secondary)",
-        }}
-      >
-        <MinusOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE }} />
-        <span style={VISUALLY_HIDDEN}>{t("reports.flowNil")}</span>
-      </span>
-    );
-  }
-  const inflow = amount > 0;
-  const Icon = inflow ? ArrowDownOutlined : ArrowUpOutlined;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        gap: 4,
-        fontVariantNumeric: "tabular-nums",
-        color: inflow
-          ? "var(--ant-color-money-positive)"
-          : "var(--ant-color-money-negative)",
-      }}
-    >
-      <Icon aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0 }} />
-      <span style={VISUALLY_HIDDEN}>{inflow ? t("reports.flowIn") : t("reports.flowOut")}</span>
-      <span>
-        {inflow ? "+" : "−"}
-        {formatCurrency(Math.abs(amount), "IDR")}
-      </span>
-    </span>
-  );
-}
-
-/**
- * Satu baris laporan arus kas. DATAR dan bertanda `kind`: judul kelompok, akun,
- * penanda kelompok kosong, dan subtotal semuanya harus muat di tipe yang sama.
- */
-type FlowRow = {
-  key: string;
-  kind: "group" | "line" | "empty" | "subtotal";
-  label?: string;
-  /** Kelompok "Belum Terkategori" — berpita peringatan + lencana berteks. */
-  review?: boolean;
-  code?: string;
-  name?: string;
-  inflow?: number;
-  outflow?: number;
-  /** Subtotal kelompok, bertanda arah. */
-  net?: number;
-};
-
-/** Judul kelompok, akun-akunnya, lalu subtotalnya — satu bentuk untuk semua kelompok. */
-function groupRows(group: CashFlowGroup, label: string): FlowRow[] {
-  const review = group.category === "uncategorised";
-  return [
-    { key: `${group.category}-head`, kind: "group", label, review },
-    ...(group.lines.length === 0
-      ? [{ key: `${group.category}-none`, kind: "empty" as const }]
-      : group.lines.map((l, i) => ({
-          key: `${group.category}-${l.code || i}`,
-          kind: "line" as const,
-          code: l.code,
-          name: l.name,
-          inflow: l.inflow,
-          outflow: l.outflow,
-        }))),
-    { key: `${group.category}-total`, kind: "subtotal", label, net: group.net },
-  ];
-}
 
 /** Satu baris tabel per akun kas & bank. */
 type CashAccountRow = {
@@ -235,18 +118,18 @@ export default async function CashFlowPage({
   // Dipakai dokumen cetak & ringkasan bahasa awam — keduanya masih bahasa
   // Indonesia (lib/pdf, lib/report-summary).
   const periodLabel = `Periode ${formatDate(from)} – ${formatDate(to)}`;
-  // Label kelompok arus kas untuk LAYAR; payload PDF tetap memakai `g.label`.
-  const groupLabels: Record<string, string> = {
-    operating: t("cashFlowCategory.operating"),
-    investing: t("cashFlowCategory.investing"),
-    financing: t("cashFlowCategory.financing"),
-    uncategorised: t("cashFlowCategory.uncategorised"),
-  };
 
-  const payload: StatementPayload = {
+  /*
+   * SATU payload untuk tiga permukaan (issue #241): tabel di layar, tombol
+   * PDF, dan tombol Excel semuanya memakan objek ini. `category` ikut sejak
+   * #241 — bentuk laporan bergantung padanya (lihat `cashFlowLayout()`), dan
+   * `label` yang sudah diterjemahkan tidak bisa menggantikannya.
+   */
+  const payload: CashFlowPayload = {
     kind: "cash-flow",
     period: periodLabel,
     groups: cf.groups.map((g) => ({
+      category: g.category,
       label: g.label,
       lines: g.lines.map((l) => ({
         code: l.code,
@@ -268,100 +151,6 @@ export default async function CashFlowPage({
     suspectUnrated: cf.suspectUnrated,
   };
   const summary = cashFlowSummary(cf, periodLabel, t);
-
-  // An empty "Belum Terkategori" section is noise; a non-empty one is the whole
-  // point of the bucket, so it is always shown when it has rows.
-  const rows: FlowRow[] = cf.groups
-    .filter((g) => g.category !== "uncategorised" || g.lines.length > 0)
-    .flatMap((g) => groupRows(g, groupLabels[g.category] ?? g.label));
-
-  const columns: SaiColumns<FlowRow> = [
-    {
-      key: "item",
-      title: t("reports.colSourceUse"),
-      align: "left",
-      render: (_raw, row) =>
-        row.kind === "line" ? (
-          <span style={LINE_INDENT}>
-            {row.code ? <span style={CODE_STYLE}>{row.code}</span> : null}
-            {row.name}
-          </span>
-        ) : (
-          row.label
-        ),
-    },
-    {
-      // Nol tampil "—" (bukan "Rp 0"): akun yang tidak menerima kas pada
-      // periode ini tidak menerima NOL rupiah, ia tidak menerima apa pun.
-      ...moneyColumn<FlowRow>({ dataIndex: "inflow", title: t("reports.colCashIn") }),
-      render: (_v, row) => (
-        <Money value={row.inflow ? row.inflow : undefined} currency="IDR" />
-      ),
-    },
-    {
-      ...moneyColumn<FlowRow>({ dataIndex: "outflow", title: t("reports.colCashOut") }),
-      render: (_v, row) => (
-        <Money value={row.outflow ? row.outflow : undefined} currency="IDR" />
-      ),
-    },
-  ];
-
-  const rowCells = (row: FlowRow): Record<string, SummaryCell> | undefined => {
-    if (row.kind === "group") {
-      return {
-        item: {
-          content: (
-            <>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                {row.label}
-                {row.review && (
-                  <Badge variant="warning">
-                    <WarningOutlined aria-hidden="true" style={{ fontSize: 12, marginInlineEnd: 4 }} />
-                    {t("reports.needsReview")}
-                  </Badge>
-                )}
-              </span>
-              {row.review && (
-                <p
-                  style={{
-                    margin: 0,
-                    marginTop: 4,
-                    fontSize: "var(--ant-font-size-sm)",
-                    fontWeight: "normal",
-                    color: "var(--ant-color-money-pending)",
-                  }}
-                >
-                  {t("reports.uncategorisedHint")}
-                </p>
-              )}
-            </>
-          ),
-          colSpan: 3,
-          scope: "colgroup",
-        },
-      };
-    }
-    if (row.kind === "empty") {
-      return {
-        item: {
-          content: <span style={LINE_INDENT}>{t("reports.noCashMovement")}</span>,
-          colSpan: 3,
-        },
-      };
-    }
-    if (row.kind === "subtotal") {
-      return {
-        item: {
-          content: t("reports.groupSubtotal", { group: row.label ?? "" }),
-          scope: "row",
-        },
-        // Subtotal kelompok adalah SATU angka berarah, bukan sepasang
-        // masuk/keluar — jadi ia membentang di atas kedua kolom nominalnya.
-        inflow: { content: <Flow amount={row.net ?? 0} t={t} />, colSpan: 2, align: "right" },
-      };
-    }
-    return undefined;
-  };
 
   const accountColumns: SaiColumns<CashAccountRow> = [
     {
@@ -465,50 +254,7 @@ export default async function CashFlowPage({
       </div>
 
       <Card>
-        <StaticTable<FlowRow>
-          columns={columns}
-          rows={rows}
-          rowKey={(row) => row.key}
-          rowCells={rowCells}
-          rowStyle={(row) =>
-            row.kind === "group"
-              ? row.review
-                ? GROUP_ROW_REVIEW
-                : GROUP_ROW
-              : row.kind === "subtotal"
-                ? SUBTOTAL_ROW
-                : undefined
-          }
-          summary={[
-            {
-              cells: {
-                item: {
-                  content: (
-                    <>
-                      {t("reports.netCashRow")}
-                      <span style={{ marginInlineStart: 8, verticalAlign: "middle" }}>
-                        {cf.reconciled ? (
-                          <Badge variant="success">{t("reports.matchesLedger")}</Badge>
-                        ) : (
-                          <Badge variant="danger">{t("reports.doesNotMatch")}</Badge>
-                        )}
-                      </span>
-                    </>
-                  ),
-                  scope: "row",
-                },
-                inflow: <Money value={cf.totalInflow} currency="IDR" />,
-                outflow: <Money value={cf.totalOutflow} currency="IDR" />,
-              },
-            },
-            {
-              cells: {
-                item: { content: t("reports.netCashChange"), colSpan: 2, scope: "row" },
-                outflow: <Flow amount={cf.netChange} t={t} />,
-              },
-            },
-          ]}
-        />
+        <CashFlowStatement payload={payload} t={t} />
       </Card>
 
       {cf.cashAccounts.length > 0 && (

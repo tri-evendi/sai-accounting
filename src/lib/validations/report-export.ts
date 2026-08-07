@@ -57,6 +57,14 @@ const cashFlow = z.object({
   period: z.string(),
   groups: z.array(
     z.object({
+      /*
+       * Kategori kanonik (issue #241). Enum, bukan `z.string()`: bentuk
+       * laporan bergantung padanya — "Belum Terkategori" adalah ember
+       * diagnostik yang boleh hilang saat kosong, tiga seksi baku tidak — dan
+       * kategori asing yang lolos ke sini akan digambar sebagai seksi baku
+       * tanpa satu pun tanda.
+       */
+      category: z.enum(["operating", "investing", "financing", "uncategorised"]),
       label: z.string(),
       lines: z.array(
         z.object({

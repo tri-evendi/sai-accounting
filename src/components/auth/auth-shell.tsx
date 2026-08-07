@@ -95,7 +95,11 @@ function BrandPanel() {
       theme="dark"
       style={{
         height: "100%",
-        borderInlineEnd: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+        /* `colorBorderSecondary`, bukan `colorSplit` (#205) — garis ini
+           memisahkan panel merek gelap permanen dari kolom formulir, jadi ia
+           membawa makna dan ambangnya 3:1. Angka & alasan lengkapnya di
+           `components/layout/sidebar.tsx`. */
+        borderInlineEnd: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorBorderSecondary}`,
         color: token.colorTextLightSolid,
       }}
     >

@@ -569,10 +569,19 @@ export function neutralTextTokens(resolved: ResolvedTheme): NeutralTextTokens {
  * terpisah, tetap `#d9d9d9`/`#424242`) — sama seperti teks nonaktif, kendali
  * nonaktif dikecualikan WCAG dan harus tetap terlihat nonaktif.
  *
- * Catatan tema gelap: sidebar aplikasi `#0F172A` berkontras 1,03:1 terhadap
- * `colorBgContainer` gelap — persis jebakan "dua bidang sewarna" di MASTER.md.
- * Batas grey-8 di atas sidebar itu berkontras 4,22:1, jadi pembagian kolomnya
- * kembali terlihat.
+ * Catatan tema gelap, **diukur ulang di #205**: sidebar aplikasi adalah
+ * `SIDER_BG_DARK` `#001529` — bukan `#0F172A`, palet lama yang sempat tertulis
+ * di sini — dan ia berkontras **1,00:1** terhadap `colorBgContainer` gelap
+ * (`#141414`), yaitu bentuk paling murni jebakan "dua bidang sewarna" di
+ * MASTER.md: dua bidang yang secara luminansi TIDAK bisa dibedakan sama
+ * sekali. Terhadap `colorBgLayout` gelap (`#000000`) angkanya 1,14:1.
+ *
+ * Karena itu batas antar keduanya wajib `colorBorderSecondary` (3,41:1 di atas
+ * sider, minimum 3,05:1 di sisi seberangnya) dan **bukan** `colorSplit`, yang
+ * sengaja ditahan di bawah 3:1 sebagai pemisah dekoratif — terukur hanya
+ * 2,67:1 di atas sider. Ketiga shell gelap (`sidebar`, `auth-shell`,
+ * `platform-shell`) dikunci pada token yang benar oleh
+ * `tests/antd-tokens.test.ts`.
  */
 export interface BorderTokens {
   colorBorder: string;

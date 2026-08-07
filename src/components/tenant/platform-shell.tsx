@@ -187,7 +187,13 @@ function PanelMenu({
       theme="dark"
       style={{
         height: "100%",
-        borderInlineEnd: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+        /* Batas yang memisahkan panel gelap permanen dari area kerja =
+           `colorBorderSecondary`, bukan `colorSplit` (#205). Alasan lengkap +
+           angkanya di `components/layout/sidebar.tsx`; ringkasnya: di tema
+           gelap kedua bidang berkontras 1,00:1, jadi garis inilah SATU-SATUNYA
+           pemisahnya dan ambangnya 3:1 — sedangkan `colorSplit` sengaja
+           ditahan di bawah 3:1 sebagai pemisah dekoratif. */
+        borderInlineEnd: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorBorderSecondary}`,
       }}
     >
       <Flex vertical style={{ height: "100%" }}>

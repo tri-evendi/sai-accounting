@@ -51,6 +51,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { Locale } from "@/lib/i18n/config";
 import {
   ANTD_CSS_VAR_KEY,
+  PRIMARY_BUTTON_DARK,
   borderTokens,
   brandTextTokens,
   focusRingColor,
@@ -210,6 +211,43 @@ export function AntdProvider({
          * `colorSuccess` global tetap tersedia apa adanya untuk isian pekat.
          */
         Tag: tagStatusTokens(resolved),
+        /*
+         * Butir menu TERPILIH di menu samping (issue #205) — kegagalan yang
+         * sama persis dengan tombol primer di atas, pada komponen lain, dan
+         * terlewat sepanjang epik karena tokennya bernama "dark" sehingga
+         * terbaca seolah hanya berlaku di tema gelap.
+         *
+         * Dibaca dari `antd/es/menu/style/index.js` yang terpasang:
+         * `darkItemSelectedBg` = `colorPrimary` dan `darkItemSelectedColor` =
+         * `colorTextLightSolid`. Menu samping selalu `theme="dark"` (permukaan
+         * gelap permanen), tetapi `colorPrimary` yang mengisinya tetap DIAMBIL
+         * DARI TEMA YANG SEDANG BERLAKU. Di tema terang itu `#1677ff`, jadi:
+         *
+         *   putih di atas #1677ff = 4,10:1  -> GAGAL 4,5:1 (teks 14px)
+         *
+         * yaitu angka yang sama yang membuat `Button` diberi token sendiri di
+         * #187 — dan ia mendarat di label navigasi utama aplikasi, di tema
+         * BAWAAN.
+         *
+         * Nilai penggantinya `PRIMARY_BUTTON_DARK.colorPrimary` (`#1668dc`),
+         * TIDAK bertema — sama seperti `SIDER_BG_DARK` dan
+         * `BORDER_TOKENS_DARK` yang sudah dipakai shell-shell itu. Alasannya
+         * aritmetika, dan ini bagian yang tidak boleh "diperbaiki" belakangan
+         * dengan mengambil `primaryButtonTokens(resolved)` supaya seragam:
+         *
+         *   |                       | label putih | isian vs sider #001529 |
+         *   |-----------------------|-------------|------------------------|
+         *   | `#1677ff` (bawaan)    | 4,10 GAGAL  | 4,49 lolos             |
+         *   | `#0958d9` (btn terang)| 6,16 lolos  | **2,99 GAGAL**         |
+         *   | `#1668dc` (dipilih)   | 5,19 lolos  | 3,55 lolos             |
+         *
+         * Dua ambang menarik ke arah berlawanan — label butuh isian yang lebih
+         * gelap, "temukan butir terpilih" butuh isian yang lebih terang dari
+         * sider. Hanya anak tangga tengah itu yang melewati keduanya, dan ia
+         * bukan hex baru: ia `colorPrimary` versi gelap AntD, yang memang sudah
+         * dipakai tombol primer di tema gelap.
+         */
+        Menu: { darkItemSelectedBg: PRIMARY_BUTTON_DARK.colorPrimary },
         /*
          * Jarak antar-isian (issue #192). `itemMarginBottom` bawaan AntD adalah
          * `marginLG` (24px), yang masuk akal untuk formulir AntD yang menumpuk

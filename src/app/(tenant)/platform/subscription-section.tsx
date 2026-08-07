@@ -40,7 +40,6 @@
  * komponen AntD yang membawa `css-var-root`, jadi variabel `--ant-…` teratasi
  * di sini (#227). Tidak ada satu pun token `:root` aplikasi yang dipakai.
  */
-import Link from "next/link";
 import { CalendarOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -301,8 +300,12 @@ export async function SubscriptionSection({
                     {t("tenantSettings.trialUnpaidNote")}
                   </p>
                 </div>
-                <Button asChild size="sm" variant={trial.urgent ? "primary" : "outline"}>
-                  <Link href="/platform/billing/plans">{t("platform.plansViewLabel")}</Link>
+                <Button
+                  href="/platform/billing/plans"
+                  size="sm"
+                  variant={trial.urgent ? "primary" : "outline"}
+                >
+                  {t("platform.plansViewLabel")}
                 </Button>
               </div>
             )}

@@ -23,7 +23,6 @@
  * Katalog boleh gagal dengan tenang (`null`): platform penagihan mati tidak
  * boleh mengosongkan halaman yang menjelaskan produknya.
  */
-import Link from "next/link";
 import { CheckOutlined } from "@ant-design/icons";
 import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
@@ -244,15 +243,14 @@ export async function LandingPricing() {
                          di kolom, dan menyusut sendiri di baris. */
                       <div data-landing-actions="" style={{ marginTop: "auto" }}>
                         {plan.contactOnly ? (
-                          <Button asChild variant="outline">
-                            <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(plan.name)}`}>
-                              {t("landing.pricingContactCta")}
-                            </a>
+                          <Button
+                            href={`mailto:${contactEmail}?subject=${encodeURIComponent(plan.name)}`}
+                            variant="outline"
+                          >
+                            {t("landing.pricingContactCta")}
                           </Button>
                         ) : (
-                          <Button asChild>
-                            <Link href="/register">{t("landing.heroPrimary")}</Link>
-                          </Button>
+                          <Button href="/register">{t("landing.heroPrimary")}</Button>
                         )}
                       </div>
                     )}

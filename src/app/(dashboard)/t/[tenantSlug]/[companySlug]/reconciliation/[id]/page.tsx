@@ -1,4 +1,3 @@
-import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { notFound } from "next/navigation";
@@ -54,11 +53,11 @@ export default async function ReconciliationDetailPage({
     <div>
       {/* Tautan kembali berdiri di LUAR pohon komponen AntD, tempat
           `--ant-color-link` tidak teratasi (lihat kepala `shared/aging.tsx`).
-          Karena itu ia `Button asChild variant="link"`: warnanya dari AntD
+          Karena itu ia `Button href variant="link"`: warnanya dari AntD
           sendiri, dan target sentuhnya ikut naik ke ukuran kendali. */}
       <div style={{ marginBottom: BACKLINK_GAP }}>
-        <Button asChild variant="link" size="sm">
-          <Link href="/reconciliation">{t("reconciliation.backToList")}</Link>
+        <Button href="/reconciliation" variant="link" size="sm">
+          {t("reconciliation.backToList")}
         </Button>
       </div>
 

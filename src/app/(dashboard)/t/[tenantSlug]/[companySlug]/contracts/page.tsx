@@ -223,10 +223,10 @@ export default async function ContractsPage({
   return (
     <div>
       {/*
-       * Tombol aksi tetap `<Link><Button/></Link>`, BUKAN `Button asChild`.
+       * Tombol aksi tetap `<Link><Button/></Link>`, BUKAN `<Button href>`.
        * Keduanya menghapus kelas yang jadi sasaran issue ini, tetapi
-       * `asChild` merender `<a href>` milik AntD — pemuatan halaman PENUH
-       * (lihat catatan `asChild` di `ui/button.tsx`). Untuk perpindahan di
+       * `href` merender `<a href>` milik AntD — pemuatan halaman PENUH
+       * (lihat catatan `href` di `ui/button.tsx`). Untuk perpindahan di
        * dalam modul yang sama, itu menukar satu kelas Tailwind dengan satu
        * regresi kecepatan yang terasa. Sarang anchor–tombol yang tersisa
        * adalah utang lama di 46 tempat, bukan sesuatu yang ditambah di sini.

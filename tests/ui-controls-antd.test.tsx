@@ -199,9 +199,10 @@ describe("Button — pemetaan prop", () => {
   });
 });
 
-describe("Button href — bentuk tautan yang aman di server component", () => {
+describe("Button href — satu-satunya bentuk tautan, dan aman di server component", () => {
   /*
-   * Ditambahkan di #203 setelah `next build` mati di `/terms`.
+   * Ditambahkan di #203 setelah `next build` mati di `/terms`; diperluas di
+   * #250 ketika `asChild` — bentuk yang menyebabkannya — dicabut.
    *
    * `asChild` harus MEMBACA prop anaknya. Dari server component anak itu
    * menyeberangi batas RSC lebih dulu, dan bisa tiba sebagai simpul `lazy`
@@ -211,11 +212,13 @@ describe("Button href — bentuk tautan yang aman di server component", () => {
    * sama `/privacy` lolos dan `/terms`, kembarannya, gagal.
    *
    * `href` tidak membaca anaknya sama sekali, jadi ia tidak bisa mengalami itu.
-   * Yang dikunci di sini adalah kesetaraan keluarannya dengan `asChild` —
-   * kalau keduanya berbeda rupa, "pakai `href` di server" berhenti menjadi
-   * saran yang aman.
+   * Yang dikunci di sini adalah bahwa penggantinya benar-benar menutup semua
+   * yang dulu dilakukan `asChild` — tautan, atribut anchor, dan kulit tombol —
+   * sebab kalau salah satunya hilang, orang berikutnya akan mencari bentuk
+   * lain. Bahwa bentuk lamanya tidak bisa kembali dijaga
+   * `tests/button-no-aschild.test.ts`.
    */
-  it("merender SATU <a href>, sama seperti asChild", () => {
+  it("merender SATU <a href>, bukan <a><button> bersarang", () => {
     const html = render(
       <Button href="/platform" variant="outline">
         Platform
@@ -223,42 +226,21 @@ describe("Button href — bentuk tautan yang aman di server component", () => {
     );
     expect(html).toContain("<a");
     expect(html).toContain('href="/platform"');
+    // Inti pemetaannya: tidak ada elemen interaktif bersarang.
     expect(html).not.toContain("<button");
     expect(html).toContain("Platform");
     expect(html).toContain("ant-btn");
   });
 
-  it("anak yang tidak bisa dibaca TIDAK mematikan halaman", () => {
+  it("atribut anchor menempel di tombolnya — `download` sampai ke DOM", () => {
     /*
-     * Jaring pengaman untuk simpul `lazy` di atas. Sebuah string bukan elemen,
-     * persis seperti simpul `lazy` bagi `isValidElement` — dan yang diuji
-     * adalah bahwa `asChild` menggambar sesuatu alih-alih melempar.
+     * Dulu ditulis di `<a>` anaknya (`/platform` → ekspor data tenant). Tanpa
+     * anak, ia ditulis di `<Button>`; kalau primitifnya membuangnya, tombol
+     * ekspor berubah menjadi navigasi biasa tanpa satu galat pun.
      */
-    expect(() => render(<Button asChild>teks polos</Button>)).not.toThrow();
-    expect(render(<Button asChild>teks polos</Button>)).toContain("teks polos");
-  });
-});
-
-describe("Button asChild — tautan, bukan tombol bersarang", () => {
-  it("merender SATU <a href>, bukan <a><button>", () => {
     const html = render(
-      <Button asChild variant="outline">
-        <a href="/platform">Platform</a>
-      </Button>
-    );
-    expect(html).toContain("<a");
-    expect(html).toContain('href="/platform"');
-    // Inti pemetaannya: tidak ada elemen interaktif bersarang.
-    expect(html).not.toContain("<button");
-    expect(html).toContain("Platform");
-  });
-
-  it("membawa serta atribut anchor anaknya", () => {
-    const html = render(
-      <Button asChild>
-        <a href="/api/tenant/export" download>
-          Unduh
-        </a>
+      <Button href="/api/tenant/export" download>
+        Unduh
       </Button>
     );
     expect(html).toContain("download");
@@ -266,13 +248,7 @@ describe("Button asChild — tautan, bukan tombol bersarang", () => {
   });
 
   it("tetap bergaya tombol", () => {
-    expect(
-      render(
-        <Button asChild size="lg">
-          <a href="/register">Daftar</a>
-        </Button>
-      )
-    ).toContain("ant-btn-lg");
+    expect(render(<Button href="/register" size="lg">Daftar</Button>)).toContain("ant-btn-lg");
   });
 });
 

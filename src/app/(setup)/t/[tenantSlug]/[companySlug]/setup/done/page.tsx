@@ -26,7 +26,6 @@
  * `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, jadi variabelnya tidak
  * lagi bergantung pada ada-tidaknya komponen AntD di atasnya.
  */
-import { Link } from "@/components/ui/app-link";
 import { redirect } from "next/navigation";
 import { AccountBookOutlined, ArrowRightOutlined, CheckCircleOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -156,28 +155,22 @@ export default async function SetupDonePage({
                 borderTop: "1px solid var(--ant-color-border-secondary)",
               }}
             >
-              <Button asChild variant="outline">
-                <Link href={`/journal/${journal.id}`}>
-                  <AccountBookOutlined aria-hidden="true" />
-                  {t("setup.doneViewJournal", { number: journal.number })}
-                </Link>
+              <Button href={`/journal/${journal.id}`} variant="outline">
+                <AccountBookOutlined aria-hidden="true" />
+                {t("setup.doneViewJournal", { number: journal.number })}
               </Button>
-              <Button asChild variant="outline">
-                <Link href="/reports/balance-sheet">
-                  <ReconciliationOutlined aria-hidden="true" />
-                  {t("reports.balanceSheetTitle")}
-                </Link>
+              <Button href="/reports/balance-sheet" variant="outline">
+                <ReconciliationOutlined aria-hidden="true" />
+                {t("reports.balanceSheetTitle")}
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Button asChild size="lg">
-        <Link href="/dashboard">
-          {t("setup.doneStartWorking")}
-          <ArrowRightOutlined aria-hidden="true" />
-        </Link>
+      <Button href="/dashboard" size="lg">
+        {t("setup.doneStartWorking")}
+        <ArrowRightOutlined aria-hidden="true" />
       </Button>
     </div>
   );

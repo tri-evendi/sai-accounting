@@ -52,7 +52,6 @@
  * token `:root` itu dari `globals.css`. Kartu angkanya (`StatCard`,
  * `QuotaMeter`) mewarnai dirinya sendiri.
  */
-import Link from "next/link";
 import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
@@ -387,11 +386,9 @@ export default async function PlatformPage() {
                 pindah ke dalam empty state, tempat ia menjadi satu-satunya
                 langkah berikutnya — bukan tombol kedua yang mengulang. */}
             {canCreate && companies.length > 0 && (
-              <Button asChild variant="outline" size="sm" style={{ flexShrink: 0 }}>
-                <Link href="/companies/new">
-                  <PlusOutlined aria-hidden="true" />
-                  {t("companies.newTitle")}
-                </Link>
+              <Button href="/companies/new" variant="outline" size="sm" style={{ flexShrink: 0 }}>
+                <PlusOutlined aria-hidden="true" />
+                {t("companies.newTitle")}
               </Button>
             )}
           </CardHeader>
@@ -485,10 +482,12 @@ export default async function PlatformPage() {
                        * dibuka" (tata letak bertenant yang mencatatnya), jadi
                        * membuka buku = pergi ke alamatnya.
                        */}
-                      <Button asChild size="sm" style={{ width: "100%" }}>
-                        <Link href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}>
-                          {t("auth.selectCompany.openLabel")}
-                        </Link>
+                      <Button
+                        href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}
+                        size="sm"
+                        style={{ width: "100%" }}
+                      >
+                        {t("auth.selectCompany.openLabel")}
                       </Button>
                     </div>
                   </li>

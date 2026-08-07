@@ -27,7 +27,6 @@
  * belum punya PT berarti mengirimnya ke pantulan berikutnya.
  */
 import { useEffect } from "react";
-import Link from "next/link";
 import { Flex, Typography, theme } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent } from "@/components/ui/card";
@@ -93,8 +92,8 @@ export default function PlatformError({
 
             <Flex wrap align="center" justify="center" gap={token.marginSM}>
               <Button onClick={() => reset()}>{t("error.retry")}</Button>
-              <Button asChild variant="secondary">
-                <Link href="/platform">{t("platform.title")}</Link>
+              <Button href="/platform" variant="secondary">
+                {t("platform.title")}
               </Button>
             </Flex>
           </Flex>

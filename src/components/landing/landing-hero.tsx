@@ -15,8 +15,6 @@
  * menemukannya di bilah atas. Keduanya `size="lg"` (48px), melebar penuh di
  * layar sempit karena kolomnya `flex-direction: column` di bawah 576px.
  */
-import Link from "next/link";
-
 import {
   LANDING_HERO_TITLE,
   LANDING_LEAD,
@@ -55,11 +53,11 @@ export async function LandingHero() {
             {t("landing.heroBody")}
           </p>
           <div data-landing-actions="" style={{ marginTop: "var(--sai-landing-cta-space)" }}>
-            <Button asChild size="lg">
-              <Link href="/register">{t("landing.heroPrimary")}</Link>
+            <Button href="/register" size="lg">
+              {t("landing.heroPrimary")}
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/login">{t("landing.heroSecondary")}</Link>
+            <Button href="/login" size="lg" variant="outline">
+              {t("landing.heroSecondary")}
             </Button>
           </div>
           {/* Orang yang diundang rekan kerja TIDAK boleh mendaftar sendiri:

@@ -129,8 +129,8 @@ export function PlanAction({
           </Text>
           {/* Tagihan baru hidup di halaman tagihan — di sanalah tombol bayarnya
               (VA/QRIS) sudah ada, bukan disalin ke sini menjadi jalur kedua. */}
-          <Button asChild variant="outline" size="sm" style={{ width: "100%" }}>
-            <a href="/platform/billing">{t("platform.planChangeGoToInvoice")}</a>
+          <Button href="/platform/billing" variant="outline" size="sm" style={{ width: "100%" }}>
+            {t("platform.planChangeGoToInvoice")}
           </Button>
         </Flex>
       )}

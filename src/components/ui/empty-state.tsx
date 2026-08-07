@@ -23,16 +23,22 @@
  * blok kosong tampak lebih tinggi dari sebelumnya. `styles.image` mengembalikan
  * tingginya mengikuti isi.
  *
- * ── Tombolnya `asChild`, bukan `<Link><Button/></Link>` ───────────────────
+ * ── Tombolnya `<Button href>`, bukan `<Link><Button/></Link>` ─────────────
  * Bentuk lama menghasilkan `<a><button></a>` — dua elemen interaktif bersarang,
  * HTML tak sah yang diumumkan dua kali oleh pembaca layar (lihat catatan
- * `button.tsx` #187). `Button asChild` merender bentuk anchor milik AntD, dan
+ * `button.tsx` #187). `<Button href>` merender bentuk anchor milik AntD, dan
  * `href`-nya tetap melewati penyelaras jalur bertenant `app-link.tsx`.
+ *
+ * Sampai #250 tombol itu ditulis membungkus `<Link>`, dan itu adalah pemanggil
+ * paling berbahaya dari bentuk tersebut: berkas ini dipakai 45 halaman,
+ * sebagian besar server component, jadi anak `<Link>`-nya rutin menyeberangi
+ * batas RSC — persis keadaan yang membuat prerender mati (#203). Ia luput dari
+ * hitungan awal issue #250 karena hitungannya mengecualikan `components/ui/**`;
+ * yang menemukannya adalah penjaganya sendiri, `tests/button-no-aschild.test.ts`.
  */
 
 import { Empty, theme } from "antd";
 import { ContainerOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -93,8 +99,8 @@ export function EmptyState({
       }
     >
       {actionLabel && actionHref && (
-        <Button asChild size="sm">
-          <Link href={actionHref}>{actionLabel}</Link>
+        <Button href={actionHref} size="sm">
+          {actionLabel}
         </Button>
       )}
     </Empty>

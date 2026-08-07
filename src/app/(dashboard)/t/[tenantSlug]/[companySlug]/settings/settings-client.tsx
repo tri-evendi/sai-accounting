@@ -15,16 +15,15 @@
  * ── Setelah migrasi AntD (issue #199) ─────────────────────────────────────
  * Tanpa kelas Tailwind: jarak & warna lewat `theme.useToken()`, pita "modul
  * dimatikan" menjadi `Alert` AntD, dan kedua tombol tautan memakai
- * `Button asChild` — bukan lagi `<Link><Button/></Link>`, yang menyarangkan
+ * `<Button href>` — bukan lagi `<Link><Button/></Link>`, yang menyarangkan
  * sebuah tombol di dalam anchor: HTML tak sah, dan pembaca layar
- * mengumumkannya dua kali (lihat catatan `asChild` di `ui/button.tsx`, #187).
+ * mengumumkannya dua kali (lihat catatan `href` di `ui/button.tsx`, #187/#250).
  */
 
 import { useSession } from "next-auth/react";
 import { Alert, Flex, theme, Typography } from "antd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "@/components/ui/app-link";
 import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
@@ -141,8 +140,8 @@ export function SettingsClient({
               )}
             </dl>
             <div>
-              <Button asChild variant="secondary">
-                <Link href="/change-password">{t("settings.changePassword")}</Link>
+              <Button href="/change-password" variant="secondary">
+                {t("settings.changePassword")}
               </Button>
             </div>
           </Flex>
@@ -170,11 +169,9 @@ export function SettingsClient({
         <CardContent>
           <Flex vertical align="flex-start" gap={token.marginSM}>
             <Typography.Text type="secondary">{t("settings.helpDescription")}</Typography.Text>
-            <Button asChild variant="secondary">
-              <Link href={GLOSSARY_PATH}>
-                <ReadOutlined aria-hidden="true" />
-                {t("settings.openGlossary")}
-              </Link>
+            <Button href={GLOSSARY_PATH} variant="secondary">
+              <ReadOutlined aria-hidden="true" />
+              {t("settings.openGlossary")}
             </Button>
           </Flex>
         </CardContent>

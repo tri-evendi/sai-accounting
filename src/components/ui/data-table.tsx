@@ -33,6 +33,16 @@
  * 3. **Baris total.** Dipetakan per kunci kolom lewat prop `summary`, bentuk
  *    yang sama persis dengan `StaticTable`, supaya sebuah tabel bisa berpindah
  *    varian tanpa baris totalnya ikut ditulis ulang.
+ * 3b. **`sorter` berarti hal yang SAMA di kedua perender (issue #265).** Di sini
+ *    ia pengurutan di peramban seperti kolom AntD biasa; di `StaticTable` ia
+ *    judul kolom yang menjadi tautan `?sort=…&dir=…` dan `orderBy` Prisma yang
+ *    mengurutkan. Yang dijaga sama adalah ARTInya — "kolom ini menawarkan
+ *    kendali urut" — beserta putaran keadaannya: klik pertama menaik, kedua
+ *    menurun, ketiga kembali ke urutan bawaan (`sortDirections` AntD dan
+ *    `nextSort()` di `lib/table-sort.ts` sengaja sama). Tanpa itu sebuah tabel
+ *    tidak bisa berpindah perender tanpa kolomnya ditulis ulang, dan itu tujuan
+ *    desain seluruh berkas ini. Sejak #265 bawaannya MATI di semua pembantu
+ *    kolom: sortir dinyalakan halaman, bukan oleh `moneyColumn`.
  * 4. **`rowStyle` (issue #229).** AntD hanya punya `onRow`, sekantong atribut
  *    DOM. `StaticTable` tidak boleh menerima itu (penangan kejadian tidak bisa
  *    dikirim dari halaman server), jadi KEDUA perender memakai bentuk yang

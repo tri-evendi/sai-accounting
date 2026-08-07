@@ -71,9 +71,22 @@ export interface SaiColumn<T> {
   render?: (value: unknown, record: T, index: number) => React.ReactNode;
   width?: number | string;
   /**
-   * Hanya dipakai `DataTable`. `StaticTable` mengabaikannya — tabel yang
-   * dirender server tidak punya tempat menyimpan keadaan urutan, dan pengurutan
-   * di sana memang dilakukan query, bukan kolom.
+   * **Kolom ini menawarkan kendali urut.** Sejak issue #265 artinya SAMA di
+   * kedua perender — itu syarat supaya sebuah tabel bisa berpindah perender
+   * tanpa kolomnya ditulis ulang — hanya MEKANISMEnya yang berbeda:
+   *
+   *  • `DataTable` mengurutkan di peramban, memakai pembanding di bawah;
+   *  • `StaticTable` merender judulnya sebagai TAUTAN `?sort=…&dir=…`, dan
+   *    pengurutannya dikerjakan basis data lewat `orderBy` (`lib/table-sort.ts`).
+   *    Karena itu `StaticTable` hanya membaca sifat "bisa diurutkan"-nya, bukan
+   *    isi pembandingnya — dan ia MELEMPAR bila sebuah kolom menyatakan `sorter`
+   *    tanpa konteks `sort`, alih-alih mengabaikannya diam-diam seperti dulu.
+   *
+   * Bawaannya MATI di semua pembantu kolom. Sampai #265 `moneyColumn`/
+   * `qtyColumn` menyalakannya sendiri, dan karena `StaticTable` mengabaikannya,
+   * 30 berkas membawa prop yang tidak melakukan apa pun. Menyalakan sortir
+   * adalah keputusan HALAMAN — hanya halaman yang tahu apakah kolomnya punya
+   * `orderBy` di basis data — jadi ia harus ditulis di halaman itu.
    */
   sorter?: boolean | ((a: T, b: T) => number);
   /**
@@ -146,7 +159,8 @@ export function qtyColumn<T>({
   dataIndex,
   title,
   key,
-  sorter = true,
+  // Bawaan MATI sejak #265 — lihat catatan `sorter` di `SaiColumn`.
+  sorter = false,
   width,
   cellStyle,
 }: ColumnBase<T> & { cellStyle?: React.CSSProperties }): SaiColumn<T> {

@@ -86,12 +86,20 @@
  * boleh menyala saat kursor lewat, karena keduanya bukan data yang bisa
  * ditunjuk. Pengecualiannya baris "tidak ada data", yang berada di dalam
  * `<tbody>` tetapi juga bukan data — ia menandai dirinya `data-hover="off"`.
+ *
+ * Tautan sortir (`data-slot="table-sort"`, issue #265) ikut di sini karena
+ * alasan yang sama: `:hover` tidak punya bentuk sebaris. Judul kolom berwarna
+ * `colorTextSecondary` supaya ia tidak bersaing dengan angka di bawahnya; saat
+ * kursor lewat ia menguat ke warna teks penuh — cukup untuk menyatakan "ini
+ * bisa diklik" tanpa mengubah judul menjadi tautan biru di setiap tabel.
  */
 const TABLE_RULES = `
 [data-slot="table-body"] > [data-slot="table-row"]:hover{background:var(--ant-color-fill-quaternary)}
 [data-slot="table-body"] > [data-slot="table-row"][data-hover="off"]:hover{background:transparent}
 [data-slot="table-body"] > [data-slot="table-row"]:last-child{border-bottom-width:0}
 [data-slot="table-footer"] > [data-slot="table-row"]{border-bottom-width:0}
+[data-slot="table-sort"]{transition:color 150ms}
+[data-slot="table-sort"]:hover{color:var(--ant-color-text)}
 `;
 
 /** Pembungkus geser: tabel lebar menggulung DI DALAM kotaknya (MASTER.md). */

@@ -212,6 +212,125 @@ export function DisclosureSection({
   );
 }
 
+/* ------------------------------------------------------------------------- *
+ * Fokus ke isian bermasalah (issue #259)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Bentuk DOM SEMINIMAL yang dipakai pencarian sasaran fokus di bawah.
+ *
+ * Kenapa bukan `Element`/`HTMLElement` begitu saja: suite tes repo ini berjalan
+ * di lingkungan `node` TANPA DOM (lihat `vitest.config.mts`), sedangkan bug yang
+ * diperbaiki di sini hanya bisa dibuktikan dengan menyatakan SIMPUL MANA yang
+ * menerima fokus — "tidak melempar galat" tidak membuktikan apa pun, sebab
+ * `focus()` pada simpul tersembunyi pun sah dan senyap. Dengan bentuk ini
+ * penjaganya (`tests/focus-form-field.test.tsx`) bisa menjalankan
+ * `focusFormField` YANG SEBENARNYA di atas pohon yang dibangun dari markup NYATA
+ * hasil render `NativeSelect`, bukan di atas tiruan perilaku.
+ *
+ * `HTMLElement` memenuhi bentuk ini apa adanya, jadi pemanggil di peramban tidak
+ * perlu tahu bahwa ia ada.
+ */
+export interface FocusTargetNode {
+  readonly tagName: string;
+  readonly children: ArrayLike<FocusTargetNode>;
+  readonly parentElement: FocusTargetNode | null;
+  getAttribute(name: string): string | null;
+  hasAttribute(name: string): boolean;
+  /** Ada pada `HTMLElement`, tidak pada `Element` — karena itu opsional. */
+  focus?(options?: { preventScroll?: boolean }): void;
+  scrollIntoView?(options?: { block?: "center"; behavior?: "auto" | "smooth" }): void;
+}
+
+/** Apa pun yang bisa dicari dengan selektor: `document`, `<form>`, panel. */
+export interface FocusSearchRoot {
+  querySelector(selectors: string): FocusTargetNode | null;
+}
+
+/** Tag yang bisa menerima fokus papan tik tanpa `tabindex` apa pun. */
+const NATIVELY_FOCUSABLE = new Set(["input", "select", "textarea", "button"]);
+
+/**
+ * Bisakah simpul ini benar-benar menerima fokus papan tik?
+ *
+ * `input[type="hidden"]` sengaja disebut lebih dulu: itulah simpul yang
+ * dititipkan `NativeSelect` supaya `new FormData(form)` tetap bekerja (lihat
+ * catatan `NativeSelect` di MASTER.md), dan memfokuskannya adalah kegagalan
+ * DIAM — peramban menerima panggilannya lalu membuang fokusnya.
+ */
+function isKeyboardFocusable(node: FocusTargetNode): boolean {
+  if (node.hasAttribute("disabled") || node.hasAttribute("hidden")) return false;
+  if (node.getAttribute("aria-hidden") === "true") return false;
+
+  const tabIndex = node.getAttribute("tabindex");
+  const tabIndexValue = tabIndex === null ? null : Number(tabIndex);
+  if (tabIndexValue !== null && tabIndexValue < 0) return false;
+
+  const tag = node.tagName.toLowerCase();
+  if (tag === "input") {
+    return (node.getAttribute("type") ?? "text").toLowerCase() !== "hidden";
+  }
+  if (NATIVELY_FOCUSABLE.has(tag)) return true;
+  if (tag === "a") return node.hasAttribute("href");
+  // `div role="button" tabindex="0"` — bentuk yang dipakai kepala `Collapse`
+  // AntD di atas, dan pemicu beberapa kendali AntD lain.
+  return tabIndexValue !== null && tabIndexValue >= 0;
+}
+
+/** Kendali fokusabel pertama menurut urutan dokumen di dalam `node`. */
+function firstFocusableWithin(node: FocusTargetNode): FocusTargetNode | null {
+  const children = node.children;
+  for (let i = 0; i < children.length; i += 1) {
+    const child = children[i];
+    if (isKeyboardFocusable(child)) return child;
+    const deeper = firstFocusableWithin(child);
+    if (deeper) return deeper;
+  }
+  return null;
+}
+
+/**
+ * Batas pendakian: kotak SATU isian.
+ *
+ * Tanpa batas ini, "kendali fokusabel pertama" bisa jadi milik isian LAIN —
+ * dan memfokuskan isian yang salah lebih buruk daripada tidak memfokuskan apa
+ * pun: pengguna dibawa ke tempat yang bukan sumber galatnya.
+ */
+function isFieldBoundary(node: FocusTargetNode): boolean {
+  const tag = node.tagName.toLowerCase();
+  if (tag === "form" || tag === "body" || tag === "html") return true;
+  return node.getAttribute("data-slot") === "form-item-content";
+}
+
+/**
+ * Dari simpul yang KETEMU pencarian, tentukan simpul yang benar-benar boleh
+ * menerima fokus.
+ *
+ * Tiga langkah, berhenti pada yang pertama berhasil:
+ *  1. simpulnya sendiri, kalau memang fokusabel (isian teks, textarea, …);
+ *  2. kendali fokusabel di DALAMNYA, kalau yang ketemu ternyata pembungkus;
+ *  3. kendali fokusabel milik isian yang SAMA, ditemukan dengan menaiki induk
+ *     selangkah demi selangkah sampai batas kotak isian — inilah jalur isian
+ *     pilihan: yang ketemu lewat `[name=…]` adalah `<input type="hidden">` di
+ *     dalam `ant-select-prefix`, sedangkan kendali sungguhannya (`<input
+ *     role="combobox">`) bertetangga satu tingkat di atasnya.
+ */
+function resolveFocusTarget(candidate: FocusTargetNode | null): FocusTargetNode | null {
+  if (!candidate) return null;
+  if (isKeyboardFocusable(candidate)) return candidate;
+
+  const inside = firstFocusableWithin(candidate);
+  if (inside) return inside;
+
+  let parent = candidate.parentElement;
+  while (parent && !isFieldBoundary(parent)) {
+    const found = firstFocusableWithin(parent);
+    if (found) return found;
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
 /**
  * Fokuskan (dan gulirkan ke) isian bermasalah setelah simpan ditolak.
  *
@@ -223,17 +342,36 @@ export function DisclosureSection({
  * Dicari lewat `id` dulu, lalu `name`: sebagian isian dikendalikan React tanpa
  * `id` yang stabil, tetapi `name`-nya selalu sama dengan kunci payload API —
  * kunci yang sama yang dipakai `fieldErrors` dari server.
+ *
+ * ── Yang ketemu BUKAN selalu yang boleh difokuskan (issue #259) ─────────────
+ * Sampai #188 `[name=…]` selalu berujung di kontrol sungguhan. Sejak isian
+ * pilihan menjadi `Select` AntD, `[name=…]` berujung di `<input type="hidden">`
+ * titipan primitifnya — dan `focus()` di sana TIDAK melempar galat, ia hanya
+ * membuang fokusnya. Akibatnya halaman menggulir ke isian yang ditolak
+ * validasi, tetapi fokusnya lenyap: pembaca layar tidak mengumumkan apa pun,
+ * pengguna papan tik harus mencari sendiri isian yang salah.
+ *
+ * Karena itu hasil pencarian di sini DISELESAIKAN dulu menjadi kendali yang
+ * benar-benar fokusabel (`resolveFocusTarget`), bukan dipakai apa adanya. Ia
+ * dikerjakan di sini — bukan di ketiga formulir pemanggilnya — supaya pemanggil
+ * berikutnya tidak mewarisi jebakan yang sama.
  */
-export function focusFormField(field: string, root: ParentNode | Document = document): void {
+export function focusFormField(field: string, root: FocusSearchRoot = document): void {
   const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(field) : field;
-  const target =
-    root.querySelector<HTMLElement>(`#${escaped}`) ??
-    root.querySelector<HTMLElement>(`[name="${field}"]`);
-  if (!target) return;
+  const byId = root.querySelector(`#${escaped}`);
+  const byName = root.querySelector(`[name="${field}"]`);
+  const target = resolveFocusTarget(byId) ?? resolveFocusTarget(byName);
+
+  // Kalau tidak ada satu pun kendali fokusabel (markup yang belum dikenal),
+  // isiannya tetap dibawa ke layar — menggulir tanpa fokus masih lebih baik
+  // daripada tidak terjadi apa-apa. Yang TIDAK dilakukan lagi: memanggil
+  // `focus()` pada simpul yang tak bisa menerimanya.
+  const anchor = target ?? byId ?? byName;
+  if (!anchor) return;
 
   const reduced =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  target.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
-  target.focus({ preventScroll: true });
+  anchor.scrollIntoView?.({ block: "center", behavior: reduced ? "auto" : "smooth" });
+  target?.focus?.({ preventScroll: true });
 }

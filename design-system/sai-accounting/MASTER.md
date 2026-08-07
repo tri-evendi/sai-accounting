@@ -402,8 +402,9 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - **Bukan tombol, jadi di luar aturan ini:** `<input type="radio">` native dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
 - **Pesan di dalam halaman → `Alert` AntD, dan `role`-nya TIDAK bisa dipilih.** Terukur: `Alert` selalu merender `role="alert"` — wilayah live **asertif**, yang memotong bacaan pembaca layar yang sedang berjalan — dan **membuang** `role` yang dioper. `<Alert role="status">` karena itu adalah kode yang terbaca sopan dan berperilaku sebaliknya; `tsc` tidak menyebutkannya, dan di layar tidak ada bedanya sama sekali. Untuk pesan yang TIDAK mendesak (ringkasan yang berubah, hitungan yang diperbarui) bungkus isinya dengan elemen ber-`role="status"` sendiri dan jangan pakai `Alert` — pola `components/shared/wizard.tsx`. Dijaga `tests/design-system-primitives.test.ts`.
 - **Notifikasi melayang → `useToast()`** (`components/ui/toast.tsx`), bukan `import { message } from "antd"`. Jalur statis AntD membuat akar React-nya sendiri di luar `ConfigProvider` dan muncul dengan token BAWAAN — kotak putih di halaman gelap. `useToast` juga yang memasang wilayah live-nya: `message` AntD tidak punya `aria-live` sama sekali.
-- **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Tiga akibat yang harus diketahui sebelum memakainya:
+- **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Empat akibat yang harus diketahui sebelum memakainya:
   - **`name` tetap terkirim** — primitifnya menitipkan `<input type="hidden">` di dalam kontrolnya sendiri, jadi `new FormData(form)` dan `<form method="get">` tetap bekerja.
+  - **`[name=…]` karena itu TIDAK menunjuk kendali yang bisa difokuskan** (issue #259). Pencarian `document.querySelector('[name=…]')` pada isian pilihan berujung di hidden companion itu, dan `focus()` di sana tidak melempar galat — ia diam-diam membuang fokusnya. Kendali sungguhannya adalah `<input role="combobox">` di dalam akar yang sama; `id` yang dioper mendarat di sana. Kode yang memindahkan fokus lewat NAMA field wajib menyelesaikan hasil pencariannya dulu menjadi kendali fokusabel — `focusFormField` (`components/ui/disclosure-section.tsx`) sudah melakukannya untuk semua pemanggil.
   - **`required` TIDAK lagi divalidasi peramban.** Yang tersisa `aria-required` + tanda `*`; penjaganya validasi server (dan zod setelah #192). Isian pilihan yang wajib harus punya validasi selain `required`.
   - **Pencarian menyala sendiri di atas 12 opsi** (`SEARCH_THRESHOLD`), bisa ditimpa lewat prop `searchable`.
 
@@ -431,6 +432,7 @@ membaca hijau dan menyimpulkan aman.
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
+| Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah

@@ -67,3 +67,12 @@ docker-compose*.yml
 !prisma/control/migrations/**/*.sql
 !prisma/platform/migrations/**/*.sql
 backups/
+
+# Worktree agent & artefak alat (issue: konteks build 375 MB)
+# `.claude/worktrees/` berisi salinan pohon kerja LENGKAP — masing-masing dengan
+# `node_modules` dan `.next`-nya sendiri. Sepuluh worktree menjadikan direktori
+# ini 9,8 GB, dan karena `.dockerignore` tidak menyebutnya, `docker compose
+# up --build` menghabiskan 10 menit hanya untuk "transferring context" lalu
+# dibatalkan — build-nya sendiri tidak pernah dimulai. Terjadi sungguhan saat
+# promosi epik #206.
+.claude

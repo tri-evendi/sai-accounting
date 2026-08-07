@@ -4,14 +4,8 @@ import { getOpnameHistory } from "@/lib/stock-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import { StockPeriodFilter } from "@/components/shared/stock-period-filter";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -19,20 +13,38 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { ClipboardCheck } from "lucide-react";
-
+import { AuditOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
+
+/**
+ * Riwayat Stok Opname — dikonversi ke `StaticTable` + token AntD (issue #198).
+ * **Tetap server component.**
+ */
+
+/** `marginLG` 24 — jarak antar kartu sesi. */
+const SECTION_GAP = 24;
+const EMPTY_ICON_SIZE = 48;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
+
+/** Satu baris penyesuaian di dalam satu sesi hitung ulang. */
+type AdjustmentRow = { itemName: string; unit: string | null; variance: number };
 
 /**
  * Selisih bertanda. Tanda "+"/"−" adalah penanda NON-WARNA-nya, jadi lebih dan
  * susut tetap terbedakan di layar hitam-putih maupun oleh pembaca buta warna —
- * aturan uang MASTER.md, diterapkan ke kuantitas.
+ * aturan uang MASTER.md, diterapkan ke kuantitas. Warnanya token UANG (#186),
+ * yang lolos 4,5:1 sebagai teks 14px — bukan `colorSuccess` bawaan AntD.
  */
 function Variance({ value }: { value: number }) {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
-  const tone = value > 0 ? "text-success" : value < 0 ? "text-destructive" : "text-muted-foreground";
+  const color =
+    value > 0
+      ? "var(--ant-color-money-positive)"
+      : value < 0
+        ? "var(--ant-color-money-negative)"
+        : "var(--ant-color-text-secondary)";
   return (
-    <span className={`tabular-nums ${tone}`}>
+    <span style={{ fontVariantNumeric: "tabular-nums", color }}>
       {sign}
       {formatNumber(Math.abs(value))}
     </span>
@@ -79,6 +91,28 @@ export default async function OpnameHistoryPage({
     netVariance: history.netVariance,
   };
 
+  const columns: SaiColumns<AdjustmentRow> = [
+    {
+      ...textColumn<AdjustmentRow>({ dataIndex: "itemName", title: t("common.item") }),
+      render: (raw) => <span style={{ fontWeight: STRONG }}>{String(raw)}</span>,
+    },
+    {
+      ...textColumn<AdjustmentRow>({ dataIndex: "unit", title: t("common.unit") }),
+      render: (raw) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {raw ? String(raw) : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "variance",
+      dataIndex: "variance",
+      title: t("inventory.colVariance"),
+      align: "right",
+      render: (_v, row) => <Variance value={row.variance} />,
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -111,7 +145,7 @@ export default async function OpnameHistoryPage({
       {history.sessions.length === 0 ? (
         <Card>
           <EmptyState
-            icon={<ClipboardCheck className="h-12 w-12" />}
+            icon={<AuditOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
             title={t("opnameHistory.emptyTitle")}
             description={t("opnameHistory.emptyDescription")}
             actionLabel={t("nav.items.inventoryOpname")}
@@ -119,17 +153,27 @@ export default async function OpnameHistoryPage({
           />
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div style={{ display: "grid", gap: SECTION_GAP }}>
           {/* Satu kartu per hitung ulang. Menggabungkan semuanya ke satu tabel
               panjang akan mengaburkan batas antar-peristiwa, padahal "kapan
               dihitung" justru pertanyaan pertama yang dibawa ke halaman ini. */}
           {history.sessions.map((s) => (
             <Card key={s.dateISO}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-6 py-3">
-                <h2 className="font-semibold text-foreground">
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  padding: "12px var(--ant-padding-lg)",
+                  borderBottom: "1px solid var(--ant-color-border-secondary)",
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: "var(--ant-font-size)", fontWeight: STRONG }}>
                   {t("opnameHistory.sessionTitle", { date: formatDate(new Date(`${s.dateISO}T12:00:00`)) })}
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
                   {t("opnameHistory.sessionSummary", {
                     count: s.adjustments.length,
                     increase: formatNumber(s.increase),
@@ -137,30 +181,15 @@ export default async function OpnameHistoryPage({
                   })}
                 </p>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>{t("common.item")}</TableHead>
-                    <TableHead>{t("common.unit")}</TableHead>
-                    <TableHead className="text-right">{t("inventory.colVariance")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {s.adjustments.map((a) => (
-                    <TableRow key={`${s.dateISO}-${a.itemName}`}>
-                      <TableCell className="font-medium text-foreground">{a.itemName}</TableCell>
-                      <TableCell className="text-muted-foreground">{a.unit || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <Variance value={a.variance} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <StaticTable<AdjustmentRow>
+                columns={columns}
+                rows={s.adjustments}
+                rowKey={(a) => `${s.dateISO}-${a.itemName}`}
+              />
             </Card>
           ))}
 
-          <p className="text-sm text-muted-foreground">
+          <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
             {t("opnameHistory.periodSummary", {
               sessions: history.sessionCount,
               adjustments: history.adjustmentCount,

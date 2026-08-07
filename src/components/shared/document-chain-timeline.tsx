@@ -1,25 +1,58 @@
-import { FileText, Truck, Receipt, Wallet, Check, Minus, Clock } from "lucide-react";
+import { CheckOutlined, ClockCircleOutlined, FileDoneOutlined, FileTextOutlined, MinusOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 /**
  * Timeline dokumen berantai (issue #15): Kontrak → Surat Jalan → Faktur →
- * Pembayaran, with each stage's progress.
+ * Pembayaran, dengan progres tiap tahap.
  *
- * Server component — it only formats numbers the page already computed. Status is
- * never colour-only (MASTER.md §Anti-Patterns): every stage carries a text badge
- * AND an icon, so it reads the same to a colour-blind user and in print.
+ * Status tidak pernah warna saja (MASTER.md §Anti-Patterns): setiap tahap
+ * membawa badge BERTEKS dan ikon, jadi ia terbaca sama oleh pengguna buta warna
+ * maupun di atas kertas.
+ *
+ * ── Kembali menjadi server component (issue #227) ──────────────────────────
+ * Berkas ini sempat menyeberang jadi client di #194, dan yang memindahkannya
+ * bukan interaktivitas — ia tetap tanpa satu pun penangan kejadian — melainkan
+ * WARNA: cincin tahapnya memakai pasangan token AntD, dan token AntD dulu hanya
+ * bisa dibaca lewat `theme.useToken()`, sebuah hook.
+ *
+ * Sejak #227 alasan itu hilang. `AntdProvider` memberi `cssVar` sebuah KUNCI
+ * tetap dan root layout memasang kunci itu di `<html>`, jadi blok
+ * `.sai-tokens{--ant-…}` berdiri di HTML pertama dan diwarisi seluruh dokumen —
+ * termasuk pohon ini, yang tidak punya satu pun komponen AntD di atasnya.
+ * Warnanya karena itu ditulis sebagai `var(--ant-…)` biasa, benar sejak render
+ * pertama dan ikut berganti saat tema diubah tanpa render ulang. Alasan lengkap
+ * beserta urutan penyisipannya di `lib/theme/antd-tokens.ts`.
+ *
+ * Konsekuensi praktisnya: berkas ini **tidak boleh mengimpor `antd`** (dijaga
+ * `tests/rsc-boundary.test.ts`). `Flex` karena itu diganti `display:flex` biasa
+ * dengan jarak dari token yang sama yang dipakai `Flex` sendiri
+ * (`flexGap` = `padding` 16px untuk "middle", `flexGapSM` = `paddingXS` 8px
+ * untuk "small") — bukan angka baru.
  */
 
+/**
+ * Lebar dasar satu kartu tahap. Menggantikan `sm:grid-cols-2 lg:grid-cols-4`:
+ * kartu tumbuh membagi baris dan turun sendiri saat tak muat, jadi 375px
+ * memberi satu kolom dan 1440px memberi empat — tanpa titik patah yang harus
+ * dijaga tetap sama dengan titik patah lain.
+ */
+const STAGE_BASIS = 240;
+
+/** Bulatan ikon tahap — sebesar `h-10 w-10` sebelum migrasi. */
+const STAGE_BULLET = 40;
+
+/** Tebal cincin bulatan tahap — dua kali `lineWidth`, jadi ia terbaca sebagai cincin. */
+const RING_WIDTH = 2;
+
 const stageIcons = {
-  contract: FileText,
-  delivery: Truck,
-  invoice: Receipt,
-  payment: Wallet,
+  contract: FileTextOutlined,
+  delivery: TruckOutlined,
+  invoice: FileDoneOutlined,
+  payment: WalletOutlined,
 } as const;
 
 const statusBadge: Record<
@@ -45,16 +78,37 @@ const stageLabelKeys: Record<ContractChainStage["key"], DictionaryKey> = {
 };
 
 const statusMark = {
-  selesai: Check,
-  sebagian: Clock,
-  belum: Minus,
+  selesai: CheckOutlined,
+  sebagian: ClockCircleOutlined,
+  belum: MinusOutlined,
 } as const;
 
-/** Ring colour of the stage bullet. Paired with the mark icon, never alone. */
-const statusRing: Record<ChainStatus, string> = {
-  selesai: "border-success bg-success-soft text-success-strong",
-  sebagian: "border-warning bg-warning-soft text-warning-strong",
-  belum: "border-border bg-muted text-muted-foreground",
+/**
+ * Rupa cincin bulatan tahap. Berpasangan dengan ikon tanda, tak pernah sendiri.
+ *
+ * Pasangan latar/teksnya mengikuti aturan yang sama dengan `Tag` (#187): latar
+ * TIPIS (`color*Bg`) dengan teks anak tangga uang (#186) — bukan `colorSuccess`
+ * pekat sebagai warna teks, yang di ukuran ini hanya 2,21:1.
+ *
+ * Konstanta modul, bukan fungsi bertoken lagi: nilainya kini nama VARIABEL,
+ * dan variabelnya yang berganti bersama tema — bukan berkas ini.
+ */
+const STATUS_RING: Record<ChainStatus, React.CSSProperties> = {
+  selesai: {
+    borderColor: "var(--ant-color-success)",
+    background: "var(--ant-color-success-bg)",
+    color: "var(--ant-color-money-positive)",
+  },
+  sebagian: {
+    borderColor: "var(--ant-color-warning)",
+    background: "var(--ant-color-warning-bg)",
+    color: "var(--ant-color-money-pending)",
+  },
+  belum: {
+    borderColor: "var(--ant-color-border-secondary)",
+    background: "var(--ant-color-fill-secondary)",
+    color: "var(--ant-color-text-secondary)",
+  },
 };
 
 function stageAmount(stage: ContractChainStage, currency: string): string {
@@ -74,46 +128,119 @@ export async function DocumentChainTimeline({
 }) {
   const t = await getT();
   return (
-    <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    /*
+     * Garis penghubung antar-tahap DIHAPUS, bukan dipindahkan. Ia dulu
+     * `absolute … hidden lg:block` — dekorasi (`aria-hidden`) yang hanya benar
+     * ketika keempat kartu kebetulan berada di satu baris. Tata letaknya kini
+     * membungkus sendiri sesuai lebar, jadi garis itu tidak lagi punya cara
+     * mengetahui apakah tahap berikutnya ada di sebelah kanan atau di baris
+     * bawah — dan garis yang menunjuk ke tempat yang salah lebih buruk
+     * daripada tidak ada garis. Urutannya tetap terbaca: nomor "1." … "4." ada
+     * di setiap judul tahap, dan `<ol>`-nya tetap daftar berurutan.
+     */
+    <ol
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "var(--ant-padding)",
+        margin: 0,
+        padding: 0,
+        listStyle: "none",
+      }}
+    >
       {stages.map((stage, i) => {
         const Icon = stageIcons[stage.key];
         const Mark = statusMark[stage.status];
         const badge = statusBadge[stage.status];
         return (
-          <li key={stage.key} className="relative">
-            {/* Connector: only between stages, and only where they sit in a row. */}
-            {i < stages.length - 1 && (
-              <span
-                aria-hidden
-                className="absolute left-1/2 top-5 hidden h-px w-full bg-muted lg:block"
-              />
-            )}
-            <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center gap-2">
+          <li
+            key={stage.key}
+            style={{ flex: `1 1 ${STAGE_BASIS}px`, minWidth: 0, listStyle: "none" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ant-padding-xs)",
+                height: "100%",
+                padding: "var(--ant-padding)",
+                borderRadius: "var(--ant-border-radius-lg)",
+                border: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+                background: "var(--ant-color-bg-container)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--ant-padding-xs)",
+                }}
+              >
                 <span
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2",
-                    statusRing[stage.status]
-                  )}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: STAGE_BULLET,
+                    height: STAGE_BULLET,
+                    flexShrink: 0,
+                    borderRadius: "50%",
+                    borderStyle: "solid",
+                    borderWidth: RING_WIDTH,
+                    ...STATUS_RING[stage.status],
+                  }}
                 >
-                  <Icon className="h-4 w-4" aria-hidden />
+                  <Icon aria-hidden />
                 </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    <span className="text-muted-foreground">{i + 1}. </span>
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontWeight: "var(--ant-font-weight-strong)",
+                    }}
+                  >
+                    <span style={{ color: "var(--ant-color-text-secondary)" }}>{i + 1}. </span>
                     {t(stageLabelKeys[stage.key])}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "var(--ant-font-size-sm)",
+                      color: "var(--ant-color-text-secondary)",
+                    }}
+                  >
                     {t("aging.docCount", { count: stage.count })}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--ant-padding-xs)",
+                }}
+              >
+                {/* Ikon `@ant-design/icons` sudah `1em` tanpa disebut, jadi ia
+                    mengikuti `fontSizeSM` milik `Tag`; jaraknya dari
+                    `.ant-tag > svg + span`, jadi labelnya wajib `<span>`. */}
                 <Badge variant={badge.variant}>
-                  <Mark className="mr-1 h-3 w-3" aria-hidden />
-                  {t(badge.labelKey)}
+                  <Mark aria-hidden />
+                  <span>{t(badge.labelKey)}</span>
                 </Badge>
-                <span className="truncate text-right text-xs tabular-nums text-foreground">
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    textAlign: "right",
+                    fontSize: "var(--ant-font-size-sm)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
                   {stageAmount(stage, currency)}
                 </span>
               </div>

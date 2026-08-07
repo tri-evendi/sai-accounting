@@ -6,12 +6,17 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Card } from "@/components/ui/card";
-import { ClipboardList, Target, GaugeCircle } from "lucide-react";
+import { AimOutlined, DashboardOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** `margin` AntD (16) — angka, karena berkas ini server component. */
+const CARD_GAP = 16;
+/** Lebar dasar satu kartu permukaan: tiga berjajar di 1440px, satu di 375px. */
+const SURFACE_BASIS = 260;
 
 export default async function BudgetHubPage({
   params,
@@ -24,19 +29,19 @@ export default async function BudgetHubPage({
   const surfaces = [
     {
       href: "/budget/report",
-      icon: GaugeCircle,
+      icon: DashboardOutlined,
       title: t("budget.surfaceReportTitle"),
       desc: t("budget.surfaceReportDesc"),
     },
     {
       href: "/budget/accounts",
-      icon: ClipboardList,
+      icon: OrderedListOutlined,
       title: t("budget.surfaceAccountsTitle"),
       desc: t("budget.surfaceAccountsDesc"),
     },
     {
       href: "/budget/targets",
-      icon: Target,
+      icon: AimOutlined,
       title: t("budget.surfaceTargetsTitle"),
       desc: t("budget.surfaceTargetsDesc"),
     },
@@ -49,14 +54,43 @@ export default async function BudgetHubPage({
         description={t("budget.description")}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        style={{
+          display: "grid",
+          gap: CARD_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${SURFACE_BASIS}px, 1fr))`,
+        }}
+      >
         {surfaces.map((s) => (
-          <Link key={s.href} href={s.href}>
-            <Card className="h-full transition-shadow hover:shadow-md">
-              <div className="p-5">
-                <s.icon className="h-6 w-6 text-primary" aria-hidden="true" />
-                <h2 className="mt-3 font-semibold text-foreground">{s.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
+          <Link key={s.href} href={s.href} style={{ display: "block", height: "100%" }}>
+            <Card style={{ height: "100%" }}>
+              <div style={{ padding: "var(--ant-padding-lg)" }}>
+                {/* Ikon di dalam `<Card>` AntD, jadi variabel tokennya
+                    teratasi — lihat kepala `shared/aging.tsx`. Ia dekoratif:
+                    judul kartunya yang membawa maknanya. */}
+                <s.icon
+                  aria-hidden="true"
+                  style={{ fontSize: "1.5em", color: "var(--ant-color-primary)" }}
+                />
+                <h2
+                  style={{
+                    margin: 0,
+                    marginTop: "var(--ant-margin-sm)",
+                    fontSize: "var(--ant-font-size)",
+                    fontWeight: "var(--ant-font-weight-strong)",
+                  }}
+                >
+                  {s.title}
+                </h2>
+                <p
+                  style={{
+                    margin: 0,
+                    marginTop: "var(--ant-margin-xxs)",
+                    color: "var(--ant-color-text-secondary)",
+                  }}
+                >
+                  {s.desc}
+                </p>
               </div>
             </Card>
           </Link>

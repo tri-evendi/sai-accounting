@@ -1637,6 +1637,7 @@
     "currentNetIncome": "Accumulated Profit / Loss",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
+    "colStatementAmount": "Amount (IDR)",
     "incomeStatementTitle": "Income Statement",
     "sectionRevenue": "Revenue",
     "sectionCogs": "Cost of Goods Sold",

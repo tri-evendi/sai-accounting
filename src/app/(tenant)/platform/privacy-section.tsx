@@ -13,23 +13,28 @@
  * Keduanya dulu tampil sebagai dua kotak bertombol lebar penuh yang berurutan,
  * dan satu-satunya yang membedakan "unduh data saya" dari "hapus akun saya"
  * adalah warna tepi kotaknya. Yang kedua kini turun ke kaki kartu di atas
- * permukaan `destructive-soft` yang terpisah garis — bidang tersendiri yang
- * terbaca sebagai bidang tersendiri, bukan pilihan ketiga dalam satu daftar.
+ * permukaan galat yang terpisah garis — bidang tersendiri yang terbaca sebagai
+ * bidang tersendiri, bukan pilihan ketiga dalam satu daftar.
  * (Konfirmasinya tetap: `ConfirmDialog`, MASTER.md §Form — tombol destruktif
  * menuntut konfirmasi eksplisit.)
  *
- * Tombolnya `sm:w-auto`: tombol selebar kartu di layar 1024px adalah target
- * sentuh sepanjang 900px untuk satu tindakan yang tak bisa dibatalkan.
+ * Tombolnya TIDAK selebar kartu: tombol selebar kartu di layar 1024px adalah
+ * target sentuh sepanjang 900px untuk satu tindakan yang tak bisa dibatalkan.
+ * Sejak #200 lebar itu diatur `flexWrap` — tombolnya turun sendiri ke baris
+ * berikutnya saat kalimatnya tidak muat lagi, tanpa satu pun media query.
  */
 
 import { useEffect, useState } from "react";
-import { Download, ShieldAlert } from "lucide-react";
-
+import { Flex, Typography, theme } from "antd";
+import { DownloadOutlined, SecurityScanOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+const { Title, Text } = Typography;
 
 interface DeletionState {
   pending: { graceEndsAt: string; createdAt: string } | null;
@@ -38,6 +43,8 @@ interface DeletionState {
 
 export function PrivacySection({ canDelete }: { canDelete: boolean }) {
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const [state, setState] = useState<DeletionState | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -110,81 +117,79 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-semibold text-foreground">
+        <Title level={2} style={{ fontSize: token.fontSizeLG, marginBlock: 0 }}>
           {t("tenantSettings.privacyHeading")}
-        </h2>
+        </Title>
       </CardHeader>
 
       {/* Ekspor — tetap tersedia saat suspended; itulah gunanya secara hukum. */}
       <CardContent>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-muted-foreground sm:flex-1">
+        <Flex wrap align="center" justify="space-between" gap={token.marginSM}>
+          <Text type="secondary" style={{ flex: "1 1 260px", lineHeight: 1.625 }}>
             {t("tenantSettings.exportBody")}
-          </p>
-          <Button asChild variant="outline" className="w-full shrink-0 sm:w-auto">
+          </Text>
+          <Button asChild variant="outline" style={{ flexShrink: 0 }}>
             <a href="/api/tenant/export" download>
-              <Download className="h-4 w-4" aria-hidden="true" />
+              <DownloadOutlined aria-hidden="true" />
               {t("tenantSettings.exportButton")}
             </a>
           </Button>
-        </div>
+        </Flex>
       </CardContent>
 
       {canDelete && (
-        <CardFooter className="flex-col items-stretch gap-3 bg-destructive-soft">
-          <p className="text-sm leading-relaxed text-destructive-strong">
-            {t("tenantSettings.deletionBody", { days: state?.graceDays ?? 30 })}
-          </p>
+        <CardFooter style={{ background: token.colorErrorBg }}>
+          <Flex vertical gap={token.marginSM} style={{ width: "100%" }}>
+            <Text style={{ color: money.colorMoneyNegative, lineHeight: 1.625 }}>
+              {t("tenantSettings.deletionBody", { days: state?.graceDays ?? 30 })}
+            </Text>
 
-          {/* ⚠ HASILNYA DIUMUMKAN, bukan sekadar dicetak.
-           *
-           * Kedua kalimat ini adalah SATU-SATUNYA umpan balik dari dua
-           * permintaan jaringan yang tidak memindahkan halaman ke mana pun —
-           * dan salah satunya menutup akses seluruh badan usaha. Sebagai `<p>`
-           * telanjang, pembaca layar tidak mengumumkan apa pun ketika kalimat
-           * itu muncul: yang menekan "Ajukan penghapusan" mendengar sunyi, lalu
-           * menekan lagi. (Tetangganya, `billing-actions.tsx`, memakai toast
-           * yang memang sudah punya live region; di sini kalimatnya harus
-           * tinggal di tempat sebab ia menerangkan bidang di sekitarnya.)
-           *
-           * `alert` untuk galat (menyela — ada yang gagal dan perlu diketahui
-           * sekarang), `status` untuk keberhasilan (sopan, tidak memotong). */}
-          {message && (
-            <p role="status" className="text-sm text-success-strong">
-              {message}
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="text-sm text-destructive-strong">
-              {error}
-            </p>
-          )}
+            {/* ⚠ HASILNYA DIUMUMKAN, bukan sekadar dicetak.
+             *
+             * Kedua kalimat ini adalah SATU-SATUNYA umpan balik dari dua
+             * permintaan jaringan yang tidak memindahkan halaman ke mana pun —
+             * dan salah satunya menutup akses seluruh badan usaha. Sebagai teks
+             * telanjang, pembaca layar tidak mengumumkan apa pun ketika kalimat
+             * itu muncul: yang menekan "Ajukan penghapusan" mendengar sunyi,
+             * lalu menekan lagi. (Tetangganya, `billing-actions.tsx`, memakai
+             * toast yang memang sudah punya live region; di sini kalimatnya
+             * harus tinggal di tempat sebab ia menerangkan bidang di sekitarnya.)
+             *
+             * `alert` untuk galat (menyela — ada yang gagal dan perlu diketahui
+             * sekarang), `status` untuk keberhasilan (sopan, tidak memotong). */}
+            {message && (
+              <Text role="status" style={{ color: money.colorMoneyPositive }}>
+                {message}
+              </Text>
+            )}
+            {error && (
+              <Text role="alert" style={{ color: money.colorMoneyNegative }}>
+                {error}
+              </Text>
+            )}
 
-          {state?.pending ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-warning-strong">
-                {t("tenantSettings.deletionPending", { date: graceDate ?? "" })}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                disabled={busy}
-                onClick={cancelRequest}
-              >
-                {t("tenantSettings.deletionCancelButton")}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="destructive"
-              className="w-full sm:w-auto sm:self-start"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
-              <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-              {t("tenantSettings.deletionRequestButton")}
-            </Button>
-          )}
+            {state?.pending ? (
+              <Flex vertical align="flex-start" gap={token.marginXS}>
+                <Text strong style={{ color: money.colorMoneyPending }}>
+                  {t("tenantSettings.deletionPending", { date: graceDate ?? "" })}
+                </Text>
+                <Button variant="outline" disabled={busy} onClick={cancelRequest}>
+                  {t("tenantSettings.deletionCancelButton")}
+                </Button>
+              </Flex>
+            ) : (
+              <div>
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => setConfirming(true)}
+                >
+                  <SecurityScanOutlined aria-hidden="true" />
+                  {t("tenantSettings.deletionRequestButton")}
+                </Button>
+              </div>
+            )}
+          </Flex>
         </CardFooter>
       )}
 

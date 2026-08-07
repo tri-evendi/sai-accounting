@@ -13,22 +13,39 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { Truck, Plus, Info } from "lucide-react";
-
+import { InfoCircleOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
+
+/**
+ * Berkas ini server component — tanpa `antd`, tanpa `theme.useToken()`.
+ * Angka di bawah SAMA dengan tokennya (`marginLG` 24, `marginXS` 8), ditulis
+ * di satu tempat supaya #203 bisa menukarnya tanpa menebak.
+ */
+const SECTION_GAP = 24;
+const CONTROL_GAP = 8;
+/** Lebar nyaman kotak pencarian (`max-w-md` lama = 28rem). */
+const SEARCH_MAX_WIDTH = 448;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+
+/** Satu baris daftar, diratakan dari Prisma supaya kolomnya bertipe penuh. */
+interface DeliveryOrderRow {
+  id: number;
+  no: string;
+  date: string;
+  consignee: string;
+  source: string;
+  totalBags: number;
+  totalKg: number;
+  canceled: boolean;
+}
 
 export default async function DeliveryOrdersPage({
   params,
@@ -70,6 +87,75 @@ export default async function DeliveryOrdersPage({
   ]);
   const totalPages = Math.ceil(totalCount / perPage);
 
+  const rows: DeliveryOrderRow[] = orders.map((o) => ({
+    id: o.id,
+    no: o.no,
+    date: formatDateShort(o.date),
+    consignee: o.consignee?.name || "—",
+    source: o.contract?.contractNo || o.invoice?.invoiceNo || "—",
+    totalBags: o.items.reduce((s, i) => s + i.bags, 0),
+    totalKg: o.items.reduce((s, i) => s + Number(i.quantity), 0),
+    canceled: o.status === "canceled",
+  }));
+
+  /** Kolom KUANTITAS — id-ID + tabular-nums, tanpa topeng rupiah. */
+  const qty = (value: number) => (
+    <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatNumber(value)}</span>
+  );
+
+  const columns: SaiColumns<DeliveryOrderRow> = [
+    {
+      key: "no",
+      dataIndex: "no",
+      title: t("deliveryOrders.colNo"),
+      align: "left",
+      render: (_v, row) => (
+        // Tabel ini hidup di dalam `<Card>` AntD, jadi `--ant-color-link`
+        // teratasi di sini (di luar pohon AntD ia tidak).
+        <Link
+          href={`/delivery-orders/${row.id}`}
+          style={{ color: "var(--ant-color-link)", fontWeight: "var(--ant-font-weight-strong)" }}
+        >
+          {row.no}
+        </Link>
+      ),
+    },
+    { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
+    {
+      key: "consignee",
+      dataIndex: "consignee",
+      title: t("deliveryOrders.colConsignee"),
+      align: "left",
+    },
+    { key: "source", dataIndex: "source", title: t("deliveryOrders.colSource"), align: "left" },
+    {
+      key: "totalBags",
+      dataIndex: "totalBags",
+      title: t("common.bags"),
+      align: "right",
+      render: (_v, row) => qty(row.totalBags),
+    },
+    {
+      key: "totalKg",
+      dataIndex: "totalKg",
+      title: t("deliveryOrders.colTotalKg"),
+      align: "right",
+      render: (_v, row) => qty(row.totalKg),
+    },
+    {
+      key: "status",
+      dataIndex: "canceled",
+      title: t("common.status"),
+      align: "left",
+      // Status lewat kata, bukan warna saja; nilai enum DB tidak tampil mentah.
+      render: (_v, row) => (
+        <Badge variant={row.canceled ? "danger" : "success"}>
+          {row.canceled ? t("status.contract.canceled") : t("deliveryOrders.statusIssued")}
+        </Badge>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -77,39 +163,60 @@ export default async function DeliveryOrdersPage({
         description={t("deliveryOrders.description")}
         actions={
           <Link href="/delivery-orders/new">
-            <Button className="cursor-pointer">
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            <Button>
+              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
+                  primitif `Button`. */}
+              <PlusOutlined aria-hidden="true" />
               {t("deliveryOrders.addNew")}
             </Button>
           </Link>
         }
       />
 
-      <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>
+      {/* Catatan "surat jalan tidak memindahkan stok". Bidangnya `colorFillAlter`
+          + batas `colorBorderSecondary`; keduanya variabel AntD, dan di SINI ia
+          berada di luar pohon komponen AntD — karena itu warnanya sengaja tidak
+          dipakai sebagai penanda: ikon + kata yang membawa maknanya, dan
+          kalimatnya tetap terbaca kalau variabelnya tak teratasi. */}
+      <p
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: CONTROL_GAP,
+          marginTop: 0,
+          marginBottom: SECTION_GAP,
+        }}
+      >
+        <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+        <small>
           {t("deliveryOrders.stockNoteA")} <strong>{t("deliveryOrders.stockNoteStrong")}</strong>{" "}
           {t("deliveryOrders.stockNoteB")}
-        </span>
+        </small>
       </p>
 
       {/* Search — GET form (pola /contracts); saringan baru = kembali ke hal. 1. */}
-      <form className="mb-4">
+      <form
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: CONTROL_GAP,
+          marginBottom: CONTROL_GAP * 2,
+        }}
+      >
         <TextInput
           type="text"
           name="search"
           placeholder={t("common.search")}
           defaultValue={filters.search}
-          className="w-full max-w-md"
+          style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit" className="ml-2">
-          {t("common.search")}
-        </Button>
+        <Button type="submit">{t("common.search")}</Button>
       </form>
 
       {orders.length === 0 ? (
         <EmptyState
-          icon={<Truck className="h-12 w-12" />}
+          icon={<TruckOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("deliveryOrders.emptyTitle")}
           description={t("deliveryOrders.emptyDescription")}
           actionLabel={t("deliveryOrders.addNew")}
@@ -117,55 +224,7 @@ export default async function DeliveryOrdersPage({
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("deliveryOrders.colNo")}</TableHead>
-                <TableHead>{t("common.date")}</TableHead>
-                <TableHead>{t("deliveryOrders.colConsignee")}</TableHead>
-                <TableHead>{t("deliveryOrders.colSource")}</TableHead>
-                <TableHead className="text-right">{t("common.bags")}</TableHead>
-                <TableHead className="text-right">{t("deliveryOrders.colTotalKg")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((o) => {
-                const totalBags = o.items.reduce((s, i) => s + i.bags, 0);
-                const totalKg = o.items.reduce((s, i) => s + Number(i.quantity), 0);
-                const source =
-                  o.contract?.contractNo || o.invoice?.invoiceNo || "—";
-                return (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium text-foreground">
-                      <Link
-                        href={`/delivery-orders/${o.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {o.no}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-foreground">{formatDateShort(o.date)}</TableCell>
-                    <TableCell className="text-foreground">{o.consignee?.name || "—"}</TableCell>
-                    <TableCell className="text-foreground">{source}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground">
-                      {formatNumber(totalBags)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground">
-                      {formatNumber(totalKg)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={o.status === "canceled" ? "danger" : "success"}>
-                        {o.status === "canceled"
-                          ? t("status.contract.canceled")
-                          : t("deliveryOrders.statusIssued")}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <StaticTable columns={columns} rows={rows} rowKey={(row) => row.id} />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

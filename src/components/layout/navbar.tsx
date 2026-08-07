@@ -1,12 +1,44 @@
 "use client";
 
-import { Menu } from "lucide-react";
+/**
+ * Bilah atas aplikasi — `Layout.Header` AntD (issue #193).
+ *
+ * Dua janji MASTER.md hidup di tata letak berkas ini, dan keduanya mudah
+ * hilang saat seseorang "merapikan" bar yang penuh:
+ *
+ *  • **Nama perusahaan aktif selalu terlihat** (§Orientasi Perusahaan), di
+ *    semua ukuran layar, tanpa membuka menu apa pun. Karena itu blok kiri
+ *    boleh menyusut (`minWidth: 0` → namanya yang terpotong), sedangkan blok
+ *    kanan `flexShrink: 0`.
+ *  • **Target sentuh ≥ 40px dan jarak antar aksi ≥ 8px.** Tingginya datang
+ *    dari `controlHeight` (token, bukan kelas); jaraknya dari `token.marginXS`
+ *    ke atas.
+ *
+ * `Header` bawaan AntD berlatar gelap (`colorBgHeader`) dan ber-`line-height`
+ * 64px — keduanya ditimpa di sini: bilah ini permukaan kartu di atas halaman,
+ * dan `line-height` 64px akan menurun ke setiap teks di dalamnya (termasuk
+ * baris kedua di menu bantuan).
+ */
+
+import { Flex, Grid, Layout, theme } from "antd";
+import { MenuOutlined } from "@ant-design/icons";
 import { AccountantModeToggle } from "@/components/layout/accountant-mode-toggle";
 import { CompanyIndicator } from "@/components/layout/company-indicator";
 import { HelpMenu } from "@/components/layout/help-menu";
 import { ApprovalBadge } from "@/components/layout/approval-badge";
 import { UserMenu } from "@/components/layout/user-menu";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+
+/**
+ * Bilah atas menempel saat halaman digulung, jadi ia harus di atas isi —
+ * tetapi tetap DI BAWAH lapisan popup AntD (`zIndexPopupBase` 1000: laci,
+ * dropdown, modal). Angka kecil yang disengaja, bukan `z-index: 9999`.
+ */
+const Z_BILAH_ATAS = 10;
+
+/** Tinggi bilah — sama dengan `h-16` sebelum migrasi. */
+const TINGGI_BILAH = 64;
 
 interface NavbarProps {
   userName: string;
@@ -26,27 +58,51 @@ export function Navbar({
   onSignOut,
 }: NavbarProps) {
   const t = useT();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
+  // Satu sumber kebenaran dengan `Sidebar`: di ≥ lg menu samping adalah kolom
+  // tetap, jadi pemicu lacinya tidak boleh ada.
+  const lebar = screens.lg ?? false;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <button
-          onClick={onMenuClick}
-          aria-label={t("navbar.openMenu")}
-          className="shrink-0 cursor-pointer text-muted-foreground transition-colors duration-150 hover:text-foreground lg:hidden"
-        >
-          <Menu className="h-6 w-6" aria-hidden="true" />
-        </button>
+    <Layout.Header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: Z_BILAH_ATAS,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: token.marginSM,
+        height: TINGGI_BILAH,
+        lineHeight: token.lineHeight,
+        paddingInline: token.paddingLG,
+        fontSize: token.fontSize,
+        background: token.colorBgContainer,
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+      }}
+    >
+      <Flex align="center" gap={token.marginSM} style={{ minWidth: 0 }}>
+        {!lebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            aria-label={t("navbar.openMenu")}
+          >
+            <MenuOutlined aria-hidden="true" style={{ fontSize: 20 }} />
+          </Button>
+        )}
 
         {/* Buku siapa yang sedang dibuka — pertanyaan terpenting sejak tiap PT
             punya basis datanya sendiri (#104). Ikut tampil di layar sempit;
             di sanalah orang paling mudah lupa. */}
         <CompanyIndicator companyName={companyName} companyCount={companyCount} />
-      </div>
+      </Flex>
 
-      {/* `shrink-0`: di 375px yang boleh menyempit adalah NAMA perusahaan
-          (ia truncate), bukan target sentuh aksi-aksi ini. */}
-      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+      {/* `flexShrink: 0`: di 375px yang boleh menyempit adalah NAMA perusahaan
+          (ia terpotong dengan elipsis), bukan target sentuh aksi-aksi ini. */}
+      <Flex align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
         {/* issue #25 — antrean persetujuan / kabar keputusan (sembunyi bila nol) */}
         <ApprovalBadge />
         {/* issue #21 — Bantuan: Kamus Istilah + putar ulang tur panduan */}
@@ -56,7 +112,7 @@ export function Navbar({
         {/* Identitas + aksi akun (ubah sandi, keluar) diringkas ke satu menu
             avatar — memisahkan "informasi" dari "aksi" dan merapikan top bar. */}
         <UserMenu userName={userName} role={role} onSignOut={onSignOut} />
-      </div>
-    </header>
+      </Flex>
+    </Layout.Header>
   );
 }

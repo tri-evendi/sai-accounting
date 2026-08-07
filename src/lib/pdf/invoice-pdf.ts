@@ -1,3 +1,4 @@
+import { PRINT_BRAND, PRINT_MONEY_IN } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -139,7 +140,7 @@ export function generateInvoicePDF(invoice: InvoiceData, company: { name: string
       ["", "", "", "", `TOTAL (${currency})`, formatCurrency(totalValue, currency)],
     ],
     theme: "grid",
-    headStyles: { fillColor: [142, 68, 173], textColor: 255, fontStyle: "bold", fontSize: 9 },
+    headStyles: { fillColor: PRINT_BRAND, textColor: 255, fontStyle: "bold", fontSize: 9 },
     bodyStyles: { fontSize: 9 },
     footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 9 },
     margin: { left: 14, right: 14 },
@@ -168,7 +169,7 @@ export function generateInvoicePDF(invoice: InvoiceData, company: { name: string
       ]),
       foot: [["Total Paid", formatCurrency(totalPaid), "", ""]],
       theme: "grid",
-      headStyles: { fillColor: [39, 174, 96], textColor: 255, fontSize: 9 },
+      headStyles: { fillColor: PRINT_MONEY_IN, textColor: 255, fontSize: 9 },
       bodyStyles: { fontSize: 9 },
       footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 9 },
       margin: { left: 14, right: 14 },

@@ -12,12 +12,33 @@
  *
  * Desain (MASTER.md): label bahasa tugas + kunci izin sebagai teks muted
  * (bukan kunci mentah saja); sel yang menyimpang dari bawaan ditandai latar
- * `warning-soft` DAN teks "diubah" (tidak pernah warna saja); sel anti-lockout
+ * `colorWarningBg` DAN teks "diubah" (tidak pernah warna saja); sel anti-lockout
  * dinonaktifkan dengan ikon gembok + penjelasan; simpan/reset lewat dialog
  * konfirmasi; hasil lewat toast.
+ *
+ * ── Tabel: tetap primitif JSX, dengan header LENGKET (issue #199) ──────────
+ * Ini bukan tabel data melainkan GRID KENDALI: barisnya bertingkat (judul
+ * kelompok yang membentang penuh, lalu izin-izinnya), setiap sel berisi
+ * `Checkbox` terkendali, dan jumlah kolomnya ditentukan peran yang ada di DB.
+ * `StaticTable`/`DataTable` memetakan satu baris data ke satu baris tabel, jadi
+ * baris judul kelompok harus dipalsukan lewat `onCell colSpan` — lebih banyak
+ * kode, untuk hasil yang sama.
+ *
+ * Yang justru dibutuhkan matriks ini adalah header yang tetap terbaca saat
+ * digulir: satu kotak centang tanpa nama peran di atasnya tidak berarti
+ * apa-apa. Sejak issue #229 mekanismenya milik PRIMITIFNYA — `<Table maxHeight>`
+ * + `<TableHead sticky>` — dan berkas sementara `matrix-sticky.ts` yang dulu
+ * merakitnya di sini sudah dihapus. Keduanya tetap harus dipakai BERSAMA
+ * (alasannya di kepala `components/ui/table.tsx`), dan itu dikunci
+ * `tests/permission-matrix-sticky.test.tsx`.
+ *
+ * `Checkbox` tetap dipakai dalam bentuk terkendalinya yang lama
+ * (`checked` + `onCheckedChange`) — permukaan inilah yang melahirkan primitif
+ * itu, dan API-nya tidak berubah di issue ini.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Flex, theme } from "antd";
 import { PageHeader } from "@/components/ui/page-header";
 import { RoleManager } from "./role-manager";
 import { Button } from "@/components/ui/button";
@@ -34,7 +55,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/lib/constants";
 import type { Permission } from "@/lib/authz";
 import {
@@ -46,8 +66,27 @@ import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
 import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
 import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
-import { Lock, PackageX, RotateCcw, Save } from "lucide-react";
+import { CloseSquareOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+/** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[640px]`. */
+const MATRIX_MIN_WIDTH = 640;
+/**
+ * Tinggi maksimum kotak matriks. `vh` dan bukan piksel: yang menentukan berapa
+ * banyak baris yang muat adalah tinggi LAYAR, dan angka piksel tetap akan
+ * memotong matriks di layar besar sekaligus melewati batas layar kecil. 70%
+ * menyisakan ruang untuk kepala halaman, legenda, dan tombol simpan.
+ */
+const MATRIX_MAX_HEIGHT = "70vh";
+/** Lebar satu kolom peran — bekas `w-32`. */
+const ROLE_COLUMN_WIDTH = 128;
+/** Lebar minimum kolom nama izin — bekas `min-w-[280px]`. */
+const PERMISSION_COLUMN_MIN = 280;
+/** Tinggi minimum isi sel centang — target sentuh `controlHeight` (40px). */
+const CELL_MIN_HEIGHT = 40;
+/** Petak warna di legenda — bekas `size-3`. */
+const SWATCH = 12;
 
 interface OverridesResponse {
   baseline: Record<string, string[]>;
@@ -78,6 +117,8 @@ function toDraft(matrix: Record<string, string[]>, roleKeys: string[]): Record<s
 export function PermissionsClient() {
   const t = useT();
   const dictionary = useDictionary();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const { toast } = useToast();
   const [data, setData] = useState<OverridesResponse | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -219,9 +260,7 @@ export function PermissionsClient() {
     return (
       <div>
         <PageHeader title={t("nav.items.permissions")} />
-        <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">
-          {loadError}
-        </div>
+        <Alert type="error" showIcon message={loadError} />
       </div>
     );
   }
@@ -236,10 +275,12 @@ export function PermissionsClient() {
         badge={
           savedOverrideCount > 0 ? (
             <Badge variant="warning">
-              {t("permissions.overrideBadge", { count: savedOverrideCount })}
+              <span>{t("permissions.overrideBadge", { count: savedOverrideCount })}</span>
             </Badge>
           ) : (
-            <Badge>{t("permissions.defaultBadge")}</Badge>
+            <Badge>
+              <span>{t("permissions.defaultBadge")}</span>
+            </Badge>
           )
         }
         actions={
@@ -249,11 +290,11 @@ export function PermissionsClient() {
               disabled={saving || (savedOverrideCount === 0 && !isDirty)}
               onClick={() => setConfirmReset(true)}
             >
-              <RotateCcw aria-hidden="true" />
+              <UndoOutlined aria-hidden="true" />
               {t("permissions.resetToDefault")}
             </Button>
             <Button disabled={saving || !isDirty} onClick={requestSave}>
-              <Save aria-hidden="true" />
+              <SaveOutlined aria-hidden="true" />
               {t("common.saveChanges")}
             </Button>
           </>
@@ -264,73 +305,123 @@ export function PermissionsClient() {
       <RoleManager onRolesChanged={loadOverrides} />
 
       {errors.length > 0 && (
-        <div
-          role="alert"
-          className="mb-4 rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong"
-        >
-          <p className="font-medium">{t("permissions.errorsTitle")}</p>
-          <ul className="mt-1 list-disc pl-5">
-            {errors.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
+        <div role="alert">
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: token.margin }}
+            message={t("permissions.errorsTitle")}
+            description={
+              <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                {errors.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            }
+          />
         </div>
       )}
 
       {/* issue #99 — kenapa matriksnya lebih pendek dari yang diingat orang. */}
       {hiddenRowCount > 0 && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <PackageX className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>{t("modules.permissionsNotice", { count: hiddenRowCount })}</span>
-        </p>
+        <Alert
+          type="info"
+          style={{ marginBottom: token.margin }}
+          icon={<CloseSquareOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
+          showIcon
+          message={t("modules.permissionsNotice", { count: hiddenRowCount })}
+        />
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="inline-block size-3 rounded-sm bg-warning-soft ring-1 ring-warning" />
+      <Flex
+        wrap
+        align="center"
+        gap={token.margin}
+        style={{
+          marginBottom: token.margin,
+          fontSize: token.fontSizeSM,
+          color: token.colorTextSecondary,
+        }}
+      >
+        <Flex align="center" gap={token.marginXXS}>
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: SWATCH,
+              height: SWATCH,
+              borderRadius: token.borderRadiusSM,
+              background: token.colorWarningBg,
+              border: `1px solid ${token.colorWarningBorder}`,
+            }}
+          />
           {t("permissions.legendMarkedBefore")}{" "}
-          <span className="font-medium text-warning-strong">
+          <span style={{ fontWeight: token.fontWeightStrong, color: money.colorMoneyPending }}>
             {t("permissions.legendChanged")}
           </span>{" "}
           {t("permissions.legendMarkedAfter")}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Lock className="size-3" aria-hidden="true" />
+        </Flex>
+        <Flex align="center" gap={token.marginXXS}>
+          <LockOutlined aria-hidden="true" />
           {t("permissions.legendLocked")}
-        </span>
-      </div>
+        </Flex>
+      </Flex>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
-        <Table className="min-w-[640px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[280px]">{t("users.colPermission")}</TableHead>
-              {(data?.roles ?? []).map((r) => (
-                <TableHead key={r.key} className="w-32 text-center">
-                  {r.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleGroups.map((group) => (
-              <PermissionGroupRows
-                key={group.resource}
-                label={group.label}
-                permissions={group.permissions}
-                roleKeys={roleKeys}
-                labelOf={labelOf}
-                draft={draft}
-                isBaselineAllowed={isBaselineAllowed}
-                onToggle={toggleCell}
-                disabled={saving}
-                permissionText={permissionText}
-                t={t}
-              />
+      {/*
+       * Kotak gulung & header lengket kini SATU kotak, bukan dua: `maxHeight`
+       * membatasi pembungkus geser milik primitif itu sendiri. `containerStyle`
+       * membawa tepi & sudut yang dulu digambar pembungkus tambahan.
+       *
+       * `stickyHead*` dikirim eksplisit karena matriks ini TIDAK berada di
+       * dalam satu pun komponen AntD, sehingga bawaan `var(--ant-…)` milik
+       * primitif tidak akan teratasi di sini — lihat kepala `ui/table.tsx`.
+       */}
+      <Table
+        data-permission-matrix="role"
+        style={{ minWidth: MATRIX_MIN_WIDTH }}
+        maxHeight={MATRIX_MAX_HEIGHT}
+        containerStyle={{
+          border: `1px solid ${token.colorBorderSecondary}`,
+          borderRadius: token.borderRadiusLG,
+          background: token.colorBgContainer,
+        }}
+        stickyHeadBackground={token.colorBgContainer}
+        stickyHeadBorderColor={token.colorBorderSecondary}
+      >
+        <TableHeader>
+          <TableRow>
+            <TableHead sticky style={{ minWidth: PERMISSION_COLUMN_MIN }}>
+              {t("users.colPermission")}
+            </TableHead>
+            {(data?.roles ?? []).map((r) => (
+              <TableHead
+                key={r.key}
+                sticky
+                style={{ width: ROLE_COLUMN_WIDTH, textAlign: "center" }}
+              >
+                {r.label}
+              </TableHead>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleGroups.map((group) => (
+            <PermissionGroupRows
+              key={group.resource}
+              label={group.label}
+              permissions={group.permissions}
+              roleKeys={roleKeys}
+              labelOf={labelOf}
+              draft={draft}
+              isBaselineAllowed={isBaselineAllowed}
+              onToggle={toggleCell}
+              disabled={saving}
+              permissionText={permissionText}
+              t={t}
+            />
+          ))}
+        </TableBody>
+      </Table>
 
       <ConfirmDialog
         open={confirmSave}
@@ -390,18 +481,25 @@ function PermissionGroupRows({
   permissionText: Record<Permission, string>;
   t: TranslateFn;
 }) {
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   return (
     <>
-      <TableRow className="bg-muted/60 hover:bg-muted/60">
-        <TableCell colSpan={1 + roleKeys.length} className="py-2 text-sm font-semibold text-foreground">
+      <TableRow style={{ background: token.colorFillAlter }}>
+        <TableCell
+          colSpan={1 + roleKeys.length}
+          style={{ paddingBlock: token.paddingXS, fontWeight: token.fontWeightStrong }}
+        >
           {label}
         </TableCell>
       </TableRow>
       {permissions.map((permission) => (
         <TableRow key={permission}>
           <TableCell>
-            <div className="text-sm text-foreground">{permissionText[permission]}</div>
-            <div className="text-xs text-muted-foreground">{permission}</div>
+            <div>{permissionText[permission]}</div>
+            <div style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
+              {permission}
+            </div>
           </TableCell>
           {roleKeys.map((role) => {
             const key = cellKey(permission, role);
@@ -411,9 +509,21 @@ function PermissionGroupRows({
             return (
               <TableCell
                 key={role}
-                className={cn("text-center align-middle", changed && "bg-warning-soft")}
+                style={{
+                  textAlign: "center",
+                  verticalAlign: "middle",
+                  background: changed ? token.colorWarningBg : undefined,
+                }}
               >
-                <div className="flex min-h-10 flex-col items-center justify-center gap-0.5 py-1">
+                <Flex
+                  vertical
+                  align="center"
+                  justify="center"
+                  gap={token.marginXXS}
+                  style={{ minHeight: CELL_MIN_HEIGHT, paddingBlock: token.paddingXXS }}
+                >
+                  {/* Bentuk terkendali yang melahirkan primitif ini
+                      (`checked` + `onCheckedChange`) — sengaja tidak diubah. */}
                   <Checkbox
                     checked={allowed}
                     disabled={disabled || locked}
@@ -425,17 +535,28 @@ function PermissionGroupRows({
                     title={locked ? t("permissions.lockedTitle") : undefined}
                   />
                   {locked && (
-                    <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                      <Lock className="size-3" aria-hidden="true" />
+                    <Flex
+                      align="center"
+                      gap={token.marginXXS}
+                      style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}
+                    >
+                      <LockOutlined aria-hidden="true" />
                       {t("permissions.lockedShort")}
-                    </span>
+                    </Flex>
                   )}
+                  {/* Penanda kedua di samping latar sel — warna tak pernah sendirian. */}
                   {changed && !locked && (
-                    <span className="text-xs font-medium text-warning-strong">
+                    <span
+                      style={{
+                        fontSize: token.fontSizeSM,
+                        fontWeight: token.fontWeightStrong,
+                        color: money.colorMoneyPending,
+                      }}
+                    >
                       {t("permissions.legendChanged")}
                     </span>
                   )}
-                </div>
+                </Flex>
               </TableCell>
             );
           })}

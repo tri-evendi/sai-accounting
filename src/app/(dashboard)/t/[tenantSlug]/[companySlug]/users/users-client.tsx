@@ -1,29 +1,48 @@
 "use client";
 
+/**
+ * Manajemen pengguna & undangan (issue #59/#139).
+ *
+ * ── Setelah migrasi AntD (issue #199) ──────────────────────────────────────
+ * Tanpa kelas Tailwind. Pita galat menjadi `Alert` AntD — teks `colorText` di
+ * atas latar tipis + ikon, bukan merah di atas merah muda (pola #194).
+ *
+ * Kedua tabel memakai `StaticTable`, bukan `DataTable`, meski datanya dimuat di
+ * client (`/api/users`, `/api/tenant/invitations`). Jumlah barisnya dibatasi
+ * KUOTA KURSI paket — meter di atas tabel ini yang menyebut angkanya — jadi
+ * tidak ada halaman kedua untuk dipaginasi dan tidak ada daftar panjang untuk
+ * disortir. rc-table di sini terukur ±80 KB gzip untuk kemampuan yang tidak
+ * terpakai (MASTER.md §Primitif Wajib).
+ */
+
 import { useState, useEffect } from "react";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { type SaiColumns } from "@/components/ui/table-columns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
-import { KeyRound, Trash2, UserPlus, RotateCcw } from "lucide-react";
+import { DeleteOutlined, KeyOutlined, UndoOutlined, UserAddOutlined } from "@ant-design/icons";
 import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
 import { QuotaMeter } from "@/components/ui/quota-meter";
 import { apiFetch } from "@/lib/api-fetch";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+/** Lebar meter kursi — bekas `sm:max-w-sm`. */
+const SEATS_WIDTH = 384;
+/** Geseran lencana jumlah izin khusus ke pojok tombolnya. */
+const BADGE_OFFSET = -6;
+/** Ukuran & tinggi baris lencana angka — bekas `text-[10px] leading-4`. */
+const BADGE_FONT = 10;
+const BADGE_LINE = 16;
 
 interface User {
   id: number;
@@ -61,6 +80,8 @@ export function UsersClient({
   seats: { currentUsers: number; pendingInvitations: number; maxUsers: number } | null;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const [users, setUsers] = useState<User[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +91,9 @@ export function UsersClient({
   const [permissionsFor, setPermissionsFor] = useState<number | null>(null);
   const [error, setError] = useState("");
   const { toast } = useToast();
+
+  /** Jarak antar-blok halaman — bekas `mb-6` pada tiap kartu. */
+  const blockGap: React.CSSProperties = { marginBottom: token.marginLG };
 
   async function fetchUsers() {
     const res = await apiFetch("/api/users");
@@ -183,9 +207,183 @@ export function UsersClient({
     }
   }
 
+  const roleLabelOf = (key: string) =>
+    roles.find((r) => r.key === key)?.label ?? ROLE_LABELS[key] ?? key;
+
+  const invitationColumns: SaiColumns<PendingInvitation> = [
+    {
+      key: "email",
+      dataIndex: "email",
+      title: t("auth.forgotPassword.email"),
+      render: (_value, invitation) => <Typography.Text strong>{invitation.email}</Typography.Text>,
+    },
+    {
+      key: "companyRole",
+      dataIndex: "companyRole",
+      title: t("users.role"),
+      render: (_value, invitation) => (
+        <Badge>
+          <span>{roleLabelOf(invitation.companyRole)}</span>
+        </Badge>
+      ),
+    },
+    {
+      key: "expiresAt",
+      dataIndex: "expiresAt",
+      title: t("users.inviteExpires"),
+      render: (_value, invitation) => (
+        <Typography.Text type="secondary">
+          {new Date(invitation.expiresAt).toLocaleDateString("id-ID")}
+        </Typography.Text>
+      ),
+    },
+    {
+      key: "actions",
+      title: t("common.actions"),
+      align: "right",
+      render: (_value, invitation) => (
+        <ConfirmDialog
+          title={t("users.revokeInviteTitle")}
+          message={t("users.revokeInviteMessage", { email: invitation.email })}
+          confirmLabel={t("users.revokeInvite")}
+          onConfirm={() => handleRevokeInvitation(invitation.id)}
+          trigger={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              title={t("users.revokeInvite")}
+            >
+              <DeleteOutlined aria-hidden="true" />
+            </Button>
+          }
+        />
+      ),
+    },
+  ];
+
+  const userColumns: SaiColumns<User> = [
+    {
+      key: "username",
+      dataIndex: "username",
+      title: t("auth.login.username"),
+      render: (_value, user) => <Typography.Text strong>{user.username}</Typography.Text>,
+    },
+    /* `email`/`name` boleh NULL (masa adopsi #134). Ditulis "-" seperti
+       sebelumnya, bukan sel kosong: kolom kosong terbaca seperti kegagalan
+       render, sedangkan "-" menyatakan "memang belum ada isinya". */
+    {
+      key: "email",
+      dataIndex: "email",
+      title: t("auth.forgotPassword.email"),
+      render: (_value, user) => user.email || "-",
+    },
+    {
+      key: "name",
+      dataIndex: "name",
+      title: t("common.name"),
+      render: (_value, user) => user.name || "-",
+    },
+    {
+      key: "role",
+      dataIndex: "role",
+      title: t("users.role"),
+      render: (_value, user) => (
+        <Badge variant={isFullAccessRole(user.role) ? "success" : "default"}>
+          <span>{roleLabelOf(user.role)}</span>
+        </Badge>
+      ),
+    },
+    {
+      key: "status",
+      dataIndex: "mustChangePassword",
+      title: t("common.status"),
+      render: (_value, user) => (
+        <Badge variant={user.mustChangePassword ? "warning" : "success"}>
+          <span>
+            {user.mustChangePassword ? t("users.mustChangePassword") : t("common.active")}
+          </span>
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      title: t("common.actions"),
+      align: "right",
+      render: (_value, user) => (
+        /* `marginXS` (8px), bukan 4: tiga aksi ikon yang berdampingan butuh
+           jarak sentuh minimum agar tidak salah tekan di layar sentuh — lihat
+           "target sentuh" di MASTER.md. */
+        <Flex justify="flex-end" gap={token.marginXS}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            style={{ position: "relative" }}
+            title={t("users.overridesTitle")}
+            aria-label={t("users.overridesAria", { username: user.username })}
+            onClick={() => setPermissionsFor(permissionsFor === user.id ? null : user.id)}
+          >
+            <KeyOutlined aria-hidden="true" />
+            {user.overrideCount > 0 && (
+              <Badge
+                variant="warning"
+                style={{
+                  position: "absolute",
+                  insetInlineEnd: BADGE_OFFSET,
+                  top: BADGE_OFFSET,
+                  margin: 0,
+                  paddingInline: token.paddingXXS,
+                  fontSize: BADGE_FONT,
+                  lineHeight: `${BADGE_LINE}px`,
+                }}
+                title={t("users.overridesBadgeTitle", { count: user.overrideCount })}
+              >
+                {user.overrideCount}
+              </Badge>
+            )}
+          </Button>
+          <ConfirmDialog
+            title={t("users.resetPasswordTitle")}
+            message={t("users.resetPasswordMessage", { username: user.username })}
+            confirmLabel={t("users.reset")}
+            confirmVariant="primary"
+            onConfirm={() => handleResetPassword(user.id)}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title={t("users.resetPasswordTooltip")}
+              >
+                <UndoOutlined aria-hidden="true" />
+              </Button>
+            }
+          />
+          <ConfirmDialog
+            title={t("users.deleteUserTitle")}
+            message={t("users.deleteUserMessage", { username: user.username })}
+            confirmLabel={t("common.delete")}
+            onConfirm={() => handleDelete(user.id)}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title={t("users.deleteUserTooltip")}
+              >
+                <DeleteOutlined aria-hidden="true" />
+              </Button>
+            }
+          />
+        </Flex>
+      ),
+    },
+  ];
+
   if (loading) return <PageLoader message={t("users.loading")} />;
   if (error && users.length === 0) {
-    return <div className="rounded-md bg-destructive-soft p-4 text-sm text-destructive-strong">{error}</div>;
+    return <Alert type="error" showIcon message={error} />;
   }
 
   return (
@@ -195,43 +393,49 @@ export function UsersClient({
         actions={
           canInvite ? (
             <Button onClick={() => setShowInvite(!showInvite)}>
-              <UserPlus className="h-4 w-4 mr-1" />{" "}
+              <UserAddOutlined aria-hidden="true" />
               {showInvite ? t("common.cancel") : t("users.inviteUser")}
             </Button>
           ) : undefined
         }
       />
 
-      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
+      {error && <Alert type="error" showIcon message={error} style={blockGap} />}
 
       {/* Form UNDANGAN (issue #139) — email + peran; TANPA kolom kata sandi.
           Penerima menentukan kata sandinya sendiri lewat tautan surel. */}
       {showInvite && (
-        <Card className="mb-6">
+        <Card style={blockGap}>
           <CardHeader><CardTitle>{t("users.inviteTitle")}</CardTitle></CardHeader>
-          <div className="px-6 pb-6">
-            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+          <div style={{ paddingInline: token.paddingLG, paddingBottom: token.paddingLG }}>
+            <Typography.Paragraph type="secondary">
               {t("users.inviteHint")}
-            </p>
-            <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                label={t("auth.forgotPassword.email")}
-                required
-                autoFocus
-              />
-              <Select
-                id="role" name="role" label={t("users.role")}
-                defaultValue={ROLES.FINANCE_MANAGER}
-                options={roles.map((r) => ({ value: r.key, label: r.label }))}
-              />
-              <div className="sm:col-span-2">
-                <Button type="submit" disabled={inviting}>
-                  {inviting ? t("users.inviting") : t("users.sendInvite")}
-                </Button>
-              </div>
+            </Typography.Paragraph>
+            <form onSubmit={handleInvite}>
+              <Row gutter={[token.margin, token.margin]}>
+                <Col xs={24} sm={12}>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    label={t("auth.forgotPassword.email")}
+                    required
+                    autoFocus
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Select
+                    id="role" name="role" label={t("users.role")}
+                    defaultValue={ROLES.FINANCE_MANAGER}
+                    options={roles.map((r) => ({ value: r.key, label: r.label }))}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Button type="submit" disabled={inviting}>
+                    {inviting ? t("users.inviting") : t("users.sendInvite")}
+                  </Button>
+                </Col>
+              </Row>
             </form>
           </div>
         </Card>
@@ -249,7 +453,7 @@ export function UsersClient({
        * Meternya sama dengan yang dipakai panel akun — satu rasio terhadap
        * batas, dengan keadaan sebagai KATA, bukan rona saja. */}
       {canInvite && seats && (
-        <div className="grid gap-4 sm:max-w-sm">
+        <Flex vertical gap={token.margin} style={{ maxWidth: SEATS_WIDTH, ...blockGap }}>
           <QuotaMeter
             label={t("users.seatsLabel")}
             used={seats.currentUsers + seats.pendingInvitations}
@@ -268,73 +472,39 @@ export function UsersClient({
             /* Kursi yang ditahan undangan menunggu — disebut angkanya, sebab
              * "cabut undangan" hanya masuk akal kalau pembacanya tahu ada
              * undangan yang menahan kursi. */
-            <p className="text-sm text-muted-foreground">
+            <Typography.Text type="secondary">
               {t("users.seatsPending", { count: seats.pendingInvitations })}
-            </p>
+            </Typography.Text>
           )}
           {seats.currentUsers + seats.pendingInvitations >= seats.maxUsers && (
-            <p className="text-sm leading-relaxed text-warning-strong">
+            /* `colorMoneyPending` (#186), bukan amber penuh: ini teks 14px, jadi
+               ambangnya 4,5:1 — `colorWarning` bawaan AntD hanya 1,90:1. */
+            <p style={{ margin: 0, color: money.colorMoneyPending }}>
               {t("users.seatsFullHint")}{" "}
               <a
                 href="/platform/billing/plans"
-                className="font-medium underline underline-offset-4"
+                style={{
+                  color: "inherit",
+                  fontWeight: token.fontWeightStrong,
+                  textDecoration: "underline",
+                  textUnderlineOffset: token.marginXXS,
+                }}
               >
                 {t("platform.plansViewLabel")}
               </a>
             </p>
           )}
-        </div>
+        </Flex>
       )}
 
       {canInvite && invitations.length > 0 && (
-        <Card className="mb-6">
+        <Card style={blockGap}>
           <CardHeader><CardTitle>{t("users.pendingInvites")}</CardTitle></CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("auth.forgotPassword.email")}</TableHead>
-                <TableHead>{t("users.role")}</TableHead>
-                <TableHead>{t("users.inviteExpires")}</TableHead>
-                <TableHead className="text-right">{t("common.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invitations.map((invitation) => (
-                <TableRow key={invitation.id}>
-                  <TableCell className="font-medium text-foreground">{invitation.email}</TableCell>
-                  <TableCell>
-                    <Badge>
-                      {roles.find((r) => r.key === invitation.companyRole)?.label ??
-                        ROLE_LABELS[invitation.companyRole] ??
-                        invitation.companyRole}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(invitation.expiresAt).toLocaleDateString("id-ID")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ConfirmDialog
-                      title={t("users.revokeInviteTitle")}
-                      message={t("users.revokeInviteMessage", { email: invitation.email })}
-                      confirmLabel={t("users.revokeInvite")}
-                      onConfirm={() => handleRevokeInvitation(invitation.id)}
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
-                          title={t("users.revokeInvite")}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <StaticTable
+            columns={invitationColumns}
+            rows={invitations}
+            rowKey={(invitation) => invitation.id}
+          />
         </Card>
       )}
 
@@ -351,101 +521,7 @@ export function UsersClient({
 
       {/* Users Table */}
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("auth.login.username")}</TableHead>
-              <TableHead>{t("auth.forgotPassword.email")}</TableHead>
-              <TableHead>{t("common.name")}</TableHead>
-              <TableHead>{t("users.role")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead className="text-right">{t("common.actions")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium text-foreground">{user.username}</TableCell>
-                <TableCell className="text-foreground">{user.email || "-"}</TableCell>
-                <TableCell className="text-foreground">{user.name || "-"}</TableCell>
-                <TableCell>
-                  <Badge variant={isFullAccessRole(user.role) ? "success" : "default"}>
-                    {roles.find((r) => r.key === user.role)?.label ?? ROLE_LABELS[user.role] ?? user.role}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={user.mustChangePassword ? "warning" : "success"}>
-                    {user.mustChangePassword ? t("users.mustChangePassword") : t("common.active")}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {/* `gap-2` (8px), bukan `gap-1`: tiga aksi ikon yang berdampingan
-                      butuh jarak sentuh minimum agar tidak salah tekan di layar
-                      sentuh — lihat "target sentuh" di MASTER.md. */}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="relative text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                      title={t("users.overridesTitle")}
-                      aria-label={t("users.overridesAria", { username: user.username })}
-                      onClick={() =>
-                        setPermissionsFor(permissionsFor === user.id ? null : user.id)
-                      }
-                    >
-                      <KeyRound className="h-4 w-4" />
-                      {user.overrideCount > 0 && (
-                        <Badge
-                          variant="warning"
-                          className="absolute -right-1.5 -top-1.5 px-1 py-0 text-[10px] leading-4"
-                          title={t("users.overridesBadgeTitle", { count: user.overrideCount })}
-                        >
-                          {user.overrideCount}
-                        </Badge>
-                      )}
-                    </Button>
-                    <ConfirmDialog
-                      title={t("users.resetPasswordTitle")}
-                      message={t("users.resetPasswordMessage", { username: user.username })}
-                      confirmLabel={t("users.reset")}
-                      confirmVariant="primary"
-                      onConfirm={() => handleResetPassword(user.id)}
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title={t("users.resetPasswordTooltip")}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    <ConfirmDialog
-                      title={t("users.deleteUserTitle")}
-                      message={t("users.deleteUserMessage", { username: user.username })}
-                      confirmLabel={t("common.delete")}
-                      onConfirm={() => handleDelete(user.id)}
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
-                          title={t("users.deleteUserTooltip")}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <StaticTable columns={userColumns} rows={users} rowKey={(user) => user.id} />
       </Card>
     </div>
   );

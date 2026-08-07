@@ -8,28 +8,48 @@
  * "server is authoritative on money" stance as the invoice form. Returnable
  * amounts are shown per line so the over-return cap is visible before submit, and
  * the same cap is re-enforced server-side.
+ *
+ * ── Konversi ke token Ant Design (issue #195, fase C3) ─────────────────────
+ * Kulitnya saja. Batas retur, pembacaan dokumen asal, dan muatan POST tidak
+ * disentuh. Dua hal yang berubah bentuknya, keduanya disengaja:
+ *  • **Tabel baris retur penjualan kini `StaticTable`** — sama seperti tabel
+ *    lain di modul ini. Kolomnya membawa isian (kuantitas) dan pemilih barang
+ *    stok; `render` boleh mengembalikan apa pun, termasuk kendali.
+ *  • **Baris retur pembelian tidak lagi kisi 12 kolom.** `sm:grid-cols-12`
+ *    memaksa lima kendali berdampingan pada 640px, tempat kolom "Item" tinggal
+ *    ±120px. Kini `Row`/`Col` yang membungkus.
  */
 import { useState, useEffect, useCallback } from "react";
+import { Alert, Col, Flex, Row, Spin, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { Loader2, Info, Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`. `max(280px, (100% − gutter)/2)` menahan jumlah kolomnya di
+ * dua; titik patahnya jatuh tepat di 576px, `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Lebar isian kuantitas retur di dalam sel tabel (`w-28` lama). */
+const QTY_INPUT_WIDTH = 112;
 
 interface ItemOption {
   id: number;
@@ -81,6 +101,7 @@ export function ReturnForm({
   const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   const [type, setType] = useState<"sales" | "purchase">(initialType);
   const [date, setDate] = useState(todayISO());
@@ -213,288 +234,354 @@ export function ReturnForm({
     ...items.map((it) => ({ value: String(it.id), label: it.name })),
   ];
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card className="p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            id="type"
-            label={t("returns.typeLabel")}
-            value={type}
-            onChange={(e) => {
-              setType(e.target.value as "sales" | "purchase");
-              setError(null);
-            }}
-            options={[
-              { value: "sales", label: t("returns.typeSales") },
-              { value: "purchase", label: t("returns.typePurchase") },
-            ]}
-          />
-          <Input
-            id="date"
-            type="date"
-            label={t("common.date")}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-
-          {/* Pemilih dokumen asal mencari ke server (audit: daftar statis
-              `take: 300` membuat faktur/pembelian lama mustahil diretur).
-              Detail moneternya tetap dibaca dari endpoint detail yang sama
-              begitu satu dokumen terpilih — lihat loadInvoice/loadPurchase. */}
-          {type === "sales" ? (
-            <div className="sm:col-span-2">
-              <ServerSearchableSelect
-                id="invoiceId"
-                label={t("returns.originInvoice")}
-                placeholder={t("returns.pickInvoice")}
-                fetchUrl="/api/invoices?picker=1"
-                value={invoiceId || null}
-                onChange={(v) => setInvoiceId(v ?? "")}
-              />
-            </div>
-          ) : (
-            <div className="sm:col-span-2">
-              <ServerSearchableSelect
-                id="purchaseId"
-                label={t("returns.originPurchase")}
-                placeholder={t("returns.pickPurchase")}
-                fetchUrl="/api/returns/purchase"
-                searchParam="searchOrigin"
-                value={purchaseId || null}
-                onChange={(v) => setPurchaseId(v ?? "")}
-              />
-            </div>
+  /** Kolom tabel baris retur penjualan; `render` boleh membawa kendali. */
+  const salesColumns: SaiColumns<InvoiceLine> = [
+    {
+      key: "itemName",
+      dataIndex: "itemName",
+      title: t("common.item"),
+      align: "left",
+      render: (_v, ln) => (
+        <>
+          {ln.itemName}
+          {ln.unit && (
+            <Typography.Text type="secondary"> ({ln.unit})</Typography.Text>
           )}
-        </div>
+        </>
+      ),
+    },
+    {
+      key: "price",
+      dataIndex: "price",
+      title: t("common.price"),
+      align: "right",
+      render: (_v, ln) => (
+        <Money value={ln.price} currency={invoiceDetail?.currency ?? "IDR"} />
+      ),
+    },
+    {
+      key: "returnable",
+      dataIndex: "returnable",
+      title: t("returns.colReturnable"),
+      align: "right",
+      // KUANTITAS, bukan uang — desimalnya utuh (`round3`), tanpa "Rp".
+      render: (_v, ln) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {round3(ln.returnable)}
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", fontSize: token.fontSizeSM }}
+          >
+            {t("returns.fromQty", { qty: round3(ln.quantity) })}
+          </Typography.Text>
+        </span>
+      ),
+    },
+    {
+      key: "qty",
+      dataIndex: "invoiceItemId",
+      title: t("returns.colReturnQty"),
+      align: "right",
+      render: (_v, ln) => {
+        const v = salesLines[ln.invoiceItemId];
+        const over = (Number(v?.qty) || 0) > ln.returnable + 1e-6;
+        return (
+          <div style={{ display: "inline-block", textAlign: "right" }}>
+            <Input
+              id={`qty-${ln.invoiceItemId}`}
+              type="number"
+              step="0.001"
+              min="0"
+              max={ln.returnable}
+              /* Batas retur terlampaui ditandai KEADAAN isian (`invalid` →
+                 `status="error"` AntD) plus kalimatnya di bawah — bukan satu
+                 kelas border merah yang tak diumumkan pembaca layar. */
+              invalid={over}
+              style={{ width: QTY_INPUT_WIDTH, textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+              value={v?.qty ?? ""}
+              onChange={(e) => setSalesQty(ln.invoiceItemId, e.target.value)}
+              disabled={ln.returnable <= 0}
+            />
+            {over && (
+              <Typography.Text
+                style={{
+                  display: "block",
+                  marginTop: token.marginXXS,
+                  fontSize: token.fontSizeSM,
+                  color: token.colorError,
+                }}
+              >
+                {t("returns.overReturnable")}
+              </Typography.Text>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "stockItem",
+      dataIndex: "invoiceItemId",
+      title: t("returns.colStockItem"),
+      align: "left",
+      render: (_v, ln) => (
+        <Select
+          id={`item-${ln.invoiceItemId}`}
+          value={salesLines[ln.invoiceItemId]?.itemId ?? ""}
+          onChange={(e) => setSalesItem(ln.invoiceItemId, e.target.value)}
+          options={itemOptions}
+        />
+      ),
+    },
+  ];
+
+  return (
+    <Flex vertical gap={token.marginLG} component="form" onSubmit={handleSubmit}>
+      <Card>
+        <CardContent>
+          <div style={twoColumnGrid(token.margin)}>
+            <Select
+              id="type"
+              label={t("returns.typeLabel")}
+              value={type}
+              onChange={(e) => {
+                setType(e.target.value as "sales" | "purchase");
+                setError(null);
+              }}
+              options={[
+                { value: "sales", label: t("returns.typeSales") },
+                { value: "purchase", label: t("returns.typePurchase") },
+              ]}
+            />
+            <Input
+              id="date"
+              type="date"
+              label={t("common.date")}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
+
+            {/* Pemilih dokumen asal mencari ke server (audit: daftar statis
+                `take: 300` membuat faktur/pembelian lama mustahil diretur).
+                Detail moneternya tetap dibaca dari endpoint detail yang sama
+                begitu satu dokumen terpilih — lihat loadInvoice/loadPurchase. */}
+            <div style={{ gridColumn: "1 / -1" }}>
+              {type === "sales" ? (
+                <ServerSearchableSelect
+                  id="invoiceId"
+                  label={t("returns.originInvoice")}
+                  placeholder={t("returns.pickInvoice")}
+                  fetchUrl="/api/invoices?picker=1"
+                  value={invoiceId || null}
+                  onChange={(v) => setInvoiceId(v ?? "")}
+                />
+              ) : (
+                <ServerSearchableSelect
+                  id="purchaseId"
+                  label={t("returns.originPurchase")}
+                  placeholder={t("returns.pickPurchase")}
+                  fetchUrl="/api/returns/purchase"
+                  searchParam="searchOrigin"
+                  value={purchaseId || null}
+                  onChange={(v) => setPurchaseId(v ?? "")}
+                />
+              )}
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Sales: per-line returnable table */}
       {type === "sales" && invoiceDetail && (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("common.item")}</TableHead>
-                <TableHead className="text-right">{t("common.price")}</TableHead>
-                <TableHead className="text-right">{t("returns.colReturnable")}</TableHead>
-                <TableHead className="text-right">{t("returns.colReturnQty")}</TableHead>
-                <TableHead>{t("returns.colStockItem")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoiceDetail.items.map((ln) => {
-                const v = salesLines[ln.invoiceItemId];
-                const qty = Number(v?.qty) || 0;
-                const over = qty > ln.returnable + 1e-6;
-                return (
-                  <TableRow key={ln.invoiceItemId} className="hover:bg-transparent">
-                    <TableCell className="text-foreground">
-                      {ln.itemName}
-                      {ln.unit && <span className="text-muted-foreground"> ({ln.unit})</span>}
-                    </TableCell>
-                    <TableCell className="p-0">
-                      <MoneyCell
-                        className="text-foreground"
-                        value={ln.price}
-                        currency={invoiceDetail.currency}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground">
-                      {round3(ln.returnable)}
-                      <span className="block text-xs text-muted-foreground">
-                        {t("returns.fromQty", { qty: round3(ln.quantity) })}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        id={`qty-${ln.invoiceItemId}`}
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        max={ln.returnable}
-                        className={`w-28 text-right tabular-nums ${over ? "border-destructive" : ""}`}
-                        value={v?.qty ?? ""}
-                        onChange={(e) => setSalesQty(ln.invoiceItemId, e.target.value)}
-                        disabled={ln.returnable <= 0}
-                      />
-                      {over && (
-                        <span className="mt-0.5 block text-xs text-destructive">{t("returns.overReturnable")}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        id={`item-${ln.invoiceItemId}`}
-                        value={v?.itemId ?? ""}
-                        onChange={(e) => setSalesItem(ln.invoiceItemId, e.target.value)}
-                        options={itemOptions}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <StaticTable
+            columns={salesColumns}
+            rows={invoiceDetail.items}
+            rowKey={(ln) => ln.invoiceItemId}
+          />
         </Card>
       )}
 
       {/* Purchase: free-text lines + remaining value */}
       {type === "purchase" && purchaseDetail && (
-        <Card className="p-6">
-          <p className="mb-4 text-sm text-muted-foreground tabular-nums">
-            {t("returns.remainingReturnableLabel")}{" "}
-            <strong className="text-foreground">
-              {formatCurrency(purchaseDetail.returnable, purchaseDetail.currency)}
-            </strong>{" "}
-            {t("returns.remainingReturnableOf", {
-              amount: formatCurrency(purchaseDetail.amount, purchaseDetail.currency),
-            })}
-          </p>
-          <div className="space-y-3">
-            {purchaseLines.map((l, i) => (
-              <div key={i} className="grid gap-2 sm:grid-cols-12 sm:items-end">
-                <div className="sm:col-span-4">
-                  <Input
-                    id={`pname-${i}`}
-                    label={i === 0 ? t("common.item") : undefined}
-                    value={l.itemName}
-                    onChange={(e) => updatePurchaseLine(i, { itemName: e.target.value })}
-                    maxLength={100}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Input
-                    id={`pqty-${i}`}
-                    label={i === 0 ? t("common.quantity") : undefined}
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    className="text-right tabular-nums"
-                    value={l.quantity}
-                    onChange={(e) => updatePurchaseLine(i, { quantity: e.target.value })}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Input
-                    id={`pprice-${i}`}
-                    label={i === 0 ? t("common.price") : undefined}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="text-right tabular-nums"
-                    value={l.price}
-                    onChange={(e) => updatePurchaseLine(i, { price: e.target.value })}
-                  />
-                </div>
-                <div className="sm:col-span-3">
-                  <Select
-                    id={`pitem-${i}`}
-                    label={i === 0 ? t("returns.colStockItem") : undefined}
-                    value={l.itemId}
-                    onChange={(e) => updatePurchaseLine(i, { itemId: e.target.value })}
-                    options={itemOptions}
-                  />
-                </div>
-                <div className="sm:col-span-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setPurchaseLines((prev) =>
-                        prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev
-                      )
-                    }
-                    className="text-muted-foreground"
-                    aria-label={t("returns.removeRow")}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mt-3 cursor-pointer"
-            onClick={() =>
-              setPurchaseLines((prev) => [...prev, { itemName: "", quantity: "", price: "", itemId: "" }])
-            }
-          >
-            <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
-            {t("returns.addRow")}
-          </Button>
+        <Card>
+          <CardContent>
+            <Typography.Paragraph
+              type="secondary"
+              style={{ marginTop: 0, fontVariantNumeric: "tabular-nums" }}
+            >
+              {t("returns.remainingReturnableLabel")}{" "}
+              <strong>
+                {formatCurrency(purchaseDetail.returnable, purchaseDetail.currency)}
+              </strong>{" "}
+              {t("returns.remainingReturnableOf", {
+                amount: formatCurrency(purchaseDetail.amount, purchaseDetail.currency),
+              })}
+            </Typography.Paragraph>
+            <Flex vertical gap={token.marginSM}>
+              {purchaseLines.map((l, i) => (
+                /* `sm:grid-cols-12` lama memaksa lima kendali berdampingan di
+                   640px, tempat kolom "Item" tinggal ±120px. `Row` yang
+                   membungkus memberi tiap kendali lebar minimum yang layak. */
+                <Row key={i} gutter={[token.marginXS, token.marginXS]} align="bottom">
+                  <Col xs={24} md={8} style={{ minWidth: 0 }}>
+                    <Input
+                      id={`pname-${i}`}
+                      label={i === 0 ? t("common.item") : undefined}
+                      value={l.itemName}
+                      onChange={(e) => updatePurchaseLine(i, { itemName: e.target.value })}
+                      maxLength={100}
+                    />
+                  </Col>
+                  <Col xs={12} md={4}>
+                    {/* KUANTITAS (`Decimal(15,3)`) — desimalnya utuh. */}
+                    <Input
+                      id={`pqty-${i}`}
+                      label={i === 0 ? t("common.quantity") : undefined}
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                      value={l.quantity}
+                      onChange={(e) => updatePurchaseLine(i, { quantity: e.target.value })}
+                    />
+                  </Col>
+                  <Col xs={12} md={4}>
+                    <Input
+                      id={`pprice-${i}`}
+                      label={i === 0 ? t("common.price") : undefined}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                      value={l.price}
+                      onChange={(e) => updatePurchaseLine(i, { price: e.target.value })}
+                    />
+                  </Col>
+                  <Col xs={20} md={6}>
+                    <Select
+                      id={`pitem-${i}`}
+                      label={i === 0 ? t("returns.colStockItem") : undefined}
+                      value={l.itemId}
+                      onChange={(e) => updatePurchaseLine(i, { itemId: e.target.value })}
+                      options={itemOptions}
+                    />
+                  </Col>
+                  <Col xs={4} md={2}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        setPurchaseLines((prev) =>
+                          prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev
+                        )
+                      }
+                      aria-label={t("returns.removeRow")}
+                    >
+                      <DeleteOutlined aria-hidden="true" />
+                    </Button>
+                  </Col>
+                </Row>
+              ))}
+            </Flex>
+            <div style={{ marginTop: token.marginSM }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setPurchaseLines((prev) => [
+                    ...prev,
+                    { itemName: "", quantity: "", price: "", itemId: "" },
+                  ])
+                }
+              >
+                <PlusOutlined aria-hidden="true" />
+                {t("returns.addRow")}
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       )}
 
-      <Card className="p-6">
-        <Input
-          id="reason"
-          label={t("returns.reason")}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          maxLength={1000}
-        />
+      <Card>
+        <CardContent>
+          <Input
+            id="reason"
+            label={t("returns.reason")}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={1000}
+          />
 
-        {(salesSubtotal > 0 || purchaseSubtotal > 0) && (
-          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            {t("returns.returnValueLabel")}{" "}
-            <strong className="text-foreground">
-              {formatCurrency(type === "sales" ? salesSubtotal : purchaseSubtotal, currency)}
-            </strong>
-          </p>
-        )}
+          {(salesSubtotal > 0 || purchaseSubtotal > 0) && (
+            <Typography.Paragraph
+              type="secondary"
+              style={{
+                margin: 0,
+                marginTop: token.margin,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {t("returns.returnValueLabel")}{" "}
+              <strong>
+                {formatCurrency(type === "sales" ? salesSubtotal : purchaseSubtotal, currency)}
+              </strong>
+            </Typography.Paragraph>
+          )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
-            {type === "sales" ? (
-              <>
-                {t("returns.reduces")} <strong>{t("returns.accountsReceivable")}</strong>{" "}
-                {t("returns.and")} <strong>{t("returns.salesAccount")}</strong>
-                {t("returns.reverses")} <strong>{t("returns.outputVat")}</strong>{" "}
-                {t("returns.effectSalesTail")} <strong>{t("returns.stockIn")}</strong>
-                {t("common.fullStop")}
-              </>
-            ) : (
-              <>
-                {t("returns.reduces")} <strong>{t("returns.accountsPayable")}</strong>{" "}
-                {t("returns.and")} <strong>{t("returns.inventoryAccount")}</strong>
-                {t("returns.reverses")} <strong>{t("returns.inputVat")}</strong>{" "}
-                {t("returns.effectPurchaseTail")} <strong>{t("returns.stockOut")}</strong>
-                {t("common.fullStop")}
-              </>
-            )}{" "}
-            {t("returns.effectSuffix")}
-          </span>
-        </p>
+          {/* Penjelasan dampak jurnal: `Alert` informatif — ikon + teks
+              `colorText` di atas `colorInfoBg`, keduanya token. */}
+          <div style={{ marginTop: token.margin }}>
+            <Alert
+              type="info"
+              showIcon
+              icon={<InfoCircleOutlined aria-hidden="true" />}
+              message={
+                <>
+                  {type === "sales" ? (
+                    <>
+                      {t("returns.reduces")} <strong>{t("returns.accountsReceivable")}</strong>{" "}
+                      {t("returns.and")} <strong>{t("returns.salesAccount")}</strong>
+                      {t("returns.reverses")} <strong>{t("returns.outputVat")}</strong>{" "}
+                      {t("returns.effectSalesTail")} <strong>{t("returns.stockIn")}</strong>
+                      {t("common.fullStop")}
+                    </>
+                  ) : (
+                    <>
+                      {t("returns.reduces")} <strong>{t("returns.accountsPayable")}</strong>{" "}
+                      {t("returns.and")} <strong>{t("returns.inventoryAccount")}</strong>
+                      {t("returns.reverses")} <strong>{t("returns.inputVat")}</strong>{" "}
+                      {t("returns.effectPurchaseTail")} <strong>{t("returns.stockOut")}</strong>
+                      {t("common.fullStop")}
+                    </>
+                  )}{" "}
+                  {t("returns.effectSuffix")}
+                </>
+              }
+            />
+          </div>
 
-        {error && (
-          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {error}
-          </p>
-        )}
+          {error && (
+            <div role="alert" style={{ marginTop: token.margin }}>
+              <Alert type="error" showIcon message={error} />
+            </div>
+          )}
+        </CardContent>
       </Card>
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving} className="cursor-pointer">
-          {saving && (
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          )}
+      <Flex wrap gap={token.marginXS}>
+        <Button type="submit" disabled={saving}>
+          {/* `Spin` menggantikan `Loader2 animate-spin`: gerakannya mengikuti
+              token gerak AntD, yang menghormati `prefers-reduced-motion`. */}
+          {saving && <Spin size="small" />}
           {t("returns.submit")}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="cursor-pointer"
-          onClick={() => router.push(`/returns?tab=${type}`)}
-        >
+        <Button type="button" variant="ghost" onClick={() => router.push(`/returns?tab=${type}`)}>
           {t("common.cancel")}
         </Button>
-      </div>
-    </form>
+      </Flex>
+    </Flex>
   );
 }

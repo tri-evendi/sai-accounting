@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Pemilih bahasa untuk layar PRA-APLIKASI.
+ * Pemilih bahasa untuk layar PRA-APLIKASI — di atas Ant Design `Segmented`
+ * (issue #191).
  *
  * ── Kenapa ada di sini sama sekali ─────────────────────────────────────────
  * Pemilih bahasa sudah lama ada, tetapi hidup di dalam `UserMenu` — chrome
@@ -12,7 +13,7 @@
  * "halaman login pun berhak berganti bahasa" — hanya UI-nya yang tak pernah
  * dipasang di sana.
  *
- * ── Kenapa chip, bukan dropdown seperti di UserMenu ────────────────────────
+ * ── Kenapa kelompok sakelar, bukan dropdown seperti di UserMenu ───────────
  * Tiga bahasa. Dropdown menyembunyikan tiga pilihan di balik satu ketukan dan
  * menuntut mesin overlay (fokus, Escape, klik-di-luar) yang di sini tidak
  * membeli apa pun. Kodenya juga tidak dibagi dengan UserMenu dengan sengaja:
@@ -23,18 +24,25 @@
  *
  * Kodenya DITULIS PENDEK (`ID`/`EN`/`中`) karena berdiri di sudut layar, tapi
  * nama panjang bahasanya — dalam bahasanya sendiri, `LOCALE_LABELS` — tetap
- * dibawa `aria-label` dan `title`, jadi tidak ada yang harus menebak arti
- * singkatannya.
+ * dibawa `title` dan teks visual-tersembunyi, jadi tidak ada yang harus menebak
+ * arti singkatannya dan pembaca layar tetap mengumumkan "Bahasa Indonesia",
+ * bukan "I D".
+ *
+ * ── Yang TIDAK berubah: jalur pindah bahasanya ───────────────────────────
+ * Kamus dipilih di SERVER (root layout membaca cookie), jadi menulis cookie
+ * saja tidak mengubah apa pun di layar. Urutannya tetap `setLocale()` lalu
+ * `router.refresh()` — dan `AntdProvider` ikut berpindah karena locale AntD
+ * datang sebagai prop dari root layout yang baru saja dirender ulang. Satu
+ * penulisan cookie, satu sumber kebenaran, dua lapisan berpindah bersama.
  */
 
-import { useTransition } from "react";
+import { useId, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Segmented } from "antd";
 
-import { Button } from "@/components/ui/button";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { setLocale } from "@/lib/i18n/actions";
 import { useLocale, useT } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
 
 /** Singkatan sesudut-layar. Sengaja bukan bendera: bahasa bukan negara. */
 const SHORT: Record<Locale, string> = {
@@ -43,48 +51,56 @@ const SHORT: Record<Locale, string> = {
   zh: "中",
 };
 
-export function LocaleToggle({ className }: { className?: string }) {
+/** Terbaca pembaca layar, tak memakan ruang di layar. */
+const VISUALLY_HIDDEN: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+export function LocaleToggle() {
   const active = useLocale();
   const router = useRouter();
   const t = useT();
+  const name = useId();
   const [switching, startSwitching] = useTransition();
 
   return (
-    <div
-      className={cn("flex items-center gap-1", className)}
-      role="group"
+    <Segmented<Locale>
+      /* Nama kelompoknya diganti karena bawaan rc-segmented adalah string
+         Inggris yang ditanam di kodenya ("segmented control") — ia akan
+         diumumkan apa adanya justru di pemilih BAHASA. */
       aria-label={t("userMenu.language")}
-    >
-      {LOCALES.map((locale) => {
-        const isActive = locale === active;
-        return (
-          <Button
-            key={locale}
-            type="button"
-            variant={isActive ? "secondary" : "ghost"}
-            size="icon"
-            disabled={switching}
-            aria-pressed={isActive}
-            aria-label={LOCALE_LABELS[locale]}
-            title={LOCALE_LABELS[locale]}
-            onClick={() =>
-              startSwitching(async () => {
-                await setLocale(locale);
-                /*
-                 * Kamus dipilih di SERVER (root layout membaca cookie), jadi
-                 * menulis cookie saja tidak mengubah apa pun di layar. `refresh`
-                 * meminta server merender ulang dengan kamus yang baru —
-                 * tanpa memuat ulang halaman penuh, sehingga apa yang sudah
-                 * diketik di formulir masuk tidak hilang.
-                 */
-                router.refresh();
-              })
-            }
-          >
-            <span className="text-xs font-semibold">{SHORT[locale]}</span>
-          </Button>
-        );
-      })}
-    </div>
+      name={name}
+      value={active}
+      disabled={switching}
+      onChange={(locale) =>
+        startSwitching(async () => {
+          await setLocale(locale);
+          /*
+           * `refresh`, bukan `location.reload()`: server merender ulang dengan
+           * kamus yang baru tanpa memuat ulang halaman penuh, sehingga apa
+           * yang sudah diketik di formulir masuk tidak hilang.
+           */
+          router.refresh();
+        })
+      }
+      options={LOCALES.map((locale) => ({
+        value: locale,
+        label: (
+          <>
+            <span aria-hidden="true">{SHORT[locale]}</span>
+            <span style={VISUALLY_HIDDEN}>{LOCALE_LABELS[locale]}</span>
+          </>
+        ),
+        title: LOCALE_LABELS[locale],
+      }))}
+    />
   );
 }

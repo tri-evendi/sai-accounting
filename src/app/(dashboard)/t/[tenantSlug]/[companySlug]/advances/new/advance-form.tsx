@@ -17,10 +17,12 @@
  * "quick advance" form would be a second place for the FX rules to drift.
  */
 import { useState } from "react";
+import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Money } from "@/components/ui/money";
 import { Select } from "@/components/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import {
@@ -28,10 +30,23 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
-import { Loader2, Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`. Tetap CSS grid: `CurrencyRateFields` menjatuhkan DUA isian
+ * langsung ke dalam kisi ini (ia tidak membungkusnya), jadi kisi itulah yang
+ * harus mengatur keduanya.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+const FULL_ROW: React.CSSProperties = { gridColumn: "1 / -1" };
 
 export interface PartyOption {
   id: number;
@@ -51,11 +66,21 @@ export interface ContractOption {
 }
 
 const PlainShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="rounded-md border border-border p-4">{children}</div>
+  <div
+    style={{
+      padding: "var(--ant-padding)",
+      borderRadius: "var(--ant-border-radius)",
+      border: "1px solid var(--ant-color-border-secondary)",
+    }}
+  >
+    {children}
+  </div>
 );
 
 const CardShell = ({ children }: { children: React.ReactNode }) => (
-  <Card className="p-6">{children}</Card>
+  <Card>
+    <div style={{ padding: "var(--ant-padding-lg)" }}>{children}</div>
+  </Card>
 );
 
 function todayISO() {
@@ -94,6 +119,7 @@ export function AdvanceForm({
   const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   const [type, setType] = useState<"sales" | "purchase">(locked?.type ?? "sales");
   const [date, setDate] = useState(todayISO());
@@ -178,16 +204,22 @@ export function AdvanceForm({
   const Shell = locked ? PlainShell : CardShell;
 
   return (
-    <form onSubmit={handleSubmit} className={locked ? "space-y-4" : "space-y-6"}>
+    <form onSubmit={handleSubmit}>
       <Shell>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div style={twoColumnGrid(token.margin)}>
           {locked ? (
             /* Stated, not asked — but stated in full, so the user can see what
                they are about to record without leaving the page. */
-            <div className="sm:col-span-2 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
-              <span className="font-medium text-foreground">
-                {isSales ? t("advances.lockedSales") : t("advances.lockedPurchase")}
-              </span>{" "}
+            <div
+              style={{
+                ...FULL_ROW,
+                padding: token.paddingXS,
+                borderRadius: token.borderRadius,
+                border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                background: token.colorFillQuaternary,
+              }}
+            >
+              <strong>{isSales ? t("advances.lockedSales") : t("advances.lockedPurchase")}</strong>{" "}
               · {locked.party.name}
             </div>
           ) : (
@@ -239,11 +271,14 @@ export function AdvanceForm({
               value={contractId || null}
               onChange={(v) => setContractId(v ?? "")}
             />
-            <p className="mt-1 text-xs text-muted-foreground">
+            <Typography.Paragraph
+              type="secondary"
+              style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+            >
               {t("advances.contractHintBefore")}{" "}
               {isSales ? t("advances.contractHintSales") : t("advances.contractHintPurchase")}
               {t("common.fullStop")}
-            </p>
+            </Typography.Paragraph>
           </div>
 
           <Input
@@ -251,7 +286,7 @@ export function AdvanceForm({
             type="number"
             step="0.01"
             min="0"
-            className="text-right tabular-nums"
+            style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
             label={t("common.amount")}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -268,7 +303,7 @@ export function AdvanceForm({
             rateHint={t("advances.rateHint")}
           />
 
-          <div className="sm:col-span-2">
+          <div style={FULL_ROW}>
             <Input
               id="note"
               label={t("common.notesOptional")}
@@ -279,16 +314,33 @@ export function AdvanceForm({
           </div>
         </div>
 
+        {/* Valas tanpa kurs TIDAK punya nilai buku besar: `baseValue` null dan
+            barisnya tidak dirender sama sekali — tidak pernah "Rp 0". */}
         {baseValue != null && currency !== "IDR" && (
-          <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-            {t("advances.ledgerValue")}{" "}
-            <strong className="text-foreground">{formatCurrency(baseValue, "IDR")}</strong>
-          </p>
+          <Typography.Paragraph style={{ marginTop: token.margin, marginBottom: 0 }}>
+            <Typography.Text type="secondary">{t("advances.ledgerValue")} </Typography.Text>
+            <Money
+              value={baseValue}
+              currency="IDR"
+              style={{ fontWeight: token.fontWeightStrong }}
+            />
+          </Typography.Paragraph>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
+        {/* Catatan akun: ikon + kata; warnanya tidak pernah jadi penanda. */}
+        <Flex
+          align="flex-start"
+          gap={token.marginXS}
+          style={{
+            marginTop: token.margin,
+            padding: token.paddingXS,
+            borderRadius: token.borderRadius,
+            border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+            background: token.colorFillQuaternary,
+          }}
+        >
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
+          <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
             {isSales ? (
               <>
                 {t("advances.hintSalesBefore")}{" "}
@@ -306,41 +358,30 @@ export function AdvanceForm({
                 {t("advances.hintPurchaseTail")}
               </>
             )}
-          </span>
-        </p>
+          </Typography.Text>
+        </Flex>
 
         {error && (
-          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {error}
-          </p>
+          <div role="alert" style={{ marginTop: token.margin }}>
+            <Alert type="error" showIcon message={error} />
+          </div>
         )}
       </Shell>
 
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          size={locked ? "sm" : undefined}
-          disabled={saving}
-          className="cursor-pointer"
-        >
-          {saving && (
-            <Loader2
-              className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-          )}
+      <Flex wrap gap={token.marginXS} style={{ marginTop: locked ? token.margin : token.marginLG }}>
+        <Button type="submit" size={locked ? "sm" : undefined} disabled={saving}>
+          {saving && <Spin size="small" />}
           {t("advances.submit")}
         </Button>
         <Button
           type="button"
           variant="ghost"
           size={locked ? "sm" : undefined}
-          className="cursor-pointer"
           onClick={() => (onCancel ? onCancel() : router.push("/advances"))}
         >
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
     </form>
   );
 }

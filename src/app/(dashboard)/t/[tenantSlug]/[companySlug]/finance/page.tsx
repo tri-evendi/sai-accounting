@@ -1,3 +1,18 @@
+/**
+ * Kas & Bank — daftar gerakan kas + saldo per jenis/mata uang (issue #4).
+ *
+ * ── Konversi ke token Ant Design (issue #197, fase C5) ─────────────────────
+ * **Tetap server component**: saringan periodenya adalah `<form method="get">`
+ * yang memuat ulang di server, jadi tak ada satu pun kendali di sini yang butuh
+ * JavaScript. Tabelnya `StaticTable` (#189) dengan alasan yang sama — daftarnya
+ * dipaginasi SERVER, dan `DataTable` hanya akan menyalin sepuluh baris yang
+ * sama ke peramban lalu menghidrasi rc-table di atasnya.
+ *
+ * Warna kartu saldo dulu `text-success` / `text-destructive` pada angka besar.
+ * Ia kini token uang lewat variabel CSS — teratasi karena angkanya dirender DI
+ * DALAM `<Card>` (lihat kepala `shared/aging.tsx`). Arahnya tetap tidak
+ * bergantung warna: baris "Masuk"/"Keluar" di bawahnya menyebutkannya.
+ */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -10,18 +25,13 @@ import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
 import { NativeSelect } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import type { CashType } from "@/lib/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
-import { CheckCircle2, Wallet } from "lucide-react";
+import { CheckCircleOutlined, WalletOutlined } from "@ant-design/icons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
@@ -30,6 +40,29 @@ import { LearnMore } from "@/components/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 
 export const dynamic = "force-dynamic";
+
+/** `marginXL` 32 · `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD
+ *  sebagai angka, karena berkas ini tak boleh memanggil `theme.useToken()`. */
+const SECTION_GAP = 24;
+const BALANCE_SECTION_GAP = 32;
+const CARD_GAP = 16;
+const CONTROL_GAP = 12;
+const EMPTY_ICON_SIZE = 48;
+/** Lebar dasar satu kartu saldo: tiga berjajar di 1440px, satu di 375px. */
+const BALANCE_BASIS = 260;
+
+/** Satu baris daftar, diratakan dari Prisma supaya kolomnya bertipe penuh. */
+interface CashRow {
+  id: number;
+  date: string;
+  type: string;
+  typeLabel: string;
+  description: string;
+  currency: string;
+  debit: number;
+  credit: number;
+  reconciled: boolean;
+}
 
 export default async function FinancePage({
   params,
@@ -96,11 +129,11 @@ export default async function FinancePage({
   // Calculate balances per type & currency (from ALL filtered transactions)
   const balanceMap = new Map<string, { type: string; currency: string; debit: number; credit: number }>();
 
-  for (const t of allTransactions) {
-    const key = `${t.type}_${t.currency}`;
-    const existing = balanceMap.get(key) || { type: t.type, currency: t.currency, debit: 0, credit: 0 };
-    existing.debit += Number(t.debit);
-    existing.credit += Number(t.credit);
+  for (const tx of allTransactions) {
+    const key = `${tx.type}_${tx.currency}`;
+    const existing = balanceMap.get(key) || { type: tx.type, currency: tx.currency, debit: 0, credit: 0 };
+    existing.debit += Number(tx.debit);
+    existing.credit += Number(tx.credit);
     balanceMap.set(key, existing);
   }
 
@@ -109,13 +142,13 @@ export default async function FinancePage({
     ...b,
     balance: b.debit - b.credit,
   }));
-  const financeTransactions: FinanceReportRow[] = allTransactions.map((t) => ({
-    date: t.date.toISOString(),
-    type: t.type,
-    description: t.description,
-    currency: t.currency,
-    debit: Number(t.debit),
-    credit: Number(t.credit),
+  const financeTransactions: FinanceReportRow[] = allTransactions.map((tx) => ({
+    date: tx.date.toISOString(),
+    type: tx.type,
+    description: tx.description,
+    currency: tx.currency,
+    debit: Number(tx.debit),
+    credit: Number(tx.credit),
   }));
 
   // Generate filter options
@@ -123,10 +156,106 @@ export default async function FinancePage({
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = monthNames(dictionary);
 
+  const rows: CashRow[] = transactions.map((tx) => ({
+    id: tx.id,
+    date: formatDateShort(tx.date),
+    type: tx.type,
+    typeLabel: cashLabels[tx.type as CashType] || tx.type,
+    description: tx.description,
+    currency: tx.currency,
+    debit: Number(tx.debit),
+    credit: Number(tx.credit),
+    reconciled: tx.reconciled,
+  }));
+
+  const secondary: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+
+  const columns: SaiColumns<CashRow> = [
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("common.date"),
+      align: "left",
+      render: (_v, r) => (
+        <span style={{ ...secondary, fontVariantNumeric: "tabular-nums" }}>{r.date}</span>
+      ),
+    },
+    { key: "type", dataIndex: "typeLabel", title: t("finance.filterType"), align: "left" },
+    {
+      key: "description",
+      dataIndex: "description",
+      title: t("common.description"),
+      align: "left",
+    },
+    {
+      key: "currency",
+      dataIndex: "currency",
+      title: t("common.currency"),
+      align: "left",
+      render: (_v, r) => <span style={secondary}>{r.currency}</span>,
+    },
+    {
+      key: "debit",
+      dataIndex: "debit",
+      title: <TermTooltip term="debit">{t("finance.colMoneyIn")}</TermTooltip>,
+      align: "right",
+      // Uang masuk hijau / uang keluar merah (semantik warna uang MASTER.md);
+      // label kolomnya sendiri sudah membedakan keduanya, jadi warna bukan
+      // satu-satunya penanda. Sisi yang tidak terpakai TIDAK ditulis Rp 0 —
+      // baris kas hanya punya satu arah, dan nol di sisi lain adalah bukan-nilai.
+      render: (_v, r) =>
+        r.debit > 0 ? (
+          <Money value={r.debit} currency={r.currency} tone="positive" />
+        ) : (
+          <span style={secondary}>—</span>
+        ),
+    },
+    {
+      key: "credit",
+      dataIndex: "credit",
+      title: <TermTooltip term="kredit">{t("finance.colMoneyOut")}</TermTooltip>,
+      align: "right",
+      render: (_v, r) =>
+        r.credit > 0 ? (
+          <Money value={r.credit} currency={r.currency} tone="negative" />
+        ) : (
+          <span style={secondary}>—</span>
+        ),
+    },
+    {
+      key: "reconciled",
+      dataIndex: "reconciled",
+      title: t("finance.colReconciliation"),
+      align: "left",
+      // Hanya rekening BANK yang direkonsiliasi; kas besar/kecil tidak punya
+      // rekening koran, jadi kolomnya "—" dan bukan "belum cocok".
+      render: (_v, r) =>
+        r.type !== "bank" ? (
+          <span style={secondary}>—</span>
+        ) : r.reconciled ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <CheckCircleOutlined aria-hidden="true" />
+            <small>{t("finance.reconMatched")}</small>
+          </span>
+        ) : (
+          <small style={secondary}>{t("finance.reconNot")}</small>
+        ),
+    },
+  ];
+
+  /** Satu isian saringan: label kecil di atas kendalinya. */
+  const filterField = (id: string, label: string, control: React.ReactNode) => (
+    <div>
+      <Label htmlFor={id} style={{ display: "block", marginBottom: 4 }}>
+        <small>{label}</small>
+      </Label>
+      {control}
+    </div>
+  );
+
   return (
     <div>
       <PageHeader
-        className="mb-1"
         title={<TermTooltip term="kas_bank">{t("finance.title")}</TermTooltip>}
         actions={
           <>
@@ -137,15 +266,25 @@ export default async function FinancePage({
           </>
         }
       />
-      <LearnMore term="kas_bank" className="mt-1 mb-6" label={t("finance.learnMore")} />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="kas_bank" label={t("finance.learnMore")} />
+      </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="py-4">
-          <form method="get" className="flex flex-wrap gap-3 items-end">
-            {/* Account Type */}
-            <div>
-              <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.filterType")}</label>
+      {/* Saringan — `<form method="get">`, tanpa satu baris JavaScript. */}
+      <Card style={{ marginBottom: SECTION_GAP }}>
+        <CardContent>
+          <form
+            method="get"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-end",
+              gap: CONTROL_GAP,
+            }}
+          >
+            {filterField(
+              "filter-type",
+              t("finance.filterType"),
               <NativeSelect
                 id="filter-type"
                 name="type"
@@ -157,11 +296,10 @@ export default async function FinancePage({
                   { value: "kas_kecil", label: cashLabels.kas_kecil },
                 ]}
               />
-            </div>
-
-            {/* Currency */}
-            <div>
-              <label htmlFor="filter-currency" className="block text-xs font-medium text-muted-foreground mb-1">{t("common.currency")}</label>
+            )}
+            {filterField(
+              "filter-currency",
+              t("common.currency"),
               <NativeSelect
                 id="filter-currency"
                 name="currency"
@@ -173,11 +311,10 @@ export default async function FinancePage({
                   { value: "CNY", label: "CNY" },
                 ]}
               />
-            </div>
-
-            {/* Year */}
-            <div>
-              <label htmlFor="filter-year" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.yearField")}</label>
+            )}
+            {filterField(
+              "filter-year",
+              t("finance.yearField"),
               <NativeSelect
                 id="filter-year"
                 name="year"
@@ -187,11 +324,10 @@ export default async function FinancePage({
                   ...years.map((y) => ({ value: String(y), label: String(y) })),
                 ]}
               />
-            </div>
-
-            {/* Month */}
-            <div>
-              <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">{t("finance.monthField")}</label>
+            )}
+            {filterField(
+              "filter-month",
+              t("finance.monthField"),
               <NativeSelect
                 id="filter-month"
                 name="month"
@@ -201,13 +337,13 @@ export default async function FinancePage({
                   ...months.map((m, i) => ({ value: String(i + 1), label: m })),
                 ]}
               />
-            </div>
+            )}
 
-            <Button type="submit" size="sm" className="cursor-pointer">
+            <Button type="submit" size="sm">
               {t("finance.filterSubmit")}
             </Button>
             <Link href="/finance">
-              <Button type="button" variant="ghost" size="sm" className="cursor-pointer">
+              <Button type="button" variant="ghost" size="sm">
                 {t("finance.filterClear")}
               </Button>
             </Link>
@@ -215,45 +351,81 @@ export default async function FinancePage({
         </CardContent>
       </Card>
 
-      {/* Balance Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+      {/* Kartu saldo per jenis kas & mata uang. */}
+      <div
+        style={{
+          display: "grid",
+          gap: CARD_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${BALANCE_BASIS}px, 1fr))`,
+          marginBottom: BALANCE_SECTION_GAP,
+        }}
+      >
         {balances.length === 0 ? (
           <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+            <CardContent style={{ textAlign: "center", color: "var(--ant-color-text-secondary)" }}>
               {effectiveYear != null ? t("finance.noCashRecordsPeriod") : t("finance.noCashRecords")}
             </CardContent>
           </Card>
         ) : (
           balances.map((b) => {
             const balance = b.debit - b.credit;
+            const recon = b.type === "bank" ? reconByCurrency.get(b.currency) : undefined;
             return (
               <Card key={`${b.type}_${b.currency}`}>
                 <CardHeader>
-                  <CardTitle className="text-sm text-muted-foreground">
-                    {cashLabels[b.type as CashType] || b.type} ({b.currency})
+                  <CardTitle>
+                    <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                      {cashLabels[b.type as CashType] || b.type} ({b.currency})
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className={`text-2xl font-bold tabular-nums ${balance >= 0 ? "text-success" : "text-destructive"}`}>
-                    {formatCurrency(balance, b.currency)}
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "var(--ant-font-size-heading-3)",
+                      fontWeight: "var(--ant-font-weight-strong)",
+                    }}
+                  >
+                    {/* Saldo negatif = rekening minus; `Money` mewarnainya merah
+                        DAN memberi tanda minus, jadi warna bukan penanda tunggal. */}
+                    <Money value={balance} currency={b.currency} />
                   </p>
-                  <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-                    <span className="tabular-nums">
+                  <div
+                    style={{
+                      marginTop: "var(--ant-margin-xs)",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: CARD_GAP,
+                      color: "var(--ant-color-text-secondary)",
+                    }}
+                  >
+                    <small style={{ fontVariantNumeric: "tabular-nums" }}>
                       {t("finance.inLabel", { amount: formatCurrency(b.debit, b.currency) })}
-                    </span>
-                    <span className="tabular-nums">
+                    </small>
+                    <small style={{ fontVariantNumeric: "tabular-nums" }}>
                       {t("finance.outLabel", { amount: formatCurrency(b.credit, b.currency) })}
-                    </span>
+                    </small>
                   </div>
-                  {b.type === "bank" && reconByCurrency.get(b.currency) && (
-                    <div className="mt-2 flex items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                      <span>
+                  {recon && (
+                    <div
+                      style={{
+                        marginTop: "var(--ant-margin-xs)",
+                        paddingTop: "var(--ant-margin-xs)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "var(--ant-margin-xs)",
+                        borderTop: "1px solid var(--ant-color-border-secondary)",
+                        color: "var(--ant-color-text-secondary)",
+                      }}
+                    >
+                      <small>
                         {t("finance.reconLabel", {
-                          matched: reconByCurrency.get(b.currency)!.reconciledCount,
-                          total: reconByCurrency.get(b.currency)!.totalCount,
+                          matched: recon.reconciledCount,
+                          total: recon.totalCount,
                         })}
-                      </span>
-                      {reconByCurrency.get(b.currency)!.latestStatus === "locked" && (
+                      </small>
+                      {recon.latestStatus === "locked" && (
                         <Badge variant="success">{t("finance.locked")}</Badge>
                       )}
                     </div>
@@ -265,84 +437,24 @@ export default async function FinancePage({
         )}
       </div>
 
-      {/* Transactions Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t("finance.txListTitle", { count: totalCount })}</CardTitle>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead>{t("finance.filterType")}</TableHead>
-              <TableHead>{t("common.description")}</TableHead>
-              <TableHead>{t("common.currency")}</TableHead>
-              <TableHead className="text-right">
-                <TermTooltip term="debit">{t("finance.colMoneyIn")}</TermTooltip>
-              </TableHead>
-              <TableHead className="text-right">
-                <TermTooltip term="kredit">{t("finance.colMoneyOut")}</TermTooltip>
-              </TableHead>
-              <TableHead>{t("finance.colReconciliation")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="p-0">
-                  <EmptyState
-                    icon={<Wallet className="h-12 w-12" />}
-                    title={t("finance.emptyTitle")}
-                    description={t("finance.emptyDescription")}
-                    actionLabel={t("finance.addNew")}
-                    actionHref="/finance/new"
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              transactions.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(tx.date)}</TableCell>
-                  <TableCell className="text-foreground">
-                    {cashLabels[tx.type as CashType] || tx.type}
-                  </TableCell>
-                  <TableCell className="text-foreground">{tx.description}</TableCell>
-                  <TableCell className="text-muted-foreground">{tx.currency}</TableCell>
-                  {/* Uang masuk hijau / uang keluar merah (semantik warna uang
-                      MASTER.md); label kolomnya sendiri sudah membedakan
-                      keduanya, jadi warna bukan satu-satunya penanda. */}
-                  <TableCell className="text-right">
-                    {Number(tx.debit) > 0 ? (
-                      <Money value={Number(tx.debit)} currency={tx.currency} className="text-success" />
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {Number(tx.credit) > 0 ? (
-                      <Money value={Number(tx.credit)} currency={tx.currency} className="text-destructive" />
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {tx.type === "bank" ? (
-                      tx.reconciled ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-success-strong">
-                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("finance.reconMatched")}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{t("finance.reconNot")}</span>
-                      )
-                    ) : (
-                      <span className="text-xs text-muted-foreground/60">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable<CashRow>
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.id}
+          empty={
+            <EmptyState
+              icon={<WalletOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("finance.emptyTitle")}
+              description={t("finance.emptyDescription")}
+              actionLabel={t("finance.addNew")}
+              actionHref="/finance/new"
+            />
+          }
+        />
         <Pagination currentPage={page} totalPages={totalPages} basePath="/finance" searchParams={filters} />
       </Card>
     </div>

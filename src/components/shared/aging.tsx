@@ -7,21 +7,66 @@
  *
  * Every status carries an icon *and* a word — per the design system, colour is
  * never the only signal (MASTER.md §Anti-Patterns).
+ *
+ * ── Batas yang membentuk berkas ini (issue #194) ──────────────────────────
+ * Semua komponen di sini **wajib tetap server component**, dan alasannya bukan
+ * selera: `AGING_BUCKETS` datang dari `lib/receivables.ts`, yang mengimpor
+ * Prisma. Menaruh `"use client"` di kepala berkas ini akan menyeret klien Prisma
+ * ke bundel peramban — kegagalan build yang sama persis dengan yang tercatat di
+ * kepala `ui/learn-more.tsx`. `AgeCell` dan `PaymentStatusBadge` juga dirender
+ * SEKALI PER BARIS di Piutang dan Utang; menjadikannya client berarti setiap
+ * baris kedua layar itu ikut menyeberang.
+ *
+ * Konsekuensinya untuk gaya, dan ini yang harus dipahami sebelum menyuntingnya:
+ * **berkas ini tidak boleh mengimpor `antd`** (dijaga `tests/rsc-boundary.test.ts`)
+ * dan karena itu tidak bisa memanggil `theme.useToken()`. Warna karena itu
+ * datang dari dua sumber saja:
+ *
+ *  • **Primitif yang mewarnai dirinya sendiri** — `Badge` (token `Tag`),
+ *    `Money` (token uang #186), `Card` (permukaan & tepi AntD). Ketiganya
+ *    komponen client yang dirender sebagai DAUN, jadi batas RSC tidak bergeser.
+ *  • **Variabel CSS `--ant-…`**, dan sejak issue #227 itu berlaku di mana pun
+ *    di dokumen — bukan lagi hanya di dalam pohon sebuah komponen AntD.
+ *    `AntdProvider` memberi `cssVar` sebuah KUNCI tetap dan root layout
+ *    memasang kunci itu di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri
+ *    di HTML pertama dan diwarisi seluruh halaman. Alasan lengkap beserta
+ *    urutan penyisipannya di `lib/theme/antd-tokens.ts`.
+ *
+ * `AgeCell` dan kedua catatan kaki di bawah karena itu MENDAPAT kembali warna
+ * hierarkinya (`--ant-color-text-secondary`, dan amber #186 untuk catatan
+ * dokumen tanpa kurs) — hilang di #194 karena jalan di atas belum ada. Yang
+ * TIDAK berubah: warna tetap bukan penanda tunggal. Ukuran (`<small>`), kata,
+ * dan ikon tetap membawa maknanya sendiri.
  */
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  CircleDashed,
-  CircleSlash,
-  HelpCircle,
-} from "lucide-react";
+import { Money, MoneyCell } from "@/components/ui/money";
+import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
-import { formatCurrency } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+
+/**
+ * Lebar dasar satu kartu ember umur. Menggantikan
+ * `sm:grid-cols-2 lg:grid-cols-5`: kelima kartu tumbuh membagi baris dan turun
+ * sendiri saat tak muat — satu kolom di 375px, lima berjajar di 1440px.
+ */
+const BUCKET_BASIS = 180;
+
+/**
+ * Jarak yang tidak bisa dibaca dari token di sini — berkas ini tanpa hook dan
+ * tanpa `antd` (lihat kepala berkas). Nilainya SAMA dengan token yang
+ * seharusnya dipakai, dan disebut di komentar supaya #203 bisa menukarnya
+ * tanpa menebak: `marginLG` 24, `marginSM` 12, `marginXXS` 4.
+ */
+const SECTION_GAP = 24;
+const CARD_GAP = 12;
+const ICON_GAP = 4;
+/** `leading-tight` = 1,25. Dua baris umur harus rapat agar terbaca satu satuan. */
+const TIGHT_LEADING = 1.25;
+
+/** Padding baris `PartyTotals` — sengaja lebih rapat dari bawaan sel tabel. */
+const PARTY_ROW_PADDING = 10;
 
 /*
  * Kedua peta label di bawah TIDAK pindah ke `lib/i18n/labels.ts`: sumbernya
@@ -33,12 +78,12 @@ import { getT } from "@/lib/i18n/server";
 
 const STATUS_STYLE: Record<
   PaymentStatus,
-  { variant: "default" | "success" | "warning" | "danger"; Icon: typeof CheckCircle2 }
+  { variant: "default" | "success" | "warning" | "danger"; Icon: typeof CheckCircleOutlined }
 > = {
-  paid: { variant: "success", Icon: CheckCircle2 },
-  partial: { variant: "warning", Icon: CircleDashed },
-  unpaid: { variant: "default", Icon: CircleSlash },
-  overdue: { variant: "danger", Icon: AlertTriangle },
+  paid: { variant: "success", Icon: CheckCircleOutlined },
+  partial: { variant: "warning", Icon: ClockCircleOutlined },
+  unpaid: { variant: "default", Icon: MinusCircleOutlined },
+  overdue: { variant: "danger", Icon: WarningOutlined },
 };
 
 export async function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
@@ -51,9 +96,11 @@ export async function PaymentStatusBadge({ status }: { status: PaymentStatus }) 
   };
   const { variant, Icon } = STATUS_STYLE[status];
   return (
+    // Ikon `1em` = `fontSizeSM` milik `Tag`; jaraknya dari aturan
+    // `.ant-tag > svg + span` AntD — karena itu labelnya wajib `<span>`.
     <Badge variant={variant}>
-      <Icon className="h-3.5 w-3.5 mr-1 shrink-0" aria-hidden="true" />
-      {labels[status]}
+      <Icon aria-hidden="true" />
+      <span>{labels[status]}</span>
     </Badge>
   );
 }
@@ -75,9 +122,23 @@ export async function AgeCell({ days, fromIssue }: { days: number; fromIssue: bo
       : t("aging.towardsDue");
   const shown = Math.abs(days);
   return (
-    <span className="inline-flex flex-col leading-tight">
-      <span className="tabular-nums">{t("aging.ageDays", { days: shown })}</span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+    /*
+     * DUA baris, dan itu bukan kerapian: baris pertama adalah ANGKA umur,
+     * baris kedua menyatakan umur SEJAK APA ia dihitung. Keduanya wajib
+     * berdampingan di setiap baris — "30 hari sejak diterbitkan" dan "30 hari
+     * lewat jatuh tempo" adalah dua pernyataan yang berbeda, dan angka
+     * telanjang tidak bisa membedakannya.
+     */
+    <span
+      style={{ display: "inline-flex", flexDirection: "column", lineHeight: TIGHT_LEADING }}
+    >
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>
+        {t("aging.ageDays", { days: shown })}
+      </span>
+      {/* `<small>` DAN warna sekunder — dua penanda, bukan satu. Warnanya
+          kembali sejak #227; sebelum itu barisnya memakai warna teks penuh dan
+          kedua baris terbaca sama pentingnya. */}
+      <small style={{ color: "var(--ant-color-text-secondary)" }}>{label}</small>
     </span>
   );
 }
@@ -99,35 +160,89 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
     b61_90: t("agingBucket.b61_90"),
     b90_plus: t("agingBucket.b90_plus"),
   };
+  /** Isi satu kartu ember: keterangan di atas, nominal besar di bawah. */
+  const bucketCard = (label: string, value: number, emphasised = false) => (
+    <div style={{ padding: "var(--ant-padding)" }}>
+      <p
+        style={{
+          margin: 0,
+          color: emphasised ? "var(--ant-color-link)" : "var(--ant-color-text-secondary)",
+        }}
+      >
+        {label}
+      </p>
+      {/*
+       * Nominal lewat `Money` (#186): tabular-nums, rata format id-ID, dan mata
+       * uang eksplisit datang dari satu tempat. `18,66px tebal` melewati ambang
+       * teks besar, tapi warnanya sengaja TIDAK hijau/merah — ini saldo, bukan
+       * arah pergerakan uang.
+       */}
+      <p
+        style={{
+          margin: 0,
+          marginTop: "var(--ant-margin-xxs)",
+          fontSize: "var(--ant-font-size-lg)",
+          fontWeight: "var(--ant-font-weight-strong)",
+        }}
+      >
+        <Money value={value} currency="IDR" />
+      </p>
+    </div>
+  );
+
   return (
-    <div className="mb-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div style={{ marginBottom: SECTION_GAP }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: CARD_GAP }}>
         {AGING_BUCKETS.map((b) => (
-          <Card key={b} className="p-4">
-            <p className="text-sm text-muted-foreground">{bucketLabels[b]}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground tabular-nums">
-              {formatCurrency(buckets[b], "IDR")}
-            </p>
+          <Card key={b} style={{ flex: `1 1 ${BUCKET_BASIS}px` }}>
+            {bucketCard(bucketLabels[b], buckets[b])}
           </Card>
         ))}
-        <Card className="p-4 border-primary/30 bg-primary/10">
-          <p className="text-sm text-primary">{t("aging.totalOutstanding")}</p>
-          <p className="mt-1 text-lg font-bold text-primary tabular-nums">
-            {formatCurrency(total, "IDR")}
-          </p>
+        {/*
+         * Kartu total ditandai batas & latar merek — penanda KEDUA; yang
+         * pertama adalah katanya sendiri ("Total Tunggakan"). Teksnya
+         * `--ant-color-link` (= `colorBrandText`, 5,65:1), bukan
+         * `--ant-color-primary` yang sebagai teks hanya 4,10:1.
+         */}
+        <Card
+          style={{
+            flex: `1 1 ${BUCKET_BASIS}px`,
+            borderColor: "var(--ant-color-primary)",
+            background: "var(--ant-color-primary-bg)",
+          }}
+        >
+          {bucketCard(t("aging.totalOutstanding"), total, true)}
         </Card>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {t("aging.baseNote")} {caption}
+      <p style={{ margin: 0, marginTop: CARD_GAP, color: "var(--ant-color-text-secondary)" }}>
+        <small>
+          {t("aging.baseNote")} {caption}
+        </small>
       </p>
+      {/*
+       * Dokumen tanpa kurs TIDAK ikut ditotal, dan jumlah yang dikecualikan
+       * selalu disebutkan (MASTER.md: nilai tak diketahui ditulis kosong, tak
+       * pernah 0). Penandanya ikon tanda tanya + kata yang ditebalkan; warna
+       * amber (`colorMoneyPending` #186, min 6,23:1) adalah penanda KETIGA,
+       * bukan satu-satunya — ia kembali sejak #227 membuat token terbaca di
+       * server component.
+       */}
       {unresolved > 0 && (
-        <p className="mt-1 flex items-start gap-1 text-xs text-warning-strong">
-          <HelpCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
+        <p
+          style={{
+            margin: 0,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: ICON_GAP,
+            color: "var(--ant-color-money-pending)",
+          }}
+        >
+          <QuestionCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <small>
             {t("aging.unresolvedBefore", { count: unresolved })}
             <strong> {t("aging.unresolvedStrong")}</strong>
             {t("aging.unresolvedAfter")}
-          </span>
+          </small>
         </p>
       )}
     </div>
@@ -145,21 +260,40 @@ export async function PartyTotals({
   if (rows.length === 0) return null;
   const t = await getT();
   return (
-    <Card className="mb-6">
-      <div className="px-6 py-3 border-b border-border">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-      </div>
+    <Card style={{ marginBottom: "var(--ant-margin-lg)" }}>
+      <CardHeader>
+        <h2 style={{ margin: 0, fontWeight: "var(--ant-font-weight-strong)" }}>{title}</h2>
+      </CardHeader>
+      {/*
+       * Tetap primitif `Table` JSX, BUKAN `StaticTable`: daftar ini sengaja
+       * tanpa baris judul — ia dibaca sebagai "siapa berutang berapa", dan
+       * judulnya sudah berdiri sebagai kepala kartu di atasnya. `StaticTable`
+       * selalu menggambar baris judulnya, jadi memakainya berarti menambah tiga
+       * judul kolom baru — beserta tiga kunci kamus baru di tiga bahasa —
+       * demi perubahan yang tidak diminta issue ini. Ia dirender di server,
+       * sama seperti sebelumnya.
+       */}
       <Table>
         <TableBody>
           {rows.slice(0, 10).map((r) => (
             <TableRow key={r.name}>
-              <TableCell className="py-2.5 text-foreground">{r.name}</TableCell>
-              <TableCell className="py-2.5 text-muted-foreground text-right tabular-nums">
+              <TableCell style={{ paddingBlock: PARTY_ROW_PADDING }}>{r.name}</TableCell>
+              <TableCell
+                style={{
+                  paddingBlock: PARTY_ROW_PADDING,
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("aging.docCount", { count: r.count })}
               </TableCell>
-              <TableCell className="p-0">
+              <TableCell style={{ padding: 0 }}>
                 <MoneyCell
-                  className="py-2.5 font-medium text-foreground"
+                  style={{
+                    paddingBlock: PARTY_ROW_PADDING,
+                    fontWeight: "var(--ant-font-weight-strong)",
+                  }}
                   value={r.outstandingBase}
                   currency="IDR"
                 />

@@ -23,8 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { humanizeFieldMessage } from "@/lib/form-guards";
-import { Trash2 } from "lucide-react";
-
+import { DeleteOutlined } from "@ant-design/icons";
 interface DeleteDocumentButtonProps {
   /** Endpoint DELETE, mis. `/api/contracts/12`. */
   endpoint: string;
@@ -87,9 +86,12 @@ export function DeleteDocumentButton({
       confirmPhrase={confirmPhrase}
       confirmPhraseLabel={t("documentDelete.retypePrompt")}
       onConfirm={onConfirm}
+      /* `cursor-pointer` tidak lagi ditulis di sini: `.ant-btn` sudah
+         memasangnya sendiri. Jarak & ukuran ikon juga milik `.ant-btn`
+         (`iconGap` = `marginXS`) dan primitif `Button` (16px). */
       trigger={
-        <Button variant="danger" className="cursor-pointer" disabled={busy}>
-          <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+        <Button variant="danger" disabled={busy}>
+          <DeleteOutlined aria-hidden="true" />
           {label}
         </Button>
       }

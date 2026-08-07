@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Tur panduan in-app (issue #21) — mesin penampil langkah.
+ * Tur panduan in-app (issue #21) — mesin penampil langkah, kini `Tour` AntD
+ * (issue #224).
  *
  * Dipasang sekali di layout dashboard. Ia melihat path saat ini, mencari tur
  * yang cocok di `src/lib/tours.ts` (data murni), lalu:
@@ -11,16 +12,54 @@
  *     "user freedom": tur tidak boleh mengunci layar;
  *   • BISA DIULANG dari menu Bantuan lewat event `sai:tour:replay`.
  *
- * Sorotan memakai empat panel gelap di sekeliling elemen sasaran (bukan bayangan
- * raksasa), sehingga hanya memakai warna dari kelas Tailwind proyek. Bila elemen
- * `data-tour` tidak ditemukan, langkah tetap tampil sebagai kartu di tengah.
+ * ══ YANG BERPINDAH TUAN KE ANTD (#224) ═════════════════════════════════════
+ * Versi sebelumnya adalah overlay tulis tangan: empat panel gelap mengelilingi
+ * sasaran, kartu ber-`position: fixed` yang menghitung sendiri muat-tidaknya di
+ * atas/bawah/samping sasaran, pengukur `getBoundingClientRect` yang berlangganan
+ * `scroll`+`resize`, dan pendengar `keydown` untuk Escape. Semuanya kini milik
+ * `Tour`:
+ *
+ *  • **Penyorotan.** `Tour` melubangi tirainya sendiri tepat di sasaran
+ *    (`Mask` + `gap`), jadi tidak ada lagi empat `<div>` yang harus dijaga
+ *    tetap sinkron. Tirainya `colorBgMask` — konstanta `rgba(0,0,0,0.45)` di
+ *    KEDUA algoritma tema (diukur di #190, lihat `lib/theme/antd-tokens.ts`),
+ *    jadi ia tidak bisa berbalik jadi kabut putih di tema gelap.
+ *  • **Penempatan & panah penunjuk.** `Trigger` + `builtinPlacements` AntD;
+ *    penjepitan agar kartu tak keluar layar sudah termasuk (`autoAdjustOverflow`).
+ *    Panah penunjuk adalah hal yang overlay lama TIDAK punya sama sekali.
+ *  • **Escape.** `keyboard` bawaan `true` di rc-tour, disalurkan lewat `onEsc`
+ *    milik `@rc-component/portal` — yang juga tahu urutan tumpukan overlay,
+ *    sesuatu yang pendengar `document` lama tidak tahu. Bonus dari rc-tour:
+ *    ArrowLeft/ArrowRight berpindah langkah.
+ *  • **Menggulung ke sasaran.** `scrollIntoViewOptions`, dan hanya bila
+ *    sasarannya memang di luar viewport (`isInViewPort`).
+ *
+ * ── Yang TIDAK diberikan AntD, jadi tetap ditulis di sini ─────────────────
+ *  1. **Pengembalian fokus ke pemicu.** `Tour` tidak punya elemen pemicu (ia
+ *     dibuka oleh event, bukan oleh klik pada dirinya), jadi tidak ada yang
+ *     bisa ia kembalikan fokusnya. Karena itu elemen yang sedang fokus DIREKAM
+ *     saat tur dibuka dan difokuskan ulang saat ditutup — lihat
+ *     `kembalikanFokus`.
+ *  2. **Fokus masuk ke kartunya.** Panel `Tour` adalah popup, bukan dialog: ia
+ *     tidak menyandang `role="dialog"` dan tidak difokuskan sendiri. Judul
+ *     langkah karena itu dirender lewat `JudulLangkah` yang `tabIndex={-1}` dan
+ *     memfokuskan dirinya setiap kali langkahnya berganti — perilaku yang sama
+ *     dengan kartu lama, supaya pembaca layar membacakan langkah yang baru dan
+ *     bukan diam.
+ *
+ * Sasaran ditunjuk lewat atribut `data-tour="…"` di halaman. **Nama-nama itu
+ * tidak boleh berubah** (`lib/tours.ts` yang memilikinya): sasaran yang salah
+ * nama tidak menggagalkan apa pun, ia hanya membuat turnya menyorot ruang
+ * kosong. Bila elemennya memang tidak ada (mis. panel disembunyikan untuk peran
+ * ini), rc-tour menaruh kartunya di tengah layar — tur tidak macet.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { X, ArrowLeft, ArrowRight, Check, Compass } from "lucide-react";
+import { Flex, Tour, theme } from "antd";
+import type { TourProps } from "antd";
+import { CloseOutlined, CompassOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { tourForPath, tourStorageKey, type TourDef } from "@/lib/tours";
 import { useT } from "@/lib/i18n/client";
 
@@ -31,19 +70,59 @@ export function replayTour() {
   window.dispatchEvent(new Event(TOUR_REPLAY_EVENT));
 }
 
-interface Box {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+/**
+ * Selektor sasaran sebuah langkah. Satu-satunya tempat nama `data-tour`
+ * berubah menjadi selektor — dipakai komponen di bawah DAN oleh
+ * `tests/guided-tour-antd.test.tsx`, yang mencocokkan setiap `target` di
+ * `lib/tours.ts` dengan atribut yang benar-benar ada di `src/`.
+ */
+export function selektorSasaran(nama: string): string {
+  return `[data-tour="${nama}"]`;
 }
 
-const SPOTLIGHT_PADDING = 8;
-const CARD_WIDTH = 380;
-const CARD_GAP = 12;
-/** Perkiraan tinggi kartu untuk keputusan penempatan (atas/bawah/samping) &
- *  penjepitan agar kartu tak pernah keluar layar. */
-const CARD_EST_HEIGHT = 240;
+/**
+ * Bentuk minimum sebuah pemicu fokus. Sengaja BUKAN `HTMLElement`: suite ini
+ * berjalan di `environment: "node"` (tanpa DOM), dan aturan di bawah — "hanya
+ * fokuskan yang masih tersambung" — adalah bagian yang layak diuji.
+ */
+export interface PemicuFokus {
+  isConnected: boolean;
+  focus: () => void;
+}
+
+/**
+ * Kembalikan fokus ke elemen yang membuka tur.
+ *
+ * Syarat `isConnected` bukan kehati-hatian berlebihan, ia kasus yang PALING
+ * sering terjadi: tur diputar ulang dari sebuah baris menu Bantuan, dan baris
+ * itu ikut lenyap begitu dropdown-nya menutup. Memfokuskan simpul yang sudah
+ * lepas dari dokumen tidak melempar galat — ia diam-diam membuang fokus ke
+ * `<body>`, yaitu persis kegagalan yang ingin dicegah. Ketika simpulnya sudah
+ * lepas, fokus justru sudah dikembalikan oleh komponen yang melepasnya
+ * (`Dropdown` AntD mengembalikannya ke tombol Bantuan), jadi tidak melakukan
+ * apa-apa adalah jawaban yang benar.
+ *
+ * @returns `true` bila fokus benar-benar dipindahkan.
+ */
+export function kembalikanFokus(pemicu: PemicuFokus | null): boolean {
+  if (!pemicu?.isConnected) return false;
+  pemicu.focus();
+  return true;
+}
+
+/**
+ * Id isi langkah — dituju `aria-describedby` milik judulnya. Tetap satu nilai
+ * tetap (bukan `useId`) karena hanya ada SATU tur terbuka di satu waktu: kartu
+ * kedua tidak pernah ada untuk ditabrak idnya.
+ */
+const ID_ISI_LANGKAH = "tur-isi-langkah";
+
+/** Elemen yang sedang fokus, atau `null` bila itu cuma `<body>`. */
+function pemicuSaatIni(): PemicuFokus | null {
+  const aktif = document.activeElement;
+  if (!aktif || aktif === document.body) return null;
+  return aktif as unknown as PemicuFokus;
+}
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -87,17 +166,89 @@ function autostartSuppressed(tour: TourDef): boolean {
   return document.querySelector(`[data-tour-suppress="${tour.id}"]`) !== null;
 }
 
+/**
+ * Judul satu langkah — dan satu-satunya simpul di kartu yang bisa difokuskan
+ * secara program.
+ *
+ * `tabIndex={-1}` berarti "boleh difokuskan kode, tidak pernah oleh Tab", jadi
+ * urutan Tab kartu tetap: tutup → Lewati → Kembali → Lanjut. Cincin fokusnya
+ * dimatikan karena simpul ini bukan kendali — ia hanya tempat pembaca layar
+ * mendarat; mematikannya di sini tidak menyentuh cincin fokus kendali mana pun
+ * (aturan MASTER.md "fokus keyboard harus terlihat" berlaku untuk yang bisa
+ * di-Tab).
+ */
+function JudulLangkah({
+  namaTur,
+  judul,
+  langkah,
+}: {
+  namaTur: string;
+  judul: string;
+  /** Indeks langkah — pemicu pemindahan fokus, bukan bahan tampilan. */
+  langkah: number;
+}) {
+  const { token } = theme.useToken();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    ref.current?.focus();
+  }, [langkah]);
+
+  return (
+    <Flex
+      vertical
+      ref={ref}
+      tabIndex={-1}
+      /* Isi langkah dirender AntD sebagai simpul TETANGGA, di luar judul ini.
+         Tanpa penunjuk ini pembaca layar hanya membacakan judulnya saat fokus
+         mendarat — dan penjelasannya, yaitu seluruh gunanya sebuah tur, harus
+         dicari sendiri. */
+      aria-describedby={ID_ISI_LANGKAH}
+      gap={token.marginXXS}
+      style={{ outline: "none" }}
+    >
+      <Flex
+        component="span"
+        align="center"
+        gap={token.marginXXS}
+        style={{
+          fontSize: token.fontSizeSM,
+          fontWeight: token.fontWeightStrong,
+          /* `colorLink` = `colorBrandText` #186 (5,65:1); `colorPrimary`
+             sebagai teks kecil hanya 4,10:1. */
+          color: token.colorLink,
+        }}
+      >
+        <CompassOutlined aria-hidden="true" style={{ fontSize: 14 }} />
+        {namaTur}
+      </Flex>
+      <span style={{ fontSize: token.fontSizeLG }}>{judul}</span>
+    </Flex>
+  );
+}
+
 export function GuidedTour() {
   const t = useT();
   const pathname = usePathname();
   const tour = tourForPath(pathname);
+  const { token } = theme.useToken();
   const [index, setIndex] = useState<number | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  /** Elemen yang membuka tur — tujuan pengembalian fokus saat tur ditutup. */
+  const pemicuRef = useRef<PemicuFokus | null>(null);
 
-  const close = useCallback(() => {
+  const buka = useCallback(() => {
+    pemicuRef.current = pemicuSaatIni();
+    setIndex(0);
+  }, []);
+
+  const tutup = useCallback(() => {
     if (tour) markSeen(tour);
     setIndex(null);
+    /* Dijalankan SEBELUM React melepas kartunya (setState di atas baru
+       diproses setelah penangan ini selesai), jadi fokus sudah pindah ke
+       pemicu sebelum simpul yang memegangnya lenyap. */
+    kembalikanFokus(pemicuRef.current);
+    pemicuRef.current = null;
   }, [tour]);
 
   // Mulai otomatis hanya pada kunjungan pertama halaman ini.
@@ -111,245 +262,106 @@ export function GuidedTour() {
       // Penundaan satu frame juga yang membuat `autostartSuppressed` bisa
       // dipercaya: pada frame ini halamannya sudah terpasang, jadi penanda
       // penolakan (bila ada) memang sudah ada di DOM saat ditanyakan.
-      setIndex(tour && !hasSeen(tour) && !autostartSuppressed(tour) ? 0 : null);
+      if (tour && !hasSeen(tour) && !autostartSuppressed(tour)) buka();
+      else setIndex(null);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [tour]);
+  }, [tour, buka]);
 
   // Putar ulang dari menu Bantuan.
   useEffect(() => {
     if (!tour) return;
-    function onReplay() {
-      setIndex(0);
-    }
-    window.addEventListener(TOUR_REPLAY_EVENT, onReplay);
-    return () => window.removeEventListener(TOUR_REPLAY_EVENT, onReplay);
-  }, [tour]);
+    window.addEventListener(TOUR_REPLAY_EVENT, buka);
+    return () => window.removeEventListener(TOUR_REPLAY_EVENT, buka);
+  }, [tour, buka]);
 
-  const step = tour && index !== null ? tour.steps[index] : null;
+  if (!tour) return null;
 
-  // Ikuti posisi elemen sasaran (scroll, resize, dan setelah animasi scroll).
-  // Pengukuran pertama pun dijadwalkan lewat requestAnimationFrame agar tata
-  // letaknya sudah final saat diukur — sekaligus menjauhkan setState dari badan
-  // efek.
-  useEffect(() => {
-    const el = step?.target
-      ? document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`)
-      : null;
-
-    if (!el) {
-      // Sasaran tidak ada (mis. panel disembunyikan untuk peran ini) → kartu
-      // tetap tampil di tengah layar, tur tidak macet.
-      const frame = window.requestAnimationFrame(() => setBox(null));
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    el.scrollIntoView({
-      behavior: prefersReducedMotion() ? "auto" : "smooth",
-      block: "center",
-      inline: "nearest",
-    });
-
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      // Sasaran yang sedang di luar layar (mis. menu samping yang tersembunyi di
-      // ponsel) tidak disorot — kartunya jatuh ke tengah layar, bukan menyorot
-      // pinggir kosong.
-      const offscreen =
-        r.width === 0 ||
-        r.height === 0 ||
-        r.right <= 0 ||
-        r.bottom <= 0 ||
-        r.left >= window.innerWidth ||
-        r.top >= window.innerHeight;
-      setBox(offscreen ? null : { top: r.top, left: r.left, width: r.width, height: r.height });
+  const terakhir = tour.steps.length - 1;
+  const steps: TourProps["steps"] = tour.steps.map((step, i) => {
+    const nama = step.target;
+    return {
+      title: <JudulLangkah namaTur={t(tour.titleKey)} judul={t(step.titleKey)} langkah={i} />,
+      description: <span id={ID_ISI_LANGKAH}>{t(step.bodyKey)}</span>,
+      /*
+       * Sasaran dicari saat langkahnya ditampilkan, bukan saat komponen ini
+       * dirender: halaman yang memuat datanya sendiri baru menaruh `data-tour`
+       * beberapa frame kemudian.
+       *
+       * Penegasan tipe di sini karena AntD menandatangani `target` sebagai
+       * `(() => HTMLElement) | (() => null)` — dua fungsi berbeda, bukan satu
+       * fungsi yang boleh mengembalikan keduanya. rc-tour sendiri menangani
+       * `null` secara eksplisit (`setTargetElement(next || null)`, lalu
+       * kartunya ditaruh di tengah layar), jadi yang tidak cocok hanya tanda
+       * tangannya.
+       */
+      target: nama
+        ? ((() => document.querySelector<HTMLElement>(selektorSasaran(nama))) as () => HTMLElement)
+        : undefined,
+      nextButtonProps: { children: i === terakhir ? t("tour.finish") : t("wizard.next") },
+      prevButtonProps: { children: t("common.back") },
     };
-    const frame = window.requestAnimationFrame(update);
-    const settle = window.setTimeout(update, 400);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(settle);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [step]);
-
-  useEffect(() => {
-    if (!step) return;
-    cardRef.current?.focus();
-  }, [step]);
-
-  useEffect(() => {
-    if (!step) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") close();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [step, close]);
-
-  if (!tour || index === null || !step) return null;
-
-  const isLast = index === tour.steps.length - 1;
-  const spotlight = box
-    ? {
-        top: Math.max(box.top - SPOTLIGHT_PADDING, 0),
-        left: Math.max(box.left - SPOTLIGHT_PADDING, 0),
-        width: box.width + SPOTLIGHT_PADDING * 2,
-        height: box.height + SPOTLIGHT_PADDING * 2,
-      }
-    : null;
-
-  // Penempatan kartu: coba DI BAWAH sasaran, lalu DI ATAS; bila sasaran terlalu
-  // tinggi untuk keduanya (mis. sidebar setinggi layar di langkah "menu"), taruh
-  // DI SAMPING kanannya dan berpusat vertikal. Apa pun hasilnya, posisi akhir
-  // DIJEPIT agar kartu selalu utuh di dalam viewport (dulu bug: penempatan "atas"
-  // untuk sidebar mendorong kartu keluar dari tepi atas layar).
-  const viewportH = typeof window === "undefined" ? 0 : window.innerHeight;
-  const viewportW = typeof window === "undefined" ? 0 : window.innerWidth;
-  const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), Math.max(min, max));
-  let cardStyle: React.CSSProperties;
-  if (spotlight) {
-    const belowTop = spotlight.top + spotlight.height + CARD_GAP;
-    const aboveTop = spotlight.top - CARD_GAP - CARD_EST_HEIGHT;
-    const fitsBelow = belowTop + CARD_EST_HEIGHT + CARD_GAP <= viewportH;
-    const fitsAbove = aboveTop >= CARD_GAP;
-
-    let top: number;
-    let left: number;
-    if (fitsBelow) {
-      top = belowTop;
-      left = spotlight.left;
-    } else if (fitsAbove) {
-      top = aboveTop;
-      left = spotlight.left;
-    } else {
-      // Sasaran lebih tinggi dari ruang atas/bawah → di samping kanan, tengah.
-      top = (viewportH - CARD_EST_HEIGHT) / 2;
-      left = spotlight.left + spotlight.width + CARD_GAP;
-    }
-    cardStyle = {
-      top: clamp(top, CARD_GAP, viewportH - CARD_EST_HEIGHT - CARD_GAP),
-      left: clamp(left, CARD_GAP, viewportW - CARD_WIDTH - CARD_GAP),
-      width: CARD_WIDTH,
-      maxWidth: "calc(100vw - 24px)",
-    };
-  } else {
-    cardStyle = {
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      width: CARD_WIDTH,
-      maxWidth: "calc(100vw - 24px)",
-    };
-  }
+  });
 
   return (
-    <div className="fixed inset-0 z-[100]" role="presentation">
-      {/* Lapisan gelap: satu penuh, atau empat sisi mengelilingi sasaran. */}
-      {spotlight ? (
-        <>
-          <div className="fixed inset-x-0 top-0 bg-foreground/60" style={{ height: spotlight.top }} />
-          <div
-            className="fixed inset-x-0 bg-foreground/60"
-            style={{ top: spotlight.top + spotlight.height, bottom: 0 }}
-          />
-          <div
-            className="fixed left-0 bg-foreground/60"
-            style={{ top: spotlight.top, height: spotlight.height, width: spotlight.left }}
-          />
-          <div
-            className="fixed right-0 bg-foreground/60"
-            style={{
-              top: spotlight.top,
-              height: spotlight.height,
-              width: Math.max(viewportW - spotlight.left - spotlight.width, 0),
-            }}
-          />
-          <div
-            className="pointer-events-none fixed rounded-lg ring-2 ring-ring"
-            style={spotlight}
-            aria-hidden="true"
-          />
-        </>
-      ) : (
-        <div className="fixed inset-0 bg-foreground/60" />
+    <Tour
+      open={index !== null}
+      current={index ?? 0}
+      steps={steps}
+      onChange={setIndex}
+      /*
+       * Hanya `onClose`: rc-tour memanggil `handleClose()` (yang memanggil
+       * `onClose`) SEBELUM `onFinish`, jadi memasang keduanya berarti menutup
+       * tur dua kali — dan menandainya "sudah dilihat" dua kali.
+       */
+      onClose={tutup}
+      /*
+       * Ikon tutup ditulis sendiri, seragam dengan chrome aplikasi — bawaan
+       * AntD sama paketnya tapi tanpa `aria-hidden`. `aria-label` menimpa label
+       * bawaan AntD yang berbahasa Inggris — panel meletakkan atribut aria milik
+       * `closable` SETELAH labelnya sendiri.
+       */
+      closable={{ closeIcon: <CloseOutlined aria-hidden="true" style={{ fontSize: 16 }} />, "aria-label": t("tour.close") }}
+      /*
+       * Penanda langkah bawaan AntD adalah titik-titik: pada tur 5 langkah ia
+       * tidak memberi tahu langkah ke berapa, dan tidak terbaca pembaca layar
+       * sama sekali. Diganti kalimat yang sama dengan wisaya.
+       */
+      indicatorsRender={(current, total) => (
+        <span
+          style={{
+            fontSize: token.fontSizeSM,
+            color: token.colorTextTertiary,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {t("wizard.stepOf", { step: current + 1, total })}
+        </span>
       )}
-
-      <div
-        ref={cardRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-step-title"
-        tabIndex={-1}
-        className={cn(
-          "fixed rounded-xl border border-border bg-card p-4 shadow-lg focus:outline-none"
-        )}
-        style={cardStyle}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-primary">
-            <Compass className="h-4 w-4" aria-hidden="true" />
-            {t(tour.titleKey)}
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label={t("tour.close")}
-            className="-m-1 cursor-pointer rounded p-1 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        <h2 id="tour-step-title" className="mt-2 text-base font-semibold text-foreground">
-          {t(step.titleKey)}
-        </h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
-
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {t("wizard.stepOf", { step: index + 1, total: tour.steps.length })}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" className="cursor-pointer" onClick={close}>
-              {t("tour.skip")}
-            </Button>
-            {index > 0 && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="cursor-pointer px-4"
-                onClick={() => setIndex((i) => Math.max((i ?? 0) - 1, 0))}
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                {t("common.back")}
-              </Button>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              className="cursor-pointer px-4"
-              onClick={() => (isLast ? close() : setIndex((i) => (i ?? 0) + 1))}
-            >
-              {isLast ? (
-                <>
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                  {t("tour.finish")}
-                </>
-              ) : (
-                <>
-                  {t("wizard.next")}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      /*
+       * "Lewati" mendahului tombol bawaan (Kembali/Lanjut/Selesai). Ia tetap
+       * ada di langkah terakhir: yang membedakannya dari "Selesai" hanya
+       * niatnya, dan menghilangkannya justru membuat tombol berpindah tempat
+       * di langkah terakhir.
+       */
+      actionsRender={(originNode) => (
+        <>
+          <Button variant="ghost" size="sm" onClick={tutup}>
+            {t("tour.skip")}
+          </Button>
+          {originNode}
+        </>
+      )}
+      /* Sasaran yang sudah terlihat tidak digulung percuma (rc-tour memeriksa
+         viewport lebih dulu); yang di luar layar dihampiri tanpa animasi bila
+         pengguna memintanya. */
+      scrollIntoViewOptions={{
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "center",
+        inline: "nearest",
+      }}
+      /* Jarak lubang sorotan dari sasaran — 8px, sama dengan overlay lama. */
+      gap={{ offset: token.marginXS, radius: token.borderRadius }}
+    />
   );
 }

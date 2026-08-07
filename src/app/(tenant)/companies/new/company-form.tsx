@@ -19,12 +19,18 @@
  * perusahaan berarti berpindah buku, dan memindahkan orang tanpa ia meminta
  * adalah cara paling mudah membuatnya mencatat ke tempat yang salah. Yang
  * muncul adalah tautan yang harus ia tekan sendiri.
+ *
+ * ⚠ Pita galat tetap `role="alert"`, dan perannya tinggal di PEMBUNGKUS
+ * `Alert`: `Alert` AntD menyaring propnya lewat `pickAttrs(props, { aria: true,
+ * data: true })`, jadi `role` yang dioper langsung ke sana hilang tanpa satu
+ * pun galat. Ini formulir yang bisa gagal setelah puluhan detik menunggu —
+ * kegagalan yang tidak diumumkan adalah kegagalan yang tidak diketahui.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, TriangleAlert } from "lucide-react";
-
+import { Alert, Flex, Typography, theme } from "antd";
+import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/i18n/client";
@@ -37,8 +43,11 @@ import {
   ProvisionAnnouncer,
   ProvisionProgress,
   PROVISION_STEPS,
+  SPIN_RULE,
   type ProvisionState,
 } from "./provision-progress";
+
+const { Text } = Typography;
 
 const IDLE: ProvisionState = { current: null, completed: new Set() };
 
@@ -59,6 +68,7 @@ export function CompanyForm({
   tenantSlug: string;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -187,16 +197,18 @@ export function CompanyForm({
 
   if (createdSlug) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-success-soft p-4">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-strong" aria-hidden="true" />
-          <div>
-            <p className="font-medium text-success-strong">{t("companies.doneTitle")}</p>
-            <p className="mt-1 text-sm text-success-strong">{t("companies.doneBody")}</p>
-          </div>
+      <Flex vertical gap={token.margin}>
+        <div role="status" aria-live="polite">
+          <Alert
+            type="success"
+            showIcon
+            icon={<CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
+            message={t("companies.doneTitle")}
+            description={t("companies.doneBody")}
+          />
         </div>
         <ProvisionProgress state={progress} />
-        <div className="flex flex-wrap gap-2">
+        <Flex wrap gap={token.marginXS}>
           {/* ⚠ JALAN PINTAS KE WIZARD, dan kenapa ia yang menjadi tombol UTAMA.
            *
            * Sebelum ini satu-satunya jalan maju adalah "buka pemilih
@@ -234,93 +246,102 @@ export function CompanyForm({
           >
             {t("companies.addAnother")}
           </Button>
-        </div>
-      </div>
+        </Flex>
+      </Flex>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Satu kolom: sejak pindah ke kulit AuthShell (issue #135) lebar kartunya
-          max-w-md — dua kolom di ruang itu memotong label & bantuan slug. */}
-      <div className="grid gap-4">
-        <div className="space-y-1">
-          <Input
-            id="company-name"
-            label={t("companies.nameLabel")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={running}
-            required
-            maxLength={150}
-            aria-describedby="company-name-help"
-          />
-          <p id="company-name-help" className="text-xs text-muted-foreground">
-            {t("companies.nameHelp")}
-          </p>
-        </div>
-        <div className="space-y-1">
-          <Input
-            id="company-slug"
-            label={t("companies.slugLabel")}
-            value={slugTouched ? slug : effectiveSlug}
-            onChange={(e) => {
-              setSlugTouched(true);
-              setSlug(e.target.value);
-            }}
-            disabled={running}
-            maxLength={40}
-            aria-describedby="company-slug-help"
-          />
-          <p id="company-slug-help" className="text-xs text-muted-foreground">
-            {t("companies.slugHelp")}
-          </p>
-        </div>
-      </div>
-
-      {previewDatabase && (
-        <p className="text-sm text-muted-foreground">
-          {t("companies.databasePreview")}{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
-            {previewDatabase}
-          </code>
-        </p>
-      )}
-
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive-strong"
-        >
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-          <div>
-            <p>{error}</p>
-            {/* Kegagalan di tengah TIDAK meninggalkan perusahaan setengah jadi
-                yang terlihat pengguna — registry ditulis paling akhir. */}
-            <p className="mt-1 text-destructive-strong/80">{t("companies.errSafeToRetry")}</p>
-          </div>
-        </div>
-      )}
-
-      {(running || progress.current !== null || progress.failed) && (
-        <ProvisionProgress state={progress} />
-      )}
-      <ProvisionAnnouncer message={announcement} />
-
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={running || !name.trim() || !effectiveSlug}>
-          {running && (
-            <Loader2
-              className="h-4 w-4 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
+    <form onSubmit={handleSubmit}>
+      {/* Aturan pemutar dipasang di sini JUGA, bukan hanya di
+          `ProvisionProgress`: tombol kirim memutar ikonnya sendiri, dan
+          mengandalkan `<style>` milik komponen tetangga berarti animasinya
+          hidup-mati mengikuti komponen yang berbeda. React 19 meniadakan
+          gandanya lewat `href`. */}
+      <style href="sai-spin" precedence="default">
+        {SPIN_RULE}
+      </style>
+      <Flex vertical gap={token.marginLG}>
+        {/* Satu kolom: sejak pindah ke kulit AuthShell (issue #135) lebar kartunya
+            maks 28rem — dua kolom di ruang itu memotong label & bantuan slug. */}
+        <Flex vertical gap={token.margin}>
+          <Flex vertical gap={token.marginXXS}>
+            <Input
+              id="company-name"
+              label={t("companies.nameLabel")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={running}
+              required
+              maxLength={150}
+              aria-describedby="company-name-help"
             />
-          )}
-          {running ? t("companies.creating") : t("companies.create")}
-        </Button>
-        {running && (
-          <p className="text-sm text-muted-foreground">{t("companies.dontClose")}</p>
+            <Text id="company-name-help" type="secondary" style={{ fontSize: token.fontSizeSM }}>
+              {t("companies.nameHelp")}
+            </Text>
+          </Flex>
+          <Flex vertical gap={token.marginXXS}>
+            <Input
+              id="company-slug"
+              label={t("companies.slugLabel")}
+              value={slugTouched ? slug : effectiveSlug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setSlug(e.target.value);
+              }}
+              disabled={running}
+              maxLength={40}
+              aria-describedby="company-slug-help"
+            />
+            <Text id="company-slug-help" type="secondary" style={{ fontSize: token.fontSizeSM }}>
+              {t("companies.slugHelp")}
+            </Text>
+          </Flex>
+        </Flex>
+
+        {previewDatabase && (
+          <Text type="secondary">
+            {t("companies.databasePreview")}{" "}
+            <code
+              style={{
+                borderRadius: token.borderRadiusSM,
+                padding: "2px 6px",
+                fontFamily: "monospace",
+                background: token.colorFillQuaternary,
+                color: token.colorText,
+              }}
+            >
+              {previewDatabase}
+            </code>
+          </Text>
         )}
-      </div>
+
+        {error && (
+          <div role="alert">
+            <Alert
+              type="error"
+              showIcon
+              message={error}
+              /* Kegagalan di tengah TIDAK meninggalkan perusahaan setengah jadi
+                 yang terlihat pengguna — registry ditulis paling akhir. */
+              description={t("companies.errSafeToRetry")}
+            />
+          </div>
+        )}
+
+        {(running || progress.current !== null || progress.failed) && (
+          <ProvisionProgress state={progress} />
+        )}
+        <ProvisionAnnouncer message={announcement} />
+
+        <Flex align="center" gap={token.marginSM}>
+          <Button type="submit" disabled={running || !name.trim() || !effectiveSlug}>
+            {running && <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: 16 }} />}
+            {running ? t("companies.creating") : t("companies.create")}
+          </Button>
+          {running && <Text type="secondary">{t("companies.dontClose")}</Text>}
+        </Flex>
+      </Flex>
     </form>
   );
 }

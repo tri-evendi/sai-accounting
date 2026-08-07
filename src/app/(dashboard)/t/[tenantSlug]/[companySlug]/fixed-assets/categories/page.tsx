@@ -1,5 +1,7 @@
 /**
  * Kategori aset tetap (issue #28) — daftar + buat. Master data; tanpa jurnal.
+ *
+ * Dikonversi ke token Ant Design pada issue #197; **tetap server component**.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -8,23 +10,31 @@ import { getCategories } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 
-import { Tags } from "lucide-react";
+import { TagsOutlined } from "@ant-design/icons";
 import { CategoryForm } from "./category-form";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
+const SECTION_GAP = 24;
+const EMPTY_ICON_SIZE = 48;
+
 const codeToId = (accounts: { id: number; code: string }[], code: string) =>
   accounts.find((a) => a.code === code)?.id;
+
+/** Satu baris daftar, diratakan supaya kolomnya bertipe penuh. */
+interface CategoryRow {
+  id: number;
+  name: string;
+  method: string;
+  lifeMonths: number;
+  assetCode: string;
+  accumulatedCode: string;
+  expenseCode: string;
+}
 
 export default async function CategoriesPage({
   params,
@@ -55,8 +65,58 @@ export default async function CategoriesPage({
     expenseAccountId: codeToId(accounts, "610103"),
   };
 
+  const rows: CategoryRow[] = categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    method:
+      c.defaultMethod === "straight_line"
+        ? t("depreciationMethod.straight_line")
+        : c.defaultMethod,
+    lifeMonths: c.defaultUsefulLifeMonths,
+    // Akun yang tak lagi aktif tidak punya kode untuk ditampilkan — "—",
+    // bukan string kosong yang terbaca seperti kolom yang lupa diisi.
+    assetCode: byId.get(c.assetAccountId)?.code ?? "—",
+    accumulatedCode: byId.get(c.accumulatedAccountId)?.code ?? "—",
+    expenseCode: byId.get(c.expenseAccountId)?.code ?? "—",
+  }));
+
+  const accountCode = (value: unknown) => (
+    <span style={{ color: "var(--ant-color-text-secondary)" }}>{String(value)}</span>
+  );
+
+  const columns: SaiColumns<CategoryRow> = [
+    textColumn<CategoryRow>({ dataIndex: "name", title: t("fixedAssets.colName") }),
+    textColumn<CategoryRow>({ dataIndex: "method", title: t("fixedAssets.colMethod") }),
+    qtyColumn<CategoryRow>({
+      dataIndex: "lifeMonths",
+      title: t("fixedAssets.colLifeMonths"),
+      sorter: false,
+    }),
+    {
+      key: "assetCode",
+      dataIndex: "assetCode",
+      title: t("fixedAssets.colAssetAccount"),
+      align: "left",
+      render: accountCode,
+    },
+    {
+      key: "accumulatedCode",
+      dataIndex: "accumulatedCode",
+      title: t("fixedAssets.colAccumulatedAccount"),
+      align: "left",
+      render: accountCode,
+    },
+    {
+      key: "expenseCode",
+      dataIndex: "expenseCode",
+      title: t("fixedAssets.colExpenseAccount"),
+      align: "left",
+      render: accountCode,
+    },
+  ];
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
@@ -66,7 +126,7 @@ export default async function CategoriesPage({
         description={t("fixedAssets.categoriesDescription")}
       />
 
-      <div className="mb-6">
+      <div style={{ marginBottom: SECTION_GAP }}>
         <CategoryForm
           assetAccounts={assetAccounts}
           accumulatedAccounts={accumulatedAccounts}
@@ -75,48 +135,15 @@ export default async function CategoriesPage({
         />
       </div>
 
-      {categories.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState
-          icon={<Tags className="h-12 w-12" />}
+          icon={<TagsOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.emptyCategoryTitle")}
           description={t("fixedAssets.emptyCategoryDescription")}
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("fixedAssets.colName")}</TableHead>
-                <TableHead>{t("fixedAssets.colMethod")}</TableHead>
-                <TableHead className="text-right">{t("fixedAssets.colLifeMonths")}</TableHead>
-                <TableHead>{t("fixedAssets.colAssetAccount")}</TableHead>
-                <TableHead>{t("fixedAssets.colAccumulatedAccount")}</TableHead>
-                <TableHead>{t("fixedAssets.colExpenseAccount")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium text-foreground">{c.name}</TableCell>
-                  <TableCell className="text-foreground">
-                    {c.defaultMethod === "straight_line"
-                      ? t("depreciationMethod.straight_line")
-                      : c.defaultMethod}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-foreground">
-                    {c.defaultUsefulLifeMonths}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{byId.get(c.assetAccountId)?.code ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {byId.get(c.accumulatedAccountId)?.code ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {byId.get(c.expenseAccountId)?.code ?? "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <StaticTable<CategoryRow> columns={columns} rows={rows} rowKey={(c) => c.id} />
         </Card>
       )}
     </div>

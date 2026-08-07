@@ -1,103 +1,156 @@
 "use client";
 
 /**
- * AlertDialog (issue #51) — primitif dialog konfirmasi di atas Radix UI,
- * mengikuti pola shadcn/ui tetapi ditata dengan palet aplikasi ini.
+ * AlertDialog — dialog KONFIRMASI di atas Ant Design `Modal` (issue #190,
+ * fase B4). Sebelumnya Radix UI, pola shadcn.
  *
- * Dipakai lewat `ConfirmDialog` untuk hampir semua kasus; primitif ini
- * diekspor terpisah agar dialog konfirmasi bentuk lain bisa dirakit tanpa
- * mengulang overlay/fokus/scroll-lock.
+ * Ia bukan komponen tersendiri melainkan `Dialog` (`components/ui/dialog.tsx`)
+ * dengan tiga sifat dikunci. Menyatukannya disengaja: keduanya butuh pelabelan
+ * `aria-*` yang dirakit tangan (alasannya panjang, ditulis di kepala
+ * `dialog.tsx`), dan dua salinan mekanisme itu akan menyimpang pada perbaikan
+ * pertama yang hanya menyentuh salah satunya.
  *
- * Yang diberikan Radix dan TIDAK boleh dirakit tangan lagi:
- *   • focus trap sungguhan (Tab/Shift-Tab terkurung di dialog);
- *   • body scroll-lock selama terbuka;
- *   • Escape menutup, fokus kembali ke elemen pemicunya;
- *   • `role="alertdialog"` + pelabelan otomatis dari Title/Description.
+ * Ketiga sifat yang membedakannya:
  *
- * Sesuai semantik AlertDialog, klik di luar TIDAK menutup — konfirmasi
- * destruktif harus dijawab, bukan hilang karena salah klik.
+ *  1. **Klik di luar TIDAK menutup** (`mask.closable: false`). Ini alasan
+ *     komponen ini ada: konfirmasi destruktif — menghapus faktur, membalik
+ *     jurnal — harus DIJAWAB, bukan hilang karena salah klik di sebelahnya.
+ *     Escape tetap menutup; itu isyarat "batal" yang disengaja, bukan
+ *     kecelakaan tangan.
+ *  2. **`role="alertdialog"`**, bukan `dialog`. Bedanya nyata bagi pembaca
+ *     layar: `alertdialog` membuat isinya diumumkan saat dialognya muncul,
+ *     sehingga pertanyaan "yakin menghapus?" terdengar tanpa pengguna harus
+ *     menjelajahi panelnya lebih dulu. rc-dialog menulis `role="dialog"` mati
+ *     di markupnya, jadi peran ini dipasang lewat jalur yang sama dengan
+ *     pelabelan — lihat `dialog.tsx`.
+ *  3. **Padding badan bawaan AntD dipakai** (24px). Dialog umum sengaja tanpa
+ *     padding karena pemanggilnya menggambar kepala/badan/kaki sendiri;
+ *     konfirmasi adalah satu blok teks pendek dan tidak menggambar apa pun.
+ *
+ * Yang tetap datang gratis dari AntD dan TIDAK boleh dirakit ulang: fokus
+ * terkurung selama terbuka, badan halaman terkunci dari gulir, Escape menutup
+ * yang paling atas saja, dan fokus kembali ke pemicunya setelah ditutup.
  */
 
 import * as React from "react";
-import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
-import { cn } from "@/lib/utils";
 
-const AlertDialog = AlertDialogPrimitive.Root;
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
-const AlertDialogPortal = AlertDialogPrimitive.Portal;
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+  type DialogContentProps,
+} from "@/components/ui/dialog";
 
-function AlertDialogOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
+const AlertDialog = Dialog;
+const AlertDialogTrigger = DialogTrigger;
+const AlertDialogCancel = DialogClose;
+const AlertDialogAction = DialogClose;
+
+/**
+ * Dulu dua komponen Radix yang harus dirakit sendiri (portal + tirai). AntD
+ * menggambar keduanya di dalam `Modal`, jadi ekspornya tinggal meneruskan
+ * anaknya — dipertahankan supaya tak ada impor yang patah selama fase B.
+ */
+function AlertDialogPortal({ children }: { children?: React.ReactNode }) {
+  return <>{children}</>;
+}
+
+function AlertDialogOverlay() {
+  return null;
+}
+
+type AlertDialogContentProps = Omit<
+  DialogContentProps,
+  "role" | "padded" | "maskClosable" | "showClose"
+>;
+
+function AlertDialogContent({ size = "xs", ...props }: AlertDialogContentProps) {
   return (
-    <AlertDialogPrimitive.Overlay
-      className={cn(
-        // Scrim overlay memang hitam transparan, bukan permukaan bertema.
-        // eslint-disable-next-line no-restricted-syntax
-        "fixed inset-0 z-[60] bg-black/50",
-        "animate-overlay-in motion-reduce:animate-none",
-        className
-      )}
+    <DialogContent
+      role="alertdialog"
+      maskClosable={false}
+      padded
+      /*
+       * Tanpa tombol X: satu-satunya jalan keluar adalah dua tombol di
+       * kakinya (atau Escape). Menambah X ketiga hanya membuat "batal" punya
+       * tiga rupa berbeda di dialog yang justru menuntut jawaban jelas.
+       */
+      showClose={false}
+      /* 448px — lebar `max-w-md` yang dipakai konfirmasi sejak sebelum
+         migrasi. Sebuah kalimat tanya beserta dua tombolnya tidak boleh
+         selebar formulir; dialog yang harus dijawab justru paling perlu
+         dibaca sekali lihat. */
+      size={size}
       {...props}
     />
   );
 }
 
-function AlertDialogContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+function AlertDialogHeader({ style, ...props }: React.ComponentProps<"div">) {
   return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        className={cn(
-          "fixed left-1/2 top-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2",
-          "rounded-xl bg-card p-6 shadow-xl focus:outline-none",
-          "animate-dialog-in motion-reduce:animate-none",
-          className
-        )}
-        {...props}
-      />
-    </AlertDialogPortal>
-  );
-}
-
-function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-2", className)} {...props} />;
-}
-
-function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("mt-6 flex justify-end gap-3", className)} {...props} />;
-}
-
-function AlertDialogTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
-  return (
-    <AlertDialogPrimitive.Title
-      className={cn("text-lg font-semibold text-foreground", className)}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ant-margin-xs)",
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-function AlertDialogDescription({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
+function AlertDialogFooter({ style, ...props }: React.ComponentProps<"div">) {
   return (
-    <AlertDialogPrimitive.Description
-      className={cn("text-sm leading-relaxed text-muted-foreground", className)}
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "var(--ant-margin-sm)",
+        marginTop: "var(--ant-margin-lg)",
+        ...style,
+      }}
       {...props}
     />
   );
 }
 
-const AlertDialogAction = AlertDialogPrimitive.Action;
-const AlertDialogCancel = AlertDialogPrimitive.Cancel;
+/**
+ * Gaya judul & deskripsi diambil dari VARIABEL CSS milik AntD, bukan dari kelas
+ * Tailwind dan bukan dari hex.
+ *
+ * Ini bentuk yang sama dengan `moneyTokens` di `lib/theme/antd-tokens.ts`, satu
+ * lapisan lebih rendah: `ConfigProvider` sudah menuliskan setiap token sebagai
+ * `--ant-*` pada akar komponennya (AntD v6 memakai variabel CSS secara bawaan),
+ * jadi merujuknya berarti judul dan deskripsi ikut berganti bersama tema tanpa
+ * satu pun nilai disalin ke berkas ini. `colorTextSecondary` — bukan tersier —
+ * karena tersier sudah dinaikkan ke nilai yang sama di issue #207; memakai
+ * namanya yang benar membuat kalimat ini tetap benar kalau kelak dipisah lagi.
+ */
+const TITLE_STYLE: React.CSSProperties = {
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+  margin: 0,
+};
+
+const DESCRIPTION_STYLE: React.CSSProperties = {
+  fontSize: "var(--ant-font-size)",
+  lineHeight: "var(--ant-line-height)",
+  color: "var(--ant-color-text-secondary)",
+  margin: 0,
+};
+
+function AlertDialogTitle({ style, ...props }: React.ComponentProps<"h2">) {
+  return <DialogTitle style={{ ...TITLE_STYLE, ...style }} {...props} />;
+}
+
+function AlertDialogDescription({ style, ...props }: React.ComponentProps<"p">) {
+  return <DialogDescription style={{ ...DESCRIPTION_STYLE, ...style }} {...props} />;
+}
 
 export {
   AlertDialog,
@@ -112,3 +165,4 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
 };
+export type { AlertDialogContentProps };

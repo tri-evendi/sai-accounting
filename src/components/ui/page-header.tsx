@@ -1,20 +1,61 @@
-import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
+"use client";
 
 /**
  * Kepala halaman standar — breadcrumb + judul + deskripsi + aksi di satu pola.
+ * Disusun ulang di atas Ant Design pada issue #191 (fase B5); dipakai 87 berkas.
  *
- * Aturan (lihat "Kepala Halaman" di design-system/sai-accounting/MASTER.md):
+ * ── Kenapa ini TETAP komponen aplikasi, bukan komponen AntD ────────────────
+ * Ant Design v6 tidak punya `PageHeader`. Ia ada di v4, ditandai usang di v5,
+ * lalu dipindahkan keluar ke ProComponents. Jadi yang dipakai di sini adalah
+ * bahan-bahannya — `Breadcrumb`, `Typography`, `Flex` — sementara ATURANnya
+ * tetap milik aplikasi ini.
+ *
+ * Aturan itu (lihat "Kepala Halaman & Breadcrumb" di
+ * design-system/sai-accounting/MASTER.md) tidak berubah sedikit pun, dan
+ * dijaga `tests/page-header.test.ts` yang TIDAK ikut disentuh issue ini:
  * - SEMUA halaman dashboard memakai komponen ini; jangan menulis `<h1>` atau
- *   memanggil `<Breadcrumb>` sendiri — dijaga `tests/page-header.test.ts`.
+ *   memanggil `<Breadcrumb>` sendiri.
  * - Halaman tingkat-1 (item menu samping): tanpa `breadcrumbs`, judul = label
  *   menunya persis (boleh membawa jumlah, mis. "Pelanggan (12)").
  * - Halaman di bawahnya (baru/ubah/rincian): `breadcrumbs` dimulai dari label
  *   menu induk — kata yang sama dengan menu samping, bukan terjemahan lain.
  *
- * Tanpa hook — aman dipakai server component maupun client component.
+ * ── `breadcrumb.tsx` LARUT ke sini ─────────────────────────────────────────
+ * Primitif `Breadcrumb` lama hanya punya satu pemakai: berkas ini. Ia sekarang
+ * `Breadcrumb` AntD, dan tipe `BreadcrumbItem` ikut pindah ke sini supaya tidak
+ * ada modul yang hidup hanya untuk mengekspor satu tipe.
+ *
+ * ── Butir breadcrumb tetap `<Link>` sungguhan ──────────────────────────────
+ * `items[].href` milik AntD merender `<a href>` polos: pemuatan halaman penuh,
+ * dan — lebih parah di aplikasi ini — jalur yang TIDAK dilewatkan penyelaras
+ * bertenant `app-link.tsx`, sehingga "/invoices" menempuh pantulan 307 yang
+ * justru dihapus issue #157. Karena itu tautannya dititipkan lewat `title`,
+ * bukan `href`; AntD hanya menyumbang pemisah, jarak, dan warna butir terakhir.
+ * Pola yang sama dipakai `pagination.tsx` (#189) dengan alasan yang sama.
+ *
+ * ── Kenapa `<h1>` 24px, bukan `Title level={1}` apa adanya ─────────────────
+ * `fontSizeHeading1` AntD adalah 38px — ukuran judul halaman pendaratan, bukan
+ * kepala layar kerja yang di bawahnya ada tabel. Yang dipertahankan adalah
+ * ukuran yang sudah berjalan (24px = `fontSizeHeading3`), dan yang TIDAK boleh
+ * ikut berubah adalah tingkat elemennya: judul halaman wajib `<h1>` supaya
+ * struktur heading halaman tetap punya akar. Jadi levelnya 1, ukurannya token
+ * heading-3 — bukan `level={3}`, yang akan menghasilkan `<h3>` tanpa `<h1>` di
+ * atasnya.
  */
+
+import type { ReactNode } from "react";
+import { Breadcrumb, Flex, Typography, theme } from "antd";
+
+import { Link } from "@/components/ui/app-link";
+
+const { Title, Text } = Typography;
+
+export interface BreadcrumbItem {
+  label: string;
+  /** Tanpa `href` = halaman ini (butir terakhir), bukan tautan. */
+  href?: string;
+}
+
 export interface PageHeaderProps {
   /** Isi `<h1>` — label menu/bahasa tugas, boleh ReactNode untuk jumlah dsb. */
   title: ReactNode;
@@ -26,7 +67,6 @@ export interface PageHeaderProps {
   badge?: ReactNode;
   /** Tombol aksi rata-kanan, mis. "+ Buat Tagihan" (opsional). */
   actions?: ReactNode;
-  className?: string;
 }
 
 export function PageHeader({
@@ -35,21 +75,46 @@ export function PageHeader({
   description,
   badge,
   actions,
-  className,
 }: PageHeaderProps) {
+  const { token } = theme.useToken();
+
   return (
-    <header className={cn("mb-6", className)}>
-      {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumb items={breadcrumbs} />}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+    <header style={{ marginBottom: token.marginLG }}>
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <Breadcrumb
+          style={{ marginBottom: token.margin }}
+          items={breadcrumbs.map((item) => ({
+            title: item.href ? <Link href={item.href}>{item.label}</Link> : item.label,
+          }))}
+        />
+      )}
+
+      <Flex wrap align="flex-start" justify="space-between" gap={token.marginSM}>
+        <div style={{ minWidth: 0 }}>
+          <Flex wrap align="center" gap={token.marginSM}>
+            <Title
+              level={1}
+              style={{ fontSize: token.fontSizeHeading3, marginBottom: 0 }}
+            >
+              {title}
+            </Title>
             {badge}
-          </div>
-          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          </Flex>
+          {description && (
+            <Text
+              type="secondary"
+              style={{ display: "block", marginTop: token.marginXXS }}
+            >
+              {description}
+            </Text>
+          )}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
-      </div>
+        {actions && (
+          <Flex wrap align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
+            {actions}
+          </Flex>
+        )}
+      </Flex>
     </header>
   );
 }

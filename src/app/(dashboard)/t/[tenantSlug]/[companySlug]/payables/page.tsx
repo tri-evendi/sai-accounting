@@ -8,30 +8,35 @@
  * rows carrying any of that estimate are badged "Perkiraan" rather than being
  * shown as fact. The per-supplier total is exact either way — see
  * `allocatePayments`.
+ *
+ * ── Konversi ke token Ant Design (issue #197, fase C5) ─────────────────────
+ * **Tetap server component**; aturan warnanya identik dengan /receivables, dan
+ * kolomnya tetap disusun dari `agingColumns()` — satu penentu untuk layar, PDF,
+ * dan lembar sebar. Lihat kepala berkas piutang untuk alasan panjangnya.
+ *
+ * Dua catatan di halaman ini (uang muka pemasok & baris berperkiraan) berdiri
+ * DI LUAR `<Card>`, tempat variabel `--ant-…` tidak teratasi. Karena itu
+ * keduanya memakai IKON + KATA, bukan warna — jalan yang sama yang dipilih
+ * `shared/aging.tsx` di #194.
  */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
-import { getPayables } from "@/lib/receivables";
+import { getPayables, type PayableRow } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { ArrowUpFromLine, Info } from "lucide-react";
+import { formatDateShort } from "@/lib/utils";
+import { FileTextOutlined, InfoCircleOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
@@ -39,6 +44,35 @@ import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
+
+/** `marginLG` 24 · `margin` 16 · `marginXS` 8 · `marginXXS` 4, ditulis sebagai
+ *  angka karena berkas ini tak boleh memanggil `theme.useToken()`. */
+const SECTION_GAP = 24;
+const BLOCK_GAP = 16;
+const LINK_GAP_X = 20;
+const LINK_GAP_Y = 8;
+const ICON_GAP = 8;
+const EMPTY_ICON_SIZE = 48;
+const TERMS_MAX_WIDTH = 224;
+/** `max-w-48` lama — keterangan di sisi kanan kartu uang muka. */
+const HINT_MAX_WIDTH = 192;
+
+const subtleStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-secondary)",
+};
+
+const numericStyle: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
+/** Catatan kaki di LUAR kartu: ikon + kata, tanpa warna (lihat kepala berkas). */
+const noteStyle: React.CSSProperties = {
+  margin: 0,
+  marginBottom: SECTION_GAP,
+  display: "flex",
+  alignItems: "flex-start",
+  gap: ICON_GAP,
+};
 
 function todayISO() {
   const d = new Date();
@@ -107,10 +141,153 @@ export default async function PayablesPage({
     outstanding: t("common.remainingIdr"),
   };
 
+  /** Satu id kolom -> satu kolom tabel; tidak ada daftar kolom kedua. */
+  function columnFor(id: AgingColumnId): SaiColumns<PayableRow>[number] {
+    switch (id) {
+      case "documentNo":
+        return {
+          key: id,
+          dataIndex: "documentNo",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => (
+            <>
+              <Link href={r.href} style={{ color: "var(--ant-color-link)" }}>
+                {r.documentNo}
+              </Link>
+              <span style={subtleStyle}>{t("payables.docTypePurchase")}</span>
+              {r.terms && (
+                <span
+                  style={{
+                    ...subtleStyle,
+                    maxWidth: TERMS_MAX_WIDTH,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={r.terms}
+                >
+                  {r.terms}
+                </span>
+              )}
+            </>
+          ),
+        };
+      case "date":
+        return {
+          key: id,
+          dataIndex: "date",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => <span style={numericStyle}>{formatDateShort(r.date)}</span>,
+        };
+      case "dueDate":
+        return {
+          key: id,
+          dataIndex: "dueDate",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) =>
+            r.dueDate ? (
+              <span style={numericStyle}>{formatDateShort(r.dueDate)}</span>
+            ) : (
+              <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                {t("common.notFilledIn")}
+              </span>
+            ),
+        };
+      case "age":
+        return {
+          key: id,
+          dataIndex: "ageDays",
+          title: HEADERS[id],
+          align: "left",
+          // Umur dari tanggal dokumen ditandai per baris — lihat `AgeCell`.
+          render: (_v, r) => <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />,
+        };
+      case "status":
+        return {
+          key: id,
+          dataIndex: "status",
+          title: HEADERS[id],
+          align: "left",
+          render: (_v, r) => <PaymentStatusBadge status={r.status} />,
+        };
+      case "total":
+        return {
+          key: id,
+          dataIndex: "total",
+          title: HEADERS[id],
+          align: "right",
+          render: (_v, r) => (
+            <>
+              <Money value={r.total} currency={r.currency} />
+              {r.currency !== "IDR" && <span style={subtleStyle}>{r.currency}</span>}
+            </>
+          ),
+        };
+      case "outstanding":
+        return {
+          key: id,
+          dataIndex: "outstandingBase",
+          title: HEADERS[id],
+          align: "right",
+          render: (_v, r) => (
+            <>
+              {/* Pembelian valas tanpa kurs tidak punya nilai IDR — dikatakan
+                  dengan kata, tidak pernah ditulis 0. */}
+              {r.outstandingBase == null ? (
+                <span style={{ color: "var(--ant-color-money-pending)" }}>
+                  {t("common.rateMissing")}
+                </span>
+              ) : (
+                <Money
+                  value={r.outstandingBase}
+                  currency="IDR"
+                  style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+                />
+              )}
+              {r.allocationEstimated && (
+                <span style={{ display: "block", marginTop: 4 }}>
+                  <span title={t("payables.estimateTitle")}>
+                    <Badge variant="warning">{t("payables.estimateBadge")}</Badge>
+                  </span>
+                  {/* The fix, offered where the problem is noticed (issue #38):
+                      this opens the allocation editor on the payment responsible,
+                      so the guess can be replaced with fact without deleting and
+                      re-posting the payment. */}
+                  <Link
+                    href={`${r.href}?alokasi=1`}
+                    style={{
+                      display: "block",
+                      marginTop: 4,
+                      fontSize: "var(--ant-font-size-sm)",
+                      color: "var(--ant-color-link)",
+                    }}
+                  >
+                    {t("payables.fixAllocation")}
+                  </Link>
+                </span>
+              )}
+            </>
+          ),
+        };
+      case "party":
+      default:
+        return {
+          key: "party",
+          dataIndex: "partyName",
+          title: HEADERS.party,
+          align: "left",
+        };
+    }
+  }
+
+  const columns: SaiColumns<PayableRow> = cols.map(columnFor);
+
   return (
     <div>
       <PageHeader
-        className="mb-2"
         title={<TermTooltip term="utang">{t("payables.title")}</TermTooltip>}
         actions={
           <>
@@ -128,7 +305,15 @@ export default async function PayablesPage({
         }
       />
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
-      <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          columnGap: LINK_GAP_X,
+          rowGap: LINK_GAP_Y,
+          marginBottom: SECTION_GAP,
+        }}
+      >
         <LearnMore term="utang" />
         <LearnMore term="uang_muka" />
         <LearnMore term="jatuh_tempo" />
@@ -145,41 +330,80 @@ export default async function PayablesPage({
 
       {/* Related balance: uang muka already paid to suppliers (issue #41). */}
       {advanceSummary.count > 0 && (
-        <Card className="mb-6 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <Card style={{ marginBottom: SECTION_GAP }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: BLOCK_GAP,
+              padding: "var(--ant-padding)",
+            }}
+          >
             <div>
-              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <p
+                style={{
+                  margin: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {/* Direction is stated in words and by the icon — not by colour. */}
-                <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <VerticalAlignTopOutlined aria-hidden="true" />
                 {t("payables.advanceLabel")}
               </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
-                {formatCurrency(advanceSummary.outstandingBase, "IDR")}
+              <p
+                style={{
+                  margin: 0,
+                  marginTop: 4,
+                  fontSize: "var(--ant-font-size-heading-3)",
+                  fontWeight: "var(--ant-font-weight-strong)",
+                }}
+              >
+                <Money value={advanceSummary.outstandingBase} currency="IDR" />
               </p>
-              <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-                {t("payables.advanceFrom", { count: advanceSummary.count })}{" "}
-                <strong>{t("payables.advanceNot")}</strong> {t("payables.advanceHintA")}{" "}
-                <em>{t("payables.advanceAsset")}</em>
-                {t("payables.advanceHintB")}{" "}
-                <strong>{t("payables.advanceCompensated")}</strong>{" "}
-                {t("payables.advanceHintC")}{" "}
-                <strong>{t("payables.advancePanel")}</strong> {t("payables.advanceHintD")}
+              <p style={{ margin: 0, marginTop: 4, maxWidth: "72ch" }}>
+                <small style={{ color: "var(--ant-color-text-secondary)" }}>
+                  {t("payables.advanceFrom", { count: advanceSummary.count })}{" "}
+                  <strong>{t("payables.advanceNot")}</strong> {t("payables.advanceHintA")}{" "}
+                  <em>{t("payables.advanceAsset")}</em>
+                  {t("payables.advanceHintB")}{" "}
+                  <strong>{t("payables.advanceCompensated")}</strong>{" "}
+                  {t("payables.advanceHintC")}{" "}
+                  <strong>{t("payables.advancePanel")}</strong> {t("payables.advanceHintD")}
+                </small>
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">{t("payables.unratedLabel")}</p>
-              <p className="text-xl font-bold tabular-nums text-foreground">
+            <div style={{ textAlign: "right" }}>
+              <p style={{ margin: 0 }}>
+                <small style={{ color: "var(--ant-color-text-secondary)" }}>
+                  {t("payables.unratedLabel")}
+                </small>
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ant-font-size-heading-4)",
+                  fontWeight: "var(--ant-font-weight-strong)",
+                  ...numericStyle,
+                }}
+              >
                 {advanceSummary.unresolvedCount}
               </p>
-              <p className="mt-0.5 max-w-48 text-xs text-muted-foreground">
-                {t("payables.unratedHint")}
+              <p style={{ margin: 0, marginTop: 2, maxWidth: HINT_MAX_WIDTH }}>
+                <small style={{ color: "var(--ant-color-text-secondary)" }}>
+                  {t("payables.unratedHint")}
+                </small>
               </p>
             </div>
           </div>
-          <p className="mt-3">
+          <p style={{ margin: 0, padding: "0 var(--ant-padding) var(--ant-padding)" }}>
             <Link
               href="/advances?type=purchase"
-              className="cursor-pointer text-xs text-primary transition-colors hover:underline"
+              style={{ fontSize: "var(--ant-font-size-sm)", color: "var(--ant-color-link)" }}
             >
               {t("payables.viewAllAdvances")}
             </Link>
@@ -188,9 +412,9 @@ export default async function PayablesPage({
       )}
 
       {estimatedCount > 0 ? (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning-strong">
-          <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
+        <p style={noteStyle}>
+          <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <small>
             <strong>{t("payables.estRows", { count: estimatedCount })}</strong>{" "}
             {t("payables.estMarked")}{" "}
             <Badge variant="warning">{t("payables.estimateBadge")}</Badge>{" "}
@@ -198,146 +422,29 @@ export default async function PayablesPage({
             {t("payables.estHintB")} <strong>{t("payables.fixAllocation")}</strong>{" "}
             {t("payables.estHintC")} <strong>{t("payables.estNoJournalChange")}</strong>
             {t("common.fullStop")}
-          </span>
+          </small>
         </p>
       ) : (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Info className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
-            {t("payables.noEstimateNote")}
-          </span>
+        <p style={noteStyle}>
+          <InfoCircleOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+          <small>{t("payables.noEstimateNote")}</small>
         </p>
       )}
 
       <PartyTotals rows={byParty} title={t("payables.partyTotalsTitle")} />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {cols.map((c) => (
-                <TableHead
-                  key={c}
-                  className={c === "total" || c === "outstanding" ? "text-right" : undefined}
-                >
-                  {HEADERS[c]}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                {cols.map((c) => {
-                  switch (c) {
-                    case "party":
-                      return (
-                        <TableCell key={c} className="text-foreground">
-                          {r.partyName}
-                        </TableCell>
-                      );
-                    case "documentNo":
-                      return (
-                        <TableCell key={c}>
-                          <Link
-                            href={r.href}
-                            className="text-primary hover:underline cursor-pointer transition-colors"
-                          >
-                            {r.documentNo}
-                          </Link>
-                          <span className="block text-xs text-muted-foreground">
-                            {t("payables.docTypePurchase")}
-                          </span>
-                          {r.terms && (
-                            <span
-                              className="block text-xs text-muted-foreground max-w-56 truncate"
-                              title={r.terms}
-                            >
-                              {r.terms}
-                            </span>
-                          )}
-                        </TableCell>
-                      );
-                    case "date":
-                      return (
-                        <TableCell key={c} className="text-foreground tabular-nums">
-                          {formatDateShort(r.date)}
-                        </TableCell>
-                      );
-                    case "dueDate":
-                      return (
-                        <TableCell key={c} className="text-foreground tabular-nums">
-                          {r.dueDate ? (
-                            formatDateShort(r.dueDate)
-                          ) : (
-                            <span className="text-muted-foreground">{t("common.notFilledIn")}</span>
-                          )}
-                        </TableCell>
-                      );
-                    case "age":
-                      return (
-                        <TableCell key={c} className="text-foreground">
-                          <AgeCell days={r.ageDays} fromIssue={r.ageFromIssue} />
-                        </TableCell>
-                      );
-                    case "status":
-                      return (
-                        <TableCell key={c}>
-                          <PaymentStatusBadge status={r.status} />
-                        </TableCell>
-                      );
-                    case "total":
-                      return (
-                        <TableCell key={c} className="text-right text-foreground tabular-nums">
-                          <Money value={r.total} currency={r.currency} />
-                          {r.currency !== "IDR" && (
-                            <span className="block text-xs text-muted-foreground">{r.currency}</span>
-                          )}
-                        </TableCell>
-                      );
-                    case "outstanding":
-                      return (
-                        <TableCell
-                          key={c}
-                          className="text-right font-medium text-foreground tabular-nums"
-                        >
-                          {r.outstandingBase == null ? (
-                            <span className="text-warning-strong">{t("common.rateMissing")}</span>
-                          ) : (
-                            <Money value={r.outstandingBase} currency="IDR" />
-                          )}
-                          {r.allocationEstimated && (
-                            <span className="mt-1 block">
-                              <span title={t("payables.estimateTitle")}>
-                                <Badge variant="warning">{t("payables.estimateBadge")}</Badge>
-                              </span>
-                              {/* The fix, offered where the problem is noticed (issue
-                                  #38): this opens the allocation editor on the payment
-                                  responsible, so the guess can be replaced with fact
-                                  without deleting and re-posting the payment. */}
-                              <Link
-                                href={`${r.href}?alokasi=1`}
-                                className="mt-1 block cursor-pointer text-xs text-primary transition-colors hover:underline"
-                              >
-                                {t("payables.fixAllocation")}
-                              </Link>
-                            </span>
-                          )}
-                        </TableCell>
-                      );
-                  }
-                })}
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                  {overdueOnly ? t("payables.emptyOverdue") : t("payables.emptyAll")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable<PayableRow>
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.id}
+          empty={
+            <EmptyState
+              icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={overdueOnly ? t("payables.emptyOverdue") : t("payables.emptyAll")}
+            />
+          }
+        />
       </Card>
     </div>
   );

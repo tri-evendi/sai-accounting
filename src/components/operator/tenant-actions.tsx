@@ -17,20 +17,33 @@
  * skema, dua sisi). Aksi 1–3 dikonfirmasi `ConfirmDialog`; aksi 4 memakai
  * ketik-ulang-slug sebagai konfirmasinya (lebih berat dari sekadar "Ya").
  * Semua progressive disclosure: formulir baru terbuka saat tombolnya diminta.
+ *
+ * ── Setelah AntD (issue #240, fase C9) ────────────────────────────────────
+ * Setiap pemberitahuan hasil, peringatan, dan galat kini `Alert` AntD — ikon +
+ * teks di atas latar tipis, jadi maknanya tidak bergantung warna. `Alert`
+ * menulis `role="alert"` sendiri dan membuang `role` yang dioper, jadi
+ * pembungkus `role="status"` yang dulu ada di sini tidak bisa dipertahankan;
+ * alasan lengkapnya di kepala `app/(auth)/forgot-password/page.tsx`.
+ *
+ * ⚠ Konsol operator berjalan di domain terpisah (`ops.`) dan tidak boleh
+ * mewarisi konteks perusahaan — berkas ini tidak mengimpor apa pun yang
+ * menariknya, termasuk untuk keperluan tampilan.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Flex, theme } from "antd";
+import type { GlobalToken } from "antd";
 import {
-  ArrowLeftRight,
-  Banknote,
-  PauseCircle,
-  PlayCircle,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+  DeleteOutlined,
+  DollarCircleOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  SecurityScanOutlined,
+  SwapOutlined,
+} from "@ant-design/icons";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -107,6 +120,38 @@ export interface TenantActionsProps {
 
 /* ── Bingkai panel + pesan hasil yang seragam ─────────────────────────────── */
 
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`, tetap CSS grid karena beberapa isian membentang dengan
+ * `gridColumn: "1 / -1"` (di dalam `Col` flexbox properti itu tak berarti apa
+ * pun; catatan yang sama di `shared/invoice-fx-fields.tsx`).
+ */
+const FIELD_MIN = 240;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Isian yang mengambil seluruh lebar kisi — pengganti `sm:col-span-2`. */
+const FULL_ROW: React.CSSProperties = { gridColumn: "1 / -1" };
+
+/**
+ * Kotak penjelas NETRAL — "apa yang sebenarnya terjadi" sebelum tombol berat.
+ * Sengaja bukan `Alert`: ia bukan peringatan melainkan keterangan, dan memberi
+ * ikon peringatan pada tiap keterangan membuat peringatan yang sebenarnya
+ * berhenti menonjol.
+ */
+function noticeBox(token: GlobalToken): React.CSSProperties {
+  return {
+    margin: 0,
+    padding: token.paddingSM,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorFillQuaternary,
+    color: token.colorText,
+  };
+}
+
 function ActionPanel({
   icon,
   title,
@@ -118,41 +163,44 @@ function ActionPanel({
   description: string;
   children: React.ReactNode;
 }) {
+  const { token } = theme.useToken();
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground">{icon}</span>
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      </div>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
-      <div className="mt-3">{children}</div>
+    <div
+      style={{
+        padding: token.padding,
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorBgContainer,
+      }}
+    >
+      <Flex align="center" gap={token.marginXS}>
+        <span style={{ display: "inline-flex", color: token.colorTextSecondary }}>{icon}</span>
+        <h3 style={{ margin: 0, fontWeight: token.fontWeightStrong, color: token.colorText }}>
+          {title}
+        </h3>
+      </Flex>
+      <p style={{ margin: 0, marginTop: token.marginXXS, color: token.colorTextSecondary }}>
+        {description}
+      </p>
+      <div style={{ marginTop: token.marginSM }}>{children}</div>
     </div>
   );
 }
 
 function ResultNotice({ result }: { result: OperatorActionResult | null }) {
+  const { token } = theme.useToken();
   if (!result || !result.ok) return null;
   return (
-    <div className="space-y-2">
-      <p role="status" className="rounded-lg bg-success-soft p-3 text-sm text-success-strong">
-        {result.message}
-      </p>
-      {result.warning && (
-        <p role="status" className="rounded-lg bg-warning-soft p-3 text-sm text-warning-strong">
-          {result.warning}
-        </p>
-      )}
-    </div>
+    <Flex vertical gap={token.marginXS}>
+      <Alert type="success" showIcon message={result.message} />
+      {result.warning && <Alert type="warning" showIcon message={result.warning} />}
+    </Flex>
   );
 }
 
 function RootError({ message }: { message?: string }) {
   if (!message) return null;
-  return (
-    <p role="alert" className="rounded-lg bg-destructive-soft p-3 text-sm text-destructive-strong">
-      {message}
-    </p>
-  );
+  return <Alert type="error" showIcon message={message} />;
 }
 
 /** Field alasan — sama di keempat formulir (aturan #155: tanpa alasan, tanpa
@@ -192,6 +240,7 @@ function MarkPaidPanel({
   invoices: TenantActionsProps["issuedInvoices"];
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<ManualPaymentFormInput | null>(null);
@@ -226,22 +275,29 @@ function MarkPaidPanel({
 
   if (invoices.length === 0) {
     return (
-      <div className="space-y-2">
+      <Flex vertical gap={token.marginXS}>
         <ResultNotice result={result} />
-        <p className="text-sm text-muted-foreground">{t("operator.actions.markPaid.empty")}</p>
-      </div>
+        <p style={{ margin: 0, color: token.colorTextSecondary }}>
+          {t("operator.actions.markPaid.empty")}
+        </p>
+      </Flex>
     );
   }
 
   if (!open) {
     return (
-      <div className="space-y-2">
+      <Flex vertical gap={token.marginXS}>
         <ResultNotice result={result} />
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-          <Banknote className="h-4 w-4" aria-hidden="true" />
+        <Button
+          variant="secondary"
+          size="sm"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => setOpen(true)}
+        >
+          <DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {t("operator.actions.markPaid.submit")}
         </Button>
-      </div>
+      </Flex>
     );
   }
 
@@ -250,41 +306,43 @@ function MarkPaidPanel({
       <form
         onSubmit={form.handleSubmit((values) => setConfirming(values))}
         noValidate
-        className="grid gap-3 sm:grid-cols-2"
+        style={twoColumnGrid(token.marginSM)}
       >
-        <FormField
-          control={form.control}
-          name="invoiceNumber"
-          render={({ field }) => (
-            <FormItem className="sm:col-span-2">
-              <FormLabel>{t("operator.actions.markPaid.invoiceLabel")}</FormLabel>
-              <FormControl>
-                <NativeSelect
-                  placeholder="—"
-                  options={invoices.map((inv) => ({
-                    value: inv.number,
-                    label: t("operator.actions.markPaid.invoiceOption", {
-                      number: inv.number,
-                      date: inv.dueDateLabel,
-                      total: formatMoney(Number(inv.total), inv.currency as CurrencyCode),
-                    }),
-                  }))}
-                  {...field}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    const inv = invoices.find((row) => row.number === e.target.value);
-                    if (inv) {
-                      form.setValue("amount", Math.round(Number(inv.total)), {
-                        shouldValidate: false,
-                      });
-                    }
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div style={FULL_ROW}>
+          <FormField
+            control={form.control}
+            name="invoiceNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.markPaid.invoiceLabel")}</FormLabel>
+                <FormControl>
+                  <NativeSelect
+                    placeholder="—"
+                    options={invoices.map((inv) => ({
+                      value: inv.number,
+                      label: t("operator.actions.markPaid.invoiceOption", {
+                        number: inv.number,
+                        date: inv.dueDateLabel,
+                        total: formatMoney(Number(inv.total), inv.currency as CurrencyCode),
+                      }),
+                    }))}
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      const inv = invoices.find((row) => row.number === e.target.value);
+                      if (inv) {
+                        form.setValue("amount", Math.round(Number(inv.total)), {
+                          shouldValidate: false,
+                        });
+                      }
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="amount"
@@ -324,35 +382,37 @@ function MarkPaidPanel({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="bankRef"
-          render={({ field }) => (
-            <FormItem className="sm:col-span-2">
-              <FormLabel>{t("operator.actions.markPaid.refLabel")}</FormLabel>
-              <FormControl>
-                <TextInput autoComplete="off" spellCheck={false} {...field} />
-              </FormControl>
-              <FormDescription>{t("operator.actions.markPaid.refHint")}</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="sm:col-span-2">
+        <div style={FULL_ROW}>
+          <FormField
+            control={form.control}
+            name="bankRef"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.markPaid.refLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" spellCheck={false} {...field} />
+                </FormControl>
+                <FormDescription>{t("operator.actions.markPaid.refHint")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div style={FULL_ROW}>
           <ReasonField control={form.control} />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <Flex vertical gap={token.marginXS} style={FULL_ROW}>
           <RootError message={form.formState.errors.root?.message} />
-          <div className="flex gap-2">
+          <Flex gap={token.marginXS}>
             <Button type="submit" size="sm">
               {t("operator.actions.markPaid.submit")}
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
               {t("common.cancel")}
             </Button>
-          </div>
-        </div>
+          </Flex>
+        </Flex>
 
         <ConfirmDialog
           open={confirming !== null}
@@ -397,6 +457,7 @@ function ChangePlanPanel({
   plans: NonNullable<TenantActionsProps["plans"]>;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<ChangePlanFormInput | null>(null);
@@ -430,30 +491,30 @@ function ChangePlanPanel({
 
   if (!open) {
     return (
-      <div className="space-y-2">
+      <Flex vertical gap={token.marginXS}>
         <ResultNotice result={result} />
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-          <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+        <Button
+          variant="secondary"
+          size="sm"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => setOpen(true)}
+        >
+          <SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {t("operator.actions.plan.submit")}
         </Button>
-      </div>
+      </Flex>
     );
   }
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((values) => setConfirming(values))}
-        noValidate
-        className="space-y-3"
-      >
-        <p className="text-sm text-muted-foreground">
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
+        <p style={{ margin: 0, color: token.colorTextSecondary }}>
           {t("operator.actions.plan.current", { plan: currentPlanKey })}
         </p>
         {tenantStatus === "suspended" && (
-          <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning-strong">
-            {t("operator.actions.plan.suspendedNote")}
-          </p>
+          <Alert type="warning" showIcon message={t("operator.actions.plan.suspendedNote")} />
         )}
         <FormField
           control={form.control}
@@ -482,47 +543,53 @@ function ChangePlanPanel({
         />
 
         {(exceeded.companies || exceeded.users) && selectedPlan && (
-          <div
-            role="status"
-            className="space-y-1 rounded-lg bg-warning-soft p-3 text-sm text-warning-strong"
-          >
-            <p className="flex items-center gap-2 font-semibold">
-              <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {t("operator.actions.plan.quotaWarningTitle")}
-            </p>
-            <ul className="list-disc pl-5">
-              {exceeded.companies && (
-                <li>
-                  {t("operator.actions.plan.quotaWarningCompanies", {
-                    used: usage.companies,
-                    max: selectedPlan.maxCompanies,
-                  })}
-                </li>
-              )}
-              {exceeded.users && (
-                <li>
-                  {t("operator.actions.plan.quotaWarningUsers", {
-                    used: usage.users,
-                    max: selectedPlan.maxUsers,
-                  })}
-                </li>
-              )}
-            </ul>
-            <p>{t("operator.actions.plan.quotaWarningNote")}</p>
-          </div>
+          /* Peringatan, BUKAN penghalang: kuota di bawah pemakaian tetap boleh
+             dipilih — yang tidak boleh adalah memilihnya tanpa tahu. */
+          <Alert
+            type="warning"
+            showIcon
+            icon={<SecurityScanOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            message={t("operator.actions.plan.quotaWarningTitle")}
+            description={
+              <>
+                <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                  {exceeded.companies && (
+                    <li>
+                      {t("operator.actions.plan.quotaWarningCompanies", {
+                        used: usage.companies,
+                        max: selectedPlan.maxCompanies,
+                      })}
+                    </li>
+                  )}
+                  {exceeded.users && (
+                    <li>
+                      {t("operator.actions.plan.quotaWarningUsers", {
+                        used: usage.users,
+                        max: selectedPlan.maxUsers,
+                      })}
+                    </li>
+                  )}
+                </ul>
+                <p style={{ margin: 0, marginTop: token.marginXXS }}>
+                  {t("operator.actions.plan.quotaWarningNote")}
+                </p>
+              </>
+            }
+          />
         )}
 
         <ReasonField control={form.control} />
 
         <RootError message={form.formState.errors.root?.message} />
-        <div className="flex gap-2">
+        <Flex gap={token.marginXS}>
           <Button type="submit" size="sm">
             {t("operator.actions.plan.submit")}
           </Button>
           <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
+        </Flex>
 
         <ConfirmDialog
           open={confirming !== null}
@@ -562,6 +629,7 @@ function SuspensionPanel({
   subscriptionStatus: string | null;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<SuspensionFormInput | null>(null);
@@ -593,7 +661,7 @@ function SuspensionPanel({
 
   if (subscriptionStatus === null) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>
         {t("operator.actions.suspension.errNoSubscription")}
       </p>
     );
@@ -606,33 +674,31 @@ function SuspensionPanel({
 
   if (!open) {
     return (
-      <div className="space-y-2">
+      <Flex vertical gap={token.marginXS}>
         <ResultNotice result={result} />
         <Button
           variant={mode === "suspend" ? "danger" : "secondary"}
           size="sm"
+          style={{ alignSelf: "flex-start" }}
           onClick={() => setOpen(true)}
         >
           {mode === "suspend" ? (
-            <PauseCircle className="h-4 w-4" aria-hidden="true" />
+            <PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           ) : (
-            <PlayCircle className="h-4 w-4" aria-hidden="true" />
+            <PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           )}
           {submitLabel}
         </Button>
-      </div>
+      </Flex>
     );
   }
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((values) => setConfirming(values))}
-        noValidate
-        className="space-y-3"
-      >
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
         {/* Apa yang SEBENARNYA terjadi — gamblang, sebelum tombol apa pun. */}
-        <p className="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground">
+        <p style={noticeBox(token)}>
           {mode === "suspend"
             ? t("operator.actions.suspension.readOnlyExplain")
             : t("operator.actions.suspension.restoreExplain")}
@@ -641,14 +707,15 @@ function SuspensionPanel({
         <ReasonField control={form.control} />
 
         <RootError message={form.formState.errors.root?.message} />
-        <div className="flex gap-2">
+        <Flex gap={token.marginXS}>
           <Button type="submit" variant={mode === "suspend" ? "danger" : "primary"} size="sm">
             {submitLabel}
           </Button>
           <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
+        </Flex>
 
         <ConfirmDialog
           open={confirming !== null}
@@ -688,6 +755,7 @@ function DeletionPanel({
   deletionRequest: TenantActionsProps["deletionRequest"];
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const router = useRouter();
   const [result, setResult] = useState<OperatorActionResult | null>(null);
   const [confirming, setConfirming] = useState<DeletionExecuteFormInput | null>(null);
@@ -700,7 +768,7 @@ function DeletionPanel({
 
   if (!deletionRequest) {
     return (
-      <p className="text-sm leading-relaxed text-muted-foreground">
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>
         {t("operator.actions.deletion.noRequest")}
       </p>
     );
@@ -708,19 +776,21 @@ function DeletionPanel({
 
   if (!deletionRequest.pastGrace) {
     return (
-      <div className="space-y-2">
-        <p className="rounded-lg bg-warning-soft p-3 text-sm leading-relaxed text-warning-strong">
-          {t("operator.actions.deletion.graceActive", {
+      <Flex vertical gap={token.marginXS}>
+        <Alert
+          type="warning"
+          showIcon
+          message={t("operator.actions.deletion.graceActive", {
             id: deletionRequest.id,
             date: deletionRequest.graceEndsAtLabel,
           })}
-        </p>
+        />
         {deletionRequest.note && (
-          <p className="text-sm text-muted-foreground">
+          <p style={{ margin: 0, color: token.colorTextSecondary }}>
             {t("operator.actions.deletion.ownerNote", { note: deletionRequest.note })}
           </p>
         )}
-      </div>
+      </Flex>
     );
   }
 
@@ -741,33 +811,42 @@ function DeletionPanel({
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((values) => setConfirming(values))}
-        noValidate
-        className="space-y-3"
-      >
-        <p className="text-sm text-foreground">
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
+        <p style={{ margin: 0, color: token.colorText }}>
           {t("operator.actions.deletion.ready", {
             id: deletionRequest.id,
             date: deletionRequest.graceEndsAtLabel,
           })}
         </p>
         {deletionRequest.note && (
-          <p className="text-sm text-muted-foreground">
+          <p style={{ margin: 0, color: token.colorTextSecondary }}>
             {t("operator.actions.deletion.ownerNote", { note: deletionRequest.note })}
           </p>
         )}
 
         {/* Apa yang terjadi — dan apa yang TIDAK dihapus, beserta alasannya. */}
-        <div className="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground">
-          <p className="font-semibold">{t("operator.actions.deletion.willHeading")}</p>
-          <ul className="mt-1 list-disc pl-5">
+        <div style={{ ...noticeBox(token), width: "100%" }}>
+          <p style={{ margin: 0, fontWeight: token.fontWeightStrong }}>
+            {t("operator.actions.deletion.willHeading")}
+          </p>
+          <ul style={{ margin: 0, marginTop: token.marginXXS, paddingInlineStart: token.paddingLG }}>
             <li>{t("operator.actions.deletion.willCancel")}</li>
             <li>{t("operator.actions.deletion.willAnonymize")}</li>
             <li>{t("operator.actions.deletion.willRetention")}</li>
           </ul>
-          <p className="mt-2 font-semibold">{t("operator.actions.deletion.keptHeading")}</p>
-          <p className="mt-1">{t("operator.actions.deletion.keptBody")}</p>
+          <p
+            style={{
+              margin: 0,
+              marginTop: token.marginXS,
+              fontWeight: token.fontWeightStrong,
+            }}
+          >
+            {t("operator.actions.deletion.keptHeading")}
+          </p>
+          <p style={{ margin: 0, marginTop: token.marginXXS }}>
+            {t("operator.actions.deletion.keptBody")}
+          </p>
         </div>
 
         <FormField
@@ -797,13 +876,15 @@ function DeletionPanel({
           type="submit"
           variant="danger"
           size="sm"
+          style={{ alignSelf: "flex-start" }}
           disabled={form.formState.isSubmitting || typedSlug !== tenantSlug}
         >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          <DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           {form.formState.isSubmitting
             ? t("common.processing")
             : t("operator.actions.deletion.submit")}
         </Button>
+        </Flex>
 
         <ConfirmDialog
           open={confirming !== null}
@@ -827,26 +908,39 @@ function DeletionPanel({
 
 export function TenantActions(props: TenantActionsProps) {
   const t = useT();
+  const { token } = theme.useToken();
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-base font-semibold text-foreground">
+    <section>
+      <Flex vertical gap={token.marginSM}>
+      <h2
+        style={{
+          margin: 0,
+          fontSize: token.fontSizeLG,
+          fontWeight: token.fontWeightStrong,
+          color: token.colorText,
+        }}
+      >
         {t("operator.actions.heading")}
       </h2>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {t("operator.actions.note")}
-      </p>
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>{t("operator.actions.note")}</p>
 
       {!props.billingAvailable && (
-        <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning-strong">
-          {t("operator.actions.billingDown")}
-        </p>
+        <Alert type="warning" showIcon message={t("operator.actions.billingDown")} />
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Dua panel berdampingan selama muat, turun sendiri saat tidak —
+          pengganti `lg:grid-cols-2` tanpa titik patah. */}
+      <div
+        style={{
+          display: "grid",
+          gap: token.margin,
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+        }}
+      >
         {props.billingAvailable && (
           <ActionPanel
-            icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
+            icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.markPaid.title")}
             description={t("operator.actions.markPaid.description")}
           >
@@ -856,7 +950,7 @@ export function TenantActions(props: TenantActionsProps) {
 
         {props.billingAvailable && props.plans && props.plans.length > 0 && (
           <ActionPanel
-            icon={<ArrowLeftRight className="h-4 w-4" aria-hidden="true" />}
+            icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.plan.title")}
             description={t("operator.actions.plan.description")}
           >
@@ -873,7 +967,7 @@ export function TenantActions(props: TenantActionsProps) {
 
         {props.billingAvailable && (
           <ActionPanel
-            icon={<PauseCircle className="h-4 w-4" aria-hidden="true" />}
+            icon={<PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.suspension.title")}
             description={t("operator.actions.suspension.description")}
           >
@@ -886,7 +980,7 @@ export function TenantActions(props: TenantActionsProps) {
         )}
 
         <ActionPanel
-          icon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
+          icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
           title={t("operator.actions.deletion.title")}
           description={t("operator.actions.deletion.keptHeading")}
         >
@@ -897,6 +991,7 @@ export function TenantActions(props: TenantActionsProps) {
           />
         </ActionPanel>
       </div>
+      </Flex>
     </section>
   );
 }

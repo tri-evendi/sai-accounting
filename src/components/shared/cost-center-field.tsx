@@ -25,7 +25,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { Info } from "lucide-react";
+import { Flex, theme, Typography } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
@@ -66,7 +67,6 @@ export interface CostCenterFieldProps {
   /** `""` = belum ditetapkan. */
   value: string;
   onChange: (value: string) => void;
-  className?: string;
   /** Ganti kalimat bantuan bawaan — dipakai formulir stok, yang alasannya beda. */
   hint?: string;
 }
@@ -75,19 +75,24 @@ export interface CostCenterFieldProps {
  * Nilainya dikendalikan pemanggil (bukan `FormData`), supaya formulir yang
  * mengirim JSON — semuanya, di app ini — bisa menaruh `costCenterId` di badan
  * permintaan tanpa menebak-nebak isi `<form>`.
+ *
+ * Prop `className` DICABUT di issue #240: ia hidup sebagai jalan lewat untuk
+ * `sm:col-span-2` selama kelima formulir pemanggilnya belum dikonversi, dan
+ * sejak #195–#199 kelimanya menempatkan pemilih ini lewat pembungkusnya sendiri
+ * (`<Col>` atau `<div style>`) — tidak ada satu pun yang masih mengisinya.
  */
 export function CostCenterField({
   costCenters,
   value,
   onChange,
-  className,
   hint,
 }: CostCenterFieldProps) {
   const t = useT();
+  const { token } = theme.useToken();
   if (costCenters.length === 0) return null;
 
   return (
-    <div className={className}>
+    <div>
       <Select
         id="costCenterId"
         name="costCenterId"
@@ -99,10 +104,19 @@ export function CostCenterField({
           ...costCenters.map((c) => ({ value: String(c.id), label: `${c.code} — ${c.name}` })),
         ]}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span>{hint ?? t("costCenters.pickerHint")}</span>
-      </p>
+      <Flex
+        align="flex-start"
+        gap={token.marginXXS}
+        style={{ marginTop: token.marginXXS }}
+      >
+        <InfoCircleOutlined
+          aria-hidden="true"
+          style={{ fontSize: token.fontSize, flexShrink: 0 }}
+        />
+        <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+          {hint ?? t("costCenters.pickerHint")}
+        </Typography.Text>
+      </Flex>
     </div>
   );
 }

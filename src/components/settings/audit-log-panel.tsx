@@ -1,16 +1,29 @@
 "use client";
 
+/**
+ * Panel Jejak Audit di halaman Pengaturan.
+ *
+ * ── Setelah AntD (issue #240, fase C9) ────────────────────────────────────
+ * Tabelnya pindah dari primitif JSX `Table` ke **`StaticTable`**, dan pilihan
+ * perendernya mengikuti aturan #189 — KEBUTUHAN INTERAKTIVITAS, bukan
+ * kerapatan. Daftar ini dipaginasi SERVER (`/api/audit?page=`) dan tidak punya
+ * satu pun kendali sortir/filter di layar, jadi `DataTable` (rc-table, +80 KB
+ * gzip) hanya akan menyalin lima belas baris ke peramban dua kali. Kerapatan
+ * rapatnya — dulu `py-2` yang ditulis tangan di setiap sel — kini prop
+ * `size="small"`, yang memang lahir untuk menghapus alasan itu.
+ *
+ * Paginasinya TETAP dua tombol, bukan primitif `Pagination`: primitif itu
+ * menggambar `<Link href>` sungguhan di atas URL halaman, sedangkan halaman ini
+ * memegang nomor halamannya di `useState` dan memuatnya lewat `fetch`.
+ */
+
 import { useEffect, useState } from "react";
+import { Flex, theme } from "antd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { apiFetch } from "@/lib/api-fetch";
@@ -58,6 +71,7 @@ function actionLabel(t: TranslateFn, action: string): string {
 
 export function AuditLogPanel() {
   const t = useT();
+  const { token } = theme.useToken();
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -98,56 +112,112 @@ export function AuditLogPanel() {
     };
   }, [page, t]);
 
+  const columns: SaiColumns<AuditEntry> = [
+    {
+      key: "time",
+      title: t("audit.colTime"),
+      align: "left",
+      render: (_v, log) => (
+        <span style={{ whiteSpace: "nowrap", color: token.colorTextSecondary }}>
+          {new Date(log.createdAt).toLocaleString("id-ID")}
+        </span>
+      ),
+    },
+    {
+      key: "user",
+      title: t("audit.colUser"),
+      align: "left",
+      render: (_v, log) => <span style={{ fontWeight: 500 }}>{log.username}</span>,
+    },
+    {
+      key: "action",
+      title: t("audit.colAction"),
+      align: "left",
+      render: (_v, log) => actionLabel(t, log.action),
+    },
+    {
+      key: "details",
+      title: t("audit.colDetails"),
+      align: "left",
+      render: (_v, log) => (
+        <span
+          style={{
+            display: "block",
+            maxWidth: 320,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            color: token.colorTextSecondary,
+          }}
+        >
+          {formatDetails(log, t)}
+        </span>
+      ),
+    },
+    {
+      key: "ip",
+      title: t("audit.colIp"),
+      align: "left",
+      render: (_v, log) => (
+        <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
+          {log.ipAddress || "—"}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("audit.title")}</CardTitle>
-        <p className="text-xs text-muted-foreground font-normal mt-1">
+        <p
+          style={{
+            margin: 0,
+            marginTop: token.marginXXS,
+            fontSize: token.fontSizeSM,
+            fontWeight: "normal",
+            color: token.colorTextSecondary,
+          }}
+        >
           {t("audit.description")}
         </p>
       </CardHeader>
       <CardContent>
         {error && (
-          <p className="text-sm text-destructive mb-4">{error}</p>
+          <p role="alert" style={{ marginBottom: token.margin, color: token.colorError }}>
+            {error}
+          </p>
         )}
         {loading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">{t("common.loading")}</p>
-        ) : logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">{t("audit.empty")}</p>
+          <p
+            style={{
+              margin: 0,
+              paddingBlock: token.paddingLG,
+              textAlign: "center",
+              color: token.colorTextSecondary,
+            }}
+          >
+            {t("common.loading")}
+          </p>
         ) : (
-          /* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat sengaja
-             menimpa bawaan primitif agar sama dengan tampilan sebelum migrasi. */
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colTime")}</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colUser")}</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colAction")}</TableHead>
-                <TableHead className="h-auto py-2 pr-4 pl-0">{t("audit.colDetails")}</TableHead>
-                <TableHead className="h-auto px-0 py-2">{t("audit.colIp")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="py-2 pr-4 pl-0 text-muted-foreground whitespace-nowrap">
-                    {new Date(log.createdAt).toLocaleString("id-ID")}
-                  </TableCell>
-                  <TableCell className="py-2 pr-4 pl-0 font-medium">{log.username}</TableCell>
-                  <TableCell className="py-2 pr-4 pl-0">
-                    {actionLabel(t, log.action)}
-                  </TableCell>
-                  <TableCell className="py-2 pr-4 pl-0 text-muted-foreground max-w-xs truncate">
-                    {formatDetails(log, t)}
-                  </TableCell>
-                  <TableCell className="px-0 py-2 text-muted-foreground text-xs">{log.ipAddress || "—"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <StaticTable
+            columns={columns}
+            rows={logs}
+            rowKey={(log) => log.id}
+            size="small"
+            empty={<EmptyState title={t("audit.empty")} />}
+          />
         )}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-2 border-t">
+          <Flex
+            align="center"
+            justify="space-between"
+            style={{
+              marginTop: token.margin,
+              paddingTop: token.paddingXS,
+              borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+            }}
+          >
             <Button
               type="button"
               variant="secondary"
@@ -157,7 +227,7 @@ export function AuditLogPanel() {
             >
               {t("common.previous")}
             </Button>
-            <span className="text-xs text-muted-foreground">
+            <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
               {t("table.page", { page, pages: totalPages })}
             </span>
             <Button
@@ -169,7 +239,7 @@ export function AuditLogPanel() {
             >
               {t("common.next")}
             </Button>
-          </div>
+          </Flex>
         )}
       </CardContent>
     </Card>

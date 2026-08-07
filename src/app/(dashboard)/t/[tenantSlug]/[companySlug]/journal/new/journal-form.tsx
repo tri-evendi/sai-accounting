@@ -1,22 +1,57 @@
 "use client";
 
+/**
+ * Jurnal Umum baru — dikonversi ke token Ant Design pada issue #196.
+ *
+ * Kulitnya saja yang berubah; mesin formulirnya (state lokal, penjaga
+ * sebelum-kirim, POST) tidak disentuh sama sekali.
+ *
+ * ── Jurnal harus TERLIHAT seimbang ─────────────────────────────────────────
+ * Baris jurnal kini `StaticTable` dengan `summary`, bukan primitif `Table` JSX.
+ * Yang dibeli dengan itu bukan kerapian: Σ debit dan Σ kredit berdiri TEPAT di
+ * bawah kolomnya sendiri, dan lencana "Seimbang"/selisih duduk di baris yang
+ * sama — jadi keseimbangan terbaca dari layar, bukan hanya ditolak tombol Simpan
+ * yang mati tanpa penjelasan. Lencananya `Badge` (berteks, mewarnai dirinya
+ * sendiri), sehingga warna tak pernah jadi penanda tunggal — dan tanda centang
+ * `✓` yang dulu diketik sebagai KARAKTER di dalam teks ikut hilang bersamanya.
+ *
+ * `StaticTable` di komponen client tetap sah dan tetap murah — ia tak memakai
+ * satu hook pun, jadi tak ada rc-table yang dihidrasi di sini (aturan #189:
+ * perender dipilih menurut kebutuhan INTERAKTIVITAS; yang interaktif di sini
+ * adalah ISI selnya, bukan tabelnya).
+ *
+ * ── Kenapa pemilih akun TETAP `Select` datar, bukan `TreeSelect` ───────────
+ * Issue #196 menyebut `TreeSelect` sebagai kandidat, dan itu diukur dulu:
+ *
+ *  • `TreeSelect` menyeret `rc-tree-select` + `rc-tree` ke bundel setiap rute
+ *    yang memakainya — dan formulir ini punya SATU pemilih akun per BARIS,
+ *    jadi biayanya dibayar berkali-kali di satu layar.
+ *  • Yang lebih menentukan: sebuah pohon menjadikan akun INDUK sama mudah
+ *    diklik dengan akun anak, padahal memposting ke akun induk adalah
+ *    kesalahan pembukuan yang paling mahal di layar ini. Daftar datar tidak
+ *    membuat kesalahan itu terlihat lebih mudah dari sekarang, tetapi pohon
+ *    membuatnya terlihat SEPERTI pilihan yang sah.
+ *  • `NativeSelect` sudah menyalakan pencariannya sendiri di atas 12 opsi
+ *    (`SEARCH_THRESHOLD`), dan kode akun mengurutkan dirinya sendiri secara
+ *    hierarkis — mengetik "1101" lebih cepat daripada membuka tiga cabang.
+ *
+ * Jadi `TreeSelect` ditunda sebagai issue tersendiri: nilainya nyata hanya
+ * kalau API akun ikut menyatakan akun mana yang BOLEH diposting (`isPostable`),
+ * dan itu perubahan skema, bukan perubahan kulit.
+ */
+
 import { useEffect, useState } from "react";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
-import { Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Input, TextInput } from "@/components/ui/input";
+import { NativeSelect, Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { CURRENCIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
@@ -38,6 +73,12 @@ interface CostCenterOption {
 }
 
 interface LineRow {
+  /**
+   * Identitas baris yang bertahan saat baris di TENGAH dihapus. Indeks tidak
+   * bisa dipakai: React akan memakai ulang simpul isian milik baris berikutnya
+   * dan nilai yang diketik ikut bergeser satu baris ke atas.
+   */
+  key: number;
   accountId: string;
   debit: string;
   credit: string;
@@ -47,7 +88,10 @@ interface LineRow {
   costCenterId: string;
 }
 
+let nextLineKey = 0;
+
 const emptyLine = (): LineRow => ({
+  key: nextLineKey++,
   accountId: "",
   debit: "",
   credit: "",
@@ -63,9 +107,16 @@ const todayISO = () => {
 
 const base = (amount: string, rate: string) => (Number(amount) || 0) * (Number(rate) || 1);
 
+/** Lebar dasar kolom baris jurnal (`min-w-[220px]`, `w-24`, `w-28` lama). */
+const ACCOUNT_COL_WIDTH = 220;
+const COST_CENTER_COL_WIDTH = 180;
+const CURRENCY_COL_WIDTH = 96;
+const RATE_COL_WIDTH = 112;
+
 export function NewJournalForm() {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
@@ -161,8 +212,157 @@ export function NewJournalForm() {
     }
   }
 
+  /** Isian angka baris jurnal — rata kanan + `tabular-nums`. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
+  const columns: SaiColumns<LineRow> = [
+    {
+      key: "accountId",
+      title: t("common.account"),
+      align: "left",
+      width: ACCOUNT_COL_WIDTH,
+      render: (_v, row, index) => (
+        <NativeSelect
+          aria-label={t("common.account")}
+          value={row.accountId}
+          onChange={(e) => updateLine(index, { accountId: e.target.value })}
+          options={accountOptions}
+        />
+      ),
+    },
+    {
+      key: "debit",
+      title: t("common.debit"),
+      align: "right",
+      render: (_v, row, index) => (
+        <TextInput
+          aria-label={t("common.debit")}
+          type="number"
+          step="0.01"
+          min="0"
+          style={numberStyle}
+          value={row.debit}
+          onChange={(e) => updateLine(index, { debit: e.target.value, credit: "" })}
+        />
+      ),
+    },
+    {
+      key: "credit",
+      title: t("common.credit"),
+      align: "right",
+      render: (_v, row, index) => (
+        <TextInput
+          aria-label={t("common.credit")}
+          type="number"
+          step="0.01"
+          min="0"
+          style={numberStyle}
+          value={row.credit}
+          onChange={(e) => updateLine(index, { credit: e.target.value, debit: "" })}
+        />
+      ),
+    },
+    {
+      key: "currency",
+      title: t("common.currency"),
+      align: "left",
+      width: CURRENCY_COL_WIDTH,
+      render: (_v, row, index) => (
+        <NativeSelect
+          aria-label={t("common.currency")}
+          value={row.currency}
+          onChange={(e) =>
+            updateLine(index, {
+              currency: e.target.value,
+              rate: e.target.value === "IDR" ? "1" : row.rate,
+            })
+          }
+          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+        />
+      ),
+    },
+    {
+      key: "rate",
+      title: t("common.rateTerm"),
+      align: "right",
+      width: RATE_COL_WIDTH,
+      render: (_v, row, index) => (
+        <TextInput
+          aria-label={t("common.rateTerm")}
+          type="number"
+          step="0.000001"
+          min="0"
+          style={numberStyle}
+          value={row.rate}
+          disabled={row.currency === "IDR"}
+          onChange={(e) => updateLine(index, { rate: e.target.value })}
+        />
+      ),
+    },
+    {
+      key: "costCenterId",
+      title: t("journal.colCostCenter"),
+      align: "left",
+      width: COST_CENTER_COL_WIDTH,
+      render: (_v, row, index) => (
+        <NativeSelect
+          aria-label={t("journal.colCostCenter")}
+          value={row.costCenterId}
+          onChange={(e) => updateLine(index, { costCenterId: e.target.value })}
+          options={lineCostCenterOptions}
+        />
+      ),
+    },
+    {
+      key: "actions",
+      title: "",
+      align: "right",
+      render: (_v, _row, index) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("journal.removeRow")}
+          disabled={lines.length <= 2}
+          onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== index))}
+        >
+          <DeleteOutlined aria-hidden="true" />
+        </Button>
+      ),
+    },
+  ];
+
+  /**
+   * Baris total: Σ debit dan Σ kredit di bawah kolomnya sendiri, lalu lencana
+   * keseimbangan membentang di atas empat kolom sisanya.
+   */
+  const summary: readonly SummaryRow[] = [
+    {
+      cells: {
+        accountId: (
+          <span style={{ color: token.colorTextSecondary }}>{t("journal.totalBase")}</span>
+        ),
+        debit: <Money value={totalDebit} currency="IDR" />,
+        credit: <Money value={totalCredit} currency="IDR" />,
+        currency: {
+          content: balanced ? (
+            <Badge variant="success">{t("journal.balanced")}</Badge>
+          ) : (
+            <Badge variant="danger">
+              {t("journal.difference", {
+                amount: formatCurrency(Math.abs(totalDebit - totalCredit), "IDR"),
+              })}
+            </Badge>
+          ),
+          colSpan: 4,
+          align: "left",
+        },
+      },
+    },
+  ];
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("journal.breadcrumb"), href: "/journal" },
@@ -171,27 +371,42 @@ export function NewJournalForm() {
         title={t("journal.newTitle")}
       />
 
-      {error && <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>}
+      {error && (
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("journal.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input id="date" type="date" label={t("common.date")} required value={date} onChange={(e) => setDate(e.target.value)} />
-              <Input
-                id="note"
-                label={t("common.description")}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t("journal.notePlaceholder")}
-              />
+            <Row gutter={[token.margin, token.margin]}>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="date"
+                  type="date"
+                  label={t("common.date")}
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="note"
+                  label={t("common.description")}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t("journal.notePlaceholder")}
+                />
+              </Col>
               {/* issue #91 — pusat biaya BAWAAN. Baris boleh menimpanya, dan
                   memang harus bisa: satu jurnal yang sah dapat mencakup lebih
                   dari satu cabang. */}
-              <div className="sm:col-span-2">
+              <Col span={24}>
                 <Select
                   id="costCenterId"
                   label={t("journal.costCenterField")}
@@ -199,155 +414,54 @@ export function NewJournalForm() {
                   onChange={(e) => setCostCenterId(e.target.value)}
                   options={headerCostCenterOptions}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("journal.costCenterHint")}
+                <p
+                  style={{
+                    margin: 0,
+                    marginTop: token.marginXXS,
+                    color: token.colorTextSecondary,
+                  }}
+                >
+                  <small>{t("journal.costCenterHint")}</small>
                 </p>
-              </div>
-            </div>
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("journal.linesTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Grid baris jurnal — padding rapat (py-2, px-2) sengaja menimpa
-                bawaan primitif agar sama dengan tampilan sebelum migrasi. */}
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-auto py-2 pr-2 pl-0">{t("common.account")}</TableHead>
-                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.debit")}</TableHead>
-                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.credit")}</TableHead>
-                  <TableHead className="h-auto px-2 py-2">{t("common.currency")}</TableHead>
-                  <TableHead className="h-auto px-2 py-2 text-right">{t("common.rateTerm")}</TableHead>
-                  <TableHead className="h-auto px-2 py-2">{t("journal.colCostCenter")}</TableHead>
-                  <TableHead className="h-auto py-2 pr-0 pl-2"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lines.map((l, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    <TableCell className="min-w-[220px] py-2 pr-2 pl-0">
-                      <Select
-                        id={`acc-${i}`}
-                        aria-label={t("common.account")}
-                        value={l.accountId}
-                        onChange={(e) => updateLine(i, { accountId: e.target.value })}
-                        options={accountOptions}
-                      />
-                    </TableCell>
-                    <TableCell className="px-2 py-2">
-                      <Input
-                        aria-label={t("common.debit")}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="text-right tabular-nums"
-                        value={l.debit}
-                        onChange={(e) => updateLine(i, { debit: e.target.value, credit: "" })}
-                      />
-                    </TableCell>
-                    <TableCell className="px-2 py-2">
-                      <Input
-                        aria-label={t("common.credit")}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="text-right tabular-nums"
-                        value={l.credit}
-                        onChange={(e) => updateLine(i, { credit: e.target.value, debit: "" })}
-                      />
-                    </TableCell>
-                    <TableCell className="w-24 px-2 py-2">
-                      <Select
-                        aria-label={t("common.currency")}
-                        value={l.currency}
-                        onChange={(e) => updateLine(i, { currency: e.target.value, rate: e.target.value === "IDR" ? "1" : l.rate })}
-                        options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-                      />
-                    </TableCell>
-                    <TableCell className="w-28 px-2 py-2">
-                      <Input
-                        aria-label={t("common.rateTerm")}
-                        type="number"
-                        step="0.000001"
-                        min="0"
-                        className="text-right tabular-nums"
-                        value={l.rate}
-                        disabled={l.currency === "IDR"}
-                        onChange={(e) => updateLine(i, { rate: e.target.value })}
-                      />
-                    </TableCell>
-                    <TableCell className="min-w-[180px] px-2 py-2">
-                      <Select
-                        aria-label={t("journal.colCostCenter")}
-                        value={l.costCenterId}
-                        onChange={(e) => updateLine(i, { costCenterId: e.target.value })}
-                        options={lineCostCenterOptions}
-                      />
-                    </TableCell>
-                    <TableCell className="py-2 pr-0 pl-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("journal.removeRow")}
-                        className="text-muted-foreground hover:text-destructive"
-                        disabled={lines.length <= 2}
-                        onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter className="bg-transparent">
-                <TableRow className="font-semibold hover:bg-transparent">
-                  <TableCell className="py-3 pr-2 pl-0 text-muted-foreground">{t("journal.totalBase")}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell className="px-2 py-3" value={totalDebit} currency="IDR" />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell className="px-2 py-3" value={totalCredit} currency="IDR" />
-                  </TableCell>
-                  <TableCell colSpan={4} className="px-2 py-3">
-                    {balanced ? (
-                      <span className="text-success-strong">✓ {t("journal.balanced")}</span>
-                    ) : (
-                      <span className="text-destructive">
-                        {t("journal.difference", {
-                          amount: formatCurrency(Math.abs(totalDebit - totalCredit), "IDR"),
-                        })}
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
+            <StaticTable
+              columns={columns}
+              rows={lines}
+              rowKey={(row) => row.key}
+              size="small"
+              summary={summary}
+            />
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-3"
-              onClick={() => setLines((prev) => [...prev, emptyLine()])}
-            >
-              <Plus className="mr-1 h-4 w-4" /> {t("journal.addRow")}
-            </Button>
+            <div style={{ marginTop: token.marginSM }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setLines((prev) => [...prev, emptyLine()])}
+              >
+                <PlusOutlined aria-hidden="true" /> {t("journal.addRow")}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading || !balanced}>
             {loading ? t("common.saving") : t("journal.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

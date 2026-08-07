@@ -16,32 +16,67 @@
  * kembali. Karena itu HANYA cabang ringkasan yang membawa tautan kembali ke
  * Beranda — cabang wizard sengaja tidak: di sana gerbang setup memang belum
  * mengizinkan halaman lain, dan tautan yang memantul justru jebakan yang sama.
+ *
+ * ── Satu sumber warna di berkas ini (#203) ───────────────────────────────
+ * Server component: tanpa `antd`, tanpa `theme.useToken()`. Berkas ini dulu
+ * punya DUA sumber — token AntD di dalam `Card`, token `:root` aplikasi untuk
+ * pita "penyiapan selesai" yang berdiri sendiri di atas kartu pertama — dengan
+ * alasan bahwa `--ant-…` hanya teratasi di dalam komponen AntD. Alasan itu
+ * gugur sejak #227: kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout,
+ * bukan oleh elemen yang digambar komponen AntD, jadi `var(--ant-…)` teratasi
+ * sama saja di dalam maupun di luar `Card`. Seluruh berkas kini token AntD —
+ * dan memang harus, sebab #203 mencabut token `:root` itu dari `globals.css`.
+ *
+ * Pita itu tetap calon issue tersendiri, tapi alasannya kini soal bentuk, bukan
+ * warna: sebuah primitif `Notice` (AntD `Alert` sebagai daun client) akan
+ * menggantikan gaya sebaris yang ditulis tangan di bawah.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
 import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { CURRENCIES } from "@/lib/constants";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { SetupWizard } from "./setup-wizard";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Pita "penyiapan selesai" — DI LUAR `Card`, tapi tetap token AntD (lihat
+ * kepala). Ikon + kalimat, bukan warna sendirian (MASTER.md §Anti-Patterns).
+ */
+const DONE_NOTE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  marginBottom: 24,
+  padding: "12px 16px",
+  borderRadius: 8,
+  border: "1px solid var(--ant-color-success-border)",
+  background: "var(--ant-color-success-bg)",
+  fontSize: 14,
+  color: "var(--ant-color-money-positive)",
+};
+
+/** Label istilah di daftar identitas — di dalam `Card`, jadi token AntD. */
+const TERM: React.CSSProperties = {
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text-secondary)",
+};
+
+const DEFINITION: React.CSSProperties = {
+  margin: 0,
+  color: "var(--ant-color-text)",
+};
 
 export default async function SetupPage({
   params,
@@ -63,50 +98,53 @@ export default async function SetupPage({
       : null;
 
     return (
-      <div className="w-full">
+      <div style={{ width: "100%" }}>
         <PageHeader
-          className="mb-0"
           title={t("setup.title")}
           actions={
             <Button asChild variant="outline">
               <Link href="/dashboard">
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                <ArrowLeftOutlined aria-hidden="true" />
                 {t("setup.backToApp")}
               </Link>
             </Button>
           }
         />
 
-        <div className="mt-4 mb-6 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+        <div style={DONE_NOTE}>
+          <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
           <span>{t("setup.doneNote")}</span>
         </div>
 
-        <Card className="mb-6">
+        <Card style={{ marginBottom: 24 }}>
           <CardHeader>
             <CardTitle>{t("setup.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-3 text-sm">
+            <dl
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                margin: 0,
+                fontSize: "var(--ant-font-size)",
+              }}
+            >
               <div>
-                <dt className="font-medium text-muted-foreground">{t("common.name")}</dt>
-                <dd className="text-foreground">{settings.name}</dd>
+                <dt style={TERM}>{t("common.name")}</dt>
+                <dd style={DEFINITION}>{settings.name}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">{t("common.address")}</dt>
-                <dd className="text-foreground">{settings.address || "—"}</dd>
+                <dt style={TERM}>{t("common.address")}</dt>
+                <dd style={DEFINITION}>{settings.address || "—"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("setup.baseCurrencyLabel")}
-                </dt>
-                <dd className="text-foreground">{settings.baseCurrency}</dd>
+                <dt style={TERM}>{t("setup.baseCurrencyLabel")}</dt>
+                <dd style={DEFINITION}>{settings.baseCurrency}</dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("setup.fiscalYearStartLabel")}
-                </dt>
-                <dd className="text-foreground">{formatDate(settings.fiscalYearStart)}</dd>
+                <dt style={TERM}>{t("setup.fiscalYearStartLabel")}</dt>
+                <dd style={DEFINITION}>{formatDate(settings.fiscalYearStart)}</dd>
               </div>
             </dl>
           </CardContent>
@@ -118,51 +156,80 @@ export default async function SetupPage({
               <CardTitle>{t("setup.openingJournalTitle", { number: journal.number })}</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Tabel ringkas (py-2, tanpa padding tepi) — padding rapat
-                  sengaja menimpa bawaan primitif agar sama dengan tampilan
-                  sebelum migrasi. */}
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-auto py-2 pr-4 pl-0">{t("common.account")}</TableHead>
-                    <TableHead className="h-auto py-2 pr-4 pl-0 text-right">
-                      {t("journal.colDebitIdr")}
-                    </TableHead>
-                    <TableHead className="h-auto px-0 py-2 text-right">
-                      {t("journal.colCreditIdr")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {journal.lines.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="py-2 pr-4 pl-0 text-foreground">
-                        <span className="text-muted-foreground">{l.account.code}</span> {l.account.name}
+              {/*
+                * Tabel ringkas lewat `size="small"` (issue #229). Sebelum prop
+                * itu ada, kerapatan hanya bisa dicapai dengan menimpa padding
+                * primitif kelas demi kelas di setiap sel — sembilan kelas
+                * Tailwind untuk sesuatu yang `DataTable` sudah punya, dan yang
+                * karena itu memaksa memilih perender menurut GAYA alih-alih
+                * menurut kebutuhan interaktivitas (kebalikan dari aturan #189).
+                */}
+              <StaticTable
+                columns={[
+                  {
+                    key: "account",
+                    title: t("common.account"),
+                    align: "left",
+                    render: (_v, l: (typeof journal.lines)[number]) => (
+                      <>
+                        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                          {l.account.code}
+                        </span>{" "}
+                        {l.account.name}
                         {l.memo ? (
-                          <span className="block text-xs text-muted-foreground">{l.memo}</span>
+                          <span
+                            style={{
+                              display: "block",
+                              fontSize: "var(--ant-font-size-sm)",
+                              color: "var(--ant-color-text-secondary)",
+                            }}
+                          >
+                            {l.memo}
+                          </span>
                         ) : null}
-                      </TableCell>
-                      <TableCell className="py-2 pr-4 pl-0 text-right tabular-nums text-foreground">
-                        {Number(l.baseDebit) > 0 ? (
-                          <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="px-0 py-2 text-right tabular-nums text-foreground">
-                        {Number(l.baseCredit) > 0 ? (
-                          <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <p className="mt-4 text-sm text-muted-foreground">
+                      </>
+                    ),
+                  },
+                  {
+                    key: "debit",
+                    title: t("journal.colDebitIdr"),
+                    align: "right",
+                    render: (_v, l: (typeof journal.lines)[number]) =>
+                      Number(l.baseDebit) > 0 ? (
+                        <Money value={Number(l.baseDebit)} currency="IDR" hideCurrency />
+                      ) : (
+                        "—"
+                      ),
+                  },
+                  {
+                    key: "credit",
+                    title: t("journal.colCreditIdr"),
+                    align: "right",
+                    render: (_v, l: (typeof journal.lines)[number]) =>
+                      Number(l.baseCredit) > 0 ? (
+                        <Money value={Number(l.baseCredit)} currency="IDR" hideCurrency />
+                      ) : (
+                        "—"
+                      ),
+                  },
+                ]}
+                rows={journal.lines}
+                rowKey={(l) => l.id}
+                size="small"
+              />
+              <p
+                style={{
+                  marginTop: "var(--ant-margin)",
+                  marginBottom: 0,
+                  fontSize: "var(--ant-font-size)",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("setup.reflectedBefore")}{" "}
-                <Link href="/reports" className="text-primary underline">
+                <Link
+                  href="/reports"
+                  style={{ color: "var(--ant-color-link)", textDecoration: "underline" }}
+                >
                   {t("reports.balanceSheetTitle")}
                 </Link>{" "}
                 {t("setup.reflectedAfter", { date: formatDate(settings.fiscalYearStart) })}
@@ -188,7 +255,7 @@ export default async function SetupPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <PageHeader
         title={t("setup.wizardTitle")}
         description={t("setup.wizardDescription")}

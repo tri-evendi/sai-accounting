@@ -1,10 +1,24 @@
 "use client";
 
+/**
+ * Buat Surat Jalan — dikonversi ke token Ant Design pada issue #195 (fase C3).
+ *
+ * Kulitnya saja yang berubah. Penjaga sebelum-kirim (periode tertutup, nilai
+ * negatif, kekurangan stok) dan konfirmasi pengeluaran besar tidak disentuh —
+ * pasangan servernya (`assertStockAvailable`) tetap penjaga terakhir.
+ *
+ * Semua angka di layar ini KUANTITAS (`Decimal(15,3)`): karung × kg/karung.
+ * Semuanya lewat `formatNumber` id-ID dengan `tabular-nums`, tidak satu pun
+ * lewat topeng rupiah.
+ */
+
 import { useState } from "react";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Link } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,8 +36,25 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
-import { AlertCircle, Lock, Package, Trash2, Plus } from "lucide-react";
+import { ContainerOutlined, DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`. `max(280px, (100% − gutter)/2)` menahan jumlah kolomnya di
+ * dua; titik patahnya jatuh tepat di 576px, `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Lebar dasar kolom angka pada baris barang (`w-24`/`w-28` lama). */
+const QTY_COL_BASIS = 112;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
 
 interface ContractOption {
   id: number;
@@ -90,6 +121,7 @@ export function DeliveryOrderForm({
 }: Props) {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -266,26 +298,41 @@ export function DeliveryOrderForm({
     void send(body);
   }
 
+  /** Label mikro di atas satu isian angka. */
+  const microLabel = (htmlFor: string, text: string) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka — rata kanan + `tabular-nums`. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div
-          role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        /* Galat tingkat formulir sebagai `Alert` AntD — ikon + teks
+           `colorText` di atas `colorErrorBg`. `role="alert"` tetap milik kita. */
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
           <CardTitle>
             <TermTooltip term="surat_jalan">{t("deliveryOrders.detailsTitle")}</TermTooltip>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div style={twoColumnGrid(token.margin)}>
             <div>
               <Input
                 id="date"
@@ -297,13 +344,26 @@ export function DeliveryOrderForm({
                 required
               />
               {periodIssue && (
-                <p className="mt-1 flex items-start gap-1 text-xs text-destructive-strong" role="alert">
-                  <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                /* Periode terkunci: ikon gembok + kalimat; warnanya penanda
+                   kedua, bukan satu-satunya. */
+                <Typography.Paragraph
+                  role="alert"
+                  style={{
+                    margin: 0,
+                    marginTop: token.marginXXS,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: token.marginXXS,
+                    fontSize: token.fontSizeSM,
+                    color: token.colorError,
+                  }}
+                >
+                  <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>{periodIssue}</span>
-                </p>
+                </Typography.Paragraph>
               )}
             </div>
-            <div className="space-y-1.5">
+            <div>
               <SearchableSelect
                 id="consigneeId"
                 label={t("deliveryOrders.colConsignee")}
@@ -314,13 +374,24 @@ export function DeliveryOrderForm({
                 value={consigneeId != null ? String(consigneeId) : null}
                 onChange={(v) => setConsigneeId(v == null ? null : Number(v))}
               />
-              <p className="text-xs text-muted-foreground">
+              <Typography.Text
+                type="secondary"
+                style={{
+                  display: "block",
+                  marginTop: token.marginXXS,
+                  fontSize: token.fontSizeSM,
+                }}
+              >
                 {t("deliveryOrders.addConsigneePrompt")}{" "}
-                <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
+                <Link
+                  href="/consignees/new"
+                  target="_blank"
+                  style={{ color: token.colorLink }}
+                >
                   {t("deliveryOrders.addConsigneeLink")}
                 </Link>
                 {t("common.fullStop")}
-              </p>
+              </Typography.Text>
             </div>
             <SearchableSelect
               id="contractId"
@@ -344,41 +415,50 @@ export function DeliveryOrderForm({
             />
             <Input id="vehicleNo" name="vehicleNo" label={t("deliveryOrders.vehicleNoOptional")} />
             <Input id="containerNo" name="containerNo" label={t("deliveryOrders.containerNoOptional")} />
-            <div className="sm:col-span-2">
+            <div style={{ gridColumn: "1 / -1" }}>
               <Input id="notes" name="notes" label={t("common.notesOptional")} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
             <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-              <Plus className="mr-1 h-4 w-4" /> {t("common.addItem")}
+              <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
             </Button>
-          </div>
+          </Flex>
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
-              icon={<Package className="h-12 w-12" />}
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("common.emptyStockTitle")}
               description={t("deliveryOrders.emptyStockDescription")}
               actionLabel={canUpdateStock ? t("common.addRemoveStock") : undefined}
               actionHref={canUpdateStock ? "/inventory/update" : undefined}
             />
           ) : (
-          <div className="space-y-4">
+          <Flex vertical gap={token.margin}>
             {lines.map((line, i) => {
               const item = line.itemId != null ? itemById.get(line.itemId) : null;
               const requested = line.itemId != null ? requestedByItem.get(line.itemId) ?? 0 : 0;
               const over = item != null && requested > item.currentStock;
               return (
-                <div key={i} className="rounded-md border border-border p-3">
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1">
+                <div
+                  key={i}
+                  style={{
+                    padding: token.paddingSM,
+                    borderRadius: token.borderRadius,
+                    border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  }}
+                >
+                  {/* `Row` yang membungkus: di 375px pemilih barang dan kedua
+                      isian angka dulu saling menghimpit dalam satu baris flex. */}
+                  <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                    <Col xs={24} md={12} style={{ minWidth: 0 }}>
                       <SearchableSelect
                         label={t("common.item")}
                         placeholder={t("common.pickItem")}
@@ -388,42 +468,59 @@ export function DeliveryOrderForm({
                         value={line.itemId != null ? String(line.itemId) : null}
                         onChange={(v) => updateLine(i, { itemId: v == null ? null : Number(v) })}
                       />
-                    </div>
-                    <div className="w-24">
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("common.bags")}</label>
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {microLabel(`bags-${i}`, t("common.bags"))}
                       <TextInput
+                        id={`bags-${i}`}
                         type="number"
                         min={0}
-                        className="text-right tabular-nums"
+                        style={numberStyle}
                         value={line.bags}
                         onChange={(e) => updateLine(i, { bags: Number(e.target.value) })}
                       />
-                    </div>
-                    <div className="w-28">
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("common.kgPerBag")}</label>
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {microLabel(`kgPerBag-${i}`, t("common.kgPerBag"))}
+                      {/* KUANTITAS (`Decimal(15,3)`) — desimalnya utuh. */}
                       <TextInput
+                        id={`kgPerBag-${i}`}
                         type="number"
                         min={0}
                         step="0.01"
-                        className="text-right tabular-nums"
+                        style={numberStyle}
                         value={line.kgPerBag}
                         onChange={(e) => updateLine(i, { kgPerBag: Number(e.target.value) })}
                       />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLine(i)}
-                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                      disabled={lines.length === 1}
-                      aria-label={t("common.removeItemRow", { n: i + 1 })}
+                    </Col>
+                    <Col flex="none">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeLine(i)}
+                        style={{ color: token.colorError }}
+                        disabled={lines.length === 1}
+                        aria-label={t("common.removeItemRow", { n: i + 1 })}
+                      >
+                        <DeleteOutlined aria-hidden="true" />
+                      </Button>
+                    </Col>
+                  </Row>
+                  <Flex
+                    wrap
+                    justify="space-between"
+                    gap={token.marginXS}
+                    style={{ marginTop: token.marginXS, fontSize: token.fontSizeSM }}
+                  >
+                    {/* Kalimatnya yang membawa makna ("melebihi stok");
+                        warnanya penanda kedua. */}
+                    <span
+                      style={{
+                        color: over ? token.colorMoneyNegative : token.colorTextSecondary,
+                        fontWeight: over ? token.fontWeightStrong : undefined,
+                      }}
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </div>
-                  <div className="mt-2 flex justify-between text-xs">
-                    <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
                       {item
                         ? over
                           ? t("deliveryOrders.lineAvailableOver", {
@@ -436,48 +533,67 @@ export function DeliveryOrderForm({
                             })
                         : t("deliveryOrders.linePickItem")}
                     </span>
-                    <span className="tabular-nums text-foreground">
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>
                       = {formatNumber(lineKg(line))} kg
                     </span>
-                  </div>
+                  </Flex>
                 </div>
               );
             })}
-          </div>
+          </Flex>
           )}
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
-        <CardContent className="py-3">
-          <dl className="space-y-1 text-sm">
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">{t("deliveryOrders.totalBags")}</dt>
-              <dd className="tabular-nums font-medium text-foreground">{formatNumber(totalBags)}</dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="font-medium text-muted-foreground">{t("deliveryOrders.totalOutKg")}</dt>
-              <dd className="text-lg font-bold tabular-nums text-foreground">
+      <Card style={{ marginBottom: token.marginLG }}>
+        <CardContent style={{ paddingBlock: token.paddingSM }}>
+          <dl style={{ margin: 0 }}>
+            <Flex align="center" justify="space-between" gap={token.marginSM}>
+              <dt style={{ color: token.colorTextSecondary }}>
+                {t("deliveryOrders.totalBags")}
+              </dt>
+              <dd
+                style={{
+                  margin: 0,
+                  fontWeight: token.fontWeightStrong,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {formatNumber(totalBags)}
+              </dd>
+            </Flex>
+            <Flex
+              align="center"
+              justify="space-between"
+              gap={token.marginSM}
+              style={{ marginTop: token.marginXXS }}
+            >
+              <dt style={{ color: token.colorTextSecondary, fontWeight: token.fontWeightStrong }}>
+                {t("deliveryOrders.totalOutKg")}
+              </dt>
+              <dd
+                style={{
+                  margin: 0,
+                  fontSize: token.fontSizeLG,
+                  fontWeight: token.fontWeightStrong,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {formatNumber(totalKg)} kg
               </dd>
-            </div>
+            </Flex>
           </dl>
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
-        <Button type="submit" className="cursor-pointer" disabled={loading}>
+      <Flex wrap gap={token.marginSM}>
+        <Button type="submit" disabled={loading}>
           {loading ? t("deliveryOrders.submitting") : t("deliveryOrders.submit")}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="cursor-pointer"
-          onClick={() => router.back()}
-        >
+        <Button type="button" variant="secondary" onClick={() => router.back()}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
 
       {/* Konfirmasi pengeluaran stok besar (issue #6) — terkendali, karena
           pemicunya adalah tombol Simpan yang sudah ada, bukan tombol tersendiri. */}

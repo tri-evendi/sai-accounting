@@ -20,11 +20,16 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Building2, Check } from "lucide-react";
-
+import { Flex, Typography, theme } from "antd";
+import { CheckOutlined, ShopOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
 import { tenantPath } from "@/lib/tenant-routes";
+
+const { Text } = Typography;
+
+/** Kotak ikon perusahaan — bekas `h-9 w-9`. */
+const AVATAR = 36;
 
 export interface CompanyChoice {
   id: number;
@@ -40,6 +45,7 @@ export function CompanyChoices({
   activeId: number | null;
 }) {
   const t = useT();
+  const { token } = theme.useToken();
   const { data: session, update } = useSession();
   const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -62,44 +68,88 @@ export function CompanyChoices({
   }
 
   return (
-    <ul className="space-y-2">
+    /* `component="ul"`: daftar perusahaan tetap sebuah LIST bagi pembaca layar
+       ("daftar, 3 butir"), sementara jaraknya tetap milik `Flex`. Menyisipkan
+       `<div>` di antara `<ul>` dan `<li>` akan memutus hubungan itu. */
+    <Flex
+      component="ul"
+      vertical
+      gap={token.marginXS}
+      style={{ listStyle: "none", margin: 0, padding: 0 }}
+    >
       {companies.map((company) => {
-        const isActive = company.id === activeId;
-        return (
-          <li key={company.id}>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Building2 className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{company.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{company.slug}</p>
-                </div>
-              </div>
+          const isActive = company.id === activeId;
+          return (
+            <li key={company.id}>
+              <Flex
+                align="center"
+                justify="space-between"
+                gap={token.marginSM}
+                style={{
+                  padding: token.paddingSM,
+                  borderRadius: token.borderRadiusLG,
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                }}
+              >
+                <Flex align="center" gap={token.marginSM} style={{ minWidth: 0 }}>
+                  <Flex
+                    align="center"
+                    justify="center"
+                    style={{
+                      width: AVATAR,
+                      height: AVATAR,
+                      flexShrink: 0,
+                      borderRadius: token.borderRadius,
+                      background: token.colorFillQuaternary,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    <ShopOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+                  </Flex>
+                  <div style={{ minWidth: 0 }}>
+                    <Text strong ellipsis style={{ display: "block" }}>
+                      {company.name}
+                    </Text>
+                    <Text
+                      type="secondary"
+                      ellipsis
+                      style={{ display: "block", fontSize: token.fontSizeSM }}
+                    >
+                      {company.slug}
+                    </Text>
+                  </div>
+                </Flex>
 
-              {isActive ? (
-                <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("auth.selectCompany.currentLabel")}
-                </span>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="shrink-0 cursor-pointer"
-                  disabled={busyId !== null}
-                  onClick={() => void open(company.id, company.slug)}
-                >
-                  {busyId === company.id
-                    ? t("auth.selectCompany.switching")
-                    : t("auth.selectCompany.openLabel")}
-                </Button>
-              )}
-            </div>
-          </li>
+                {isActive ? (
+                  <Flex
+                    align="center"
+                    gap={token.marginXXS}
+                    style={{
+                      flexShrink: 0,
+                      fontSize: token.fontSizeSM,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    <CheckOutlined aria-hidden="true" style={{ fontSize: 14 }} />
+                    {t("auth.selectCompany.currentLabel")}
+                  </Flex>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    style={{ flexShrink: 0 }}
+                    disabled={busyId !== null}
+                    onClick={() => void open(company.id, company.slug)}
+                  >
+                    {busyId === company.id
+                      ? t("auth.selectCompany.switching")
+                      : t("auth.selectCompany.openLabel")}
+                  </Button>
+                )}
+              </Flex>
+            </li>
         );
       })}
-    </ul>
+    </Flex>
   );
 }

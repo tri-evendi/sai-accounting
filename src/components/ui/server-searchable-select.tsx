@@ -1,39 +1,45 @@
 "use client";
 
 /**
- * ServerSearchableSelect — saudara `SearchableSelect` untuk daftar yang terlalu
- * besar untuk dikirim ke klien (audit: pemilih dokumen terpotong `take: 300`).
+ * ServerSearchableSelect (ditulis ulang di atas AntD `Select showSearch` pada
+ * issue #188) — saudara `SearchableSelect` untuk daftar yang terlalu besar
+ * untuk dikirim ke klien (audit: pemilih dokumen terpotong `take: 300`).
  *
- * Bedanya satu: opsi TIDAK datang sebagai prop statis, melainkan dicari ke
- * server. Setiap ketikan menunggu ~300ms lalu memanggil `fetchUrl` dengan
- * `search=<q>&take=20` dan mengharapkan kontrak jawaban tunggal
- * `{ options: [{ value, label, hint? }] }` (lihat `src/lib/picker.ts`).
+ * Bedanya satu, dan tidak berubah: opsi TIDAK datang sebagai prop statis,
+ * melainkan dicari ke server. Setiap ketikan menunggu ~300ms lalu memanggil
+ * `fetchUrl` dengan `search=<q>&take=20` dan mengharapkan kontrak jawaban
+ * tunggal `{ options: [{ value, label, hint? }] }` (lihat `src/lib/picker.ts`).
  * Muatan awal (pencarian kosong) berisi ±20 dokumen terbaru — dokumen lama
  * tetap terjangkau lewat pencarian, bukan hilang di balik potongan.
  *
- * Label pilihan aktif tetap tampil walau barisnya tidak ada di halaman hasil
- * saat ini: komponen mengingat opsi yang terakhir dipilih, dan pilihan awal
- * dari server dioper lewat `initialOption`.
+ * ── Tiga hal yang harus selamat dari pergantian kulit ─────────────────────
  *
- * cmdk tetap dipakai untuk ARIA combobox + navigasi papan ketik, tetapi
- * `shouldFilter={false}` — menyaring adalah pekerjaan server sekarang.
+ *  1. **`filterOption: false`.** Menyaring adalah pekerjaan server. Kalau AntD
+ *     ikut menyaring hasil yang sudah disaring server, opsi yang label-nya tidak
+ *     memuat kata kunci (dicocokkan server lewat nomor dokumen, mitra, atau
+ *     tanggal) akan hilang dari layar — hasil yang benar, disembunyikan klien.
+ *
+ *  2. **Label pilihan aktif tetap tampil walau barisnya tidak ada di halaman
+ *     hasil sekarang.** AntD mengambil label dari daftar `options`; begitu
+ *     pengguna mengetik lagi, baris yang sedang terpilih bisa lenyap dari daftar
+ *     dan pemicunya akan menampilkan id mentah. `labelRender` di bawah menambal
+ *     itu dari opsi yang terakhir dipilih (`picked`) atau dari `initialOption`
+ *     yang dioper server.
+ *
+ *  3. **Debounce + pembatalan.** Permintaan sebelumnya di-`abort` saat ketikan
+ *     berikutnya datang, dan spinner TIDAK dimatikan oleh permintaan yang
+ *     dibatalkan — kalau tidak, kolom berkedip "kosong" di antara dua ketikan.
+ *
+ * ── Yang hilang ───────────────────────────────────────────────────────────
+ * `searchPlaceholder` tidak lagi berpengaruh (alasannya sama dengan
+ * `SearchableSelect`: yang diketik sekarang pemicunya sendiri). Prop-nya tetap
+ * diterima agar lima pemanggilnya tidak disentuh di fase B.
  */
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronsUpDown, Check, X, Loader2 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { Select, Spin } from "antd";
+
+import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/i18n/client";
 import type { PickerOption } from "@/lib/picker";
 
@@ -54,6 +60,7 @@ interface ServerSearchableSelectProps {
   id?: string;
   label?: string;
   placeholder?: string;
+  /** @deprecated Tidak berpengaruh sejak #188 — lihat komentar kepala berkas. */
   searchPlaceholder?: string;
   emptyText?: string;
   /** Show a clear (×) button when a value is selected. Default true. */
@@ -73,7 +80,6 @@ export function ServerSearchableSelect({
   id,
   label,
   placeholder,
-  searchPlaceholder,
   emptyText,
   clearable = true,
   disabled = false,
@@ -88,7 +94,6 @@ export function ServerSearchableSelect({
   const [picked, setPicked] = useState<PickerOption | null>(initialOption ?? null);
   /** Muatan pertama langsung; setelah itu tiap ketikan menunggu debounce. */
   const loadedOnce = useRef(false);
-  const listboxId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -125,120 +130,73 @@ export function ServerSearchableSelect({
     };
   }, [open, query, fetchUrl, searchParam]);
 
-  const selected = useMemo(() => {
-    if (value == null) return null;
-    if (picked?.value === value) return picked;
-    const match = options.find((o) => o.value === value);
-    if (match) return match;
-    if (initialOption?.value === value) return initialOption;
-    return null;
-  }, [value, picked, options, initialOption]);
-
   return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            id={id}
-            disabled={disabled}
-            role="combobox"
-            aria-expanded={open}
-            aria-controls={listboxId}
-            aria-haspopup="listbox"
-            className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
+      {label && <Label htmlFor={id}>{label}</Label>}
+      <Select<string, PickerOption>
+        data-slot="server-searchable-select"
+        id={id}
+        style={{ width: "100%" }}
+        options={options}
+        value={value ?? undefined}
+        onChange={(next, option) => {
+          const picking = Array.isArray(option) ? (option[0] ?? null) : (option ?? null);
+          setPicked(picking);
+          onChange(next ?? null, picking);
+        }}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Pencarian AntD dibersihkan sendiri saat popup tertutup; kalau
+          // `query` tidak ikut dibersihkan, pembukaan berikutnya menampilkan
+          // hasil pencarian lama sementara kotak ketiknya sudah kosong.
+          if (!next) setQuery("");
+        }}
+        placeholder={placeholder ?? t("searchableSelect.placeholder")}
+        labelRender={({ label: fromOptions, value: current }) =>
+          fromOptions ??
+          (picked?.value === current ? picked.label : undefined) ??
+          (initialOption?.value === current ? initialOption.label : undefined) ??
+          current
+        }
+        optionRender={(option) => (
+          <span style={{ display: "block", minWidth: 0 }}>
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {option.data.label}
+            </span>
+            {option.data.hint && (
+              <span
+                style={{
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  fontSize: "0.75rem",
+                  opacity: 0.8,
+                }}
+              >
+                {option.data.hint}
+              </span>
             )}
-          >
-            <span className={cn("truncate", !selected && value == null && "text-muted-foreground")}>
-              {selected
-                ? selected.label
-                : (value ?? placeholder ?? t("searchableSelect.placeholder"))}
+          </span>
+        )}
+        notFoundContent={
+          loading ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Spin size="small" />
+              {t("common.loading")}
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              {clearable && value != null && !disabled && (
-                <span
-                  role="button"
-                  tabIndex={-1}
-                  aria-label={t("searchableSelect.clear")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPicked(null);
-                    onChange(null, null);
-                  }}
-                  className="rounded p-0.5 hover:bg-muted hover:text-muted-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </span>
-              )}
-              <ChevronsUpDown className="h-4 w-4" />
-            </span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          sideOffset={4}
-          className="w-(--radix-popover-trigger-width) p-0"
-        >
-          {/* Server yang menyaring — cmdk hanya menampilkan apa adanya. */}
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder={searchPlaceholder ?? t("searchableSelect.searchPlaceholder")}
-              value={query}
-              onValueChange={setQuery}
-            />
-            <CommandList id={listboxId}>
-              {loading ? (
-                <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-                  <Loader2
-                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                    aria-hidden="true"
-                  />
-                  {t("common.loading")}
-                </div>
-              ) : (
-                <>
-                  <CommandEmpty>{emptyText ?? t("searchableSelect.empty")}</CommandEmpty>
-                  {options.map((opt) => {
-                    const isSelected = opt.value === value;
-                    return (
-                      <CommandItem
-                        key={opt.value}
-                        value={opt.value}
-                        // Nilai dari closure, bukan argumen callback — cmdk
-                        // menormalkan argumennya (trim/lowercase) dan itu bukan
-                        // nilai yang boleh dikirim ke API.
-                        onSelect={() => {
-                          setPicked(opt);
-                          onChange(opt.value, opt);
-                          setOpen(false);
-                        }}
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-foreground">{opt.label}</span>
-                          {opt.hint && (
-                            <span className="block truncate text-xs text-muted-foreground">
-                              {opt.hint}
-                            </span>
-                          )}
-                        </span>
-                        {isSelected && (
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                        )}
-                      </CommandItem>
-                    );
-                  })}
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          ) : (
+            (emptyText ?? t("searchableSelect.empty"))
+          )
+        }
+        // Spinner juga di pemicunya: saat daftar lama masih terlihat, indikator
+        // di dalam daftar tidak pernah muncul, dan pengguna tak tahu bahwa
+        // hasilnya sedang diperbarui.
+        loading={loading}
+        allowClear={clearable}
+        disabled={disabled}
+        showSearch={{ onSearch: setQuery, filterOption: false }}
+        popupMatchSelectWidth
+      />
     </div>
   );
 }

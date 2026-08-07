@@ -13,14 +13,29 @@
  * TANPA INFRASTRUKTUR BARU: tak ada websocket, tak ada polling latar; angkanya
  * diambil sekali saat halaman dipasang lewat `/api/approvals/summary` (dua
  * count berindeks), lalu disegarkan saat tab kembali fokus.
+ *
+ * ── Setelah migrasi AntD (issue #193) ─────────────────────────────────────
+ * Pil angka rakitan tangan diganti `Badge` AntD — komponen yang memang untuk
+ * ini (angka menempel di pojok ikon, "99+" saat melimpah). Perhatikan
+ * namanya: `Badge` di sini adalah `Badge` AntD, BUKAN primitif
+ * `@/components/ui/badge` yang justru merender `Tag` (label status berteks).
+ * Keduanya sengaja tidak ditukar — yang dibutuhkan di sini memang bulatan
+ * berangka, dan KATA-nya dibawa `aria-label`/`title` pada tautannya, jadi
+ * warna tetap bukan satu-satunya penanda (MASTER.md §Anti-Patterns).
+ *
+ * Warnanya dari token uang #186 (`moneyPalette`), bukan `colorWarning`/
+ * `colorInfo` bawaan: label putih di atas anak tangga ke-6 AntD tidak lolos
+ * 4,5:1, dan angka inilah yang dibaca orang.
  */
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { Badge, theme } from "antd";
+import { BellOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
-import { BellRing } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { parseTenantPath } from "@/lib/tenant-routes";
 
 interface Counts {
@@ -30,6 +45,7 @@ interface Counts {
 
 export function ApprovalBadge() {
   const t = useT();
+  const { token } = theme.useToken();
   const [counts, setCounts] = useState<Counts>({ pending: 0, unread: 0 });
   const pathname = usePathname();
   const parsed = pathname ? parseTenantPath(pathname) : null;
@@ -67,6 +83,7 @@ export function ApprovalBadge() {
   const total = counts.pending + counts.unread;
   if (total === 0) return null;
 
+  const money = moneyPalette(token);
   const urgent = counts.pending > 0;
   const label = urgent
     ? t("approvalBadge.pending", { count: counts.pending })
@@ -77,18 +94,26 @@ export function ApprovalBadge() {
       href="/approvals"
       aria-label={label}
       title={label}
-      className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        // Target sentuh 40px (MASTER.md) — sebelumnya dirakit dari padding.
+        minWidth: token.controlHeight,
+        minHeight: token.controlHeight,
+        borderRadius: token.borderRadius,
+        color: token.colorTextTertiary,
+        cursor: "pointer",
+      }}
     >
-      <BellRing className="h-5 w-5" aria-hidden="true" />
-      {/* Angka + teks, bukan sekadar titik berwarna (MASTER.md §2). */}
-      <span
-        className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-          urgent ? "bg-warning-soft text-warning-strong" : "bg-primary/10 text-primary"
-        }`}
+      {/* Angka + teks: angkanya di badge, katanya di `aria-label`/`title`
+          tautan ini (MASTER.md §2 — warna tak pernah jadi penanda tunggal). */}
+      <Badge
+        count={total}
+        color={urgent ? money.colorMoneyPending : money.colorMoneyInfo}
       >
-        {total}
-      </span>
-      <span className="sr-only">{label}</span>
+        <BellOutlined aria-hidden="true" style={{ fontSize: 20, display: "block", color: token.colorTextTertiary }} />
+      </Badge>
     </Link>
   );
 }

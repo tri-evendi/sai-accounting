@@ -30,8 +30,9 @@
  * `aria-expanded`, dan pencarian di dalam halaman (Ctrl+F membuka panelnya di
  * peramban modern) tanpa satu baris skrip.
  */
-import { ChevronDown } from "lucide-react";
-
+import { DownOutlined } from "@ant-design/icons";
+import { LANDING_NOTE } from "@/components/landing/landing-scale";
+import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
@@ -49,33 +50,64 @@ export async function LandingFaq() {
   ];
 
   return (
-    <section id="tanya" className="scroll-mt-20 border-t border-border py-16 sm:py-24">
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          {t("landing.faqHeading")}
-        </h2>
+    <LandingSection id="tanya" width="narrow">
+      <LandingSectionIntro title={t("landing.faqHeading")} />
 
-        <dl className="mt-8 divide-y divide-border border-y border-border">
-          {items.map((item) => (
-            <div key={item.q}>
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left font-medium text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                  {/* `<dt>` DI DALAM `<summary>`: yang bisa diklik harus
-                      summary-nya (itu yang membawa keyboard & aria), sedangkan
-                      pasangan istilah–penjelasan tetap harus terbaca sebagai
-                      daftar definisi oleh pembaca layar. */}
-                  <dt>{item.q}</dt>
-                  <ChevronDown
-                    className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
-                    aria-hidden
-                  />
-                </summary>
-                <dd className="pb-4 text-sm leading-relaxed text-muted-foreground">{item.a}</dd>
-              </details>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
+      <dl
+        style={{
+          margin: 0,
+          marginTop: "var(--ant-margin-lg)",
+          borderBlock: "1px solid var(--ant-color-border-secondary)",
+        }}
+      >
+        {items.map((item, index) => (
+          <div
+            key={item.q}
+            style={
+              index === 0
+                ? undefined
+                : { borderTop: "1px solid var(--ant-color-border-secondary)" }
+            }
+          >
+            <details>
+              {/* Rotasi karet, kursor, penghapus penanda bawaan, hover, dan
+                  cincin fokus adalah KEADAAN — tak satu pun bisa ditulis
+                  sebagai gaya sebaris. Semuanya di blok `[data-landing-faq]`
+                  (`landing-scale.ts`), termasuk `prefers-reduced-motion`. */}
+              <summary
+                data-landing-faq=""
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--ant-margin)",
+                  paddingBlock: "var(--ant-padding)",
+                  textAlign: "left",
+                  fontWeight: "var(--ant-font-weight-strong)",
+                }}
+              >
+                {/* `<dt>` DI DALAM `<summary>`: yang bisa diklik harus
+                    summary-nya (itu yang membawa keyboard & aria), sedangkan
+                    pasangan istilah–penjelasan tetap harus terbaca sebagai
+                    daftar definisi oleh pembaca layar. */}
+                <dt>{item.q}</dt>
+                <DownOutlined
+                  data-landing-caret=""
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    color: "var(--ant-color-text-secondary)",
+                    fontSize: "var(--ant-font-size-xl)",
+                  }}
+                />
+              </summary>
+              <dd style={{ ...LANDING_NOTE, margin: 0, paddingBottom: "var(--ant-padding)" }}>
+                {item.a}
+              </dd>
+            </details>
+          </div>
+        ))}
+      </dl>
+    </LandingSection>
   );
 }

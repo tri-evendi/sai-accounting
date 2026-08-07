@@ -1,29 +1,40 @@
 "use client";
 
+/**
+ * Tutup Buku — daftar periode + ringkasan pra-tutup.
+ * Dikonversi ke token Ant Design pada issue #196.
+ *
+ * Kulitnya saja yang berubah; alur tutup/buka kembali (dua endpoint + muat
+ * ulang ringkasan) tidak disentuh. Tiga hal yang menentukan bentuk konversinya:
+ *
+ *  • **Baris terpilih ditandai lewat `rowStyle`** (#229), bukan lewat kelas
+ *    `bg-primary/10 hover:bg-primary/10`. Gaya SEBARIS menang atas selektor apa
+ *    pun termasuk `:hover`, jadi baris terpilih tetap bertanda saat kursor
+ *    lewat di atasnya — perilaku yang dulu perlu dua kelas untuk dijaga.
+ *  • **Hasil pemeriksaan tetap ikon + kata + warna**, dan warnanya kini dari
+ *    token (`colorSuccess`/`colorWarning`/`colorError`). Ikonnya besar-non-teks
+ *    (ambang 3:1), sedangkan KATA-nya memakai varian `…Text` yang lolos ambang
+ *    4,5:1 untuk teks 14px — dua ambang berbeda pada satu baris, dan itulah
+ *    alasan keduanya tidak memakai token yang sama.
+ *  • **Halaman ini TIDAK menyeberang**: `periods/page.tsx` tetap server
+ *    component yang membaca `listPeriods()` lewat Prisma dan menyerahkannya ke
+ *    sini sebagai props polos.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Lock,
-  LockOpen,
-  RefreshCw,
-  XCircle,
-} from "lucide-react";
+import { Alert, Col, Flex, Row, theme } from "antd";
+import { CheckCircleOutlined, CloseCircleOutlined, LockOutlined, ReloadOutlined, UnlockOutlined, WarningOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/loading";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
@@ -39,39 +50,23 @@ interface PeriodRow {
   note: string | null;
 }
 
-/** Icon + wording per check outcome — never colour on its own (MASTER.md §2). */
-const CHECK_STYLES: Record<
-  PeriodCheck["status"],
-  { icon: typeof CheckCircle2; tone: string; labelKey: "checkOk" | "checkWarning" | "checkBlocker" }
-> = {
-  ok: { icon: CheckCircle2, tone: "text-success", labelKey: "checkOk" },
-  warning: { icon: AlertTriangle, tone: "text-warning", labelKey: "checkWarning" },
-  blocker: { icon: XCircle, tone: "text-destructive", labelKey: "checkBlocker" },
-};
+/** Lebar dasar satu kolom panel; di bawahnya keduanya menumpuk. */
+const PANEL_BASIS = 420;
+/** Ikon keadaan kosong daftar periode. */
+const EMPTY_ICON_SIZE = 48;
+/** Panjang minimum alasan buka-kembali (tetap sama dengan sebelum migrasi). */
+const MIN_REASON_LENGTH = 5;
 
 const CHECK_LABEL_KEYS = {
-  checkOk: "periods.checkOk",
-  checkWarning: "periods.checkWarning",
-  checkBlocker: "periods.checkBlocker",
+  ok: "periods.checkOk",
+  warning: "periods.checkWarning",
+  blocker: "periods.checkBlocker",
 } as const;
-
-function StatusBadge({ status, t }: { status: string; t: TranslateFn }) {
-  return status === "closed" ? (
-    <Badge variant="danger">
-      <Lock className="mr-1 h-3 w-3" aria-hidden="true" />
-      {t("periods.statusClosed")}
-    </Badge>
-  ) : (
-    <Badge variant="success">
-      <LockOpen className="mr-1 h-3 w-3" aria-hidden="true" />
-      {t("periods.statusOpen")}
-    </Badge>
-  );
-}
 
 export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
   const router = useRouter();
   const t = useT();
+  const { token } = theme.useToken();
 
   const [selected, setSelected] = useState<{ year: number; month: number } | null>(
     periods[0] ? { year: periods[0].year, month: periods[0].month } : null
@@ -146,163 +141,266 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       t("periods.reopenFailed")
     );
 
+  /**
+   * Ikon + warna per hasil pemeriksaan. Ikon memakai warna PENUH (ambang
+   * non-teks 3:1); katanya memakai varian `…Text` (ambang teks 4,5:1).
+   */
+  const CHECK_STYLES: Record<
+    PeriodCheck["status"],
+    { Icon: typeof CheckCircleOutlined; icon: string; text: string; labelKey: keyof typeof CHECK_LABEL_KEYS }
+  > = {
+    ok: {
+      Icon: CheckCircleOutlined,
+      icon: token.colorSuccess,
+      text: token.colorSuccessText,
+      labelKey: "ok",
+    },
+    warning: {
+      Icon: WarningOutlined,
+      icon: token.colorWarning,
+      text: token.colorWarningText,
+      labelKey: "warning",
+    },
+    blocker: {
+      Icon: CloseCircleOutlined,
+      icon: token.colorError,
+      text: token.colorErrorText,
+      labelKey: "blocker",
+    },
+  };
+
+  const statusBadge = (status: string, translate: TranslateFn) =>
+    status === "closed" ? (
+      <Badge variant="danger">
+        <LockOutlined aria-hidden="true" />
+        <span>{translate("periods.statusClosed")}</span>
+      </Badge>
+    ) : (
+      <Badge variant="success">
+        <UnlockOutlined aria-hidden="true" />
+        <span>{translate("periods.statusOpen")}</span>
+      </Badge>
+    );
+
+  const isSelected = (p: PeriodRow) =>
+    selected?.year === p.year && selected?.month === p.month;
+
+  const periodColumns: SaiColumns<PeriodRow> = [
+    {
+      key: "label",
+      dataIndex: "label",
+      title: t("periods.colPeriod"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ fontWeight: token.fontWeightStrong }}>{row.label}</span>
+      ),
+    },
+    {
+      key: "status",
+      dataIndex: "status",
+      title: t("common.status"),
+      align: "left",
+      render: (_v, row) => statusBadge(row.status, t),
+    },
+    {
+      key: "closedAt",
+      dataIndex: "closedAt",
+      title: t("periods.colClosed"),
+      align: "left",
+      render: (_v, row) =>
+        row.closedAt ? (
+          <span
+            style={{ fontVariantNumeric: "tabular-nums", color: token.colorTextSecondary }}
+          >
+            {formatDate(row.closedAt)}
+            {row.closedByName && (
+              <span style={{ display: "block" }}>
+                <small>{t("periods.closedBy", { name: row.closedByName })}</small>
+              </span>
+            )}
+          </span>
+        ) : (
+          <span style={{ color: token.colorTextSecondary }}>—</span>
+        ),
+    },
+    {
+      key: "review",
+      title: "",
+      align: "right",
+      render: (_v, row) => (
+        <Button
+          variant={isSelected(row) ? "primary" : "secondary"}
+          size="sm"
+          onClick={() => setSelected({ year: row.year, month: row.month })}
+        >
+          {t("periods.review")}
+        </Button>
+      ),
+    },
+  ];
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+    <Flex wrap gap={token.marginLG} align="flex-start">
       {/* ── Period list ── */}
-      <Card>
+      <Card style={{ flex: `1 1 ${PANEL_BASIS}px`, minWidth: 0 }}>
         <CardHeader>
           <CardTitle>{t("periods.listTitle")}</CardTitle>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("periods.colPeriod")}</TableHead>
-              <TableHead>{t("common.status")}</TableHead>
-              <TableHead>{t("periods.colClosed")}</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {periods.length > 0 ? (
-              periods.map((p) => {
-                const active = selected?.year === p.year && selected?.month === p.month;
-                return (
-                  <TableRow
-                    key={`${p.year}-${p.month}`}
-                    // Baris terpilih tetap bertanda meski kursor berpindah,
-                    // jadi hover-nya dikunci ke warna terpilih.
-                    className={active ? "bg-primary/10 hover:bg-primary/10" : undefined}
-                  >
-                    <TableCell className="font-medium text-foreground">{p.label}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={p.status} t={t} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {p.closedAt ? (
-                        <span className="tabular-nums">
-                          {formatDate(p.closedAt)}
-                          {p.closedByName && (
-                            <span className="block text-xs text-muted-foreground">
-                              {t("periods.closedBy", { name: p.closedByName })}
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant={active ? "primary" : "secondary"}
-                        size="sm"
-                        onClick={() => setSelected({ year: p.year, month: p.month })}
-                        className="cursor-pointer"
-                      >
-                        {t("periods.review")}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  {t("periods.emptyList")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable
+          columns={periodColumns}
+          rows={periods}
+          rowKey={(row) => `${row.year}-${row.month}`}
+          /* Baris terpilih tetap bertanda meski kursor berpindah: gaya sebaris
+             menang atas `:hover` milik primitifnya. */
+          rowStyle={(row) =>
+            isSelected(row) ? { background: token.colorPrimaryBg } : undefined
+          }
+          empty={
+            <EmptyState
+              icon={<LockOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("periods.emptyList")}
+            />
+          }
+        />
       </Card>
 
       {/* ── Pre-close summary ── */}
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>
-            {summary ? t("periods.summaryOf", { label: summary.label }) : t("periods.summaryTitle")}
-          </CardTitle>
-          {selected && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => loadSummary(selected.year, selected.month)}
-              className="text-muted-foreground hover:text-foreground"
-              aria-label={t("periods.reloadSummary")}
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          )}
+      <Card style={{ flex: `1 1 ${PANEL_BASIS}px`, minWidth: 0 }}>
+        <CardHeader>
+          <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
+            <CardTitle>
+              {summary ? t("periods.summaryOf", { label: summary.label }) : t("periods.summaryTitle")}
+            </CardTitle>
+            {selected && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => loadSummary(selected.year, selected.month)}
+                aria-label={t("periods.reloadSummary")}
+              >
+                <ReloadOutlined aria-hidden="true" />
+              </Button>
+            )}
+          </Flex>
         </CardHeader>
 
         <CardContent>
           {error && (
-            <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
-          )}
-
-          {loading && (
-            <div className="flex justify-center py-10">
-              <Spinner />
+            <div role="alert" style={{ marginBottom: token.margin }}>
+              <Alert type="error" showIcon message={error} />
             </div>
           )}
 
+          {loading && (
+            <Flex justify="center" style={{ paddingBlock: token.paddingXL }}>
+              <Spinner />
+            </Flex>
+          )}
+
           {!loading && !summary && !error && (
-            <p className="py-10 text-center text-sm text-muted-foreground">
+            <p
+              style={{
+                margin: 0,
+                paddingBlock: token.paddingXL,
+                textAlign: "center",
+                color: token.colorTextSecondary,
+              }}
+            >
               {t("periods.pickPeriod")}
             </p>
           )}
 
           {!loading && summary && (
             <>
-              <div className="mb-5 grid grid-cols-3 gap-4 border-b border-border pb-5">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("periods.journalCount")}</p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+              <Row
+                gutter={[token.margin, token.margin]}
+                style={{
+                  marginBottom: token.marginLG,
+                  paddingBottom: token.paddingLG,
+                  borderBottom: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                }}
+              >
+                <Col xs={24} sm={8}>
+                  <small style={{ color: token.colorTextSecondary }}>
+                    {t("periods.journalCount")}
+                  </small>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeHeading4,
+                      fontWeight: token.fontWeightStrong,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {summary.journalCount}
                   </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("periods.totalDebit")}</p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                </Col>
+                <Col xs={12} sm={8}>
+                  <small style={{ color: token.colorTextSecondary }}>
+                    {t("periods.totalDebit")}
+                  </small>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      fontWeight: token.fontWeightStrong,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatCurrency(summary.totalDebit, "IDR")}
                   </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("periods.totalCredit")}</p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                </Col>
+                <Col xs={12} sm={8}>
+                  <small style={{ color: token.colorTextSecondary }}>
+                    {t("periods.totalCredit")}
+                  </small>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginXXS,
+                      fontWeight: token.fontWeightStrong,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatCurrency(summary.totalCredit, "IDR")}
                   </p>
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <ul className="space-y-3">
+              <Flex vertical gap={token.marginSM} component="ul" style={{ margin: 0, padding: 0, listStyle: "none" }}>
                 {summary.checks.map((c) => {
                   const style = CHECK_STYLES[c.status];
-                  const Icon = style.icon;
+                  const Icon = style.Icon;
                   return (
-                    <li key={c.id} className="flex gap-3">
-                      <Icon
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${style.tone}`}
-                        aria-hidden="true"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">
+                    <li key={c.id} style={{ display: "flex", gap: token.marginSM }}>
+                      <Icon aria-hidden="true" style={{ flexShrink: 0, marginTop: token.marginXXS, color: style.icon }} />
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: token.fontWeightStrong }}>
                           {c.label}{" "}
-                          <span className={`text-xs font-normal ${style.tone}`}>
-                            · {t(CHECK_LABEL_KEYS[style.labelKey])}
+                          {/* Kata + warna, tak pernah warna saja. */}
+                          <span style={{ fontWeight: "normal", color: style.text }}>
+                            <small>· {t(CHECK_LABEL_KEYS[style.labelKey])}</small>
                           </span>
                         </p>
-                        <p className="text-sm text-muted-foreground">{c.detail}</p>
+                        <p style={{ margin: 0, color: token.colorTextSecondary }}>{c.detail}</p>
                       </div>
                     </li>
                   );
                 })}
-              </ul>
+              </Flex>
 
-              <div className="mt-6 border-t border-border pt-5">
+              <div
+                style={{
+                  marginTop: token.marginLG,
+                  paddingTop: token.paddingLG,
+                  borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                }}
+              >
                 {summary.status === "closed" ? (
-                  <>
-                    <p className="mb-3 text-sm text-muted-foreground">
+                  <Flex vertical gap={token.marginXS}>
+                    <p style={{ margin: 0, color: token.colorTextSecondary }}>
                       {summary.closedAt && summary.closedByName
                         ? t("periods.lockedSinceBy", {
                             date: formatDate(summary.closedAt),
@@ -314,17 +412,12 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                             ? t("periods.lockedBy", { name: summary.closedByName })
                             : t("periods.lockedPlain")}
                       {summary.note && (
-                        <span className="mt-1 block text-muted-foreground">
+                        <span style={{ display: "block", marginTop: token.marginXXS }}>
                           {t("periods.noteLine", { note: summary.note })}
                         </span>
                       )}
                     </p>
-                    <label
-                      htmlFor="reopen-reason"
-                      className="mb-1 block text-sm font-medium text-foreground"
-                    >
-                      {t("periods.reopenReasonLabel")}
-                    </label>
+                    <Label htmlFor="reopen-reason">{t("periods.reopenReasonLabel")}</Label>
                     <Textarea
                       id="reopen-reason"
                       rows={2}
@@ -332,10 +425,10 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                       onChange={(e) => setReason(e.target.value)}
                       placeholder={t("periods.reopenReasonPlaceholder")}
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("periods.reopenReasonHint")}
+                    <p style={{ margin: 0, color: token.colorTextSecondary }}>
+                      <small>{t("periods.reopenReasonHint")}</small>
                     </p>
-                    <div className="mt-3">
+                    <div>
                       <ConfirmDialog
                         title={t("periods.reopenTitle", { label: summary.label })}
                         message={t("periods.reopenMessage", { label: summary.label })}
@@ -346,24 +439,18 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                           <Button
                             variant="danger"
                             size="sm"
-                            disabled={busy || reason.trim().length < 5}
-                            className="cursor-pointer"
+                            disabled={busy || reason.trim().length < MIN_REASON_LENGTH}
                           >
-                            <LockOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                            <UnlockOutlined aria-hidden="true" />
                             {t("periods.reopenButton")}
                           </Button>
                         }
                       />
                     </div>
-                  </>
+                  </Flex>
                 ) : (
-                  <>
-                    <label
-                      htmlFor="close-note"
-                      className="mb-1 block text-sm font-medium text-foreground"
-                    >
-                      {t("periods.closeNoteLabel")}
-                    </label>
+                  <Flex vertical gap={token.marginXS}>
+                    <Label htmlFor="close-note">{t("periods.closeNoteLabel")}</Label>
                     <Textarea
                       id="close-note"
                       rows={2}
@@ -373,13 +460,16 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                     />
 
                     {summary.blockerCount > 0 && (
-                      <p className="mt-3 flex items-start gap-2 text-sm text-destructive-strong">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                        {t("periods.blockerWarning", { count: summary.blockerCount })}
-                      </p>
+                      <div role="alert">
+                        <Alert
+                          type="error"
+                          showIcon
+                          message={t("periods.blockerWarning", { count: summary.blockerCount })}
+                        />
+                      </div>
                     )}
 
-                    <div className="mt-3">
+                    <div>
                       <ConfirmDialog
                         title={t("periods.closeTitle", { label: summary.label })}
                         message={t("periods.closeMessage", { label: summary.label })}
@@ -387,24 +477,20 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         confirmVariant="primary"
                         onConfirm={onClose}
                         trigger={
-                          <Button
-                            size="sm"
-                            disabled={busy || !summary.canClose}
-                            className="cursor-pointer"
-                          >
-                            <Lock className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                          <Button size="sm" disabled={busy || !summary.canClose}>
+                            <LockOutlined aria-hidden="true" />
                             {t("periods.closeAction")}
                           </Button>
                         }
                       />
                     </div>
-                  </>
+                  </Flex>
                 )}
               </div>
             </>
           )}
         </CardContent>
       </Card>
-    </div>
+    </Flex>
   );
 }

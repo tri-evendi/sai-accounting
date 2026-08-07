@@ -21,6 +21,17 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Panjang baris kalimat penjelas kepala halaman — bekas `max-w-3xl` (48rem).
+ *
+ * Angkanya tinggal di sini dan bukan dibaca dari token: berkas ini SERVER
+ * COMPONENT, jadi ia tidak boleh mengimpor `antd` (dijaga
+ * `tests/rsc-boundary.test.ts`) dan tidak bisa memanggil `theme.useToken()`.
+ * Ini ukuran tata letak, bukan warna — jadi tidak ada yang hilang selain
+ * kemampuan menggesernya lewat tema.
+ */
+const DESCRIPTION_MAX_WIDTH = 768;
+
 export default async function ApprovalsPage({
   params,
 }: {
@@ -42,7 +53,7 @@ export default async function ApprovalsPage({
       <PageHeader
         title={t("nav.items.approvals")}
         description={
-          <span className="block max-w-3xl">
+          <span style={{ display: "block", maxWidth: DESCRIPTION_MAX_WIDTH }}>
             {t("approvals.descriptionBefore")}{" "}
             <strong>{t("approvals.descriptionStrong")}</strong>
             {t("approvals.descriptionAfter")}

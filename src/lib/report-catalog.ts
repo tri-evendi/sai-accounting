@@ -106,7 +106,7 @@ export interface ReportDefinition {
   /** Route for an `available` report; undefined for `coming_soon`. */
   href?: string;
   paramKind: ReportParamKind;
-  /** Icon name from lucide-react, resolved by the page (keeps this file pure). */
+  /** Icon name (key of the page's `ICONS` map), resolved by the page (keeps this file pure). */
   icon: string;
   /**
    * Jenis payload cetak laporan ini — ADA hanya bila laporannya benar-benar

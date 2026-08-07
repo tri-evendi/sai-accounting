@@ -20,26 +20,71 @@
  *
  * Ia tinggal DI DALAM `platform/layout.tsx`, jadi sidebar, bilah atas, dan
  * penanda akun tetap ada selama menunggu — yang berkedip hanya area isi.
+ *
+ * ── Warna & denyut (issue #203) ──────────────────────────────────────────
+ * Server component, jadi tanpa `antd`. Sebagian kerangka ini berdiri DI LUAR
+ * `Card` (kepala halaman, baris kartu ringkasan), dan itu dulu jadi alasan
+ * memakai token `:root` aplikasi — supaya warnanya tidak setengah token
+ * aplikasi, setengah token AntD. Alasan itu gugur sejak #227: kelas
+ * `ANTD_CSS_VAR_KEY` ("sai-tokens") dipikul `<html>` oleh root layout, bukan
+ * oleh elemen yang digambar komponen AntD, jadi `var(--ant-…)` teratasi sama
+ * saja di dalam maupun di luar `Card`. SELURUHNYA karena itu token AntD — dan
+ * memang harus, sebab #203 mencabut token `:root` itu dari `globals.css`.
+ * Denyut & `prefers-reduced-motion` lewat satu aturan CSS ber-`href` +
+ * `precedence` yang menyasar atribut `data-skeleton`, bukan kelas.
  */
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
+/** Balok kerangka. Warnanya `fillSecondary`, bukan `fillQuaternary`: yang
+ *  terakhir itu latar halus untuk bidang lebar, dan sebagai BALOK di atas
+ *  kartu ia praktis tak terlihat — kerangka yang tak terlihat sama saja
+ *  dengan layar kosong. */
+function bar(width: number | string, height: number, radius = 4): React.CSSProperties {
+  return { width, height, borderRadius: radius, background: "var(--ant-color-fill-secondary)" };
+}
+
 export default function PlatformLoading() {
   return (
-    <div className="animate-pulse" aria-hidden="true">
+    <div data-skeleton aria-hidden="true">
+      <style href="sai-platform-skeleton" precedence="default">{`
+        [data-skeleton]{animation:sai-skeleton-pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+        @keyframes sai-skeleton-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+        @media (prefers-reduced-motion:reduce){[data-skeleton]{animation:none}}
+      `}</style>
+
       {/* Kepala halaman */}
-      <div className="mb-6 space-y-2">
-        <div className="h-8 w-56 rounded bg-muted" />
-        <div className="h-4 w-80 max-w-full rounded bg-muted" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+        <div style={bar(224, 32)} />
+        <div style={{ ...bar("100%", 16), maxWidth: 320 }} />
       </div>
 
-      <div className="space-y-6">
-        {/* Baris kartu ringkasan — kisi yang sama dengan pendaratan. */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* Baris kartu ringkasan — kisi yang SAMA dengan pendaratan, termasuk
+            `auto-fit`-nya: kerangka yang jumlah kolomnya berbeda dari isinya
+            justru menambah lompatan tata letak alih-alih menghapusnya. */}
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+          }}
+        >
+          {/* Radius 8px, sama dengan `borderRadiusLG` AntD yang dipakai
+              `QuotaMeter` sejak #191 — sudut yang meleset dari isinya adalah
+              lompatan tata letak juga. */}
           {[0, 1, 2].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-4">
-              <div className="h-4 w-24 rounded bg-muted" />
-              <div className="mt-2 h-7 w-20 rounded bg-muted" />
-              <div className="mt-3 h-2 w-full rounded-full bg-muted" />
+            <div
+              key={i}
+              style={{
+                padding: 16,
+                borderRadius: 8,
+                border: "1px solid var(--ant-color-border-secondary)",
+                background: "var(--ant-color-bg-container)",
+              }}
+            >
+              <div style={bar(96, 16)} />
+              <div style={{ ...bar(80, 28), marginTop: 8 }} />
+              <div style={{ ...bar("100%", 8, 999), marginTop: 12 }} />
             </div>
           ))}
         </div>
@@ -48,11 +93,13 @@ export default function PlatformLoading() {
         {[0, 1].map((i) => (
           <Card key={i}>
             <CardHeader>
-              <div className="h-5 w-40 rounded bg-muted" />
+              <div style={bar(160, 20)} />
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="h-4 w-full rounded bg-muted" />
-              <div className="h-4 w-2/3 rounded bg-muted" />
+            <CardContent>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={bar("100%", 16)} />
+                <div style={bar("66%", 16)} />
+              </div>
             </CardContent>
           </Card>
         ))}

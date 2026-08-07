@@ -1,4 +1,4 @@
-import { formatNumber, parsePageParam } from "@/lib/utils";
+import { parsePageParam } from "@/lib/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -18,27 +18,56 @@ import { StockStatusChart, StockLevelChart } from "@/components/shared/dashboard
 import { stockLevelChartHeight, stockLevelSeries } from "@/lib/chart-data";
 import { InventoryPageActions } from "./inventory-actions";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
+import { StaticTable } from "@/components/ui/static-table";
+import { moneyColumn } from "@/components/ui/money-column";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
-import { Package as PackageIcon } from "lucide-react";
+import { ContainerOutlined } from "@ant-design/icons";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Halaman Persediaan — dikonversi ke `StaticTable` + token AntD (issue #198).
+ *
+ * **Tetap server component**: seluruh isinya dibaca Prisma dan tabelnya hanya
+ * MENAMPILKAN (paginasinya di server). Warna kondisi stok tetap lewat `Badge`
+ * berteks, dan kuantitas — `Decimal(15,3)` — tetap lewat `qtyColumn`, bukan
+ * `Money`: memformatnya sebagai uang akan mencetak "Rp" di kolom satuan barang.
+ */
+
+/** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
+const SECTION_GAP = 24;
+const CARD_GAP = 16;
+const STAT_BASIS = 160;
+const CHART_BASIS = 320;
+const EMPTY_ICON_SIZE = 48;
+const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
+
+/**
+ * `qtyColumn` yang diberi warna arah — MEMBUNGKUS, bukan menggantikan: aturan
+ * kuantitas (rata kanan · tabular-nums · id-ID · "—" untuk nilai tak diketahui)
+ * tetap milik satu pembantu, dan yang ditambahkan di sini hanya warnanya.
+ */
+function qtyStyled<T>(
+  dataIndex: Extract<keyof T, string>,
+  title: string,
+  style: React.CSSProperties
+): SaiColumns<T>[number] {
+  const base = qtyColumn<T>({ dataIndex, title });
+  return {
+    ...base,
+    render: (raw, row, index) => <span style={style}>{base.render?.(raw, row, index)}</span>,
+  };
+}
 
 export default async function InventoryPage({
   params,
@@ -121,10 +150,82 @@ export default async function InventoryPage({
   ];
   const stockLevelData = stockLevelSeries(allInventory);
 
+  type InventoryRow = (typeof inventory)[number];
+
+  const columns: SaiColumns<InventoryRow> = [
+    {
+      ...textColumn<InventoryRow>({ dataIndex: "name", title: t("common.item") }),
+      render: (raw) => <span style={{ fontWeight: STRONG }}>{String(raw)}</span>,
+    },
+    {
+      ...textColumn<InventoryRow>({ dataIndex: "unit", title: t("common.unit") }),
+      render: (raw) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {raw ? String(raw) : "-"}
+        </span>
+      ),
+    },
+    // Masuk hijau / keluar merah — token UANG (#186), yang lolos 4,5:1 sebagai
+    // teks 14px; angkanya sendiri tetap penanda non-warnanya.
+    qtyStyled<InventoryRow>("totalIn", t("inventory.colTotalIn"), {
+      color: "var(--ant-color-money-positive)",
+    }),
+    qtyStyled<InventoryRow>("totalOut", t("inventory.colTotalOut"), {
+      color: "var(--ant-color-money-negative)",
+    }),
+    qtyStyled<InventoryRow>("currentStock", t("inventory.colCurrentStock"), { fontWeight: STRONG }),
+    moneyColumn<InventoryRow>({ dataIndex: "unitCost", title: t("inventory.colUnitCost") }),
+    {
+      ...moneyColumn<InventoryRow>({ dataIndex: "stockValue", title: t("inventory.colValue") }),
+      render: (_v, row) => (
+        <Money
+          value={row.stockValue}
+          currency="IDR"
+          style={{ fontWeight: STRONG }}
+          // Barang tanpa dasar biaya menampilkan "—"; judul tetiknya menjelaskan
+          // KENAPA, tanpa menambah kolom untuk satu keadaan.
+          title={row.stockValue === null ? t("inventory.noCostYet") : undefined}
+        />
+      ),
+    },
+    {
+      key: "condition",
+      dataIndex: "currentStock",
+      title: t("inventory.colCondition"),
+      align: "left",
+      render: (_v, row) => {
+        const level = getStockLevel(row.currentStock);
+        return <Badge variant={getStockBadgeVariant(level)}>{levelLabels[level]}</Badge>;
+      },
+    },
+  ];
+
+  /** Kartu angka ringkas: keterangan kecil di atas, angkanya besar di bawah. */
+  const statCard = (label: string, value: number, color?: string) => (
+    <Card>
+      <div style={{ padding: "var(--ant-padding)" }}>
+        <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>{label}</p>
+        <p
+          style={{
+            margin: 0,
+            marginTop: "var(--ant-margin-xxs)",
+            fontSize: "var(--ant-font-size-heading-3)",
+            fontWeight: STRONG,
+            fontVariantNumeric: "tabular-nums",
+            color,
+          }}
+        >
+          {value}
+        </p>
+      </div>
+    </Card>
+  );
+
   return (
     <div>
+      {/* `mb-1` lama tidak pernah berlaku: `PageHeader` menulis `marginBottom`
+          sebaris, dan gaya sebaris selalu menang atas kelas. */}
       <PageHeader
-        className="mb-1"
         title={<TermTooltip term="persediaan">{t("nav.items.inventory")}</TermTooltip>}
         description={t("inventory.lowStockNote", { threshold: LOW_STOCK_THRESHOLD })}
         actions={
@@ -139,49 +240,78 @@ export default async function InventoryPage({
           </>
         }
       />
-      <LearnMore term="stok_opname" className="mt-1 mb-6" label={t("inventory.learnMore")} />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="stok_opname" label={t("inventory.learnMore")} />
+      </div>
 
-      <div className="mb-6">
+      <div style={{ marginBottom: SECTION_GAP }}>
         <StockAlertBanner items={lowStockAlerts} />
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-4">
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statItems")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{stockHealth.totalItems}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statHealthy")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-success">{stockHealth.healthy}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statLow")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-warning">{stockHealth.lowStock}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm text-muted-foreground">{t("dashboard.statEmpty")}</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-destructive">{stockHealth.empty}</p></CardContent>
-        </Card>
+      <div
+        style={{
+          display: "grid",
+          gap: CARD_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${STAT_BASIS}px, 1fr))`,
+          marginBottom: CARD_GAP,
+        }}
+      >
+        {statCard(t("dashboard.statItems"), stockHealth.totalItems)}
+        {statCard(
+          t("dashboard.statHealthy"),
+          stockHealth.healthy,
+          "var(--ant-color-money-positive)"
+        )}
+        {statCard(t("dashboard.statLow"), stockHealth.lowStock, "var(--ant-color-money-pending)")}
+        {statCard(t("dashboard.statEmpty"), stockHealth.empty, "var(--ant-color-money-negative)")}
       </div>
 
       {/* Nilai persediaan (issue #58) — rata-rata tertimbang, sumber biaya sama dengan HPP */}
-      <Card className="mb-6">
-        <CardContent className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+      <Card style={{ marginBottom: SECTION_GAP }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "var(--ant-padding)",
+          }}
+        >
           <div>
-            <p className="text-sm text-muted-foreground">{t("inventory.stockValueTitle")}</p>
+            <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
+              {t("inventory.stockValueTitle")}
+            </p>
             {uncostedCount > 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ant-font-size-sm)",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("inventory.uncostedNote", { count: uncostedCount })}
               </p>
             )}
           </div>
-          <Money value={totalStockValue} currency="IDR" className="text-2xl font-bold" />
-        </CardContent>
+          <Money
+            value={totalStockValue}
+            currency="IDR"
+            style={{ fontSize: "var(--ant-font-size-heading-3)", fontWeight: STRONG }}
+          />
+        </div>
       </Card>
 
       {/* Grafik: sebaran kondisi + stok terbanyak, tepat di atas tabelnya */}
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+      <div
+        style={{
+          display: "grid",
+          gap: SECTION_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${CHART_BASIS}px, 1fr))`,
+          marginBottom: SECTION_GAP,
+        }}
+      >
         <ChartCard
           title={t("dashboard.chartStockConditionTitle")}
           description={t("dashboard.chartStockConditionDesc")}
@@ -199,60 +329,30 @@ export default async function InventoryPage({
 
       {/* Stock Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>{t("inventory.summaryTitle", { count: totalCount })}</CardTitle>
-        </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.item")}</TableHead>
-              <TableHead>{t("common.unit")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colTotalIn")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colTotalOut")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colCurrentStock")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colUnitCost")}</TableHead>
-              <TableHead className="text-right">{t("inventory.colValue")}</TableHead>
-              <TableHead>{t("inventory.colCondition")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {inventory.length === 0 ? (
-              <TableRow className="hover:bg-transparent"><TableCell colSpan={8} className="p-0"><EmptyState icon={<PackageIcon className="h-12 w-12" />} title={t("inventory.emptyTitle")} description={t("inventory.emptyDescription")} actionLabel={t("common.addRemoveStock")} actionHref="/inventory/update" /></TableCell></TableRow>
-            ) : (
-              inventory.map((item) => {
-                const level = getStockLevel(item.currentStock);
-                return (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-foreground">{item.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.unit || "-"}</TableCell>
-                  <TableCell className="text-right text-success tabular-nums">{formatNumber(item.totalIn)}</TableCell>
-                  <TableCell className="text-right text-destructive tabular-nums">{formatNumber(item.totalOut)}</TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">{formatNumber(item.currentStock)}</TableCell>
-                  <TableCell className="text-right">
-                    {item.unitCost !== null ? (
-                      <Money value={item.unitCost} currency="IDR" />
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item.stockValue !== null ? (
-                      <Money value={item.stockValue} currency="IDR" className="font-semibold" />
-                    ) : (
-                      <span className="text-muted-foreground" title={t("inventory.noCostYet")}>—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStockBadgeVariant(level)}>
-                      {levelLabels[level]}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+        <div
+          style={{
+            padding: "var(--ant-padding-lg)",
+            borderBottom: "1px solid var(--ant-color-border-secondary)",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
+            {t("inventory.summaryTitle", { count: totalCount })}
+          </h2>
+        </div>
+        <StaticTable<InventoryRow>
+          columns={columns}
+          rows={inventory}
+          rowKey={(item) => item.id}
+          empty={
+            <EmptyState
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("inventory.emptyTitle")}
+              description={t("inventory.emptyDescription")}
+              actionLabel={t("common.addRemoveStock")}
+              actionHref="/inventory/update"
+            />
+          }
+        />
         <Pagination currentPage={page} totalPages={totalPages} basePath="/inventory" searchParams={filters} />
       </Card>
     </div>

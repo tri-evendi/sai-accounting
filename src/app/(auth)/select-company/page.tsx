@@ -16,11 +16,21 @@
  * Sengaja di grup rute `(auth)`, BUKAN `(dashboard)`: pada titik ini belum ada
  * perusahaan aktif, sedangkan setiap halaman dasbor menuntutnya. Menaruhnya di
  * dalam dasbor akan membuatnya memantul ke dirinya sendiri tanpa henti.
+ *
+ * ── Warna di berkas ini (issue #203) ─────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimat
+ * penjelasnya karena itu memakai variabel token AntD, dan itu SAH walau tak
+ * ada satu pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY`
+ * ("sai-tokens") dipikul `<html>` oleh root layout — bukan oleh elemen yang
+ * digambar komponen AntD — sehingga `var(--ant-…)` teratasi di seluruh
+ * dokumen. Token `:root` aplikasi bukan lagi pilihan: #203 mencabutnya dari
+ * `globals.css`, dan `AuthShell` pun kini berdiri di atas token AntD, jadi
+ * kulit dan isinya tetap tidak bisa berpisah warna. Tombolnya sendiri sudah
+ * mewarnai dirinya (primitif `Button`).
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Plus, UserCircle } from "lucide-react";
-
+import { PlusOutlined, ShopOutlined, UserOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -33,6 +43,22 @@ import { SignedInAs } from "@/components/auth/signed-in-as";
 import { CompanyChoices } from "./company-choices";
 
 export const dynamic = "force-dynamic";
+
+/** `space-y-3` / `space-y-4` di kaki & badan kartu. */
+const STACK_SM = 12;
+const STACK_MD = 16;
+/** `mb-5` di bawah kalimat pembuka daftar. */
+const LEAD_BOTTOM = 20;
+
+/** Kalimat penjelas — `text-sm leading-relaxed text-muted-foreground`. */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
+const FULL_WIDTH: React.CSSProperties = { width: "100%" };
 
 export default async function SelectCompanyPage() {
   const session = await auth();
@@ -78,7 +104,7 @@ export default async function SelectCompanyPage() {
         description={t(
           canCreate ? "auth.selectCompany.noCompanyYetBody" : "auth.selectCompany.noAccessBody"
         )}
-        icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+        icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
         footer={<SignedInAs name={session.user.name} />}
       >
         {/* Untuk pengguna BIASA keadaan ini hampir selalu berarti akses baru
@@ -88,21 +114,17 @@ export default async function SelectCompanyPage() {
             hal lain: belum ada PT sama sekali — dan jalan keluarnya adalah
             MEMBUAT yang pertama, bukan menghubungi siapa-siapa. */}
         {canCreate ? (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("auth.selectCompany.noCompanyYetOwner")}
-            </p>
-            <Button asChild className="w-full">
+          <div style={{ display: "flex", flexDirection: "column", gap: STACK_MD }}>
+            <p style={BODY_TEXT}>{t("auth.selectCompany.noCompanyYetOwner")}</p>
+            <Button asChild style={FULL_WIDTH}>
               <Link href="/companies/new">
-                <Plus className="h-4 w-4" aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("companies.newTitle")}
               </Link>
             </Button>
           </div>
         ) : (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t("auth.selectCompany.noAccessNext")}
-          </p>
+          <p style={BODY_TEXT}>{t("auth.selectCompany.noAccessNext")}</p>
         )}
       </AuthShell>
     );
@@ -112,7 +134,7 @@ export default async function SelectCompanyPage() {
     <AuthShell
       heading={t("auth.selectCompany.heading")}
       description={t("auth.selectCompany.description")}
-      icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
       footer={
         /*
          * KELUAR HARUS ADA DI SINI, dan ini bukan kelengkapan kosmetik.
@@ -128,19 +150,19 @@ export default async function SelectCompanyPage() {
          * Karena itu identitasnya ikut ditulis: "keluar" hanya berguna kalau
          * orangnya lebih dulu SADAR ia masuk sebagai siapa.
          */
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: STACK_SM }}>
           {canCreate && (
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild variant="outline" style={FULL_WIDTH}>
               <Link href="/companies/new">
-                <Plus className="h-4 w-4" aria-hidden="true" />
+                <PlusOutlined aria-hidden="true" />
                 {t("companies.newTitle")}
               </Link>
             </Button>
           )}
           {canOpenPlatform && (
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild variant="outline" style={FULL_WIDTH}>
               <Link href="/platform">
-                <UserCircle className="h-4 w-4" aria-hidden="true" />
+                <UserOutlined aria-hidden="true" />
                 {t("platform.title")}
               </Link>
             </Button>
@@ -149,7 +171,7 @@ export default async function SelectCompanyPage() {
         </div>
       }
     >
-      <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+      <p style={{ ...BODY_TEXT, marginBottom: LEAD_BOTTOM }}>
         {t("auth.selectCompany.body")}
       </p>
       <CompanyChoices

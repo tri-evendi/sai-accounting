@@ -9,31 +9,160 @@
  * Status "sudah/belum" TIDAK pernah disampaikan lewat warna saja (MASTER.md
  * §Anti-Patterns): baris yang selesai membawa ikon centang DAN kata
  * "Selesai"; yang belum membawa nomor urut dan ajakan bertindak.
+ *
+ * ── Tanpa satu kelas Tailwind pun (issue #240, fase C9) ────────────────────
+ * Berkas ini **tidak boleh mengimpor `antd`** (beranda tetap server component,
+ * dijaga `tests/rsc-boundary.test.ts`); warnanya `var(--ant-…)`, sah di server
+ * component sejak #227. Dua perubahan yang terlihat di layar dan disengaja:
+ *
+ *  • **Garis pemisah antar-baris naik ke ATAS baris** (`borderTop` pada baris
+ *    ke-2 dan seterusnya) alih-alih `border-b last:border-b-0`. Selektor
+ *    `:last-child` tidak punya padanan gaya sebaris, dan menghitungnya dari
+ *    INDEKS membuat aturannya terbaca di tempat yang sama dengan barisnya.
+ *  • **Ajakan "Mulai →" tidak lagi disembunyikan di layar sempit** (`hidden
+ *    sm:flex`). Ia satu kata dan sebuah panah di ujung baris yang tengahnya
+ *    boleh menyusut; menyembunyikannya berarti pengguna ponsel — justru yang
+ *    paling sering membuka beranda hari pertama — kehilangan satu-satunya
+ *    petunjuk bahwa barisnya bisa ditekan.
  */
 
 import { Link } from "@/components/ui/app-link";
 import {
-  ArrowDownLeft,
-  ArrowRight,
-  Check,
-  ListChecks,
-  PackagePlus,
-  Receipt,
-  Truck,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+  AppstoreAddOutlined,
+  ArrowDownOutlined,
+  ArrowRightOutlined,
+  CheckOutlined,
+  CheckSquareOutlined,
+  FileDoneOutlined,
+  TeamOutlined,
+  TruckOutlined,
+} from "@ant-design/icons";
 
-import { cn } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import type { IconComponent } from "@/lib/icons";
 import type { FirstStep, FirstStepProgress } from "@/lib/first-steps";
 
-const ICONS: Record<string, LucideIcon> = {
-  Users,
-  Truck,
-  PackagePlus,
-  Receipt,
-  ArrowDownLeft,
+/**
+ * Nama ikon di `lib/first-steps.ts` tetap NAMA LAMA — modul itu murni
+ * data dan tidak boleh tahu paket ikon mana yang menggambarnya (pola yang sama
+ * dengan `lib/nav.ts` → `layout/sidebar.tsx`, issue #201). Yang berpindah ke
+ * `@ant-design/icons` adalah NILAI peta ini.
+ */
+const ICONS: Record<string, IconComponent> = {
+  Users: TeamOutlined,
+  Truck: TruckOutlined,
+  PackagePlus: AppstoreAddOutlined,
+  Receipt: FileDoneOutlined,
+  ArrowDownLeft: ArrowDownOutlined,
+};
+
+const HEAD_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ant-margin-xs)",
+  marginBottom: "var(--ant-margin-sm)",
+};
+
+const TITLE: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+const SUBTITLE: React.CSSProperties = {
+  margin: 0,
+  marginBottom: "var(--ant-margin)",
+  fontSize: "var(--ant-font-size)",
+  color: "var(--ant-color-text-secondary)",
+};
+
+const PANEL: React.CSSProperties = {
+  overflow: "hidden",
+  borderRadius: "var(--ant-border-radius-lg)",
+  border: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-bg-container)",
+  boxShadow: "var(--ant-box-shadow-tertiary)",
+};
+
+/** Kemajuan sebagai ANGKA di kepala panel. */
+const PROGRESS: React.CSSProperties = {
+  margin: 0,
+  paddingInline: "var(--ant-padding)",
+  paddingBlock: "var(--ant-padding-xs)",
+  borderBottom: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-fill-quaternary)",
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
+  color: "var(--ant-color-text-secondary)",
+};
+
+const ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ant-margin)",
+  paddingInline: "var(--ant-padding)",
+  paddingBlock: "var(--ant-padding-sm)",
+  color: "var(--ant-color-text)",
+};
+
+/** Kotak ikon `h-10 w-10 rounded-lg`. */
+const ICON_BOX: React.CSSProperties = {
+  display: "flex",
+  width: 40,
+  height: 40,
+  flexShrink: 0,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "var(--ant-border-radius-lg)",
+};
+
+const LABEL_ROW: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  columnGap: "var(--ant-margin-xs)",
+  rowGap: "var(--ant-margin-xxs)",
+};
+
+const STEP_INDEX: React.CSSProperties = {
+  fontSize: "var(--ant-font-size-sm)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  fontVariantNumeric: "tabular-nums",
+  color: "var(--ant-color-text-secondary)",
+};
+
+const STEP_LABEL: React.CSSProperties = {
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+/** Lencana "Selesai" — kata, bukan warna saja. */
+const DONE_BADGE: React.CSSProperties = {
+  borderRadius: 9999,
+  background: "var(--ant-color-success-bg)",
+  paddingInline: "var(--ant-padding-xs)",
+  fontSize: "var(--ant-font-size-sm)",
+  fontWeight: 500,
+  color: "var(--ant-color-money-positive)",
+};
+
+const STEP_DESC: React.CSSProperties = {
+  display: "block",
+  marginTop: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size)",
+  lineHeight: 1.375,
+  color: "var(--ant-color-text-secondary)",
+};
+
+const CTA: React.CSSProperties = {
+  display: "flex",
+  flexShrink: 0,
+  alignItems: "center",
+  gap: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
 };
 
 export async function FirstStepsPanel({
@@ -50,81 +179,82 @@ export async function FirstStepsPanel({
 
   return (
     <section aria-labelledby="langkah-pertama-judul">
-      <div className="mb-3 flex items-center gap-2">
-        <ListChecks className="h-5 w-5 text-primary" aria-hidden="true" />
-        <h2 id="langkah-pertama-judul" className="text-lg font-semibold text-foreground">
+      <div style={HEAD_ROW}>
+        <CheckSquareOutlined
+          aria-hidden="true"
+          style={{ fontSize: 20, color: "var(--ant-color-link)" }}
+        />
+        <h2 id="langkah-pertama-judul" style={TITLE}>
           {t("firstSteps.title")}
         </h2>
       </div>
-      <p className="mb-4 text-sm text-muted-foreground">{t("firstSteps.subtitle")}</p>
+      <p style={SUBTITLE}>{t("firstSteps.subtitle")}</p>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div style={PANEL}>
         {/* Kemajuan sebagai ANGKA, bukan bilah warna: "2 dari 5" bisa dibaca
             pembaca layar dan tetap benar tanpa warna. */}
-        <p className="border-b border-border bg-muted px-4 py-2 text-sm font-medium text-muted-foreground">
+        <p style={PROGRESS}>
           {t("firstSteps.progress", { done: doneCount, total: steps.length })}
         </p>
 
-        <ol>
+        <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
           {steps.map((step, index) => {
-            const Icon = ICONS[step.icon] ?? Receipt;
+            const Icon = ICONS[step.icon] ?? FileDoneOutlined;
             const done = progress[step.key] === true;
 
             return (
-              <li key={step.key} className="border-b border-border last:border-b-0">
-                <Link
-                  href={step.href}
-                  className={cn(
-                    "group flex cursor-pointer items-center gap-4 px-4 py-3",
-                    "transition-colors duration-150 hover:bg-muted motion-reduce:transition-none",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  )}
-                >
+              <li
+                key={step.key}
+                style={{
+                  listStyle: "none",
+                  borderTop:
+                    index === 0
+                      ? undefined
+                      : "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+                }}
+              >
+                <Link href={step.href} style={ROW}>
                   <span
-                    className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                      done ? "bg-success-soft text-success-strong" : "bg-primary/10 text-primary"
-                    )}
+                    style={{
+                      ...ICON_BOX,
+                      background: done
+                        ? "var(--ant-color-success-bg)"
+                        : "var(--ant-color-primary-bg)",
+                      color: done
+                        ? "var(--ant-color-money-positive)"
+                        : "var(--ant-color-link)",
+                    }}
                     aria-hidden="true"
                   >
-                    {done ? <Check className="h-5 w-5" strokeWidth={3} /> : <Icon className="h-5 w-5" />}
+                    {done ? (
+                      <CheckOutlined style={{ fontSize: 20 }} />
+                    ) : (
+                      <Icon style={{ fontSize: 20 }} />
+                    )}
                   </span>
 
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={LABEL_ROW}>
                       {/* Nomor urut hanya untuk yang BELUM: pada baris selesai
                           ia sudah digantikan centang, dan dua penanda untuk satu
                           keadaan hanya menambah bising. */}
-                      {!done && (
-                        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-                          {index + 1}.
-                        </span>
-                      )}
-                      <span className="text-base font-semibold text-foreground">
-                        {t(step.labelKey)}
-                      </span>
-                      {done && (
-                        <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success-strong">
-                          {t("firstSteps.done")}
-                        </span>
-                      )}
+                      {!done && <span style={STEP_INDEX}>{index + 1}.</span>}
+                      <span style={STEP_LABEL}>{t(step.labelKey)}</span>
+                      {done && <span style={DONE_BADGE}>{t("firstSteps.done")}</span>}
                     </span>
-                    <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
-                      {t(step.descriptionKey)}
-                    </span>
+                    <span style={STEP_DESC}>{t(step.descriptionKey)}</span>
                   </span>
 
                   <span
-                    className={cn(
-                      "hidden shrink-0 items-center gap-1 text-sm font-medium sm:flex",
-                      done ? "text-muted-foreground" : "text-primary"
-                    )}
+                    style={{
+                      ...CTA,
+                      color: done
+                        ? "var(--ant-color-text-secondary)"
+                        : "var(--ant-color-link)",
+                    }}
                   >
                     {done ? t("firstSteps.again") : t("firstSteps.start")}
-                    <ArrowRight
-                      className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none"
-                      aria-hidden="true"
-                    />
+                    <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 16 }} />
                   </span>
                 </Link>
               </li>

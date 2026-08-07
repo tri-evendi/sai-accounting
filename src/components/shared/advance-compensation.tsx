@@ -25,23 +25,22 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { DataTable } from "@/components/ui/data-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { Loader2, HandCoins, Info, Trash2 } from "lucide-react";
+import { formatDateShort } from "@/lib/utils";
+import { DeleteOutlined, InfoCircleOutlined, MoneyCollectOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+/** Lebar isian tanggal kompensasi — setara `w-44` sebelum migrasi. */
+const DATE_FIELD_WIDTH = 176;
 
 export interface AdvanceOption {
   id: number;
@@ -102,6 +101,8 @@ export function AdvanceCompensationSection({
 }) {
   const router = useRouter();
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const { toast } = useToast();
   const nounKeys = COPY[targetKind];
   const noun = { target: t(nounKeys.target), party: t(nounKeys.party) };
@@ -192,220 +193,280 @@ export function AdvanceCompensationSection({
     }
   }
 
+  /**
+   * Kolom tabel "sudah dikompensasi".
+   *
+   * Kedua tabel pindah dari JSX `<TableRow><TableCell>` ke `DataTable`
+   * (#189): itu yang menghapus seluruh `px-4 py-2` per sel — kerapatannya kini
+   * `size="small"` milik AntD, satu prop, bukan dua kelas di sebelas tempat —
+   * dan membawa pembungkus geser `scroll.x` sehingga di 375px yang menggulung
+   * adalah tabelnya, bukan halamannya. `DataTable`, bukan `StaticTable`, karena
+   * baris keduanya memuat isian dan tombol; datanya memang sudah di client.
+   */
+  const appliedColumns: SaiColumns<AppliedAdvance> = [
+    {
+      key: "advanceNo",
+      dataIndex: "advanceNo",
+      title: t("advances.compColAdvance"),
+      render: (_v, a) => <Typography.Text strong>{a.advanceNo}</Typography.Text>,
+    },
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("common.date"),
+      render: (_v, a) => (
+        <Typography.Text type="secondary">{formatDateShort(new Date(a.date))}</Typography.Text>
+      ),
+    },
+    {
+      key: "amount",
+      dataIndex: "amount",
+      title: t("common.amount"),
+      align: "right",
+      render: (_v, a) => <Money value={a.amount} currency={a.currency} />,
+    },
+    {
+      key: "baseAmount",
+      dataIndex: "baseAmount",
+      title: "IDR",
+      align: "right",
+      /*
+       * Kurs yang belum ada TIDAK ditulis 0 (MASTER.md): kalimatnya menyebut
+       * sebabnya, dan warnanya `colorMoneyPending` — token yang sama yang
+       * dipakai label status "Menunggu", bukan amber pekat yang gagal AA.
+       */
+      render: (_v, a) =>
+        a.baseAmount != null ? (
+          <Money value={a.baseAmount} currency="IDR" />
+        ) : (
+          <span style={{ fontSize: token.fontSizeSM, color: money.colorMoneyPending }}>
+            {t("common.rateMissing")}
+          </span>
+        ),
+    },
+    {
+      key: "actions",
+      title: "",
+      align: "right",
+      render: (_v, a) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handleRemove(a.id)}
+          disabled={busyId === a.id}
+          aria-label={`Batalkan kompensasi ${a.advanceNo}`}
+          style={{ color: money.colorMoneyNegative }}
+        >
+          {busyId === a.id ? (
+            <Spin size="small" style={{ color: "inherit" }} />
+          ) : (
+            <DeleteOutlined aria-hidden="true" />
+          )}
+          Batalkan
+        </Button>
+      ),
+    },
+  ];
+
+  /** Kolom tabel "uang muka yang bisa dipakai" — baris beisian. */
+  const advanceColumns: SaiColumns<AdvanceOption> = [
+    {
+      key: "advanceNo",
+      dataIndex: "advanceNo",
+      title: t("advances.compColAdvance"),
+      render: (_v, a) => (
+        <>
+          <Typography.Text strong>{a.advanceNo}</Typography.Text>
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", fontSize: token.fontSizeSM }}
+          >
+            {a.partyName} · {formatDateShort(new Date(a.date))}
+          </Typography.Text>
+          {a.currency !== targetCurrency && (
+            <span
+              style={{
+                display: "block",
+                marginTop: token.marginXXS,
+                fontSize: token.fontSizeSM,
+                color: money.colorMoneyPending,
+              }}
+            >
+              {t("advances.compCrossCurrency", {
+                target: noun.target,
+                currency: targetCurrency,
+              })}
+            </span>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "remaining",
+      dataIndex: "remaining",
+      title: t("advances.compColRemaining"),
+      align: "right",
+      render: (_v, a) => (
+        <>
+          <Money value={a.remaining} currency={a.currency} />
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", fontSize: token.fontSizeSM }}
+          >
+            {a.remainingBase != null ? (
+              <Money value={a.remainingBase} currency="IDR" />
+            ) : (
+              t("common.rateMissing")
+            )}
+          </Typography.Text>
+        </>
+      ),
+    },
+    {
+      key: "apply",
+      title: t("advances.compColApply", { target: noun.target }),
+      render: (_v, a) => {
+        const value = Number(amounts[a.id]) || 0;
+        const overLine = value > a.remaining + 0.005;
+        return (
+          <>
+            <Input
+              id={`adv-${targetKind}-${targetId}-${a.id}`}
+              type="number"
+              step="0.01"
+              min="0"
+              max={a.remaining}
+              disabled={a.remainingBase == null}
+              aria-label={`Jumlah kompensasi dari ${a.advanceNo} (${a.currency})`}
+              invalid={overLine}
+              style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+              value={amounts[a.id] ?? ""}
+              onChange={(e) => setAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
+            />
+            {overLine && (
+              <p
+                role="alert"
+                style={{
+                  margin: 0,
+                  marginTop: token.marginXXS,
+                  fontSize: token.fontSizeSM,
+                  color: money.colorMoneyNegative,
+                }}
+              >
+                Melebihi sisa uang muka.
+              </p>
+            )}
+          </>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="space-y-4">
+    <Flex vertical gap={token.margin}>
       {/* Already compensated */}
       {applied.length > 0 && (
-        // Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
-        // primitif agar sama dengan tampilan sebelum migrasi.
-        <div className="rounded-md border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto px-4 py-2">{t("advances.compColAdvance")}</TableHead>
-                <TableHead className="h-auto px-4 py-2">{t("common.date")}</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-right">{t("common.amount")}</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-right">IDR</TableHead>
-                <TableHead className="h-auto px-4 py-2" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {applied.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="px-4 py-2 font-medium text-foreground">{a.advanceNo}</TableCell>
-                  <TableCell className="px-4 py-2 text-muted-foreground">{formatDateShort(new Date(a.date))}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell
-                      className="px-4 py-2 text-foreground"
-                      value={a.amount}
-                      currency={a.currency}
-                    />
-                  </TableCell>
-                  <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
-                    {a.baseAmount != null ? (
-                      <Money value={a.baseAmount} currency="IDR" />
-                    ) : (
-                      <span className="text-xs text-warning-strong">{t("common.rateMissing")}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="px-4 py-2 text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(a.id)}
-                      disabled={busyId === a.id}
-                      aria-label={`Batalkan kompensasi ${a.advanceNo}`}
-                      className="gap-1 px-2 text-xs text-destructive-strong hover:bg-destructive-soft hover:text-destructive-strong"
-                    >
-                      {busyId === a.id ? (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      )}
-                      Batalkan
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          columns={appliedColumns}
+          data={applied}
+          rowKey={(a) => a.id}
+          size="small"
+        />
       )}
 
       {advances.length === 0 ? (
-        <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
-            {applied.length > 0
+        <Alert
+          type="info"
+          icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
+          showIcon
+          message={
+            applied.length > 0
               ? t("advances.compNoneLeft", { party: noun.party })
-              : t("advances.compNoneAtAll", { target: noun.target })}
-          </span>
-        </p>
+              : t("advances.compNoneAtAll", { target: noun.target })
+          }
+        />
       ) : (
-        <form onSubmit={handleApply} className="space-y-3">
-          {/* Tabel ringkas (px-4 py-2) — padding rapat sengaja menimpa bawaan
-              primitif agar sama dengan tampilan sebelum migrasi. */}
-          <div className="rounded-md border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-auto px-4 py-2">{t("advances.compColAdvance")}</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-right">
-                    {t("advances.compColRemaining")}
-                  </TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-right">
-                    {t("advances.compColApply", { target: noun.target })}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {advances.map((a) => {
-                  const value = Number(amounts[a.id]) || 0;
-                  const overLine = value > a.remaining + 0.005;
-                  const crossCurrency = a.currency !== targetCurrency;
-                  return (
-                    <TableRow key={a.id} className="hover:bg-transparent">
-                      <TableCell className="px-4 py-2">
-                        <span className="font-medium text-foreground">{a.advanceNo}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {a.partyName} · {formatDateShort(new Date(a.date))}
-                        </span>
-                        {crossCurrency && (
-                          <span className="mt-0.5 block text-xs text-warning-strong">
-                            {t("advances.compCrossCurrency", {
-                              target: noun.target,
-                              currency: targetCurrency,
-                            })}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-4 py-2 text-right tabular-nums text-foreground">
-                        <Money value={a.remaining} currency={a.currency} />
-                        <span className="block text-xs text-muted-foreground">
-                          {a.remainingBase != null ? (
-                            <Money value={a.remainingBase} currency="IDR" />
-                          ) : (
-                            t("common.rateMissing")
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-4 py-2">
-                        <Input
-                          id={`adv-${targetKind}-${targetId}-${a.id}`}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max={a.remaining}
-                          disabled={a.remainingBase == null}
-                          aria-label={`Jumlah kompensasi dari ${a.advanceNo} (${a.currency})`}
-                          className="text-right tabular-nums"
-                          value={amounts[a.id] ?? ""}
-                          onChange={(e) =>
-                            setAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))
-                          }
-                        />
-                        {overLine && (
-                          <p className="mt-1 text-xs text-destructive-strong" role="alert">
-                            Melebihi sisa uang muka.
-                          </p>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+        <form onSubmit={handleApply}>
+          <Flex vertical gap={token.marginSM}>
+            <DataTable
+              columns={advanceColumns}
+              data={advances}
+              rowKey={(a) => a.id}
+              size="small"
+            />
 
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="w-44">
-              <Input
-                id={`apply-date-${targetKind}-${targetId}`}
-                type="date"
-                label={t("advances.compDateField")}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-            <div className="text-right text-xs">
-              <p className="flex justify-between gap-6">
-                <span className="text-muted-foreground">
-                  {t("advances.compOutstanding", { target: noun.target })}
-                </span>
-                <span className="font-medium tabular-nums text-foreground">
-                  {outstandingBase != null
-                    ? formatCurrency(outstandingBase, "IDR")
-                    : t("common.rateMissing")}
-                </span>
-              </p>
-              <p className="flex justify-between gap-6">
-                <span className="text-muted-foreground">{t("advances.compTotal")}</span>
-                <span
-                  className={`font-medium tabular-nums ${
-                    overTarget ? "text-destructive-strong" : "text-foreground"
-                  }`}
-                >
-                  {formatCurrency(totalBase, "IDR")}
-                </span>
-              </p>
-            </div>
-          </div>
+            <Flex wrap align="flex-end" justify="space-between" gap={token.marginSM}>
+              <div style={{ width: DATE_FIELD_WIDTH }}>
+                <Input
+                  id={`apply-date-${targetKind}-${targetId}`}
+                  type="date"
+                  label={t("advances.compDateField")}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
+              <Flex vertical gap={token.marginXXS} style={{ fontSize: token.fontSizeSM }}>
+                <Flex justify="space-between" gap={token.marginLG}>
+                  <Typography.Text type="secondary" style={{ fontSize: "inherit" }}>
+                    {t("advances.compOutstanding", { target: noun.target })}
+                  </Typography.Text>
+                  {outstandingBase != null ? (
+                    <Money value={outstandingBase} currency="IDR" />
+                  ) : (
+                    <Typography.Text type="secondary" style={{ fontSize: "inherit" }}>
+                      {t("common.rateMissing")}
+                    </Typography.Text>
+                  )}
+                </Flex>
+                <Flex justify="space-between" gap={token.marginLG}>
+                  <Typography.Text type="secondary" style={{ fontSize: "inherit" }}>
+                    {t("advances.compTotal")}
+                  </Typography.Text>
+                  {/*
+                   * Merah saat melebihi sasaran — penanda KEDUA: kalimat
+                   * `compOverTarget` di bawah mengatakan hal yang sama dengan
+                   * kata-kata, dan `role="alert"`-nya mengumumkannya.
+                   */}
+                  <Money
+                    value={totalBase}
+                    currency="IDR"
+                    tone={overTarget ? "negative" : "neutral"}
+                  />
+                </Flex>
+              </Flex>
+            </Flex>
 
-          {overTarget && (
-            <p className="rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-              {t("advances.compOverTarget", { target: noun.target })}
-            </p>
-          )}
-
-          {error && (
-            <p className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-              {error}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            size="sm"
-            disabled={saving || lines.length === 0}
-            className="cursor-pointer"
-          >
-            {saving ? (
-              <Loader2
-                className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            ) : (
-              <HandCoins className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            {overTarget && (
+              <div role="alert">
+                <Alert
+                  type="error"
+                  showIcon
+                  message={t("advances.compOverTarget", { target: noun.target })}
+                />
+              </div>
             )}
-            Kompensasi Uang Muka
-          </Button>
+
+            {error && (
+              <div role="alert">
+                <Alert type="error" showIcon message={error} />
+              </div>
+            )}
+
+            <div>
+              <Button type="submit" size="sm" disabled={saving || lines.length === 0}>
+                {saving ? (
+                  <Spin size="small" style={{ color: "inherit" }} />
+                ) : (
+                  <MoneyCollectOutlined aria-hidden="true" />
+                )}
+                Kompensasi Uang Muka
+              </Button>
+            </div>
+          </Flex>
         </form>
       )}
-    </div>
+    </Flex>
   );
 }

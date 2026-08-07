@@ -6,10 +6,14 @@
  * dipratinjau di browser, jadi cukup "Buka" di tab baru.
  */
 import { useState } from "react";
-import { Eye, ExternalLink } from "lucide-react";
+import { ExportOutlined, EyeOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { DocumentPreview } from "@/components/shared/document-preview";
 import { useT } from "@/lib/i18n/client";
+
+/** Ikon di dalam tombol — `h-4 w-4` + `mr-1` lama. */
+const ICON_SIZE = 16;
+const ICON_STYLE: React.CSSProperties = { marginInlineEnd: 4 };
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
 
@@ -36,7 +40,8 @@ export function DocumentPreviewButton({
     return (
       <a href={filepath} target="_blank" rel="noopener noreferrer">
         <Button variant="secondary" size="sm">
-          <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.open")}
+          <ExportOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, ...ICON_STYLE }} />{" "}
+          {t("documents.open")}
         </Button>
       </a>
     );
@@ -45,7 +50,7 @@ export function DocumentPreviewButton({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Eye className="mr-1 h-4 w-4" aria-hidden="true" /> {t("documents.preview")}
+        <EyeOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, ...ICON_STYLE }} /> {t("documents.preview")}
       </Button>
       <DocumentPreview
         open={open}

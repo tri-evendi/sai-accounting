@@ -17,11 +17,21 @@
  *
  * Bukan jalan buntu: kalau modulnya ternyata AKTIF (mis. tautan lama, atau
  * modulnya baru dinyalakan lagi), halaman ini langsung mengarahkan ke beranda.
+ * Dan kalaupun tidak, tombol "kembali ke beranda" di kaki kartu TETAP ada —
+ * layar penjelas tanpa satu pun kendali adalah jalan buntu (MASTER.md
+ * §Orientasi Perusahaan).
+ *
+ * ── Warna (issue #203) ───────────────────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimatnya
+ * memakai variabel token AntD `var(--ant-…)`, yang teratasi walau tak ada satu
+ * pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, bukan oleh komponen AntD. Token `:root` aplikasi
+ * yang dulu dipakai sudah dicabut `globals.css` oleh #203. Tombolnya mewarnai
+ * dirinya sendiri.
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PackageX } from "lucide-react";
-
+import { CloseSquareOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -31,6 +41,21 @@ import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 export const dynamic = "force-dynamic";
+
+/** Kalimat penjelas — bekas `text-sm leading-relaxed text-muted-foreground`. */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
+const EXIT_ROW: React.CSSProperties = {
+  marginTop: 24,
+  paddingTop: 20,
+  borderTop: "1px solid var(--ant-color-border-secondary)",
+};
 
 export default async function FeatureInactivePage({
   searchParams,
@@ -59,15 +84,17 @@ export default async function FeatureInactivePage({
     <AuthShell
       heading={t("modules.inactiveTitle")}
       description={t("modules.sectionTitle")}
-      icon={<PackageX className="h-5 w-5" aria-hidden="true" />}
+      icon={<CloseSquareOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
     >
-      <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("modules.inactiveBody", { module: t(MODULE_META[raw].labelKey) })}</p>
-        <p>{t("modules.ledgerNote")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={BODY_TEXT}>
+          {t("modules.inactiveBody", { module: t(MODULE_META[raw].labelKey) })}
+        </p>
+        <p style={BODY_TEXT}>{t("modules.ledgerNote")}</p>
       </div>
 
-      <div className="mt-6 border-t border-border pt-5">
-        <Button asChild variant="outline" className="w-full">
+      <div style={EXIT_ROW}>
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/dashboard">{t("modules.inactiveBack")}</Link>
         </Button>
       </div>

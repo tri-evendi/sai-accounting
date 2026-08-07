@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Flex, theme, Typography } from "antd";
 import { Link } from "@/components/ui/app-link";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export function ConsigneeSelect({
   current,
 }: ConsigneeSelectProps) {
   const t = useT();
+  const { token } = theme.useToken();
   const [consignees, setConsignees] = useState<ConsigneeOption[]>([]);
 
   useEffect(() => {
@@ -80,7 +82,13 @@ export function ConsigneeSelect({
   }
 
   return (
-    <div className="space-y-1.5 sm:col-span-2">
+    /*
+     * `gridColumn: "1 / -1"` menggantikan `sm:col-span-2`: formulir kontrak
+     * masih memakai grid Tailwind (fase C, #195), dan bentuk ini benar di
+     * KEDUA lebar — di 375px gridnya satu kolom, jadi "seluruh kolom" tetap
+     * berarti satu kolom, tanpa media query.
+     */
+    <Flex vertical gap={token.marginXS} style={{ gridColumn: "1 / -1" }}>
       <SearchableSelect
         id="consigneeId"
         label={t("consignee.masterField")}
@@ -91,13 +99,28 @@ export function ConsigneeSelect({
         value={consigneeId != null ? String(consigneeId) : null}
         onChange={(v) => onConsigneeIdChange(v == null ? null : Number(v))}
       />
-      <p className="text-xs text-muted-foreground">
+      <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
         {t("consignee.notInMaster")}{" "}
-        <Link href="/consignees/new" target="_blank" className="text-primary hover:underline">
+        {/*
+         * Tetap `<Link>` app-link (jalur bertenant, tanpa pemuatan penuh);
+         * yang diambil dari AntD hanya WARNANYA lewat `--ant-color-link` —
+         * pola yang sama dengan `ui/learn-more.tsx`. Token itu menunjuk
+         * `colorBrandText` (#186, 5,65:1), bukan `colorPrimary` yang hanya
+         * 4,10:1 sebagai teks.
+         *
+         * Garis bawahnya TETAP, bukan hanya saat hover: ini tautan di tengah
+         * kalimat, dan warna sendirian bukan penanda yang cukup (MASTER.md
+         * §Anti-Patterns).
+         */}
+        <Link
+          href="/consignees/new"
+          target="_blank"
+          style={{ color: "var(--ant-color-link)", textDecoration: "underline" }}
+        >
           {t("consignee.addLink")}
         </Link>
         {t("consignee.addTail")}
-      </p>
+      </Typography.Text>
       <Input
         id="consignee"
         name="consignee"
@@ -105,6 +128,6 @@ export function ConsigneeSelect({
         defaultValue={defaultText ?? ""}
         placeholder={t("consignee.legacyPlaceholder")}
       />
-    </div>
+    </Flex>
   );
 }

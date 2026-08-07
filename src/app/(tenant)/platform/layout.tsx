@@ -22,8 +22,7 @@
  * menuju halaman yang akan memantulkan pemiliknya adalah bentuk kebocoran
  * tersendiri: ia memberi tahu orang bahwa ruangan itu ada.
  */
-import { LayoutDashboard, Plus, ShieldCheck, Users, Wallet } from "lucide-react";
-
+import { HomeOutlined, PlusOutlined, SafetyCertificateOutlined, TeamOutlined, WalletOutlined } from "@ant-design/icons";
 import { SignedInAs } from "@/components/auth/signed-in-as";
 import { PlatformShell, type PlatformNavItem } from "@/components/tenant/platform-shell";
 import { getT } from "@/lib/i18n/server";
@@ -38,7 +37,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     {
       href: "/platform",
       label: t("platform.title"),
-      icon: <LayoutDashboard className="h-4 w-4" />,
+      icon: <HomeOutlined style={{ fontSize: 16 }} />,
       /* PERSIS: tanpa ini butir pendaratan menyala di setiap anak-rute, sebab
          semuanya berawalan `/platform`. */
       exact: true,
@@ -48,7 +47,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/team",
             label: t("platform.teamHeading"),
-            icon: <Users className="h-4 w-4" />,
+            icon: <TeamOutlined style={{ fontSize: 16 }} />,
           },
         ]
       : []),
@@ -57,7 +56,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/billing",
             label: t("tenantSettings.title"),
-            icon: <Wallet className="h-4 w-4" />,
+            icon: <WalletOutlined style={{ fontSize: 16 }} />,
           },
         ]
       : []),
@@ -66,7 +65,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/platform/privacy",
             label: t("tenantSettings.privacyHeading"),
-            icon: <ShieldCheck className="h-4 w-4" />,
+            icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
           },
         ]
       : []),
@@ -75,7 +74,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           {
             href: "/companies/new",
             label: t("companies.newTitle"),
-            icon: <Plus className="h-4 w-4" />,
+            icon: <PlusOutlined style={{ fontSize: 16 }} />,
           },
         ]
       : []),

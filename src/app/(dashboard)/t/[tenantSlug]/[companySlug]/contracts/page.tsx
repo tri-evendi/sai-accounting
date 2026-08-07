@@ -1,3 +1,23 @@
+/**
+ * Daftar Kontrak — dikonversi ke token Ant Design pada issue #195 (fase C3).
+ *
+ * **Tetap server component.** Halaman ini membaca buku besar lewat Prisma dan
+ * merender tabelnya sebagai HTML; tidak ada satu baris JavaScript pun yang
+ * dikirim untuk daftar itu. Konsekuensinya untuk gaya, dan ini yang menentukan
+ * seluruh bentuk berkas ini: **`antd` tidak boleh diimpor di sini**
+ * (`tests/rsc-boundary.test.ts`), jadi `theme.useToken()` tidak tersedia.
+ *
+ * Warna karena itu datang dari dua sumber saja — sama seperti `shared/aging.tsx`:
+ *  • primitif yang mewarnai dirinya sendiri (`Button`, `Badge`, `StatusBadge`,
+ *    `EmptyState`), yang dirender sebagai DAUN client;
+ *  • variabel `--ant-…`, yang sejak #227 teratasi di SELURUH dokumen: root
+ *    layout memasang kelas pemikul blok token (`ANTD_CSS_VAR_KEY`) pada
+ *    `<html>`, jadi simpul di luar komponen AntD mana pun tetap mewarisinya.
+ *    Catatan lama "hanya di dalam `<Card>`" sudah tidak berlaku.
+ *
+ * Tabelnya kini `StaticTable` (#189): kolom sebagai data, dirender di server.
+ */
+
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -5,15 +25,9 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { StaticTable } from "@/components/ui/static-table";
+import { statusColumn } from "@/components/ui/status-column";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import {
   ContractStatusChart,
@@ -24,7 +38,7 @@ import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
-import { FileText } from "lucide-react";
+import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -32,6 +46,33 @@ import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Jarak yang tidak bisa dibaca dari token di sini — berkas ini tanpa hook dan
+ * tanpa `antd`. Nilainya SAMA dengan token yang seharusnya dipakai, dan
+ * disebut supaya #203 bisa menukarnya tanpa menebak: `marginLG` 24,
+ * `marginXS` 8, `marginXXS` 4.
+ */
+const SECTION_GAP = 24;
+const CONTROL_GAP = 8;
+/** Lebar nyaman kotak pencarian (`max-w-md` lama = 28rem). */
+const SEARCH_MAX_WIDTH = 448;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+/** Titik patah `lg` AntD; di bawahnya grafik menumpuk satu kolom. */
+const CHART_MIN_WIDTH = 360;
+
+/** Satu baris daftar, sudah diratakan dari Prisma supaya kolomnya bertipe. */
+interface ContractRow {
+  id: number;
+  contractNo: string;
+  date: string;
+  buyer: string;
+  consignee: string;
+  itemCount: number;
+  currency: string;
+  status: string;
+}
 
 export default async function ContractsPage({
   params,
@@ -117,23 +158,102 @@ export default async function ContractsPage({
   ];
   const monthlyData = monthlyActivitySeries(recentContracts, recentInvoices, now);
 
+  const rows: ContractRow[] = contracts.map((contract) => ({
+    id: contract.id,
+    contractNo: contract.contractNo,
+    date: formatDateShort(contract.date),
+    buyer: contract.buyer,
+    consignee: contract.consigneeRef?.name || contract.consignee || "-",
+    itemCount: contract.items.length,
+    currency: contract.currency,
+    status: contract.status,
+  }));
+
+  const columns: SaiColumns<ContractRow> = [
+    {
+      key: "contractNo",
+      dataIndex: "contractNo",
+      title: t("contracts.colNo"),
+      align: "left",
+      render: (_value, row) => (
+        // Warna tautan datang dari `--ant-color-link` (= `colorBrandText`,
+        // 5,65:1) — variabelnya teratasi karena tabel ini hidup di dalam
+        // `<Card>` AntD.
+        <Link
+          href={`/contracts/${row.id}`}
+          style={{ color: "var(--ant-color-link)", fontWeight: "var(--ant-font-weight-strong)" }}
+        >
+          {row.contractNo}
+        </Link>
+      ),
+    },
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("common.date"),
+      align: "left",
+      render: (_value, row) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{row.date}</span>
+      ),
+    },
+    { key: "buyer", dataIndex: "buyer", title: t("contracts.colBuyer"), align: "left" },
+    {
+      key: "consignee",
+      dataIndex: "consignee",
+      title: (
+        <TermTooltip term="penerima_barang">{t("contracts.colConsignee")}</TermTooltip>
+      ),
+      align: "left",
+    },
+    {
+      key: "itemCount",
+      dataIndex: "itemCount",
+      title: t("contracts.colItemCount"),
+      align: "right",
+      // Jumlah baris barang — KUANTITAS, bukan uang: tidak boleh memakai
+      // topeng rupiah.
+      render: (_value, row) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{row.itemCount}</span>
+      ),
+    },
+    { key: "currency", dataIndex: "currency", title: t("common.currency"), align: "left" },
+    statusColumn<ContractRow>({ dataIndex: "status", title: t("common.status") }),
+  ];
+
   return (
     <div>
+      {/*
+       * Tombol aksi tetap `<Link><Button/></Link>`, BUKAN `Button asChild`.
+       * Keduanya menghapus kelas yang jadi sasaran issue ini, tetapi
+       * `asChild` merender `<a href>` milik AntD — pemuatan halaman PENUH
+       * (lihat catatan `asChild` di `ui/button.tsx`). Untuk perpindahan di
+       * dalam modul yang sama, itu menukar satu kelas Tailwind dengan satu
+       * regresi kecepatan yang terasa. Sarang anchor–tombol yang tersisa
+       * adalah utang lama di 46 tempat, bukan sesuatu yang ditambah di sini.
+       */}
       <PageHeader
-        className="mb-1"
         title={<TermTooltip term="kontrak">{t("contracts.title", { count: totalCount })}</TermTooltip>}
         actions={
-          <Link href="/contracts/new" className="shrink-0">
+          <Link href="/contracts/new">
             <Button>{t("contracts.addNew")}</Button>
           </Link>
         }
       />
-      <LearnMore term="kontrak" className="mt-1 mb-6" label={t("contracts.learnMoreList")} />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="kontrak" label={t("contracts.learnMoreList")} />
+      </div>
 
       {/* Filters — hrefs membawa `search` yang sedang aktif agar berganti tab
           tidak diam-diam membuang kata kunci pencarian. `page` sengaja TIDAK
           dibawa: saringan baru = kembali ke halaman 1. */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: CONTROL_GAP,
+          marginBottom: CONTROL_GAP * 2,
+        }}
+      >
         {["all", "signed", "pending", "canceled"].map((status) => {
           const query = new URLSearchParams();
           if (status !== "all") query.set("status", status);
@@ -142,7 +262,11 @@ export default async function ContractsPage({
           return (
             <Link key={status} href={`/contracts${qs ? `?${qs}` : ""}`}>
               <Button
-                variant={filters.status === status || (!filters.status && status === "all") ? "primary" : "secondary"}
+                variant={
+                  filters.status === status || (!filters.status && status === "all")
+                    ? "primary"
+                    : "secondary"
+                }
                 size="sm"
               >
                 {statusLabels[status] ?? status}
@@ -154,83 +278,74 @@ export default async function ContractsPage({
 
       {/* Search — GET form; `status` ikut sebagai hidden input supaya mencari
           tidak mereset tab status yang sedang aktif. */}
-      <form className="mb-4">
+      <form
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: CONTROL_GAP,
+          marginBottom: CONTROL_GAP * 2,
+        }}
+      >
         {filters.status && <input type="hidden" name="status" value={filters.status} />}
         <TextInput
           type="text"
           name="search"
           placeholder={t("contracts.searchPlaceholder")}
           defaultValue={filters.search}
-          className="w-full max-w-md"
+          style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit" className="ml-2">
-          {t("common.search")}
-        </Button>
+        <Button type="submit">{t("common.search")}</Button>
       </form>
 
       {/* Grafik: sebaran status + tren bulanan, di bawah saringan & sebelum
-          daftarnya — konteks dulu, baru barisnya. */}
+          daftarnya — konteks dulu, baru barisnya. Kedua kartu tumbuh membagi
+          baris dan turun sendiri saat tak muat; menggantikan
+          `lg:grid-cols-2` yang harus tahu lebih dulu berapa kartunya. */}
       <div
-        className={`mb-6 grid gap-6 ${canViewInvoices ? "lg:grid-cols-2" : "grid-cols-1"}`}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: SECTION_GAP,
+          marginBottom: SECTION_GAP,
+        }}
       >
-        <ChartCard
-          title={t("dashboard.chartContractStatusTitle")}
-          description={t("dashboard.chartContractStatusDesc")}
-        >
-          <ContractStatusChart data={contractStatusData} />
-        </ChartCard>
-        {canViewInvoices && (
+        <div style={{ flex: `1 1 ${CHART_MIN_WIDTH}px`, minWidth: 0 }}>
           <ChartCard
-            title={t("dashboard.chartMonthlyTitle")}
-            description={t("dashboard.chartMonthlyDesc")}
+            title={t("dashboard.chartContractStatusTitle")}
+            description={t("dashboard.chartContractStatusDesc")}
           >
-            <MonthlyActivityChart data={monthlyData} />
+            <ContractStatusChart data={contractStatusData} />
           </ChartCard>
+        </div>
+        {canViewInvoices && (
+          <div style={{ flex: `1 1 ${CHART_MIN_WIDTH}px`, minWidth: 0 }}>
+            <ChartCard
+              title={t("dashboard.chartMonthlyTitle")}
+              description={t("dashboard.chartMonthlyDesc")}
+            >
+              <MonthlyActivityChart data={monthlyData} />
+            </ChartCard>
+          </div>
         )}
       </div>
 
       {/* Table */}
       <Card>
-        <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("contracts.colNo")}</TableHead>
-                <TableHead>{t("common.date")}</TableHead>
-                <TableHead>{t("contracts.colBuyer")}</TableHead>
-                <TableHead>
-                  <TermTooltip term="penerima_barang">{t("contracts.colConsignee")}</TermTooltip>
-                </TableHead>
-                <TableHead className="text-right">{t("contracts.colItemCount")}</TableHead>
-                <TableHead>{t("common.currency")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contracts.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="p-0">
-                    <EmptyState icon={<FileText className="h-12 w-12" />} title={t("contracts.emptyTitle")} description={t("contracts.emptyDescription")} actionLabel={t("contracts.addNew")} actionHref="/contracts/new" />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                contracts.map((contract) => (
-                  <TableRow key={contract.id}>
-                    <TableCell>
-                      <Link href={`/contracts/${contract.id}`} className="cursor-pointer font-medium text-primary hover:underline">
-                        {contract.contractNo}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">{formatDateShort(contract.date)}</TableCell>
-                    <TableCell className="text-foreground">{contract.buyer}</TableCell>
-                    <TableCell className="text-muted-foreground">{contract.consigneeRef?.name || contract.consignee || "-"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground tabular-nums">{contract.items.length}</TableCell>
-                    <TableCell className="text-muted-foreground">{contract.currency}</TableCell>
-                    <TableCell><StatusBadge status={contract.status} /></TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-        </Table>
+        <StaticTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
+          empty={
+            <EmptyState
+              icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("contracts.emptyTitle")}
+              description={t("contracts.emptyDescription")}
+              actionLabel={t("contracts.addNew")}
+              actionHref="/contracts/new"
+            />
+          }
+        />
         <Pagination currentPage={page} totalPages={totalPages} basePath="/contracts" searchParams={filters} />
       </Card>
     </div>

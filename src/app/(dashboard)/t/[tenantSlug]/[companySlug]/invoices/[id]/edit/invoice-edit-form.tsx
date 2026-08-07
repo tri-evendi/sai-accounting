@@ -1,13 +1,28 @@
 "use client";
 
+/**
+ * Ubah Tagihan — dikonversi ke token Ant Design pada issue #195 (fase C3).
+ *
+ * Kulitnya saja yang berubah; mesin formulirnya (state lokal + PUT) tidak
+ * disentuh. **Kisinya tetap CSS grid, bukan `Row`/`Col`**: `InvoiceFxFields`
+ * dan `CostCenterField` membentang dengan `gridColumn: "1 / -1"`, yang hanya
+ * berarti sesuatu di dalam CSS grid (lihat `FULL_ROW` di
+ * `shared/invoice-fx-fields.tsx`).
+ *
+ * Satu perbaikan ikut karena konversinya memaksa menyebut idnya: label baris
+ * barang dulu `<label>` TANPA `htmlFor` — tidak tertaut ke isian mana pun.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus } from "lucide-react";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
@@ -25,6 +40,21 @@ import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
+/**
+ * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
+ * `sm:grid-cols-2`, tetap CSS grid. `max(280px, (100% − gutter)/2)` menahan
+ * jumlah kolomnya di dua; titik patahnya jatuh di 576px, `sm` AntD.
+ */
+const FIELD_MIN = 280;
+const twoColumnGrid = (gap: number): React.CSSProperties => ({
+  display: "grid",
+  gap,
+  gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
+});
+
+/** Lebar dasar kolom angka pada baris barang (`w-24`/`w-28`/`w-20` lama). */
+const QTY_COL_BASIS = 96;
+
 interface InvoiceItem {
   itemName: string;
   quantity: number;
@@ -36,6 +66,7 @@ export function EditInvoiceForm() {
   const router = useAppRouter();
   const params = useParams();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -172,10 +203,33 @@ export function EditInvoiceForm() {
   }
 
   if (fetching) return <PageLoader message={t("invoices.loadingInvoice")} />;
-  if (!invoiceNo && !fetching) return <div className="text-destructive">{t("invoices.notFound")}</div>;
+  if (!invoiceNo && !fetching) {
+    return (
+      <div role="alert">
+        <Alert type="error" showIcon message={t("invoices.notFound")} />
+      </div>
+    );
+  }
+
+  /** Label mikro di atas satu isian baris barang. */
+  const itemLabel = (htmlFor: string, text: string) => (
+    <Label
+      htmlFor={htmlFor}
+      style={{
+        marginBottom: token.marginXXS,
+        fontSize: token.fontSizeSM,
+        color: token.colorTextSecondary,
+      }}
+    >
+      {text}
+    </Label>
+  );
+
+  /** Isian angka baris barang — rata kanan + `tabular-nums`. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("invoices.breadcrumb"), href: "/invoices" },
@@ -185,17 +239,21 @@ export function EditInvoiceForm() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">{error}</div>
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader><CardTitle>{t("invoices.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div style={twoColumnGrid(token.margin)}>
               <Input id="invoiceNo" label={t("invoices.invoiceNo")} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
               <Input id="date" type="date" label={t("common.date")} value={date} onChange={(e) => setDate(e.target.value)} required />
               <DueDateField value={dueDate} onChange={setDueDate} />
+              {/* Status lewat peta label bahasa tugas; nilai enum DB tidak
+                  pernah tampil mentah. */}
               <Select
                 id="status" label={t("common.status")} value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -205,70 +263,111 @@ export function EditInvoiceForm() {
                   { value: "canceled", label: t("status.contract.canceled") },
                 ]}
               />
+              {/* Valas: `InvoiceFxFields` memunculkan isian kurs hanya untuk
+                  mata uang bukan-IDR, dan blok PPN/PEB-nya membentang penuh
+                  lewat `gridColumn: 1 / -1` — karena itu kisinya CSS grid. */}
               <InvoiceFxFields
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
                 subtotal={subtotal}
               />
-              <CostCenterField
-                className="sm:col-span-2"
-                costCenters={costCenters}
-                value={costCenterId}
-                onChange={setCostCenterId}
-              />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <CostCenterField
+                  costCenters={costCenters}
+                  value={costCenterId}
+                  onChange={setCostCenterId}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
               <CardTitle>{t("invoices.goodsSoldTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4 mr-1" /> {t("common.addItem")}
+                <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
               </Button>
-            </div>
+            </Flex>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <Flex vertical gap={token.margin}>
               {items.map((item, i) => (
-                <div key={i} className="flex items-end gap-3 rounded-md border border-border p-3">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.itemName")}</label>
-                    <TextInput className="w-full" value={item.itemName} onChange={(e) => updateItem(i, "itemName", e.target.value)} required />
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.quantity")}</label>
-                    <TextInput type="number" step="0.01" className="w-full" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} />
-                  </div>
-                  <div className="w-28">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.price")}</label>
-                    <TextInput type="number" step="0.01" className="w-full" value={item.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} />
-                  </div>
-                  <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t("common.unit")}</label>
-                    <TextInput className="w-full" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeItem(i)}
-                    aria-label={t("common.removeItemRow", { n: i + 1 })}
-                    className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div
+                  key={i}
+                  style={{
+                    padding: token.paddingSM,
+                    borderRadius: token.borderRadius,
+                    border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  }}
+                >
+                  {/* `Row` yang membungkus menggantikan satu baris flex kaku:
+                      di 375px kelima kendali dulu saling menghimpit. */}
+                  <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                    <Col xs={24} md={8} style={{ minWidth: 0 }}>
+                      {itemLabel(`itemName-${i}`, t("common.itemName"))}
+                      <TextInput
+                        id={`itemName-${i}`}
+                        value={item.itemName}
+                        onChange={(e) => updateItem(i, "itemName", e.target.value)}
+                        required
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`quantity-${i}`, t("common.quantity"))}
+                      {/* KUANTITAS (`Decimal(15,3)`), bukan uang. */}
+                      <TextInput
+                        id={`quantity-${i}`}
+                        type="number"
+                        step="0.01"
+                        style={numberStyle}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`price-${i}`, t("common.price"))}
+                      <TextInput
+                        id={`price-${i}`}
+                        type="number"
+                        step="0.01"
+                        style={numberStyle}
+                        value={item.price}
+                        onChange={(e) => updateItem(i, "price", Number(e.target.value))}
+                      />
+                    </Col>
+                    <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
+                      {itemLabel(`unit-${i}`, t("common.unit"))}
+                      <TextInput
+                        id={`unit-${i}`}
+                        value={item.unit}
+                        onChange={(e) => updateItem(i, "unit", e.target.value)}
+                      />
+                    </Col>
+                    <Col flex="none">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeItem(i)}
+                        aria-label={t("common.removeItemRow", { n: i + 1 })}
+                        style={{ color: token.colorError }}
+                      >
+                        <DeleteOutlined aria-hidden="true" />
+                      </Button>
+                    </Col>
+                  </Row>
                 </div>
               ))}
-            </div>
+            </Flex>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>{loading ? t("common.saving") : t("common.save")}</Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>{t("common.cancel")}</Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

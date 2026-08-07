@@ -6,115 +6,130 @@
  *   • memutar ulang tur panduan halaman yang sedang dibuka.
  *
  * Tur ditawarkan hanya bila halaman ini memang punya tur (`tourForPath`), jadi
- * pengguna tidak menekan tombol yang tidak melakukan apa-apa. Menu memakai
- * `<button>`/`<Link>` sungguhan agar bisa dioperasikan dengan keyboard, dan
- * ditutup oleh Escape maupun klik di luar.
+ * pengguna tidak menekan tombol yang tidak melakukan apa-apa.
+ *
+ * ── Setelah migrasi AntD (issue #193) ─────────────────────────────────────
+ * Dropdown rakitan tangan (pemicu `button` mentah + panel `role="menu"` + tiga
+ * pendengar dokumen untuk Escape dan klik-di-luar) diganti `Dropdown` AntD.
+ * Yang berpindah tuan, dan karena itu layak dicatat:
+ *
+ *  • **Escape.** Dulu pendengar `keydown` di `document` yang ditulis berkas
+ *    ini. Kini `useAccessibility` milik rc-dropdown: ia memasang pendengar di
+ *    `window` HANYA selama menu terbuka, menutupnya pada ESC, **dan
+ *    mengembalikan fokus ke pemicunya** — hal terakhir itu justru yang tidak
+ *    dilakukan versi lama (fokus tertinggal di menu yang sudah lenyap).
+ *  • **Klik di luar.** Dulu `mousedown`/`touchstart` + `contains()`; kini
+ *    `Trigger` AntD.
+ *  • **Tombolnya.** Pemicunya kini `Button` primitif, jadi berkas ini keluar
+ *    dari `RAW_BUTTON_ALLOWLIST`: tinggi 40px, cincin fokus, dan transisi
+ *    datang dari token, bukan dari kelas yang ditulis ulang di sini.
+ *
+ * `data-tour="bantuan"` TETAP pada pembungkusnya — tur di `lib/tours.ts`
+ * menunjuk nama itu, dan menggantinya membuat langkah tur menyorot ruang
+ * kosong.
  */
 
-import { Link } from "@/components/ui/app-link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { HelpCircle, BookMarked, Compass } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Dropdown, Flex, Grid, theme } from "antd";
+import type { MenuProps } from "antd";
+import { CompassOutlined, QuestionCircleOutlined, ReadOutlined } from "@ant-design/icons";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/components/ui/app-link";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { tourForPath } from "@/lib/tours";
 import { replayTour } from "@/components/help/guided-tour";
 import { useT } from "@/lib/i18n/client";
 
+/** Lebar panel — sama dengan `w-72` sebelum migrasi. */
+const LEBAR_PANEL = 288;
+
+/**
+ * Baris menu ini berisi DUA baris teks (judul + penjelas), sedangkan
+ * `Dropdown` AntD menetapkan tinggi barisnya dari `controlHeight` dan
+ * memotong isi yang melebihi. `height: auto` + `whiteSpace: normal`
+ * mengembalikan barisnya mengikuti isi — tanpanya penjelasnya terpotong dan
+ * yang tersisa hanya judul, persis informasi yang membuat baris ini berguna.
+ */
+const BARIS_DUA_BARIS: React.CSSProperties = { height: "auto", whiteSpace: "normal" };
+
 export function HelpMenu() {
   const pathname = usePathname();
   const t = useT();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
   const tour = tourForPath(pathname);
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: MouseEvent | TouchEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const judul: React.CSSProperties = {
+    display: "block",
+    fontWeight: token.fontWeightStrong,
+    color: token.colorText,
+  };
+  const penjelas: React.CSSProperties = {
+    display: "block",
+    fontSize: token.fontSizeSM,
+    color: token.colorTextTertiary,
+  };
 
-  const itemClass =
-    "flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors duration-150 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const items: MenuProps["items"] = [
+    {
+      key: "glossary",
+      icon: <ReadOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
+      style: BARIS_DUA_BARIS,
+      label: (
+        <Link href={GLOSSARY_PATH} style={{ display: "block", color: "inherit" }}>
+          <span style={judul}>{t("helpMenu.glossaryTitle")}</span>
+          <span style={penjelas}>{t("helpMenu.glossaryDescription")}</span>
+        </Link>
+      ),
+    },
+    tour
+      ? {
+          key: "replay-tour",
+          icon: <CompassOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
+          style: BARIS_DUA_BARIS,
+          onClick: () => {
+            setOpen(false);
+            replayTour();
+          },
+          label: (
+            <span>
+              <span style={judul}>{t("helpMenu.replayTour")}</span>
+              <span style={penjelas}>{tour.title}</span>
+            </span>
+          ),
+        }
+      : {
+          key: "no-tour",
+          disabled: true,
+          style: BARIS_DUA_BARIS,
+          label: <span style={penjelas}>{t("helpMenu.noTour")}</span>,
+        },
+  ];
 
   return (
-    <div className="relative" ref={containerRef} data-tour="bantuan">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={t("helpMenu.trigger")}
-        className={cn(
-          "flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors duration-150",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-          open
-            ? "border-primary/30 bg-primary/10 text-primary"
-            : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-        )}
+    // Pembungkus `data-tour` — sasaran langkah tur, jangan ganti namanya.
+    <Flex component="span" data-tour="bantuan" style={{ flexShrink: 0 }}>
+      <Dropdown
+        open={open}
+        onOpenChange={setOpen}
+        trigger={["click"]}
+        placement="bottomRight"
+        menu={{ items, style: { width: LEBAR_PANEL } }}
       >
-        <HelpCircle className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden sm:inline">{t("helpMenu.trigger")}</span>
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          aria-label={t("helpMenu.menu")}
-          className="absolute right-0 z-50 mt-2 w-72 rounded-lg border border-border bg-card p-1 shadow-lg"
+        <Button
+          variant="secondary"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={t("helpMenu.trigger")}
         >
-          <Link
-            role="menuitem"
-            href={GLOSSARY_PATH}
-            onClick={() => setOpen(false)}
-            className={itemClass}
-          >
-            <BookMarked className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span>
-              <span className="block font-medium text-foreground">
-                {t("helpMenu.glossaryTitle")}
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                {t("helpMenu.glossaryDescription")}
-              </span>
-            </span>
-          </Link>
-
-          {tour ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                replayTour();
-              }}
-              className={itemClass}
-            >
-              <Compass className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span>
-                <span className="block font-medium text-foreground">
-                  {t("helpMenu.replayTour")}
-                </span>
-                <span className="block text-xs text-muted-foreground">{tour.title}</span>
-              </span>
-            </button>
-          ) : (
-            <p className="px-3 py-2 text-xs text-muted-foreground">{t("helpMenu.noTour")}</p>
-          )}
-        </div>
-      )}
-    </div>
+          <Flex component="span" align="center" gap={token.marginXXS}>
+            <QuestionCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+            {screens.sm && <span>{t("helpMenu.trigger")}</span>}
+          </Flex>
+        </Button>
+      </Dropdown>
+    </Flex>
   );
 }

@@ -1,17 +1,14 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
+import { statusColumn } from "@/components/ui/status-column";
+import { Money } from "@/components/ui/money";
 import { notFound, redirect } from "next/navigation";
 import { Link } from "@/components/ui/app-link";
-import { formatCurrency, formatDateShort, formatNumber } from "@/lib/utils";
+import { formatDateShort, formatNumber } from "@/lib/utils";
 import {
   countStockHealth,
   stockLevelsFromTotals,
@@ -33,10 +30,9 @@ import {
 import { FirstStepsPanel } from "@/components/dashboard/first-steps-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FileText, Package } from "lucide-react";
+import { ContainerOutlined, FileTextOutlined } from "@ant-design/icons";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -53,6 +49,64 @@ import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 
 export const dynamic = "force-dynamic";
+
+/*
+ * ── Kenapa berkas ini penuh angka dan bukan token (issue #199) ─────────────
+ *
+ * Beranda TETAP server component, dan itu bukan kebetulan: ia menjalankan
+ * belasan kueri Prisma (saldo kas, piutang, utang, gerakan stok, kontrak) dan
+ * merender tabelnya sebagai HTML. Konsekuensinya ia **tidak boleh mengimpor
+ * `antd`** (dijaga `tests/rsc-boundary.test.ts`), jadi `theme.useToken()` tidak
+ * tersedia di sini.
+ *
+ * Yang dipakai sebagai gantinya, urut dari yang paling disukai:
+ *
+ *  1. **Primitif yang mewarnai dirinya sendiri** — `Money`/`moneyColumn` (token
+ *     uang #186), `Badge` (token `Tag`), `Card`, `EmptyState`. Semuanya
+ *     komponen client yang dirender sebagai DAUN, jadi batas RSC tidak bergeser.
+ *  2. **Variabel `--ant-…`**, TAPI hanya untuk simpul yang berada DI DALAM
+ *     sebuah komponen AntD (di berkas ini: di dalam `Card`). `ConfigProvider`
+ *     v6 memasang variabelnya pada elemen yang digambar komponen AntD sendiri,
+ *     bukan pada `:root` — di luar pohon itu warnanya jatuh diam-diam ke
+ *     warisan. Aturan yang sama dengan `components/shared/aging.tsx` (#194).
+ *  3. **Konstanta piksel di bawah** untuk JARAK dan LEBAR — bukan warna. Setiap
+ *     nilainya sama dengan token yang seharusnya dipakai, dan token itu disebut
+ *     namanya supaya #203 bisa menukarnya tanpa menebak.
+ */
+/** `space-y-10` antar-seksi beranda. Bukan token AntD: `marginXXL` hanya 48. */
+const SECTION_GAP = 40;
+/** `gap-4` di dalam seksi = `margin` (16). */
+const CARD_GAP = 16;
+/** `pb-3` kepala kartu tabel = `paddingSM` (12). */
+const CARD_HEADER_BOTTOM = 12;
+/** `pb-1` kepala kartu saldo = `paddingXXS` (4). */
+const TIGHT_HEADER_BOTTOM = 4;
+/** `text-base` judul kartu di dalam seksi = `fontSize` (14 -> 16 di app ini). */
+const CARD_TITLE_SIZE = 16;
+/** `text-2xl` saldo bersih = `fontSizeHeading3` (24); tebal = ambang teks besar. */
+const BALANCE_SIZE = 24;
+/** `border-l-4` garis aksen kartu saldo. */
+const ACCENT_BORDER = 4;
+/** `py-10` badan kartu "belum ada kas" = `paddingXL` (32) dibulatkan dari 40. */
+const EMPTY_CARD_PADDING = 40;
+/** Ukuran ikon `EmptyState` — bekas `h-12 w-12`. */
+const EMPTY_ICON = 48;
+/**
+ * Lebar dasar satu kartu dalam baris yang membagi diri sendiri. Menggantikan
+ * `sm:grid-cols-2 lg:grid-cols-3` dan `grid-cols-2 lg:grid-cols-4`: kartunya
+ * turun sendiri saat tak muat, satu kolom di 375px tanpa satu pun media query.
+ */
+const SUMMARY_CARD_BASIS = 260;
+const STAT_CARD_BASIS = 150;
+
+/** Baris kartu yang membagi lebarnya sendiri — pengganti kelas `grid …-cols-*`. */
+function autoGrid(basis: number): React.CSSProperties {
+  return {
+    display: "grid",
+    gap: CARD_GAP,
+    gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${basis}px), 1fr))`,
+  };
+}
 
 /*
  * Beranda = permukaan MENGERJAKAN, bukan melihat.
@@ -231,7 +285,10 @@ export default async function DashboardPage({
        * yang sudah punya penjelasannya sendiri. Pemutaran dari menu Bantuan
        * tetap bisa dilakukan kapan saja.
        */
-      <div className="w-full space-y-10" data-tour-suppress="beranda">
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: SECTION_GAP }}
+        data-tour-suppress="beranda"
+      >
         <PageHeader
           title={t("nav.items.dashboard")}
           description={t("dashboard.description", { name: session.user.name })}
@@ -375,8 +432,144 @@ export default async function DashboardPage({
     );
   }
 
+  /*
+   * ── Tiga tabel beranda memakai `StaticTable`, bukan `DataTable` ───────────
+   * Ketiganya hanya MENAMPILKAN lima baris terakhir yang sudah dipilih kueri
+   * (`take: 5`) — tak ada yang bisa disortir atau disaring di sini, dan
+   * pengurutannya memang pekerjaan basis data. `DataTable` akan menyalin
+   * barisnya ke bundel peramban dan menghidrasi rc-table di atas HTML yang
+   * sudah jadi, untuk tampilan yang identik. Lihat kepala `static-table.tsx`.
+   */
+  const movementColumns: SaiColumns<(typeof recentMovements)[number]> = [
+    textColumn({ dataIndex: "itemName", title: t("common.item") }),
+    {
+      key: "type",
+      dataIndex: "type",
+      title: t("suppliers.colType"),
+      // Badge BERTEKS: arah gerakan dibaca dari katanya, warnanya penanda kedua.
+      render: (_value, m) => (
+        <Badge variant={movementVariant(m.type)}>
+          <span>{t(movementLabelKey(m.type))}</span>
+        </Badge>
+      ),
+    },
+    {
+      key: "quantity",
+      dataIndex: "quantity",
+      title: t("common.quantity"),
+      align: "right",
+      /* Kuantitas = angka + SATUAN, diformat id-ID seperti setiap angka lain di
+         app ini. "1500.5" telanjang tidak memberitahu pembacanya itu 1.500,5 kg
+         atau 1.500,5 ton. Bukan `qtyColumn`, yang tidak membawa satuan. */
+      render: (_value, m) => (
+        <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+          {formatNumber(m.quantity)}
+          {m.unit ? ` ${m.unit}` : ""}
+        </span>
+      ),
+    },
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("common.date"),
+      render: (_value, m) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {formatDateShort(m.date)}
+        </span>
+      ),
+    },
+  ];
+
+  /*
+   * ── Kolom uang: token #186, BUKAN pasangan `-strong` lama ─────────────────
+   * Kolomnya berwarna menurut ARAH yang dinyatakan judulnya ("Uang Masuk" /
+   * "Uang Keluar"), bukan menurut tanda angkanya — jadi `tone` dipasang tetap,
+   * dan penanda non-warnanya adalah judul kolom itu sendiri.
+   *
+   * Yang berubah dari audit kontras sebelumnya: `--success-strong` (#166534,
+   * 7,13:1) dan `--destructive-strong` (#991B1B, 8,31:1) diganti
+   * `colorMoneyPositive` (#237804) dan `colorMoneyNegative` (#b32430) — 5,59:1
+   * dan 6,54:1 di atas `colorBgContainer` tema terang, 9,23:1 dan 7,86:1 di
+   * tema gelap (terburuk dari ketiga latar). Angkanya turun tapi tetap jauh di
+   * atas 4,5:1, dan sekarang ia SATU sumber dengan seluruh nominal aplikasi —
+   * itulah yang dulu tidak berlaku: `-strong` hanya dipakai di beranda.
+   *
+   * Saldo memakai `signed`, bukan `tone` tetap: arahnya memang datang dari
+   * TANDA angkanya, dan `Money` menulis tanda minusnya sebagai penanda kedua.
+   */
+  const balanceColumns: SaiColumns<FinanceBalanceRow> = [
+    {
+      key: "type",
+      dataIndex: "type",
+      title: t("common.account"),
+      render: (_value, b) => cashTypeLabels(dictionary)[b.type as CashType] || b.type,
+    },
+    {
+      key: "currency",
+      dataIndex: "currency",
+      title: t("common.currency"),
+      render: (_value, b) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{b.currency}</span>
+      ),
+    },
+    moneyColumn<FinanceBalanceRow>({
+      dataIndex: "debit",
+      title: t("finance.colMoneyIn"),
+      currency: (row) => row.currency,
+      tone: "positive",
+    }),
+    moneyColumn<FinanceBalanceRow>({
+      dataIndex: "credit",
+      title: t("finance.colMoneyOut"),
+      currency: (row) => row.currency,
+      tone: "negative",
+    }),
+    moneyColumn<FinanceBalanceRow>({
+      dataIndex: "balance",
+      title: t("common.balance"),
+      currency: (row) => row.currency,
+      signed: true,
+    }),
+  ];
+
+  const contractRows = latestContracts.map((c) => ({
+    id: c.id,
+    contractNo: c.contractNo,
+    buyer: c.buyer,
+    date: c.date,
+    status: c.status,
+  }));
+
+  const contractColumns: SaiColumns<(typeof contractRows)[number]> = [
+    {
+      key: "contractNo",
+      dataIndex: "contractNo",
+      title: <TermTooltip term="kontrak">{t("contracts.colNo")}</TermTooltip>,
+      render: (_value, c) => (
+        // `--ant-color-link` (= `colorBrandText`, 5,65:1), bukan
+        // `--ant-color-primary` yang sebagai teks hanya 4,10:1. Ia teratasi di
+        // sini karena selnya berada di DALAM sebuah `Card` AntD.
+        <Link href={`/contracts/${c.id}`} style={{ color: "var(--ant-color-link)", fontWeight: 500 }}>
+          {c.contractNo}
+        </Link>
+      ),
+    },
+    textColumn({ dataIndex: "buyer", title: t("contracts.colBuyer") }),
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("common.date"),
+      render: (_value, c) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {formatDateShort(c.date)}
+        </span>
+      ),
+    },
+    statusColumn({ dataIndex: "status", title: t("common.status") }),
+  ];
+
   return (
-    <div className="w-full space-y-10">
+    <div style={{ display: "flex", flexDirection: "column", gap: SECTION_GAP }}>
       <PageHeader
         title={t("nav.items.dashboard")}
         description={t("dashboard.description", { name: session.user.name })}
@@ -405,7 +598,7 @@ export default async function DashboardPage({
           title={t("dashboard.plainTitle")}
           description={t("dashboard.plainDescription")}
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div style={autoGrid(SUMMARY_CARD_BASIS)}>
             {incomeStatement && (
               <>
                 <SummaryCard
@@ -489,80 +682,59 @@ export default async function DashboardPage({
         hrefLabel={t("dashboard.stockHrefLabel")}
         actions={<InventoryExportAction />}
       >
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        {/*
+          * Warna kartu kondisi stok KEMBALI (issue #229), dan berkas ini tetap
+          * server component tanpa satu pun kelas Tailwind: `tone` mewarnai
+          * dirinya sendiri dari token uang AntD di dalam `StatCard`. Lihat
+          * kepala `components/dashboard/stat-card.tsx` — termasuk kenapa ia
+          * masih boleh dirender di server.
+          *
+          * Warnanya tetap BUKAN penanda tunggal: judul kartunya sendiri
+          * menyebut keadaannya ("Stok Sehat" / "Stok Menipis" / "Stok Habis"),
+          * dan tiap kartu menaut ke halaman yang bisa menindaklanjutinya.
+          */}
+        <div style={autoGrid(STAT_CARD_BASIS)}>
           <StatCard title={t("dashboard.statItems")} value={stockHealth.totalItems} href="/inventory" />
           <StatCard
             title={t("dashboard.statHealthy")}
             value={stockHealth.healthy}
             href="/inventory"
-            valueClassName="text-success"
+            tone="success"
           />
           <StatCard
             title={t("dashboard.statLow")}
             value={stockHealth.lowStock}
             href="/inventory/opname"
-            valueClassName="text-warning"
+            tone="warning"
           />
           <StatCard
             title={t("dashboard.statEmpty")}
             value={stockHealth.empty}
             href="/inventory/opname"
-            valueClassName="text-destructive"
+            tone="danger"
           />
         </div>
 
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("dashboard.recentMovementsTitle")}</CardTitle>
+          <CardHeader style={{ paddingBottom: CARD_HEADER_BOTTOM }}>
+            <CardTitle style={{ fontSize: CARD_TITLE_SIZE }}>
+              {t("dashboard.recentMovementsTitle")}
+            </CardTitle>
           </CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/80 hover:bg-muted/80">
-                <TableHead>{t("common.item")}</TableHead>
-                <TableHead>{t("suppliers.colType")}</TableHead>
-                <TableHead className="text-right">{t("common.quantity")}</TableHead>
-                <TableHead>{t("common.date")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentMovements.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="p-0">
-                    <EmptyState
-                      icon={<Package className="h-12 w-12" />}
-                      title={t("dashboard.emptyMovementsTitle")}
-                      description={t("dashboard.emptyMovementsDescription")}
-                      actionLabel={canUpdateInventory ? t("common.addRemoveStock") : undefined}
-                      actionHref={canUpdateInventory ? "/inventory/update" : undefined}
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                recentMovements.map((m, i) => (
-                  <TableRow key={i} className="hover:bg-muted/80">
-                    <TableCell className="font-medium text-foreground">{m.itemName}</TableCell>
-                    <TableCell>
-                      <Badge variant={movementVariant(m.type)}>
-                        {t(movementLabelKey(m.type))}
-                      </Badge>
-                    </TableCell>
-                    {/* Kuantitas = angka + SATUAN, diformat id-ID seperti setiap
-                        angka lain di app ini. "1500.5 " telanjang adalah satu-
-                        satunya angka berformat mesin yang tersisa di beranda,
-                        dan tanpa satuannya pembaca tidak tahu itu 1.500,5 kg
-                        atau 1.500,5 ton. */}
-                    <TableCell className="text-right font-semibold tabular-nums">
-                      {formatNumber(m.quantity)}
-                      {m.unit ? ` ${m.unit}` : ""}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDateShort(m.date)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <StaticTable
+            columns={movementColumns}
+            rows={recentMovements}
+            rowKey={(_row, index) => index ?? 0}
+            empty={
+              <EmptyState
+                icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON }} />}
+                title={t("dashboard.emptyMovementsTitle")}
+                description={t("dashboard.emptyMovementsDescription")}
+                actionLabel={canUpdateInventory ? t("common.addRemoveStock") : undefined}
+                actionHref={canUpdateInventory ? "/inventory/update" : undefined}
+              />
+            }
+          />
         </Card>
       </DashboardSection>
       )}
@@ -579,37 +751,64 @@ export default async function DashboardPage({
           }
         >
           {balanceByCurrency.size > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div style={autoGrid(SUMMARY_CARD_BASIS)}>
               {Array.from(balanceByCurrency.entries()).map(([cur, balance]) => (
-                /* Garis aksen kiri = token `primary` (aksi/brand netral), bukan
-                   `blue-500` mentah. Kelas mentahnya lolos gerbang lint karena
-                   pola penjaganya belum mengenal sisi arah (`border-l-`) —
-                   celah itu ikut ditutup di `eslint.config.mjs`. Akibat
-                   nyatanya: garis ini tetap #3B82F6 saat tema gelap menyala,
-                   satu-satunya bidang di beranda yang tidak ikut bertema. */
-                <Card key={cur} className="border-l-4 border-l-primary">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="text-sm text-muted-foreground">
+                /* Garis aksen kiri = `--ant-color-primary`, dan sekarang ia
+                   benar-benar ikut bertema. Kelas `border-l-primary` lama lolos
+                   gerbang lint karena polanya belum mengenal sisi arah, lalu
+                   tetap #3B82F6 saat tema gelap menyala — satu-satunya bidang di
+                   beranda yang tidak ikut berganti. Variabelnya teratasi karena
+                   yang memakainya adalah elemen `Card` AntD itu sendiri. */
+                <Card
+                  key={cur}
+                  style={{
+                    borderInlineStartWidth: ACCENT_BORDER,
+                    borderInlineStartColor: "var(--ant-color-primary)",
+                  }}
+                >
+                  <CardHeader style={{ paddingBottom: TIGHT_HEADER_BOTTOM }}>
+                    <CardTitle
+                      style={{
+                        fontSize: "var(--ant-font-size)",
+                        color: "var(--ant-color-text-secondary)",
+                      }}
+                    >
                       {t("dashboard.netBalance", { currency: cur })}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p
-                      className={`text-2xl font-bold tabular-nums ${
-                        balance >= 0 ? "text-success" : "text-destructive"
-                      }`}
-                    >
-                      {formatCurrency(balance, cur)}
-                    </p>
+                    {/*
+                     * Angka besar tebal — ambang teks besar 3:1 — tapi warnanya
+                     * tetap token uang #186 lewat `Money`, bukan `--success`
+                     * penuh. Satu sumber warna untuk seluruh nominal aplikasi;
+                     * `signed` memberi hijau pada saldo positif, dan tanda minus
+                     * pada yang negatif adalah penanda non-warnanya.
+                     */}
+                    <Money
+                      value={balance}
+                      currency={cur}
+                      signed
+                      style={{
+                        display: "block",
+                        fontSize: BALANCE_SIZE,
+                        fontWeight: "var(--ant-font-weight-strong)",
+                      }}
+                    />
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
             <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">
+              <CardContent
+                style={{
+                  paddingBlock: EMPTY_CARD_PADDING,
+                  textAlign: "center",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("dashboard.noCashBefore")}{" "}
-                <Link href="/finance/new" className="text-primary hover:underline">
+                <Link href="/finance/new" style={{ color: "var(--ant-color-link)" }}>
                   {t("dashboard.noCashLink")}
                 </Link>
               </CardContent>
@@ -618,54 +817,16 @@ export default async function DashboardPage({
 
           {financeBalances.length > 0 && (
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{t("dashboard.balancePerAccount")}</CardTitle>
+              <CardHeader style={{ paddingBottom: CARD_HEADER_BOTTOM }}>
+                <CardTitle style={{ fontSize: CARD_TITLE_SIZE }}>
+                  {t("dashboard.balancePerAccount")}
+                </CardTitle>
               </CardHeader>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/80 hover:bg-muted/80">
-                    <TableHead>{t("common.account")}</TableHead>
-                    <TableHead>{t("common.currency")}</TableHead>
-                    <TableHead className="text-right">{t("finance.colMoneyIn")}</TableHead>
-                    <TableHead className="text-right">{t("finance.colMoneyOut")}</TableHead>
-                    <TableHead className="text-right">{t("common.balance")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {financeBalances.map((b) => (
-                    <TableRow key={`${b.type}_${b.currency}`}>
-                      <TableCell className="text-foreground">
-                        {cashTypeLabels(dictionary)[b.type as CashType] || b.type}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{b.currency}</TableCell>
-                      {/* Warna kolom = semantik uang masuk/keluar (hijau/merah per
-                          kolom, bukan per tanda) — tidak 1:1 dengan MoneyCell,
-                          jadi format lama dipertahankan.
-                          ⚠ Rononya `-strong`, BUKAN `--success`/`--destructive`
-                          penuh: sel tabel ber-`text-sm` (14px) adalah teks
-                          BIASA, jadi ambangnya 4.5:1 — dan #16A34A di atas
-                          `--card` putih hanya 3,30:1. Warna penuh itu sah untuk
-                          isian pekat, ikon, dan angka besar (`text-2xl`/`3xl`
-                          tebal lolos ambang teks-besar 3:1), tidak untuk kolom
-                          nominal. `--success-strong` = 7,13:1,
-                          `--destructive-strong` = 8,31:1. */}
-                      <TableCell className="text-right text-success-strong tabular-nums">
-                        {formatCurrency(b.debit, b.currency)}
-                      </TableCell>
-                      <TableCell className="text-right text-destructive-strong tabular-nums">
-                        {formatCurrency(b.credit, b.currency)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-semibold tabular-nums ${
-                          b.balance >= 0 ? "text-success-strong" : "text-destructive-strong"
-                        }`}
-                      >
-                        {formatCurrency(b.balance, b.currency)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <StaticTable
+                columns={balanceColumns}
+                rows={financeBalances}
+                rowKey={(b) => `${b.type}_${b.currency}`}
+              />
             </Card>
           )}
 
@@ -680,75 +841,47 @@ export default async function DashboardPage({
           href="/contracts"
           hrefLabel={t("dashboard.contractsHrefLabel")}
         >
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div style={autoGrid(STAT_CARD_BASIS)}>
             <StatCard title={t("nav.items.contracts")} value={contractCount} href="/contracts" />
+            {/* "Menunggu" = amber, lewat `tone` (issue #229). Katanya tetap
+                "Menunggu" dan kartunya menaut ke daftar yang sudah tersaring,
+                jadi warnanya menambah hierarki — bukan memikul maknanya. */}
             <StatCard
               title={t("dashboard.statPendingContracts")}
               value={pendingContracts}
               href="/contracts?status=pending"
-              valueClassName="text-warning"
+              tone="warning"
             />
             <StatCard title={t("nav.items.invoices")} value={invoiceCount} href="/invoices" />
             <StatCard
               title={t("dashboard.statPendingInvoices")}
               value={pendingInvoices}
               href="/invoices?status=pending"
-              valueClassName="text-warning"
+              tone="warning"
             />
             <StatCard title={t("nav.items.suppliers")} value={supplierCount} href="/suppliers" />
           </div>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("dashboard.latestContracts")}</CardTitle>
+            <CardHeader style={{ paddingBottom: CARD_HEADER_BOTTOM }}>
+              <CardTitle style={{ fontSize: CARD_TITLE_SIZE }}>
+                {t("dashboard.latestContracts")}
+              </CardTitle>
             </CardHeader>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/80 hover:bg-muted/80">
-                  <TableHead>
-                    <TermTooltip term="kontrak">{t("contracts.colNo")}</TermTooltip>
-                  </TableHead>
-                  <TableHead>{t("contracts.colBuyer")}</TableHead>
-                  <TableHead>{t("common.date")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {latestContracts.length === 0 ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={4} className="p-0">
-                      <EmptyState
-                        icon={<FileText className="h-12 w-12" />}
-                        title={t("contracts.emptyTitle")}
-                        description={t("dashboard.emptyContractsDescription")}
-                        actionLabel={canCreateContract ? t("contracts.addNew") : undefined}
-                        actionHref={canCreateContract ? "/contracts/new" : undefined}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  latestContracts.map((c) => (
-                    <TableRow key={c.id} className="hover:bg-muted/80">
-                      <TableCell>
-                        <Link
-                          href={`/contracts/${c.id}`}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          {c.contractNo}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-foreground">{c.buyer}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDateShort(c.date)}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={c.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <StaticTable
+              columns={contractColumns}
+              rows={contractRows}
+              rowKey={(c) => c.id}
+              empty={
+                <EmptyState
+                  icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON }} />}
+                  title={t("contracts.emptyTitle")}
+                  description={t("dashboard.emptyContractsDescription")}
+                  actionLabel={canCreateContract ? t("contracts.addNew") : undefined}
+                  actionHref={canCreateContract ? "/contracts/new" : undefined}
+                />
+              }
+            />
           </Card>
         </DashboardSection>
       )}

@@ -24,8 +24,9 @@
  * boleh mengosongkan halaman yang menjelaskan produknya.
  */
 import Link from "next/link";
-import { Check } from "lucide-react";
-
+import { CheckOutlined } from "@ant-design/icons";
+import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
+import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -34,6 +35,36 @@ import { formatMoney } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
+
+/**
+ * Nominal paket — `fontSizeHeading3` (24px) tebal.
+ *
+ * Sengaja BUKAN skala hero: yang harus paling besar di halaman ini adalah
+ * kalimat yang menjelaskan produknya, bukan angkanya. Halaman yang angkanya
+ * lebih besar dari janjinya menjual harga, bukan pekerjaan.
+ */
+const PRICE: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-heading-3)",
+  fontWeight: "var(--ant-font-weight-strong)",
+};
+
+const QUOTA_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "var(--ant-margin-xs)",
+};
+
+/**
+ * Centang kuota — ikon, jadi ambangnya 3:1 (grafis non-teks). Ia penanda
+ * KEDUA di baris yang sudah berisi kalimat kuotanya sendiri.
+ */
+const CHECK: React.CSSProperties = {
+  flexShrink: 0,
+  marginTop: 2,
+  color: "var(--ant-color-money-positive)",
+  fontSize: "var(--ant-font-size-lg)",
+};
 
 export async function LandingPricing() {
   const t = await getT();
@@ -47,154 +78,206 @@ export async function LandingPricing() {
   const contactEmail = process.env.PLATFORM_CONTACT_EMAIL?.trim();
 
   return (
-    <section id="harga" className="scroll-mt-20 border-t border-border bg-muted/40 py-16 sm:py-24">
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {t("landing.pricingHeading")}
-          </h2>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-            {t("landing.pricingBody")}
-          </p>
-        </div>
+    <LandingSection id="harga" tone="muted">
+      <LandingSectionIntro title={t("landing.pricingHeading")}>
+        {t("landing.pricingBody")}
+      </LandingSectionIntro>
 
-        {plans === null ? (
-          <Card className="mt-8">
-            <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("landing.pricingUnavailable")}
-              </p>
-            </CardContent>
-          </Card>
-        ) : plans.length === 0 ? (
-          <Card className="mt-8">
-            <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("landing.pricingEmpty")}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {plans.map((plan) => (
-                <li key={plan.key}>
-                  <Card
-                    className={
-                      plan.isRecommended
-                        ? "flex h-full flex-col border-primary ring-1 ring-primary"
-                        : "flex h-full flex-col"
-                    }
+      {plans === null ? (
+        <Card style={{ marginTop: "var(--ant-margin-lg)" }}>
+          <CardContent>
+            <p style={LANDING_NOTE}>{t("landing.pricingUnavailable")}</p>
+          </CardContent>
+        </Card>
+      ) : plans.length === 0 ? (
+        <Card style={{ marginTop: "var(--ant-margin-lg)" }}>
+          <CardContent>
+            <p style={LANDING_NOTE}>{t("landing.pricingEmpty")}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <ul
+            style={{
+              ...landingGrid(3, 260),
+              listStyle: "none",
+              margin: 0,
+              marginTop: "var(--ant-margin-lg)",
+              padding: 0,
+            }}
+          >
+            {plans.map((plan) => (
+              <li key={plan.key}>
+                <Card
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                    /* Sorotan paket: tepi merek + cincin setebal 1px. Ia
+                       penanda KEDUA — yang pertama lencana berteks di
+                       kepalanya. */
+                    ...(plan.isRecommended
+                      ? {
+                          borderColor: "var(--ant-color-primary)",
+                          boxShadow: "0 0 0 1px var(--ant-color-primary)",
+                        }
+                      : null),
+                  }}
+                >
+                  <CardHeader
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "var(--ant-margin-xs)",
+                    }}
                   >
-                    <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                      {/* Sorotan paket adalah LENCANA BERTEKS, bukan sekadar
-                          tepi berwarna: tepi saja tidak terbaca oleh siapa pun
-                          yang tidak membedakan warnanya (MASTER.md
-                          §Anti-Patterns). */}
-                      {plan.isRecommended && <Badge variant="success">{t("landing.pricingRecommended")}</Badge>}
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col gap-3">
-                      {/* Paket berharga rundingan TIDAK memajang nominal.
-                          Kolom harganya berisi 0, dan "Rp 0" di kartu penjualan
-                          bukan sekadar salah — ia terbaca sebagai gratis. */}
-                      {plan.contactOnly ? (
-                        <p className="text-2xl font-bold text-foreground">
-                          {t("landing.pricingContactPrice")}
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: "var(--ant-font-size-lg)",
+                        fontWeight: "var(--ant-font-weight-strong)",
+                      }}
+                    >
+                      {plan.name}
+                    </h3>
+                    {/* Sorotan paket adalah LENCANA BERTEKS, bukan sekadar
+                        tepi berwarna: tepi saja tidak terbaca oleh siapa pun
+                        yang tidak membedakan warnanya (MASTER.md
+                        §Anti-Patterns). */}
+                    {plan.isRecommended && <Badge variant="success">{t("landing.pricingRecommended")}</Badge>}
+                  </CardHeader>
+                  <CardContent
+                    style={{
+                      display: "flex",
+                      flex: 1,
+                      flexDirection: "column",
+                      gap: "var(--ant-margin-sm)",
+                    }}
+                  >
+                    {/* Paket berharga rundingan TIDAK memajang nominal.
+                        Kolom harganya berisi 0, dan "Rp 0" di kartu penjualan
+                        bukan sekadar salah — ia terbaca sebagai gratis. */}
+                    {plan.contactOnly ? (
+                      <p style={PRICE}>{t("landing.pricingContactPrice")}</p>
+                    ) : (
+                      <>
+                        <p style={{ ...PRICE, fontVariantNumeric: "tabular-nums" }}>
+                          {formatMoney(plan.priceMonthly, plan.currency)}
+                          <span
+                            style={{
+                              fontSize: "var(--ant-font-size)",
+                              fontWeight: "normal",
+                              color: "var(--ant-color-text-secondary)",
+                            }}
+                          >
+                            {t("platform.plansPerMonth")}
+                          </span>
                         </p>
+                        {plan.priceYearly !== null && (
+                          <p style={{ ...LANDING_NOTE, fontVariantNumeric: "tabular-nums" }}>
+                            {formatMoney(plan.priceYearly, plan.currency)}
+                            {t("platform.plansPerYear")}
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {plan.description && <p style={LANDING_NOTE}>{plan.description}</p>}
+                    {/* Kuota memakai kunci yang SAMA dengan halaman paket di
+                        dalam aplikasi: dua kalimat untuk angka yang sama akan
+                        berbeda pada hari salah satunya disunting. */}
+                    <ul
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "var(--ant-margin-xxs)",
+                        listStyle: "none",
+                        margin: 0,
+                        padding: 0,
+                        fontSize: "var(--ant-font-size)",
+                      }}
+                    >
+                      {plan.contactOnly ? (
+                        /* Angka kuota paket rundingan adalah bawaan katalog,
+                           bukan janji: kuota yang berlaku disalin ke tenant
+                           saat paketnya dipasang, dan justru itulah yang
+                           dirundingkan. Memajangnya berarti menjanjikan
+                           angka yang belum disepakati siapa pun. */
+                        <li style={QUOTA_ROW}>
+                          <CheckOutlined aria-hidden="true" style={CHECK} />
+                          <span>{t("landing.pricingContactQuota")}</span>
+                        </li>
                       ) : (
                         <>
-                          <p className="text-2xl font-bold tabular-nums text-foreground">
-                            {formatMoney(plan.priceMonthly, plan.currency)}
-                            <span className="text-sm font-normal text-muted-foreground">
-                              {t("platform.plansPerMonth")}
+                          <li style={QUOTA_ROW}>
+                            <CheckOutlined aria-hidden="true" style={CHECK} />
+                            <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                              {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
                             </span>
-                          </p>
-                          {plan.priceYearly !== null && (
-                            <p className="text-sm tabular-nums text-muted-foreground">
-                              {formatMoney(plan.priceYearly, plan.currency)}
-                              {t("platform.plansPerYear")}
-                            </p>
-                          )}
+                          </li>
+                          <li style={QUOTA_ROW}>
+                            <CheckOutlined aria-hidden="true" style={CHECK} />
+                            <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                              {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
+                            </span>
+                          </li>
                         </>
                       )}
-                      {plan.description && (
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {plan.description}
-                        </p>
-                      )}
-                      {/* Kuota memakai kunci yang SAMA dengan halaman paket di
-                          dalam aplikasi: dua kalimat untuk angka yang sama akan
-                          berbeda pada hari salah satunya disunting. */}
-                      <ul className="space-y-1.5 text-sm text-foreground">
+                    </ul>
+                    {/* Tombolnya menuju PENDAFTARAN apa adanya, TANPA
+                        `?plan=`. Pendaftaran tidak menerima pilihan paket:
+                        setiap tenant baru lahir di paket `trial`
+                        (`registration-store.ts`), dan paket sungguhan
+                        dipilih sesudah akunnya jadi. Parameter yang tidak
+                        dibaca siapa pun akan terlihat seperti janji bahwa
+                        paket ini sudah dipilih. */}
+                    {plan.contactOnly && !contactEmail ? (
+                      <p style={{ ...LANDING_NOTE, marginTop: "auto" }}>
+                        {t("landing.pricingContactMissing")}
+                      </p>
+                    ) : (
+                      /* Tombol MELEBAR PENUH di layar sempit dan menyusut ke
+                         lebarnya sendiri di ≥576px — dan itu datang dari arah
+                         kolomnya (`[data-landing-actions]`), bukan dari lebar
+                         yang dipaksakan pada tombolnya: anak flex melar sendiri
+                         di kolom, dan menyusut sendiri di baris. */
+                      <div data-landing-actions="" style={{ marginTop: "auto" }}>
                         {plan.contactOnly ? (
-                          /* Angka kuota paket rundingan adalah bawaan katalog,
-                             bukan janji: kuota yang berlaku disalin ke tenant
-                             saat paketnya dipasang, dan justru itulah yang
-                             dirundingkan. Memajangnya berarti menjanjikan
-                             angka yang belum disepakati siapa pun. */
-                          <li className="flex items-start gap-2">
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                            <span>{t("landing.pricingContactQuota")}</span>
-                          </li>
-                        ) : (
-                          <>
-                            <li className="flex items-start gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                              <span className="tabular-nums">
-                                {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                              <span className="tabular-nums">
-                                {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
-                              </span>
-                            </li>
-                          </>
-                        )}
-                      </ul>
-                      {/* Tombolnya menuju PENDAFTARAN apa adanya, TANPA
-                          `?plan=`. Pendaftaran tidak menerima pilihan paket:
-                          setiap tenant baru lahir di paket `trial`
-                          (`registration-store.ts`), dan paket sungguhan
-                          dipilih sesudah akunnya jadi. Parameter yang tidak
-                          dibaca siapa pun akan terlihat seperti janji bahwa
-                          paket ini sudah dipilih. */}
-                      {plan.contactOnly ? (
-                        contactEmail ? (
-                          <Button asChild variant="outline" className="mt-auto w-full sm:w-auto">
+                          <Button asChild variant="outline">
                             <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(plan.name)}`}>
                               {t("landing.pricingContactCta")}
                             </a>
                           </Button>
                         ) : (
-                          <p className="mt-auto text-sm text-muted-foreground">
-                            {t("landing.pricingContactMissing")}
-                          </p>
-                        )
-                      ) : (
-                        <Button asChild className="mt-auto w-full sm:w-auto">
-                          <Link href="/register">{t("landing.heroPrimary")}</Link>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                </li>
-              ))}
-            </ul>
+                          <Button asChild>
+                            <Link href="/register">{t("landing.heroPrimary")}</Link>
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
 
-            <p className="mt-4 text-sm tabular-nums text-muted-foreground">
-              {/* Uji coba disebut DI SINI, di sebelah harganya, bukan sebagai
-                  janji terpisah di hero: setiap tenant baru memang lahir di
-                  paket `trial` selama TRIAL_DAYS hari, dan angkanya diambil
-                  dari konstanta yang sama dengan yang menghitungnya. */}
-              {t("landing.pricingTrialNote", { days: TRIAL_DAYS })}
-              {ppnEnabled && ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}
-            </p>
-          </>
-        )}
-      </div>
-    </section>
+          <p
+            style={{
+              ...LANDING_NOTE,
+              marginTop: "var(--ant-margin)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {/* Uji coba disebut DI SINI, di sebelah harganya, bukan sebagai
+                janji terpisah di hero: setiap tenant baru memang lahir di
+                paket `trial` selama TRIAL_DAYS hari, dan angkanya diambil
+                dari konstanta yang sama dengan yang menghitungnya. */}
+            {t("landing.pricingTrialNote", { days: TRIAL_DAYS })}
+            {ppnEnabled && ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}
+          </p>
+        </>
+      )}
+    </LandingSection>
   );
 }

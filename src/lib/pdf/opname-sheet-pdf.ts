@@ -15,6 +15,7 @@
  * tertutup. Maka bawaannya BUTA, dan menampilkan angka sistem adalah pilihan
  * sadar yang harus dicentang, bukan sebaliknya.
  */
+import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -24,7 +25,7 @@ export interface OpnameSheetItem {
   currentStock: number;
 }
 
-const BRAND: [number, number, number] = [30, 64, 175]; // --color-primary #1E40AF
+const BRAND = PRINT_BRAND;
 
 /** Kuantitas id-ID, sampai tiga desimal — sama dengan `formatNumber` di layar. */
 function qty(value: number): string {

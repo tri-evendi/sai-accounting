@@ -12,8 +12,7 @@
  * menuntut peran per-PT, bisa dibuka sebelum PT pertama ada.
  */
 import Link from "next/link";
-import { Building2 } from "lucide-react";
-
+import { ShopOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
@@ -23,6 +22,19 @@ import { CompanyForm } from "./company-form";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Kalimat penjelas. Server component, jadi tanpa `theme.useToken()`; warnanya
+ * variabel token AntD, yang teratasi walau tak ada komponen AntD di atasnya —
+ * sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, bukan
+ * oleh elemen yang digambar komponen AntD (#203).
+ */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
 export default async function NewCompanyPage() {
   const { tenant } = await requireTenantPagePermission("company.create");
   const t = await getT();
@@ -31,18 +43,23 @@ export default async function NewCompanyPage() {
     <AuthShell
       heading={t("companies.newTitle")}
       description={t("companies.newDescription")}
-      icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+      icon={<ShopOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
       footer={
-        <Button asChild variant="outline" className="w-full">
+        /* JALAN KELUAR. Layar ini berdiri sebelum aplikasi, tanpa chrome apa
+           pun — tanpa tautan ini satu-satunya tindakan yang mungkin adalah
+           membuat perusahaan. */
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/select-company">{t("common.back")}</Link>
         </Button>
       }
     >
       {/* Konsekuensinya disebut SEBELUM tombolnya ditekan: buku yang terpisah
           penuh, dan wizard penyiapan yang masih menunggu. */}
-      <div className="mb-6 space-y-1 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("companies.explainIsolation")}</p>
-        <p>{t("companies.explainNextStep")}</p>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 24 }}
+      >
+        <p style={BODY_TEXT}>{t("companies.explainIsolation")}</p>
+        <p style={BODY_TEXT}>{t("companies.explainNextStep")}</p>
       </div>
 
       {/* `tenantId` hanya untuk PRATINJAU nama basis data (`sai_t{id}_{slug}`,

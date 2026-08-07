@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet } from "lucide-react";
+import { FileExcelOutlined } from "@ant-design/icons";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -207,7 +207,8 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
 
   return (
     <Button variant="secondary" size="sm" onClick={handleExport} disabled={loading}>
-      <FileSpreadsheet className="h-4 w-4 mr-1" />
+      {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukuran dari primitif `Button`. */}
+      <FileExcelOutlined aria-hidden="true" />
       {loading ? t("pdf.preparing") : t("excel.download")}
     </Button>
   );

@@ -15,6 +15,7 @@
  * present-but-empty for IDR to keep the grid from reflowing.
  */
 
+import { theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
@@ -47,6 +48,7 @@ export function CurrencyRateFields({
   rateHint,
 }: CurrencyRateFieldsProps) {
   const t = useT();
+  const { token } = theme.useToken();
   const isForeign = currency !== BASE_CURRENCY;
 
   return (
@@ -68,15 +70,25 @@ export function CurrencyRateFields({
             type="number"
             step="0.000001"
             min="0"
-            className="text-right tabular-nums"
+            /* Kurs adalah ANGKA: rata kanan + `tabular-nums` (MASTER.md §3).
+               Lewat `style`, bukan kelas — gaya sebaris juga yang dipakai
+               `MoneyCell` untuk aturan yang sama. */
+            style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
             label={t("fx.rateToIdr", { currency })}
             value={rate}
             onChange={(e) => onRateChange(e.target.value)}
             required
           />
-          <p className="mt-1 text-xs text-muted-foreground">
+          <Typography.Text
+            type="secondary"
+            style={{
+              display: "block",
+              marginTop: token.marginXXS,
+              fontSize: token.fontSizeSM,
+            }}
+          >
             {rateHint ?? t("fx.rateHintDefault")}
-          </p>
+          </Typography.Text>
         </div>
       ) : (
         <div />

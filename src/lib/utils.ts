@@ -1,9 +1,24 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+/*
+ * `cn()` DICABUT di issue #203, bersama Tailwind.
+ *
+ * Bentuknya `twMerge(clsx(inputs))`: `clsx` merangkai daftar kelas, `twMerge`
+ * membuang kelas Tailwind yang saling bertabrakan supaya `max-w-lg` pemanggil
+ * benar-benar MENGGANTIKAN `max-w-2xl` bawaan alih-alih berdiri di sebelahnya.
+ * Pekerjaan kedua itu hanya masuk akal selama ada kelas Tailwind; tanpa
+ * Tailwind, `twMerge` menjadi tabel aturan tentang kosakata yang sudah tidak
+ * dipakai satu berkas pun.
+ *
+ * Diukur sebelum dicabut: 15 pemanggil, seluruhnya di `src/components/ui/**`,
+ * dan setelah konversi #203 tersisa NOL yang benar-benar merangkai kelas. Tiga
+ * di antaranya memakainya bukan untuk kelas melainkan untuk menggabungkan
+ * daftar id `aria-describedby` — pekerjaan yang kebetulan cocok, bukan
+ * pekerjaan yang dijanjikan namanya. Ketiganya kini memanggil `describedByWith`
+ * di `components/ui/input.tsx`, yang namanya menyebut apa yang digabungnya dan
+ * yang tetap mengembalikan `undefined` untuk daftar kosong (atribut kosong
+ * menunjuk elemen yang tidak ada).
+ *
+ * `clsx` dan `tailwind-merge` ikut keluar dari `package.json` bersamanya.
+ */
 
 export function formatCurrency(amount: number, currency: string = "IDR") {
   const localeMap: Record<string, string> = {

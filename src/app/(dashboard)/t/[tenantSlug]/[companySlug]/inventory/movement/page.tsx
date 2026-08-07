@@ -4,15 +4,8 @@ import { getStockMovementReport } from "@/lib/stock-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import { StockPeriodFilter } from "@/components/shared/stock-period-filter";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
@@ -22,16 +15,15 @@ import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";
 import { TermTooltip } from "@/components/ui/term-tooltip";
-import { PackageOpen, Info } from "lucide-react";
-
+import { HistoryOutlined, InfoCircleOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
-/** Quantity cell: right-aligned, tabular, id-ID — the money rules minus the currency. */
-function Qty({ value, className = "" }: { value: number; className?: string }) {
-  return (
-    <TableCell className={`text-right tabular-nums ${className}`}>{formatNumber(value)}</TableCell>
-  );
-}
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+const ICON_SIZE = 16;
+
+/** Satu baris laporan — bentuk yang dibaca kolom di bawah. */
+type MovementRow = Awaited<ReturnType<typeof getStockMovementReport>>["rows"][number];
 
 export default async function StockMovementPage({
   params,
@@ -97,6 +89,12 @@ export default async function StockMovementPage({
   // Susunan kolom layar diputuskan penentu yang SAMA dengan PDF & lembar sebar
   // (`stockMovementColumns`), jadi pratinjau yang dibuka dari dialog parameter
   // memperlihatkan persis kolom yang akan ikut ke berkasnya.
+  //
+  // Perhatikan arah aliranya: penentu menghasilkan DAFTAR ID, lalu id itu
+  // dipetakan ke kolom di bawah. Yang TIDAK boleh terjadi adalah menulis
+  // daftar kolom kedua di sebelahnya — itulah cara pratinjau dan berkas
+  // ekspor mulai berbeda kolom, bug yang baru saja ditutup dan yang dikunci
+  // `tests/report-export.test.ts`.
   const cols = stockMovementColumns(payload);
   const HEADERS: Record<StockMovementColumnId, string> = {
     name: t("common.item"),
@@ -108,14 +106,18 @@ export default async function StockMovementPage({
     closing: t("stockMovement.colClosing"),
   };
   // Masuk hijau / keluar merah mengikuti semantik uang app ini, dan angkanya
-  // sendiri tetap penanda non-warna. Varian `-strong`, bukan warna penuh: ini
-  // sel tabel `text-sm`, yang menuntut 4,5:1 (MASTER.md §Color Palette).
-  const QTY_CLASS: Record<Exclude<StockMovementColumnId, "name" | "unit">, string> = {
-    opening: "text-muted-foreground",
-    movedIn: "text-success-strong",
-    movedOut: "text-destructive-strong",
-    processed: "text-muted-foreground",
-    closing: "font-semibold text-foreground",
+  // sendiri tetap penanda non-warna. Token UANG (`--ant-color-money-*`, #186),
+  // bukan `colorSuccess`/`colorError` bawaan: ini sel tabel 14px, yang menuntut
+  // 4,5:1 — dan warna penuh AntD hanya 2,3:1 di sana.
+  const QTY_STYLE: Record<
+    Exclude<StockMovementColumnId, "name" | "unit">,
+    React.CSSProperties
+  > = {
+    opening: { color: "var(--ant-color-text-secondary)" },
+    movedIn: { color: "var(--ant-color-money-positive)" },
+    movedOut: { color: "var(--ant-color-money-negative)" },
+    processed: { color: "var(--ant-color-text-secondary)" },
+    closing: { fontWeight: "var(--ant-font-weight-strong)" },
   };
   const TOTALS: Record<Exclude<StockMovementColumnId, "name" | "unit">, number> = {
     opening: report.totalOpening,
@@ -124,6 +126,55 @@ export default async function StockMovementPage({
     processed: report.totalProcessed,
     closing: report.totalClosing,
   };
+
+  /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
+  function columnFor(id: StockMovementColumnId): SaiColumns<MovementRow>[number] {
+    if (id === "name") {
+      return {
+        ...textColumn<MovementRow>({ dataIndex: "name", title: HEADERS.name }),
+        render: (raw) => (
+          <span style={{ fontWeight: "var(--ant-font-weight-strong)" }}>{String(raw)}</span>
+        ),
+      };
+    }
+    if (id === "unit") {
+      return {
+        ...textColumn<MovementRow>({ dataIndex: "unit", title: HEADERS.unit }),
+        // Satuan kosong ditulis "-": selnya memang tak berisi, dan itu berbeda
+        // dari satuan yang belum diketahui.
+        render: (raw) => (
+          <span style={{ color: "var(--ant-color-text-secondary)" }}>
+            {raw ? String(raw) : "-"}
+          </span>
+        ),
+      };
+    }
+    /*
+     * Warnanya dipasang MEMBUNGKUS `qtyColumn`, bukan menggantikannya: aturan
+     * kuantitas (rata kanan · tabular-nums · id-ID · "—" untuk nilai tak
+     * diketahui) tetap milik satu pembantu, dan yang ditambahkan di sini hanya
+     * arah warnanya. Menulis ulang `render` sendiri berarti dua aturan angka.
+     */
+    const base = qtyColumn<MovementRow>({ dataIndex: id, title: HEADERS[id] });
+    return {
+      ...base,
+      render: (raw, row, index) => (
+        <span style={QTY_STYLE[id]}>{base.render?.(raw, row, index)}</span>
+      ),
+    };
+  }
+
+  const columns: SaiColumns<MovementRow> = cols.map(columnFor);
+
+  // Baris total dipetakan per KUNCI kolom, jadi ia ikut menyusut bersama
+  // pilihan kolom pengguna dan tak bisa meleset satu kolom.
+  const summary: Record<string, React.ReactNode> = { name: t("common.total") };
+  for (const id of cols) {
+    if (id === "name" || id === "unit") continue;
+    summary[id] = (
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatNumber(TOTALS[id])}</span>
+    );
+  }
 
   return (
     <div>
@@ -157,73 +208,42 @@ export default async function StockMovementPage({
       />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {cols.map((c) => (
-                <TableHead key={c} className={c === "name" || c === "unit" ? undefined : "text-right"}>
-                  {HEADERS[c]}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {report.rows.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={cols.length} className="p-0">
-                  <EmptyState
-                    icon={<PackageOpen className="h-12 w-12" />}
-                    title={t("stockMovement.emptyTitle")}
-                    description={t("stockMovement.emptyDescription")}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              report.rows.map((r) => (
-                <TableRow key={r.id}>
-                  {cols.map((c) =>
-                    c === "name" ? (
-                      <TableCell key={c} className="font-medium text-foreground">
-                        {r.name}
-                      </TableCell>
-                    ) : c === "unit" ? (
-                      <TableCell key={c} className="text-muted-foreground">
-                        {r.unit || "-"}
-                      </TableCell>
-                    ) : (
-                      <Qty key={c} value={r[c]} className={QTY_CLASS[c]} />
-                    )
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-          {report.rows.length > 0 && (
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="border-b-0 font-bold hover:bg-transparent">
-                {cols.map((c) =>
-                  c === "name" ? (
-                    <TableCell key={c} className="text-foreground">
-                      {t("common.total")}
-                    </TableCell>
-                  ) : c === "unit" ? (
-                    <TableCell key={c} />
-                  ) : (
-                    <Qty key={c} value={TOTALS[c]} />
-                  )
-                )}
-              </TableRow>
-            </TableFooter>
-          )}
-        </Table>
+        {/*
+         * `StaticTable`, bukan `DataTable`: laporan ini hanya MENAMPILKAN.
+         * Periodenya dipilih di atas (yang memuat ulang di server) dan tak ada
+         * satu pun kendali per kolom, jadi tidak ada yang bisa dibeli dengan
+         * memindahkan seluruh baris persediaan ke peramban.
+         */}
+        <StaticTable<MovementRow>
+          columns={columns}
+          rows={report.rows}
+          rowKey={(r) => r.id}
+          summary={summary}
+          empty={
+            <EmptyState
+              icon={<HistoryOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("stockMovement.emptyTitle")}
+              description={t("stockMovement.emptyDescription")}
+            />
+          }
+        />
       </Card>
 
       {/* Barang yang tidak bersaldo dan tidak bergerak disembunyikan; mengatakannya
           adalah yang membuat penghilangan itu jujur, bukan membuat daftar barang
           tampak lebih pendek daripada yang sebenarnya. */}
       {report.dormantCount > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 6,
+            marginTop: 12,
+            marginBottom: 0,
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
           <span>{t("stockMovement.dormantNote", { count: report.dormantCount })}</span>
         </p>
       )}

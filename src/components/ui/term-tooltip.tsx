@@ -1,58 +1,93 @@
 "use client";
 
 /**
- * TermTooltip (issue #1, dirombak di issue #51) — label bahasa tugas + ikon
- * "?" yang membuka istilah akuntansi bakunya beserta definisi sederhana.
+ * TermTooltip (issue #1, dirombak di #51, dipindah ke AntD di #190) — label
+ * bahasa tugas + ikon "?" yang membuka istilah akuntansi bakunya beserta
+ * definisi sederhana.
  *
  *   <TermTooltip term="faktur">Tagihan Penjualan</TermTooltip>
  *
  * Definisinya TIDAK ditulis di sini: seluruh isinya dibaca dari kamus tunggal
  * `src/lib/labels.ts`, sumber yang sama dengan halaman Kamus Istilah (issue #21).
  *
- * Kini dibangun di atas Radix `Popover`, BUKAN Radix `Tooltip` — pilihan yang
- * disengaja: panelnya berisi tautan "Pelajari selengkapnya" yang harus bisa
- * diklik/di-Tab, dan harus terbuka lewat ketukan di layar sentuh; dua hal yang
- * pola tooltip murni tidak dukung (issue #51 sendiri menyebut fallback ini).
- * Dari Radix kita dapat gratis: positioning sadar-tabrakan (flip/shift di tepi
- * layar — dulu dihitung manual), Escape + klik-luar menutup, dan fokus kembali
- * ke pemicunya.
+ * ── Kenapa Popover, bukan Tooltip ─────────────────────────────────────────
+ * Pilihan ini bertahan dari #51 dan alasannya tidak berubah oleh migrasi:
+ * panelnya berisi TAUTAN "Pelajari selengkapnya" yang harus bisa diklik dan
+ * di-Tab, dan harus terbuka lewat ketukan di layar sentuh. `Tooltip` — baik
+ * Radix dulu maupun AntD sekarang — adalah panel yang hilang begitu kursor
+ * pergi dan tidak pernah menerima fokus; menaruh tautan di dalamnya berarti
+ * membuat tautan yang tidak bisa dicapai. Menyederhanakannya menjadi atribut
+ * `title=` malah menghapus seluruh isinya: definisi dan contoh tidak muat, dan
+ * pintu ke Kamus Istilah tertutup.
  *
  * Aksesibilitas — tetap BUKAN hover-only:
- *   • pemicunya `<button>` sungguhan → bisa Tab + Enter/Spasi (keyboard) dan
- *     bisa diketuk di layar sentuh; saat dibuka via keyboard/klik, fokus
- *     masuk ke panel sehingga tautannya terjangkau;
+ *   • pemicunya `<button>` sungguhan → bisa Tab + Enter/Spasi (papan ketik) dan
+ *     bisa diketuk di layar sentuh; saat dibuka via papan ketik/klik, fokus
+ *     masuk ke panel sehingga tautannya terjangkau (lihat catatan fokus di
+ *     `components/ui/popover.tsx` — AntD tidak memberikannya sendiri);
  *   • area sentuhnya diperbesar ke ~40px lewat pseudo-element;
  *   • hover hanya BONUS di desktop — panel terbuka saat label disorot dan ada
  *     jeda singkat sebelum menutup supaya kursor sempat menyeberang ke panel;
- *     pembukaan via hover TIDAK mencuri fokus keyboard.
+ *     pembukaan via hover TIDAK mencuri fokus papan ketik.
+ *
+ * Warna panelnya kini datang dari variabel `--ant-*` yang ditulis
+ * `ConfigProvider`, bukan dari kelas Tailwind: permukaan, bayangan, dan sudut
+ * panel adalah milik `Popover` AntD, jadi teks di dalamnya harus diukur
+ * terhadap permukaan itu juga.
  */
 
 import { Link } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
 import { useRef, useState } from "react";
-import { HelpCircle, ArrowRight } from "lucide-react";
+import { ArrowRightOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { getTerm, glossaryHref } from "@/lib/labels";
+
+/**
+ * Tiga hal yang tidak punya bentuk sebaris, dan ketiganya bukan hiasan:
+ *
+ *  • **`::after`** — area sentuh ~40px di sekeliling ikon "?" tanpa mengubah
+ *    tinggi baris teksnya. Ikon 20px sendirian di bawah ambang target sentuh
+ *    MASTER.md, dan membesarkan ikonnya akan merusak baris yang memuatnya.
+ *  • **cincin fokus** — ini `<button>` telanjang, bukan komponen AntD, jadi
+ *    `genFocusStyle()` AntD tidak menyentuhnya. Warnanya `colorPrimaryBorder`,
+ *    token yang sama dengan cincin fokus AntD (#187).
+ *  • **garis bawah saat disorot** pada tautan "Pelajari selengkapnya".
+ */
+const TERM_RULES = `
+[data-term-trigger]::after{content:"";position:absolute;inset:-10px}
+[data-term-trigger]:focus{outline:none}
+[data-term-trigger]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:1px}
+[data-term-link]:hover{text-decoration:underline}
+`;
 
 /** Jeda sebelum panel hover ditutup — cukup untuk menyeberangi celah 8px. */
 const HOVER_CLOSE_DELAY_MS = 150;
+
+/**
+ * Tinggi maksimum panel. Dulu `var(--radix-popover-content-available-height)`,
+ * yaitu ruang sisa yang dihitung Radix sampai tepi layar. AntD tidak
+ * menyediakan ukuran itu; `60vh` adalah penggantinya yang jujur — cukup untuk
+ * definisi terpanjang di kamus, dan tetap menyisakan layar di ponsel.
+ */
+const PANEL_MAX_HEIGHT = "60vh";
 
 interface TermTooltipProps {
   /** Kunci entri di `src/lib/labels.ts`, mis. "faktur". */
   term: string;
   /** Label yang tampil. Bila kosong, dipakai label bahasa tugas dari kamus. */
   children?: React.ReactNode;
-  className?: string;
+  /** Gaya pembungkus label + ikon — pengganti `className` yang dicabut di #203. */
+  style?: React.CSSProperties;
   /** Sembunyikan tautan "Pelajari selengkapnya" (mis. di dalam halaman kamus). */
   hideGlossaryLink?: boolean;
 }
 
-export function TermTooltip({ term, children, className, hideGlossaryLink }: TermTooltipProps) {
+export function TermTooltip({ term, children, style, hideGlossaryLink }: TermTooltipProps) {
   const t = useT();
   const entry = getTerm(term);
   const [open, setOpen] = useState(false);
@@ -85,15 +120,24 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
 
   return (
     <span
-      className={cn("inline-flex items-center gap-1 align-middle", className)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "var(--ant-margin-xxs)",
+        verticalAlign: "middle",
+        ...style,
+      }}
       onMouseEnter={openFromHover}
       onMouseLeave={scheduleClose}
     >
+      <style href="sai-term-tooltip" precedence="default">
+        {TERM_RULES}
+      </style>
       <span>{label}</span>
       <Popover
         open={open}
         onOpenChange={(next) => {
-          if (next) hoverOpenRef.current = false; // dibuka via klik/keyboard
+          if (next) hoverOpenRef.current = false; // dibuka via klik/papan ketik
           cancelScheduledClose();
           setOpen(next);
         }}
@@ -101,26 +145,41 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
         <PopoverTrigger asChild>
           <button
             type="button"
+            data-term-trigger
             aria-label={`Penjelasan istilah: ${entry.label}`}
-            className={cn(
-              "relative inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full",
-              "text-muted-foreground transition-colors duration-150 hover:text-primary hover:bg-primary/10",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
-              // Area sentuh ~40px tanpa mengubah tinggi baris teks.
-              "after:absolute after:-inset-2.5 after:content-['']",
-              open && "text-primary bg-primary/10"
-            )}
+            style={{
+              position: "relative",
+              display: "inline-flex",
+              width: 20,
+              height: 20,
+              flexShrink: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              cursor: "pointer",
+              transition: "color 150ms, background-color 150ms",
+              color: open ? "var(--ant-color-primary)" : "var(--ant-color-text-tertiary)",
+              background: open ? "var(--ant-color-primary-bg)" : "transparent",
+            }}
           >
-            <HelpCircle className="h-4 w-4" aria-hidden="true" />
+            <QuestionCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
           </button>
         </PopoverTrigger>
         <PopoverContent
           align="start"
           side="bottom"
-          className="w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3 text-left font-normal normal-case"
-          style={{ maxHeight: "var(--radix-popover-content-available-height)" }}
+          style={{
+            width: 288,
+            maxWidth: "calc(100vw - 1rem)",
+            maxHeight: PANEL_MAX_HEIGHT,
+            overflowY: "auto",
+            padding: "var(--ant-padding-sm)",
+            textAlign: "left",
+            fontWeight: 400,
+            textTransform: "none",
+          }}
           // Pembukaan via hover tidak boleh mencuri fokus dari yang sedang
-          // diketik; pembukaan via keyboard/klik justru butuh fokus masuk
+          // diketik; pembukaan via papan ketik/klik justru butuh fokus masuk
           // supaya tautan di dalam panel terjangkau.
           onOpenAutoFocus={(event) => {
             if (hoverOpenRef.current) event.preventDefault();
@@ -128,24 +187,75 @@ export function TermTooltip({ term, children, className, hideGlossaryLink }: Ter
           onMouseEnter={cancelScheduledClose}
           onMouseLeave={scheduleClose}
         >
-          <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span
+            style={{
+              display: "block",
+              fontSize: "var(--ant-font-size-sm)",
+              fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--ant-color-text-tertiary)",
+            }}
+          >
             {t("term.badge")}
           </span>
-          <span className="mt-0.5 block text-sm font-semibold text-foreground">{entry.term}</span>
-          <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">{entry.definisi}</span>
+          <span
+            style={{
+              display: "block",
+              marginTop: 2,
+              fontSize: "var(--ant-font-size)",
+              fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+              color: "var(--ant-color-text)",
+            }}
+          >
+            {entry.term}
+          </span>
+          <span
+            style={{
+              display: "block",
+              marginTop: 6,
+              fontSize: "var(--ant-font-size)",
+              lineHeight: 1.625,
+              color: "var(--ant-color-text-secondary)",
+            }}
+          >
+            {entry.definisi}
+          </span>
           {entry.contoh && (
-            <span className="mt-2 block rounded-md bg-muted p-2 text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">{t("term.example")} </span>
+            <span
+              style={{
+                display: "block",
+                marginTop: "var(--ant-margin-xs)",
+                padding: "var(--ant-padding-xs)",
+                borderRadius: "var(--ant-border-radius)",
+                fontSize: "var(--ant-font-size-sm)",
+                lineHeight: 1.625,
+                background: "var(--ant-color-fill-quaternary)",
+                color: "var(--ant-color-text-secondary)",
+              }}
+            >
+              <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>
+                {t("term.example")}{" "}
+              </span>
               {entry.contoh}
             </span>
           )}
           {!hideGlossaryLink && (
             <Link
+              data-term-link
               href={glossaryHref(entry.key)}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--ant-margin-xxs)",
+                marginTop: "var(--ant-margin-xs)",
+                fontSize: "var(--ant-font-size-sm)",
+                fontWeight: 500,
+                color: "var(--ant-color-link)",
+              }}
             >
               {t("term.learnMore")}
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 12 }} />
             </Link>
           )}
         </PopoverContent>

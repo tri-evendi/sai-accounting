@@ -10,10 +10,27 @@
  * server hanya muncul sebagai satu pita merah di atas form tanpa tahu field
  * mana yang salah. Kini tiap field memvalidasi inline dengan `aria-invalid` +
  * pesan `role="alert"` yang tertaut, dan teksnya berbahasa Indonesia.
+ *
+ * ── Catatan issue #192 ─────────────────────────────────────────────────────
+ * Sejak #192 primitif `Form` berdiri di atas `Form.Item` Ant Design. Berkas ini
+ * TIDAK berubah satu baris pun karenanya, dan justru itulah buktinya: mesin
+ * formulir (react-hook-form + `customerSchema`) tidak ikut berpindah tangan,
+ * hanya kulitnya. Acuan yang berpasangan dengan berkas ini —
+ * `components/shared/payment-form.tsx` — memikul kasus yang sulit (valas,
+ * kurs bersyarat, galat server per field).
+ *
+ * ── Catatan issue #196 ─────────────────────────────────────────────────────
+ * Konversi C4 menyentuh KULITNYA saja: `grid gap-4 sm:grid-cols-2` menjadi
+ * `Row`/`Col`, jarak menjadi token, dan galat formulir menjadi `Alert` AntD.
+ * Satu hal yang TIDAK bisa dilakukan dan perlu diketahui penyunting berikutnya:
+ * `FormItem` tidak menerima prop tata letak apa pun selain gaya simpul
+ * terluarnya — jadi field yang harus membentang penuh dibungkus `Col
+ * span={24}`, bukan diberi `gridColumn` sendiri.
  */
 
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
@@ -37,6 +54,7 @@ export function NewCustomerForm() {
   const router = useAppRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
 
   const form = useForm<CustomerInput>({
     // `customerSchema` punya `taxExempt: z.boolean().default(false)`, jadi tipe
@@ -81,7 +99,7 @@ export function NewCustomerForm() {
   }
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("customers.breadcrumb"), href: "/customers" },
@@ -92,139 +110,164 @@ export function NewCustomerForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-          <Card className="mb-6">
+          <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
               <CardTitle>{t("customers.dataTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Grid responsif: 1 kolom di ponsel, 2 kolom di layar lebar —
-                  mengisi lebar penuh tanpa merentang satu input melebar sendiri.
-                  Field panjang (nama, alamat, checkbox) menjangkau 2 kolom. */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel required>{t("customers.nameField")}</FormLabel>
-                      <FormControl>
-                        <TextInput autoFocus {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>{t("common.address")}</FormLabel>
-                      <FormControl>
-                        <TextInput {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("common.phone")}</FormLabel>
-                      <FormControl>
-                        <TextInput {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("common.email")}</FormLabel>
-                      <FormControl>
-                        <TextInput type="email" {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="pic"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("customers.pic")}</FormLabel>
-                      <FormControl>
-                        <TextInput {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="npwp"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("customers.npwp")}</FormLabel>
-                      <FormControl>
-                        <TextInput {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="taxExempt"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <label
-                        htmlFor="taxExempt"
-                        className="flex cursor-pointer items-start gap-2"
-                      >
+              {/* Baris yang membungkus: 1 kolom di ponsel, 2 sejak `sm` (576px).
+                  Field panjang (nama, alamat, centang pajak) mengambil baris
+                  penuh lewat `Col span={24}`. */}
+              <Row gutter={[token.margin, 0]}>
+                <Col span={24}>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("customers.nameField")}</FormLabel>
                         <FormControl>
-                          <Checkbox
-                            id="taxExempt"
-                            className="mt-0.5"
-                            checked={field.value}
-                            onCheckedChange={(v) => field.onChange(v === true)}
-                            onBlur={field.onBlur}
-                          />
+                          <TextInput autoFocus {...field} />
                         </FormControl>
-                        <span className="text-sm text-foreground">
-                          {t("customers.taxExemptLabel")}
-                          <span className="block text-xs text-muted-foreground">
-                            {t("customers.taxExemptHint")}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col span={24}>
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("common.address")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("common.phone")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("common.email")}</FormLabel>
+                        <FormControl>
+                          <TextInput type="email" {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="pic"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("customers.pic")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="npwp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("customers.npwp")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col span={24}>
+                  <FormField
+                    control={form.control}
+                    name="taxExempt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <label
+                          htmlFor="taxExempt"
+                          style={{
+                            display: "flex",
+                            cursor: "pointer",
+                            alignItems: "flex-start",
+                            gap: token.marginXS,
+                          }}
+                        >
+                          <FormControl>
+                            <Checkbox
+                              id="taxExempt"
+                              style={{ marginTop: token.marginXXS / 2 }}
+                              checked={field.value}
+                              onCheckedChange={(v) => field.onChange(v === true)}
+                              onBlur={field.onBlur}
+                            />
+                          </FormControl>
+                          <span>
+                            {t("customers.taxExemptLabel")}
+                            <span
+                              style={{
+                                display: "block",
+                                fontSize: token.fontSizeSM,
+                                color: token.colorTextSecondary,
+                              }}
+                            >
+                              {t("customers.taxExemptHint")}
+                            </span>
                           </span>
-                        </span>
-                      </label>
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        </label>
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+              </Row>
             </CardContent>
           </Card>
 
           {form.formState.errors.root && (
-            <p role="alert" className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong">
-              {form.formState.errors.root.message}
-            </p>
+            <div role="alert" style={{ marginBottom: token.margin }}>
+              <Alert type="error" showIcon message={form.formState.errors.root.message} />
+            </div>
           )}
 
-          <div className="flex gap-3">
+          <Flex wrap gap={token.marginSM}>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? t("common.saving") : t("customers.submit")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => router.back()}>
               {t("common.cancel")}
             </Button>
-          </div>
+          </Flex>
         </form>
       </Form>
     </div>

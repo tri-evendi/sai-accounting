@@ -1,39 +1,39 @@
 "use client";
 
 /**
- * SearchableSelect (issue #22, dirombak di issue #51) — combobox pola shadcn:
- * `Popover` + `Command` (cmdk).
+ * SearchableSelect (issue #22, dirombak #51, ditulis ulang di atas AntD `Select
+ * showSearch` pada issue #188) — pemilih satu nilai dengan pencarian ketik.
  *
- * cmdk menyumbang apa yang dulu hilang dari rakitan tangan: `role="combobox"`
- * + `aria-activedescendant` (screen reader tahu opsi mana yang aktif),
- * navigasi panah/Enter/Escape, dan filter ketik. Filternya mencocokkan label
- * DAN baris deskripsi (mis. negara/kontak), sama seperti sebelumnya.
+ * ── Yang keluar ───────────────────────────────────────────────────────────
+ * Rakitan `Popover` + `Command` (cmdk) diganti satu komponen AntD. cmdk dipakai
+ * dulu justru untuk hal yang sekarang sudah ada di dalam AntD: `role="combobox"`
+ * dengan `aria-activedescendant`, navigasi panah/Enter/Escape, dan filter ketik.
+ * Yang IKUT DIDAPAT dan tidak dimiliki versi lama: daftar tervirtualisasi (300
+ * consignee tidak lagi berarti 300 simpul DOM) dan popup yang diportal ke
+ * `<body>` dengan pembalikan otomatis saat ruang di bawah habis — perilaku yang
+ * paling terasa di 375px.
  *
- * State-driven (bukan <select> native): pemanggil menyimpan nilainya di React
- * dan memasukkannya sendiri ke payload submit.
+ * `Command`/`Popover` TIDAK ikut dihapus: `Command` masih memikul palet perintah
+ * ⌘K (`components/layout/command-palette.tsx`), dan `Popover` masih dipakai
+ * `TermTooltip`. Keduanya sekarang punya satu pemakai, bukan tiga.
+ *
+ * ── Yang hilang, dan harus disebut ────────────────────────────────────────
+ * `searchPlaceholder` kini TIDAK berpengaruh. Pada pola lama kotak pencarian
+ * hidup di dalam popover sehingga punya placeholder sendiri; pada AntD, yang
+ * diketik adalah pemicunya sendiri — placeholder-nya adalah `placeholder`.
+ * Prop-nya tetap diterima supaya lima pemanggilnya tidak perlu disentuh di fase
+ * B; hapus di fase C (#194–#198) bersama teks kamusnya.
  */
 
-import { useId, useMemo, useState } from "react";
-import { ChevronsUpDown, Check, X } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { Select, type SelectProps } from "antd";
+
+import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/i18n/client";
 
 export interface SearchableOption {
   value: string;
   label: string;
-  /** Optional secondary line (e.g. country / contact) shown under the label. */
+  /** Baris kedua opsional (mis. negara / kontak) yang tampil di bawah label. */
   description?: string;
 }
 
@@ -44,12 +44,51 @@ interface SearchableSelectProps {
   id?: string;
   label?: string;
   placeholder?: string;
+  /** @deprecated Tidak berpengaruh sejak #188 — lihat komentar kepala berkas. */
   searchPlaceholder?: string;
   emptyText?: string;
   /** Show a clear (×) button when a value is selected. Default true. */
   clearable?: boolean;
   disabled?: boolean;
 }
+
+/**
+ * Filter yang mencocokkan LABEL dan baris deskripsi — persis cakupan cmdk
+ * sebelumnya (mengetik nama kota menemukan consignee-nya). `filterOption`
+ * bawaan AntD hanya melihat satu field, jadi ia harus ditulis.
+ */
+function matchesQuery(query: string, option?: SearchableOption): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = `${option?.label ?? ""} ${option?.description ?? ""}`.toLowerCase();
+  return haystack.includes(needle);
+}
+
+/**
+ * Dua baris di dalam satu opsi. `label` polos tidak cukup: deskripsi harus
+ * tampil lebih kecil dan teredam, dan keduanya harus terpotong dengan elipsis
+ * supaya daftar tidak pernah lebih lebar dari pemicunya di 375px.
+ */
+const optionRender: SelectProps<string, SearchableOption>["optionRender"] = (option) => (
+  <span style={{ display: "block", minWidth: 0 }}>
+    <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
+      {option.data.label}
+    </span>
+    {option.data.description && (
+      <span
+        style={{
+          display: "block",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          fontSize: "0.75rem",
+          opacity: 0.8,
+        }}
+      >
+        {option.data.description}
+      </span>
+    )}
+  </span>
+);
 
 export function SearchableSelect({
   options,
@@ -58,114 +97,34 @@ export function SearchableSelect({
   id,
   label,
   placeholder,
-  searchPlaceholder,
   emptyText,
   clearable = true,
   disabled = false,
 }: SearchableSelectProps) {
   const t = useT();
-  const [open, setOpen] = useState(false);
-  /**
-   * `aria-controls` wajib menyertai role="combobox": pembaca layar perlu tahu
-   * daftar mana yang dikendalikan tombol ini. Daftarnya baru ada di DOM saat
-   * popover terbuka — itu memang perilaku yang diharapkan untuk combobox.
-   */
-  const listboxId = useId();
-
-  const selected = useMemo(
-    () => options.find((o) => o.value === value) ?? null,
-    [options, value]
-  );
 
   return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            id={id}
-            disabled={disabled}
-            role="combobox"
-            aria-expanded={open}
-            aria-controls={listboxId}
-            aria-haspopup="listbox"
-            className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-            )}
-          >
-            <span className={cn("truncate", !selected && "text-muted-foreground")}>
-              {selected ? selected.label : (placeholder ?? t("searchableSelect.placeholder"))}
-            </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              {clearable && selected && !disabled && (
-                <span
-                  role="button"
-                  tabIndex={-1}
-                  aria-label={t("searchableSelect.clear")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange(null);
-                  }}
-                  className="rounded p-0.5 hover:bg-muted hover:text-muted-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </span>
-              )}
-              <ChevronsUpDown className="h-4 w-4" />
-            </span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          sideOffset={4}
-          className="w-(--radix-popover-trigger-width) p-0"
-        >
-          <Command>
-            <CommandInput placeholder={searchPlaceholder ?? t("searchableSelect.searchPlaceholder")} />
-            <CommandList id={listboxId}>
-              <CommandEmpty>{emptyText ?? t("searchableSelect.empty")}</CommandEmpty>
-              {options.map((opt) => {
-                const isSelected = opt.value === value;
-                return (
-                  <CommandItem
-                    key={opt.value}
-                    value={opt.value}
-                    // cmdk memfilter pada value + keywords: label dan baris
-                    // deskripsi dua-duanya bisa dicari, seperti sebelumnya.
-                    keywords={
-                      opt.description ? [opt.label, opt.description] : [opt.label]
-                    }
-                    // Nilai dari closure, bukan argumen callback — cmdk
-                    // menormalkan argumennya (trim/lowercase) dan itu bukan
-                    // nilai yang boleh dikirim ke API.
-                    onSelect={() => {
-                      onChange(opt.value);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-foreground">{opt.label}</span>
-                      {opt.description && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {opt.description}
-                        </span>
-                      )}
-                    </span>
-                    {isSelected && (
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+    <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
+      {label && <Label htmlFor={id}>{label}</Label>}
+      <Select<string, SearchableOption>
+        data-slot="searchable-select"
+        id={id}
+        style={{ width: "100%" }}
+        options={options}
+        // `null` adalah "belum dipilih" bagi pemanggil, tetapi bagi AntD ia
+        // nilai yang sah — hanya `undefined` yang memunculkan placeholder.
+        value={value ?? undefined}
+        onChange={(next) => onChange(next ?? null)}
+        placeholder={placeholder ?? t("searchableSelect.placeholder")}
+        notFoundContent={emptyText ?? t("searchableSelect.empty")}
+        allowClear={clearable}
+        disabled={disabled}
+        optionRender={optionRender}
+        showSearch={{ filterOption: (input, option) => matchesQuery(input, option) }}
+        // Daftar tidak pernah melebihi lebar pemicunya — tidak ada popup yang
+        // menyembul keluar layar 375px.
+        popupMatchSelectWidth
+      />
     </div>
   );
 }

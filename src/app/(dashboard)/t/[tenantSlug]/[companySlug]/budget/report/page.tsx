@@ -5,6 +5,14 @@
  * the SAME reader as the Laba/Rugi report, so a budget's realisation always
  * reconciles with the P&L. This page reads and posts nothing. Over/under is shown
  * with an icon + label + sign (VarianceBadge), never colour alone.
+ *
+ * ── Konversi ke token Ant Design (issue #197, fase C5) ─────────────────────
+ * **Tetap server component.** Warna selisih dulu `text-success-strong` /
+ * `text-destructive`; ia kini `Money tone` (#186), yang berarti pasangan warna
+ * uangnya hidup di SATU tempat. Yang tidak berubah: warna itu mengikuti
+ * `favorable`, bukan tanda angkanya — selisih lebih pada akun PENDAPATAN itu
+ * kabar baik, pada akun BEBAN itu kabar buruk — dan `VarianceBadge` di kolom
+ * sebelahnya tetap menyebutkannya dengan ikon + kata.
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -16,26 +24,29 @@ import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
+import { Money } from "@/components/ui/money";
+import { budgetColumns, type BudgetColumnId } from "@/lib/statement-layout";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
-import { GaugeCircle, AlertTriangle } from "lucide-react";
-
+import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
+/** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
+const SECTION_GAP = 24;
+const CARD_GAP = 16;
+const STAT_BASIS = 220;
+const EMPTY_ICON_SIZE = 48;
+
+const numericStyle: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
 function pctLabel(pct: number | null): string {
+  // Persentase yang tidak terdefinisi (anggaran nol) ditulis "—", bukan 0%.
   if (pct === null) return "—";
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
@@ -47,9 +58,18 @@ function signedCurrency(amount: number): string {
   return amount > 0 ? `+${formatted}` : formatted;
 }
 
-function varianceClass(favorable: boolean | null): string {
-  if (favorable === null) return "text-foreground";
-  return favorable ? "text-success-strong" : "text-destructive";
+/**
+ * Warna selisih, dari token uang (#186) lewat variabel CSS — bukan
+ * `theme.useToken()`, yang akan memaksa halaman ini jadi client. Ia teratasi
+ * karena tabelnya dirender DI DALAM `<Card>` (lihat kepala `shared/aging.tsx`).
+ *
+ * Arahnya mengikuti `favorable`, BUKAN tanda angkanya: selisih lebih pada akun
+ * pendapatan itu menguntungkan, pada akun beban tidak. Penanda non-warnanya
+ * adalah tanda "+"/"−" pada angkanya DAN `VarianceBadge` di kolom Keterangan.
+ */
+function varianceColor(favorable: boolean | null): string | undefined {
+  if (favorable === null) return undefined;
+  return favorable ? "var(--ant-color-money-positive)" : "var(--ant-color-money-negative)";
 }
 
 export default async function BudgetReportPage({
@@ -93,8 +113,149 @@ export default async function BudgetReportPage({
       ? t("budget.wholeYear", { year })
       : t("common.monthOfYear", { month: months[month - 1], year });
 
+  /*
+   * Susunan kolom layar kini datang dari penentu yang SAMA dengan PDF & lembar
+   * sebar (`budgetColumns`), seperti lima laporan berkolom-pilihan lainnya.
+   *
+   * Sampai #189 tabel ini menuliskan keenam `<TableHead>`-nya sendiri, dan itu
+   * sebabnya entri katalognya sengaja TIDAK menawarkan pilihan kolom: centang
+   * yang hanya berlaku di berkas tapi tidak di layar melanggar aturan yang
+   * dipegang seluruh Pusat Laporan. Penghalang itu kini hilang — menambahkan
+   * `columns` ke entri `budget-realization` di `lib/report-catalog.ts` sudah
+   * cukup untuk menyalakan pemilihnya, dan layar akan ikut menyusut sendiri.
+   * Keputusan menyalakannya diserahkan ke pemilik laporan, bukan diselundupkan
+   * lewat PR primitif tabel.
+   *
+   * Hari ini `visibleColumns` selalu kosong (katalognya belum punya `columns`),
+   * dan daftar kosong berarti "seluruhnya" — jadi tabelnya tampil persis sama
+   * seperti sebelum konversi.
+   */
+  const cols = budgetColumns({ visibleColumns: payload?.visibleColumns });
+
+  type BudgetRow = (typeof report.rows)[number];
+
+  const HEADERS: Record<BudgetColumnId, string> = {
+    account: t("common.account"),
+    budget: t("budget.colBudget"),
+    actual: t("budget.colActual"),
+    variance: t("budget.variance"),
+    variancePct: "%",
+    status: t("common.status"),
+  };
+
+  /** Satu id kolom -> satu kolom tabel; tidak ada daftar kolom kedua. */
+  function columnFor(id: BudgetColumnId): SaiColumns<BudgetRow>[number] {
+    switch (id) {
+      case "budget":
+        return moneyColumn<BudgetRow>({ dataIndex: "budget", title: HEADERS.budget });
+      case "actual":
+        return moneyColumn<BudgetRow>({ dataIndex: "actual", title: HEADERS.actual });
+      case "variance":
+        // Selisih diwarnai menurut `favorable` (bukan tanda) dan membawa awalan
+        // "+" eksplisit — jadi ia BUKAN pemetaan 1:1 ke `moneyColumn`.
+        return {
+          key: "variance",
+          dataIndex: "variance",
+          title: HEADERS.variance,
+          align: "right",
+          render: (_v, r) => (
+            <span style={{ ...numericStyle, color: varianceColor(r.favorable) }}>
+              {signedCurrency(r.variance)}
+            </span>
+          ),
+        };
+      case "variancePct":
+        return {
+          key: "variancePct",
+          dataIndex: "variancePct",
+          title: HEADERS.variancePct,
+          align: "right",
+          render: (_v, r) => (
+            <span style={{ ...numericStyle, color: varianceColor(r.favorable) }}>
+              {pctLabel(r.variancePct)}
+            </span>
+          ),
+        };
+      case "status":
+        return {
+          key: "status",
+          dataIndex: "status",
+          title: HEADERS.status,
+          render: (_v, r) => <VarianceBadge status={r.status} favorable={r.favorable} />,
+        };
+      case "account":
+      default:
+        return {
+          key: "account",
+          dataIndex: "name",
+          title: HEADERS.account,
+          align: "left",
+          render: (_v, r) => (
+            <>
+              <span
+                style={{
+                  marginInlineEnd: 8,
+                  fontFamily: "var(--ant-font-family-code)",
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
+                {r.code}
+              </span>
+              {r.name}
+            </>
+          ),
+        };
+    }
+  }
+
+  const columns: SaiColumns<BudgetRow> = cols.map(columnFor);
+
+  // Baris total dipetakan per KUNCI kolom, jadi ia ikut menyusut bersama
+  // susunan kolom dan tak bisa meleset satu kolom.
+  const summary: Record<string, React.ReactNode> = {
+    account: t("common.total"),
+    budget: <Money value={report.totals.budget} currency="IDR" />,
+    actual: <Money value={report.totals.actual} currency="IDR" />,
+    variance: <span style={numericStyle}>{signedCurrency(report.totals.variance)}</span>,
+    variancePct: (
+      <span style={{ ...numericStyle, color: "var(--ant-color-text-secondary)" }}>
+        {pctLabel(report.totals.variancePct)}
+      </span>
+    ),
+  };
+
+  /** Kartu angka ringkas: keterangan kecil di atas, nilainya di bawah. */
+  const statCard = (label: string, value: React.ReactNode) => (
+    <Card>
+      <div style={{ padding: "var(--ant-padding)" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "var(--ant-font-size-sm)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          {label}
+        </p>
+        <p
+          style={{
+            margin: 0,
+            marginTop: "var(--ant-margin-xxs)",
+            fontSize: "var(--ant-font-size-lg)",
+            fontWeight: "var(--ant-font-weight-strong)",
+            ...numericStyle,
+          }}
+        >
+          {value}
+        </p>
+      </div>
+    </Card>
+  );
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("budget.breadcrumb"), href: "/budget" },
@@ -115,61 +276,103 @@ export default async function BudgetReportPage({
         }
       />
 
-      <div className="mb-6">
+      <div style={{ marginBottom: SECTION_GAP }}>
         <PeriodPicker year={year} month={month} />
       </div>
 
       {/* Summary — a compact strip, not a dashboard rebuild. */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.totalBudget")}</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {formatCurrency(report.totals.budget, "IDR")}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.totalActual")}</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {formatCurrency(report.totals.actual, "IDR")}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.variance")}</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+      <div
+        style={{
+          display: "grid",
+          gap: CARD_GAP,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${STAT_BASIS}px, 1fr))`,
+          marginBottom: SECTION_GAP,
+        }}
+      >
+        {statCard(t("budget.totalBudget"), <Money value={report.totals.budget} currency="IDR" />)}
+        {statCard(t("budget.totalActual"), <Money value={report.totals.actual} currency="IDR" />)}
+        {statCard(
+          t("budget.variance"),
+          <>
             {signedCurrency(report.totals.variance)}
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
+            <span
+              style={{
+                marginInlineStart: 8,
+                fontSize: "var(--ant-font-size-sm)",
+                fontWeight: "normal",
+                color: "var(--ant-color-text-secondary)",
+              }}
+            >
               {pctLabel(report.totals.variancePct)}
             </span>
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("budget.alerts")}</p>
-          <p className="mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums text-foreground">
-            {report.totals.alertCount > 0 && (
-              <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
-            )}
+          </>
+        )}
+        {statCard(
+          t("budget.alerts"),
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {/* Ikon peringatan = penanda kedua; angkanya dan katanya yang
+                pertama. Ia hanya muncul ketika memang ada yang diperingatkan. */}
+            {report.totals.alertCount > 0 && <WarningOutlined aria-hidden="true" />}
             {t("budget.alertAccounts", { count: report.totals.alertCount })}
-          </p>
-        </Card>
+          </span>
+        )}
       </div>
 
       {/* Sales target realisation — total level. */}
       {sales.hasTargets && (
-        <Card className="mb-6 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <Card style={{ marginBottom: SECTION_GAP }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              padding: "var(--ant-padding-lg)",
+            }}
+          >
             <div>
-              <h2 className="font-semibold text-foreground">{t("budget.salesTargetTitle")}</h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ant-font-size)",
+                  fontWeight: "var(--ant-font-weight-strong)",
+                }}
+              >
+                {t("budget.salesTargetTitle")}
+              </h2>
+              <p
+                style={{
+                  margin: 0,
+                  marginTop: 2,
+                  color: "var(--ant-color-text-secondary)",
+                }}
+              >
                 {t("budget.salesTargetPrefix", {
                   target: formatCurrency(sales.totalTarget, "IDR"),
                 })}{" "}
-                <span className="tabular-nums">{formatCurrency(sales.actualSales, "IDR")}</span>
+                <span style={numericStyle}>{formatCurrency(sales.actualSales, "IDR")}</span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`text-lg font-semibold tabular-nums ${varianceClass(sales.row.favorable)}`}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span
+                style={{
+                  ...numericStyle,
+                  fontSize: "var(--ant-font-size-lg)",
+                  fontWeight: "var(--ant-font-weight-strong)",
+                  color: varianceColor(sales.row.favorable),
+                }}
+              >
                 {signedCurrency(sales.row.variance)}
-                <span className="ml-1 text-sm font-normal">{pctLabel(sales.row.variancePct)}</span>
+                <span
+                  style={{
+                    marginInlineStart: 4,
+                    fontSize: "var(--ant-font-size-sm)",
+                    fontWeight: "normal",
+                  }}
+                >
+                  {pctLabel(sales.row.variancePct)}
+                </span>
               </span>
               <VarianceBadge status={sales.row.status} favorable={sales.row.favorable} />
             </div>
@@ -179,7 +382,7 @@ export default async function BudgetReportPage({
 
       {!hasBudgets ? (
         <EmptyState
-          icon={<GaugeCircle className="h-12 w-12" />}
+          icon={<DashboardOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("budget.emptyReportTitle")}
           description={t("budget.emptyReportDescription")}
           actionLabel={t("budget.emptyReportAction")}
@@ -187,63 +390,15 @@ export default async function BudgetReportPage({
         />
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("common.account")}</TableHead>
-                <TableHead className="text-right">{t("budget.colBudget")}</TableHead>
-                <TableHead className="text-right">{t("budget.colActual")}</TableHead>
-                <TableHead className="text-right">{t("budget.variance")}</TableHead>
-                <TableHead className="text-right">%</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.rows.map((r) => (
-                <TableRow key={r.code}>
-                  <TableCell className="text-foreground">
-                    <span className="font-mono text-muted-foreground mr-2">{r.code}</span>
-                    {r.name}
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={r.budget} currency="IDR" />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell value={r.actual} currency="IDR" />
-                  </TableCell>
-                  {/* Selisih diwarnai menurut favorable (bukan tanda) dan membawa
-                      awalan "+" eksplisit — bukan pemetaan 1:1 ke MoneyCell. */}
-                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                    {signedCurrency(r.variance)}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${varianceClass(r.favorable)}`}>
-                    {pctLabel(r.variancePct)}
-                  </TableCell>
-                  <TableCell>
-                    <VarianceBadge status={r.status} favorable={r.favorable} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="font-bold hover:bg-transparent">
-                <TableCell className="text-foreground">{t("common.total")}</TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={report.totals.budget} currency="IDR" />
-                </TableCell>
-                <TableCell className="p-0">
-                  <MoneyCell value={report.totals.actual} currency="IDR" />
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-foreground">
-                  {signedCurrency(report.totals.variance)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {pctLabel(report.totals.variancePct)}
-                </TableCell>
-                <TableCell />
-              </TableRow>
-            </TableFooter>
-          </Table>
+          {/* `StaticTable`: laporan ini hanya menampilkan — periodenya dipilih
+              di atas dan memuat ulang di server, jadi tak ada yang dibeli
+              dengan memindahkan seluruh barisnya ke peramban. */}
+          <StaticTable<BudgetRow>
+            columns={columns}
+            rows={report.rows}
+            rowKey={(r) => r.code}
+            summary={summary}
+          />
         </Card>
       )}
     </div>

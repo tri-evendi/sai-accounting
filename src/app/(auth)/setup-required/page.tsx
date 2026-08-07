@@ -21,8 +21,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Lock } from "lucide-react";
-
+import { LockOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -30,6 +29,32 @@ import { canEffective } from "@/lib/authz-effective";
 import { isSetupDone } from "@/lib/setup-gate";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
+
+/*
+ * ── Warna (issue #203) ─────────────────────────────────────────────────────
+ * Server component, jadi tanpa `antd` dan tanpa `theme.useToken()`. Kalimatnya
+ * memakai variabel token AntD `var(--ant-…)`, dan itu tetap teratasi walau tak
+ * ada satu pun komponen AntD di atasnya: sejak #227 kelas `ANTD_CSS_VAR_KEY`
+ * dipikul `<html>` oleh root layout, bukan oleh elemen yang digambar komponen
+ * AntD. Token `:root` aplikasi yang dulu dipakai sudah dicabut dari
+ * `globals.css` oleh #203. Tombolnya mewarnai dirinya sendiri lewat primitif
+ * `Button`.
+ */
+
+/** Kalimat penjelas — bekas `text-sm leading-relaxed text-muted-foreground`. */
+const BODY_TEXT: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** Kaki kartu — bekas `mt-6 border-t border-border pt-5`. */
+const EXIT_ROW: React.CSSProperties = {
+  marginTop: 24,
+  paddingTop: 20,
+  borderTop: "1px solid var(--ant-color-border-secondary)",
+};
 
 export default async function SetupRequiredPage() {
   const session = await auth();
@@ -53,11 +78,11 @@ export default async function SetupRequiredPage() {
     <AuthShell
       heading={t("auth.setupRequired.heading")}
       description={t("auth.setupRequired.description")}
-      icon={<Lock className="h-5 w-5" aria-hidden="true" />}
+      icon={<LockOutlined aria-hidden="true" style={{ fontSize: 20 }} />}
     >
-      <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-        <p>{t("auth.setupRequired.body")}</p>
-        <p>{t("auth.setupRequired.whoCanFix")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={BODY_TEXT}>{t("auth.setupRequired.body")}</p>
+        <p style={BODY_TEXT}>{t("auth.setupRequired.whoCanFix")}</p>
       </div>
 
       {/*
@@ -74,8 +99,8 @@ export default async function SetupRequiredPage() {
        * sekali seumur pemasangan jelas tidak sepadan. Menekan tautan ini
        * menuju beranda, gerbang berjalan lagi, dan hasilnya benar ke dua arah.
        */}
-      <div className="mt-6 border-t border-border pt-5">
-        <Button asChild variant="outline" className="w-full">
+      <div style={EXIT_ROW}>
+        <Button asChild variant="outline" style={{ width: "100%" }}>
           <Link href="/dashboard">{t("auth.setupRequired.retry")}</Link>
         </Button>
       </div>

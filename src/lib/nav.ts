@@ -8,7 +8,7 @@
  * memakai kata yang sama persis.
  *
  * Modul ini MURNI: tanpa React/ikon/Prisma. Ikon disebut sebagai NAMA (string)
- * lalu dipetakan ke komponen `lucide-react` di sidebar — pola yang sama dengan
+ * lalu dipetakan ke komponen `@ant-design/icons` di sidebar — pola yang sama dengan
  * `src/lib/report-catalog.ts`. Karena murni, penyaringan izin + Mode Akuntan
  * bisa diuji langsung di `tests/quick-actions.test.ts`.
  *
@@ -59,7 +59,7 @@ export interface NavItem {
    * memastikan nilai kamus `id` PERSIS sama dengan `label` di atas.
    */
   labelKey: DictionaryKey;
-  /** Nama ikon lucide-react; dipetakan ke komponen di sidebar. */
+  /** Nama ikon (kunci peta `ICONS` di sidebar); dipetakan ke komponen di sana. */
   icon: string;
   /**
    * Izin halaman tujuannya — SAMA dengan yang dideklarasikan

@@ -11,6 +11,13 @@ import { SalesWizard } from "./sales-wizard";
 export const dynamic = "force-dynamic";
 
 /**
+ * Jarak di bawah tautan "Pelajari ini" (= `marginLG` AntD). Ditulis sebagai
+ * angka: berkas ini server component dan tak boleh memanggil
+ * `theme.useToken()` (`tests/rsc-boundary.test.ts`).
+ */
+const LEARN_MORE_GAP = 24;
+
+/**
  * Wizard "Penjualan Baru" — server shell (issue #5).
  *
  * Sama seperti `/invoices/new` dan `/delivery-orders/new`: halaman ini hanya
@@ -53,9 +60,8 @@ export default async function NewSaleWizardPage({
   ]);
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
-        className="mb-1"
         breadcrumbs={[
           { label: t("invoices.breadcrumb"), href: "/invoices" },
           { label: t("sales.title") },
@@ -68,7 +74,9 @@ export default async function NewSaleWizardPage({
           </>
         }
       />
-      <LearnMore term="faktur" className="mt-1 mb-6" label={t("invoices.learnMore")} />
+      <div style={{ marginBottom: LEARN_MORE_GAP }}>
+        <LearnMore term="faktur" label={t("invoices.learnMore")} />
+      </div>
 
       <SalesWizard
         canUpdateStock={canUpdateStock}

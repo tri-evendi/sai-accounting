@@ -1,35 +1,43 @@
 "use client";
 
+/**
+ * Ruang kerja rekonsiliasi bank (issue #24) — dua daftar berdampingan yang
+ * dicocokkan satu per satu: gerakan kas milik BUKU di kiri, baris rekening
+ * koran BANK di kanan.
+ *
+ * ── Konversi ke token Ant Design (issue #197, fase C5) ─────────────────────
+ * **Titik patah dua kolomnya sengaja TIDAK dinaikkan.** Godaannya besar: sebuah
+ * `repeat(auto-fit, minmax(360px, 1fr))` akan memberi dua kolom sejak ~760px dan
+ * terlihat "lebih penuh" di tablet. Diukur di 768px, itu memberi dua kolom
+ * selebar ±370px yang harus memuat tombol pilih + tanggal + keterangan bebas +
+ * nominal bertanda — keterangannya terpotong persis di layar tempat orang
+ * membandingkan dua daftar. Karena itu tata letaknya `Row`/`Col xs={24} lg={12}`,
+ * padanan tepat `lg:grid-cols-2` lama: SATU kolom sampai 992px, dua di atasnya.
+ *
+ * Nominal bertanda kini `Money signed` (#186) alih-alih format tangan: tanda
+ * +/− dan warnanya datang dari satu tempat, dan panah arah kas tetap dipasang
+ * di sini sebagai penanda ketiga — warna tak pernah berdiri sendiri.
+ */
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Money } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  AlertTriangle,
-  Lock,
-  LockOpen,
-  Link2,
-  Unlink,
-  Upload,
-} from "lucide-react";
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutlined, LinkOutlined, LockOutlined, UnlockOutlined, UploadOutlined, WarningOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 
 const EPSILON = 0.005;
+
+/** Lebar kolom tombol pilih (`w-8` lama) — cukup untuk radio + padding sel. */
+const PICK_COLUMN_WIDTH = 40;
 
 interface StatementInfo {
   id: number;
@@ -40,19 +48,22 @@ interface StatementInfo {
   closingBalance: number;
   status: string;
 }
-interface BookRow {
+/**
+ * Bagian yang SAMA di kedua sisi pencocokan. Ia ada supaya kolomnya ditulis
+ * SEKALI: sebuah baris buku dan sebuah baris rekening koran harus tampil
+ * identik, kalau tidak orang membandingkan dua tabel yang berbeda bentuk.
+ */
+interface MatchRow {
   id: number;
   date: string;
   description: string;
   amount: number;
+}
+interface BookRow extends MatchRow {
   matched: boolean;
   matchedLineId: number | null;
 }
-interface LineRow {
-  id: number;
-  date: string;
-  description: string;
-  amount: number;
+interface LineRow extends MatchRow {
   matched: boolean;
   cashMovementId: number | null;
 }
@@ -68,30 +79,21 @@ interface Summary {
 }
 
 /**
- * Signed money, never colour-only: sign + arrow icon + red/green.
+ * Nominal bertanda arah kas: panah + tanda +/− + warna, dalam urutan itu.
  *
- * Sengaja BUKAN `Money`/`MoneyCell` (issue #52): warnanya mengikuti arah kas
- * (masuk/keluar, pasangan `*-strong`) dan selalu disertai ikon panah + tanda
- * +/−, sedangkan `Money` hanya mewarnai nilai negatif.
+ * Angkanya sendiri lewat `Money signed` (#186) — tabular-nums, format id-ID,
+ * mata uang eksplisit, dan pasangan warna uang yang lolos 4,5:1 sebagai teks.
+ * Yang tinggal di sini hanya panahnya, karena arah kas adalah informasi yang
+ * tidak boleh bergantung pada warna.
  */
 function Amount({ value, currency }: { value: number; currency: string }) {
   const inflow = value >= 0;
+  const Icon = inflow ? ArrowDownOutlined : ArrowUpOutlined;
   return (
-    <span
-      className={`inline-flex items-center justify-end gap-1 tabular-nums ${
-        inflow ? "text-success-strong" : "text-destructive-strong"
-      }`}
-    >
-      {inflow ? (
-        <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
-      ) : (
-        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-      )}
-      <span>
-        {inflow ? "+" : "−"}
-        {formatCurrency(Math.abs(value), currency)}
-      </span>
-    </span>
+    <Flex align="center" justify="flex-end" gap={4} style={{ display: "inline-flex" }}>
+      <Icon aria-hidden="true" style={{ fontSize: "0.875em" }} />
+      <Money value={value} currency={currency} signed />
+    </Flex>
   );
 }
 
@@ -108,6 +110,7 @@ export function ReconciliationWorkspace({
 }) {
   const router = useRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const locked = statement.status === "locked";
   const currency = statement.currency;
 
@@ -205,11 +208,149 @@ export function ReconciliationWorkspace({
     if (ok) router.refresh();
   }
 
+  /**
+   * Kolom satu sisi pencocokan. Judulnya sengaja ADA (dulu kedua daftar tanpa
+   * baris judul sama sekali): tiga kolom tanpa nama di layar tempat dua daftar
+   * dibandingkan berdampingan adalah tebakan, bukan bacaan.
+   */
+  function matchColumns(
+    group: string,
+    selected: number | null,
+    onSelect: (id: number) => void,
+    ariaLabel: (row: MatchRow) => string
+  ): SaiColumns<MatchRow> {
+    return [
+      {
+        key: "pick",
+        title: "",
+        align: "left",
+        width: PICK_COLUMN_WIDTH,
+        // `<input type="radio">` native — bukan tombol, jadi di luar aturan
+        // primitif tombol (MASTER.md §Primitif Wajib).
+        render: (_v, row) => (
+          <input
+            type="radio"
+            name={group}
+            aria-label={ariaLabel(row)}
+            checked={selected === row.id}
+            disabled={locked}
+            onChange={() => onSelect(row.id)}
+          />
+        ),
+      },
+      {
+        key: "date",
+        dataIndex: "date",
+        title: t("common.date"),
+        align: "left",
+        render: (_v, row) => (
+          <span
+            style={{
+              whiteSpace: "nowrap",
+              fontVariantNumeric: "tabular-nums",
+              color: token.colorTextSecondary,
+            }}
+          >
+            {formatDateShort(row.date)}
+          </span>
+        ),
+      },
+      {
+        key: "description",
+        dataIndex: "description",
+        title: t("common.description"),
+        align: "left",
+      },
+      {
+        key: "amount",
+        dataIndex: "amount",
+        title: t("reconciliation.colAmount"),
+        align: "right",
+        render: (_v, row) => <Amount value={row.amount} currency={currency} />,
+      },
+    ];
+  }
+
+  const bookColumns = matchColumns("book", selectedBook, setSelectedBook, (b) =>
+    t("reconciliation.pickBookRow", { description: b.description })
+  );
+  const lineColumns = matchColumns("line", selectedLine, setSelectedLine, (l) =>
+    t("reconciliation.pickStatementRow", { description: l.description })
+  );
+
+  const matchedColumns: SaiColumns<LineRow> = [
+    {
+      key: "book",
+      title: t("reconciliation.colBook"),
+      align: "left",
+      render: (_v, l) => {
+        const b = l.cashMovementId != null ? bookById.get(l.cashMovementId) : undefined;
+        return b ? (
+          <>
+            <span style={{ color: token.colorTextSecondary }}>{formatDateShort(b.date)}</span> ·{" "}
+            {b.description}
+          </>
+        ) : (
+          // Gerakan kas pasangannya tidak lagi ada — dikosongkan "—", bukan
+          // dibiarkan kosong seperti sel yang lupa diisi.
+          <span style={{ color: token.colorTextSecondary }}>—</span>
+        );
+      },
+    },
+    {
+      key: "statement",
+      title: t("reconciliation.colStatement"),
+      align: "left",
+      render: (_v, l) => (
+        <>
+          <span style={{ color: token.colorTextSecondary }}>{formatDateShort(l.date)}</span> ·{" "}
+          {l.description}
+        </>
+      ),
+    },
+    {
+      key: "amount",
+      dataIndex: "amount",
+      title: t("reconciliation.colAmount"),
+      align: "right",
+      render: (_v, l) => <Amount value={l.amount} currency={currency} />,
+    },
+    {
+      key: "action",
+      title: "",
+      align: "right",
+      render: (_v, l) =>
+        locked ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() => doUnmatch(l.id)}
+          >
+            <DisconnectOutlined aria-hidden="true" /> {t("reconciliation.unmatchAction")}
+          </Button>
+        ),
+    },
+  ];
+
+  /** Satu angka ringkasan: keterangan kecil di atas, nilainya di bawah. */
+  const summaryCell = (label: string, value: React.ReactNode) => (
+    <>
+      <Typography.Paragraph type="secondary" style={{ margin: 0, fontSize: token.fontSizeSM }}>
+        {label}
+      </Typography.Paragraph>
+      <Typography.Paragraph
+        style={{ margin: 0, fontWeight: token.fontWeightStrong, fontVariantNumeric: "tabular-nums" }}
+      >
+        {value}
+      </Typography.Paragraph>
+    </>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <Flex vertical gap={token.marginLG}>
       <PageHeader
-        className="mb-0"
         breadcrumbs={[
           { label: t("reconciliation.title"), href: "/reconciliation" },
           { label: t("reconciliation.workspaceTitle", { currency }) },
@@ -223,19 +364,25 @@ export function ReconciliationWorkspace({
           <>
             {locked ? (
               <Badge variant="success">
-                <Lock className="mr-1 h-3 w-3" aria-hidden="true" /> {t("reconciliation.statusLocked")}
+                <LockOutlined aria-hidden="true" />
+                <span>{t("reconciliation.statusLocked")}</span>
               </Badge>
             ) : (
               <Badge variant="warning">{t("reconciliation.statusDraft")}</Badge>
             )}
-            <Button variant={locked ? "secondary" : "primary"} size="sm" disabled={busy} onClick={toggleLock}>
+            <Button
+              variant={locked ? "secondary" : "primary"}
+              size="sm"
+              disabled={busy}
+              onClick={toggleLock}
+            >
               {locked ? (
                 <>
-                  <LockOpen className="mr-1 h-4 w-4" aria-hidden="true" /> {t("reconciliation.reopen")}
+                  <UnlockOutlined aria-hidden="true" /> {t("reconciliation.reopen")}
                 </>
               ) : (
                 <>
-                  <Lock className="mr-1 h-4 w-4" aria-hidden="true" /> {t("reconciliation.lockAction")}
+                  <LockOutlined aria-hidden="true" /> {t("reconciliation.lockAction")}
                 </>
               )}
             </Button>
@@ -244,181 +391,183 @@ export function ReconciliationWorkspace({
       />
 
       {error && (
-        <div className="rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-          {error}
-          {rowErrors.length > 0 && (
-            <ul className="mt-2 list-disc pl-5 space-y-0.5">
-              {rowErrors.map((m, i) => (
-                <li key={i}>{m}</li>
-              ))}
-            </ul>
-          )}
+        <div role="alert">
+          <Alert
+            type="error"
+            showIcon
+            message={error}
+            description={
+              rowErrors.length > 0 ? (
+                <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                  {rowErrors.map((m, i) => (
+                    <li key={i}>{m}</li>
+                  ))}
+                </ul>
+              ) : undefined
+            }
+          />
         </div>
       )}
 
       {/* Difference summary */}
       <Card>
-        <CardContent className="py-4">
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("reconciliation.summaryOpeningClosing")}</p>
-              <p className="text-sm font-medium text-foreground tabular-nums">
-                {formatCurrency(statement.openingBalance, currency)} →{" "}
-                {formatCurrency(statement.closingBalance, currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("reconciliation.summaryStatementNet")}</p>
-              <p className="text-sm font-medium tabular-nums">
+        <div style={{ padding: token.padding }}>
+          <Row gutter={[token.margin, token.margin]}>
+            <Col xs={24} sm={12} lg={6}>
+              {summaryCell(
+                t("reconciliation.summaryOpeningClosing"),
+                <>
+                  <Money value={statement.openingBalance} currency={currency} /> →{" "}
+                  <Money value={statement.closingBalance} currency={currency} />
+                </>
+              )}
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              {summaryCell(
+                t("reconciliation.summaryStatementNet"),
                 <Amount value={summary.statementNet} currency={currency} />
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("reconciliation.summaryMatchedBook")}</p>
-              <p className="text-sm font-medium tabular-nums">
+              )}
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              {summaryCell(
+                t("reconciliation.summaryMatchedBook"),
                 <Amount value={summary.matchedBookTotal} currency={currency} />
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("reconciliation.summaryDifference")}</p>
-              <p
-                className={`text-lg font-bold tabular-nums ${
-                  Math.abs(summary.difference) < EPSILON ? "text-success-strong" : "text-destructive-strong"
-                }`}
-              >
-                {formatCurrency(summary.difference, currency)}
-              </p>
-            </div>
-          </div>
+              )}
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              {summaryCell(
+                t("reconciliation.summaryDifference"),
+                /*
+                 * Selisih nol = rekonsiliasi cocok, jadi arahnya ditentukan
+                 * KEADAAN, bukan tanda angkanya. Kalimat di bawah menyebutkan
+                 * keadaan itu dengan kata + ikon, sehingga warna di sini tetap
+                 * saluran kedua.
+                 */
+                <Money
+                  value={summary.difference}
+                  currency={currency}
+                  tone={Math.abs(summary.difference) < EPSILON ? "positive" : "negative"}
+                  style={{ fontSize: token.fontSizeLG }}
+                />
+              )}
+            </Col>
+          </Row>
 
-          <div className="mt-3 flex items-center gap-2 text-sm">
+          <Flex align="center" gap={token.marginXS} style={{ marginTop: token.marginSM }}>
             {summary.complete ? (
-              <span className="inline-flex items-center gap-1 text-success-strong">
-                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                {t("reconciliation.summaryComplete")}
-              </span>
+              <>
+                <CheckCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
+                <span>{t("reconciliation.summaryComplete")}</span>
+              </>
             ) : (
-              <span className="inline-flex items-center gap-1 text-warning-strong">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                {t("reconciliation.summaryIncomplete", {
-                  book: summary.unmatchedBookCount,
-                  statement: summary.unmatchedStatementCount,
-                })}
-              </span>
+              <>
+                <WarningOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
+                <span>
+                  {t("reconciliation.summaryIncomplete", {
+                    book: summary.unmatchedBookCount,
+                    statement: summary.unmatchedStatementCount,
+                  })}
+                </span>
+              </>
             )}
-          </div>
-        </CardContent>
+          </Flex>
+        </div>
       </Card>
 
-      {/* Matching: two columns */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Book side */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("reconciliation.bookSideTitle")}</CardTitle>
-          </CardHeader>
-          <Table>
-            <TableBody>
-              {unmatchedBook.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-4 py-6 text-center text-muted-foreground">
-                    {t("reconciliation.bookAllMatched")}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                unmatchedBook.map((b) => (
-                  <TableRow key={b.id}>
-                    <TableCell className="w-8 px-2 py-2">
-                      <input
-                        type="radio"
-                        name="book"
-                        aria-label={t("reconciliation.pickBookRow", { description: b.description })}
-                        checked={selectedBook === b.id}
-                        disabled={locked}
-                        onChange={() => setSelectedBook(b.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(b.date)}</TableCell>
-                    <TableCell className="px-2 py-2 text-foreground">{b.description}</TableCell>
-                    <TableCell className="px-2 py-2 text-right">
-                      <Amount value={b.amount} currency={currency} />
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+      {/* Pencocokan: dua kolom — lihat catatan titik patah di kepala berkas. */}
+      <Row gutter={[token.margin, token.margin]}>
+        <Col xs={24} lg={12}>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("reconciliation.bookSideTitle")}</CardTitle>
+            </CardHeader>
+            <StaticTable<MatchRow>
+              columns={bookColumns}
+              rows={unmatchedBook}
+              rowKey={(b) => b.id}
+              size="small"
+              empty={
+                <p
+                  style={{
+                    margin: 0,
+                    padding: token.paddingLG,
+                    textAlign: "center",
+                    color: token.colorTextSecondary,
+                  }}
+                >
+                  {t("reconciliation.bookAllMatched")}
+                </p>
+              }
+            />
+          </Card>
+        </Col>
 
-        {/* Statement side */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("reconciliation.statementSideTitle")}</CardTitle>
-          </CardHeader>
-          <Table>
-            <TableBody>
-              {unmatchedLines.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell className="px-4 py-6 text-center text-muted-foreground">
-                    {t("reconciliation.statementAllMatched")}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                unmatchedLines.map((l) => (
-                  <TableRow key={l.id}>
-                    <TableCell className="w-8 px-2 py-2">
-                      <input
-                        type="radio"
-                        name="line"
-                        aria-label={t("reconciliation.pickStatementRow", { description: l.description })}
-                        checked={selectedLine === l.id}
-                        disabled={locked}
-                        onChange={() => setSelectedLine(l.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="px-2 py-2 text-muted-foreground whitespace-nowrap">{formatDateShort(l.date)}</TableCell>
-                    <TableCell className="px-2 py-2 text-foreground">{l.description}</TableCell>
-                    <TableCell className="px-2 py-2 text-right">
-                      <Amount value={l.amount} currency={currency} />
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
-      </div>
+        <Col xs={24} lg={12}>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("reconciliation.statementSideTitle")}</CardTitle>
+            </CardHeader>
+            <StaticTable<MatchRow>
+              columns={lineColumns}
+              rows={unmatchedLines}
+              rowKey={(l) => l.id}
+              size="small"
+              empty={
+                <p
+                  style={{
+                    margin: 0,
+                    padding: token.paddingLG,
+                    textAlign: "center",
+                    color: token.colorTextSecondary,
+                  }}
+                >
+                  {t("reconciliation.statementAllMatched")}
+                </p>
+              }
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Match action bar */}
       {!locked && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted px-4 py-3">
-          <Button size="sm" disabled={busy || selectedBook == null || selectedLine == null} onClick={doMatch}>
-            <Link2 className="mr-1 h-4 w-4" aria-hidden="true" /> {t("reconciliation.matchAction")}
-          </Button>
-          {selectedBookRow && selectedLineRow && !amountsAgree && (
-            <span className="inline-flex items-center gap-1 text-sm text-warning-strong">
-              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-              {t("reconciliation.amountsDiffer", {
-                book: formatCurrency(selectedBookRow.amount, currency),
-                statement: formatCurrency(selectedLineRow.amount, currency),
-              })}
-            </span>
-          )}
-          {(selectedBook != null || selectedLine != null) && (
+        <Card>
+          <Flex wrap align="center" gap={token.marginSM} style={{ padding: token.paddingSM }}>
             <Button
-              type="button"
-              variant="link"
               size="sm"
-              className="px-0 text-muted-foreground"
-              onClick={() => {
-                setSelectedBook(null);
-                setSelectedLine(null);
-              }}
+              disabled={busy || selectedBook == null || selectedLine == null}
+              onClick={doMatch}
             >
-              {t("reconciliation.clearSelection")}
+              <LinkOutlined aria-hidden="true" /> {t("reconciliation.matchAction")}
             </Button>
-          )}
-        </div>
+            {selectedBookRow && selectedLineRow && !amountsAgree && (
+              // Peringatan yang TIDAK menghalangi: dua nominal boleh berbeda
+              // (biaya bank), tapi selisihnya harus disebut sebelum dicocokkan.
+              <Flex align="center" gap={token.marginXXS}>
+                <WarningOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
+                <span>
+                  {t("reconciliation.amountsDiffer", {
+                    book: formatCurrency(selectedBookRow.amount, currency),
+                    statement: formatCurrency(selectedLineRow.amount, currency),
+                  })}
+                </span>
+              </Flex>
+            )}
+            {(selectedBook != null || selectedLine != null) && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  setSelectedBook(null);
+                  setSelectedLine(null);
+                }}
+              >
+                {t("reconciliation.clearSelection")}
+              </Button>
+            )}
+          </Flex>
+        </Card>
       )}
 
       {/* Matched pairs */}
@@ -426,62 +575,24 @@ export function ReconciliationWorkspace({
         <CardHeader>
           <CardTitle>{t("reconciliation.matchedTitle", { count: matchedLines.length })}</CardTitle>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="h-auto px-4 py-2">{t("reconciliation.colBook")}</TableHead>
-              <TableHead className="h-auto px-4 py-2">{t("reconciliation.colStatement")}</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-right">{t("reconciliation.colAmount")}</TableHead>
-              <TableHead className="h-auto px-4 py-2"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {matchedLines.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
-                  {t("reconciliation.noMatches")}
-                </TableCell>
-              </TableRow>
-            ) : (
-              matchedLines.map((l) => {
-                const b = l.cashMovementId != null ? bookById.get(l.cashMovementId) : undefined;
-                return (
-                  <TableRow key={l.id}>
-                    <TableCell className="px-4 py-2 text-foreground">
-                      {b ? (
-                        <>
-                          <span className="text-muted-foreground">{formatDateShort(b.date)}</span> · {b.description}
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-4 py-2 text-foreground">
-                      <span className="text-muted-foreground">{formatDateShort(l.date)}</span> · {l.description}
-                    </TableCell>
-                    <TableCell className="px-4 py-2 text-right">
-                      <Amount value={l.amount} currency={currency} />
-                    </TableCell>
-                    <TableCell className="px-4 py-2 text-right">
-                      {!locked && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-destructive hover:bg-destructive-soft hover:text-destructive"
-                          disabled={busy}
-                          onClick={() => doUnmatch(l.id)}
-                        >
-                          <Unlink className="h-3.5 w-3.5" aria-hidden="true" /> {t("reconciliation.unmatchAction")}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+        <StaticTable<LineRow>
+          columns={matchedColumns}
+          rows={matchedLines}
+          rowKey={(l) => l.id}
+          size="small"
+          empty={
+            <p
+              style={{
+                margin: 0,
+                padding: token.paddingLG,
+                textAlign: "center",
+                color: token.colorTextSecondary,
+              }}
+            >
+              {t("reconciliation.noMatches")}
+            </p>
+          }
+        />
       </Card>
 
       {/* Add lines: manual + CSV */}
@@ -490,48 +601,88 @@ export function ReconciliationWorkspace({
           <CardHeader>
             <CardTitle>{t("reconciliation.addLineTitle")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={addManualLine} className="grid gap-3 sm:grid-cols-4 sm:items-end">
-              <Input id="line-date" name="date" type="date" label={t("common.date")} required />
-              <div className="sm:col-span-2">
-                <Input id="line-desc" name="description" label={t("reconciliation.lineDescription")} required />
-              </div>
-              <div>
-                <Input
-                  id="line-amount"
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  className="text-right tabular-nums"
-                  label={t("reconciliation.lineAmount")}
-                  required
-                />
-              </div>
-              <div className="sm:col-span-4">
-                <Button type="submit" size="sm" disabled={busy}>
-                  {t("reconciliation.addLineAction")}
-                </Button>
-              </div>
+          <div style={{ padding: token.paddingLG }}>
+            <form onSubmit={addManualLine}>
+              <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
+                <Col xs={24} sm={6}>
+                  <Input id="line-date" name="date" type="date" label={t("common.date")} required />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Input
+                    id="line-desc"
+                    name="description"
+                    label={t("reconciliation.lineDescription")}
+                    required
+                  />
+                </Col>
+                <Col xs={24} sm={6}>
+                  <Input
+                    id="line-amount"
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                    label={t("reconciliation.lineAmount")}
+                    required
+                  />
+                </Col>
+                <Col xs={24}>
+                  <Button type="submit" size="sm" disabled={busy}>
+                    {t("reconciliation.addLineAction")}
+                  </Button>
+                </Col>
+              </Row>
             </form>
 
-            <div className="mt-4 border-t border-border pt-4">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline">
-                <Upload className="h-4 w-4" aria-hidden="true" />
+            <div
+              style={{
+                marginTop: token.margin,
+                paddingTop: token.margin,
+                borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+              }}
+            >
+              {/* `<input type="file">` tersembunyi di dalam `<label>` — bukan
+                  tombol, jadi di luar aturan primitif tombol (MASTER.md).
+                  Menyembunyikannya `data-sr-only`, BUKAN `display: none`
+                  (#205): `display: none` mengeluarkan isian dari urutan Tab,
+                  dan karena `<label>` sendiri tidak fokusable, impor CSV
+                  berhenti punya perhentian Tab sama sekali. */}
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: token.marginXS,
+                  minHeight: token.controlHeight,
+                  cursor: "pointer",
+                  fontWeight: token.fontWeightStrong,
+                  color: token.colorLink,
+                }}
+              >
+                <UploadOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                 {t("reconciliation.importCsv")}
-                <input type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} disabled={busy} />
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  data-sr-only
+                  onChange={importCsv}
+                  disabled={busy}
+                />
               </label>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <Typography.Paragraph
+                type="secondary"
+                style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+              >
                 {t("reconciliation.csvHintColumns")} <code>date, description, amount</code>{" "}
                 {t("reconciliation.csvHintOr")} <code>debit</code> {t("reconciliation.csvHintAnd")}{" "}
                 <code>credit</code>
                 {t("reconciliation.csvHintDateBefore")} <code>YYYY-MM-DD</code>{" "}
                 {t("reconciliation.csvHintDateMiddle")} <code>DD/MM/YYYY</code>
                 {t("reconciliation.csvHintTail")}
-              </p>
+              </Typography.Paragraph>
             </div>
-          </CardContent>
+          </div>
         </Card>
       )}
-    </div>
+    </Flex>
   );
 }

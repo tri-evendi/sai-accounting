@@ -29,7 +29,8 @@ export default async function NewReturnPage({
   });
 
   return (
-    <div className="w-full">
+    // `w-full` dilepas: `<div>` blok memang sudah selebar induknya.
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("returns.breadcrumb"), href: "/returns" },

@@ -1,56 +1,70 @@
+"use client";
+
 /**
- * Badge (issue #50) — penanda status: CVA + token semantik.
+ * Badge — penanda status di atas Ant Design **`Tag`** (issue #187, fase B1).
  *
- * Varian domain `success|warning|danger` DIPERTAHANKAN (bukan diganti nama
- * shadcn) karena inilah bahasa statusnya di app akuntansi: Lunas = success,
- * Sebagian = warning, Jatuh Tempo = danger. `destructive` diterima sebagai
- * alias shadcn dari `danger`.
+ * ── Kenapa `Tag`, dan bukan `Badge` milik AntD ────────────────────────────
+ * Nama yang sama, komponen yang sama sekali berbeda. `Badge` AntD adalah TITIK
+ * NOTIFIKASI: bulatan merah kecil yang menempel di pojok sesuatu, isinya angka
+ * atau tidak ada isinya sama sekali. Yang dibutuhkan 52 berkas di aplikasi ini
+ * adalah LABEL BERTEKS — "Lunas", "Menunggu", "Jatuh Tempo" — dan itu `Tag`.
+ * Memilih berdasarkan kesamaan nama akan menukar kata dengan bulatan merah, dan
+ * bersamanya menghapus satu-satunya penanda yang bukan warna.
  *
- * **Badge selalu berteks** (aturan MASTER.md) — warna tidak pernah jadi
- * satu-satunya penanda; komponen ini hanya mewarnai, isinya wajib kata.
+ * ── Aturan yang tetap dipikul primitif ini ────────────────────────────────
+ * **Badge selalu berteks** (MASTER.md): warna tidak pernah jadi satu-satunya
+ * penanda. Komponen ini hanya mewarnai; isinya wajib kata, dan itu dikunci
+ * `tests/ui-controls-antd.test.tsx`.
  *
- * **Kenapa token `-soft`/`-strong`, bukan `bg-success/10 text-success`.**
- * Issue #50 menyarankan pola `/10` itu, tetapi kombinasinya gagal kontras:
- * #16A34A di atas success/10 hanya **2,96:1**, warning 2,86:1, destructive
- * 4,13:1 — semuanya di bawah ambang 4.5:1 yang diwajibkan MASTER.md (dan
- * lebih buruk dari badge lama yang sudah 6,5:1). Jadi dipakai pasangan
- * `--*-soft` (latar) + `--*-strong` (teks) yang terverifikasi 6,4–6,8:1.
+ * ── Warnanya ──────────────────────────────────────────────────────────────
+ * Latar dan batas dibiarkan bawaan AntD. Yang diganti hanya warna TEKS-nya,
+ * lewat token komponen `Tag` di `AntdProvider` — karena bawaannya meletakkan
+ * teks 12px pada 2,21:1 (success, tema terang), sementara badge lama yang
+ * digantikannya berada di 6,4–6,8:1. Angka, alasan, dan penggantinya ada di
+ * `lib/theme/antd-tokens.ts` (`tagStatusTokens`); berkas ini sengaja tidak
+ * menyebut satu warna pun.
+ *
+ * ── `variant="filled"`, bukan bawaan ──────────────────────────────────────
+ * `Tag` bawaan bergaris (`outlined`). Dengan `colorBorder` yang dinaikkan
+ * issue #208 menjadi 3,62:1, setiap label status akan mendapat bingkai abu
+ * pekat yang tidak pernah dimiliki badge lama — dan garis sepekat itu di
+ * belasan sel tabel membuat kolom status terbaca lebih berisik daripada
+ * angkanya. Yang bergaris hanya `variant="outline"`, satu-satunya varian yang
+ * memang meminta garis.
  */
 
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { Tag } from "antd";
+import type { TagProps } from "antd";
 
-const DANGER = "bg-destructive-soft text-destructive-strong";
+type BadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "danger"
+  | "destructive"
+  | "outline";
 
-const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium [&_svg]:pointer-events-none [&_svg]:size-3",
-  {
-    variants: {
-      variant: {
-        default: "bg-muted text-foreground",
-        success: "bg-success-soft text-success-strong",
-        warning: "bg-warning-soft text-warning-strong",
-        danger: DANGER,
-        /** Alias shadcn dari `danger`. */
-        destructive: DANGER,
-        outline: "border border-border text-foreground",
-      },
-    },
-    defaultVariants: { variant: "default" },
-  }
-);
+type TagLook = Pick<TagProps, "color" | "variant">;
 
-type BadgeProps = React.ComponentProps<"span"> & VariantProps<typeof badgeVariants>;
+/** `destructive` adalah alias shadcn dari `danger` — objek yang sama, bukan salinan. */
+const DANGER: TagLook = { color: "error", variant: "filled" };
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <span
-      data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
-      {...props}
-    />
-  );
+const VARIANTS: Record<BadgeVariant, TagLook> = {
+  default: { variant: "filled" },
+  success: { color: "success", variant: "filled" },
+  warning: { color: "warning", variant: "filled" },
+  danger: DANGER,
+  destructive: DANGER,
+  outline: { variant: "outlined" },
+};
+
+type BadgeProps = React.ComponentProps<"span"> & {
+  variant?: BadgeVariant;
+};
+
+function Badge({ variant = "default", ...props }: BadgeProps) {
+  return <Tag {...VARIANTS[variant]} {...props} />;
 }
 
-export { Badge, badgeVariants };
-export type { BadgeProps };
+export { Badge };
+export type { BadgeProps, BadgeVariant };

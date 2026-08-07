@@ -8,24 +8,32 @@
  *
  * Pencarian & saringan status lewat form GET biasa: hasilnya URL yang bisa
  * disalin ke tiket dukungan, tanpa satu pun byte JS tambahan.
+ *
+ * ── Perender tabel & warna setelah AntD (issue #200) ──────────────────────
+ * `StaticTable`, bukan `DataTable`, dan alasannya aturan #189: daftar ini sudah
+ * disaring & dicari DI SERVER lewat form GET di atasnya, jadi rc-table hanya
+ * akan menyalin ulang seluruh baris ke peramban (±80 KB gzip) untuk sortir yang
+ * URL-nya justru lebih berguna dipakai.
+ *
+ * Warnanya variabel token AntD `var(--ant-…)` (#203). Konsol ini memang tidak
+ * punya satu pun komponen AntD di atas isinya — kerangkanya sengaja tanpa impor
+ * apa pun dari sisi pelanggan — tapi itu tidak lagi menghalangi: sejak #227
+ * kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, bukan oleh elemen
+ * yang digambar komponen AntD, jadi variabelnya teratasi di seluruh dokumen.
+ * Token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css` oleh
+ * #203. Yang mewarnai dirinya sendiri — `Badge`, `Button`, `EmptyState` — tetap
+ * memakai token AntD karena masing-masing dirender sebagai daun client.
  */
 
 import Link from "next/link";
-import { Users } from "lucide-react";
-
+import { TeamOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaticTable } from "@/components/ui/static-table";
+import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listTenantsForOperator } from "@/lib/operator/store";
 import { TENANT_STATUSES } from "@/lib/constants";
@@ -39,6 +47,15 @@ function formatDate(d: Date): string {
 }
 
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
+
+/** Teks sekunder di dalam sel — token AntD, lihat catatan kepala berkas. */
+const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+const MUTED_TABULAR: React.CSSProperties = {
+  ...MUTED,
+  fontVariantNumeric: "tabular-nums",
+};
+
+type TenantRow = Awaited<ReturnType<typeof listTenantsForOperator>>[number];
 
 export default async function OperatorTenantsPage({
   searchParams,
@@ -57,17 +74,98 @@ export default async function OperatorTenantsPage({
   const tenants = await listTenantsForOperator({ q, status });
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
+  const columns: SaiColumns<TenantRow> = [
+    {
+      key: "name",
+      title: t("operator.tenants.colName"),
+      align: "left",
+      render: (_v, tenant) => (
+        <Link
+          href={`/operator/tenants/${tenant.id}`}
+          style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
+        >
+          {tenant.name}
+        </Link>
+      ),
+    },
+    {
+      key: "slug",
+      title: t("operator.tenants.colSlug"),
+      align: "left",
+      render: (_v, tenant) => <span style={MUTED}>{tenant.slug}</span>,
+    },
+    {
+      key: "status",
+      title: t("operator.tenants.colStatus"),
+      align: "left",
+      render: (_v, tenant) => (
+        <Badge
+          variant={
+            READ_ONLY_STATUSES.has(tenant.status)
+              ? "danger"
+              : tenant.status === "active"
+                ? "success"
+                : "warning"
+          }
+        >
+          {statusLabel(tenant.status)}
+        </Badge>
+      ),
+    },
+    {
+      key: "plan",
+      title: t("operator.tenants.colPlan"),
+      align: "left",
+      render: (_v, tenant) => tenant.planKey,
+    },
+    {
+      key: "created",
+      title: t("operator.tenants.colCreated"),
+      align: "left",
+      render: (_v, tenant) => <span style={MUTED}>{formatDate(tenant.createdAt)}</span>,
+    },
+    {
+      key: "usage",
+      title: t("operator.tenants.colUsage"),
+      align: "left",
+      render: (_v, tenant) => (
+        <span style={MUTED_TABULAR}>
+          {t("operator.tenants.usageValue", {
+            companies: tenant.usage.companies,
+            maxCompanies: tenant.maxCompanies,
+            users: tenant.usage.users,
+            maxUsers: tenant.maxUsers,
+          })}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 24,
+            fontWeight: 700,
+            letterSpacing: "-0.025em",
+            color: "var(--ant-color-text)",
+          }}
+        >
           {t("operator.tenants.heading")} ({tenants.length})
         </h1>
-        <p className="text-sm text-muted-foreground">{t("operator.tenants.description")}</p>
+        <p style={{ margin: 0, fontSize: 14, ...MUTED }}>
+          {t("operator.tenants.description")}
+        </p>
       </div>
 
-      <form method="get" action="/operator" className="flex flex-wrap items-end gap-3">
-        <div className="w-full max-w-xs">
+      <form
+        method="get"
+        action="/operator"
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}
+      >
+        <div style={{ width: "100%", maxWidth: 320 }}>
           <Input
             name="q"
             label={t("operator.tenants.searchLabel")}
@@ -75,7 +173,7 @@ export default async function OperatorTenantsPage({
             defaultValue={q}
           />
         </div>
-        <div className="w-full max-w-48">
+        <div style={{ width: "100%", maxWidth: 192 }}>
           <Select
             name="status"
             label={t("operator.tenants.statusLabel")}
@@ -91,65 +189,17 @@ export default async function OperatorTenantsPage({
         </Button>
       </form>
 
-      {tenants.length === 0 ? (
-        <EmptyState
-          icon={<Users className="h-12 w-12" aria-hidden="true" />}
-          title={t("operator.tenants.empty")}
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("operator.tenants.colName")}</TableHead>
-              <TableHead>{t("operator.tenants.colSlug")}</TableHead>
-              <TableHead>{t("operator.tenants.colStatus")}</TableHead>
-              <TableHead>{t("operator.tenants.colPlan")}</TableHead>
-              <TableHead>{t("operator.tenants.colCreated")}</TableHead>
-              <TableHead>{t("operator.tenants.colUsage")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tenants.map((tenant) => (
-              <TableRow key={tenant.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/operator/tenants/${tenant.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {tenant.name}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{tenant.slug}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      READ_ONLY_STATUSES.has(tenant.status)
-                        ? "danger"
-                        : tenant.status === "active"
-                          ? "success"
-                          : "warning"
-                    }
-                  >
-                    {statusLabel(tenant.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell>{tenant.planKey}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(tenant.createdAt)}
-                </TableCell>
-                <TableCell className="tabular-nums text-muted-foreground">
-                  {t("operator.tenants.usageValue", {
-                    companies: tenant.usage.companies,
-                    maxCompanies: tenant.maxCompanies,
-                    users: tenant.usage.users,
-                    maxUsers: tenant.maxUsers,
-                  })}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <StaticTable
+        columns={columns}
+        rows={tenants}
+        rowKey={(tenant) => tenant.id}
+        empty={
+          <EmptyState
+            icon={<TeamOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
+            title={t("operator.tenants.empty")}
+          />
+        }
+      />
     </div>
   );
 }

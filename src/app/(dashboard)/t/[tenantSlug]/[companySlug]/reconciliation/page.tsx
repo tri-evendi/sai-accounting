@@ -1,3 +1,10 @@
+/**
+ * Rekonsiliasi Bank — daftar rekening koran (issue #24).
+ *
+ * Dikonversi ke token Ant Design pada issue #197; **tetap server component**,
+ * jadi `antd` tidak diimpor di sini dan warna hanya datang dari primitif serta
+ * dari variabel `--ant-…` di dalam `<Card>`.
+ */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -6,24 +13,35 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@/components/ui/money-column";
 import { Pagination } from "@/components/ui/pagination";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
-import { Lock, Scale } from "lucide-react";
+import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** `marginLG` 24 · `margin` 16 · `marginXS` 8 — token AntD sebagai angka. */
+const SECTION_GAP = 24;
+const CONTROL_GAP = 8;
+const EMPTY_ICON_SIZE = 48;
+
+/** Satu baris daftar, diratakan supaya kolomnya bertipe penuh. */
+interface StatementRow {
+  id: number;
+  period: string;
+  account: string;
+  openingBalance: number;
+  closingBalance: number;
+  currency: string;
+  lineCount: number;
+  status: string;
+}
 
 export default async function ReconciliationListPage({
   params,
@@ -62,10 +80,68 @@ export default async function ReconciliationListPage({
     { value: "draft", label: t("reconciliation.statusDraft") },
   ] as const;
 
+  const rows: StatementRow[] = statements.map((s) => ({
+    id: s.id,
+    period: `${formatDateShort(s.periodStart)} — ${formatDateShort(s.periodEnd)}`,
+    account: t("reconciliation.accountBank", { currency: s.currency }),
+    openingBalance: Number(s.openingBalance),
+    closingBalance: Number(s.closingBalance),
+    currency: s.currency,
+    lineCount: s._count.lines,
+    status: s.status,
+  }));
+
+  const columns: SaiColumns<StatementRow> = [
+    { key: "period", dataIndex: "period", title: t("reconciliation.colPeriod"), align: "left" },
+    { key: "account", dataIndex: "account", title: t("reconciliation.colAccount"), align: "left" },
+    moneyColumn<StatementRow>({
+      dataIndex: "openingBalance",
+      title: t("reconciliation.colOpening"),
+      sorter: false,
+      currency: (r) => r.currency,
+    }),
+    moneyColumn<StatementRow>({
+      dataIndex: "closingBalance",
+      title: t("reconciliation.colClosing"),
+      sorter: false,
+      currency: (r) => r.currency,
+    }),
+    qtyColumn<StatementRow>({
+      dataIndex: "lineCount",
+      title: t("reconciliation.colStatementLines"),
+      sorter: false,
+    }),
+    {
+      key: "status",
+      dataIndex: "status",
+      title: t("common.status"),
+      align: "left",
+      // Badge selalu berteks; gemboknya penanda KEDUA, bukan penggantinya.
+      render: (_v, r) =>
+        r.status === "locked" ? (
+          <Badge variant="success">
+            <LockOutlined aria-hidden="true" />
+            <span>{t("reconciliation.statusLocked")}</span>
+          </Badge>
+        ) : (
+          <Badge variant="warning">{t("reconciliation.statusDraft")}</Badge>
+        ),
+    },
+    {
+      key: "open",
+      title: "",
+      align: "right",
+      render: (_v, r) => (
+        <Link href={`/reconciliation/${r.id}`} style={{ color: "var(--ant-color-link)" }}>
+          {t("reconciliation.open")}
+        </Link>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
-        className="mb-1"
         title={<TermTooltip term="rekonsiliasi_bank">{t("reconciliation.title")}</TermTooltip>}
         description={t("reconciliation.description")}
         actions={
@@ -75,10 +151,19 @@ export default async function ReconciliationListPage({
         }
       />
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
-      <LearnMore term="rekonsiliasi_bank" className="mt-1 mb-6" />
+      <div style={{ marginBottom: SECTION_GAP }}>
+        <LearnMore term="rekonsiliasi_bank" />
+      </div>
 
       {/* Saringan status — chip GET (pola /contracts); saringan baru = hal. 1. */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: CONTROL_GAP,
+          marginBottom: CONTROL_GAP * 2,
+        }}
+      >
         {statusFilters.map((f) => (
           <Link
             key={f.label}
@@ -91,9 +176,9 @@ export default async function ReconciliationListPage({
         ))}
       </div>
 
-      {statements.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState
-          icon={<Scale className="h-12 w-12" />}
+          icon={<ReconciliationOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("reconciliation.emptyTitle")}
           description={t("reconciliation.emptyDescription")}
           actionLabel={t("reconciliation.emptyAction")}
@@ -104,62 +189,7 @@ export default async function ReconciliationListPage({
           <CardHeader>
             <CardTitle>{t("reconciliation.listTitle", { count: totalCount })}</CardTitle>
           </CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t("reconciliation.colPeriod")}</TableHead>
-                <TableHead>{t("reconciliation.colAccount")}</TableHead>
-                <TableHead className="text-right">{t("reconciliation.colOpening")}</TableHead>
-                <TableHead className="text-right">{t("reconciliation.colClosing")}</TableHead>
-                <TableHead className="text-right">{t("reconciliation.colStatementLines")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {statements.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="text-foreground">
-                    {formatDateShort(s.periodStart)} — {formatDateShort(s.periodEnd)}
-                  </TableCell>
-                  <TableCell className="text-foreground">
-                    {t("reconciliation.accountBank", { currency: s.currency })}
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell
-                      className="text-foreground"
-                      value={Number(s.openingBalance)}
-                      currency={s.currency}
-                    />
-                  </TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell
-                      className="text-foreground"
-                      value={Number(s.closingBalance)}
-                      currency={s.currency}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {s._count.lines}
-                  </TableCell>
-                  <TableCell>
-                    {s.status === "locked" ? (
-                      <Badge variant="success">
-                        <Lock className="mr-1 h-3 w-3" aria-hidden="true" /> {t("reconciliation.statusLocked")}
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning">{t("reconciliation.statusDraft")}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/reconciliation/${s.id}`} className="text-primary hover:underline">
-                      {t("reconciliation.open")}
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <StaticTable<StatementRow> columns={columns} rows={rows} rowKey={(r) => r.id} />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

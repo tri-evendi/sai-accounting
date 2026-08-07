@@ -1,3 +1,26 @@
+/**
+ * Rincian Pemasok — dikonversi ke token Ant Design pada issue #196.
+ *
+ * **Tetap server component**: seluruh pembacaan uang muka, target kompensasi,
+ * dan riwayat transaksi berjalan lewat Prisma di sini, dan yang menyeberang ke
+ * peramban hanyalah tiga panel client sebagai DAUN. Karena itu tanpa `antd` dan
+ * tanpa `theme.useToken()`; warna dari `Badge`/`Money` dan dari variabel
+ * `--ant-…` di dalam `<Card>`.
+ *
+ * ── Satu hal yang HILANG dan disengaja: `[&>td]:align-top` ────────────────
+ * Baris pembayaran bisa membawa daftar alokasi bertingkat, jadi tabel lama
+ * meratakan semua selnya ke ATAS lewat satu kelas varian. Saat gelombang ini
+ * dikerjakan `SaiColumn` hanya menerima `className` (Tailwind — dilarang di
+ * sini) dan `rowStyle` `StaticTable` memasang gayanya pada `<tr>`, tempat
+ * `vertical-align: top` kalah dari perataan tengah milik `TableCell`. Jadi
+ * baris tinggi kini rata TENGAH, sama seperti bawaan tabel AntD.
+ *
+ * Alat untuk mengembalikannya SUDAH ADA sejak #203: `SaiColumn.cellStyle`
+ * memasang gaya pada SELnya. Yang belum dilakukan hanyalah menyetel
+ * `verticalAlign: "top"` pada kolom-kolom tabel ini — perubahan tampilan yang
+ * pantas berdiri sebagai perubahannya sendiri, bukan diselipkan ke dalam PR
+ * pencabutan Tailwind.
+ */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Link } from "@/components/ui/app-link";
@@ -6,19 +29,14 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { moneyColumn } from "@/components/ui/money-column";
+import type { SaiColumns } from "@/components/ui/table-columns";
+import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Receipt } from "lucide-react";
+import { FileDoneOutlined } from "@ant-design/icons";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
 import { SupplierAdvancePanel } from "./advance-panel";
@@ -36,11 +54,33 @@ const EPSILON = 0.005;
 
 export const dynamic = "force-dynamic";
 
+/** `marginLG` 24 — token AntD sebagai angka (tanpa hook di berkas server). */
+const SECTION_GAP = 24;
+/** Lebar dasar satu pasang istilah–nilai. */
+const INFO_BASIS = 240;
+/** Jarak antar pasangan pada daftar info. */
+const INFO_GAP = 16;
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+
 /** Label tampilan untuk `SupplierTransaction.type` — nilai DB tidak berubah. */
 const transactionTypeLabels = (t: Awaited<ReturnType<typeof getT>>): Record<string, string> => ({
   purchase: t("suppliers.typePurchase"),
   payment: t("suppliers.typePayment"),
 });
+
+/** Satu baris riwayat, diratakan supaya kolomnya bertipe penuh. */
+interface TransactionRow {
+  id: number;
+  date: string;
+  type: string;
+  isPayment: boolean;
+  amount: number;
+  currency: string;
+  note: string;
+  allocations: { id: number; purchaseId: number | null; amount: number; currency: string }[];
+  autoOpen: boolean;
+}
 
 export default async function SupplierDetailPage({
   params,
@@ -111,10 +151,10 @@ export default async function SupplierDetailPage({
   ) / 100;
   const unratedAdvanceCount = openAdvances.filter((a) => a.remainingBase == null).length;
 
-  const offerableTargets = purchaseTargets.filter((t) =>
-    isCompensationTarget(t, (appliedByPurchase[t.id]?.length ?? 0) > 0)
+  const offerableTargets = purchaseTargets.filter((target) =>
+    isCompensationTarget(target, (appliedByPurchase[target.id]?.length ?? 0) > 0)
   );
-  const unratedPurchaseCount = purchaseTargets.filter((t) => t.remainingBase == null).length;
+  const unratedPurchaseCount = purchaseTargets.filter((target) => target.remainingBase == null).length;
 
   // Landing here from the "Perkiraan" badge means the user has just seen a row
   // whose split is at least partly a FIFO guess. That guess is fed by every
@@ -130,7 +170,7 @@ export default async function SupplierDetailPage({
   const paymentsOldestFirst =
     alokasi === "1"
       ? supplier.transactions
-          .filter((t) => t.type === "payment")
+          .filter((tx) => tx.type === "payment")
           .sort((a, b) => a.date.getTime() - b.date.getTime())
       : [];
   const autoOpenPaymentId =
@@ -143,8 +183,104 @@ export default async function SupplierDetailPage({
     paymentsOldestFirst.find((p) => p.allocationsMade.length === 0)?.id ??
     null;
 
+  const transactionRows: TransactionRow[] = supplier.transactions.map((tx) => ({
+    id: tx.id,
+    date: formatDate(tx.date),
+    type: typeLabels[tx.type] ?? tx.type,
+    isPayment: tx.type === "payment",
+    amount: Number(tx.amount),
+    currency: tx.currency,
+    note: tx.note || "-",
+    allocations: tx.allocationsMade.map((a) => ({
+      id: a.id,
+      purchaseId: a.purchaseId,
+      amount: Number(a.amount),
+      currency: a.currency,
+    })),
+    autoOpen: autoOpenPaymentId === tx.id,
+  }));
+
+  const transactionColumns: SaiColumns<TransactionRow> = [
+    { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
+    { key: "type", dataIndex: "type", title: t("suppliers.colType"), align: "left" },
+    moneyColumn<TransactionRow>({
+      dataIndex: "amount",
+      title: t("common.amount"),
+      sorter: false,
+      currency: (row) => row.currency,
+    }),
+    {
+      key: "currency",
+      dataIndex: "currency",
+      title: t("common.currency"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.currency}</span>
+      ),
+    },
+    {
+      key: "note",
+      dataIndex: "note",
+      title: t("common.notes"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.note}</span>
+      ),
+    },
+    {
+      key: "allocation",
+      title: t("suppliers.colAllocation"),
+      align: "left",
+      render: (_v, row) =>
+        !row.isPayment ? (
+          <span style={{ color: "var(--ant-color-text-secondary)" }}>-</span>
+        ) : (
+          <div>
+            {row.allocations.length === 0 ? (
+              <span title={t("suppliers.estimateTitle")}>
+                <Badge variant="warning">{t("suppliers.estimateBadge")}</Badge>
+              </span>
+            ) : (
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {row.allocations.map((a) => (
+                  <li key={a.id} style={{ fontVariantNumeric: "tabular-nums" }}>
+                    <small>
+                      TRX-{a.purchaseId} · <Money value={a.amount} currency={a.currency} />
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <AllocationEditor
+              supplierId={supplier.id}
+              paymentId={row.id}
+              paymentAmount={row.amount}
+              paymentCurrency={row.currency}
+              allocatedCount={row.allocations.length}
+              autoOpen={row.autoOpen}
+            />
+          </div>
+        ),
+    },
+  ];
+
+  /** Satu pasang istilah–nilai pada kartu informasi. */
+  const infoItem = (label: React.ReactNode, value: React.ReactNode) => (
+    <div style={{ flex: `1 1 ${INFO_BASIS}px`, minWidth: 0 }}>
+      <dt
+        style={{
+          color: "var(--ant-color-text-secondary)",
+          fontWeight: "var(--ant-font-weight-strong)",
+        }}
+      >
+        {label}
+      </dt>
+      <dd style={{ margin: 0 }}>{value}</dd>
+    </div>
+  );
+
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("suppliers.breadcrumb"), href: "/suppliers" },
@@ -164,33 +300,21 @@ export default async function SupplierDetailPage({
       />
 
       {/* Supplier Info */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader><CardTitle>{t("suppliers.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.name")}</dt>
-              <dd className="text-sm text-foreground">{supplier.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.address")}</dt>
-              <dd className="text-sm text-foreground">{supplier.address || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.phone")}</dt>
-              <dd className="text-sm text-foreground">{supplier.phone || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">{t("common.email")}</dt>
-              <dd className="text-sm text-foreground">{supplier.email || "-"}</dd>
-            </div>
+          <dl style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: INFO_GAP }}>
+            {infoItem(t("common.name"), supplier.name)}
+            {infoItem(t("common.address"), supplier.address || "-")}
+            {infoItem(t("common.phone"), supplier.phone || "-")}
+            {infoItem(t("common.email"), supplier.email || "-")}
           </dl>
         </CardContent>
       </Card>
 
       {/* Uang muka pembelian (issue #41) — money paid to this supplier before
           their goods/invoice arrived, and the flow that takes it off a purchase. */}
-      <Card className="mb-6">
+      <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
           <CardTitle>{t("suppliers.advanceTitle")}</CardTitle>
         </CardHeader>
@@ -213,14 +337,14 @@ export default async function SupplierDetailPage({
             }))}
             outstandingBase={advanceOutstandingBase}
             unratedAdvanceCount={unratedAdvanceCount}
-            purchases={offerableTargets.map((t) => ({
-              id: t.id,
-              label: t.label,
-              date: t.date.toISOString(),
-              currency: t.currency,
-              amount: t.amount,
+            purchases={offerableTargets.map((target) => ({
+              id: target.id,
+              label: target.label,
+              date: target.date.toISOString(),
+              currency: target.currency,
+              amount: target.amount,
               // `isCompensationTarget` has already excluded the null case.
-              remainingBase: t.remainingBase!,
+              remainingBase: target.remainingBase!,
             }))}
             unratedPurchaseCount={unratedPurchaseCount}
             appliedByPurchase={appliedByPurchase}
@@ -231,85 +355,21 @@ export default async function SupplierDetailPage({
       {/* Transactions */}
       <Card>
         <CardHeader><CardTitle>{t("suppliers.historyTitle")}</CardTitle></CardHeader>
-        <div className="px-6 pb-2">
+        <CardContent>
           <SupplierTransactionForm supplierId={supplier.id} />
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t("common.date")}</TableHead>
-              <TableHead>{t("suppliers.colType")}</TableHead>
-              <TableHead className="text-right">{t("common.amount")}</TableHead>
-              <TableHead>{t("common.currency")}</TableHead>
-              <TableHead>{t("common.notes")}</TableHead>
-              <TableHead>{t("suppliers.colAllocation")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {supplier.transactions.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="p-0">
-                  <EmptyState
-                    icon={<Receipt className="h-12 w-12" />}
-                    title={t("suppliers.emptyTxTitle")}
-                    description={t("suppliers.emptyTxDescription")}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              supplier.transactions.map((tx) => (
-                // Baris pembayaran bisa membawa daftar alokasi bertingkat, jadi
-                // seluruh selnya rata atas — `TableCell` bawaan rata tengah.
-                <TableRow key={tx.id} className="[&>td]:align-top">
-                  <TableCell className="text-foreground">{formatDate(tx.date)}</TableCell>
-                  <TableCell className="text-foreground">{typeLabels[tx.type] ?? tx.type}</TableCell>
-                  <TableCell className="p-0">
-                    <MoneyCell
-                      className="font-medium text-foreground"
-                      value={Number(tx.amount)}
-                      currency={tx.currency}
-                    />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{tx.currency}</TableCell>
-                  <TableCell className="text-muted-foreground">{tx.note || "-"}</TableCell>
-                  <TableCell>
-                    {tx.type !== "payment" ? (
-                      <span className="text-muted-foreground">-</span>
-                    ) : (
-                      <div>
-                        {tx.allocationsMade.length === 0 ? (
-                          <span
-                            className="block"
-                            title={t("suppliers.estimateTitle")}
-                          >
-                            <Badge variant="warning">{t("suppliers.estimateBadge")}</Badge>
-                          </span>
-                        ) : (
-                          <ul className="space-y-0.5">
-                            {tx.allocationsMade.map((a) => (
-                              <li key={a.id} className="text-xs text-foreground tabular-nums">
-                                TRX-{a.purchaseId} ·{" "}
-                                <Money value={Number(a.amount)} currency={a.currency} />
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <AllocationEditor
-                          supplierId={supplier.id}
-                          paymentId={tx.id}
-                          paymentAmount={Number(tx.amount)}
-                          paymentCurrency={tx.currency}
-                          allocatedCount={tx.allocationsMade.length}
-                          autoOpen={autoOpenPaymentId === tx.id}
-                        />
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        </CardContent>
+        <StaticTable
+          columns={transactionColumns}
+          rows={transactionRows}
+          rowKey={(row) => row.id}
+          empty={
+            <EmptyState
+              icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("suppliers.emptyTxTitle")}
+              description={t("suppliers.emptyTxDescription")}
+            />
+          }
+        />
       </Card>
     </div>
   );

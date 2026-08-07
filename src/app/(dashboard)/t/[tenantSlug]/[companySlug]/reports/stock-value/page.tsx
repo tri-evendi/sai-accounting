@@ -12,21 +12,27 @@
  * Baca-saja. Nilainya memakai biaya rata-rata tertimbang — fungsi yang sama
  * dengan mesin HPP (`weightedAverageUnitCost`), jadi neraca dan laporan ini
  * tidak bisa memakai biaya berbeda untuk barang yang sama.
+ *
+ * ── Konversi ke `StaticTable` + token AntD (issue #198) ────────────────────
+ * **Tetap server component.** Kolomnya disusun dari daftar id `stockValueColumns()`
+ * (penentu yang sama dengan PDF & lembar sebarnya), satu id → satu kolom lewat
+ * `columnFor` — bukan daftar kolom kedua di sebelahnya.
+ *
+ * Barang tanpa dasar biaya tetap "—" dan bukan "Rp 0", dan sekarang itu datang
+ * dari `moneyColumn`/`Money` yang memang menulis "—" untuk nilai tak diketahui
+ * — satu aturan uang, bukan satu cabang `null` di halaman ini.
+ *
+ * **Saldo BUKAN uang.** `qtyColumn` (`Decimal(15,3)`): rata kanan + tabular-nums
+ * + format id-ID, tanpa "Rp".
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getStockValueReport } from "@/lib/stock-report";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MoneyCell } from "@/components/ui/money";
+import { StaticTable } from "@/components/ui/static-table";
+import { moneyColumn } from "@/components/ui/money-column";
+import { Money } from "@/components/ui/money";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -34,11 +40,17 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
-import { Package, Info } from "lucide-react";
-
+import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
+
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
+const ICON_SIZE = 16;
+
+/** Satu baris laporan — bentuk yang dibaca kolom di bawah. */
+type StockValueRow = Awaited<ReturnType<typeof getStockValueReport>>["rows"][number];
 
 export default async function StockValueReportPage({
   params,
@@ -78,6 +90,58 @@ export default async function StockValueReportPage({
     stockValue: t("inventory.colValue"),
   };
 
+  /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
+  function columnFor(id: StockValueColumnId): SaiColumns<StockValueRow>[number] {
+    switch (id) {
+      case "unit":
+        return {
+          ...textColumn<StockValueRow>({ dataIndex: "unit", title: HEADERS.unit }),
+          // Satuan kosong ditulis "-": selnya memang tak berisi, dan itu berbeda
+          // dari satuan yang belum diketahui.
+          render: (raw) => (
+            <span style={{ color: "var(--ant-color-text-secondary)" }}>
+              {raw ? String(raw) : "-"}
+            </span>
+          ),
+        };
+      case "currentStock":
+        return qtyColumn<StockValueRow>({
+          dataIndex: "currentStock",
+          title: HEADERS.currentStock,
+        });
+      case "unitCost":
+        return moneyColumn<StockValueRow>({ dataIndex: "unitCost", title: HEADERS.unitCost });
+      case "stockValue":
+        return {
+          ...moneyColumn<StockValueRow>({ dataIndex: "stockValue", title: HEADERS.stockValue }),
+          render: (_v, r) => (
+            <Money
+              value={r.stockValue}
+              currency="IDR"
+              style={{ fontWeight: "var(--ant-font-weight-strong)" }}
+            />
+          ),
+        };
+      case "name":
+      default:
+        return {
+          ...textColumn<StockValueRow>({ dataIndex: "name", title: HEADERS.name }),
+          render: (raw) => (
+            <span style={{ fontWeight: "var(--ant-font-weight-strong)" }}>{String(raw)}</span>
+          ),
+        };
+    }
+  }
+
+  const columns: SaiColumns<StockValueRow> = cols.map(columnFor);
+
+  // Baris total dipetakan per KUNCI kolom, jadi ia ikut menyusut bersama
+  // pilihan kolom pengguna dan tak bisa meleset satu kolom.
+  const summary: Record<string, React.ReactNode> = {
+    name: t("common.total"),
+    stockValue: <Money value={report.totalValue} currency="IDR" />,
+  };
+
   return (
     <div>
       <PageHeader
@@ -98,104 +162,38 @@ export default async function StockValueReportPage({
       />
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {cols.map((c) => (
-                <TableHead
-                  key={c}
-                  className={c === "name" || c === "unit" ? undefined : "text-right"}
-                >
-                  {HEADERS[c]}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {report.rows.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={cols.length} className="p-0">
-                  <EmptyState
-                    icon={<Package className="h-12 w-12" />}
-                    title={t("inventory.emptyTitle")}
-                    description={t("inventory.emptyDescription")}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              report.rows.map((r) => (
-                <TableRow key={r.name}>
-                  {cols.map((c) => {
-                    if (c === "name") {
-                      return (
-                        <TableCell key={c} className="font-medium text-foreground">
-                          {r.name}
-                        </TableCell>
-                      );
-                    }
-                    if (c === "unit") {
-                      return (
-                        <TableCell key={c} className="text-muted-foreground">
-                          {r.unit || "-"}
-                        </TableCell>
-                      );
-                    }
-                    if (c === "currentStock") {
-                      return (
-                        <TableCell key={c} className="text-right tabular-nums text-foreground">
-                          {formatNumber(r.currentStock)}
-                        </TableCell>
-                      );
-                    }
-                    const value = c === "unitCost" ? r.unitCost : r.stockValue;
-                    // Barang tanpa dasar biaya: garis, bukan Rp 0. Rp 0
-                    // menyatakan "tidak bernilai" tentang barang yang ada
-                    // wujudnya — yang benar adalah "biayanya belum tercatat".
-                    return value == null ? (
-                      <TableCell key={c} className="text-right text-muted-foreground">
-                        —
-                      </TableCell>
-                    ) : (
-                      <TableCell key={c} className="p-0">
-                        <MoneyCell
-                          className={c === "stockValue" ? "font-medium" : undefined}
-                          value={value}
-                          currency="IDR"
-                        />
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-          {report.rows.length > 0 && (
-            <TableFooter className="border-t-2 bg-transparent">
-              <TableRow className="border-b-0 font-bold hover:bg-transparent">
-                {cols.map((c) =>
-                  c === "name" ? (
-                    <TableCell key={c} className="text-foreground">
-                      {t("common.total")}
-                    </TableCell>
-                  ) : c === "stockValue" ? (
-                    <TableCell key={c} className="p-0">
-                      <MoneyCell className="font-bold" value={report.totalValue} currency="IDR" />
-                    </TableCell>
-                  ) : (
-                    <TableCell key={c} />
-                  )
-                )}
-              </TableRow>
-            </TableFooter>
-          )}
-        </Table>
+        {/* `StaticTable`: laporan ini hanya MENAMPILKAN — tak ada satu pun
+            kendali di dalam tabelnya, jadi tidak ada yang dibeli dengan
+            memindahkan seluruh barisnya ke peramban. */}
+        <StaticTable<StockValueRow>
+          columns={columns}
+          rows={report.rows}
+          rowKey={(r) => r.name}
+          summary={summary}
+          empty={
+            <EmptyState
+              icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("inventory.emptyTitle")}
+              description={t("inventory.emptyDescription")}
+            />
+          }
+        />
       </Card>
 
       {/* Barang bersaldo tanpa dasar biaya tidak ikut dijumlahkan; mengatakannya
           adalah yang menjaga total ini jujur, bukan membuatnya tampak lengkap. */}
       {report.uncostedCount > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 6,
+            marginTop: 12,
+            marginBottom: 0,
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
           <span>{t("inventory.uncostedNote", { count: report.uncostedCount })}</span>
         </p>
       )}

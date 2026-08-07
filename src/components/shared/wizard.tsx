@@ -35,20 +35,15 @@
  */
 
 import { useState } from "react";
+import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
-import { cn } from "@/lib/utils";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CircleDot,
-  Loader2,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, ExclamationCircleOutlined, RightOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+/** Bulatan nomor langkah — sebesar `h-7 w-7` sebelum migrasi. */
+const STEP_BULLET = 28;
 
 interface WizardProps {
   steps: readonly WizardStepMeta[];
@@ -83,6 +78,7 @@ export function Wizard({
   children,
 }: WizardProps) {
   const t = useT();
+  const { token } = theme.useToken();
   const finishText = finishLabel ?? t("common.finishAndSave");
   // Daftar penjaga ditandai MILIK langkah tertentu, bukan sekadar on/off. Dengan
   // begitu berpindah langkah otomatis membersihkannya — tanpa efek yang memanggil
@@ -117,14 +113,42 @@ export function Wizard({
     void onFinish();
   }
 
+  /**
+   * Rupa bulatan langkah. Warnanya penanda KEDUA — bentuk pertamanya adalah
+   * ikon (centang / titik / angka) dan kata di sebelahnya ("Selesai / Sedang
+   * diisi / Belum"), jadi keadaannya tetap terbaca tanpa warna sama sekali.
+   * `colorSuccessBg`/`colorMoneyPositive` dipakai berpasangan seperti `Tag`
+   * (#187), bukan `colorSuccess` yang di ukuran ini hanya 2,21:1.
+   */
+  const money = moneyPalette(token);
+  const bulletLook = (state: "done" | "current" | "todo") => {
+    if (state === "done") {
+      return { background: token.colorSuccessBg, color: money.colorMoneyPositive };
+    }
+    if (state === "current") {
+      return { background: token.colorPrimary, color: token.colorWhite };
+    }
+    return { background: token.colorFillSecondary, color: token.colorTextSecondary };
+  };
+
   return (
     <div>
       {/* ── Penanda langkah ─────────────────────────────────────────────── */}
-      <nav aria-label={t("wizard.stepsAria")} className="mb-6">
-        <p className="mb-2 text-sm font-medium text-muted-foreground">
+      <nav aria-label={t("wizard.stepsAria")} style={{ marginBottom: token.marginLG }}>
+        <Typography.Text
+          type="secondary"
+          strong
+          style={{ display: "block", marginBottom: token.marginXS }}
+        >
           {t("wizard.stepOf", { step: index + 1, total: steps.length })}
-        </p>
-        <ol className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
+        </Typography.Text>
+        {/*
+         * Menumpuk di 375px, berjajar sejak `sm`. `Flex wrap` + `flex: 1` per
+         * butir menggantikan `flex-col sm:flex-row sm:flex-wrap`: kartu langkah
+         * tumbuh membagi baris, dan turun sendiri saat tak muat — tanpa titik
+         * patah yang harus dijaga tetap sama dengan titik patah lain.
+         */}
+        <Flex component="ol" wrap gap={token.marginXS} align="stretch" style={{ margin: 0, padding: 0, listStyle: "none" }}>
           {steps.map((s, i) => {
             const state = i < index ? "done" : i === index ? "current" : "todo";
             const reachable = canJumpToStep(steps, s.id, currentId) && i !== index;
@@ -137,64 +161,103 @@ export function Wizard({
             const content = (
               <>
                 <span
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                    state === "done" && "bg-success-soft text-success-strong",
-                    state === "current" && "bg-primary text-primary-foreground",
-                    state === "todo" && "bg-muted text-muted-foreground"
-                  )}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: STEP_BULLET,
+                    height: STEP_BULLET,
+                    flexShrink: 0,
+                    borderRadius: "50%",
+                    fontSize: token.fontSizeSM,
+                    fontWeight: token.fontWeightStrong,
+                    ...bulletLook(state),
+                  }}
                 >
                   {state === "done" ? (
-                    <Check className="h-4 w-4" aria-hidden="true" />
+                    <CheckOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                   ) : state === "current" ? (
-                    <CircleDot className="h-4 w-4" aria-hidden="true" />
+                    <RightOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
                   ) : (
-                    <span className="tabular-nums">{i + 1}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
                   )}
                 </span>
-                <span className="min-w-0 text-left">
+                <span style={{ minWidth: 0, textAlign: "left" }}>
                   <span
-                    className={cn(
-                      "block truncate text-sm font-medium",
-                      state === "current" ? "text-foreground" : "text-foreground"
-                    )}
+                    style={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontWeight: token.fontWeightStrong,
+                    }}
                   >
                     {t(s.titleKey)}
                     {s.optional && (
-                      <span className="ml-1 font-normal text-muted-foreground">
+                      <Typography.Text
+                        type="secondary"
+                        style={{ marginInlineStart: token.marginXXS, fontWeight: "normal" }}
+                      >
                         {t("wizard.optionalSuffix")}
-                      </span>
+                      </Typography.Text>
                     )}
                   </span>
-                  <span className="block text-xs text-muted-foreground">{label}</span>
+                  <Typography.Text
+                    type="secondary"
+                    style={{ display: "block", fontSize: token.fontSizeSM }}
+                  >
+                    {label}
+                  </Typography.Text>
                 </span>
               </>
             );
 
+            /** Kartu langkah — sama persis untuk yang bisa & tidak bisa ditekan. */
+            const cardStyle: React.CSSProperties = {
+              display: "flex",
+              width: "100%",
+              alignItems: "center",
+              gap: token.marginXS,
+              paddingBlock: token.paddingXS,
+              paddingInline: token.paddingSM,
+              borderRadius: token.borderRadiusLG,
+              borderStyle: "solid",
+              borderWidth: token.lineWidth,
+              textAlign: "left",
+              transition: `background ${token.motionDurationMid}, border-color ${token.motionDurationMid}`,
+            };
+
             return (
-              <li key={s.id} className="flex-1">
+              <li key={s.id} style={{ flex: 1, listStyle: "none" }}>
                 {reachable ? (
+                  /* Tetap `<button>` mentah — alasannya di kepala berkas, dan
+                     pengecualiannya terdaftar di
+                     `tests/design-system-primitives.test.ts`. */
                   <button
                     type="button"
                     onClick={() => onNavigate(s.id)}
                     aria-current={undefined}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2",
-                      "transition-colors duration-150 hover:border-border hover:bg-muted",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                    )}
+                    style={{
+                      ...cardStyle,
+                      cursor: "pointer",
+                      borderColor: token.colorBorderSecondary,
+                      background: token.colorBgContainer,
+                      font: "inherit",
+                      color: "inherit",
+                    }}
                   >
                     {content}
                   </button>
                 ) : (
                   <div
                     aria-current={state === "current" ? "step" : undefined}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-lg border px-3 py-2",
-                      state === "current"
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card"
-                    )}
+                    style={{
+                      ...cardStyle,
+                      borderColor:
+                        state === "current" ? token.colorPrimary : token.colorBorderSecondary,
+                      background:
+                        state === "current" ? token.colorPrimaryBg : token.colorBgContainer,
+                    }}
                   >
                     {content}
                   </div>
@@ -202,32 +265,38 @@ export function Wizard({
               </li>
             );
           })}
-        </ol>
+        </Flex>
       </nav>
 
       {/* ── Judul & penjelasan langkah ──────────────────────────────────── */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-foreground">{t(step.titleKey)}</h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">{t(step.descriptionKey)}</p>
+      <div style={{ marginBottom: token.margin }}>
+        <Typography.Title level={2} style={{ fontSize: token.fontSizeLG, margin: 0 }}>
+          {t(step.titleKey)}
+        </Typography.Title>
+        <Typography.Text
+          type="secondary"
+          style={{ display: "block", marginTop: token.marginXXS }}
+        >
+          {t(step.descriptionKey)}
+        </Typography.Text>
       </div>
 
+      {/*
+       * Catatan & galat lewat `Alert` AntD: teksnya `colorText` di atas latar
+       * tipis (bukan amber/merah di atas amber/merah muda), dan ikon bawaannya
+       * membuat maknanya tidak bergantung warna. `role` tetap dipasang di
+       * pembungkus — AntD tidak memasangnya, dan tanpa itu pesannya tidak
+       * pernah diumumkan pembaca layar.
+       */}
       {notice && (
-        <p
-          role="status"
-          className="mb-4 flex items-start gap-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{notice}</span>
-        </p>
+        <div role="status" style={{ marginBottom: token.margin }}>
+          <Alert type="warning" showIcon message={notice} />
+        </div>
       )}
 
       {error && (
-        <div
-          role="alert"
-          className="mb-4 flex items-start gap-2 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
@@ -235,68 +304,79 @@ export function Wizard({
 
       {/* ── Penjaga langkah, muncul setelah "Lanjut" ditekan ────────────── */}
       {showBlockers && blockers.length > 0 && (
-        <div
-          role="alert"
-          className="mt-6 rounded-md border border-destructive/30 bg-destructive-soft p-3 text-sm text-destructive-strong"
-        >
-          <p className="flex items-center gap-2 font-medium">
-            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {t("wizard.blockersTitle")}
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-8">
-            {blockers.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
+        <div role="alert" style={{ marginTop: token.marginLG }}>
+          <Alert
+            type="error"
+            showIcon
+            icon={<ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeLG }} />}
+            message={t("wizard.blockersTitle")}
+            description={
+              <ul style={{ margin: 0, paddingInlineStart: token.paddingLG }}>
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            }
+          />
         </div>
       )}
 
       {/* ── Navigasi ────────────────────────────────────────────────────── */}
-      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-        <Button
-          type="button"
-          variant="secondary"
-          className="cursor-pointer"
-          onClick={goBack}
-          disabled={index === 0 || busy}
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" /> {t("common.back")}
+      <Flex
+        wrap
+        align="center"
+        gap={token.marginSM}
+        style={{
+          marginTop: token.marginLG,
+          paddingTop: token.margin,
+          borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        }}
+      >
+        <Button type="button" variant="secondary" onClick={goBack} disabled={index === 0 || busy}>
+          <ArrowLeftOutlined aria-hidden="true" /> {t("common.back")}
         </Button>
 
         {isLast ? (
-          <Button type="button" className="cursor-pointer" onClick={finish} disabled={busy}>
+          <Button type="button" onClick={finish} disabled={busy}>
             {busy ? (
               <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />{" "}
-                {t("common.saving")}
+                {/* Pemutar AntD, bukan `Loader2` + `animate-spin`: animasinya
+                    milik `Spin` (`antRotate`), jadi tidak ada kelas Tailwind
+                    yang harus hidup sampai #203. `color: inherit` supaya
+                    titik-titiknya memakai warna label tombol — bawaan `Spin`
+                    adalah `colorPrimary`, yaitu biru di atas biru. */}
+                <Spin size="small" style={{ color: "inherit" }} /> {t("common.saving")}
               </>
             ) : (
               <>
-                <ShieldCheck className="mr-1 h-4 w-4" aria-hidden="true" /> {finishText}
+                <SafetyCertificateOutlined aria-hidden="true" /> {finishText}
               </>
             )}
           </Button>
         ) : (
-          <Button type="button" className="cursor-pointer" onClick={goNext} disabled={busy}>
-            {t("wizard.next")} <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+          <Button type="button" onClick={goNext} disabled={busy}>
+            {t("wizard.next")} <ArrowRightOutlined aria-hidden="true" />
           </Button>
         )}
 
         <Button
           type="button"
           variant="ghost"
-          className="ml-auto cursor-pointer"
+          style={{ marginInlineStart: "auto" }}
           onClick={() => setConfirmCancel(true)}
           disabled={busy}
         >
           {t("common.cancel")}
         </Button>
-      </div>
+      </Flex>
 
-      <p className="mt-3 text-xs text-muted-foreground">
+      <Typography.Text
+        type="secondary"
+        style={{ display: "block", marginTop: token.marginSM, fontSize: token.fontSizeSM }}
+      >
         {t("wizard.nothingSavedBefore")} <strong>{finishText}</strong>{" "}
         {t("wizard.nothingSavedAfter")}
-      </p>
+      </Typography.Text>
 
       <ConfirmDialog
         title={t("wizard.cancelTitle")}
@@ -324,20 +404,39 @@ export function WizardSummaryRow({
   hint?: React.ReactNode;
   strong?: boolean;
 }) {
+  const { token } = theme.useToken();
   return (
-    <div className="flex items-start justify-between gap-4 py-1.5">
-      <dt className="text-sm text-muted-foreground">
-        {label}
-        {hint && <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>}
-      </dt>
-      <dd
-        className={cn(
-          "shrink-0 text-right text-sm tabular-nums",
-          strong ? "font-semibold text-foreground" : "text-foreground"
+    <Flex
+      align="flex-start"
+      justify="space-between"
+      gap={token.margin}
+      style={{ paddingBlock: token.paddingXXS }}
+    >
+      <dt>
+        <Typography.Text type="secondary">{label}</Typography.Text>
+        {hint && (
+          <Typography.Text
+            type="secondary"
+            style={{ display: "block", marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+          >
+            {hint}
+          </Typography.Text>
         )}
+      </dt>
+      {/* `<dd>` bawaan browser bermargin kiri 40px; dinolkan supaya nominalnya
+          benar-benar rata tepi kanan. `tabular-nums` supaya digit sejajar
+          antar-baris ringkasan (MASTER.md §3). */}
+      <dd
+        style={{
+          margin: 0,
+          flexShrink: 0,
+          textAlign: "right",
+          fontVariantNumeric: "tabular-nums",
+          fontWeight: strong ? token.fontWeightStrong : undefined,
+        }}
       >
         {value}
       </dd>
-    </div>
+    </Flex>
   );
 }

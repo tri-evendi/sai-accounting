@@ -20,11 +20,15 @@
  * Tinggal di grup rute `(setup)` supaya kerangkanya masih ramping: satu jalan
  * ke depan, tanpa ~40 menu yang belum ada isinya. Tombol utamanya adalah pintu
  * keluar dari kerangka itu.
+ *
+ * Sumber warnanya sama dengan `../page.tsx` (issue #203): seluruhnya token AntD
+ * lewat `var(--ant-…)`, di dalam maupun di luar `Card` — sejak #227 kelas
+ * `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, jadi variabelnya tidak
+ * lagi bergantung pada ada-tidaknya komponen AntD di atasnya.
  */
 import { Link } from "@/components/ui/app-link";
 import { redirect } from "next/navigation";
-import { ArrowRight, BookOpenCheck, CheckCircle2, Scale } from "lucide-react";
-
+import { AccountBookOutlined, ArrowRightOutlined, CheckCircleOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { requirePagePermission } from "@/lib/page-auth";
 import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
@@ -36,6 +40,31 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
+
+/** Pita "sudah dibukukan" — DI LUAR `Card`, tapi tetap token AntD (kepala). */
+const DONE_BANNER: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  marginBottom: 24,
+  padding: "12px 16px",
+  borderRadius: 8,
+  border: "1px solid var(--ant-color-success-border)",
+  background: "var(--ant-color-success-bg)",
+  fontSize: 14,
+  color: "var(--ant-color-money-positive)",
+};
+
+/**
+ * Tiga fakta yang membagi lebarnya sendiri — pengganti `sm:grid-cols-3`.
+ * Turun jadi satu kolom di 375px tanpa satu pun media query.
+ */
+const FACTS_GRID: React.CSSProperties = {
+  display: "grid",
+  gap: 16,
+  margin: 0,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
+};
 
 export default async function SetupDonePage({
   params,
@@ -68,21 +97,40 @@ export default async function SetupDonePage({
   ];
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <PageHeader title={t("setup.doneTitle")} description={t("setup.doneDescription")} />
 
-      <div className="mb-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
-        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-        <p>{t("setup.doneBanner", { date: formatDate(settings.fiscalYearStart) })}</p>
+      <div style={DONE_BANNER}>
+        <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
+        <p style={{ margin: 0 }}>
+          {t("setup.doneBanner", { date: formatDate(settings.fiscalYearStart) })}
+        </p>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <dl className="grid gap-4 sm:grid-cols-3">
+      <Card style={{ marginBottom: 24 }}>
+        <CardContent>
+          <dl style={FACTS_GRID}>
             {facts.map((fact) => (
               <div key={fact.label}>
-                <dt className="text-sm font-medium text-muted-foreground">{fact.label}</dt>
-                <dd className="mt-0.5 text-base font-semibold text-foreground">{fact.value}</dd>
+                <dt
+                  style={{
+                    fontSize: "var(--ant-font-size)",
+                    fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                    color: "var(--ant-color-text-secondary)",
+                  }}
+                >
+                  {fact.label}
+                </dt>
+                <dd
+                  style={{
+                    margin: "var(--ant-margin-xxs) 0 0",
+                    fontSize: "var(--ant-font-size-lg)",
+                    fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                    color: "var(--ant-color-text)",
+                  }}
+                >
+                  {fact.value}
+                </dd>
               </div>
             ))}
           </dl>
@@ -98,16 +146,25 @@ export default async function SetupDonePage({
            * ketika neracanya tidak cocok.
            */}
           {journal && (
-            <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                marginTop: 24,
+                paddingTop: 20,
+                borderTop: "1px solid var(--ant-color-border-secondary)",
+              }}
+            >
               <Button asChild variant="outline">
                 <Link href={`/journal/${journal.id}`}>
-                  <BookOpenCheck className="h-4 w-4" aria-hidden="true" />
+                  <AccountBookOutlined aria-hidden="true" />
                   {t("setup.doneViewJournal", { number: journal.number })}
                 </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/reports/balance-sheet">
-                  <Scale className="h-4 w-4" aria-hidden="true" />
+                  <ReconciliationOutlined aria-hidden="true" />
                   {t("reports.balanceSheetTitle")}
                 </Link>
               </Button>
@@ -116,10 +173,10 @@ export default async function SetupDonePage({
         </CardContent>
       </Card>
 
-      <Button asChild size="lg" className="w-full sm:w-auto">
+      <Button asChild size="lg">
         <Link href="/dashboard">
           {t("setup.doneStartWorking")}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowRightOutlined aria-hidden="true" />
         </Link>
       </Button>
     </div>

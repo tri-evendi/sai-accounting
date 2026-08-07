@@ -11,17 +11,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { UserPlus } from "lucide-react";
-
+import { Alert, Flex, Typography, theme } from "antd";
+import { UserAddOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useT } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+const { Text } = Typography;
 
 export default function RegisterPage() {
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   /* Kenapa BUKAN tombol yang dinonaktifkan sampai kotaknya dicentang: tombol
@@ -33,6 +37,9 @@ export default function RegisterPage() {
   const [termsError, setTermsError] = useState(false);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState("");
+
+  /** Gaya tautan sebaris di dalam kalimat — dipakai tiga kali di bawah. */
+  const inlineLink: React.CSSProperties = { color: token.colorLink, fontWeight: 500 };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -82,106 +89,108 @@ export default function RegisterPage() {
       heading={t("auth.register.heading")}
       description={t("auth.register.description")}
       error={error}
-      icon={<UserPlus className="h-5 w-5" aria-hidden />}
+      icon={<UserAddOutlined aria-hidden style={{ fontSize: 20 }} />}
       footer={
-        <p className="text-center text-xs text-muted-foreground">
-          <Link
-            href="/login"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
+        <Flex justify="center">
+          <Link href="/login" style={{ ...inlineLink, fontSize: token.fontSizeSM }}>
             {t("auth.register.haveAccount")}
           </Link>
-        </p>
+        </Flex>
       }
     >
       {sent ? (
-        <div role="status" className="space-y-2 rounded-lg border border-border bg-muted/40 p-4">
-          <p className="text-sm font-medium text-foreground">{t("auth.register.sentTitle")}</p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t("auth.register.sentBody")}
-          </p>
-        </div>
+        /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */
+        <Alert
+          type="success"
+          showIcon
+          message={t("auth.register.sentTitle")}
+          description={t("auth.register.sentBody")}
+        />
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            id="name"
-            name="name"
-            label={t("auth.register.name")}
-            placeholder={t("auth.register.namePlaceholder")}
-            autoComplete="name"
-            required
-            maxLength={100}
-            autoFocus
-            disabled={loading}
-          />
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            label={t("auth.forgotPassword.email")}
-            placeholder={t("auth.forgotPassword.emailPlaceholder")}
-            autoComplete="email"
-            required
-            disabled={loading}
-          />
-          <PasswordInput
-            id="password"
-            name="password"
-            label={t("auth.login.password")}
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={128}
-            disabled={loading}
-          />
-          <p className="text-xs text-muted-foreground">{t("auth.changePassword.hint")}</p>
-          {/* Checkbox primitif Radix tanpa prop label — labelnya elemen <label>
-              tersendiri supaya seluruh kalimatnya bisa diklik. */}
-          <div className="flex items-start gap-2.5">
-            <Checkbox
-              id="terms"
-              checked={terms}
-              onCheckedChange={(value) => {
-                setTerms(value === true);
-                if (value === true) setTermsError(false);
-              }}
+        <form onSubmit={handleSubmit}>
+          <Flex vertical gap={token.marginMD}>
+            <Input
+              id="name"
+              name="name"
+              label={t("auth.register.name")}
+              placeholder={t("auth.register.namePlaceholder")}
+              autoComplete="name"
+              required
+              maxLength={100}
+              autoFocus
               disabled={loading}
-              aria-invalid={termsError || undefined}
-              aria-describedby={termsError ? "terms-error" : undefined}
-              className="mt-0.5"
             />
-            <label
-              htmlFor="terms"
-              className="cursor-pointer text-sm leading-snug text-muted-foreground"
-            >
-              {t("auth.register.termsPrefix")}{" "}
-              <Link
-                href="/terms"
-                target="_blank"
-                className="font-medium text-primary underline-offset-4 hover:underline"
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              label={t("auth.forgotPassword.email")}
+              placeholder={t("auth.forgotPassword.emailPlaceholder")}
+              autoComplete="email"
+              required
+              disabled={loading}
+            />
+            <PasswordInput
+              id="password"
+              name="password"
+              label={t("auth.login.password")}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              disabled={loading}
+            />
+            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+              {t("auth.changePassword.hint")}
+            </Text>
+
+            {/* Kotak persetujuan: labelnya elemen <label> tersendiri supaya
+                seluruh kalimatnya (termasuk kedua tautan) bisa diklik. */}
+            <Flex align="flex-start" gap={token.marginXS}>
+              <Checkbox
+                id="terms"
+                checked={terms}
+                onCheckedChange={(value) => {
+                  setTerms(value === true);
+                  if (value === true) setTermsError(false);
+                }}
+                disabled={loading}
+                aria-invalid={termsError || undefined}
+                aria-describedby={termsError ? "terms-error" : undefined}
+                style={{ marginTop: 2 }}
+              />
+              <label htmlFor="terms" style={{ cursor: "pointer" }}>
+                <Text type="secondary">
+                  {t("auth.register.termsPrefix")}{" "}
+                  <Link href="/terms" target="_blank" style={inlineLink}>
+                    {t("auth.register.termsLinkLabel")}
+                  </Link>{" "}
+                  {t("auth.register.termsAnd")}{" "}
+                  <Link href="/privacy" target="_blank" style={inlineLink}>
+                    {t("auth.register.privacyLinkLabel")}
+                  </Link>
+                  .
+                </Text>
+              </label>
+            </Flex>
+            {/* `colorError` AntD hanya 3,27:1 sebagai teks 14px (MASTER.md
+                §Ant Design sebagai KULIT) — pesan penolakan memakai token uang
+                negatif, yang memang diukur untuk dibaca sebagai teks. */}
+            {termsError && (
+              <Text
+                id="terms-error"
+                role="alert"
+                style={{ color: moneyPalette(token).colorMoneyNegative }}
               >
-                {t("auth.register.termsLinkLabel")}
-              </Link>{" "}
-              {t("auth.register.termsAnd")}{" "}
-              <Link
-                href="/privacy"
-                target="_blank"
-                className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                {t("auth.register.privacyLinkLabel")}
-              </Link>
-              .
-            </label>
-          </div>
-          {termsError && (
-            <p id="terms-error" role="alert" className="text-sm text-destructive">
-              {t("auth.register.termsRequired")}
-            </p>
-          )}
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? t("auth.register.submitting") : t("auth.register.submit")}
-          </Button>
+                {t("auth.register.termsRequired")}
+              </Text>
+            )}
+
+            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+              {loading ? t("auth.register.submitting") : t("auth.register.submit")}
+            </Button>
+          </Flex>
         </form>
       )}
     </AuthShell>

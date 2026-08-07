@@ -11,29 +11,31 @@
  * server re-derives and re-checks it (`assertBalanced`) — the client preview is
  * never the authority. A foreign balance with no rate is refused, here and again
  * on the server, rather than valued 1:1.
+ *
+ * ── Tata letak baris saldo awal setelah AntD (issue #200) ─────────────────
+ * Baris kas/piutang/utang dulu `grid sm:grid-cols-12` dengan lebar kolom yang
+ * ditulis sebagai kelas per isian. Sekarang `Row`/`Col` AntD dengan `xs`/`sm` —
+ * kisi 24 kolom, jadi setiap angka lama dikalikan dua. Yang didapat bukan cuma
+ * hilangnya kelas: titik patahnya kini milik satu sistem yang sama dengan
+ * seluruh aplikasi, dan kolom kurs yang muncul-hilang tidak lagi memaksa
+ * menghitung ulang sisa kolomnya dengan tangan.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Col, Flex, Row, Typography, theme } from "antd";
+import type { GlobalToken } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import {
-  Loader2,
-  Info,
-  Plus,
-  Trash2,
-  CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
-  RotateCcw,
-  Save,
-} from "lucide-react";
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { ModulePicker } from "@/components/settings/module-picker";
 import {
   BUSINESS_MODULES,
@@ -43,6 +45,8 @@ import {
   type BusinessCategory,
   type BusinessModule,
 } from "@/lib/business-modules";
+
+const { Title, Text } = Typography;
 
 interface CashAccount {
   id: number;
@@ -64,6 +68,21 @@ const nextId = () => ++uid;
 /** Kunci draf sessionStorage — lihat blok "Draf tahan-muat-ulang" di bawah. */
 const SETUP_DRAFT_KEY = "setup-wizard-draft";
 
+/** Isian nominal: rata kanan + digit sejajar (MASTER.md §Angka rapi & jujur). */
+const AMOUNT_INPUT: React.CSSProperties = {
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
+
+const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
+/** Lihat `Spinner` di bawah — pengganti `animate-spin` + `motion-reduce:`. */
+const SPIN_RULE = `
+[data-spin]{animation:sai-spin 1s linear infinite}
+@keyframes sai-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){[data-spin][data-spin]{animation:none}}
+`;
+
 interface CashRow {
   key: number;
   accountId: string;
@@ -76,6 +95,15 @@ interface PartnerRow {
   currency: string;
   amount: string;
   rate: string;
+}
+
+/** Judul langkah — `<h2>` yang ukurannya token, bukan `text-lg`. */
+function StepTitle({ children, token }: { children: React.ReactNode; token: GlobalToken }) {
+  return (
+    <Title level={2} style={{ fontSize: token.fontSizeLG, marginBlock: 0 }}>
+      {children}
+    </Title>
+  );
 }
 
 export function SetupWizard({
@@ -94,6 +122,8 @@ export function SetupWizard({
   suppliers: Party[];
 }) {
   const t = useT();
+  const { token } = theme.useToken();
+  const money = moneyPalette(token);
   const router = useAppRouter();
   const { toast } = useToast();
 
@@ -445,8 +475,31 @@ export function SetupWizard({
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
 
+  /** Warna pil langkah — selesai / sedang / belum. Ketiganya juga dibedakan
+   *  IKON (centang vs nomor), jadi warnanya bukan penanda tunggal. */
+  function pillStyle(index: number): React.CSSProperties {
+    const base: React.CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      gap: token.marginXS,
+      padding: `${token.paddingXXS}px ${token.paddingSM}px`,
+      borderRadius: token.borderRadius,
+      fontSize: token.fontSize,
+    };
+    if (index === step) {
+      return { ...base, background: token.colorPrimary, color: token.colorTextLightSolid };
+    }
+    if (index < step) {
+      return { ...base, background: token.colorSuccessBg, color: money.colorMoneyPositive };
+    }
+    return { ...base, background: token.colorFillQuaternary, color: token.colorTextSecondary };
+  }
+
   return (
-    <div className="space-y-6">
+    <Flex vertical gap={token.marginLG}>
+      <style href="sai-spin" precedence="default">
+        {SPIN_RULE}
+      </style>
       {/*
        * Stepper + hitungan "Langkah X dari Y" (issue #103 · Progress
        * Indicators). Hitungannya DITURUNKAN dari `steps`, tidak pernah diketik:
@@ -459,12 +512,10 @@ export function SetupWizard({
        * baris, dan "seberapa jauh lagi" — satu-satunya pertanyaan pengguna di
        * layar wajib — jadi harus dihitung sendiri dengan mata.
        */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-muted-foreground">
-          <span className="tabular-nums">
-            {t("setup.stepCounter", { current: step + 1, total: steps.length })}
-          </span>
-        </p>
+      <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
+        <Text strong type="secondary" style={TABULAR}>
+          {t("setup.stepCounter", { current: step + 1, total: steps.length })}
+        </Text>
 
         {/*
          * Penanda draf — mekanismenya sudah ada sejak audit 2026-07, yang
@@ -479,40 +530,38 @@ export function SetupWizard({
          * gunanya, dan rasa aman harus terbaca.
          */}
         {(step > 0 || hasMeaningfulDraft) && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Save className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {t("setup.draftSaved")}
-          </p>
+          <Flex align="center" gap={token.marginXXS}>
+            <SaveOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0, color: token.colorTextSecondary }} />
+            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+              {t("setup.draftSaved")}
+            </Text>
+          </Flex>
         )}
-      </div>
-      <ol className="flex flex-wrap gap-2 text-sm" aria-label={t("setup.stepsAria")}>
+      </Flex>
+
+      <Flex
+        component="ol"
+        wrap
+        gap={token.marginXS}
+        aria-label={t("setup.stepsAria")}
+        style={{ listStyle: "none", margin: 0, padding: 0 }}
+      >
         {steps.map((label, i) => (
-          <li
-            key={label}
-            aria-current={i === step ? "step" : undefined}
-            className={
-              "flex items-center gap-2 rounded-md px-3 py-1.5 " +
-              (i === step
-                ? "bg-primary text-primary-foreground"
-                : i < step
-                ? "bg-success-soft text-success-strong"
-                : "bg-muted text-muted-foreground")
-            }
-          >
+          <li key={label} aria-current={i === step ? "step" : undefined} style={pillStyle(i)}>
             {i < step ? (
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
             ) : (
-              <span className="tabular-nums">{i + 1}.</span>
+              <span style={TABULAR}>{i + 1}.</span>
             )}
             {label}
           </li>
         ))}
-      </ol>
+      </Flex>
 
-      <Card className="p-6">
+      <Card style={{ padding: token.paddingLG }}>
         {/* Step 0 — identity */}
         {current === "identity" && (
-          <div className="space-y-4">
+          <Flex vertical gap={token.margin}>
             {/*
              * Panel pembuka — hanya di langkah pertama.
              *
@@ -528,22 +577,45 @@ export function SetupWizard({
              * angka neraca akan berhenti di sini dan menunda seluruh
              * pemasangan, atau — lebih buruk — mengarang angkanya.
              */}
-            <div className="rounded-lg border border-border bg-muted px-4 py-3">
-              <p className="text-sm font-medium text-foreground">{t("setup.introTitle")}</p>
-              <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+            <div
+              style={{
+                padding: `${token.paddingSM}px ${token.padding}px`,
+                borderRadius: token.borderRadiusLG,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                background: token.colorFillQuaternary,
+              }}
+            >
+              <Text strong>{t("setup.introTitle")}</Text>
+              <Flex
+                component="ul"
+                vertical
+                gap={token.marginXXS}
+                style={{
+                  listStyle: "none",
+                  margin: `${token.marginXS}px 0 0`,
+                  padding: 0,
+                }}
+              >
                 {(["introPoint1", "introPoint2", "introPoint3"] as const).map((key) => (
-                  <li key={key} className="flex items-start gap-2">
+                  <li key={key} style={{ display: "flex", alignItems: "flex-start", gap: token.marginXS }}>
                     <span
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground"
                       aria-hidden="true"
+                      style={{
+                        marginTop: 8,
+                        width: 6,
+                        height: 6,
+                        flexShrink: 0,
+                        borderRadius: "50%",
+                        background: token.colorTextSecondary,
+                      }}
                     />
-                    <span>{t(`setup.${key}`)}</span>
+                    <Text type="secondary">{t(`setup.${key}`)}</Text>
                   </li>
                 ))}
-              </ul>
+              </Flex>
             </div>
 
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.identityTitle")}</h2>
+            <StepTitle token={token}>{t("setup.identityTitle")}</StepTitle>
             <Input
               id="name"
               label={t("setup.nameField")}
@@ -556,19 +628,16 @@ export function SetupWizard({
               maxLength={150}
               required
             />
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-foreground">
-                {t("common.address")}
-              </label>
+            <Flex vertical gap={token.marginXXS}>
+              <Label htmlFor="address">{t("common.address")}</Label>
               <Textarea
                 id="address"
-                className="mt-1"
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 maxLength={1000}
               />
-            </div>
+            </Flex>
             <Input
               id="npwp"
               label={t("setup.npwpField")}
@@ -577,15 +646,15 @@ export function SetupWizard({
               maxLength={30}
               placeholder={t("setup.npwpPlaceholder")}
             />
-          </div>
+          </Flex>
         )}
 
         {/* Modul usaha (issue #99) — kategori sebagai preset, modul tetap
             bisa diubah satu per satu. Melewatinya = semua modul aktif. */}
         {current === "modules" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("modules.stepHeading")}</h2>
-            <p className="text-sm text-muted-foreground">{t("modules.stepHint")}</p>
+          <Flex vertical gap={token.margin}>
+            <StepTitle token={token}>{t("modules.stepHeading")}</StepTitle>
+            <Text type="secondary">{t("modules.stepHint")}</Text>
             {/*
              * "Ini bisa diubah lagi" — kalimat terpenting di seluruh langkah ini
              * (issue #103 · UX Onboarding · User Freedom).
@@ -601,10 +670,12 @@ export function SetupWizard({
              * sedang ragu-ragu memandangi daftar centang, dan teks samar tidak
              * meyakinkan siapa pun.
              */}
-            <p className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
-              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              <span>{t("modules.stepReversible")}</span>
-            </p>
+            <Alert
+              type="info"
+              icon={<UndoOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+              showIcon
+              message={t("modules.stepReversible")}
+            />
             <ModulePicker
               category={category}
               modules={modules}
@@ -622,73 +693,84 @@ export function SetupWizard({
               }
               disabled={saving}
             />
-          </div>
+          </Flex>
         )}
 
         {/* Step 1 — base currency + fiscal year */}
         {current === "settings" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepCurrency")}</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                id="baseCurrency"
-                label={t("setup.baseCurrencyField")}
-                value={baseCurrency}
-                onChange={(e) => {
-                  setBaseCurrency(e.target.value);
-                  clearStepError("baseCurrency");
-                }}
-                error={stepErrors.baseCurrency}
-                options={currencyOptions}
-              />
-              <Input
-                id="fiscalYearStart"
-                type="date"
-                label={t("setup.fiscalYearStartField")}
-                value={fiscalYearStart}
-                onChange={(e) => {
-                  setFiscalYearStart(e.target.value);
-                  clearStepError("fiscalYearStart");
-                }}
-                error={stepErrors.fiscalYearStart}
-                required
-              />
-            </div>
-            <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>
-                {t("setup.ledgerNoteBefore")} <strong>IDR</strong> {t("setup.ledgerNoteAfter")}
-              </span>
-            </p>
-          </div>
+          <Flex vertical gap={token.margin}>
+            <StepTitle token={token}>{t("setup.stepCurrency")}</StepTitle>
+            <Row gutter={[token.margin, token.margin]}>
+              <Col xs={24} sm={12}>
+                <Select
+                  id="baseCurrency"
+                  label={t("setup.baseCurrencyField")}
+                  value={baseCurrency}
+                  onChange={(e) => {
+                    setBaseCurrency(e.target.value);
+                    clearStepError("baseCurrency");
+                  }}
+                  error={stepErrors.baseCurrency}
+                  options={currencyOptions}
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="fiscalYearStart"
+                  type="date"
+                  label={t("setup.fiscalYearStartField")}
+                  value={fiscalYearStart}
+                  onChange={(e) => {
+                    setFiscalYearStart(e.target.value);
+                    clearStepError("fiscalYearStart");
+                  }}
+                  error={stepErrors.fiscalYearStart}
+                  required
+                />
+              </Col>
+            </Row>
+            <Alert
+              type="info"
+              icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+              showIcon
+              message={
+                <>
+                  {t("setup.ledgerNoteBefore")} <strong>IDR</strong> {t("setup.ledgerNoteAfter")}
+                </>
+              }
+            />
+          </Flex>
         )}
 
         {/* Step 2 — confirm COA */}
         {current === "coa" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.coaTitle")}</h2>
-            <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm text-success-strong">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-              <span>
-                {t("setup.coaNoteBefore")}{" "}
-                <strong className="tabular-nums">{coaCount}</strong> {t("setup.coaNoteAfter")}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t("setup.coaHint")}
-            </p>
-          </div>
+          <Flex vertical gap={token.margin}>
+            <StepTitle token={token}>{t("setup.coaTitle")}</StepTitle>
+            <Alert
+              type="success"
+              icon={<CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+              showIcon
+              message={
+                <>
+                  {t("setup.coaNoteBefore")}{" "}
+                  <strong style={TABULAR}>{coaCount}</strong> {t("setup.coaNoteAfter")}
+                </>
+              }
+            />
+            <Text type="secondary">{t("setup.coaHint")}</Text>
+          </Flex>
         )}
 
         {/* Step 3 — opening balances */}
         {current === "balances" && (
-          <div className="space-y-8">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.stepBalances")}</h2>
+          <Flex vertical gap={token.marginXL}>
+            <StepTitle token={token}>{t("setup.stepBalances")}</StepTitle>
 
             {/* Kas / Bank */}
             <Section
               title={t("nav.groups.cash")}
               hint={t("setup.cashSectionHint")}
+              token={token}
               onAdd={() =>
                 cashAccounts.length > 0 &&
                 setCash((r) => [...r, { key: nextId(), accountId: "", amount: "", rate: "" }])
@@ -700,8 +782,8 @@ export function SetupWizard({
                 const acc = cashById.get(row.accountId);
                 const foreign = acc && acc.currency !== "IDR";
                 return (
-                  <div key={row.key} className="grid gap-2 sm:grid-cols-12 sm:items-end">
-                    <div className="sm:col-span-5">
+                  <Row key={row.key} gutter={[token.marginXS, token.marginXS]} align="bottom">
+                    <Col xs={24} sm={10}>
                       <Select
                         id={`cash-acc-${row.key}`}
                         label={t("common.account")}
@@ -713,14 +795,14 @@ export function SetupWizard({
                           label: `${a.code} · ${a.name} (${a.currency})`,
                         }))}
                       />
-                    </div>
-                    <div className={foreign ? "sm:col-span-3" : "sm:col-span-6"}>
+                    </Col>
+                    <Col xs={24} sm={foreign ? 6 : 12}>
                       <Input
                         id={`cash-amt-${row.key}`}
                         type="number"
                         step="0.01"
                         min="0"
-                        className="text-right tabular-nums"
+                        style={AMOUNT_INPUT}
                         label={
                           acc
                             ? t("setup.balanceWithCurrency", { currency: acc.currency })
@@ -729,28 +811,30 @@ export function SetupWizard({
                         value={row.amount}
                         onChange={(e) => updateCash(row.key, { amount: e.target.value })}
                       />
-                    </div>
+                    </Col>
                     {foreign && (
-                      <div className="sm:col-span-3">
+                      <Col xs={24} sm={6}>
                         <Input
                           id={`cash-rate-${row.key}`}
                           type="number"
                           step="0.000001"
                           min="0"
-                          className="text-right tabular-nums"
+                          style={AMOUNT_INPUT}
                           label={t("setup.rateToIdr")}
                           value={row.rate}
                           onChange={(e) => updateCash(row.key, { rate: e.target.value })}
                         />
-                      </div>
+                      </Col>
                     )}
-                    <div className="sm:col-span-1 flex justify-end">
-                      <RemoveButton
-                        onClick={() => setCash((r) => r.filter((x) => x.key !== row.key))}
-                        label={t("journal.removeRow")}
-                      />
-                    </div>
-                  </div>
+                    <Col xs={24} sm={2}>
+                      <Flex justify="flex-end">
+                        <RemoveButton
+                          onClick={() => setCash((r) => r.filter((x) => x.key !== row.key))}
+                          label={t("journal.removeRow")}
+                        />
+                      </Flex>
+                    </Col>
+                  </Row>
                 );
               })}
             </Section>
@@ -768,27 +852,35 @@ export function SetupWizard({
               emptyLabel={t("setup.emptyCustomers")}
               currencies={currencyOptions}
               t={t}
+              token={token}
               onUpdate={(k, p) => updatePartner(setReceivables, k, p)}
             />
 
             {/* Persediaan */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground">
+              <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
                 {t("accountType.inventory")}
-              </h3>
-              <p className="mb-2 text-xs text-muted-foreground">{t("setup.inventoryHint")}</p>
-              <div className="sm:w-1/2">
-                <Input
-                  id="inventory"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="text-right tabular-nums"
-                  label={t("setup.inventoryField")}
-                  value={inventory}
-                  onChange={(e) => setInventory(e.target.value)}
-                />
-              </div>
+              </Title>
+              <Text
+                type="secondary"
+                style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
+              >
+                {t("setup.inventoryHint")}
+              </Text>
+              <Row>
+                <Col xs={24} sm={12}>
+                  <Input
+                    id="inventory"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    style={AMOUNT_INPUT}
+                    label={t("setup.inventoryField")}
+                    value={inventory}
+                    onChange={(e) => setInventory(e.target.value)}
+                  />
+                </Col>
+              </Row>
             </div>
 
             {/* Utang */}
@@ -804,56 +896,88 @@ export function SetupWizard({
               emptyLabel={t("setup.emptySuppliers")}
               currencies={currencyOptions}
               t={t}
+              token={token}
               onUpdate={(k, p) => updatePartner(setPayables, k, p)}
             />
 
-            <BalancePanel totals={totals} t={t} />
-          </div>
+            <BalancePanel totals={totals} t={t} token={token} />
+          </Flex>
         )}
 
         {/* Step 4 — review */}
         {current === "review" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("setup.reviewTitle")}</h2>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <Flex vertical gap={token.margin}>
+            <StepTitle token={token}>{t("setup.reviewTitle")}</StepTitle>
+            {/* `<dl>` tetap `<dl>`: `Row`/`Col` AntD hanya menggambar `<div>`,
+                dan menyisipkannya di antara daftar dan butirnya akan memutus
+                hubungan istilah–definisi yang dibaca pembaca layar. Kisinya
+                karena itu membagi lebarnya sendiri, tanpa media query. */}
+            <dl
+              style={{
+                display: "grid",
+                gap: token.marginSM,
+                margin: 0,
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+              }}
+            >
               <div>
-                <dt className="font-medium text-muted-foreground">{t("setup.companyLabel")}</dt>
-                <dd className="text-foreground">{name}</dd>
+                <dt>
+                  <Text strong type="secondary">
+                    {t("setup.companyLabel")}
+                  </Text>
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <Text>{name}</Text>
+                </dd>
               </div>
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("setup.fiscalYearStartField")}
+                <dt>
+                  <Text strong type="secondary">
+                    {t("setup.fiscalYearStartField")}
+                  </Text>
                 </dt>
-                <dd className="text-foreground tabular-nums">{fiscalYearStart}</dd>
+                <dd style={{ margin: 0 }}>
+                  <Text style={TABULAR}>{fiscalYearStart}</Text>
+                </dd>
               </div>
               {/* issue #99 — apa yang akan tampil di menu setelah wizard selesai. */}
               <div>
-                <dt className="font-medium text-muted-foreground">
-                  {t("modules.sectionTitle")}
+                <dt>
+                  <Text strong type="secondary">
+                    {t("modules.sectionTitle")}
+                  </Text>
                 </dt>
-                <dd className="text-foreground">
-                  {t("modules.activeCount", {
-                    count: normalizeEnabledModules(modules).length,
-                    total: BUSINESS_MODULES.length,
-                  })}
+                <dd style={{ margin: 0 }}>
+                  <Text>
+                    {t("modules.activeCount", {
+                      count: normalizeEnabledModules(modules).length,
+                      total: BUSINESS_MODULES.length,
+                    })}
+                  </Text>
                 </dd>
               </div>
             </dl>
-            <BalancePanel totals={totals} t={t} />
-            <p className="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>
-                {t("setup.saveNoteBefore")} <strong>{t("setup.saveNoteStrong")}</strong>{" "}
-                {t("setup.saveNoteAfter")}
-              </span>
-            </p>
-          </div>
+            <BalancePanel totals={totals} t={t} token={token} />
+            <Alert
+              type="info"
+              icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+              showIcon
+              message={
+                <>
+                  {t("setup.saveNoteBefore")} <strong>{t("setup.saveNoteStrong")}</strong>{" "}
+                  {t("setup.saveNoteAfter")}
+                </>
+              }
+            />
+          </Flex>
         )}
 
         {error && (
-          <p className="mt-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-            {error}
-          </p>
+          /* `role` di pembungkus: `Alert` AntD hanya meneruskan `aria-*`/`data-*`,
+             jadi peran yang dioper langsung ke sana hilang tanpa galat. */
+          <div role="alert" style={{ marginTop: token.margin }}>
+            <Alert type="error" showIcon message={error} />
+          </div>
         )}
 
         {/*
@@ -875,26 +999,30 @@ export function SetupWizard({
          * memang mengalirkannya.
          */}
         {saving && (
-          <p
+          <Flex
             role="status"
             aria-live="polite"
-            className="mt-4 flex items-center gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground"
+            align="center"
+            gap={token.marginXS}
+            style={{
+              marginTop: token.margin,
+              padding: token.paddingSM,
+              borderRadius: token.borderRadius,
+              background: token.colorFillQuaternary,
+              color: token.colorTextSecondary,
+            }}
           >
-            <Loader2
-              className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
+            <Spinner size={16} />
             {t("setup.savingStatus")}
-          </p>
+          </Flex>
         )}
       </Card>
 
       {/* Nav */}
-      <div className="flex justify-between">
+      <Flex justify="space-between">
         <Button
           type="button"
           variant="ghost"
-          className="cursor-pointer"
           disabled={step === 0 || saving}
           onClick={() => {
             // Mundur tidak pernah dihalangi, jadi pesan langkah ini ikut
@@ -904,34 +1032,39 @@ export function SetupWizard({
             setStep((s) => Math.max(0, s - 1));
           }}
         >
-          <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
+          <ArrowLeftOutlined aria-hidden="true" />
           {t("common.back")}
         </Button>
 
         {step < steps.length - 1 ? (
-          <Button type="button" className="cursor-pointer" disabled={saving} onClick={goNext}>
+          <Button type="button" disabled={saving} onClick={goNext}>
             {t("setup.next")}
-            <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+            <ArrowRightOutlined aria-hidden="true" />
           </Button>
         ) : (
           <Button
             type="button"
-            className="cursor-pointer"
             disabled={saving || !totals.hasAny || totals.unrated > 0}
             onClick={handleSubmit}
           >
-            {saving && (
-              <Loader2
-                className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            )}
+            {saving && <Spinner size={16} />}
             {saving ? t("setup.finishing") : t("setup.finish")}
           </Button>
         )}
-      </div>
-    </div>
+      </Flex>
+    </Flex>
   );
+}
+
+/**
+ * Pemutar tunggu. `animate-spin` adalah kelas utilitas, dan aturan
+ * `prefers-reduced-motion` yang menyertainya tidak bisa ditulis sebagai gaya
+ * sebaris — jadi keduanya hidup sebagai satu aturan CSS (`SPIN_RULE`, dipasang
+ * sekali di akar wisaya lewat `<style href precedence>`; React 19 meniadakan
+ * gandanya) yang menyasar atribut `data-spin`, bukan sebuah kelas.
+ */
+function Spinner({ size }: { size: number }) {
+  return <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: size, flexShrink: 0 }} />;
 }
 
 function Section({
@@ -941,6 +1074,7 @@ function Section({
   onAdd,
   addLabel,
   empty,
+  token,
 }: {
   title: string;
   hint: string;
@@ -948,23 +1082,38 @@ function Section({
   onAdd: () => void;
   addLabel: string;
   empty?: string;
+  token: GlobalToken;
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      <p className="mb-2 text-xs text-muted-foreground">{hint}</p>
-      <div className="space-y-3">{children}</div>
+      <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
+        {title}
+      </Title>
+      <Text
+        type="secondary"
+        style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
+      >
+        {hint}
+      </Text>
+      <Flex vertical gap={token.marginSM}>
+        {children}
+      </Flex>
       {empty ? (
-        <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
+        <Text
+          type="secondary"
+          style={{ display: "block", marginTop: token.marginXS, fontSize: token.fontSizeSM }}
+        >
+          {empty}
+        </Text>
       ) : (
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          className="mt-3 cursor-pointer"
+          style={{ marginTop: token.marginSM }}
           onClick={onAdd}
         >
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+          <PlusOutlined aria-hidden="true" />
           {addLabel}
         </Button>
       )}
@@ -984,6 +1133,7 @@ function PartnerSection({
   emptyLabel,
   currencies,
   t,
+  token,
   onUpdate,
 }: {
   title: string;
@@ -997,6 +1147,7 @@ function PartnerSection({
   emptyLabel: string;
   currencies: { value: string; label: string }[];
   t: TranslateFn;
+  token: GlobalToken;
   onUpdate: (key: number, patch: Partial<PartnerRow>) => void;
 }) {
   return (
@@ -1004,6 +1155,7 @@ function PartnerSection({
       title={title}
       hint={hint}
       addLabel={addLabel}
+      token={token}
       empty={parties.length === 0 ? emptyLabel : undefined}
       onAdd={() =>
         parties.length > 0 &&
@@ -1016,8 +1168,8 @@ function PartnerSection({
       {rows.map((row) => {
         const foreign = row.currency !== "IDR";
         return (
-          <div key={row.key} className="grid gap-2 sm:grid-cols-12 sm:items-end">
-            <div className="sm:col-span-4">
+          <Row key={row.key} gutter={[token.marginXS, token.marginXS]} align="bottom">
+            <Col xs={24} sm={8}>
               <Select
                 id={`p-${row.key}`}
                 label={partyLabel}
@@ -1026,8 +1178,8 @@ function PartnerSection({
                 placeholder={pickLabel}
                 options={parties.map((p) => ({ value: String(p.id), label: p.name }))}
               />
-            </div>
-            <div className="sm:col-span-2">
+            </Col>
+            <Col xs={24} sm={4}>
               <Select
                 id={`c-${row.key}`}
                 label={t("common.currencyField")}
@@ -1035,57 +1187,64 @@ function PartnerSection({
                 onChange={(e) => onUpdate(row.key, { currency: e.target.value })}
                 options={currencies}
               />
-            </div>
-            <div className={foreign ? "sm:col-span-3" : "sm:col-span-5"}>
+            </Col>
+            <Col xs={24} sm={foreign ? 6 : 10}>
               <Input
                 id={`a-${row.key}`}
                 type="number"
                 step="0.01"
                 min="0"
-                className="text-right tabular-nums"
+                style={AMOUNT_INPUT}
                 label={t("common.balance")}
                 value={row.amount}
                 onChange={(e) => onUpdate(row.key, { amount: e.target.value })}
               />
-            </div>
+            </Col>
             {foreign && (
-              <div className="sm:col-span-2">
+              <Col xs={24} sm={4}>
                 <Input
                   id={`r-${row.key}`}
                   type="number"
                   step="0.000001"
                   min="0"
-                  className="text-right tabular-nums"
+                  style={AMOUNT_INPUT}
                   label={t("setup.rateToIdr")}
                   value={row.rate}
                   onChange={(e) => onUpdate(row.key, { rate: e.target.value })}
                 />
-              </div>
+              </Col>
             )}
-            <div className="sm:col-span-1 flex justify-end">
-              <RemoveButton
-              onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
-              label={t("journal.removeRow")}
-            />
-            </div>
-          </div>
+            <Col xs={24} sm={2}>
+              <Flex justify="flex-end">
+                <RemoveButton
+                  onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
+                  label={t("journal.removeRow")}
+                />
+              </Flex>
+            </Col>
+          </Row>
         );
       })}
     </Section>
   );
 }
 
+/**
+ * Hapus baris.
+ *
+ * ⚠ Warnanya tetap netral, dan itu BUKAN pilihan gaya. Bentuk lamanya adalah
+ * tombol hantu yang memerah saat disentuh — di AntD itu `type="text"` +
+ * `danger`, kombinasi yang primitif `Button` belum punya namanya (`ghost` dan
+ * `danger` adalah dua varian yang saling meniadakan di petanya). Menambalnya di
+ * sini berarti menulis warna hover dengan tangan di satu berkas, jadi yang
+ * dilakukan justru sebaliknya: dibiarkan netral, dan kekurangan primitifnya
+ * dilaporkan sebagai calon issue (6 pemanggil memakai pola yang sama).
+ * Tindakannya tetap terbaca — `aria-label` dan ikon tong sampah.
+ */
 function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      onClick={onClick}
-      className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
-      aria-label={label}
-    >
-      <Trash2 className="h-4 w-4" aria-hidden="true" />
+    <Button type="button" variant="ghost" size="icon" onClick={onClick} aria-label={label}>
+      <DeleteOutlined aria-hidden="true" />
     </Button>
   );
 }
@@ -1093,46 +1252,79 @@ function RemoveButton({ onClick, label }: { onClick: () => void; label: string }
 function BalancePanel({
   totals,
   t,
+  token,
 }: {
   totals: { assets: number; liabilities: number; equity: number; unrated: number; hasAny: boolean };
   t: TranslateFn;
+  token: GlobalToken;
 }) {
+  const money = moneyPalette(token);
   const equityLabel = totals.equity >= 0 ? t("setup.equityCredit") : t("setup.equityDebit");
   return (
-    <div className="rounded-lg border border-border bg-muted p-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Figure label={t("setup.totalAssets")} value={totals.assets} />
-        <Figure label={t("setup.totalLiabilities")} value={totals.liabilities} />
-        <Figure label={equityLabel} value={Math.abs(totals.equity)} />
-      </div>
-      <div className="mt-3 border-t border-border pt-3 text-sm">
+    <div
+      style={{
+        padding: token.padding,
+        borderRadius: token.borderRadiusLG,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillQuaternary,
+      }}
+    >
+      <Row gutter={[token.marginSM, token.marginSM]}>
+        <Col xs={24} sm={8}>
+          <Figure label={t("setup.totalAssets")} value={totals.assets} token={token} />
+        </Col>
+        <Col xs={24} sm={8}>
+          <Figure label={t("setup.totalLiabilities")} value={totals.liabilities} token={token} />
+        </Col>
+        <Col xs={24} sm={8}>
+          <Figure label={equityLabel} value={Math.abs(totals.equity)} token={token} />
+        </Col>
+      </Row>
+      <div
+        style={{
+          marginTop: token.marginSM,
+          paddingTop: token.paddingSM,
+          borderTop: `1px solid ${token.colorBorderSecondary}`,
+        }}
+      >
+        {/* Ketiga keadaan membawa IKON + KALIMAT; warnanya penanda kedua. */}
         {totals.unrated > 0 ? (
-          <p className="flex items-center gap-2 text-warning-strong">
-            <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <Flex align="center" gap={token.marginXS} style={{ color: money.colorMoneyPending }}>
+            <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }} />
             <span>{t("setup.unratedWarning", { count: totals.unrated })}</span>
-          </p>
+          </Flex>
         ) : totals.hasAny ? (
-          <p className="flex items-center gap-2 text-success-strong">
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="tabular-nums">
+          <Flex align="center" gap={token.marginXS} style={{ color: money.colorMoneyPositive }}>
+            <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }} />
+            <span style={TABULAR}>
               {t("setup.balanced", { amount: formatCurrency(totals.assets, "IDR") })}
             </span>
-          </p>
+          </Flex>
         ) : (
-          <p className="text-muted-foreground">{t("setup.noBalancesYet")}</p>
+          <Text type="secondary">{t("setup.noBalancesYet")}</Text>
         )}
       </div>
     </div>
   );
 }
 
-function Figure({ label, value }: { label: string; value: number }) {
+function Figure({
+  label,
+  value,
+  token,
+}: {
+  label: string;
+  value: number;
+  token: GlobalToken;
+}) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">
+      <Text type="secondary" style={{ display: "block", fontSize: token.fontSizeSM }}>
+        {label}
+      </Text>
+      <Text strong style={{ display: "block", marginTop: 2, fontSize: token.fontSizeLG, ...TABULAR }}>
         {formatCurrency(value, "IDR")}
-      </p>
+      </Text>
     </div>
   );
 }

@@ -12,7 +12,7 @@
  */
 import { useState } from "react";
 import type { jsPDF } from "jspdf";
-import { Eye } from "lucide-react";
+import { EyeOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { DocumentPreview } from "@/components/shared/document-preview";
@@ -67,8 +67,11 @@ export function PdfDocumentButton({
 
   return (
     <>
+      {/* Jarak ikon–teks datang dari `iconGap` (= `marginXS`) milik `.ant-btn`,
+          yang sudah `display:inline-flex`. Ukurannya 16px dari primitif
+          `Button` sendiri. Karena itu ikonnya tidak lagi membawa kelas apa pun. */}
       <Button variant={variant} size="sm" onClick={openPreview} disabled={loading || disabled}>
-        <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
+        <EyeOutlined aria-hidden="true" />
         {loading ? t("pdf.preparing") : (label ?? t("pdf.previewAndPrint"))}
       </Button>
       {src && (

@@ -1,11 +1,32 @@
 "use client";
 
+/**
+ * Catat pembelian / pembayaran pemasok (issue #37).
+ * Dikonversi ke token Ant Design pada issue #196.
+ *
+ * Keduanya auto-posting:
+ *   purchase → D: Persediaan (+ D: PPN Masukan) / K: Hutang Usaha
+ *   payment  → D: Hutang Usaha / K: Kas & Bank
+ *
+ * Kulitnya saja yang berubah. Dua hal yang sengaja DIPERTAHANKAN karena
+ * keduanya membawa makna akuntansi, bukan gaya:
+ *
+ *  • **Arah uang tetap ikon + kata + warna.** "Menambah hutang" (panah naik,
+ *    merah) dan "Mengurangi hutang" (panah turun, hijau) memakai varian `…Text`
+ *    token, yang lolos ambang 4,5:1 untuk teks kecil — bukan `colorError`/
+ *    `colorSuccess` penuh, yang di ukuran itu gagal.
+ *  • **Nilai tanpa kurs ditulis dengan KATA.** Baris pembelian yang tak punya
+ *    nilai IDR tidak pernah dirender sebagai Rp 0.
+ */
+
 import { useCallback, useState } from "react";
+import { Alert, Col, Flex, Row, theme } from "antd";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
   CostCenterField,
@@ -15,13 +36,18 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
-import { ArrowDownLeft, ArrowUpRight, Link2, Plus } from "lucide-react";
+import { ArrowDownOutlined, ArrowUpOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 const BASE_CURRENCY = "IDR";
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
 const EPSILON = 0.005;
+
+/** Lebar isian nominal alokasi (`w-40` lama = 10rem). */
+const AMOUNT_INPUT_WIDTH = 160;
+/** Lebar maksimum catatan pembelian sebelum dipotong (`max-w-64` lama). */
+const NOTE_MAX_WIDTH = 256;
 
 /** An outstanding purchase offered to the allocation picker (issue #37). */
 interface OutstandingPurchase {
@@ -36,15 +62,11 @@ interface OutstandingPurchase {
   note: string | null;
 }
 
-/**
- * Records a supplier purchase or payment. Both auto-post:
- *   purchase → D: Persediaan (+ D: PPN Masukan) / K: Hutang Usaha
- *   payment  → D: Hutang Usaha / K: Kas & Bank
- */
 export function SupplierTransactionForm({ supplierId }: { supplierId: number }) {
   const router = useRouter();
   const { toast } = useToast();
   const t = useT();
+  const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -168,274 +190,437 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4 mr-1" /> {t("suppliers.addTransaction")}
+        <PlusOutlined aria-hidden="true" /> {t("suppliers.addTransaction")}
       </Button>
     );
   }
 
+  const half = { xs: 24, sm: 12 } as const;
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
+
+  /** Keterangan kecil di bawah sebuah isian. */
+  const hint = (text: string) => (
+    <p style={{ margin: 0, marginTop: token.marginXXS, color: token.colorTextSecondary }}>
+      <small>{text}</small>
+    </p>
+  );
+
   return (
-    <div className="rounded-lg border border-border bg-muted p-4 mt-4">
-      <h4 className="text-sm font-semibold text-foreground mb-3">{t("suppliers.txFormTitle")}</h4>
+    <div
+      style={{
+        marginTop: token.margin,
+        borderRadius: token.borderRadiusLG,
+        border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillQuaternary,
+        padding: token.padding,
+      }}
+    >
+      <h4 style={{ margin: 0, marginBottom: token.marginSM }}>{t("suppliers.txFormTitle")}</h4>
 
       {error && (
-        <div className="mb-3 rounded-md bg-destructive-soft p-2 text-xs text-destructive-strong" role="alert">
-          {error}
+        <div role="alert" style={{ marginBottom: token.marginSM }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Select
-            id="trx-type"
-            name="type"
-            label={t("suppliers.txTypeLabel")}
-            value={type}
-            onChange={(e) => handleTypeChange(e.target.value as "purchase" | "payment")}
-            options={[
-              { value: "purchase", label: t("suppliers.txTypePurchase") },
-              { value: "payment", label: t("suppliers.txTypePayment") },
-            ]}
-          />
-          {isPurchase ? (
-            <p className="mt-1 flex items-center gap-1 text-xs text-destructive-strong">
-              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{t("suppliers.txEffectPurchase")}</span>
+      <form onSubmit={handleSubmit}>
+        <Row gutter={[token.marginSM, token.marginSM]}>
+          <Col {...half}>
+            <Select
+              id="trx-type"
+              name="type"
+              label={t("suppliers.txTypeLabel")}
+              value={type}
+              onChange={(e) => handleTypeChange(e.target.value as "purchase" | "payment")}
+              options={[
+                { value: "purchase", label: t("suppliers.txTypePurchase") },
+                { value: "payment", label: t("suppliers.txTypePayment") },
+              ]}
+            />
+            {/* Arah uang: ikon + kata + warna, tak pernah warna saja. */}
+            <p
+              style={{
+                margin: 0,
+                marginTop: token.marginXXS,
+                display: "flex",
+                alignItems: "center",
+                gap: token.marginXXS,
+                color: isPurchase ? token.colorErrorText : token.colorSuccessText,
+              }}
+            >
+              {isPurchase ? (
+                <ArrowUpOutlined aria-hidden="true" />
+              ) : (
+                <ArrowDownOutlined aria-hidden="true" />
+              )}
+              <small>
+                {isPurchase ? t("suppliers.txEffectPurchase") : t("suppliers.txEffectPayment")}
+              </small>
             </p>
-          ) : (
-            <p className="mt-1 flex items-center gap-1 text-xs text-success-strong">
-              <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{t("suppliers.txEffectPayment")}</span>
-            </p>
-          )}
-        </div>
+          </Col>
 
-        <Input
-          id="trx-date"
-          name="date"
-          type="date"
-          label={t("common.date")}
-          defaultValue={new Date().toISOString().split("T")[0]}
-          required
-        />
-
-        {isPurchase && <DueDateField />}
-
-        <Input
-          id="trx-amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          min="0"
-          className="text-right tabular-nums"
-          label={isPurchase ? t("suppliers.txAmountPurchase") : t("suppliers.txAmountPayment")}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-
-        <Select
-          id="trx-currency"
-          name="currency"
-          label={t("common.currency")}
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          options={[
-            { value: "IDR", label: "IDR (Rupiah)" },
-            { value: "USD", label: "USD" },
-            { value: "CNY", label: "CNY" },
-          ]}
-        />
-
-        {isForeign && (
-          <div>
+          <Col {...half}>
             <Input
-              id="trx-rate"
-              name="rate"
-              type="number"
-              step="0.000001"
-              min="0"
-              className="text-right tabular-nums"
-              label={t("suppliers.txRateLabel", { currency })}
+              id="trx-date"
+              name="date"
+              type="date"
+              label={t("common.date")}
+              defaultValue={new Date().toISOString().split("T")[0]}
               required
             />
-            <p className="mt-1 text-xs text-muted-foreground">{t("common.rateRequiredHint")}</p>
-          </div>
-        )}
+          </Col>
 
-        {isPurchase && (
-          <div>
+          {isPurchase && (
+            <Col {...half}>
+              <DueDateField />
+            </Col>
+          )}
+
+          <Col {...half}>
             <Input
-              id="trx-tax"
-              name="taxAmount"
+              id="trx-amount"
+              name="amount"
               type="number"
               step="0.01"
               min="0"
-              className="text-right tabular-nums"
-              label={t("suppliers.txInputVat")}
-              defaultValue="0"
+              style={numberStyle}
+              label={isPurchase ? t("suppliers.txAmountPurchase") : t("suppliers.txAmountPayment")}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
             />
-            <p className="mt-1 text-xs text-muted-foreground">{t("suppliers.txInputVatHint")}</p>
-          </div>
-        )}
+          </Col>
 
-        <CostCenterField
-          className="sm:col-span-2"
-          costCenters={costCenters}
-          value={costCenterId}
-          onChange={setCostCenterId}
-        />
+          <Col {...half}>
+            <Select
+              id="trx-currency"
+              name="currency"
+              label={t("common.currency")}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              options={[
+                { value: "IDR", label: "IDR (Rupiah)" },
+                { value: "USD", label: "USD" },
+                { value: "CNY", label: "CNY" },
+              ]}
+            />
+          </Col>
 
-        {!isPurchase && (
-          <fieldset className="sm:col-span-2 rounded-lg border border-border bg-card p-3">
-            <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-foreground">
-              <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {t("suppliers.txAllocLegend")}
-            </legend>
+          {isForeign && (
+            <Col {...half}>
+              <Input
+                id="trx-rate"
+                name="rate"
+                type="number"
+                step="0.000001"
+                min="0"
+                style={numberStyle}
+                label={t("suppliers.txRateLabel", { currency })}
+                required
+              />
+              {hint(t("common.rateRequiredHint"))}
+            </Col>
+          )}
 
-            <p className="mb-3 text-xs text-muted-foreground">
-              {t("suppliers.txAllocHintA")} <strong>{t("suppliers.txAllocHintStrong")}</strong>{" "}
-              {t("suppliers.txAllocHintB")}
-            </p>
+          {isPurchase && (
+            <Col {...half}>
+              <Input
+                id="trx-tax"
+                name="taxAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                style={numberStyle}
+                label={t("suppliers.txInputVat")}
+                defaultValue="0"
+              />
+              {hint(t("suppliers.txInputVatHint"))}
+            </Col>
+          )}
 
-            {loadingPurchases ? (
-              <p className="text-xs text-muted-foreground">{t("suppliers.allocLoading")}</p>
-            ) : purchasesError ? (
-              <p className="text-xs text-destructive-strong" role="alert">
-                {t("suppliers.allocLoadFailed")}
-              </p>
-            ) : purchases.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t("suppliers.txNoOutstanding")}</p>
-            ) : (
-              <ul className="space-y-2">
-                {purchases.map((p) => {
-                  const checked = alloc[p.id] !== undefined;
-                  const noRate = p.remainingBase == null;
-                  return (
-                    <li
-                      key={p.id}
-                      className="rounded-md border border-border p-2.5 transition-colors duration-150 hover:border-border"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <label className="flex cursor-pointer items-start gap-2 text-sm">
-                          <Checkbox
-                            className="mt-1"
-                            checked={checked}
-                            disabled={noRate}
-                            onCheckedChange={(v) =>
-                              setAlloc((prev) => {
-                                const next = { ...prev };
-                                if (v === true) {
-                                  // Default to clearing the document in full when
-                                  // the payment is in IDR — capped at the payment
-                                  // amount, like the allocation editor; otherwise
-                                  // leave blank rather than guess across
-                                  // currencies.
-                                  const paymentAmount = Number(amount);
-                                  next[p.id] =
-                                    !isForeign && p.remainingBase != null
-                                      ? String(
-                                          paymentAmount > 0
-                                            ? Math.min(p.remainingBase, paymentAmount)
-                                            : p.remainingBase
-                                        )
-                                      : "";
-                                } else delete next[p.id];
-                                return next;
-                              })
-                            }
-                          />
-                          <span>
-                            <span className="font-medium text-foreground">TRX-{p.id}</span>
-                            <span className="block text-xs text-muted-foreground tabular-nums">
-                              {formatDateShort(p.date)}
-                              {p.dueDate && (
-                                <>
-                                  {" · "}
-                                  {t("suppliers.dueShort", { date: formatDateShort(p.dueDate) })}
-                                </>
-                              )}
-                            </span>
-                            {p.note && (
-                              <span className="block max-w-64 truncate text-xs text-muted-foreground">
-                                {p.note}
-                              </span>
-                            )}
-                          </span>
-                        </label>
+          <Col span={24}>
+            <CostCenterField
+              costCenters={costCenters}
+              value={costCenterId}
+              onChange={setCostCenterId}
+            />
+          </Col>
 
-                        <div className="text-right">
-                          <span className="block text-xs text-muted-foreground">
-                            {t("suppliers.outstandingDebt")}
-                          </span>
-                          <span className="block text-sm font-medium text-foreground tabular-nums">
-                            {noRate
-                              ? t("common.rateMissing")
-                              : formatCurrency(p.remainingBase!, "IDR")}
-                          </span>
-                          <span className="block text-xs text-muted-foreground tabular-nums">
-                            {t("suppliers.lineValue", {
-                              amount: formatCurrency(p.amount, p.currency),
-                            })}
-                          </span>
-                        </div>
-                      </div>
+          {!isPurchase && (
+            <Col span={24}>
+              <fieldset
+                style={{
+                  borderRadius: token.borderRadiusLG,
+                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                  background: token.colorBgContainer,
+                  padding: token.paddingSM,
+                }}
+              >
+                <legend
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: token.marginXXS,
+                    paddingInline: token.paddingXXS,
+                    fontWeight: token.fontWeightStrong,
+                  }}
+                >
+                  <LinkOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
+                  {t("suppliers.txAllocLegend")}
+                </legend>
 
-                      {noRate && (
-                        <p className="mt-1.5 text-xs text-warning-strong">
-                          {t("suppliers.noRateLine")}
-                        </p>
-                      )}
+                <p
+                  style={{
+                    margin: 0,
+                    marginBottom: token.marginSM,
+                    color: token.colorTextSecondary,
+                  }}
+                >
+                  <small>
+                    {t("suppliers.txAllocHintA")} <strong>{t("suppliers.txAllocHintStrong")}</strong>{" "}
+                    {t("suppliers.txAllocHintB")}
+                  </small>
+                </p>
 
-                      {checked && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <label
-                            htmlFor={`alloc-${p.id}`}
-                            className="text-xs text-muted-foreground whitespace-nowrap"
+                {loadingPurchases ? (
+                  <p style={{ margin: 0, color: token.colorTextSecondary }}>
+                    <small>{t("suppliers.allocLoading")}</small>
+                  </p>
+                ) : purchasesError ? (
+                  <div role="alert">
+                    <Alert type="error" showIcon message={t("suppliers.allocLoadFailed")} />
+                  </div>
+                ) : purchases.length === 0 ? (
+                  <p style={{ margin: 0, color: token.colorTextSecondary }}>
+                    <small>{t("suppliers.txNoOutstanding")}</small>
+                  </p>
+                ) : (
+                  <Flex
+                    vertical
+                    gap={token.marginXS}
+                    component="ul"
+                    style={{ margin: 0, padding: 0, listStyle: "none" }}
+                  >
+                    {purchases.map((p) => {
+                      const checked = alloc[p.id] !== undefined;
+                      const noRate = p.remainingBase == null;
+                      return (
+                        <li
+                          key={p.id}
+                          style={{
+                            borderRadius: token.borderRadius,
+                            border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                            padding: token.paddingXS,
+                          }}
+                        >
+                          <Flex
+                            wrap
+                            align="flex-start"
+                            justify="space-between"
+                            gap={token.marginXS}
                           >
-                            {t("suppliers.paidIn", { currency })}
-                          </label>
-                          <TextInput
-                            id={`alloc-${p.id}`}
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={alloc[p.id]}
-                            onChange={(e) =>
-                              setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
-                            }
-                            className="w-40 text-right tabular-nums"
-                          />
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                            <label
+                              style={{
+                                display: "flex",
+                                cursor: "pointer",
+                                alignItems: "flex-start",
+                                gap: token.marginXS,
+                              }}
+                            >
+                              <Checkbox
+                                style={{ marginTop: token.marginXXS }}
+                                checked={checked}
+                                disabled={noRate}
+                                onCheckedChange={(v) =>
+                                  setAlloc((prev) => {
+                                    const next = { ...prev };
+                                    if (v === true) {
+                                      // Default to clearing the document in full
+                                      // when the payment is in IDR — capped at the
+                                      // payment amount, like the allocation editor;
+                                      // otherwise leave blank rather than guess
+                                      // across currencies.
+                                      const paymentAmount = Number(amount);
+                                      next[p.id] =
+                                        !isForeign && p.remainingBase != null
+                                          ? String(
+                                              paymentAmount > 0
+                                                ? Math.min(p.remainingBase, paymentAmount)
+                                                : p.remainingBase
+                                            )
+                                          : "";
+                                    } else delete next[p.id];
+                                    return next;
+                                  })
+                                }
+                              />
+                              <span>
+                                <span style={{ fontWeight: token.fontWeightStrong }}>
+                                  TRX-{p.id}
+                                </span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    color: token.colorTextSecondary,
+                                    fontVariantNumeric: "tabular-nums",
+                                  }}
+                                >
+                                  <small>
+                                    {formatDateShort(p.date)}
+                                    {p.dueDate && (
+                                      <>
+                                        {" · "}
+                                        {t("suppliers.dueShort", {
+                                          date: formatDateShort(p.dueDate),
+                                        })}
+                                      </>
+                                    )}
+                                  </small>
+                                </span>
+                                {p.note && (
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      maxWidth: NOTE_MAX_WIDTH,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      color: token.colorTextSecondary,
+                                    }}
+                                    title={p.note}
+                                  >
+                                    <small>{p.note}</small>
+                                  </span>
+                                )}
+                              </span>
+                            </label>
 
-            {allocEntries.length > 0 && (
-              <p className="mt-3 flex justify-between border-t border-border pt-2 text-xs">
-                <span className="text-muted-foreground">{t("suppliers.totalAllocated")}</span>
-                <span className="font-medium text-foreground tabular-nums">
-                  {formatCurrency(allocTotal, currency)}
-                </span>
-              </p>
-            )}
-          </fieldset>
-        )}
+                            <div style={{ textAlign: "right" }}>
+                              <span style={{ display: "block", color: token.colorTextSecondary }}>
+                                <small>{t("suppliers.outstandingDebt")}</small>
+                              </span>
+                              <span
+                                style={{
+                                  display: "block",
+                                  fontWeight: token.fontWeightStrong,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                {noRate
+                                  ? t("common.rateMissing")
+                                  : formatCurrency(p.remainingBase!, "IDR")}
+                              </span>
+                              <span
+                                style={{
+                                  display: "block",
+                                  color: token.colorTextSecondary,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                <small>
+                                  {t("suppliers.lineValue", {
+                                    amount: formatCurrency(p.amount, p.currency),
+                                  })}
+                                </small>
+                              </span>
+                            </div>
+                          </Flex>
 
-        <div className="sm:col-span-2">
-          <Input id="trx-note" name="note" label={t("common.notesOptional")} />
-        </div>
+                          {noRate && (
+                            <p
+                              style={{
+                                margin: 0,
+                                marginTop: token.marginXXS,
+                                color: token.colorWarningText,
+                              }}
+                            >
+                              <small>{t("suppliers.noRateLine")}</small>
+                            </p>
+                          )}
 
-        <div className="sm:col-span-2 flex gap-2">
-          <Button type="submit" size="sm" disabled={loading}>
-            {loading ? t("common.saving") : t("suppliers.txSubmit")}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            {t("common.cancel")}
-          </Button>
-        </div>
+                          {checked && (
+                            <Flex
+                              align="center"
+                              gap={token.marginXS}
+                              style={{ marginTop: token.marginXS }}
+                            >
+                              <Label htmlFor={`alloc-${p.id}`}>
+                                <small
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    color: token.colorTextSecondary,
+                                  }}
+                                >
+                                  {t("suppliers.paidIn", { currency })}
+                                </small>
+                              </Label>
+                              <TextInput
+                                id={`alloc-${p.id}`}
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={alloc[p.id]}
+                                onChange={(e) =>
+                                  setAlloc((prev) => ({ ...prev, [p.id]: e.target.value }))
+                                }
+                                style={{
+                                  width: AMOUNT_INPUT_WIDTH,
+                                  textAlign: "right",
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              />
+                            </Flex>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </Flex>
+                )}
+
+                {allocEntries.length > 0 && (
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: token.marginSM,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: token.marginXS,
+                      borderTop: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
+                      paddingTop: token.paddingXS,
+                    }}
+                  >
+                    <span style={{ color: token.colorTextSecondary }}>
+                      <small>{t("suppliers.totalAllocated")}</small>
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: token.fontWeightStrong,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      <small>{formatCurrency(allocTotal, currency)}</small>
+                    </span>
+                  </p>
+                )}
+              </fieldset>
+            </Col>
+          )}
+
+          <Col span={24}>
+            <Input id="trx-note" name="note" label={t("common.notesOptional")} />
+          </Col>
+
+          <Col span={24}>
+            <Flex wrap gap={token.marginXS}>
+              <Button type="submit" size="sm" disabled={loading}>
+                {loading ? t("common.saving") : t("suppliers.txSubmit")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+            </Flex>
+          </Col>
+        </Row>
       </form>
     </div>
   );

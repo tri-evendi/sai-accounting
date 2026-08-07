@@ -26,6 +26,30 @@ function formatDateTime(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
+/*
+ * Warna di berkas ini memakai variabel token AntD `var(--ant-…)` (#203). Konsol
+ * operator memang tidak menggambar satu pun komponen AntD di atas isinya, tapi
+ * itu tidak lagi jadi penghalang: sejak #227 kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, jadi variabelnya teratasi di seluruh dokumen —
+ * sementara token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css`
+ * oleh #203. Formulirnya sendiri (`MailSettingsForm`) adalah komponen client dan
+ * mewarnai dirinya.
+ */
+const H1: React.CSSProperties = {
+  margin: 0,
+  fontSize: 24,
+  fontWeight: 700,
+  letterSpacing: "-0.025em",
+  color: "var(--ant-color-text)",
+};
+
+const LEAD: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.625,
+  color: "var(--ant-color-text-secondary)",
+};
+
 export default async function OperatorMailPage() {
   await requireOperatorPage();
   const t = await getT();
@@ -47,14 +71,10 @@ export default async function OperatorMailPage() {
   const settings = data.settings;
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {t("operator.mail.heading")}
-        </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("operator.mail.description")}
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <h1 style={H1}>{t("operator.mail.heading")}</h1>
+        <p style={LEAD}>{t("operator.mail.description")}</p>
       </div>
 
       <MailSettingsForm

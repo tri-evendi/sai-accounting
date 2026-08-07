@@ -10,8 +10,9 @@
  * assume a blank field means "not overdue".
  */
 
+import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
-import { CalendarClock } from "lucide-react";
+import { CalendarOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 
 interface DueDateFieldProps {
@@ -23,6 +24,7 @@ interface DueDateFieldProps {
 
 export function DueDateField({ defaultValue, value, onChange }: DueDateFieldProps) {
   const t = useT();
+  const { token } = theme.useToken();
   return (
     <div>
       <Input
@@ -34,10 +36,20 @@ export function DueDateField({ defaultValue, value, onChange }: DueDateFieldProp
         value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       />
-      <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
-        <CalendarClock className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>{t("dueDate.hint")}</span>
-      </p>
+      {/* Kalimat bantuan berikon — bentuk yang sama dipakai `cost-center-field`,
+          `invoice-fx-fields`, dan `consignee-select`. Jaraknya token
+          (`marginXXS`), ukurannya `fontSizeSM`, warnanya `type="secondary"`
+          (rgba(0,0,0,0.65) = 6,98:1, lolos AA meski 12px). */}
+      <Flex
+        align="flex-start"
+        gap={token.marginXXS}
+        style={{ marginTop: token.marginXXS }}
+      >
+        <CalendarOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0 }} />
+        <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+          {t("dueDate.hint")}
+        </Typography.Text>
+      </Flex>
     </div>
   );
 }

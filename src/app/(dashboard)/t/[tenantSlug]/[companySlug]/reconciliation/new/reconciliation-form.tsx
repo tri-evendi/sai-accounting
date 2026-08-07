@@ -1,19 +1,27 @@
 "use client";
 
+/**
+ * Rekonsiliasi baru — periode & saldo awal/akhir rekening koran (issue #24).
+ *
+ * Dikonversi ke token Ant Design pada issue #197: kulitnya saja. Muatan POST
+ * dan penanganan galat servernya tidak disentuh.
+ */
 import { useState } from "react";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { Info } from "lucide-react";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 export function NewReconciliationForm() {
   const router = useAppRouter();
   const t = useT();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -53,9 +61,11 @@ export function NewReconciliationForm() {
   }
 
   const today = new Date().toISOString().split("T")[0];
+  /** Saldo adalah nominal — rata kanan + tabular-nums, seperti kolom uang. */
+  const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("reconciliation.title"), href: "/reconciliation" },
@@ -66,77 +76,101 @@ export function NewReconciliationForm() {
       />
 
       {error && (
-        <div className="mb-4 rounded-md bg-destructive-soft p-3 text-sm text-destructive-strong" role="alert">
-          {error}
+        <div role="alert" style={{ marginBottom: token.margin }}>
+          <Alert type="error" showIcon message={error} />
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
+        <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("reconciliation.accountPeriodTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                id="currency"
-                name="currency"
-                label={t("reconciliation.currencyField")}
-                defaultValue="IDR"
-                options={[
-                  { value: "IDR", label: t("reconciliation.currencyIdrOption") },
-                  { value: "USD", label: "USD" },
-                  { value: "CNY", label: "CNY" },
-                ]}
-              />
-              <div className="flex items-end">
-                <p className="flex items-start gap-1 text-xs text-muted-foreground">
-                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{t("reconciliation.oneAccountHint")}</span>
-                </p>
-              </div>
+            <Row gutter={[token.margin, token.margin]}>
+              <Col xs={24} sm={12}>
+                <Select
+                  id="currency"
+                  name="currency"
+                  label={t("reconciliation.currencyField")}
+                  defaultValue="IDR"
+                  options={[
+                    { value: "IDR", label: t("reconciliation.currencyIdrOption") },
+                    { value: "USD", label: "USD" },
+                    { value: "CNY", label: "CNY" },
+                  ]}
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Flex align="flex-end" style={{ height: "100%" }}>
+                  <Flex align="flex-start" gap={token.marginXXS}>
+                    <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0, marginTop: 2 }} />
+                    <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                      {t("reconciliation.oneAccountHint")}
+                    </Typography.Text>
+                  </Flex>
+                </Flex>
+              </Col>
 
-              <Input id="periodStart" name="periodStart" type="date" label={t("reconciliation.periodStart")} defaultValue={today} required />
-              <Input id="periodEnd" name="periodEnd" type="date" label={t("reconciliation.periodEnd")} defaultValue={today} required />
+              <Col xs={24} sm={12}>
+                <Input
+                  id="periodStart"
+                  name="periodStart"
+                  type="date"
+                  label={t("reconciliation.periodStart")}
+                  defaultValue={today}
+                  required
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input
+                  id="periodEnd"
+                  name="periodEnd"
+                  type="date"
+                  label={t("reconciliation.periodEnd")}
+                  defaultValue={today}
+                  required
+                />
+              </Col>
 
-              <div>
+              <Col xs={24} sm={12}>
                 <Input
                   id="openingBalance"
                   name="openingBalance"
                   type="number"
                   step="0.01"
-                  className="text-right tabular-nums"
+                  style={numberStyle}
                   label={t("reconciliation.openingField")}
                   defaultValue="0"
                 />
-              </div>
-              <div>
+              </Col>
+              <Col xs={24} sm={12}>
                 <Input
                   id="closingBalance"
                   name="closingBalance"
                   type="number"
                   step="0.01"
-                  className="text-right tabular-nums"
+                  style={numberStyle}
                   label={t("reconciliation.closingField")}
                   defaultValue="0"
                 />
-              </div>
+              </Col>
 
-              <div className="sm:col-span-2">
+              <Col xs={24}>
                 <Input id="note" name="note" label={t("common.notesOptional")} />
-              </div>
-            </div>
+              </Col>
+            </Row>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <Flex wrap gap={token.marginSM}>
           <Button type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("reconciliation.submitNew")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/reconciliation")}>
             {t("common.cancel")}
           </Button>
-        </div>
+        </Flex>
       </form>
     </div>
   );

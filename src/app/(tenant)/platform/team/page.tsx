@@ -16,8 +16,7 @@
  * bagi pemilik yang baru saja mendaftar.
  */
 import Link from "next/link";
-import { Mail, Users } from "lucide-react";
-
+import { MailOutlined, TeamOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,6 +27,13 @@ import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
 
 export const dynamic = "force-dynamic";
+
+/** Pengganti `grid gap-3 sm:grid-cols-2` — satu kolom di layar sempit. */
+const DOORS_GRID: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+};
 
 export default async function PlatformTeamPage() {
   const { user, tenant } = await requireTenantPagePermission("tenant.member.invite");
@@ -50,26 +56,33 @@ export default async function PlatformTeamPage() {
         <CardContent>
           {companies.length === 0 ? (
             <EmptyState
-              icon={<Users className="h-12 w-12" />}
+              icon={<TeamOutlined style={{ fontSize: 48 }} />}
               title={t("auth.selectCompany.noCompanyYetHeading")}
               description={t("auth.selectCompany.noCompanyYetBody")}
               actionLabel={t("companies.newTitle")}
               actionHref="/companies/new"
             />
           ) : (
-            /* Satu pintu per PT dalam kisi — bukan setumpuk tombol selebar
-               kartu yang tingginya tumbuh seiring jumlah perusahaan. */
-            <div className="grid gap-3 sm:grid-cols-2">
+            /* Satu pintu per PT dalam kisi yang membagi lebarnya sendiri —
+               bukan setumpuk tombol selebar kartu yang tingginya tumbuh
+               seiring jumlah perusahaan, dan tanpa satu pun media query. */
+            <div style={DOORS_GRID}>
               {companies.map((company) => (
                 <Button
                   key={company.companyId}
                   asChild
                   variant="outline"
-                  className="w-full justify-start"
+                  style={{ width: "100%", justifyContent: "flex-start" }}
                 >
                   <Link href={tenantPath(tenant.tenantSlug, company.slug, "/users")}>
-                    <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
+                    <MailOutlined aria-hidden="true" />
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {t("platform.inviteTo", { company: company.name })}
                     </span>
                   </Link>

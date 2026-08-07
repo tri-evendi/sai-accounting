@@ -25,13 +25,24 @@
  * akan membuat pembaca layar membacakan "menerapkan skema 12 dari 43" tanpa
  * henti dan menutupi segalanya. Yang diumumkan hanya PERPINDAHAN TAHAP, lewat
  * satu baris status terpisah.
+ *
+ * ── Setelah AntD (issue #200) ────────────────────────────────────────────
+ * Warna ikon tahap datang dari token uang (#186), bukan `colorSuccess`/
+ * `colorError` bawaan: keduanya dipakai berdampingan dengan TEKS tahapnya, dan
+ * status tahap tidak pernah disampaikan warna saja — ikonnya berbeda bentuk
+ * (centang / segitiga / lingkaran / pemutar) dan barisnya berbunyi lewat
+ * `ProvisionAnnouncer`.
  */
 
-import { CheckCircle2, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
-
+import { Flex, Typography, theme } from "antd";
+import type { GlobalToken } from "antd";
+import { CheckCircleOutlined, ClockCircleOutlined, LoadingOutlined, WarningOutlined } from "@ant-design/icons";
 import { Progress } from "@/components/ui/progress";
 import { useT } from "@/lib/i18n/client";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
 import type { ProvisionPhase } from "@/lib/company-provisioning-shared";
+
+const { Text } = Typography;
 
 /** Tahap yang dilalui, berurutan. `done` bukan tahap — ia keadaan akhir. */
 export const PROVISION_STEPS = [
@@ -55,6 +66,27 @@ export interface ProvisionState {
   failed?: boolean;
 }
 
+/**
+ * Pengganti `animate-spin` + `motion-reduce:animate-none`: aturan CSS
+ * ber-`href` + `precedence` (React 19 meniadakan gandanya) yang menyasar
+ * atribut `data-spin`, bukan kelas. Gaya sebaris tidak bisa membawa media
+ * query, dan `prefers-reduced-motion` adalah media query.
+ *
+ * `[data-spin][data-spin]` di aturan reduced-motion **bukan salah ketik.**
+ * Sejak ikonnya `LoadingOutlined` (#201), AntD sendiri memasang
+ * `.anticon-spin{animation:loadingCircle …}` pada span yang sama, dengan
+ * kekhususan yang PERSIS sama seperti `[data-spin]` — jadi yang menang cuma
+ * urutan penyisipan `<style>`, dan urutan itu tidak kita kendalikan. Selektor
+ * yang digandakan menaikkan kekhususannya satu tingkat sehingga sakelar
+ * matinya selalu menang; tanpa itu, pengguna yang meminta gerak minimum tetap
+ * melihat ikon berputar di sebagian render.
+ */
+export const SPIN_RULE = `
+[data-spin]{animation:sai-spin 1s linear infinite}
+@keyframes sai-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){[data-spin][data-spin]{animation:none}}
+`;
+
 function statusOf(phase: ProvisionPhase, state: ProvisionState): StepStatus {
   if (state.completed.has(phase)) return "done";
   if (state.current === phase) return state.failed ? "error" : "active";
@@ -63,6 +95,7 @@ function statusOf(phase: ProvisionPhase, state: ProvisionState): StepStatus {
 
 export function ProvisionProgress({ state }: { state: ProvisionState }) {
   const t = useT();
+  const { token } = theme.useToken();
 
   const labels: Record<(typeof PROVISION_STEPS)[number], string> = {
     validate: t("companies.stepValidate"),
@@ -72,64 +105,118 @@ export function ProvisionProgress({ state }: { state: ProvisionState }) {
   };
 
   const doneCount = PROVISION_STEPS.filter((p) => state.completed.has(p)).length;
+  const money = moneyPalette(token);
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium text-foreground">{t("companies.progressTitle")}</p>
+    <Flex
+      vertical
+      gap={token.marginSM}
+      style={{
+        padding: token.padding,
+        borderRadius: token.borderRadiusLG,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillQuaternary,
+      }}
+    >
+      <style href="sai-spin" precedence="default">
+        {SPIN_RULE}
+      </style>
+
+      <Flex align="baseline" justify="space-between" gap={token.marginSM}>
+        <Text strong>{t("companies.progressTitle")}</Text>
         {/* Angka rata & tabular (MASTER.md) — hitungan yang melompat lebarnya
             membuat seluruh baris ikut bergeser tiap kali bertambah. */}
-        <p className="text-sm tabular-nums text-muted-foreground">
+        <Text type="secondary" style={{ fontVariantNumeric: "tabular-nums" }}>
           {doneCount}/{PROVISION_STEPS.length}
-        </p>
-      </div>
+        </Text>
+      </Flex>
 
-      <ol aria-live="off" className="space-y-2.5">
+      <Flex
+        component="ol"
+        vertical
+        gap={10}
+        aria-live="off"
+        style={{ listStyle: "none", margin: 0, padding: 0 }}
+      >
         {PROVISION_STEPS.map((phase) => {
           const status = statusOf(phase, state);
-          const showBar = phase === "migrate" && status === "active" && state.migrateProgress != null;
+          const showBar =
+            phase === "migrate" && status === "active" && state.migrateProgress != null;
 
           return (
-            <li key={phase} className="flex items-start gap-2.5 text-sm">
-              <StepIcon status={status} />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <p
-                  className={
-                    status === "error"
-                      ? "text-destructive-strong"
-                      : status === "pending"
-                        ? "text-muted-foreground"
-                        : "text-foreground"
+            <li
+              key={phase}
+              style={{ display: "flex", alignItems: "flex-start", gap: 10 }}
+            >
+              <StepIcon status={status} token={token} />
+              <Flex vertical gap={6} style={{ minWidth: 0, flex: 1 }}>
+                <Text
+                  type={status === "pending" ? "secondary" : undefined}
+                  style={
+                    status === "error" ? { color: money.colorMoneyNegative } : undefined
                   }
                 >
                   {labels[phase]}
-                  {phase === "migrate" && state.migrateProgress != null && status !== "pending" && (
-                    <span className="ml-1.5 tabular-nums text-muted-foreground">
-                      {Math.round(state.migrateProgress * 100)}%
-                    </span>
-                  )}
-                </p>
+                  {phase === "migrate" &&
+                    state.migrateProgress != null &&
+                    status !== "pending" && (
+                      <Text
+                        type="secondary"
+                        style={{
+                          marginInlineStart: token.marginXXS,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {Math.round(state.migrateProgress * 100)}%
+                      </Text>
+                    )}
+                </Text>
 
                 {showBar && (
                   <>
                     <Progress value={state.migrateProgress!} label={labels.migrate} />
                     {state.detail && (
-                      // `block` + `truncate`: nama migration bisa panjang, dan
-                      // di 375px ia harus memendek — bukan menggeser tata letak.
-                      <span className="block truncate font-mono text-xs text-muted-foreground">
+                      // Nama migration bisa panjang, dan di 375px ia harus
+                      // memendek — bukan menggeser tata letak.
+                      <Text
+                        type="secondary"
+                        ellipsis
+                        style={{
+                          display: "block",
+                          fontFamily: "monospace",
+                          fontSize: token.fontSizeSM,
+                        }}
+                      >
                         {state.detail}
-                      </span>
+                      </Text>
                     )}
                   </>
                 )}
-              </div>
+              </Flex>
             </li>
           );
         })}
-      </ol>
-    </div>
+      </Flex>
+    </Flex>
   );
 }
+
+/**
+ * Teks khusus pembaca layar — pengganti utilitas `sr-only` yang hilang bersama
+ * kelas Tailwind. Bukan `display:none`: itu justru mengeluarkannya dari pohon
+ * aksesibilitas, kebalikan dari yang dibutuhkan.
+ */
+const SR_ONLY: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
 
 /**
  * Satu-satunya bagian yang DIUMUMKAN. Terpisah dari daftar supaya perpindahan
@@ -137,24 +224,29 @@ export function ProvisionProgress({ state }: { state: ProvisionState }) {
  */
 export function ProvisionAnnouncer({ message }: { message: string | null }) {
   return (
-    <p role="status" aria-live="polite" className="sr-only">
+    <p role="status" aria-live="polite" style={SR_ONLY}>
       {message ?? ""}
     </p>
   );
 }
 
-function StepIcon({ status }: { status: StepStatus }) {
-  const base = "mt-0.5 h-4 w-4 shrink-0";
+function StepIcon({ status, token }: { status: StepStatus; token: GlobalToken }) {
+  const money = moneyPalette(token);
+  const base: React.CSSProperties = { marginTop: 2, flexShrink: 0 };
+
   if (status === "done")
-    return <CheckCircle2 className={`${base} text-success`} aria-hidden="true" />;
+    return (
+      <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: money.colorMoneyPositive }} />
+    );
   if (status === "error")
-    return <TriangleAlert className={`${base} text-destructive`} aria-hidden="true" />;
+    return (
+      <WarningOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: money.colorMoneyNegative }} />
+    );
   if (status === "active")
     return (
-      <Loader2
-        className={`${base} animate-spin text-primary motion-reduce:animate-none`}
-        aria-hidden="true"
-      />
+      <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: 16, ...base, color: token.colorPrimary }} />
     );
-  return <CircleDashed className={`${base} text-muted-foreground`} aria-hidden="true" />;
+  return (
+    <ClockCircleOutlined aria-hidden="true" style={{ fontSize: 16, ...base, color: token.colorTextSecondary }} />
+  );
 }

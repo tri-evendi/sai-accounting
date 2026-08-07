@@ -5,11 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Tags } from "lucide-react";
+import { TagsOutlined } from "@ant-design/icons";
 import { AssetForm } from "./asset-form";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
+
+/** Ikon keadaan kosong — `h-12 w-12` lama. */
+const EMPTY_ICON_SIZE = 48;
 
 export default async function NewFixedAssetPage({
   params,
@@ -30,7 +33,7 @@ export default async function NewFixedAssetPage({
 
   if (categories.length === 0) {
     return (
-      <div className="w-full">
+      <div>
         <PageHeader
           breadcrumbs={[
             { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
@@ -39,7 +42,7 @@ export default async function NewFixedAssetPage({
           title={t("fixedAssets.newTitle")}
         />
         <EmptyState
-          icon={<Tags className="h-12 w-12" />}
+          icon={<TagsOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
           title={t("fixedAssets.noCategoryTitle")}
           description={t("fixedAssets.noCategoryFormDescription")}
           actionLabel={t("fixedAssets.createCategory")}
@@ -54,7 +57,7 @@ export default async function NewFixedAssetPage({
   const expenseAccounts = accounts.filter((a) => a.type === "expense" || a.type === "other_expense");
 
   return (
-    <div className="w-full">
+    <div>
       <PageHeader
         breadcrumbs={[
           { label: t("nav.items.fixedAssets"), href: "/fixed-assets" },
@@ -64,7 +67,14 @@ export default async function NewFixedAssetPage({
         description={
           <>
             {t("fixedAssets.newDescriptionBefore")}{" "}
-            <Link href="/fixed-assets/categories" className="text-primary hover:underline">
+            {/* Tautan ini hidup DI DALAM `PageHeader`, yaitu di dalam pohon
+                komponen AntD — jadi `--ant-color-link` teratasi di sini. Di
+                luar pohon itu ia jatuh diam-diam ke warisan (lihat kepala
+                `shared/aging.tsx`). */}
+            <Link
+              href="/fixed-assets/categories"
+              style={{ color: "var(--ant-color-link)" }}
+            >
               {t("fixedAssets.manageCategories")}
             </Link>
             {t("common.fullStop")}

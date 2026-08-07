@@ -21,8 +21,9 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
-import { Check, KeyRound } from "lucide-react";
-
+import { Flex, Typography, theme } from "antd";
+import type { GlobalToken } from "antd";
+import { CheckOutlined, KeyOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,9 +37,33 @@ import {
 import { PasswordField } from "@/components/ui/password-input";
 import { changePasswordSchema, type ChangePasswordInput } from "@/lib/validations/auth";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
+import { moneyPalette } from "@/lib/theme/antd-tokens";
+
+const { Text } = Typography;
 
 const MIN_LENGTH = 8;
+
+/** Diameter penanda syarat — bekas `h-4 w-4`, tetap di bawah target sentuh
+ *  karena ia penanda status, bukan kendali. */
+const MARK_SIZE = 16;
+
+/**
+ * Teks khusus pembaca layar — pengganti utilitas `sr-only` yang hilang bersama
+ * kelas Tailwind. Bukan `display:none` dan bukan `visibility:hidden`: keduanya
+ * membuat teksnya ikut hilang dari pohon aksesibilitas, yang justru kebalikan
+ * dari yang dibutuhkan di sini.
+ */
+const SR_ONLY: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
 
 /**
  * Daftar syarat yang hidup.
@@ -47,20 +72,27 @@ const MIN_LENGTH = 8;
  * lapisan yang menjawab pertanyaan berbeda: "apa yang masih kurang", DI SAAT
  * mengetik, bukan "apa yang salah" setelah menekan tombol. Statusnya tidak
  * pernah disampaikan lewat warna saja (MASTER.md §Anti-Patterns): ikonnya
- * berganti antara centang dan titik, dan tiap baris membawa teks status
- * khusus pembaca layar.
+ * berganti antara centang dan lingkaran kosong, dan tiap baris membawa teks
+ * status khusus pembaca layar.
+ *
+ * Warna "terpenuhi" memakai token uang positif, bukan `colorSuccess` bawaan:
+ * ini TEKS 14px, dan `colorSuccess` gagal 4,5:1 di tema terang.
  */
 function RequirementList({
   currentPassword,
   newPassword,
   confirmPassword,
   t,
+  token,
 }: {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
   t: TranslateFn;
+  token: GlobalToken;
 }) {
+  const met = moneyPalette(token).colorMoneyPositive;
+
   const rules = [
     {
       key: "length",
@@ -80,27 +112,47 @@ function RequirementList({
   ];
 
   return (
-    <ul className="space-y-2 rounded-lg bg-muted px-4 py-3">
+    <ul
+      style={{
+        listStyle: "none",
+        margin: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: token.marginXS,
+        padding: `${token.paddingSM}px ${token.padding}px`,
+        borderRadius: token.borderRadiusLG,
+        background: token.colorFillQuaternary,
+      }}
+    >
       {rules.map((rule) => (
-        <li key={rule.key} className="flex items-start gap-2 text-sm">
+        <li key={rule.key} style={{ display: "flex", alignItems: "flex-start", gap: token.marginXS }}>
           <span
             aria-hidden="true"
-            className={cn(
-              "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
-              rule.met
-                ? "bg-success text-primary-foreground"
-                : "border border-border bg-background"
-            )}
+            style={{
+              marginTop: 2,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              width: MARK_SIZE,
+              height: MARK_SIZE,
+              borderRadius: "50%",
+              transition: `background ${token.motionDurationMid} ${token.motionEaseInOut}`,
+              background: rule.met ? met : "transparent",
+              border: rule.met ? "none" : `1px solid ${token.colorBorder}`,
+              color: token.colorBgContainer,
+            }}
           >
-            {rule.met && <Check className="h-3 w-3" strokeWidth={3} />}
+            {rule.met && <CheckOutlined style={{ fontSize: 12 }} />}
           </span>
-          <span className={rule.met ? "text-success-strong" : "text-muted-foreground"}>
+          <Text style={rule.met ? { color: met } : undefined} type={rule.met ? undefined : "secondary"}>
             {rule.label}
-            <span className="sr-only">
+            {/* Status dalam KATA — penanda kedua di samping warna & ikon. */}
+            <span style={SR_ONLY}>
               {" — "}
               {rule.met ? t("auth.changePassword.ruleMet") : t("auth.changePassword.ruleUnmet")}
             </span>
-          </span>
+          </Text>
         </li>
       ))}
     </ul>
@@ -111,6 +163,7 @@ export default function ChangePasswordPage() {
   const router = useRouter();
   const { update } = useSession();
   const t = useT();
+  const { token } = theme.useToken();
 
   const form = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
@@ -188,84 +241,89 @@ export default function ChangePasswordPage() {
       heading={t("auth.changePassword.heading")}
       description={t("auth.changePassword.description")}
       error={form.formState.errors.root?.message}
-      icon={<KeyRound className="h-5 w-5" aria-hidden />}
+      icon={<KeyOutlined aria-hidden style={{ fontSize: 20 }} />}
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-5">
-          <FormField
-            control={form.control}
-            name="currentPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("auth.changePassword.current")}</FormLabel>
-                <FormControl>
-                  <PasswordField
-                    autoComplete="current-password"
-                    autoFocus
-                    disabled={form.formState.isSubmitting}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <Flex vertical gap={token.marginMD}>
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel required>{t("auth.changePassword.current")}</FormLabel>
+                  <FormControl>
+                    <PasswordField
+                      autoComplete="current-password"
+                      autoFocus
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="newPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("auth.changePassword.new")}</FormLabel>
-                <FormControl>
-                  <PasswordField
-                    autoComplete="new-password"
-                    disabled={form.formState.isSubmitting}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel required>{t("auth.changePassword.new")}</FormLabel>
+                  <FormControl>
+                    <PasswordField
+                      autoComplete="new-password"
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("auth.changePassword.confirm")}</FormLabel>
-                <FormControl>
-                  <PasswordField
-                    autoComplete="new-password"
-                    disabled={form.formState.isSubmitting}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel required>{t("auth.changePassword.confirm")}</FormLabel>
+                  <FormControl>
+                    <PasswordField
+                      autoComplete="new-password"
+                      disabled={form.formState.isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <RequirementList
-            currentPassword={currentPassword}
-            newPassword={newPassword}
-            confirmPassword={confirmPassword}
-            t={t}
-          />
+            <RequirementList
+              currentPassword={currentPassword}
+              newPassword={newPassword}
+              confirmPassword={confirmPassword}
+              t={t}
+              token={token}
+            />
 
-          <p className="text-xs text-muted-foreground">{t("auth.changePassword.hint")}</p>
+            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+              {t("auth.changePassword.hint")}
+            </Text>
 
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={form.formState.isSubmitting}
-          >
-            {form.formState.isSubmitting
-              ? t("auth.changePassword.submitting")
-              : t("auth.changePassword.submit")}
-          </Button>
+            <Button
+              type="submit"
+              size="lg"
+              style={{ width: "100%" }}
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting
+                ? t("auth.changePassword.submitting")
+                : t("auth.changePassword.submit")}
+            </Button>
+          </Flex>
         </form>
       </Form>
     </AuthShell>

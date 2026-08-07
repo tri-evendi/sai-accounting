@@ -52,6 +52,14 @@ next-env.d.ts
 /src/generated/control
 # Klien basis data platform (issue #137) — idem.
 /src/generated/platform
+# ...dan direktori INDUKNYA, yang selama ini tidak disebut. Worktree agent tidak
+# punya klien hasil generate (tsc memuntahkan ~200 galat palsu tanpanya), jadi
+# yang biasa dilakukan adalah men-symlink `src/generated` ke checkout utama —
+# lalu satu `git add -A` menjadikan symlink itu commit, dan di checkout utama ia
+# menunjuk dirinya sendiri: klien Prisma lenyap, 24 berkas tes merah, dan
+# penyebabnya tidak terlihat di diff mana pun. Terjadi sungguhan sebelum
+# `Merge PR #236`.
+/src/generated/
 
 # local audit trail (sensitive)
 # Sejak #104 jejak audit pindah ke `data/audit/<slug>/audit.jsonl` — satu

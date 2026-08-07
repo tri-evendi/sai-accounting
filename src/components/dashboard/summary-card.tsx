@@ -7,7 +7,7 @@
  * make the figure legible to somebody who has never read a ledger.
  *
  * ── Colour is never the only signal (MASTER.md §Anti-Patterns) ───────────────
- * Money direction is carried three ways at once: a lucide icon, a word ("Masuk",
+ * Money direction is carried three ways at once: an icon, a word ("Masuk",
  * "Keluar", "Untung", "Rugi", "Belum masuk", "Belum keluar"), and — for the net
  * figure — an explicit +/− sign in front of the amount. Strip the colour out
  * entirely and the card still reads correctly, which is the actual test.
@@ -18,20 +18,30 @@
  * and a hover tooltip is unreachable on touch and awkward for screen readers. The
  * sentence is *also* set as the heading's `title`, so the hover affordance the
  * issue asked for exists too — it is just not the only way to get the sentence.
+ *
+ * ── Server component, tanpa satu kelas Tailwind (issue #240, fase C9) ────────
+ * Kartu ini dirender beranda, yang membaca buku besar lewat Prisma dan HARUS
+ * tetap server component — jadi berkas ini **tidak boleh mengimpor `antd`**
+ * (dijaga `tests/rsc-boundary.test.ts`) dan `theme.useToken()` tidak tersedia.
+ * Warnanya karena itu `var(--ant-…)`, yang sejak #227 teratasi di mana pun.
+ *
+ * Pasangan warna chip mengikuti aturan `Tag` (#187): latar TIPIS (`color*Bg`)
+ * dengan teks anak tangga uang (#186) — bukan `colorSuccess` pekat sebagai
+ * warna teks, yang pada 12px hanya 2,21:1.
  */
 import { Link } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
-import { cn, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  HandCoins,
-  HelpCircle,
-  Receipt,
-  TrendingDown,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+  FallOutlined,
+  FileDoneOutlined,
+  MoneyCollectOutlined,
+  QuestionCircleOutlined,
+  RiseOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
+} from "@ant-design/icons";
+import type { IconComponent } from "@/lib/icons";
 import type { CurrencyBreakdownRow } from "@/lib/dashboard-summary";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -47,58 +57,193 @@ import type { DictionaryKey } from "@/lib/i18n/dictionary";
 export type MoneyDirection = "in" | "out" | "profit" | "loss" | "receivable" | "payable";
 
 interface DirectionStyle {
-  Icon: LucideIcon;
+  Icon: IconComponent;
   /** Word shown next to the icon. Carries the meaning when colour is unavailable. */
   word: DictionaryKey;
+  /** Colour of the headline figure. */
   value: string;
-  chip: string;
+  /** Background/border/text of the direction chip. */
+  chip: React.CSSProperties;
   /** Explicit sign prefixed to the amount, for figures that can go either way. */
   sign: "" | "+" | "−";
 }
 
+const CHIP_POSITIVE: React.CSSProperties = {
+  background: "var(--ant-color-success-bg)",
+  borderColor: "var(--ant-color-success-border)",
+  color: "var(--ant-color-money-positive)",
+};
+const CHIP_NEGATIVE: React.CSSProperties = {
+  background: "var(--ant-color-error-bg)",
+  borderColor: "var(--ant-color-error-border)",
+  color: "var(--ant-color-money-negative)",
+};
+const CHIP_PENDING: React.CSSProperties = {
+  background: "var(--ant-color-warning-bg)",
+  borderColor: "var(--ant-color-warning-border)",
+  color: "var(--ant-color-money-pending)",
+};
+
 const DIRECTION: Record<MoneyDirection, DirectionStyle> = {
   in: {
-    Icon: ArrowDownToLine,
+    Icon: VerticalAlignBottomOutlined,
     word: "moneyDirection.in",
-    value: "text-success-strong",
-    chip: "bg-success-soft text-success-strong border-success/30",
+    value: "var(--ant-color-money-positive)",
+    chip: CHIP_POSITIVE,
     sign: "",
   },
   out: {
-    Icon: ArrowUpFromLine,
+    Icon: VerticalAlignTopOutlined,
     word: "moneyDirection.out",
-    value: "text-destructive-strong",
-    chip: "bg-destructive-soft text-destructive-strong border-destructive/30",
+    value: "var(--ant-color-money-negative)",
+    chip: CHIP_NEGATIVE,
     sign: "",
   },
   profit: {
-    Icon: TrendingUp,
+    Icon: RiseOutlined,
     word: "moneyDirection.profit",
-    value: "text-success-strong",
-    chip: "bg-success-soft text-success-strong border-success/30",
+    value: "var(--ant-color-money-positive)",
+    chip: CHIP_POSITIVE,
     sign: "+",
   },
   loss: {
-    Icon: TrendingDown,
+    Icon: FallOutlined,
     word: "moneyDirection.loss",
-    value: "text-destructive-strong",
-    chip: "bg-destructive-soft text-destructive-strong border-destructive/30",
+    value: "var(--ant-color-money-negative)",
+    chip: CHIP_NEGATIVE,
     sign: "−",
   },
   receivable: {
-    Icon: HandCoins,
+    Icon: MoneyCollectOutlined,
     word: "moneyDirection.receivable",
-    value: "text-foreground",
-    chip: "bg-warning-soft text-warning-strong border-warning/30",
+    value: "var(--ant-color-text)",
+    chip: CHIP_PENDING,
     sign: "",
   },
   payable: {
-    Icon: Receipt,
+    Icon: FileDoneOutlined,
     word: "moneyDirection.payable",
-    value: "text-foreground",
-    chip: "bg-warning-soft text-warning-strong border-warning/30",
+    value: "var(--ant-color-text)",
+    chip: CHIP_PENDING,
     sign: "",
   },
+};
+
+/** Kartu adalah wadah tata letaknya sendiri — badan `Card` `display:contents`. */
+const CARD: React.CSSProperties = {
+  display: "flex",
+  height: "100%",
+  flexDirection: "column",
+  padding: "var(--ant-padding-md)",
+};
+
+const HEAD_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "var(--ant-margin-xs)",
+};
+
+const HEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
+  color: "var(--ant-color-text-secondary)",
+};
+
+/** Lencana arah uang — ikon + KATA, tak pernah warna saja. */
+const CHIP_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  flexShrink: 0,
+  alignItems: "center",
+  gap: "var(--ant-margin-xxs)",
+  borderRadius: 9999,
+  borderWidth: "var(--ant-line-width)",
+  borderStyle: "solid",
+  paddingInline: "var(--ant-padding-xs)",
+  paddingBlock: 2,
+  fontSize: "var(--ant-font-size-sm)",
+  fontWeight: 500,
+};
+
+const AMOUNT: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-heading-3)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  fontVariantNumeric: "tabular-nums",
+  textAlign: "right",
+};
+
+const PERIOD: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-secondary)",
+  textAlign: "right",
+};
+
+const EXPLANATION: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-sm)",
+  fontSize: "var(--ant-font-size)",
+  lineHeight: 1.375,
+  color: "var(--ant-color-text-secondary)",
+};
+
+const NOTE: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-sm)",
+  fontWeight: 500,
+  color: "var(--ant-color-text)",
+};
+
+const BREAKDOWN: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-sm)",
+  padding: 0,
+  paddingTop: "var(--ant-padding-xs)",
+  listStyle: "none",
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--ant-margin-xxs)",
+  borderTop: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
+};
+
+const BREAKDOWN_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  justifyContent: "space-between",
+  gap: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-sm)",
+};
+
+const UNRESOLVED: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-xs)",
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-money-pending)",
+};
+
+/*
+ * `--ant-color-link` (= `colorBrandText`, 5,65:1) — bukan `--ant-color-primary`,
+ * yang sebagai teks hanya 4,10:1. `marginTop: auto` mendorong tautan ke dasar
+ * kartu supaya keempat kartu dalam satu baris sejajar garis bawahnya; itu
+ * bekerja karena badan `Card` `display: contents` (lihat kepala `ui/card.tsx`).
+ */
+const LINK: React.CSSProperties = {
+  marginTop: "auto",
+  paddingTop: "var(--ant-padding)",
+  display: "inline-flex",
+  alignSelf: "flex-start",
+  alignItems: "center",
+  gap: "var(--ant-margin-xxs)",
+  fontSize: "var(--ant-font-size)",
+  fontWeight: 500,
+  color: "var(--ant-color-link)",
 };
 
 export interface SummaryCardProps {
@@ -141,40 +286,35 @@ export async function SummaryCard({
   const showBreakdown = breakdown && breakdown.length > 1;
 
   return (
-    <Card className="flex h-full flex-col p-5">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-medium text-muted-foreground" title={explanation}>
+    <Card style={CARD}>
+      <div style={HEAD_ROW}>
+        <h3 style={HEADING} title={explanation}>
           {title}
         </h3>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-            style.chip
-          )}
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span style={{ ...CHIP_BASE, ...style.chip }}>
+          <Icon aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
           {t(style.word)}
         </span>
       </div>
 
-      <p className={cn("mt-2 text-2xl font-bold tabular-nums text-right", style.value)}>
+      <p style={{ ...AMOUNT, color: style.value }}>
         {style.sign}
         {formatCurrency(amount, "IDR")}
       </p>
-      <p className="mt-0.5 text-xs text-muted-foreground text-right">{period}</p>
+      <p style={PERIOD}>{period}</p>
 
-      <p className="mt-3 text-sm leading-snug text-muted-foreground">{explanation}</p>
+      <p style={EXPLANATION}>{explanation}</p>
 
-      {note && <p className="mt-2 text-xs font-medium text-foreground">{note}</p>}
+      {note && <p style={NOTE}>{note}</p>}
 
       {showBreakdown && (
-        <ul className="mt-3 space-y-1 border-t border-border pt-2">
+        <ul style={BREAKDOWN}>
           {breakdown.map((b) => (
-            <li key={b.currency} className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="text-muted-foreground">
+            <li key={b.currency} style={BREAKDOWN_ROW}>
+              <span style={{ color: "var(--ant-color-text-secondary)" }}>
                 {t("dashboard.breakdownDocs", { currency: b.currency, count: b.count })}
               </span>
-              <span className="tabular-nums text-foreground">
+              <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ant-color-text)" }}>
                 {formatCurrency(b.outstandingBase, "IDR")}
               </span>
             </li>
@@ -183,8 +323,11 @@ export async function SummaryCard({
       )}
 
       {unresolved > 0 && (
-        <p className="mt-2 flex items-start gap-1 text-xs text-warning-strong">
-          <HelpCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+        <p style={UNRESOLVED}>
+          <QuestionCircleOutlined
+            aria-hidden="true"
+            style={{ fontSize: 14, flexShrink: 0, marginTop: 2 }}
+          />
           <span>
             {t("dashboard.unresolvedBefore", { count: unresolved })}{" "}
             <strong>{t("dashboard.unresolvedStrong")}</strong>{" "}
@@ -193,10 +336,7 @@ export async function SummaryCard({
         </p>
       )}
 
-      <Link
-        href={href}
-        className="mt-auto pt-4 inline-flex cursor-pointer items-center gap-1 self-start text-sm font-medium text-primary transition-colors duration-150 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
+      <Link href={href} style={LINK}>
         {linkLabel} <span aria-hidden="true">→</span>
       </Link>
     </Card>

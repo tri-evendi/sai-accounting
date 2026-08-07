@@ -12,6 +12,9 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
+/** Panjang baris kalimat penjelas — bekas `max-w-3xl`; lihat `../page.tsx`. */
+const DESCRIPTION_MAX_WIDTH = 768;
+
 export default async function ApprovalRulesPage({
   params,
 }: {
@@ -33,7 +36,7 @@ export default async function ApprovalRulesPage({
         ]}
         title={t("nav.items.approvalRules")}
         description={
-          <span className="block max-w-3xl">
+          <span style={{ display: "block", maxWidth: DESCRIPTION_MAX_WIDTH }}>
             {t("approvals.rulesDescA")} <strong>{t("approvals.rulesDescStrong1")}</strong>{" "}
             {t("approvals.rulesDescB")} <strong>{t("approvals.rulesDescStrong2")}</strong>{" "}
             {t("approvals.rulesDescC")}

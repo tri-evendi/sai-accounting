@@ -8,17 +8,24 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · **Ant Design v6** (`ConfigProvider` + CSS-in-JS) di `src/components/ui` · form `react-hook-form` + `zod` · tabel `StaticTable` (server) / `DataTable` (AntD, client) · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Tanpa Tailwind, tanpa lembar kelas apa pun sejak issue #203** - gaya ditulis SEBARIS (`style={{...}}`), warnanya `var(--ant-...)` atau `theme.useToken()`, dan nilai warna mentah (hex, `rgb()`) tidak ditulis di luar `src/lib/theme/antd-tokens.ts`.
+**Stack:** Next.js 16 (App Router) · **Ant Design v6** (`ConfigProvider` + CSS-in-JS) di `src/components/ui` · form `react-hook-form` + `zod` · tabel **`StaticTable` (server, BAWAAN)** / `DataTable` (AntD, client, hanya bila butuh sortir-filter seketika) · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Tanpa Tailwind, tanpa lembar kelas apa pun sejak issue #203** - gaya ditulis SEBARIS (`style={{...}}`), warnanya `var(--ant-...)` atau `theme.useToken()`, dan nilai warna mentah (hex, `rgb()`, nama warna CSS) tidak ditulis di luar `src/lib/theme/antd-tokens.ts` — dijaga ESLint `sai/warna-token-antd` (issue #204). Rujukan shadcn/Tailwind/CVA di dokumen ini hanya muncul sebagai **catatan sejarah**; `radix-ui` tersisa untuk SATU hal, `Slot` di `FormControl`.
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
 
 ## Prinsip Inti (khusus app akuntansi ramah-amatir)
+
+> Lima butir ini adalah aturan **akuntansi**, bukan aturan pustaka. Ia bertahan
+> melewati shadcn/Tailwind (2024–2026) dan melewati Ant Design; kalau kelak
+> pustakanya berganti lagi, bagian inilah yang ikut pindah tanpa satu kata pun
+> berubah.
+
 1. **Light-first**, tenang, kontras tinggi. Sidebar gelap sebagai aksen (sesuai app saat ini). Dark mode **sudah aktif** — pilihan Terang / Gelap / Ikut sistem di menu akun dan di layar pra-aplikasi — tetapi **bawaannya tetap terang**: `DEFAULT_THEME` di `src/lib/theme/config.ts` adalah `light`, dan menjadikannya `system` berarti setiap pengguna ber-OS gelap membuka aplikasi keuangan ini dalam mode yang belum ditinjau halaman demi halaman.
-2. **Semantik warna uang** — hijau = uang masuk/lunas/positif; merah = uang keluar/jatuh tempo/negatif; biru = brand/aksi netral; amber = menunggu/peringatan. **Jangan pernah mengandalkan warna saja** — selalu sertakan tanda (+/−), label, atau ikon.
-3. **Angka rapi & jujur** — gunakan `font-variant-numeric: tabular-nums`, **rata kanan** di tabel, format `id-ID` (mis. `Rp 1.234.567`), nilai negatif merah dengan `(...)` atau tanda minus. Tampilkan **mata uang** eksplisit (IDR/USD/CNY).
-4. **Ramah amatir** — label bahasa tugas (lihat issue #1), target sentuh ≥ 40px, teks dasar 16px, hindari jargon di permukaan (tooltip untuk istilah akuntansi).
-5. **Reuse, jangan fork** — pakai & perluas komponen di `src/components/ui` (button, card, input, badge, dll). Jangan bikin varian baru tanpa alasan.
+2. **Semantik warna uang** — hijau = uang masuk/lunas/positif; merah = uang keluar/jatuh tempo/negatif; biru = brand/aksi netral; amber = menunggu/peringatan. **Jangan pernah mengandalkan warna saja** — selalu sertakan tanda (+/−), label, atau ikon. Ini bukan kesopanan aksesibilitas: satu dari dua belas pembaca laki-laki tidak membedakan merah-hijau, dan yang ia lihat pada kolom "Saldo" adalah dua angka yang sama.
+3. **Angka rapi & jujur** — `font-variant-numeric: tabular-nums`, **rata kanan** di tabel, format `id-ID` (mis. `Rp 1.234.567`), nilai negatif merah dengan `(...)` atau tanda minus. Tampilkan **mata uang** eksplisit (IDR/USD/CNY) — sebuah angka tanpa mata uang di aplikasi ekspor adalah angka yang bisa dibaca tujuh belas ribu kali lebih besar dari yang dimaksud.
+4. **Nilai yang tidak diketahui ditulis KOSONG atau "—", tak pernah 0.** Dokumen valas tanpa kurs, barang tanpa dasar biaya, umur piutang tanpa tanggal jatuh tempo: nol menyatakan "tidak ada nilai", yang berbeda dari "nilainya belum diketahui" — dan menjumlahkannya sebagai nol menyusutkan total tanpa satu pun tanda di layar. Jumlah baris yang dikecualikan selalu disebutkan sebagai catatan di bawah tabelnya. Aturan ini lahir dari Piutang/Utang & Nilai Persediaan, dan dijaga `tests/money-unknown.test.tsx`.
+5. **Ramah amatir** — label bahasa tugas (lihat issue #1), target sentuh ≥ 40px, teks dasar 16px, hindari jargon di permukaan (tooltip untuk istilah akuntansi).
+6. **Reuse, jangan fork** — pakai & perluas komponen di `src/components/ui` (button, card, input, badge, dll). Jangan bikin varian baru tanpa alasan.
 
 ---
 
@@ -81,9 +88,31 @@ adanya** untuk isian pekat, ikon berlatar, dan `Progress` - di sana ambangnya
 3:1 non-teks.
 
 **Aturan yang tidak berubah sedikit pun:** warna **tidak pernah** penanda
-tunggal (badge wajib berteks, angka negatif wajib bertanda minus), ambang 4,5:1
-untuk teks <= 18px, 3:1 untuk grafis non-teks, dan kolom uang berwarna memakai
-token uang di atas - bukan `colorSuccess` bawaan.
+tunggal (badge wajib berteks, angka negatif wajib bertanda minus), dan kolom
+uang berwarna memakai token uang di atas - bukan `colorSuccess` bawaan.
+
+### Ambang kontras per ukuran teks
+
+Ambangnya bukan satu angka. WCAG membedakan "teks besar" — dan sebagian besar
+teks aplikasi ini justru berada di sisi yang KETAT:
+
+| Yang diwarnai | Ambang | Contoh di app ini |
+|---|---|---|
+| Teks < 18,66px, atau < 24px bila tidak tebal | **4,5:1** | seluruh isi tabel (`fontSize` 14px), label, teks bantuan, teks `Tag` |
+| Teks >= 24px, atau >= 18,66px **bold** | **3:1** | angka besar kartu KPI (`fontSizeHeading*`) |
+| Grafis non-teks: ikon, batas kendali, cincin fokus, bilah chart | **3:1** | `colorBorder`, `colorBorderSecondary`, `colorPrimaryBorder` |
+| Teks nonaktif & batas kendali nonaktif | dikecualikan | `colorTextDisabled`, `colorBorderDisabled` — memang harus terlihat mati |
+
+Karena baris pertama itulah anak tangga ke-6 palet AntD gagal: sebagai teks 14px
+`colorSuccess` 2,27:1 · `colorWarning` 1,90:1 · `colorError` 3,27:1. Ketiganya
+akan LOLOS kalau dipakai sebagai isian pekat berlatar putih atau sebagai ikon —
+dan di sanalah mereka memang tetap dipakai.
+
+**Ambang ini berlaku juga DI DALAM SVG.** Recharts menyalin warna seri ke label
+irisan dan ke baris tooltip, jadi sebuah `fill` yang sah sebagai bilah 3:1
+mendarat sebagai TEKS 12px di tempat lain pada grafik yang sama. Karena itu
+`dashboard-charts.tsx` mengambil paletnya dari `moneyPalette()` — token teks —
+bukan dari `colorSuccess`/`colorError`; dijaga `tests/chart-tokens.test.tsx`.
 
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
@@ -103,30 +132,49 @@ Satu pengecualian yang tersisa: pilihan **"ikut sistem"**. Preferensi OS tak ter
 ---
 
 ## Typography
-- **UI / Heading & Body:** **Inter** (bersih, mudah dibaca, gratis; pakai `next/font`). Bukan monospace untuk heading.
-- **Angka/nominal:** aktifkan `tabular-nums` (Inter mendukung) agar digit sejajar di tabel & laporan.
-- Skala dasar **16px**; hierarki jelas (h1 ~28–32px, h2 ~22px, body 16px, caption 14px). Line-height 1.5.
+
+- **UI / Heading & Body:** **Inter** lewat `next/font`, dipasang sebagai variabel di `<html>`. Bukan monospace untuk heading.
+- **Angka/nominal:** `font-variant-numeric: tabular-nums` (Inter mendukung) agar digit sejajar di tabel & laporan. `Money`/`MoneyCell` sudah membawanya; jangan format angka sendiri.
+- **Skala dasar 16px**, dan itu **aturan app ini, bukan bawaan AntD** — `fontSize` AntD adalah 14px. Yang menjaganya adalah `globals.css`, dan yang mengancamnya adalah elemen `.ant-app`: `<App>` di `AntdProvider` karena itu dipasang `component={false}` supaya ia merender `Fragment` alih-alih `<div>` bergaya. Menukarnya dengan `component="div"` demi menghilangkan satu peringatan dev akan menurunkan teks dasar SELURUH aplikasi ke 14px dan mengganti Inter dengan tumpukan font sistem AntD — tanpa satu pun berkas halaman berubah.
+- Hierarki lewat token, bukan angka yang diketik: `--ant-font-size-heading-1` … `-5` = 38 · 30 · 24 · 20 · 16px, isi 14px (`--ant-font-size`), keterangan 12px (`--ant-font-size-sm`). **Langit-langit app internal adalah `fontSizeHeading1`** dan hanya `PageHeader` yang boleh mencapainya — lihat §Pemasaran vs App.
+- Teks < 14px dilarang untuk data. 12px hanya untuk keterangan yang mengulang informasi yang sudah ada di tempat lain.
 
 ---
 
-## Spacing (Density 6/10 — nyaman)
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | 4px | Celah rapat |
-| `--space-sm` | 8px | Gap ikon, inline |
-| `--space-md` | 16px | Padding standar |
-| `--space-lg` | 24px | Padding section |
-| `--space-xl` | 32px | Gap besar |
-| `--space-2xl` | 48px | Margin antar-section |
+## Jarak, radius, bayangan — token AntD, tidak ada lapisan kedua
 
-## Shadow
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Lift halus |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Card, tombol |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modal, dropdown |
+Sampai #203 ada tabel `--space-*` dan `--shadow-*` di berkas ini beserta
+utility Tailwind yang memakainya. **Lapisan itu sudah tidak ada**, dan tidak
+digantikan oleh tabel baru: skala AntD sudah persis skala yang dipakai, dan dua
+skala berdampingan hanya melahirkan dua jawaban untuk "berapa jarak antar-kartu".
 
-Radius: `8px` (kontrol), `12px` (card), `16px` (modal).
+Nilainya berjarak 4px (`sizeUnit`/`sizeStep`) dan **variabelnya sudah membawa
+satuannya** (`--ant-padding` = `16px`, jadi ditulis apa adanya, bukan `${}px`):
+
+| Peran | Token | Nilai |
+|---|---|---|
+| Celah rapat (ikon–teks) | `--ant-margin-xxs` / `--ant-padding-xxs` | 4px |
+| Inline, antar-aksi ikon | `--ant-margin-xs` | 8px |
+| Padding kendali & sel tabel (vertikal) | `--ant-padding-sm` | 12px |
+| Padding standar, gap grid | `--ant-padding` / `--ant-margin` | 16px |
+| Padding kartu, jarak antar-bagian (Density 6/10) | `--ant-padding-lg` / `--ant-margin-lg` | 24px |
+| Gap besar | `--ant-margin-xl` | 32px |
+| Jarak antar-seksi besar | `--ant-margin-xxl` | 48px |
+
+Radius: `--ant-border-radius` 6px (kendali & kartu) · `--ant-border-radius-lg`
+8px (permukaan besar) · `--ant-border-radius-sm` 4px (balok kerangka, tag).
+Angka 8/12/16px yang dulu tertulis di sini adalah skala shadcn dan **sudah
+tidak berlaku**.
+
+Bayangan: `--ant-box-shadow-tertiary` (lift halus) · `--ant-box-shadow-card` ·
+`--ant-box-shadow` (melayang: modal, dropdown, popover). Jangan menulis
+`box-shadow` sendiri — nilainya berlapis tiga dan disetel per algoritma tema.
+
+**Tinggi kendali datang dari SATU token:** `controlHeight: 40` di
+`AntdProvider` (target sentuh minimum, naik dari 32px bawaan AntD). Seluruh
+keluarga kendali — Button, Input, Select, DatePicker — naik bersamanya, dan
+itu juga berarti `size="sm"` adalah TURUNAN (`controlHeight × 0,75` = 30px),
+sehingga ia tetap bukan target sentuh utama.
 
 ---
 
@@ -165,7 +213,7 @@ Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog pa
 - **Pemilihan kolom hanya untuk laporan bertipe daftar.** Susunan Laba/Rugi, Neraca, dan Arus Kas ditentukan standar akuntansi; centang kolom di sana adalah kendali yang tak mengubah apa pun. Kolom identitas baris selalu ikut (`fixed`), dan pilihan pengguna hanya boleh MENGURANGI kolom — tak pernah memunculkan kolom yang laporannya memang tak punya isinya.
 - **Satu penentu kolom untuk tiga permukaan** (`stockMovementColumns`, `partyRecapColumns`, `agingColumns`, `stockValueColumns`, `cashBankColumns` di `lib/statement-layout.ts`): layar, PDF, dan lembar sebar. Pratinjau yang memperlihatkan kolom berbeda dari berkasnya adalah laporan yang tidak dipercaya dua kali.
 - **Kartu mendarat di LAPORANNYA, bukan di halaman kerja atau persimpangan.** Halaman modul (`/inventory`, `/finance`) terpaginasi dan disaring untuk bekerja; sepuluh baris pertama bukan laporan, dan totalnya akan salah. Hub (`/budget`) menunda laporannya satu klik lagi. Laporan yang tidak punya view sendiri mendapat halamannya di bawah `/reports`, dengan izin mengikuti DATANYA (`inventory.read`, `cash.read`) — sebuah laporan tidak melonggarkan siapa yang boleh melihat isinya.
-- **Nilai yang tidak diketahui ditulis kosong atau "—", tak pernah 0.** Dokumen valas tanpa kurs, barang tanpa dasar biaya: nol menyatakan "tidak ada nilai", yang berbeda dari "nilainya belum diketahui" — dan menjumlahkannya sebagai nol menyusutkan total tanpa satu pun tanda di layar. Jumlah yang dikecualikan selalu disebutkan sebagai catatan.
+- **Nilai yang tidak diketahui ditulis kosong atau "—", tak pernah 0** — Prinsip Inti #4, dan di Pusat Laporan ia yang paling sering diuji: dokumen valas tanpa kurs dan barang tanpa dasar biaya masuk ke hampir setiap laporan nilai persediaan.
 
 ---
 
@@ -293,7 +341,7 @@ Karena itu batasnya kini dinyatakan **dalam token, dan dijaga tes** (`tests/land
 |---|---|---|
 | **Skala hero** | satu `<h1>` `--sai-landing-font-size-hero`: 30px → **≈53px** di ≥576px, yaitu `fontSizeHeading1 × 1,4` | langit-langitnya `fontSizeHeading1` (38px) lewat `PageHeader`; tidak ada teks yang melampauinya |
 | **Bobot CTA** | aksi yang SAMA diulang tiga kali (hero, tiap kartu paket, penutup), `Button size="lg"`, primer + garis berpasangan, melebar penuh di layar sempit | aksi utama muncul **sekali**, di `PageHeader.actions` |
-| **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | Density 6/10: 24px (`--space-lg`) antar-bagian |
+| **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | Density 6/10: 24px (`--ant-margin-lg`) antar-bagian |
 | **Lebar maksimum** | kolom baca 42rem, seksi 72rem, **di tengah** | lebar penuh area kerja — tabel 12 kolom tidak dipotong demi ukuran baca |
 
 ### Pendaratan BOLEH punya token sendiri — sebagai turunan, dan berpagar
@@ -316,11 +364,13 @@ Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas
 
 ## Anti-Patterns (JANGAN)
 - ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
-- ❌ Dua paket ikon di satu layar; ❌ `h-4 w-4`/`size-4`/prop `size` pada ikon → lihat "Ikon" di bawah.
+- ❌ Dua paket ikon di satu layar; ❌ prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
+- ❌ `className` di mana pun (satu pengecualian: `<html>` di `app/layout.tsx`) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
+- ❌ Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `lib/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
 - ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
-- ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan.
+- ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan; ❌ **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
 - ❌ Placeholder sebagai pengganti label.
-- ❌ Teks < 14px untuk data penting; kontras < 4.5:1.
+- ❌ Teks < 14px untuk data penting; kontras di bawah ambang §Ambang kontras per ukuran teks.
 - ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
 - ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
 - ❌ Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
@@ -330,22 +380,26 @@ Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas
 
 ## Primitif Wajib: Tabel & Tombol
 
-Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen ini bocor — yang hilang justru bagian tak terlihat: pembungkus geser, ring fokus keyboard, target sentuh. Karena itu dua keluarga ini **wajib** lewat primitif, dan dijaga oleh `tests/design-system-primitives.test.ts` (lingkup `src/app/(dashboard)` + `src/components`, kecuali `src/components/ui` tempat primitifnya sendiri tinggal).
+Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen ini bocor — yang hilang justru bagian tak terlihat: pembungkus geser, cincin fokus keyboard, target sentuh. Karena itu dua keluarga ini **wajib** lewat primitif, dan dijaga oleh `tests/design-system-primitives.test.ts` (lingkup `src/app/(dashboard)` + `src/app/(setup)` + `src/components`, kecuali `src/components/ui` tempat primitifnya sendiri tinggal).
 
 - **Tabel → `StaticTable` atau `DataTable`** (sejak issue #189 primitifnya dipecah dua, dengan **satu kontrak kolom** di `src/components/ui/table-columns.tsx`):
-  - **`StaticTable`** (`src/components/ui/static-table.tsx`) — **bawaan untuk laporan & daftar yang dipaginasi server.** Dirender di server, tanpa satu baris JavaScript pun. Dipakai 46 dari 66 tabel app ini.
-  - **`DataTable`** (`src/components/ui/data-table.tsx`) — di atas AntD `Table`, komponen client. Dipakai **hanya** bila datanya memang sudah di client dan pengguna diuntungkan sortir/filter/paginasi seketika. Ia menyalin seluruh `dataSource` ke peramban dan menghidrasi rc-table di atasnya; untuk tabel yang cuma menampilkan, itu biaya tanpa imbalan.
+  - **`StaticTable`** (`src/components/ui/static-table.tsx`) — **BAWAAN.** Untuk laporan & daftar yang dipaginasi server: dirender di server, tanpa satu baris JavaScript pun. Dipakai 46 dari 66 tabel app ini.
+  - **`DataTable`** (`src/components/ui/data-table.tsx`) — di atas AntD `Table`, komponen client. Dipakai **hanya** bila datanya memang sudah di client dan pengguna diuntungkan sortir/filter/paginasi seketika. Ongkosnya **terukur: +80 KB gzip per rute** (rc-table + hidrasinya), di atas penyalinan seluruh `dataSource` ke peramban. Untuk tabel yang cuma menampilkan, itu biaya tanpa imbalan — dan halaman neraca saldo dengan 2.000 akun berhenti menjadi HTML.
   - Kolomnya sama untuk keduanya: `textColumn`/`qtyColumn` (`table-columns.tsx`), `moneyColumn` (`money-column.tsx`), `statusColumn` (`status-column.tsx`). **Pembantu yang membawa komponen client tinggal di modulnya sendiri**, supaya halaman tanpa kolom uang tidak ikut menyeret `money.tsx` ke sisi client.
-  - Keduanya membawa geser-sendiri: `StaticTable` lewat pembungkus `overflow-x-auto`, `DataTable` lewat `scroll={{ x: "max-content" }}` yang dipasang primitif sebagai **bawaan**. AntD `Table` **tanpa** `scroll.x` tidak menggulung sendiri — yang menggulung halamannya. Jangan mengosongkan bawaan itu.
+  - Keduanya membawa geser-sendiri: `StaticTable` lewat pembungkus ber-`overflow-x: auto`, `DataTable` lewat `scroll={{ x: "max-content" }}` yang dipasang primitif sebagai **bawaan**. AntD `Table` **tanpa** `scroll.x` tidak menggulung sendiri — yang menggulung halamannya, dan itu tidak terlihat di layar 1440px tempat kodenya ditulis. Jangan mengosongkan bawaan itu.
+  - **Header lengket butuh `sticky` DAN `maxHeight`, selalu berpasangan.** `position: sticky` dihitung terhadap kotak bergulir TERDEKAT; tanpa `maxHeight`, pembungkusnya tidak pernah menggulung vertikal dan properti itu tidak melakukan apa pun — kode yang terbaca benar dan tak berpengaruh. Salah satu tanpa yang lain adalah bug; lihat komentar kepala `components/ui/table.tsx` dan `tests/permission-matrix-sticky.test.tsx`.
   - Baris total lewat prop `summary` (peta kunci kolom → isi sel) pada kedua varian; keadaan kosong lewat `empty` berisi `EmptyState`, tak pernah "No Data" bawaan AntD.
 - **Primitif JSX `Table`** (`src/components/ui/table.tsx`: `TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`) kini **lapisan gaya di bawah kedua perender di atas**, bukan API yang dipanggil halaman. Ia masih dipakai langsung oleh berkas yang belum dikonversi (fase C, #193–#200); untuk tabel BARU pakai `StaticTable`/`DataTable`. Yang tetap terlarang: `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah.
 - **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan format angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah di dalamnya.
 - **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`). Sejak issue #187 isinya AntD `Button`; **nama propnya tidak berubah** (`variant`/`size`/`type`). Perhatikan satu perangkap yang sengaja ditahan primitif: di AntD `type` berarti VARIAN VISUAL, di sini ia tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan "membetulkannya" dengan meneruskan `type` langsung ke AntD — 60 tombol kirim akan berhenti mengirim formulirnya tanpa satu galat pun.
-- **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan rakit `p-1.5` (≈28px). Antar aksi ikon yang berdampingan pakai **`gap-2`** (8px) minimum — `gap-1` membuat dua aksi bersebelahan mudah salah tekan.
-- **Tingginya datang dari token `controlHeight: 40`** di `AntdProvider`, bukan dari kelas di primitif. Itu berarti seluruh keluarga kendali (Button, Input, Select, DatePicker) naik bersama — dan juga berarti `size="sm"` adalah TURUNAN (`controlHeight × 0,75` = 30px), jadi ia tetap bukan target sentuh utama.
+- **Tombol yang menuju ke suatu tempat → `<Button href>`, BUKAN `<Button asChild>`.** Keduanya merender satu `<a>` bergaya tombol, tetapi `asChild` **tidak aman dipanggil dari server component**: anaknya bisa tiba sebagai simpul `react.lazy` yang belum punya `.props`, `React.Children.only()` melempar, dan prerender-nya mati — dengan gejala yang BERPINDAH-PINDAH menurut urutan chunk, sehingga halaman yang jatuh hari ini bukan halaman yang jatuh besok. `href` melewati seluruh jalur itu. 52 pemanggil `asChild` yang tersisa dilacak di **#250**; jangan menambah yang ke-53.
+- **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan merakit tombol ikon sendiri dari padding kecil (≈28px). Antar aksi ikon yang berdampingan beri jarak **minimal 8px** (`--ant-margin-xs`) — 4px membuat dua aksi bersebelahan mudah salah tekan di layar sentuh.
+- **Tingginya datang dari token `controlHeight: 40`** di `AntdProvider`, bukan dari gaya di primitif — lihat §Jarak, radius, bayangan.
 - **Badge status → `Badge`** (`src/components/ui/badge.tsx`), yang sejak #187 merender AntD **`Tag`** — bukan `Badge` AntD, yang itu titik notifikasi tanpa kata. Warna teksnya dari token `components.Tag` (lihat `lib/theme/antd-tokens.ts`); bawaan AntD menaruh "Lunas" pada 2,21:1. Badge tetap **wajib berteks**.
 - **Pengecualian yang disahkan** (tetap `<button>` mentah, alasannya ditulis di komentar kepala file dan didaftar di `RAW_BUTTON_ALLOWLIST` penjaga): penanda langkah `wizard`. Grup chip `aria-pressed` (`glossary-browser`) **keluar dari daftar ini di issue #198**: saringan kategorinya adalah pilihan SALING MENIADAKAN, dan itu `Segmented` AntD — `role="radiogroup"` berisi `<input type="radio">` sungguhan (panah kiri/kanan berpindah pilihan, `checked` diumumkan pembaca layar), lebih ketat daripada tujuh `aria-pressed` yang berdiri sendiri padahal hanya satu boleh aktif. Tur berpandu (`guided-tour`) **keluar dari daftar ini di issue #224**: overlay tulis tangannya kini `Tour` AntD (penyorotan, panah penunjuk, penempatan, Escape lewat `onEsc` rc-portal), sehingga satu-satunya tombolnya — "Lewati" di `actionsRender` — tidak lagi punya alasan melewati primitif. Chrome aplikasi (`sidebar`, `navbar`, `accountant-mode-toggle`, `user-menu`, `help-menu`) **keluar dari daftar ini di issue #193**: baris menu kini `Menu`, kedua dropdown kini `Dropdown` (fokus, Escape, klik-di-luar milik komponennya), dan setiap pemicunya `Button` primitif.
 - **Bukan tombol, jadi di luar aturan ini:** `<input type="radio">` native dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
+- **Pesan di dalam halaman → `Alert` AntD, dan `role`-nya TIDAK bisa dipilih.** Terukur: `Alert` selalu merender `role="alert"` — wilayah live **asertif**, yang memotong bacaan pembaca layar yang sedang berjalan — dan **membuang** `role` yang dioper. `<Alert role="status">` karena itu adalah kode yang terbaca sopan dan berperilaku sebaliknya; `tsc` tidak menyebutkannya, dan di layar tidak ada bedanya sama sekali. Untuk pesan yang TIDAK mendesak (ringkasan yang berubah, hitungan yang diperbarui) bungkus isinya dengan elemen ber-`role="status"` sendiri dan jangan pakai `Alert` — pola `components/shared/wizard.tsx`. Dijaga `tests/design-system-primitives.test.ts`.
+- **Notifikasi melayang → `useToast()`** (`components/ui/toast.tsx`), bukan `import { message } from "antd"`. Jalur statis AntD membuat akar React-nya sendiri di luar `ConfigProvider` dan muncul dengan token BAWAAN — kotak putih di halaman gelap. `useToast` juga yang memasang wilayah live-nya: `message` AntD tidak punya `aria-live` sama sekali.
 - **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Tiga akibat yang harus diketahui sebelum memakainya:
   - **`name` tetap terkirim** — primitifnya menitipkan `<input type="hidden">` di dalam kontrolnya sendiri, jadi `new FormData(form)` dan `<form method="get">` tetap bekerja.
   - **`required` TIDAK lagi divalidasi peramban.** Yang tersisa `aria-required` + tanda `*`; penjaganya validasi server (dan zod setelah #192). Isian pilihan yang wajib harus punya validasi selain `required`.
@@ -353,18 +407,60 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 
 ---
 
+## Penjaga: aturan mana dijaga apa (issue #204)
+
+Aturan yang tidak dijaga bocor pada PR berikutnya — itu bukan dugaan melainkan
+pengalaman repo ini. Penjaga `RAW_PALETTE` lama tidak mengenal `border-l-`, dan
+satu kelas palet mentah karena itu bertahan berbulan-bulan di beranda, tetap
+`#3B82F6` saat tema gelap menyala. Yang membuatnya bertahan bukan ketiadaan
+penjaga, melainkan penjaga yang mengenal SEBAGIAN kosakata: orang berikutnya
+membaca hijau dan menyimpulkan aman.
+
+| Aturan | Penjaga |
+|---|---|
+| Warna hanya dari token AntD (bukan hex/`rgb()`/nama warna) | ESLint `sai/warna-token-antd` (`eslint-rules/warna-token-antd.mjs`) |
+| Nol `className`; ikon tanpa prop `size`; `Alert` tanpa `role`; tanpa `<table>`/`<button>` mentah | `tests/design-system-primitives.test.ts` |
+| Judul & breadcrumb hanya lewat `PageHeader` (termasuk `Typography.Title level={1}`) | `tests/page-header.test.ts` |
+| Halaman tetap server component; batas client berhenti di primitif | `tests/rsc-boundary.test.ts` (ambang 158) |
+| Barrel `@ant-design/icons` tak menyentuh lapisan RSC | `tests/icon-rsc-boundary.test.ts` + `modularizeImports` di `next.config.ts` |
+| Angka kontras token, dihitung ulang dari paket `antd` yang terpasang | `tests/antd-tokens.test.ts`, `tests/ui-controls-antd.test.tsx`, `tests/chart-tokens.test.tsx` |
+| Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
+| Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
+| Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
+| Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
+
+**Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
+yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah
+muncul empat hal yang terbaca benar di kode dan tidak melakukan apa pun:
+`position: sticky` tanpa kotak bergulir, pembungkus `role="status"` di sekeliling
+`Alert` yang selalu asertif, `styles.content` pada `Modal` yang bukan bagian
+semantik v6 sama sekali (sehingga prop `size` dialog inert berbulan-bulan) — dan
+penjaga `Alert` di atas, yang pada percobaan pertama HIJAU pada pelanggaran yang
+sengaja disuntikkan untuk mengujinya. Penjaga yang tak pernah merah adalah
+kandidat berikutnya untuk daftar itu.
+
+**`bun run verify` hijau TIDAK membuktikan aplikasinya bisa dibangun.** Sebuah
+bug pernah lolos typecheck + lint + 2.232 tes lalu mematikan `next build`
+produksi (barrel `@ant-design/icons` yang menyentuh lapisan RSC; galatnya
+menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
+`EXIT=0` sebelum UI diserahkan.
+
+---
+
 ## Pre-Delivery Checklist (UI apa pun)
-- [ ] Ikon SVG konsisten (`@ant-design/icons`), tanpa emoji; ukurannya `font-size`, dekoratif tetap `aria-hidden`.
-- [ ] `cursor-pointer` di semua elemen klik; hover transisi 150–250ms.
-- [ ] Kontras teks ≥ 4.5:1; fokus keyboard terlihat; `prefers-reduced-motion` dihormati.
-- [ ] Nominal: tabular-nums, rata kanan, format id-ID, mata uang eksplisit, negatif jelas (merah/kurung).
+- [ ] Ikon SVG konsisten (`@ant-design/icons`), tanpa emoji; ukurannya `style={{ fontSize }}` — bukan prop `size`/`width`/`height`; dekoratif tetap `aria-hidden`.
+- [ ] `cursor: pointer` di semua elemen klik; hover transisi 150–250ms.
+- [ ] Kontras memenuhi ambang **per ukuran teks** (§Ambang kontras); fokus keyboard terlihat; `prefers-reduced-motion` dihormati.
+- [ ] Nominal: tabular-nums, rata kanan, format id-ID, mata uang eksplisit, negatif jelas (merah **dan** tanda/kurung).
+- [ ] **Nilai tak diketahui kosong atau "—", tak pernah 0**; baris yang dikecualikan dari total disebutkan sebagai catatan.
 - [ ] Status pakai badge berteks (bukan warna saja).
 - [ ] Form: label terlihat, validasi inline, helper text, progressive disclosure.
-- [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile.
-- [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>`/`<Breadcrumb>` manual); label breadcrumb = label menu samping.
-- [ ] Reuse komponen `src/components/ui`; warna & jarak dari token AntD (`var(--ant-...)` atau `theme.useToken()`), bukan hex mentah.
-- [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `#001529` dengan permukaan gelap tidak terlihat dari kode.
+- [ ] Responsive: 375 / 768 / 1024 / 1440px; tidak ada horizontal scroll di mobile (tabel menggeser DIRINYA).
+- [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>` atau `Typography.Title level={1}` sendiri); label breadcrumb = label menu samping.
+- [ ] Reuse komponen `src/components/ui`; warna & jarak dari token AntD (`var(--ant-...)` atau `theme.useToken()`), bukan nilai mentah.
+- [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `SIDER_BG_DARK` dengan permukaan gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
-- [ ] Tabel lewat `StaticTable`/`DataTable` + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`) - penjaga `tests/design-system-primitives.test.ts` hijau.
+- [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, tautan = `href` bukan `asChild`).
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.
+- [ ] **`bun run verify` hijau DAN `bun run build` `EXIT=0`** — yang pertama tidak membuktikan yang kedua, lihat §Penjaga.

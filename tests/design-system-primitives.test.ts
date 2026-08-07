@@ -1,34 +1,52 @@
 /**
  * Adopsi primitif design system — penjaga bagian "Primitif Wajib" di
- * design-system/sai-accounting/MASTER.md.
+ * design-system/sai-accounting/MASTER.md. Ditulis ulang untuk Ant Design di
+ * issue #204 (fase D4).
  *
- * Dua aturan yang dijaga di sini, keduanya soal hal yang TIDAK terlihat saat
- * menyalin-tempel markup mentah:
+ * ── Apa yang berubah, dan apa yang TIDAK ───────────────────────────────────
+ * Dua larangan pertama tidak berubah sedikit pun, karena alasannya tidak
+ * pernah tentang pustaka gayanya: `<table>` dan `<button>` mentah kehilangan
+ * hal-hal yang TIDAK terlihat saat menyalin markup — pembungkus geser, cincin
+ * fokus papan ketik, target sentuh 40px. Yang berganti hanya pemilik janji
+ * itu: dulu kelas Tailwind di primitif, kini `scroll.x` dan token
+ * `controlHeight` di AntD.
  *
- *  1. **Tabel lewat primitif `Table`** (`src/components/ui/table.tsx`).
- *     `<table>` mentah tampak baik di layar lebar lalu memaksa seluruh halaman
- *     menggeser ke samping di ponsel — padahal MASTER.md melarang horizontal
- *     scroll di 375px. `Table` membawa pembungkus `overflow-x-auto`-nya
- *     sendiri, jadi yang menggeser hanya tabelnya. Ia juga menyeragamkan garis,
- *     padding, dan hover baris, dan `MoneyCell`/`Money` menyeragamkan nominal
- *     (tabular-nums, rata kanan, format id-ID) — 48 tabel tangan sebelumnya
- *     menyimpang satu per satu.
+ * Tiga larangan berikutnya BARU, dan ketiganya lahir dari kelas kesalahan yang
+ * hanya ada setelah migrasi — bentuk kode yang terbaca benar, lolos `tsc`, dan
+ * tidak melakukan apa pun:
  *
- *  2. **Tombol lewat primitif `Button`** (`src/components/ui/button.tsx`).
- *     `<button>` mentah kehilangan hal-hal yang tidak kelihatan sampai
- *     diuji: `focus-visible` ring untuk pengguna keyboard, `cursor-pointer`,
- *     transisi 150ms, penanganan `disabled`, dan — yang paling sering —
- *     **target sentuh**. Tombol ikon rakitan tangan biasanya berakhir ~28px
- *     (`p-1.5`), di bawah minimum 40px MASTER.md; `size="icon"` memberi 40px
- *     tanpa perlu diingat.
+ *  3. **`className`.** Sejak #203 tidak ada satu lembar gaya pun yang
+ *     memaknainya. Sebuah kelas karena itu tidak GAGAL — ia hanya berhenti
+ *     berlaku, diam-diam, dan diff-nya tetap terlihat seperti perubahan gaya
+ *     yang berhasil.
+ *  4. **Ukuran ikon lewat prop `size`/`width`/`height`.** `size={16}` **lolos
+ *     `tsc`** (diverifikasi di #204 dengan menjalankan `bun run typecheck`
+ *     terhadap pelanggaran yang sengaja disuntikkan: nol galat): props
+ *     `@ant-design/icons` turun dari `React.HTMLProps<HTMLSpanElement>`, yang
+ *     memang punya `size` — atribut HTML `<input>`/`<select>`. Ia mendarat
+ *     sebagai `size="16"` di `<span>` dan tidak mengatur apa pun.
+ *     `width`/`height` mengenai span-nya, bukan `<svg width="1em">` di
+ *     dalamnya — sama tidak berpengaruhnya. Ukuran ikon AntD adalah
+ *     `font-size`, selalu.
+ *  5. **`role`/`aria-live` pada `Alert` AntD.** Terukur: `Alert` selalu
+ *     merender `role="alert"` (asertif) dan MEMBUANG `role` yang dioper —
+ *     `role="status"` tidak bisa dicapai dengannya. Sebuah `<Alert
+ *     role="status">` karena itu adalah pengumuman yang MEMOTONG bacaan
+ *     pembaca layar yang sedang berjalan, sambil terbaca di kode seolah-olah
+ *     sopan. Kalau yang dibutuhkan memang wilayah live yang sopan, bungkus
+ *     isinya dengan elemen ber-`role="status"` SENDIRI (pola `wizard.tsx`),
+ *     jangan mengoper `role` ke `Alert`.
  *
- * Keduanya diperiksa dengan membaca sumber, bukan merender: aturannya tentang
+ * Semuanya diperiksa dengan membaca sumber, bukan merender: aturannya tentang
  * markup apa yang DITULIS, dan penjaga berbasis regex tetap hijau/merah tanpa
  * bergantung pada jsdom.
  *
- * Lingkupnya `src/app/(dashboard)` + `src/components`, KECUALI
- * `src/components/ui` — di situlah primitifnya sendiri tinggal, dan mereka
- * memang harus menulis `<table>`/`<button>` mentah.
+ * Lingkup dua larangan pertama `src/app/(dashboard)` + `src/app/(setup)` +
+ * `src/components`, KECUALI `src/components/ui` — di situlah primitifnya
+ * sendiri tinggal, dan mereka memang harus menulis `<table>`/`<button>`
+ * mentah. Tiga larangan berikutnya berlaku di SELURUH `src/`: sebuah kelas
+ * yang tak berlaku dan sebuah `size={16}` yang inert sama saja salahnya di
+ * dalam primitif.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -80,7 +98,7 @@ const RAW_BUTTON_ALLOWLIST = new Set([
    */
   // Penanda langkah wizard: kembaran interaktif dari <div> di sebelahnya, harus
   // tampil identik (kartu dua baris, tinggi mengikuti isi) — `Button` memaksa
-  // tinggi 40px, `justify-center`, dan `whitespace-nowrap`.
+  // tinggi 40px, perataan tengah, dan `whitespace-nowrap`.
   "components/shared/wizard.tsx",
   /*
    * ── Entri grup chip Kamus Istilah DIKELUARKAN di issue #198 ──────────────
@@ -98,6 +116,16 @@ const RAW_BUTTON_ALLOWLIST = new Set([
    */
 ]);
 
+/**
+ * Satu-satunya `className` yang sah di aplikasi ini, dan ia bukan gaya:
+ * `<html>` memikul tiga KAIT — variabel `next/font`, kunci `cssVar` AntD
+ * (`ANTD_CSS_VAR_KEY`, yang membuat `var(--ant-…)` teratasi di seluruh dokumen
+ * sejak #227), dan kelas tema yang dipasang skrip sinkron di `<head>`.
+ * Ketiganya disasar SELEKTOR, bukan aturan utilitas; tak satu pun punya bentuk
+ * sebaris.
+ */
+const CLASSNAME_ALLOWLIST = new Set(["app/layout.tsx"]);
+
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
@@ -111,6 +139,20 @@ function label(file: string): string {
   return relative(SRC_DIR, file).split(sep).join("/");
 }
 
+/** Seluruh pohon `src/`, kecuali klien Prisma hasil `prisma generate`. */
+function allTsx(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "generated" ? [] : allTsx(full);
+    return entry.name.endsWith(".tsx") ? [full] : [];
+  });
+}
+
+/** Berkas-berkas yang isinya cocok dengan sebuah pola, sebagai label. */
+function offenders(files: string[], pattern: RegExp): string[] {
+  return files.filter((f) => pattern.test(readFileSync(f, "utf8"))).map(label);
+}
+
 describe("adopsi primitif design system", () => {
   const files = ROOTS.flatMap(tsxFiles);
 
@@ -120,45 +162,128 @@ describe("adopsi primitif design system", () => {
     expect(files.length).toBeGreaterThan(150);
   });
 
-  it("tidak ada <table> mentah — tabel lewat primitif Table", () => {
-    const offenders = files
-      .filter((f) => /<(table|thead|tbody|tfoot)[\s>]/.test(readFileSync(f, "utf8")))
-      .map(label);
+  it("tidak ada <table> mentah — tabel lewat StaticTable/DataTable", () => {
     expect(
-      offenders,
-      "Pakai Table/TableHeader/TableBody/TableRow/TableCell dari " +
-        "@/components/ui/table (nominal lewat MoneyCell/Money). Primitifnya " +
-        "membawa pembungkus overflow-x-auto, jadi tabel lebar menggeser " +
-        "dirinya sendiri — bukan seluruh halaman di ponsel."
+      offenders(files, /<(table|thead|tbody|tfoot)[\s>]/),
+      "Pakai StaticTable (server, tanpa satu baris JS) atau DataTable (AntD, " +
+        "client — hanya bila memang butuh sortir/filter seketika), dengan " +
+        "kolom dari table-columns/money-column/status-column.\n\n" +
+        "Keduanya membawa geser-sendiri: StaticTable lewat pembungkus " +
+        "`overflow-x:auto`, DataTable lewat `scroll={{ x: 'max-content' }}` " +
+        "yang dipasang primitif sebagai BAWAAN. Tabel lebar karena itu " +
+        "menggeser DIRINYA — bukan seluruh halaman di ponsel, yang tidak akan " +
+        "terlihat di layar 1440px tempat kodenya ditulis."
     ).toEqual([]);
   });
 
   it("tidak ada <button> mentah di luar daftar pengecualian — tombol lewat primitif Button", () => {
-    const offenders = files
-      .filter((f) => /<button[\s>]/.test(readFileSync(f, "utf8")))
-      .map(label)
-      .filter((f) => !RAW_BUTTON_ALLOWLIST.has(f));
     expect(
-      offenders,
+      offenders(files, /<button[\s>]/).filter((f) => !RAW_BUTTON_ALLOWLIST.has(f)),
       "Pakai Button dari @/components/ui/button (tombol ikon: " +
-        'variant="ghost" size="icon" = 40px, jarak antar aksi gap-2). Kalau ' +
-        "polanya memang tidak bisa memakai primitif, tulis alasannya di " +
-        "komentar kepala file lalu daftarkan di RAW_BUTTON_ALLOWLIST pada " +
-        "tests/design-system-primitives.test.ts."
+        'variant="ghost" size="icon" = 40px, tinggi yang datang dari token ' +
+        "`controlHeight` di AntdProvider, bukan dari angka yang harus " +
+        "diingat). Kalau polanya memang tidak bisa memakai primitif, tulis " +
+        "alasannya di komentar kepala file lalu daftarkan di " +
+        "RAW_BUTTON_ALLOWLIST pada tests/design-system-primitives.test.ts."
     ).toEqual([]);
   });
 
   it("daftar pengecualian tombol tidak menyimpan entri basi", () => {
     // Pengecualian yang file-nya sudah bersih (atau sudah pindah/hapus) harus
     // dikeluarkan dari daftar, supaya daftar ini tetap bisa dipercaya sebagai
-    // dokumentasi "di sini memang mentah".
-    const withRawButton = new Set(
-      files.filter((f) => /<button[\s>]/.test(readFileSync(f, "utf8"))).map(label)
-    );
-    const stale = [...RAW_BUTTON_ALLOWLIST].filter((f) => !withRawButton.has(f));
+    // dokumentasi "di sini memang mentah". Tiga entri gugur sepanjang epik
+    // #206 justru karena tes ini menolak menyimpannya.
+    const berbutton = new Set(offenders(files, /<button[\s>]/));
     expect(
-      stale,
+      [...RAW_BUTTON_ALLOWLIST].filter((f) => !berbutton.has(f)),
       "Berkas ini tidak lagi punya <button> mentah — hapus dari RAW_BUTTON_ALLOWLIST."
+    ).toEqual([]);
+  });
+});
+
+describe("kosakata gaya pasca-Tailwind (#203/#204)", () => {
+  const files = allTsx(SRC_DIR);
+  const KELAS = /className\s*=/;
+
+  it("memindai seluruh pohon src, bukan sebagian", () => {
+    expect(files.length).toBeGreaterThan(250);
+  });
+
+  it("nol `className` — tidak ada lembar gaya yang memaknainya", () => {
+    expect(
+      offenders(files, KELAS).filter((f) => !CLASSNAME_ALLOWLIST.has(f)),
+      "Sejak #203 tidak ada lembar gaya yang memaknai kelas: sebuah " +
+        "`className` tidak GAGAL, ia hanya berhenti berlaku — dan diff-nya " +
+        "tetap terlihat seperti perubahan gaya yang berhasil.\n\n" +
+        "Gaya ditulis SEBARIS (`style={{…}}`) dengan warna & jarak dari " +
+        "`var(--ant-…)`. Yang tidak punya bentuk sebaris (`:hover`, `::after`, " +
+        "`@media`) hidup di satu `<style href precedence>` di komponennya, " +
+        "menyasar atribut `data-*` — pola `landing-scale.ts` / `ui/table.tsx`."
+    ).toEqual([]);
+  });
+
+  it("daftar pengecualian className tidak menyimpan entri basi", () => {
+    const berkelas = new Set(offenders(files, KELAS));
+    expect(
+      [...CLASSNAME_ALLOWLIST].filter((f) => !berkelas.has(f)),
+      "Berkas ini tidak lagi menulis `className` — hapus dari CLASSNAME_ALLOWLIST."
+    ).toEqual([]);
+  });
+
+  /*
+   * Ikon `@ant-design/icons` ditulis `<XOutlined />`, `<XFilled />`, atau
+   * `<XTwoTone />`. Polanya sengaja menuntut nama komponen berakhiran salah
+   * satu dari tiga varian itu: `<Progress size={16}>` dan `<Button size="sm">`
+   * adalah prop `size` yang SUNGGUHAN, dan penjaga yang ikut menangkapnya akan
+   * dilonggarkan dalam seminggu.
+   */
+  const IKON_BERUKURAN =
+    /<[A-Z][A-Za-z0-9]*(?:Outlined|Filled|TwoTone)\b[^>]*?\s(?:size|width|height)\s*=/;
+
+  it("ukuran ikon tidak pernah lewat prop `size`/`width`/`height`", () => {
+    expect(
+      offenders(files, IKON_BERUKURAN),
+      "Ukuran ikon Ant Design adalah `font-size`, SELALU — " +
+        "`style={{ fontSize: 20 }}`, dan sebagian besar ikon tidak perlu " +
+        "menyebutnya sama sekali (di dalam Button/Menu/Tag/paragraf ia sudah " +
+        "mengikuti teks di sebelahnya).\n\n" +
+        "Kedua bentuk yang dilarang di sini GAGAL DIAM-DIAM:\n" +
+        "  • `size={16}` lolos `tsc` — props ikon AntD turun dari " +
+        "`React.HTMLProps<HTMLSpanElement>`, yang memang punya `size` " +
+        '(atribut HTML <input>/<select>). Ia mendarat sebagai size="16" di ' +
+        "<span> dan tidak mengatur apa pun.\n" +
+        "  • `width`/`height` mengenai <span> pembungkusnya, bukan " +
+        '`<svg width="1em">` di dalamnya — ukurannya terpasang, ikonnya tidak ' +
+        "berubah."
+    ).toEqual([]);
+  });
+
+  /*
+   * `<Alert` saja, bukan `<AlertDialog` — batas kata `\b` tidak cukup di sini
+   * karena `AlertDialog` juga diawali `Alert`; yang membedakan adalah karakter
+   * SESUDAHNYA harus spasi/baris baru/`>`.
+   *
+   * Pembedanya ditulis sebagai LOOKAHEAD, bukan kelas karakter biasa. Bentuk
+   * `<Alert[\s>][^>]*?\s(?:role|…)` terlihat benar dan gagal menangkap
+   * `<Alert role="status" …>`: spasi satu-satunya sudah dimakan `[\s>]`,
+   * sehingga `\s` di depan `role` tak punya apa pun untuk dicocokkan. Penjaga
+   * ini pernah hijau justru pada pelanggaran yang disuntikkan untuk mengujinya
+   * — itulah alasan langkah "sekali dilihat MERAH" ada.
+   */
+  const ALERT_BER_ROLE = /<Alert(?=[\s>])[^>]*?\s(?:role|aria-live)\s*=/;
+
+  it("`Alert` AntD tidak pernah dioper `role`/`aria-live`", () => {
+    expect(
+      offenders(files, ALERT_BER_ROLE),
+      'Terukur: `Alert` AntD selalu merender `role="alert"` — wilayah live ' +
+        "ASERTIF, yang memotong bacaan pembaca layar yang sedang berjalan — " +
+        'dan MEMBUANG `role` yang dioper. `<Alert role="status">` karena itu ' +
+        "adalah kode yang terbaca sopan dan berperilaku sebaliknya; tidak ada " +
+        "tes lain, dan tidak ada `tsc`, yang akan menyebutkannya.\n\n" +
+        "Kalau pesannya memang tidak mendesak (ringkasan yang berubah, " +
+        "hitungan yang diperbarui), bungkus isinya dengan elemen " +
+        '`role="status"` SENDIRI dan jangan pakai `Alert` — pola ' +
+        "`components/shared/wizard.tsx`."
     ).toEqual([]);
   });
 });

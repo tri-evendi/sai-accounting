@@ -178,10 +178,12 @@ describe("StaticTable — baris seksi & subtotal di dalam tbody", () => {
 
   it("sel bertag th tampil seperti sel isi, bukan seperti judul kolom", () => {
     /*
-     * Preflight Tailwind TIDAK menyentuh `<th>`, jadi bawaan peramban
-     * `font-weight: bold; text-align: center` akan membuat baris seksi tebal &
-     * DI TENGAH kalau tidak dinetralkan. Perataan datang dari kolomnya, tebal
-     * huruf dari barisnya — sama seperti sel lain.
+     * Bawaan peramban untuk `<th>` adalah `font-weight: bold; text-align:
+     * center`, dan sejak #203 tidak ada satu lembar gaya pun yang
+     * menetralkannya (preflight Tailwind dulu juga tidak menyentuh `<th>`).
+     * Tanpa penetralan sebaris, baris seksi akan tampil tebal & DI TENGAH.
+     * Perataan datang dari kolomnya, tebal huruf dari barisnya — sama seperti
+     * sel lain.
      */
     const tubuh = body(renderStatic({ rows: laporan, rowCells }));
     const th = tubuh.slice(tubuh.indexOf("<th"));

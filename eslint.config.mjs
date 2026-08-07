@@ -1,36 +1,50 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import warnaTokenAntd from "./eslint-rules/warna-token-antd.mjs";
 
 /*
- * ── Penjaga `RAW_PALETTE` DICABUT di issue #203 ────────────────────────────
+ * ── `RAW_PALETTE` (dicabut #203) → `sai/warna-token-antd` (#204) ───────────
  *
- * Aturan itu menolak kelas palet Tailwind mentah (`bg-blue-600`,
- * `text-gray-500`, `border-l-red-500`, `bg-white`) di literal string mana pun,
- * dan ia berguna selama tiga tahun karena kelas semantik (`bg-primary`,
- * `text-muted-foreground`) adalah cara aplikasi ini mewarnai dirinya.
+ * Aturan lama menolak kelas palet Tailwind mentah (`bg-blue-600`,
+ * `text-gray-500`, `border-l-red-500`, `bg-white`) di literal string mana pun.
+ * Ia dicabut bersama Tailwind: kelas yang dijaganya sudah tidak dikompilasi
+ * siapa pun, jadi ia tidak akan pernah menangkap apa pun lagi. JANGAN
+ * menghidupkannya kembali.
  *
- * Sejak #203 tidak ada satu pun dari keduanya: Tailwind, `globals.css`, dan
- * seluruh token semantiknya dicabut, dan `src/` tidak menyisakan satu pun
- * kelas gaya. Sebuah penjaga yang menjaga kosakata yang tak lagi bisa ditulis
- * bukan penjaga — ia hanya membuat orang berikutnya percaya bahwa warna masih
- * dijaga di sini, padahal yang perlu dijaga sekarang adalah hal yang berbeda:
- * nilai warna MENTAH (hex, `rgb()`) di dalam `style` sebaris, alih-alih
- * `var(--ant-…)` atau token `theme.useToken()`.
- *
- * Penjaga baru itu adalah issue #204 dan sengaja TIDAK dirakit di sini:
- * membuatnya berarti memutuskan apa yang boleh dikecualikan (permukaan gelap
- * permanen `#001529`, dua nilai `html.dark` di `globals.css`, tangga palet di
- * `lib/theme/antd-tokens.ts` yang justru SUMBER kebenarannya), dan keputusan
- * itu terlalu lebar untuk diselipkan ke dalam PR pencabutan.
- *
- * Jangan menghidupkan kembali aturan lama di sini: kelasnya sudah tidak
- * dikompilasi siapa pun, jadi ia tidak akan pernah menangkap apa pun.
+ * Penggantinya menjaga kosakata yang menggantikan kelas itu — nilai warna
+ * MENTAH di dalam `style` sebaris — dan alasan lengkapnya ada di kepala
+ * `eslint-rules/warna-token-antd.mjs`. Termasuk pelajaran yang melahirkannya:
+ * `RAW_PALETTE` tidak mengenal `border-l-`, dan satu kelas mentah karena itu
+ * lolos berbulan-bulan di beranda.
  */
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    /*
+     * Dua berkas yang MEMANG menulis nilai warna, dan hanya dua:
+     *
+     *  • `antd-tokens.ts` — sumber kebenarannya. Setiap hex di aplikasi ini
+     *    berdiri di sana beserta rasio kontras terhitungnya, dan angka itu
+     *    dihitung ulang dari paket `antd` yang terpasang setiap kali suite
+     *    berjalan (`tests/antd-tokens.test.ts`).
+     *  • `lib/pdf/brand.ts` — warna DOKUMEN CETAK. Kertas tidak punya tema
+     *    gelap dan tidak melihat satu pun variabel CSS; nilainya juga sudah
+     *    ditulis sebagai triplet RGB, bukan string.
+     *
+     * `src/generated/**` adalah keluaran `prisma generate`, bukan kode kita.
+     */
+    ignores: [
+      "src/generated/**",
+      "src/lib/theme/antd-tokens.ts",
+      "src/lib/pdf/brand.ts",
+    ],
+    plugins: { sai: { rules: { "warna-token-antd": warnaTokenAntd } } },
+    rules: { "sai/warna-token-antd": "error" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

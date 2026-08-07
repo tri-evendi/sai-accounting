@@ -114,6 +114,58 @@ mendarat sebagai TEKS 12px di tempat lain pada grafik yang sama. Karena itu
 `dashboard-charts.tsx` mengambil paletnya dari `moneyPalette()` — token teks —
 bukan dari `colorSuccess`/`colorError`; dijaga `tests/chart-tokens.test.tsx`.
 
+### Jenjang permukaan: kenapa latar halaman tidak bisa lebih gelap (issue #266)
+
+Keluhan pemilik — aplikasi terbaca "dominan putih-hitam dengan **outline saja**"
+— benar dan terukur: latar halaman dan kartu praktis sewarna, sehingga yang
+memisahkan wilayah tinggal tepinya.
+
+| Tema | halaman `colorBgLayout` | kartu `colorBgContainer` | melayang `colorBgElevated` | kartu vs halaman | ΔL\* |
+|---|---|---|---|---|---|
+| terang | `#f5f5f5` | `#ffffff` | `#ffffff` | 1,09:1 | 3,46 |
+| gelap | `#000000` | `#141414` | `#1f1f1f` | 1,14:1 | 6,32 |
+
+**Ketiganya tetap bawaan AntD — setelah diukur, bukan karena terlewat.** Sebabnya
+dua dinding, dan keduanya dipasang oleh keputusan yang benar:
+
+- **Terang: tepi kartu #208 memaku setiap bidang di atas `#f2f2f2`.**
+  `colorBorderSecondary` (`#8c8c8c`) berdiri DI ANTARA kartu putih dan halaman,
+  jadi ia harus lolos 3:1 di **kedua** sisinya — dan sisi halaman habis lebih
+  dulu. Permukaan tergelap yang masih dilewati: `#f2f2f2` (tepi kartu) ·
+  `#e7e7e7` (uang-positif) · `#e1e1e1` (batas kendali). `#f2f2f2` hanya menambah
+  ΔL\* 1,05 sambil menghabiskan SELURUH margin ambang 3:1 — bukan tukaran yang
+  layak. Anak tangga netral AntD berikutnya (`#f0f0f0` α 0,06 · `#d9d9d9` α 0,15)
+  keduanya menabrak: 2,95:1 dan 2,38:1 pada tepi kartu, dan `#d9d9d9` menjatuhkan
+  angka hijau ke 3,96:1.
+- **Gelap: `colorMoneyInfo` #186 memaku permukaan melayang.** Permukaan gelap
+  paling terang yang masih dilewatinya `#212121` — tiga satuan RGB dari
+  `colorBgElevated` hari ini. Karena warna itu juga `colorLink`, yang jatuh bukan
+  satu angka melainkan setiap tautan. Akibatnya temuan tirai #205 (panel dialog vs
+  halaman bertirai, **1,27:1** terukur) **tidak bisa** diperbaiki dari lapisan
+  token: menaikkan panel menjatuhkan tautan, dan menggelapkan `colorBgMask` tidak
+  melakukan apa-apa karena halaman gelap sudah `#000000`.
+
+**Temuannya, ditulis eksplisit karena berlawanan dengan dugaan:** ada satu susunan
+yang melewati semua ambang — latar `#f0f0f0` **bersama** kisi naik ke grey-4 dan
+kendali ke grey-5 (tak satu pun pasangan turun; kisi 3,08 → 3,47). Ia tetap
+ditolak, karena ia **menggelapkan setiap garis** demi menambah ΔL\* 1,74 pada
+bidangnya — arah yang berlawanan dengan keluhannya. #208 menaikkan kisi dari
+1,05:1 (bawaan AntD) menjadi 3,08:1, hampir tiga kali lipat; itu SENGAJA dan
+tidak boleh dibalik, tetapi konsekuensinya baru terbaca sekarang: **garis setegas
+itulah yang paling menonjol di layar, dan garis itu juga yang mengurung setiap
+bidang di dalam pita 3,5% antara `#ffffff` dan `#f2f2f2`.** #208 dan #266
+terhubung lewat satu angka dan tidak bisa sama-sama berada di ujung "tenang"-nya.
+
+**Yang tersisa berongkos kontras NOL, dan letaknya di perender — bukan di token:**
+bayangan kartu (`--ant-box-shadow-tertiary`) dan **kepala tabel bernada**. Nada
+`#f5f5f5` di dalam kartu putih tidak perlu diaudit ulang: ia latar halaman hari
+ini, jadi sudah termasuk dalam `worst()` setiap token. Keduanya tak terjangkau
+dari `ConfigProvider` — `Card` AntD tidak punya token bayangan, dan
+`Table.headerBg` hanya mengenai `DataTable` (20 dari 66 tabel) sedangkan
+`StaticTable` menggambar sel judulnya sendiri; menyetelnya sendirian menghasilkan
+dua rupa tabel di satu produk. Angkanya ada di `lib/theme/antd-tokens.ts`;
+keputusannya milik pemilik.
+
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
 **Server component boleh memakai warna token, dan tidak perlu menyeberang jadi client untuk itu.** `AntdProvider` memberi `cssVar` sebuah kunci tetap (`ANTD_CSS_VAR_KEY` di `src/lib/theme/antd-tokens.ts`) dan root layout memasang kunci itu sebagai kelas di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri di `<head>` pada HTML pertama dan diwarisi seluruh dokumen — juga oleh pohon yang tidak punya satu pun komponen AntD di atasnya.
@@ -427,6 +479,7 @@ membaca hijau dan menyimpulkan aman.
 | Halaman tetap server component; batas client berhenti di primitif | `tests/rsc-boundary.test.ts` (ambang 158) |
 | Barrel `@ant-design/icons` tak menyentuh lapisan RSC | `tests/icon-rsc-boundary.test.ts` + `modularizeImports` di `next.config.ts` |
 | Angka kontras token, dihitung ulang dari paket `antd` yang terpasang | `tests/antd-tokens.test.ts`, `tests/ui-controls-antd.test.tsx`, `tests/chart-tokens.test.tsx` |
+| Permukaan (`colorBgLayout`/`Container`/`Elevated`) tidak bergeser tanpa menurunkan ulang seluruh tabel kontras | `tests/antd-tokens.test.ts` → "jenjang permukaan (#266)" |
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |

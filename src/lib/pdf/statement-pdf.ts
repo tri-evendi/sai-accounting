@@ -20,17 +20,23 @@ import {
   agingColumns,
   budgetColumns,
   cashBankColumns,
+  cashFlowLayout,
+  cashFlowPrintAmount,
+  cashFlowReconciliationNote,
   partyRecapColumns,
   stockMovementColumns,
   stockValueColumns,
   AGING_HEADERS,
   BUDGET_HEADERS,
   CASH_BANK_HEADERS,
+  CASH_FLOW_COLUMNS,
+  CASH_FLOW_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
   type BudgetColumnId,
   type CashBankColumnId,
+  type CashFlowCategoryId,
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
@@ -50,6 +56,13 @@ export interface StatementSectionPayload {
 }
 
 export interface CashFlowGroupPayload {
+  /**
+   * Kategori kanonik. Ada di payload sejak issue #241 karena bentuk laporan
+   * bergantung padanya: "Belum Terkategori" adalah ember diagnostik yang boleh
+   * hilang saat kosong, tiga seksi baku lainnya tidak — dan `cashFlowLayout()`
+   * tidak bisa membedakannya dari `label` yang sudah diterjemahkan.
+   */
+  category: CashFlowCategoryId;
   label: string;
   lines: { code: string; name: string; inflow: number; outflow: number; net: number }[];
   inflow: number;
@@ -392,7 +405,10 @@ function moneySection(
     startY,
     head: [[heading, "Jumlah"]],
     body: rows.length
-      ? rows.map((r) => [`${r.code}  ${r.name}`, rp(r.amount)])
+      ? // `.trim()` seperti di seluruh berkas ini (dan di `report-export.ts`):
+        // tanpanya akun berkode kosong — "Akumulasi Laba/Rugi" di Neraca —
+        // tercetak menjorok dua spasi di PDF saja.
+        rows.map((r) => [`${r.code}  ${r.name}`.trim(), rp(r.amount)])
       : [["Tidak ada data.", "-"]],
     foot: [[totalLabel, rp(total)]],
     styles: { fontSize: 9 },
@@ -401,6 +417,30 @@ function moneySection(
     columnStyles: { 1: { halign: "right" } },
   });
   return afterTable(doc) + 8;
+}
+
+/**
+ * Badan + kaki tabel Arus Kas sebagai teks — dipisah dari penggambarnya supaya
+ * bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa satu byte PDF pun
+ * (issue #241). Bentuknya seluruhnya milik `cashFlowLayout()`; di sini hanya
+ * ada penulisan angka dan takuk baris akun.
+ */
+export function cashFlowPrintRows(payload: Extract<StatementPayload, { kind: "cash-flow" }>): {
+  body: string[][];
+  foot: string[];
+} {
+  const rows = cashFlowLayout(payload).map((r) => [
+    // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
+    // `paddingInlineStart`.
+    r.kind === "line" ? `   ${r.label}` : r.label,
+    cashFlowPrintAmount(r.inflow, rp),
+    cashFlowPrintAmount(r.outflow, rp),
+    cashFlowPrintAmount(r.net, rp),
+  ]);
+  // Baris terakhir `cashFlowLayout()` selalu barisan kaki — lihat modul itu.
+  const foot = rows[rows.length - 1];
+  foot[0] = `${foot[0]} ${cashFlowReconciliationNote(payload.reconciled)}`;
+  return { body: rows.slice(0, -1), foot };
 }
 
 export function generateStatementPDF(payload: StatementPayload, company: { name: string; address: string }): jsPDF {
@@ -889,39 +929,12 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "cash-flow") {
+    const { body, foot } = cashFlowPrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [["Keterangan", "Masuk", "Keluar", "Bersih"]],
-      body: [
-        ["Kas & setara kas awal periode", "", "", rp(payload.openingCash)],
-        // Empty groups are skipped, but a non-empty "Belum Terkategori" is printed
-        // like any other section — never merged into operating, never omitted.
-        ...payload.groups.flatMap((g) =>
-          g.lines.length
-            ? [
-                [g.label.toUpperCase(), "", "", ""],
-                ...g.lines.map((l) => [
-                  `   ${l.code}  ${l.name}`,
-                  l.inflow > 0 ? rp(l.inflow) : "-",
-                  l.outflow > 0 ? rp(l.outflow) : "-",
-                  rp(l.net),
-                ]),
-                [`Jumlah ${g.label}`, rp(g.inflow), rp(g.outflow), rp(g.net)],
-              ]
-            : []
-        ),
-        ["Kas & setara kas akhir periode", "", "", rp(payload.closingCash)],
-      ],
-      foot: [
-        [
-          payload.reconciled
-            ? "KENAIKAN / PENURUNAN KAS (cocok dengan buku besar)"
-            : "KENAIKAN / PENURUNAN KAS (TIDAK COCOK — periksa buku besar)",
-          rp(payload.totalInflow),
-          rp(payload.totalOutflow),
-          rp(payload.netChange),
-        ],
-      ],
+      head: [CASH_FLOW_COLUMNS.map((c) => CASH_FLOW_HEADERS[c])],
+      body,
+      foot: [foot],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },

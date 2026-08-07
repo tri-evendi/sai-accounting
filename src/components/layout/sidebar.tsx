@@ -250,10 +250,24 @@ function PanelMenu({
       theme="dark"
       style={{
         height: "100%",
-        /* Tema gelap: sidebar `#001529` dan halaman `#141414` berkontras ~1,4:1
-           — persis jebakan "dua bidang sewarna" MASTER.md. Batas #208 membuat
-           pembagian kolomnya terlihat lagi. */
-        borderInlineEnd: `1px solid ${BORDER_TOKENS_DARK.colorSplit}`,
+        /* Tema gelap: sidebar `#001529` dan permukaan kartu `#141414`
+           berkontras **1,00:1** — bukan "~1,4:1" seperti tertulis di sini
+           sampai #205; keduanya praktis identik dalam luminansi, dan terhadap
+           `colorBgLayout` gelap (`#000000`) angkanya 1,14:1. Ini persis jebakan
+           "dua bidang sewarna" MASTER.md dalam bentuk paling murni: yang
+           memisahkan kedua kolom BUKAN warnanya, melainkan HANYA garis ini.
+
+           Karena itu garis ini `colorBorderSecondary` (batas yang MEMBAWA
+           MAKNA, dinaikkan sampai lolos 3:1 di #208) dan bukan `colorSplit` —
+           token yang #208 justru tahan SENGAJA di bawah 3:1 sebagai pemisah
+           dekoratif. Terukur: `colorSplit` gelap `#5a5a5a` = 2,67:1 terhadap
+           sider dan 2,39:1 terhadap permukaan melayang gelap (dua-duanya
+           gagal), `colorBorderSecondary` gelap `#6a6a6a` = 3,41:1 terhadap
+           sider dan minimum 3,05:1 terhadap area kerja di kedua tema.
+
+           Versi GELAP-nya di kedua tema, sama seperti `SIDER_BG_DARK`: garis
+           ini menempel pada bidang yang memang gelap permanen. */
+        borderInlineEnd: `1px solid ${BORDER_TOKENS_DARK.colorBorderSecondary}`,
       }}
     >
       <Flex vertical style={{ height: "100%" }}>

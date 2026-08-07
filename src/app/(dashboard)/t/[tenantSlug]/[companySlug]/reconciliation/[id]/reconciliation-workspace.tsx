@@ -642,7 +642,11 @@ export function ReconciliationWorkspace({
               }}
             >
               {/* `<input type="file">` tersembunyi di dalam `<label>` — bukan
-                  tombol, jadi di luar aturan primitif tombol (MASTER.md). */}
+                  tombol, jadi di luar aturan primitif tombol (MASTER.md).
+                  Menyembunyikannya `data-sr-only`, BUKAN `display: none`
+                  (#205): `display: none` mengeluarkan isian dari urutan Tab,
+                  dan karena `<label>` sendiri tidak fokusable, impor CSV
+                  berhenti punya perhentian Tab sama sekali. */}
               <label
                 style={{
                   display: "inline-flex",
@@ -659,7 +663,7 @@ export function ReconciliationWorkspace({
                 <input
                   type="file"
                   accept=".csv,text/csv"
-                  style={{ display: "none" }}
+                  data-sr-only
                   onChange={importCsv}
                   disabled={busy}
                 />

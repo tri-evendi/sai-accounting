@@ -287,3 +287,60 @@ describe("kosakata gaya pasca-Tailwind (#203/#204)", () => {
     ).toEqual([]);
   });
 });
+
+/* ------------------------------------------------------------------------ */
+/* Isian berkas yang tak bisa dijangkau papan ketik (issue #205)              */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `<input type="file">` di aplikasi ini SELALU disembunyikan — kotak pilih
+ * berkas bawaan peramban tidak bisa digayai, jadi polanya `<label>` bergaya
+ * yang membungkus isian tak terlihat. Yang menentukan pola itu bekerja atau
+ * tidak adalah CARA menyembunyikannya, dan kedua cara terbaca sama di diff:
+ *
+ *   `display: none`  -> isian keluar dari pohon aksesibilitas DAN dari urutan
+ *                       Tab. `<label>` bukan elemen fokusable, jadi tidak ada
+ *                       satu pun perhentian Tab yang tersisa: unggahannya
+ *                       menjadi mouse-only, tanpa satu galat.
+ *   `data-sr-only`   -> isian tetap fokusable dan tetap dibacakan; hanya
+ *                       kotaknya yang 1x1px terpotong (aturan `globals.css`).
+ *
+ * Terukur di #205: dua dari tiga pemilih berkas aplikasi ini memakai bentuk
+ * pertama (unggah dokumen, impor CSV rekonsiliasi), sedangkan importir CoA
+ * memakai bentuk kedua LENGKAP dengan komentar yang menjelaskan kenapa. Jadi
+ * aturannya sudah diketahui repo ini; yang hilang hanya penjaganya.
+ *
+ * `tsc`, ESLint, dan seluruh tes lain hijau di KEDUA bentuk.
+ */
+describe("isian berkas tetap bisa dijangkau papan ketik (#205)", () => {
+  const files = ROOTS.flatMap(tsxFiles);
+
+  /** `<input …type="file"…>` yang di dalam tag-nya memuat `display: "none"`. */
+  const FILE_INPUT_DISPLAY_NONE =
+    // Tanpa flag `s`: `[^>]` sudah mencakup baris baru, dan `s` menuntut
+    // target >= es2018 sehingga `tsc` menolaknya di konfigurasi repo ini.
+    /<input(?=[\s>])[^>]*?\stype="file"[^>]*?display:\s*["']none["']/;
+
+  it('tidak ada `<input type="file">` yang disembunyikan dengan `display: none`', () => {
+    expect(
+      offenders(files, FILE_INPUT_DISPLAY_NONE),
+      "`display: none` mengeluarkan isian berkas dari urutan Tab, dan " +
+        "`<label>` yang membungkusnya BUKAN elemen fokusable — jadi " +
+        "permukaannya berhenti punya perhentian Tab sama sekali dan " +
+        "unggahannya menjadi mouse-only.\n\n" +
+        "Pakai atribut `data-sr-only` (aturannya di `src/app/globals.css`): " +
+        "isiannya tetap fokusable dan tetap dibacakan pembaca layar, hanya " +
+        "kotaknya yang 1x1px terpotong. Acuan lengkap beserta alasannya: " +
+        "`app/(dashboard)/.../accounts/import/import-form.tsx`."
+    ).toEqual([]);
+  });
+
+  it("penjaga bagi penjaga: polanya masih mengenali isian berkas", () => {
+    // Kalau polanya kelak berhenti cocok (atribut ditulis berurutan lain,
+    // gaya dipindah ke konstanta), tes di atas hijau tanpa memeriksa apa pun.
+    expect(
+      FILE_INPUT_DISPLAY_NONE.test('<input id="x" type="file" style={{ display: "none" }} />')
+    ).toBe(true);
+    expect(FILE_INPUT_DISPLAY_NONE.test('<input id="x" type="file" data-sr-only />')).toBe(false);
+  });
+});

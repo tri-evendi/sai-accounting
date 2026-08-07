@@ -165,10 +165,18 @@ export function UploadClient() {
                       </p>
                     </>
                   )}
+                  {/* `data-sr-only`, BUKAN `display: none` (#205). Isian
+                      berkas ini adalah satu-satunya kendali di kotak jatuhkan;
+                      `display: none` mengeluarkannya dari pohon aksesibilitas
+                      DAN dari urutan Tab, sehingga `<label>` di atasnya — yang
+                      bukan elemen fokusable — meninggalkan seluruh unggahan
+                      dokumen tanpa satu pun perhentian Tab. Pola yang sama
+                      sudah dipakai & dijelaskan di
+                      `accounts/import/import-form.tsx`. */}
                   <input
                     id="document-file"
                     type="file"
-                    style={{ display: "none" }}
+                    data-sr-only
                     accept=".jpg,.jpeg,.png,.gif,.pdf"
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                   />

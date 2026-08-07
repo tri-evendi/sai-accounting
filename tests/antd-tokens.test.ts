@@ -18,10 +18,13 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { theme } from "antd";
 import { generate, presetDarkPalettes, presetPalettes } from "@ant-design/colors";
 
 import {
+  SIDER_BG_DARK,
   BORDER_TOKENS_DARK,
   BORDER_TOKENS_LIGHT,
   BRAND_TEXT_DARK,
@@ -581,15 +584,129 @@ describe("token batas kustom (#208)", () => {
   });
 
   it("sidebar gelap kembali terpisah dari halamannya", () => {
-    // Jebakan MASTER.md yang lahir dari bug nyata: `--sidebar` #0F172A dan
-    // latar gelap praktis sewarna (1,03:1 terhadap colorBgContainer), jadi
-    // yang memisahkan dua kolom itu hanya batasnya.
-    const SIDEBAR = "#0F172A";
-    expect(contrast(SIDEBAR, DARK.colorBgContainer)).toBeLessThan(1.1);
-    expect(contrast(BORDER_TOKENS_DARK.colorBorder, SIDEBAR)).toBeGreaterThanOrEqual(NON_TEXT);
-    expect(contrast(BORDER_TOKENS_DARK.colorBorderSecondary, SIDEBAR)).toBeGreaterThanOrEqual(
+    /*
+     * Jebakan MASTER.md yang lahir dari bug nyata: permukaan gelap permanen
+     * dan latar gelap praktis sewarna, jadi yang memisahkan dua kolom itu
+     * HANYA batasnya.
+     *
+     * Sampai #205 baris ini memakai hex `#0F172A` yang diketik lokal — sisa
+     * palet lama yang sudah tidak ada di `src/` sejak sidebar memakai
+     * `SIDER_BG_DARK` (`#001529`). Tesnya hijau, dan yang dibuktikannya adalah
+     * warna yang tidak dipakai siapa pun. Sekarang ia mengambil konstanta yang
+     * benar-benar dirender, dan angkanya ternyata LEBIH buruk dari yang
+     * dicatat: 1,00:1, bukan 1,03:1.
+     */
+    expect(contrast(SIDER_BG_DARK, DARK.colorBgContainer)).toBeLessThan(1.1);
+    expect(contrast(BORDER_TOKENS_DARK.colorBorder, SIDER_BG_DARK)).toBeGreaterThanOrEqual(
       NON_TEXT
     );
+    expect(
+      contrast(BORDER_TOKENS_DARK.colorBorderSecondary, SIDER_BG_DARK)
+    ).toBeGreaterThanOrEqual(NON_TEXT);
+  });
+});
+
+/* ------------------------------------------------------------------------ */
+/* Chrome di atas permukaan gelap permanen (issue #205)                       */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Dua kegagalan yang lolos seluruh epik #206 karena keduanya berada di
+ * PERSIMPANGAN dua keputusan yang masing-masing benar.
+ *
+ * Yang menyembunyikannya sama pada keduanya: nilainya tidak ditulis di
+ * `src/`. Satu datang dari token komponen AntD yang namanya berawalan "dark"
+ * (sehingga terbaca seolah hanya berlaku di tema gelap), satu lagi dari token
+ * yang #208 sengaja tahan di bawah ambang untuk peran LAIN.
+ */
+describe("chrome di atas permukaan gelap permanen (#205)", () => {
+  /** Yang dibaca dari `antd/es/menu/style/index.js` yang terpasang. */
+  const darkItemSelectedColor = LIGHT.colorTextLightSolid;
+
+  it("label butir menu TERPILIH lolos AA di kedua tema", () => {
+    /*
+     * `darkItemSelectedBg` bawaan = `colorPrimary` TEMA YANG SEDANG BERLAKU,
+     * bukan sesuatu yang gelap permanen. Di tema terang itu #1677ff, dan label
+     * putih di atasnya 4,10:1 — angka yang sama yang membuat `Button` diberi
+     * token sendiri di #187, kali ini pada label navigasi utama aplikasi.
+     */
+    expect(contrast(darkItemSelectedColor, PRIMARY_BUTTON_DARK.colorPrimary)).toBeGreaterThanOrEqual(
+      AA
+    );
+  });
+
+  it("isian butir TERPILIH tetap bisa ditemukan di atas sider", () => {
+    // WCAG 1.4.11: penanda keadaan "terpilih" adalah grafis non-teks, 3:1.
+    expect(contrast(PRIMARY_BUTTON_DARK.colorPrimary, SIDER_BG_DARK)).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+  });
+
+  it("kedua alternatif yang jelas GAGAL — itulah sebabnya anak tangga tengah dipakai", () => {
+    /*
+     * Baris ini yang membuat pilihannya tidak bisa "dirapikan" belakangan.
+     * Dua ambang menarik berlawanan arah, dan hanya satu anak tangga melewati
+     * keduanya:
+     *
+     *   #1677ff (colorPrimary terang) : label 4,10 GAGAL · isian 4,49 lolos
+     *   #0958d9 (tombol primer terang): label 6,16 lolos · isian 2,99 GAGAL
+     *   #1668dc (yang dipakai)        : label 5,19 lolos · isian 3,55 lolos
+     */
+    expect(contrast(darkItemSelectedColor, LIGHT.colorPrimary)).toBeLessThan(AA);
+    expect(contrast(PRIMARY_BUTTON_LIGHT.colorPrimary, SIDER_BG_DARK)).toBeLessThan(NON_TEXT);
+  });
+
+  it("`AntdProvider` benar-benar mendaftarkan isian itu ke `Menu`", () => {
+    // Angka di atas hanya berlaku kalau tokennya memang dioper. Tanpa baris
+    // ini, menghapus override-nya meninggalkan seluruh describe ini hijau.
+    const src = readFileSync(
+      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      "utf8"
+    );
+    expect(src).toMatch(/Menu:\s*\{\s*darkItemSelectedBg:\s*PRIMARY_BUTTON_DARK\.colorPrimary\s*\}/);
+  });
+
+  it("batas yang MEMISAHKAN sider dari area kerja memakai token 3:1, bukan `colorSplit`", () => {
+    /*
+     * `colorSplit` sengaja ditahan DI BAWAH 3:1 di #208 sebagai pemisah
+     * dekoratif (`Divider`, `List`). Memakainya untuk batas antar-BIDANG
+     * adalah kode yang terbaca benar dan tidak melakukan tugasnya: terukur
+     * 2,67:1 terhadap sider dan 2,39:1 terhadap permukaan melayang gelap.
+     */
+    expect(contrast(BORDER_TOKENS_DARK.colorSplit, SIDER_BG_DARK)).toBeLessThan(NON_TEXT);
+    expect(contrast(BORDER_TOKENS_DARK.colorBorderSecondary, SIDER_BG_DARK)).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+    // …dan ia harus lolos di sisi SEBERANGNYA juga, di kedua tema: garis itu
+    // memisahkan dua bidang, bukan satu.
+    expect(worst(BORDER_TOKENS_DARK.colorBorderSecondary, "light")).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+    expect(worst(BORDER_TOKENS_DARK.colorBorderSecondary, "dark")).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+  });
+
+  it("ketiga shell gelap memakai batas yang sama untuk tepi seberangnya", () => {
+    /*
+     * Sider, panel merek layar masuk, dan menu konsol penyewa menggambar
+     * batas yang sama; kalau salah satunya menyimpang, yang terlihat bukan
+     * "kurang kontras" melainkan tiga garis yang berbeda di satu produk.
+     * Pemisah INTERNAL (`borderBottom`/`borderTop` di dalam panel) tetap
+     * `colorSplit` dan sengaja tidak disebut di sini — ia memang dekoratif.
+     */
+    for (const berkas of [
+      ["src", "components", "layout", "sidebar.tsx"],
+      ["src", "components", "auth", "auth-shell.tsx"],
+      ["src", "components", "tenant", "platform-shell.tsx"],
+    ]) {
+      const src = readFileSync(join(__dirname, "..", ...berkas), "utf8");
+      const tepi = /borderInlineEnd:\s*`[^`]*\$\{BORDER_TOKENS_DARK\.(\w+)\}/.exec(src);
+      expect(tepi, `${berkas.join("/")} tidak lagi menggambar borderInlineEnd`).not.toBeNull();
+      expect(tepi?.[1], `${berkas.join("/")} memakai token pemisah yang salah`).toBe(
+        "colorBorderSecondary"
+      );
+    }
   });
 });
 

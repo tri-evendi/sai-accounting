@@ -3313,7 +3313,11 @@
     "mailFromRequired": "Alamat pengirim wajib diisi",
     "mailHostRequired": "Host SMTP wajib diisi untuk transport SMTP",
     "mailPortRequired": "Port SMTP wajib diisi untuk transport SMTP",
-    "mailPortInvalid": "Port harus angka 1–65535"
+    "mailPortInvalid": "Port harus angka 1–65535",
+    "amountRequired": "Jumlah wajib diisi",
+    "amountNotNegative": "Jumlah tidak boleh negatif",
+    "amountTooLarge": "Jumlah terlalu besar",
+    "categoryRequired": "Kategori wajib dipilih"
   },
   "modules": {
     "sectionTitle": "Modul Usaha",

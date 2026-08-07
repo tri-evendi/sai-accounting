@@ -6,16 +6,34 @@
  *
  * Dikonversi ke token Ant Design pada issue #197; daftarnya `StaticTable`
  * (#189) — tidak ada sortir/filter seketika yang dibeli dengan `DataTable`.
+ *
+ * ── issue #216: formulirnya kini react-hook-form + zod ─────────────────────
+ * `salesTargetSchema` yang SAMA dengan yang diurai `/api/budget/targets`
+ * (diimpor, bukan disalin) menolak isian kosong di client. Yang paling penting
+ * di formulir ini adalah NOMINALNYA: `Number("")` adalah `0`, dan nol di sini
+ * adalah target yang sah — jadi isian kosong yang lolos akan tersimpan sebagai
+ * "target nol", bukan sebagai kekeliruan yang terlihat. Skema itulah yang
+ * membedakan keduanya (lihat `money` di `validations/budget.ts`).
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Col, Flex, Row, Spin, theme } from "antd";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
@@ -25,11 +43,36 @@ import { monthNames } from "@/lib/i18n/labels";
 import type { SalesTargetListRow } from "@/lib/budget-report";
 import { AimOutlined, DeleteOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { applyServerFieldErrors } from "@/lib/form-server-errors";
+import { salesTargetSchema, type SalesTargetInput } from "@/lib/validations/budget";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
 /** `sm:max-w-xs` lama — isian nominal tidak perlu selebar kartunya. */
 const AMOUNT_MAX_WIDTH = 320;
+
+/** Isian nominal — rata kanan + `tabular-nums`, seperti kolom uang. */
+const NUMERIC_FIELD: React.CSSProperties = {
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
+
+/**
+ * Isian sebagaimana DIPILIH/DIKETIK — string, seperti nilai kontrol HTML. Bukan
+ * skema kedua: aturannya seluruhnya milik `salesTargetSchema`, yang meng-coerce
+ * string ini menjadi angka dan memperlakukan pilihan kosong sebagai `null`
+ * ("berlaku untuk semua"), bukan sebagai id `0`.
+ */
+interface SalesTargetFormValues {
+  year: string;
+  month: string;
+  customerId: string;
+  itemId: string;
+  amount: string;
+}
+
+/** Isian yang benar-benar ada di layar — sisanya naik jadi galat formulir. */
+const FIELDS = ["year", "month", "customerId", "itemId", "amount"] as const;
 
 interface NamedOption {
   id: number;
@@ -57,45 +100,46 @@ export function SalesTargetClient({
   const period = (year: number, month: number) =>
     translate("common.monthOfYear", { month: months[month - 1], year });
 
-  const [year, setYear] = useState(String(defaultYear));
-  const [month, setMonth] = useState(String(defaultMonth));
-  const [customerId, setCustomerId] = useState("");
-  const [itemId, setItemId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
+  const form = useForm<SalesTargetFormValues, unknown, SalesTargetInput>({
+    // Cast HANYA menyelaraskan tipe statis; validasi runtime tetap dijalankan
+    // `salesTargetSchema` apa adanya (pola yang sama dengan `payment-form.tsx`).
+    resolver: zodResolver(salesTargetSchema) as unknown as Resolver<
+      SalesTargetFormValues,
+      unknown,
+      SalesTargetInput
+    >,
+    defaultValues: {
+      year: String(defaultYear),
+      month: String(defaultMonth),
+      customerId: "",
+      itemId: "",
+      amount: "",
+    },
+  });
+
+  async function onSubmit(values: SalesTargetInput) {
     try {
       const res = await apiFetch("/api/budget/targets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          year: Number(year),
-          month: Number(month),
-          customerId: customerId ? Number(customerId) : null,
-          itemId: itemId ? Number(itemId) : null,
-          amount: Number(amount),
-        }),
+        // `values` sudah berupa angka/`null` — skema yang mengubahnya, jadi yang
+        // dikirim persis yang divalidasi.
+        body: JSON.stringify(values),
       });
       const data = await res.json();
       if (!res.ok) {
-        const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
-        const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? translate("budget.saveTargetFailed"));
+        applyServerFieldErrors(form.setError, data, FIELDS, translate("budget.saveTargetFailed"));
         return;
       }
       toast(translate("budget.targetSaved"), "success");
-      setAmount("");
+      // Hanya nominalnya yang dikosongkan: periode & penanda biasanya dipakai
+      // ulang untuk baris target berikutnya.
+      form.resetField("amount");
       router.refresh();
     } catch {
-      setError(translate("budget.networkFailed"));
-    } finally {
-      setSaving(false);
+      form.setError("root", { message: translate("budget.networkFailed") });
     }
   }
 
@@ -192,89 +236,151 @@ export function SalesTargetClient({
           >
             {translate("budget.setTarget")}
           </h2>
-          <form onSubmit={handleSubmit}>
-            <Row gutter={[token.margin, token.margin]}>
-              <Col xs={24} sm={12}>
-                <Select
-                  id="target-year"
-                  label={translate("budget.yearField")}
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  options={Array.from({ length: 6 }, (_, i) => defaultYear + 1 - i).map((y) => ({
-                    value: String(y),
-                    label: String(y),
-                  }))}
-                  required
-                />
-              </Col>
-              <Col xs={24} sm={12}>
-                <Select
-                  id="target-month"
-                  label={translate("budget.monthField")}
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                  options={months.map((name, i) => ({ value: String(i + 1), label: name }))}
-                  required
-                />
-              </Col>
-              <Col xs={24} sm={12}>
-                <Select
-                  id="target-customer"
-                  label={translate("budget.customerOptional")}
-                  value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  placeholder={translate("budget.allCustomers")}
-                  options={[
-                    { value: "", label: translate("budget.allCustomers") },
-                    ...customers.map((c) => ({ value: String(c.id), label: c.name })),
-                  ]}
-                />
-              </Col>
-              <Col xs={24} sm={12}>
-                <Select
-                  id="target-item"
-                  label={translate("budget.itemOptional")}
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                  placeholder={translate("budget.allItems")}
-                  options={[
-                    { value: "", label: translate("budget.allItems") },
-                    ...items.map((it) => ({ value: String(it.id), label: it.name })),
-                  ]}
-                />
-              </Col>
-              <Col xs={24}>
-                <div style={{ maxWidth: AMOUNT_MAX_WIDTH }}>
-                  <Input
-                    id="target-amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
-                    label={translate("budget.targetAmountField")}
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0"
-                    required
+          <Form {...form}>
+            {/* `noValidate`: validasinya milik zod sekarang. */}
+            <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+              <Row gutter={[token.margin, token.margin]}>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="year"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{translate("budget.yearField")}</FormLabel>
+                        <FormControl>
+                          <NativeSelect
+                            options={Array.from(
+                              { length: 6 },
+                              (_, i) => defaultYear + 1 - i
+                            ).map((y) => ({ value: String(y), label: String(y) }))}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </Col>
-              {error && (
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="month"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{translate("budget.monthField")}</FormLabel>
+                        <FormControl>
+                          <NativeSelect
+                            options={months.map((name, i) => ({
+                              value: String(i + 1),
+                              label: name,
+                            }))}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  {/* Tanpa tanda wajib, dan memang tanpa: tak dipilih = target
+                      berlaku untuk SEMUA pelanggan, sebuah nilai yang sah. */}
+                  <FormField
+                    control={form.control}
+                    name="customerId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{translate("budget.customerOptional")}</FormLabel>
+                        <FormControl>
+                          <NativeSelect
+                            placeholder={translate("budget.allCustomers")}
+                            options={[
+                              { value: "", label: translate("budget.allCustomers") },
+                              ...customers.map((c) => ({
+                                value: String(c.id),
+                                label: c.name,
+                              })),
+                            ]}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="itemId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{translate("budget.itemOptional")}</FormLabel>
+                        <FormControl>
+                          <NativeSelect
+                            placeholder={translate("budget.allItems")}
+                            options={[
+                              { value: "", label: translate("budget.allItems") },
+                              ...items.map((it) => ({
+                                value: String(it.id),
+                                label: it.name,
+                              })),
+                            ]}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
                 <Col xs={24}>
-                  <div role="alert">
-                    <Alert type="error" showIcon message={error} />
+                  <div style={{ maxWidth: AMOUNT_MAX_WIDTH }}>
+                    <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel required>
+                            {translate("budget.targetAmountField")}
+                          </FormLabel>
+                          <FormControl>
+                            <TextInput
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              style={NUMERIC_FIELD}
+                              placeholder="0"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </Col>
-              )}
-              <Col xs={24}>
-                <Button type="submit" disabled={saving}>
-                  {saving && <Spin size="small" />}
-                  {translate("budget.submitTarget")}
-                </Button>
-              </Col>
-            </Row>
-          </form>
+                {form.formState.errors.root && (
+                  <Col xs={24}>
+                    <div role="alert">
+                      <Alert
+                        type="error"
+                        showIcon
+                        message={form.formState.errors.root.message}
+                      />
+                    </div>
+                  </Col>
+                )}
+                <Col xs={24}>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Spin size="small" />}
+                    {translate("budget.submitTarget")}
+                  </Button>
+                </Col>
+              </Row>
+            </form>
+          </Form>
         </div>
       </Card>
 

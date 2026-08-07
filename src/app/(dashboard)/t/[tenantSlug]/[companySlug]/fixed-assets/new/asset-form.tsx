@@ -8,22 +8,42 @@
  * ditampilkan langsung agar pengguna melihat dampaknya sebelum menyimpan.
  * Registrasi TIDAK memposting jurnal — penyusutan & pelepasan yang menjurnal.
  *
- * Dikonversi ke token Ant Design pada issue #197 — kulitnya saja; state,
- * penjaga, dan aritmetika penyusutannya tidak disentuh.
+ * Dikonversi ke token Ant Design pada issue #197 — kulitnya saja; penjaga dan
+ * aritmetika penyusutannya tidak disentuh.
+ *
+ * ── issue #216: mesinnya react-hook-form + zod ─────────────────────────────
+ * Empat isian pilihan di sini (kategori + tiga akun) kehilangan `required` yang
+ * divalidasi peramban saat `Select` berpindah ke AntD (#188). Penggantinya pola
+ * form MASTER.md: `fixedAssetSchema` yang SAMA dengan yang diurai
+ * `/api/fixed-assets` (diimpor, bukan disalin) — termasuk aturan "residu harus
+ * lebih kecil dari nilai perolehan", yang kini ketahuan SEBELUM menyimpan dan
+ * mendarat tepat di isian residunya.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { straightLineMonthly } from "@/lib/depreciation";
 import { useT } from "@/lib/i18n/client";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { applyServerFieldErrors } from "@/lib/form-server-errors";
+import { fixedAssetSchema, type FixedAssetInput } from "@/lib/validations/fixed-asset";
 
 /**
  * Kisi isian yang runtuh sendiri — pengganti `sm:grid-cols-2`/`sm:grid-cols-3`.
@@ -54,6 +74,39 @@ export interface CategoryOption {
   expenseAccountId: number;
 }
 
+/**
+ * Isian sebagaimana DIKETIK/DIPILIH — string, seperti nilai kontrol HTML. Bukan
+ * skema kedua: aturannya seluruhnya milik `fixedAssetSchema`.
+ */
+interface AssetFormValues {
+  categoryId: string;
+  name: string;
+  acquisitionDate: string;
+  location: string;
+  acquisitionCost: string;
+  residualValue: string;
+  usefulLifeMonths: string;
+  depreciationMethod: string;
+  assetAccountId: string;
+  accumulatedAccountId: string;
+  expenseAccountId: string;
+}
+
+/** Isian yang benar-benar ada di layar — sisanya naik jadi galat formulir. */
+const FIELDS = [
+  "categoryId",
+  "name",
+  "acquisitionDate",
+  "location",
+  "acquisitionCost",
+  "residualValue",
+  "usefulLifeMonths",
+  "depreciationMethod",
+  "assetAccountId",
+  "accumulatedAccountId",
+  "expenseAccountId",
+] as const;
+
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -78,24 +131,28 @@ export function AssetForm({
   const { token } = theme.useToken();
 
   const first = categories[0];
-  const [categoryId, setCategoryId] = useState(first ? String(first.id) : "");
-  const [name, setName] = useState("");
-  const [acquisitionDate, setAcquisitionDate] = useState(todayISO());
-  const [acquisitionCost, setAcquisitionCost] = useState("");
-  const [residualValue, setResidualValue] = useState("0");
-  const [usefulLifeMonths, setUsefulLifeMonths] = useState(
-    first ? String(first.defaultUsefulLifeMonths) : ""
-  );
-  const [assetAccountId, setAssetAccountId] = useState(first ? String(first.assetAccountId) : "");
-  const [accumulatedAccountId, setAccumulatedAccountId] = useState(
-    first ? String(first.accumulatedAccountId) : ""
-  );
-  const [expenseAccountId, setExpenseAccountId] = useState(
-    first ? String(first.expenseAccountId) : ""
-  );
-  const [location, setLocation] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const form = useForm<AssetFormValues, unknown, FixedAssetInput>({
+    // Cast HANYA menyelaraskan tipe statis; validasi runtime tetap milik skema.
+    resolver: zodResolver(fixedAssetSchema) as unknown as Resolver<
+      AssetFormValues,
+      unknown,
+      FixedAssetInput
+    >,
+    defaultValues: {
+      categoryId: first ? String(first.id) : "",
+      name: "",
+      acquisitionDate: todayISO(),
+      location: "",
+      acquisitionCost: "",
+      residualValue: "0",
+      usefulLifeMonths: first ? String(first.defaultUsefulLifeMonths) : "",
+      depreciationMethod: "straight_line",
+      assetAccountId: first ? String(first.assetAccountId) : "",
+      accumulatedAccountId: first ? String(first.accumulatedAccountId) : "",
+      expenseAccountId: first ? String(first.expenseAccountId) : "",
+    },
+  });
 
   const acctOptions = (opts: AccountOption[]) =>
     opts.map((a) => ({ value: String(a.id), label: `${a.code} · ${a.name}` }));
@@ -103,15 +160,28 @@ export function AssetForm({
   /** Isian angka — rata kanan + `tabular-nums`, seperti kolom uang. */
   const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 
+  /**
+   * Memilih kategori mengisi ulang umur manfaat dan ketiga akunnya — nilai yang
+   * tetap boleh ditimpa pengguna sesudahnya. `shouldValidate` tidak dipasang:
+   * mengisi isian untuk pengguna lalu langsung menilainya akan memerahkan
+   * formulir yang belum sempat disentuh.
+   */
   function applyCategory(id: string) {
-    setCategoryId(id);
+    form.setValue("categoryId", id, { shouldDirty: true });
     const cat = categories.find((c) => String(c.id) === id);
     if (!cat) return;
-    setUsefulLifeMonths(String(cat.defaultUsefulLifeMonths));
-    setAssetAccountId(String(cat.assetAccountId));
-    setAccumulatedAccountId(String(cat.accumulatedAccountId));
-    setExpenseAccountId(String(cat.expenseAccountId));
+    form.setValue("usefulLifeMonths", String(cat.defaultUsefulLifeMonths));
+    form.setValue("assetAccountId", String(cat.assetAccountId));
+    form.setValue("accumulatedAccountId", String(cat.accumulatedAccountId));
+    form.setValue("expenseAccountId", String(cat.expenseAccountId));
   }
+
+  /* Pratinjau penyusutan mengikuti isian saat diketik. `useWatch` (bukan
+     `form.watch()`) supaya React Compiler tetap bisa memoisasi komponen ini. */
+  const [acquisitionCost, residualValue, usefulLifeMonths] = useWatch({
+    control: form.control,
+    name: ["acquisitionCost", "residualValue", "usefulLifeMonths"],
+  });
 
   const monthly = useMemo(() => {
     const cost = Number(acquisitionCost) || 0;
@@ -125,151 +195,208 @@ export function AssetForm({
     }
   }, [acquisitionCost, residualValue, usefulLifeMonths]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
+  async function onSubmit(values: FixedAssetInput) {
     try {
       const res = await apiFetch("/api/fixed-assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          categoryId: Number(categoryId),
-          acquisitionDate,
-          acquisitionCost: Number(acquisitionCost),
-          residualValue: Number(residualValue) || 0,
-          usefulLifeMonths: Number(usefulLifeMonths),
-          assetAccountId: Number(assetAccountId),
-          accumulatedAccountId: Number(accumulatedAccountId),
-          expenseAccountId: Number(expenseAccountId),
-          location: location || undefined,
-        }),
+        // `values` sudah ter-coerce oleh skema yang sama dengan yang akan
+        // mengurainya di server — termasuk `residualValue` yang kosong menjadi 0.
+        // Lokasi kosong tetap dikirim sebagai TIDAK ADA, bukan string kosong:
+        // route menyimpan `location ?? null`, dan `""` di kolom itu berarti
+        // "lokasinya diketahui, dan namanya kosong".
+        body: JSON.stringify({ ...values, location: values.location || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
-        const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
-        const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
-        setError(first ?? data?.error ?? t("fixedAssets.saveAssetFailed"));
+        applyServerFieldErrors(form.setError, data, FIELDS, t("fixedAssets.saveAssetFailed"));
         return;
       }
       toast(t("fixedAssets.assetSaved"), "success");
       router.push("/fixed-assets");
       router.refresh();
     } catch {
-      setError(t("fixedAssets.networkFailed"));
-    } finally {
-      setSaving(false);
+      form.setError("root", { message: t("fixedAssets.networkFailed") });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <Form {...form}>
+    {/* `noValidate`: validasinya milik zod sekarang. */}
+    <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
       <Card style={{ marginBottom: token.marginLG }}>
         <div style={{ padding: token.paddingLG }}>
         <div style={columnGrid(2, token.margin)}>
-          <Select
-            id="categoryId"
-            label={t("fixedAssets.colCategory")}
-            value={categoryId}
-            onChange={(e) => applyCategory(e.target.value)}
-            options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
-            required
+          <FormField
+            control={form.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.colCategory")}</FormLabel>
+                <FormControl>
+                  <NativeSelect
+                    options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                    {...field}
+                    // Memilih kategori ikut mengisi umur manfaat & ketiga akun,
+                    // jadi `onChange` field-nya diganti, bukan ditambah.
+                    onChange={(e) => applyCategory(e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          <Input
-            id="name"
-            label={t("fixedAssets.assetNameField")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("fixedAssets.assetNamePlaceholder")}
-            required
-          />
-
-          <Input
-            id="acquisitionDate"
-            type="date"
-            label={t("fixedAssets.acquisitionDateField")}
-            value={acquisitionDate}
-            onChange={(e) => setAcquisitionDate(e.target.value)}
-            required
-          />
-          <Input
-            id="location"
-            label={t("fixedAssets.locationField")}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder={t("fixedAssets.locationPlaceholder")}
-          />
-
-          <Input
-            id="acquisitionCost"
-            type="number"
-            step="0.01"
-            min="0"
-            style={numberStyle}
-            label={t("fixedAssets.costField")}
-            value={acquisitionCost}
-            onChange={(e) => setAcquisitionCost(e.target.value)}
-            required
-          />
-          <Input
-            id="residualValue"
-            type="number"
-            step="0.01"
-            min="0"
-            style={numberStyle}
-            label={t("fixedAssets.residualField")}
-            value={residualValue}
-            onChange={(e) => setResidualValue(e.target.value)}
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.assetNameField")}</FormLabel>
+                <FormControl>
+                  <TextInput
+                    placeholder={t("fixedAssets.assetNamePlaceholder")}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
 
-          <Input
-            id="usefulLifeMonths"
-            type="number"
-            min="1"
-            step="1"
-            style={numberStyle}
-            label={t("fixedAssets.lifeMonthsField")}
-            value={usefulLifeMonths}
-            onChange={(e) => setUsefulLifeMonths(e.target.value)}
-            required
+          <FormField
+            control={form.control}
+            name="acquisitionDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.acquisitionDateField")}</FormLabel>
+                <FormControl>
+                  <TextInput type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          <Select
-            id="method"
-            label={t("fixedAssets.methodField")}
-            value="straight_line"
-            disabled
-            onChange={() => {}}
-            options={[
-              { value: "straight_line", label: t("depreciationMethod.straight_line") },
-            ]}
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("fixedAssets.locationField")}</FormLabel>
+                <FormControl>
+                  <TextInput
+                    placeholder={t("fixedAssets.locationPlaceholder")}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="acquisitionCost"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.costField")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" step="0.01" min="0" style={numberStyle} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="residualValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("fixedAssets.residualField")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" step="0.01" min="0" style={numberStyle} {...field} />
+                </FormControl>
+                {/* "Residu harus lebih kecil dari perolehan" (`superRefine`
+                    skema) mendarat di sini — isian yang harus diubah. */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="usefulLifeMonths"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.lifeMonthsField")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" min="1" step="1" style={numberStyle} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/* Satu-satunya metode yang didukung mesin penyusutan; dikunci, jadi
+              tak pernah bisa kosong dan tak perlu tanda wajib. */}
+          <FormField
+            control={form.control}
+            name="depreciationMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("fixedAssets.methodField")}</FormLabel>
+                <FormControl>
+                  <NativeSelect
+                    disabled
+                    options={[
+                      { value: "straight_line", label: t("depreciationMethod.straight_line") },
+                    ]}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
         <div style={{ ...columnGrid(3, token.margin), marginTop: token.margin }}>
-          <Select
-            id="assetAccountId"
-            label={t("fixedAssets.assetAccountField")}
-            value={assetAccountId}
-            onChange={(e) => setAssetAccountId(e.target.value)}
-            options={acctOptions(assetAccounts)}
-            required
+          <FormField
+            control={form.control}
+            name="assetAccountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.assetAccountField")}</FormLabel>
+                <FormControl>
+                  <NativeSelect options={acctOptions(assetAccounts)} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          <Select
-            id="accumulatedAccountId"
-            label={t("fixedAssets.accumulatedAccountField")}
-            value={accumulatedAccountId}
-            onChange={(e) => setAccumulatedAccountId(e.target.value)}
-            options={acctOptions(accumulatedAccounts)}
-            required
+          <FormField
+            control={form.control}
+            name="accumulatedAccountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.accumulatedAccountField")}</FormLabel>
+                <FormControl>
+                  <NativeSelect options={acctOptions(accumulatedAccounts)} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          <Select
-            id="expenseAccountId"
-            label={t("fixedAssets.expenseAccountField")}
-            value={expenseAccountId}
-            onChange={(e) => setExpenseAccountId(e.target.value)}
-            options={acctOptions(expenseAccounts)}
-            required
+          <FormField
+            control={form.control}
+            name="expenseAccountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("fixedAssets.expenseAccountField")}</FormLabel>
+                <FormControl>
+                  <NativeSelect options={acctOptions(expenseAccounts)} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
@@ -307,17 +434,17 @@ export function AssetForm({
           </Typography.Text>
         </Flex>
 
-        {error && (
+        {form.formState.errors.root && (
           <div role="alert" style={{ marginTop: token.margin }}>
-            <Alert type="error" showIcon message={error} />
+            <Alert type="error" showIcon message={form.formState.errors.root.message} />
           </div>
         )}
         </div>
       </Card>
 
       <Flex wrap gap={token.marginXS}>
-        <Button type="submit" disabled={saving}>
-          {saving && <Spin size="small" />}
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting && <Spin size="small" />}
           {t("fixedAssets.saveAsset")}
         </Button>
         <Button type="button" variant="ghost" onClick={() => router.push("/fixed-assets")}>
@@ -325,5 +452,6 @@ export function AssetForm({
         </Button>
       </Flex>
     </form>
+    </Form>
   );
 }

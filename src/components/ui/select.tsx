@@ -47,8 +47,15 @@
  *     `required` pada hidden di atas justru lebih buruk — kontrol tersembunyi
  *     tidak bisa difokuskan, sehingga peramban memblokir submit TANPA pesan:
  *     tombol Simpan yang tidak melakukan apa-apa. Jadi `required` di sini kini
- *     hanya `aria-required` + tanda `*`, dan penjaganya adalah validasi server
- *     (yang memang selalu ada) sampai isian-isian itu pindah ke zod di #192.
+ *     hanya `aria-required` + tanda `*`.
+ *
+ *     Penggantinya sudah terpasang (issue #216): ke-15 isian pilihan yang dulu
+ *     bersandar pada atribut itu kini hidup di dalam pola `Form`, divalidasi
+ *     `zodResolver` dengan skema yang sama seperti route handler-nya — pesannya
+ *     inline, di dekat isiannya, dan ikut berpindah bahasa. Isian pilihan wajib
+ *     yang BARU karena itu ditulis lewat pola `Form`, bukan lewat prop
+ *     `required` di sini: prop itu menggambar tanda dan `aria-required`, tetapi
+ *     tidak menahan submit satu pun.
  *
  * ── Pencarian ──────────────────────────────────────────────────────────────
  * `showSearch` menyala sendiri di atas `SEARCH_THRESHOLD` opsi. Daftar pendek

@@ -99,12 +99,24 @@ type FormFieldContextValue<
 
 const FormFieldContext = createContext<FormFieldContextValue>({} as FormFieldContextValue);
 
+/**
+ * `TTransformedValues` diteruskan apa adanya ke `Controller` (issue #216).
+ *
+ * Generik ketiga itu adalah bentuk nilai SESUDAH skema mengubahnya — yang di
+ * app ini berbeda dari bentuk isiannya setiap kali sebuah skema memakai
+ * `z.coerce`: isian pilihan menyimpan `"7"`, skema menyerahkan `7`, dan
+ * `handleSubmit` menerima yang kedua. Tanpa generik ini `control` dari
+ * `useForm<Isian, unknown, Muatan>` ditolak `tsc` di setiap `FormField` —
+ * bukan karena ada yang salah, melainkan karena bawaannya menganggap keduanya
+ * sama.
+ */
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+  TTransformedValues = TFieldValues,
 >({
   ...props
-}: ControllerProps<TFieldValues, TName>) => {
+}: ControllerProps<TFieldValues, TName, TTransformedValues>) => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />

@@ -8,18 +8,41 @@
  * mana, tanggal berapa, untuk apa, berapa masuk/keluar, dan masuk kategori apa.
  * Mata uang asing (+ kursnya) dan catatan pindah ke "Detail lengkap" yang
  * terlipat — mayoritas transaksi harian rupiah tidak pernah perlu menyentuhnya,
- * tetapi begitu mata uangnya diubah, kursnya WAJIB, dan penolakan server untuk
- * kurs kosong membuka kembali bagian itu lalu memfokuskan isiannya.
+ * tetapi begitu mata uangnya diubah, kursnya WAJIB, dan penolakan untuk kurs
+ * kosong membuka kembali bagian itu lalu memfokuskan isiannya.
+ *
+ * ── issue #216: mesinnya react-hook-form + zod ─────────────────────────────
+ * Formulir ini dulu membaca `FormData` sendiri lalu menjalankan penjaganya satu
+ * per satu; isian pilihannya (kas mana, kategori/akun lawan, mata uang) dijaga
+ * `required` peramban sampai `Select` berpindah ke AntD di #188 dan atribut itu
+ * berhenti divalidasi. Sekarang `cashTransactionSchema` — skema yang SAMA
+ * dengan yang diurai `/api/finance`, diimpor bukan disalin — menilai seluruh
+ * muatan di client lebih dulu, termasuk dua aturan yang tak bisa dilihat satu
+ * isian saja: "isi salah satu, masuk atau keluar" dan "valas wajib berkurs".
+ * Yang TIDAK pindah ke skema adalah penjaga yang butuh data di luar muatan
+ * (periode tertutup) dan satu aturan yang memang hanya milik layar ini
+ * (mengisi kedua sisi sekaligus).
  */
 
 import { Suspense, useEffect, useState } from "react";
 import { Alert, Flex, theme, Typography } from "antd";
 import { useSearchParams } from "next/navigation";
+import { useForm, useWatch, type FieldErrors, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Money } from "@/components/ui/money";
 import { StaticTable } from "@/components/ui/static-table";
@@ -33,11 +56,13 @@ import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-se
 import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
 import type { CashType } from "@/lib/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
-import { resolveSubmitFailure } from "@/lib/form-sections";
-import { closedPeriodIssue, negativeValueIssue, type ClosedPeriodRef } from "@/lib/form-guards";
+import { isAdvancedField, orderedFields, resolveSubmitFailure } from "@/lib/form-sections";
+import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { cashTypeLabels } from "@/lib/i18n/labels";
+import { vmsg } from "@/lib/i18n/validation";
 import { apiFetch } from "@/lib/api-fetch";
+import { cashTransactionSchema, type CashTransactionInput } from "@/lib/validations/finance";
 
 interface AccountOption {
   id: number;
@@ -85,6 +110,45 @@ interface JournalLine {
   credit: number;
 }
 
+/**
+ * Isian sebagaimana DIKETIK/DIPILIH — string, seperti nilai kontrol HTML. Bukan
+ * skema kedua: aturannya seluruhnya milik `cashTransactionSchema`.
+ */
+interface TransactionFormValues {
+  type: CashType;
+  date: string;
+  description: string;
+  debit: string;
+  credit: string;
+  counterAccountId: string;
+  currency: string;
+  /** `undefined` saat kosong: kurs yang tak diisi BUKAN kurs nol (#216). */
+  rate?: string;
+  note: string;
+}
+
+/**
+ * Isian yang benar-benar ada di layar. Namanya sengaja sama dengan nama field
+ * di muatan API, sehingga `details.fieldErrors` dari server (dan peta
+ * inti/lanjutan di `FORM_LAYOUTS.kas`) menunjuk isian yang sama tanpa kamus
+ * kedua.
+ */
+const FIELDS = [
+  "type",
+  "date",
+  "description",
+  "debit",
+  "credit",
+  "counterAccountId",
+  "currency",
+  "rate",
+  "note",
+] as const;
+
+function isFormField(name: string): name is (typeof FIELDS)[number] {
+  return (FIELDS as readonly string[]).includes(name);
+}
+
 function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
   const router = useAppRouter();
   const searchParams = useSearchParams();
@@ -107,22 +171,45 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     accountantMode: session?.user?.accountantMode,
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   // issue #91/#98 — pemilih bersama dengan faktur, pembelian dan gerakan stok.
   const costCenters = useCostCenters();
+  /*
+   * Pusat biaya sengaja TIDAK ikut ke dalam state formulir: ia tidak pernah
+   * wajib ("belum ditetapkan" adalah nilai yang SAH, issue #91), jadi tidak ada
+   * aturan validasi yang bisa dilanggarnya. Nilainya disatukan saat dikirim.
+   */
   const [costCenterId, setCostCenterId] = useState("");
-  // Drives which extra fields the accounting engine needs from the user.
-  const [currency, setCurrency] = useState(BASE_CURRENCY);
-  const [type, setType] = useState<CashType>("bank");
-  const [counterAccountId, setCounterAccountId] = useState("");
-  const [debit, setDebit] = useState("0");
-  const [credit, setCredit] = useState("0");
-  const [rate, setRate] = useState("");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedInvalid, setAdvancedInvalid] = useState(false);
+
+  const form = useForm<TransactionFormValues, unknown, CashTransactionInput>({
+    // Cast HANYA menyelaraskan tipe statis; validasi runtime tetap milik skema.
+    resolver: zodResolver(cashTransactionSchema) as unknown as Resolver<
+      TransactionFormValues,
+      unknown,
+      CashTransactionInput
+    >,
+    defaultValues: {
+      type: "bank",
+      date: new Date().toISOString().split("T")[0],
+      description: "",
+      debit: "0",
+      credit: "0",
+      counterAccountId: "",
+      // Drives which extra fields the accounting engine needs from the user.
+      currency: BASE_CURRENCY,
+      rate: undefined,
+      note: "",
+    },
+  });
+
+  /* `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
+     memoisasi komponen ini. */
+  const [type, currency, debit, credit, rate, note, date, counterAccountId] = useWatch({
+    control: form.control,
+    name: ["type", "currency", "debit", "credit", "rate", "note", "date", "counterAccountId"],
+  });
 
   const isForeign = currency !== BASE_CURRENCY;
   const value = Number(debit) > 0 ? Number(debit) : Number(credit);
@@ -164,87 +251,84 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     };
   }, []);
 
-  /** Tampilkan galat, buka bagian yang menyembunyikannya, lalu fokuskan isiannya. */
+  /**
+   * Tempatkan galat, buka bagian yang menyembunyikannya, lalu fokuskan
+   * isiannya. Galat yang menunjuk isian di layar mendarat DI isian itu (aturan
+   * 7 Konvensi Form); yang tidak menunjuk apa pun naik menjadi galat formulir.
+   */
   function reportFailure(message: string, field: string | null, inAdvanced: boolean) {
-    setError(message);
+    if (field && isFormField(field)) {
+      form.setError(field, { type: "server", message });
+    } else {
+      form.setError("root", { message });
+    }
     setAdvancedInvalid(inAdvanced);
     if (inAdvanced) setAdvancedOpen(true);
+    // `focusFormField` mencari `#id` lalu `[name=…]`; `FormControl` memberi id
+    // yang dibangkitkan, tetapi `name` tetap nama field react-hook-form.
     if (field) requestAnimationFrame(() => focusFormField(field));
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
+  /**
+   * Validasi client GAGAL. Dua hal yang harus terjadi dan tidak dikerjakan zod:
+   *
+   *  1. **Bagian yang terlipat harus terbuka.** Kurs hidup di "Detail lengkap";
+   *     pesan galat untuk isian yang tidak ada di layar lebih buruk daripada
+   *     formulir panjang (lihat `lib/form-sections.ts`).
+   *  2. **Mode Akuntan memakai istilahnya sendiri.** Skema membawa kalimat awam
+   *     ("Uang Masuk / Uang Keluar", "Akun lawan") karena ia juga dipakai server
+   *     dan tidak tahu mode siapa pun. Di sini kalimatnya — BUKAN aturannya —
+   *     ditukar dengan kalimat bermode, persis seperti sebelum #216.
+   */
+  function onInvalid(errors: FieldErrors<TransactionFormValues>) {
+    if (errors.debit?.message === vmsg("validation.debitOrCredit")) {
+      form.setError("debit", {
+        message: accountantOn ? t("finance.errNeedOneAccountant") : t("finance.errNeedOnePlain"),
+      });
+    }
+    if (errors.counterAccountId?.message === vmsg("validation.counterAccountRequired")) {
+      form.setError("counterAccountId", {
+        message: accountantOn
+          ? t("finance.errPickCounterAccount")
+          : t("finance.errPickCategory"),
+      });
+    }
+
+    // Isian bermasalah PERTAMA menurut urutan tampil, bukan urutan kunci objek.
+    const first = orderedFields("kas").find(
+      (name) => isFormField(name) && errors[name] !== undefined
+    );
+    if (!first) return;
+    const inAdvanced = isAdvancedField("kas", first);
+    setAdvancedInvalid(inAdvanced);
+    if (inAdvanced) setAdvancedOpen(true);
+    requestAnimationFrame(() => focusFormField(first));
+  }
+
+  async function onSubmit(values: CashTransactionInput) {
     setAdvancedInvalid(false);
 
-    const formData = new FormData(e.currentTarget);
-    const debitVal = Number(formData.get("debit")) || 0;
-    const creditVal = Number(formData.get("credit")) || 0;
-
-    // ── Penjaga sebelum kirim (cermin dari penjaga server) ──
+    // ── Penjaga yang TIDAK bisa hidup di skema ──
+    // Periode tertutup butuh daftar periode, yang tidak ada di dalam muatan.
     if (periodIssue) {
       reportFailure(periodIssue, "date", false);
       return;
     }
-    const negative = negativeValueIssue([
-      { field: "debit", value: debitVal },
-      { field: "credit", value: creditVal },
-      { field: "rate", value: Number(formData.get("rate")) },
-    ]);
-    if (negative) {
-      reportFailure(negative.message, negative.field, negative.field === "rate");
-      return;
-    }
-    if (debitVal === 0 && creditVal === 0) {
-      reportFailure(
-        accountantOn
-          ? t("finance.errNeedOneAccountant")
-          : t("finance.errNeedOnePlain"),
-        "debit",
-        false
-      );
-      return;
-    }
-    if (debitVal > 0 && creditVal > 0) {
-      reportFailure(
-        t("finance.errBothSides"),
-        "debit",
-        false
-      );
-      return;
-    }
-
-    const counterAccountIdVal = Number(formData.get("counterAccountId")) || 0;
-    if (!counterAccountIdVal) {
-      reportFailure(
-        accountantOn
-          ? t("finance.errPickCounterAccount")
-          : t("finance.errPickCategory"),
-        "counterAccountId",
-        false
-      );
-      return;
-    }
-    if (isForeign && !(Number(formData.get("rate")) > 0)) {
-      reportFailure(
-        t("finance.errRateRequired", { currency }),
-        "rate",
-        true
-      );
+    // Mengisi kedua sisi sekaligus: aturan layar ini saja — mesin posting
+    // membaca sisi yang terisi, dan dua sisi terisi berarti niat yang ambigu.
+    if (values.debit > 0 && values.credit > 0) {
+      reportFailure(t("finance.errBothSides"), "debit", false);
       return;
     }
 
     setLoading(true);
     const body = {
-      type: formData.get("type"),
-      date: formData.get("date"),
-      description: formData.get("description"),
-      currency: formData.get("currency"),
-      debit: debitVal,
-      credit: creditVal,
-      counterAccountId: counterAccountIdVal,
-      rate: isForeign ? Number(formData.get("rate")) || undefined : undefined,
-      note: formData.get("note") || undefined,
+      ...values,
+      // IDR tidak membawa kurs — server memperlakukannya 1:1. Isian kursnya
+      // memang tersembunyi untuk IDR, jadi nilai sisa dari mata uang sebelumnya
+      // tidak boleh ikut berangkat.
+      rate: values.currency === BASE_CURRENCY ? undefined : values.rate,
+      note: values.note || undefined,
       // Tak dipilih = null = "belum ditetapkan / seluruh perusahaan" — nilai
       // yang SAH, bukan isian yang terlewat (issue #91).
       costCenterId: costCenterId ? Number(costCenterId) : null,
@@ -272,7 +356,9 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     isForeign
       ? t("finance.advCurrency", {
           currency,
-          rate: Number(rate) > 0 ? rate : t("common.notEntered"),
+          // Kurs kosong (`undefined`) dikatakan dengan kalimat, tidak pernah
+          // dirender sebagai angka nol.
+          rate: Number(rate) > 0 ? String(rate) : t("common.notEntered"),
         })
       : t("common.rupiahIdr"),
     note.trim() ? t("finance.advHasNote") : null,
@@ -320,42 +406,56 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
         <LearnMore term="kas_bank" label={t("finance.learnMore")} />
       </div>
 
-      {error && (
+      {form.formState.errors.root && (
         /* `Alert` AntD: ikon + teks `colorText` di atas `colorErrorBg`, jadi
            maknanya tidak bergantung warna. `role="alert"` tetap milik kita. */
         <div role="alert" style={{ marginBottom: token.margin }}>
-          <Alert type="error" showIcon message={error} />
+          <Alert type="error" showIcon message={form.formState.errors.root.message} />
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <Form {...form}>
+      {/* `noValidate`: validasinya milik zod sekarang. */}
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <CardTitle>{t("finance.detailsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div style={twoColumnGrid(token.margin)}>
-              <Select
-                id="type"
+              <FormField
+                control={form.control}
                 name="type"
-                label={t("finance.filterType")}
-                value={type}
-                onChange={(e) => setType(e.target.value as CashType)}
-                options={[
-                  { value: "bank", label: cashLabels.bank },
-                  { value: "kas_besar", label: cashLabels.kas_besar },
-                  { value: "kas_kecil", label: cashLabels.kas_kecil },
-                ]}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required>{t("finance.filterType")}</FormLabel>
+                    <FormControl>
+                      <NativeSelect
+                        options={[
+                          { value: "bank", label: cashLabels.bank },
+                          { value: "kas_besar", label: cashLabels.kas_besar },
+                          { value: "kas_kecil", label: cashLabels.kas_kecil },
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <div>
-                <Input
-                  id="date"
+                <FormField
+                  control={form.control}
                   name="date"
-                  type="date"
-                  label={t("common.date")}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required>{t("common.date")}</FormLabel>
+                      <FormControl>
+                        <TextInput type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 {periodIssue && (
                   <Flex
@@ -372,24 +472,51 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 )}
               </div>
               <div style={FULL_ROW}>
-                <Input id="description" name="description" label={t("common.description")} required />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required>{t("common.description")}</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div>
-                <Input
-                  id="debit"
+                <FormField
+                  control={form.control}
                   name="debit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  autoFocus={arah === "masuk"}
-                  style={{
-                    ...numberStyle,
-                    ...highlight(arah === "masuk", token.colorMoneyPositive ?? token.colorSuccess),
-                  }}
-                  label={accountantOn ? t("finance.labelDebitAccountant") : t("finance.colMoneyIn")}
-                  value={debit}
-                  onChange={(e) => setDebit(e.target.value)}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {accountantOn ? t("finance.labelDebitAccountant") : t("finance.colMoneyIn")}
+                      </FormLabel>
+                      <FormControl>
+                        <TextInput
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          autoFocus={arah === "masuk"}
+                          style={{
+                            ...numberStyle,
+                            ...highlight(
+                              arah === "masuk",
+                              token.colorMoneyPositive ?? token.colorSuccess
+                            ),
+                          }}
+                          {...field}
+                        />
+                      </FormControl>
+                      {/* "Isi salah satu: masuk atau keluar" mendarat di sini —
+                          skema menaruh galatnya pada `debit` (`path: ["debit"]`). */}
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
                   <ArrowDownOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM }} />
@@ -399,20 +526,35 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                 </Flex>
               </div>
               <div>
-                <Input
-                  id="credit"
+                <FormField
+                  control={form.control}
                   name="credit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  autoFocus={arah === "keluar"}
-                  style={{
-                    ...numberStyle,
-                    ...highlight(arah === "keluar", token.colorMoneyNegative ?? token.colorError),
-                  }}
-                  label={accountantOn ? t("finance.labelCreditAccountant") : t("finance.colMoneyOut")}
-                  value={credit}
-                  onChange={(e) => setCredit(e.target.value)}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {accountantOn
+                          ? t("finance.labelCreditAccountant")
+                          : t("finance.colMoneyOut")}
+                      </FormLabel>
+                      <FormControl>
+                        <TextInput
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          autoFocus={arah === "keluar"}
+                          style={{
+                            ...numberStyle,
+                            ...highlight(
+                              arah === "keluar",
+                              token.colorMoneyNegative ?? token.colorError
+                            ),
+                          }}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <Flex align="center" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
                   <ArrowUpOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM }} />
@@ -423,20 +565,33 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
               </div>
 
               <div style={FULL_ROW}>
-                <Select
-                  id="counterAccountId"
+                <FormField
+                  control={form.control}
                   name="counterAccountId"
-                  label={accountantOn ? t("finance.counterAccountLabel") : t("finance.categoryLabel")}
-                  placeholder={
-                    accountantOn ? t("finance.pickCounterAccount") : t("finance.pickCategory")
-                  }
-                  value={counterAccountId}
-                  onChange={(e) => setCounterAccountId(e.target.value)}
-                  options={accounts.map((a) => ({
-                    value: String(a.id),
-                    label: `${a.code} — ${a.name}`,
-                  }))}
-                  required
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required>
+                        {accountantOn
+                          ? t("finance.counterAccountLabel")
+                          : t("finance.categoryLabel")}
+                      </FormLabel>
+                      <FormControl>
+                        <NativeSelect
+                          placeholder={
+                            accountantOn
+                              ? t("finance.pickCounterAccount")
+                              : t("finance.pickCategory")
+                          }
+                          options={accounts.map((a) => ({
+                            value: String(a.id),
+                            label: `${a.code} — ${a.name}`,
+                          }))}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
                   <InfoCircleOutlined aria-hidden="true" style={{ fontSize: token.fontSizeSM, flexShrink: 0, marginTop: 2 }} />
@@ -552,51 +707,75 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
             invalid={advancedInvalid}
           >
             <div style={twoColumnGrid(token.margin)}>
-              <Select
-                id="currency"
+              <FormField
+                control={form.control}
                 name="currency"
-                label={t("common.currency")}
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                options={[
-                  { value: "IDR", label: t("finance.currencyIdrOption") },
-                  { value: "USD", label: "USD" },
-                  { value: "CNY", label: "CNY" },
-                ]}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("common.currency")}</FormLabel>
+                    <FormControl>
+                      <NativeSelect
+                        options={[
+                          { value: "IDR", label: t("finance.currencyIdrOption") },
+                          { value: "USD", label: "USD" },
+                          { value: "CNY", label: "CNY" },
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
+              {/* Progressive disclosure: kurs hanya muncul untuk mata uang
+                  asing, dan skema hanya menuntutnya di kondisi itu
+                  (`requireRateForForeign`). */}
               {isForeign ? (
-                <div>
-                  <Input
-                    id="rate"
-                    name="rate"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    style={numberStyle}
-                    label={
-                      <TermTooltip term="kurs">{t("finance.rateLabel", { currency })}</TermTooltip>
-                    }
-                    value={rate}
-                    onChange={(e) => setRate(e.target.value)}
-                    required
-                  />
-                  <Typography.Paragraph
-                    type="secondary"
-                    style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
-                  >
-                    {t("finance.rateHint")}
-                  </Typography.Paragraph>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="rate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel required>
+                        <TermTooltip term="kurs">
+                          {t("finance.rateLabel", { currency })}
+                        </TermTooltip>
+                      </FormLabel>
+                      <FormControl>
+                        <TextInput
+                          type="number"
+                          step="0.000001"
+                          min="0"
+                          style={numberStyle}
+                          {...field}
+                          value={field.value ?? ""}
+                          /* Kosong = kurs TIDAK DIKETAHUI, bukan kurs nol. */
+                          onChange={(e) =>
+                            field.onChange(e.target.value === "" ? undefined : e.target.value)
+                          }
+                        />
+                      </FormControl>
+                      <FormDescription>{t("finance.rateHint")}</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               ) : (
                 <div />
               )}
               <div style={FULL_ROW}>
-                <Input
-                  id="note"
+                <FormField
+                  control={form.control}
                   name="note"
-                  label={t("common.notesOptional")}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("common.notesOptional")}</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
             </div>
@@ -612,6 +791,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
           </Button>
         </Flex>
       </form>
+      </Form>
     </div>
   );
 }

@@ -12,9 +12,15 @@ import { vmsg } from "@/lib/i18n/validation";
 
 export const depreciationMethodEnum = z.enum(DEPRECIATION_METHODS);
 
-const accountId = z.coerce.number().int().positive();
+/*
+ * Ketiga akun dan kategorinya datang dari isian PILIHAN. Pilihan yang belum
+ * dijatuhkan tiba sebagai `""`, dan `Number("")` adalah `0` — jadi `positive`
+ * di sini bukan pagar teoretis melainkan tepat pesan "wajib dipilih" yang
+ * dibaca pengguna sejak isian pilihan kehilangan `required` peramban (#216).
+ */
+const accountId = z.coerce.number().int().positive(vmsg("validation.accountRequired"));
 const money = z.coerce.number().nonnegative();
-const positiveMoney = z.coerce.number().positive();
+const positiveMoney = z.coerce.number().positive(vmsg("validation.amountPositive"));
 
 /** Create/update a depreciation category (master data). */
 export const fixedAssetCategorySchema = z.object({
@@ -39,7 +45,7 @@ export type FixedAssetCategoryInput = z.infer<typeof fixedAssetCategorySchema>;
 export const fixedAssetSchema = z
   .object({
     name: z.string().min(1, vmsg("validation.assetNameRequired")).max(150).trim(),
-    categoryId: z.coerce.number().int().positive(),
+    categoryId: z.coerce.number().int().positive(vmsg("validation.categoryRequired")),
     acquisitionDate: z.string().min(1, vmsg("validation.acquisitionDateRequired")),
     acquisitionCost: positiveMoney,
     residualValue: money.default(0),

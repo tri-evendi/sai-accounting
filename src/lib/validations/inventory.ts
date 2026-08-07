@@ -3,7 +3,14 @@ import { vmsg } from "@/lib/i18n/validation";
 
 export const stockUpdateSchema = z
   .object({
-    itemId: z.coerce.number().int(),
+    /*
+     * `positive`, bukan sekadar `int`: isian pilihan yang tak dipilih tiba
+     * sebagai `""`, dan `Number("")` adalah `0` — sebuah id yang tak pernah
+     * ada. Sebelum #216 itu lolos skema dan baru gagal di FK; sekarang ia
+     * ditolak sebagai "pilih barang", di client, sebelum satu permintaan pun
+     * berangkat.
+     */
+    itemId: z.coerce.number().int().positive(vmsg("validation.pickStockItem")),
     quantity: z.coerce.number().positive(vmsg("validation.quantityPositive")),
     type: z.enum(["in", "out"]),
     date: z.string().min(1, vmsg("validation.dateRequired")),

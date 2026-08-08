@@ -23,7 +23,7 @@ import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
@@ -193,11 +193,11 @@ export default async function ReconciliationListPage({
         title={<TermTooltip term="rekonsiliasi_bank">{t("reconciliation.title")}</TermTooltip>}
         description={t("reconciliation.description")}
         actions={
-          <Link href="/reconciliation/new">
-            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
-                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
-            <Button variant="primary">{t("reconciliation.addNew")}</Button>
-          </Link>
+          /* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+             yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */
+          <ButtonLink href="/reconciliation/new" variant="primary">
+            {t("reconciliation.addNew")}
+          </ButtonLink>
         }
       />
       {/* issue #21 — jalan pintas ke penjelasan istilah layar ini. */}
@@ -215,17 +215,18 @@ export default async function ReconciliationListPage({
         }}
       >
         {statusFilters.map((f) => (
-          <Link
+          /* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+             Menyaring tidak mengikat (§Aksi utama per layar); isian penuh di
+             sini bersaing dengan CTA kepala halaman. `key` pindah ke elemen
+             terluar yang tersisa — dan sekarang hanya ada SATU elemen. */
+          <ButtonLink
             key={f.label}
             href={f.value ? `/reconciliation?status=${f.value}` : "/reconciliation"}
+            variant={status === f.value ? "secondary" : "ghost"}
+            size="sm"
           >
-            {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
-                Menyaring tidak mengikat (§Aksi utama per layar); isian penuh
-                di sini bersaing dengan CTA kepala halaman. */}
-            <Button variant={status === f.value ? "secondary" : "ghost"} size="sm">
-              {f.label}
-            </Button>
-          </Link>
+            {f.label}
+          </ButtonLink>
         ))}
       </div>
 

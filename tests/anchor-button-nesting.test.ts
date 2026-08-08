@@ -24,27 +24,39 @@
  * bagi sarang-sarang ini untuk pindah, dan baru dengan begitu penjaga ini bisa
  * merah tanpa memaksa orang memilih antara dua bug.
  *
- * ══ Kenapa PETA HITUNGAN, bukan daftar berkas ══════════════════════════════
+ * ══ Utangnya LUNAS: penjaga ini sekarang menuntut NOL ══════════════════════
  *
- * 45 sarang masih tersisa di 27 berkas, dan issue #289 sendiri meminta
- * pekerjaannya dipecah per modul — jadi penjaga ini terpaksa hidup berdampingan
- * dengan utang yang belum lunas. Daftar pengecualian dalam bentuk NAMA BERKAS
- * akan lumpuh justru di situ: berkas yang sudah ada di daftar boleh menambah
- * sarang sebanyak-banyaknya tanpa membuatnya merah.
+ * Sampai paruh kedua #289 berkas ini memegang `SISA_SARANG`, sebuah peta
+ * `berkas -> jumlah` yang dibandingkan dengan `toEqual`. Bentuk itu dipilih
+ * karena issue-nya meminta pekerjaannya dipecah per modul, jadi penjaganya
+ * terpaksa hidup berdampingan dengan utang yang belum lunas — dan daftar
+ * pengecualian dalam bentuk NAMA BERKAS akan lumpuh justru di situ: berkas yang
+ * sudah terdaftar boleh menambah sarang sebanyak-banyaknya tanpa membuatnya
+ * merah. Peta hitungan menutup lubang itu dari dua arah sekaligus: menambah
+ * sarang di mana pun membuatnya merah, dan MENCABUT sarang juga — sehingga
+ * setiap kemajuan muncul sebagai angka yang mengecil di diff, bukan sebagai
+ * baris yang lenyap tanpa jejak.
  *
- * Karena itu yang dicatat adalah JUMLAHNYA per berkas, dan pembandingnya sama
- * dengan (`toEqual`), bukan "tidak lebih dari". Akibatnya dua arah:
- *   • menambah sarang di mana pun — termasuk di berkas yang sudah terdaftar —
- *     membuatnya merah;
- *   • mencabut sarang juga membuatnya merah sampai angkanya diperbarui, jadi
- *     setiap kemajuan muncul sebagai angka yang MENGECIL di diff, bukan
- *     sebagai baris yang lenyap tanpa jejak.
+ * Jejak angkanya: **50 di 29** saat issue dibuka, **45 di 27** setelah modul
+ * faktur (PR 1), **24 di 14** setelah paruh pertama (PR 2), **0** sekarang.
  *
- * Daftar ini hanya boleh mengecil, dan ia akan HABIS — bukan dikosongkan.
- * Entri terakhir yang dicabut harus mencabut `SISA_SARANG` berikut tes
- * "tidak memuat entri basi" bersamanya: daftar kosong yang lulus tanpa
- * memeriksa apa pun adalah cara paling pelan sebuah penjaga menjadi hiasan
- * (pelajaran #267 potongan 3–4).
+ * Peta itu HABIS, bukan dikosongkan — dan karena itu ia dicabut bersama tes
+ * "tidak memuat entri basi" yang melayaninya, persis seperti yang diminta di
+ * tempat ini sebelumnya. Sebuah daftar kosong yang lulus tanpa memeriksa apa
+ * pun adalah cara paling pelan sebuah penjaga menjadi hiasan (pelajaran #267
+ * potongan 3–4). Yang menggantikannya lebih keras, bukan lebih longgar: NOL
+ * sarang di seluruh `src/`, tanpa satu pun pengecualian yang bisa ditumpangi.
+ *
+ * ⚠ Jangan menghidupkan kembali daftar pengecualian apa pun di sini. Sarang
+ * baru sekarang merah di berkas mana pun, dan itulah satu-satunya keadaan yang
+ * tidak bisa memburuk diam-diam. Kalau sebuah sarang baru terasa perlu, yang
+ * dibutuhkan bukan pengecualian melainkan `<ButtonLink href>` (rute di dalam
+ * app) atau `<Button href>` (tautan keluar / `download` / `target`).
+ *
+ * `MODUL_SELESAI` ikut dicabut karena alasan yang sama: ia menjaga bahwa modul
+ * tertentu tetap nol, yang kini dijamin tes di bawah untuk SEMUA modul. Daftar
+ * yang memeriksa sebagian dari apa yang sudah dijamin seluruhnya hanya menambah
+ * satu tempat lagi untuk salah ketik.
  *
  * ══ ⚠ Yang penjaga ini TIDAK bisa lihat ════════════════════════════════════
  *
@@ -95,53 +107,6 @@ const BUTTON = join(SRC, "components", "ui", "button.tsx");
  * dengan nama itu di seluruh `src/`.
  */
 const ANCHOR = new Set(["Link", "NextLink", "AppLink", "a"]);
-
-/**
- * Sisa utang per 2026-08-08, SESUDAH modul faktur dipindahkan (#289 PR 1).
- * 45 sarang di 27 berkas. Hanya boleh mengecil; lihat kepala berkas untuk
- * kenapa ini peta hitungan dan bukan daftar nama.
- *
- * Urutan modulnya kelak: yang terpadat lebih dulu — `fixed-assets` (4),
- * `accounts`/`contracts`/`inventory` (masing-masing 3–5 bila detail & daftarnya
- * dihitung bersama), lalu sisanya.
- */
-const SISA_SARANG: Record<string, number> = {
-  "app/(dashboard)/error.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/page.tsx": 3,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/page.tsx": 3,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/cost-centers/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/[id]/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/document-preview-button.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/finance/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/page.tsx": 4,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/opname/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/page.tsx": 3,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/purchases/new/purchase-wizard.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/returns/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/sales/new/sales-wizard.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/page.tsx": 1,
-  "components/shared/document-preview.tsx": 1,
-};
-
-/**
- * Modul yang sudah dibersihkan. Daftar ini hanya boleh BERTAMBAH, dan ia yang
- * membuat kemajuan tidak bisa mundur diam-diam: peta di atas menjaga jumlah
- * total, daftar ini menjaga bahwa modul yang sudah selesai tidak menerima
- * sarang baru sekalipun modul lain kebetulan kehilangan satu.
- */
-const MODUL_SELESAI = ["app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices"];
 
 function berkasTsx(dir: string, keluar: string[] = []): string[] {
   for (const entri of readdirSync(dir, { withFileTypes: true })) {
@@ -243,14 +208,13 @@ const BERKAS = berkasTsx(SRC).map((jalur) => ({
   isi: readFileSync(jalur, "utf8"),
 }));
 
-/** Peta `berkas -> jumlah sarang` untuk seluruh `src/`. */
-function petaSarang(): Record<string, number> {
-  const peta: Record<string, number> = {};
+/** Setiap sarang di seluruh `src/`, sebagai `berkas:baris`. */
+function semuaSarang(): string[] {
+  const keluar: string[] = [];
   for (const { rel, isi } of BERKAS) {
-    const n = sarang(rel, isi).length;
-    if (n > 0) peta[rel] = n;
+    for (const baris of sarang(rel, isi)) keluar.push(`${rel}:${baris}`);
   }
-  return peta;
+  return keluar.sort();
 }
 
 describe("sarang anchor–tombol (#289)", () => {
@@ -264,49 +228,25 @@ describe("sarang anchor–tombol (#289)", () => {
     expect(BERKAS.some(({ rel }) => rel === "components/ui/button.tsx")).toBe(true);
   });
 
-  it("jumlah sarang per berkas sama persis dengan yang tercatat", () => {
-    expect(
-      petaSarang(),
-      "Sarang anchor–tombol bertambah, berkurang, atau berpindah berkas.\n" +
-        "Kalau BERTAMBAH: pakai `<ButtonLink href>` (rute di dalam app) atau " +
-        "`<Button href>` (tautan keluar / download) — satu elemen, bukan " +
-        "`<Link>` membungkus `<Button>`.\n" +
-        "Kalau BERKURANG: bagus, itu tujuannya — perbarui angkanya di " +
-        "SISA_SARANG supaya penjaga ini mengunci hitungan yang baru."
-    ).toEqual(SISA_SARANG);
-  });
-
-  it("SISA_SARANG tidak memuat entri basi", () => {
+  it("tidak ada satu pun sarang anchor–tombol di seluruh src/", () => {
     /*
-     * Tes di atas sudah membandingkan dua peta, jadi entri basi sebenarnya
-     * ikut tertangkap di sana. Yang ini menjawab pertanyaan yang BERBEDA dan
-     * jauh lebih mudah salah: apakah kunci-kuncinya masih menunjuk berkas yang
-     * ada. Berkas yang dipindah atau dihapus meninggalkan kunci yang tidak akan
-     * pernah cocok, dan pesan kegagalan "peta tidak sama" tidak menyebutkan
-     * sebabnya.
+     * NOL, tanpa daftar pengecualian — lihat "Utangnya LUNAS" di kepala berkas
+     * untuk kenapa peta hitungan yang dulu ada di sini dicabut alih-alih
+     * dikosongkan. Pesan kegagalannya menyebut BENTUK penggantinya, bukan
+     * sekadar "jangan": yang menemukan tes ini merah biasanya sedang menulis
+     * sebuah tombol yang menavigasi, dan pertanyaan berikutnya selalu "lalu
+     * pakai apa".
      */
-    const ada = new Set(BERKAS.map(({ rel }) => rel));
-    const hilang = Object.keys(SISA_SARANG).filter((f) => !ada.has(f));
-    expect(hilang, "SISA_SARANG menyebut berkas yang sudah tidak ada").toEqual([]);
-    // …dan tidak ada entri bernilai nol, yang lulus tanpa memeriksa apa pun.
-    expect(Object.entries(SISA_SARANG).filter(([, n]) => n < 1)).toEqual([]);
-  });
-
-  it("modul yang sudah dibersihkan tetap nol", () => {
-    const pelanggar: string[] = [];
-    for (const { rel, isi } of BERKAS) {
-      if (!MODUL_SELESAI.some((m) => rel.startsWith(`${m}/`))) continue;
-      for (const baris of sarang(rel, isi)) pelanggar.push(`${rel}:${baris}`);
-    }
-    expect(pelanggar.sort()).toEqual([]);
-    // Daftarnya menunjuk modul yang benar-benar ada — bukan jalur yang salah
-    // ketik, yang akan membuat tes di atas lulus tanpa memeriksa apa pun.
-    for (const modul of MODUL_SELESAI) {
-      expect(
-        BERKAS.some(({ rel }) => rel.startsWith(`${modul}/`)),
-        `MODUL_SELESAI menyebut "${modul}" yang tidak memuat satu pun .tsx`
-      ).toBe(true);
-    }
+    expect(
+      semuaSarang(),
+      "Sarang anchor–tombol baru: `<Link>` (atau `<a>`) membungkus `<Button>` " +
+        "adalah dua elemen interaktif bersarang.\n" +
+        "Pakai `<ButtonLink href>` untuk rute di dalam app — satu " +
+        "`<a class=\"ant-btn\">` yang TETAP navigasi sisi-klien + prefetch.\n" +
+        "Pakai `<Button href>` hanya bila pemuatan halaman penuh memang yang " +
+        "diinginkan: `download`, `target=\"_blank\"`, tautan keluar, atau jalan " +
+        "keluar dari render yang gagal (`error.tsx`)."
+    ).toEqual([]);
   });
 
   it("`legacyBehavior` tidak dipakai di mana pun", () => {
@@ -337,7 +277,12 @@ describe("sarang anchor–tombol (#289)", () => {
   it("pendeteksinya benar-benar bisa merah — dibuktikan di sini, bukan diandaikan", () => {
     const uji = (kode: string) => sarang("uji.tsx", kode).length;
 
-    // Bentuk yang dijaga, persis seperti yang ada di 45 berkas tersisa.
+    /*
+     * Bentuk yang dijaga. Sejak sarang terakhir dicabut, INILAH satu-satunya
+     * tempat contoh-contohnya masih ada — tanpa tes ini, pendeteksi yang rusak
+     * akan membuat tes "nol sarang" di atas hijau selamanya tanpa memeriksa apa
+     * pun, dan tidak ada lagi berkas sungguhan yang menahannya.
+     */
     expect(uji("<Link href=\"/x\"><Button variant=\"primary\">A</Button></Link>")).toBe(1);
     expect(uji("<a href=\"/f.csv\" download><Button variant=\"outline\">Unduh</Button></a>")).toBe(1);
     // Pembungkus di tengah tidak menyelamatkan apa pun di DOM.

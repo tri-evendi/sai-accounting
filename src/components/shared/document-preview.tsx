@@ -135,11 +135,17 @@ export function DocumentPreview({
                   <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
                 </Button>
               ) : (
-                <a href={src} download>
-                  <Button size="sm" variant="primary">
-                    <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
-                  </Button>
-                </a>
+                /* `<Button href download>`, BUKAN `<ButtonLink>`: `src` di
+                   cabang ini adalah berkas yang diunggah (`/uploads/…`) atau
+                   sebuah `blob:` — keduanya bukan rute app, dan yang diminta
+                   memang unduhan, bukan perpindahan halaman. `tautanDicegat()`
+                   menolak keduanya (`download`, protokol lain), jadi
+                   `<ButtonLink>` hanya akan menjanjikan navigasi sisi-klien yang
+                   tidak pernah terjadi. `/uploads` juga bukan segmen bertenant,
+                   jadi `scopedHref()` melewatkannya utuh. */
+                <Button href={src} download size="sm" variant="primary">
+                  <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
+                </Button>
               )}
             </Flex>
           </Flex>

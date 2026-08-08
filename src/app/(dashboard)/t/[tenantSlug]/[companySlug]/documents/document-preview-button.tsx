@@ -36,14 +36,28 @@ export function DocumentPreviewButton({
   const kind = kindOf(filename);
 
   if (kind === null) {
-    // Tak bisa dipratinjau di browser — buka di tab baru saja.
+    /*
+     * Tak bisa dipratinjau di browser — buka di tab baru saja.
+     *
+     * `<Button href>`, BUKAN `<ButtonLink>` (#289): `target="_blank"` tidak
+     * boleh dicegat menjadi navigasi sisi-klien — dicegat berarti berkasnya
+     * membuka di tab yang SAMA dan halaman dokumen yang sedang dibaca hilang.
+     * `tautanDicegat()` pun menolaknya, jadi `<ButtonLink>` di sini hanya akan
+     * menjanjikan sesuatu yang tidak pernah terjadi. `target` dan `rel` pindah
+     * ke tombolnya bersama `href` — ketiganya dideklarasikan di `ButtonProps`
+     * justru supaya yang lupa memindahkannya gugur di `tsc`.
+     */
     return (
-      <a href={filepath} target="_blank" rel="noopener noreferrer">
-        <Button variant="secondary" size="sm">
-          <ExportOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, ...ICON_STYLE }} />{" "}
-          {t("documents.open")}
-        </Button>
-      </a>
+      <Button
+        href={filepath}
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="secondary"
+        size="sm"
+      >
+        <ExportOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, ...ICON_STYLE }} />{" "}
+        {t("documents.open")}
+      </Button>
     );
   }
 

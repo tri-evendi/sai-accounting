@@ -9,8 +9,7 @@ import {
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
-import { Link } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -119,17 +118,17 @@ export default async function StockOpnamePage({
                 ini adalah formulir untuk menghitung HARI INI, dan menyaringnya
                 per minggu/bulan/tahun tidak punya arti — yang disaring per
                 periode adalah riwayatnya (issue #129). */}
-            <Link href="/inventory/opname/history">
-              <Button variant="secondary">{t("opnameHistory.linkLabel")}</Button>
-            </Link>
-            <Link href="/inventory/update">
-              {/* `secondary` (#267 potongan 4): ia NAVIGASI ke modul lain, dan
-                  layar ini punya aksi yang mengikat sendiri — submit
-                  `OpnameForm` di bawah. Dua blok biru dari dua berkas adalah
-                  bentuk yang tak terlihat penjaga; yang turun navigasinya,
-                  persis seperti "Buat Faktur" di `/contracts/[id]`. */}
-              <Button variant="secondary">{t("common.addRemoveStock")}</Button>
-            </Link>
+            <ButtonLink href="/inventory/opname/history" variant="secondary">
+              {t("opnameHistory.linkLabel")}
+            </ButtonLink>
+            {/* `secondary` (#267 potongan 4): ia NAVIGASI ke modul lain, dan
+                layar ini punya aksi yang mengikat sendiri — submit `OpnameForm`
+                di bawah. Dua blok biru dari dua berkas adalah bentuk yang tak
+                terlihat penjaga; yang turun navigasinya, persis seperti "Buat
+                Faktur" di `/contracts/[id]`. */}
+            <ButtonLink href="/inventory/update" variant="secondary">
+              {t("common.addRemoveStock")}
+            </ButtonLink>
           </>
         }
       />

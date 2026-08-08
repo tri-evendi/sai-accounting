@@ -25,7 +25,7 @@ import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -175,9 +175,9 @@ export default async function CustomersPage({
       <PageHeader
         title={<TermTooltip term="pelanggan">{t("customers.title", { count: totalCount })}</TermTooltip>}
         actions={
-          <Link href="/customers/new">
-            <Button variant="primary">{t("customers.addNew")}</Button>
-          </Link>
+          <ButtonLink href="/customers/new" variant="primary">
+            {t("customers.addNew")}
+          </ButtonLink>
         }
       />
 

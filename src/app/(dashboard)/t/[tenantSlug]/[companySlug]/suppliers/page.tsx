@@ -11,7 +11,7 @@ import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -157,9 +157,9 @@ export default async function SuppliersPage({
         title={<TermTooltip term="pemasok">{t("suppliers.title", { count: totalCount })}</TermTooltip>}
         description={t("suppliers.description")}
         actions={
-          <Link href="/suppliers/new">
-            <Button variant="primary">{t("suppliers.addNew")}</Button>
-          </Link>
+          <ButtonLink href="/suppliers/new" variant="primary">
+            {t("suppliers.addNew")}
+          </ButtonLink>
         }
       />
       <div style={{ marginBottom: SECTION_GAP }}>

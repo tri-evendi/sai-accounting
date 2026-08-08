@@ -21,7 +21,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { getAdvances, summarizeAdvances, type AdvanceRow } from "@/lib/advances";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
@@ -220,14 +220,12 @@ export default async function AdvancesPage({
           </>
         }
         actions={
-          <Link href="/advances/new">
-            {/* Aksi utama layar ini (#267): mencatat uang muka adalah satu-satunya
-                hal yang MENGIKAT di sini; sisanya membaca & menyaring. */}
-            <Button variant="primary">
-              <PlusOutlined aria-hidden="true" />
-              {t("advances.record")}
-            </Button>
-          </Link>
+          /* Aksi utama layar ini (#267): mencatat uang muka adalah satu-satunya
+             hal yang MENGIKAT di sini; sisanya membaca & menyaring. */
+          <ButtonLink href="/advances/new" variant="primary">
+            <PlusOutlined aria-hidden="true" />
+            {t("advances.record")}
+          </ButtonLink>
         }
       />
 
@@ -246,11 +244,16 @@ export default async function AdvancesPage({
             "Catat Uang Muka" di kepala halaman. Keadaan aktifnya tetap terbaca
             dari ada/tidaknya bingkai, bukan dari warna saja. */}
         {filters.map((f) => (
-          <Link key={f.key} href={f.href}>
-            <Button variant={f.active ? "secondary" : "ghost"} size="sm">
-              {f.label}
-            </Button>
-          </Link>
+          /* `key` pindah ke elemen terluar yang tersisa — dan sekarang hanya ada
+             SATU elemen, jadi tidak ada lagi tempat salah untuk menaruhnya. */
+          <ButtonLink
+            key={f.key}
+            href={f.href}
+            variant={f.active ? "secondary" : "ghost"}
+            size="sm"
+          >
+            {f.label}
+          </ButtonLink>
         ))}
       </div>
 

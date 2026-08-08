@@ -1,6 +1,5 @@
 import { parsePageParam } from "@/lib/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -24,7 +23,7 @@ import { moneyColumn } from "@/components/ui/money-column";
 import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { ContainerOutlined } from "@ant-design/icons";
@@ -234,9 +233,9 @@ export default async function InventoryPage({
             {/* Halaman ini menjawab "berapa yang saya punya SEKARANG" dan sengaja
                 tanpa periode; pertanyaan "apa yang bergerak bulan lalu" dijawab
                 Kartu Stok, yang punya saldo awal & akhir sendiri (issue #126). */}
-            <Link href="/inventory/movement"><Button variant="secondary">{t("stockMovement.linkLabel")}</Button></Link>
-            <Link href="/inventory/update"><Button variant="primary">{t("common.addRemoveStock")}</Button></Link>
-            <Link href="/inventory/opname"><Button variant="secondary">{t("nav.items.inventoryOpname")}</Button></Link>
+            <ButtonLink href="/inventory/movement" variant="secondary">{t("stockMovement.linkLabel")}</ButtonLink>
+            <ButtonLink href="/inventory/update" variant="primary">{t("common.addRemoveStock")}</ButtonLink>
+            <ButtonLink href="/inventory/opname" variant="secondary">{t("nav.items.inventoryOpname")}</ButtonLink>
           </>
         }
       />

@@ -1,10 +1,9 @@
-import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { type DocumentType } from "@/lib/constants";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -185,11 +184,11 @@ export default async function DocumentsPage({
       <PageHeader
         title={t("nav.items.documents")}
         actions={
-          <Link href="/documents/upload">
-            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
-                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
-            <Button variant="primary">{t("documents.addNew")}</Button>
-          </Link>
+          /* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+             yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */
+          <ButtonLink href="/documents/upload" variant="primary">
+            {t("documents.addNew")}
+          </ButtonLink>
         }
       />
 

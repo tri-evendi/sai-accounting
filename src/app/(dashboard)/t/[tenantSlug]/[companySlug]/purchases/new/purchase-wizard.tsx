@@ -27,9 +27,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex, theme, Typography } from "antd";
-import { Link } from "@/components/ui/app-link";
 import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/select";
@@ -311,9 +310,27 @@ export function PurchaseWizard({
                 ])}
               </div>
               <Flex wrap gap={token.marginSM} style={{ marginTop: token.marginLG }}>
-                <Link href={`/suppliers/${result.supplierId}`}>
-                  <Button variant="primary">{t("purchases.viewSupplier")}</Button>
-                </Link>
+                {/*
+                  `<ButtonLink>`, bukan `<Button href>` — jalan keluar wisaya ini
+                  TIDAK butuh pemuatan penuh, dan memaksanya justru membatalkan
+                  dua hal yang sudah ditulis berkas ini sendiri.
+
+                  Keadaan wisaya tidak perlu "dibuang" oleh pemuatan penuh: draf
+                  sudah dihapus `clear()` sebelum layar ini tampil, dan tujuannya
+                  rute lain — jadi komponen ini dilepas oleh navigasi mana pun.
+                  Kesegaran data juga sudah diurus: `router.refresh()` dipanggil
+                  tepat setelah simpan berhasil, dan itu hanya berarti sesuatu
+                  bagi navigasi SISI-KLIEN. Yang tersisa dari pemuatan penuh
+                  cuma ongkosnya.
+
+                  Berkas ini pun sudah menavigasi sisi-klien di jalur sebelahnya
+                  (`cancel()` -> `router.push("/suppliers")`); dua jalan keluar
+                  dari layar yang sama dengan perilaku berbeda adalah cacat yang
+                  hanya terlihat kalau seseorang kebetulan memakai keduanya.
+                */}
+                <ButtonLink href={`/suppliers/${result.supplierId}`} variant="primary">
+                  {t("purchases.viewSupplier")}
+                </ButtonLink>
                 <Button
                   type="button"
                   variant="secondary"

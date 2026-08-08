@@ -78,14 +78,18 @@
  * apa yang terjadi saat diklik — dan itu keputusan yang harus DITULIS, sebab
  * keduanya terlihat identik di layar dan hanya berbeda di waktu muat.
  *
- * ── Hitungan sarang yang tersisa: 24 di 14 berkas (2026-08-08) ─────────────
- * Diukur dengan parser TypeScript yang sama dengan `tests/button-emphasis.test.ts`,
- * dan angkanya kini dijaga per-berkas di `tests/anchor-button-nesting.test.ts`
- * (`SISA_SARANG`, daftar yang hanya boleh MENGECIL). Jejaknya: **50 di 29**
- * saat issue #289 dibuka, **45 di 27** setelah modul faktur (PR 1), **24 di
- * 14** setelah paruh pertama sisa modul (PR 2). Angka di sini akan basi lebih
- * cepat daripada `SISA_SARANG`; kalau keduanya berbeda, yang benar adalah
- * penjaganya.
+ * ── Hitungan sarang yang tersisa: NOL (2026-08-08, #289 selesai) ───────────
+ * Jejaknya, diukur dengan parser TypeScript yang sama dengan
+ * `tests/button-emphasis.test.ts`: **50 di 29 berkas** saat issue #289 dibuka,
+ * **45 di 27** setelah modul faktur (PR 1), **24 di 14** setelah paruh pertama
+ * sisa modul (PR 2), **0** setelah paruh kedua (PR 3).
+ *
+ * Karena nol, `tests/anchor-button-nesting.test.ts` tidak lagi memegang daftar
+ * pengecualian: ia menuntut NOL sarang di seluruh `src/`, jadi sarang baru merah
+ * di berkas mana pun. Peta hitungan `SISA_SARANG` yang dulu ada di sana HABIS,
+ * lalu dicabut — daftar kosong yang lulus tanpa memeriksa apa pun adalah cara
+ * paling pelan sebuah penjaga menjadi hiasan. Jangan menghidupkannya kembali
+ * untuk "sementara".
  *
  * ⚠ Dua angka lain beredar dan keduanya keliru — ditulis di sini supaya tidak
  * dihidupkan kembali. **"46"** (yang tertulis di kepala berkas ini sampai #289)
@@ -147,11 +151,17 @@
  * ── ⚠ Kenapa 50 sarang itu TIDAK boleh sekadar pindah ke `<Button href>` ───
  * Karena untuk MEREKA harganya tidak gratis. Ke-37 pemanggil #250 sudah memuat
  * penuh sejak #187 — `asChild` pun membuang `<Link>`-nya — jadi pindah ke
- * `<Button href>` tidak mengubah apa pun. Ke-50 sarang ini kebalikannya:
- * `<Link>`-nya MASIH HIDUP, jadi memindahkannya apa adanya akan mencabut
+ * `<Button href>` tidak mengubah apa pun. Ke-50 sarang itu kebalikannya:
+ * `<Link>`-nya masih hidup, jadi memindahkannya apa adanya akan mencabut
  * navigasi sisi-klien dan prefetch dari 46 tautan sekaligus — menukar bug
  * validitas HTML dengan regresi yang terasa di setiap perpindahan halaman.
  * Karena itu bentuk KETIGA, bukan pemindahan.
+ *
+ * Terbukti pada hasilnya: dari ke-50 sarang, **45** menjadi `<ButtonLink>` dan
+ * hanya **5** menjadi `<Button href>` — kelimanya justru yang memang ingin
+ * memuat penuh (`error.tsx`, tiga `download`, satu `target="_blank"`). Kalau
+ * seluruhnya dipindahkan ke `<Button href>`, ke-45 itu akan kehilangan
+ * navigasinya tanpa satu pun penjaga yang merah.
  *
  * ── Bagaimana `ButtonLink` mendapat keduanya, dan apa yang DITOLAK ─────────
  * Yang dicari: SATU elemen `<a>`, bergaya tombol, dengan perilaku `next/link`.

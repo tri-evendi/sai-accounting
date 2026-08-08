@@ -24,7 +24,7 @@ import {
 } from "@/lib/fixed-assets";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -201,29 +201,23 @@ export default async function FixedAssetsPage({
         description={t("fixedAssets.descriptionBefore")}
         actions={
           <>
-            <Link href="/fixed-assets/by-location">
-              <Button variant="secondary">
-                <EnvironmentOutlined aria-hidden="true" />
-                {t("fixedAssets.byLocation")}
-              </Button>
-            </Link>
-            <Link href="/fixed-assets/categories">
-              <Button variant="secondary">
-                <TagsOutlined aria-hidden="true" />
-                {t("fixedAssets.categories")}
-              </Button>
-            </Link>
-            <Link href="/fixed-assets/new">
-              {/* Aksi utama layar ini (#267) — dua tombol di sebelahnya sudah
-                  `secondary` sejak semula, jadi ini satu-satunya di kepala.
-                  Tabrakan dengan `RunDepreciation` di bawah DISELESAIKAN di
-                  potongan 4: kartu itu turun ke `secondary`, alasannya di kepala
-                  `run-depreciation.tsx`. */}
-              <Button variant="primary">
-                <PlusOutlined aria-hidden="true" />
-                {t("fixedAssets.addNew")}
-              </Button>
-            </Link>
+            <ButtonLink href="/fixed-assets/by-location" variant="secondary">
+              <EnvironmentOutlined aria-hidden="true" />
+              {t("fixedAssets.byLocation")}
+            </ButtonLink>
+            <ButtonLink href="/fixed-assets/categories" variant="secondary">
+              <TagsOutlined aria-hidden="true" />
+              {t("fixedAssets.categories")}
+            </ButtonLink>
+            {/* Aksi utama layar ini (#267) — dua tombol di sebelahnya sudah
+                `secondary` sejak semula, jadi ini satu-satunya di kepala.
+                Tabrakan dengan `RunDepreciation` di bawah DISELESAIKAN di
+                potongan 4: kartu itu turun ke `secondary`, alasannya di kepala
+                `run-depreciation.tsx`. */}
+            <ButtonLink href="/fixed-assets/new" variant="primary">
+              <PlusOutlined aria-hidden="true" />
+              {t("fixedAssets.addNew")}
+            </ButtonLink>
           </>
         }
       />
@@ -253,11 +247,16 @@ export default async function FixedAssetsPage({
             Menyaring tidak mengikat (§Aksi utama per layar); isian penuh di
             sini bersaing dengan "Tambah Aset" di kepala halaman. */}
         {filters.map((f) => (
-          <Link key={f.key} href={f.href}>
-            <Button variant={f.active ? "secondary" : "ghost"} size="sm">
-              {f.label}
-            </Button>
-          </Link>
+          /* `key` pindah ke elemen terluar yang tersisa — dan sekarang hanya ada
+             SATU elemen, jadi tidak ada lagi tempat salah untuk menaruhnya. */
+          <ButtonLink
+            key={f.key}
+            href={f.href}
+            variant={f.active ? "secondary" : "ghost"}
+            size="sm"
+          >
+            {f.label}
+          </ButtonLink>
         ))}
       </div>
 

@@ -33,7 +33,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -430,7 +430,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   <FormItem>
                     <FormLabel required>{t("finance.filterType")}</FormLabel>
                     <FormControl>
-                      <NativeSelect
+                      <SelectField
                         options={[
                           { value: "bank", label: cashLabels.bank },
                           { value: "kas_besar", label: cashLabels.kas_besar },
@@ -576,7 +576,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                           : t("finance.categoryLabel")}
                       </FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           placeholder={
                             accountantOn
                               ? t("finance.pickCounterAccount")
@@ -714,7 +714,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
                   <FormItem>
                     <FormLabel>{t("common.currency")}</FormLabel>
                     <FormControl>
-                      <NativeSelect
+                      <SelectField
                         options={[
                           { value: "IDR", label: t("finance.currencyIdrOption") },
                           { value: "USD", label: "USD" },

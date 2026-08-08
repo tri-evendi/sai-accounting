@@ -22,7 +22,7 @@ import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -173,7 +173,7 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
                       <FormItem>
                         <FormLabel>{t("costCenters.parentField")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={parentOptions}
                             value={field.value == null ? "" : String(field.value)}
                             onChange={(e) =>

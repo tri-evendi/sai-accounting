@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/form";
 import { TextInput } from "@/components/ui/input";
 import { PasswordField } from "@/components/ui/password-input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
 import {
@@ -283,7 +283,7 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
                   <FormItem>
                     <FormLabel>{t("operator.mail.transportFieldLabel")}</FormLabel>
                     <FormControl>
-                      <NativeSelect
+                      <SelectField
                         options={[
                           { value: "file", label: t("operator.mail.transportFile") },
                           { value: "smtp", label: t("operator.mail.transportSmtp") },

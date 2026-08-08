@@ -3,12 +3,15 @@
 /**
  * Select (issue #50, ditulis ulang di atas AntD pada issue #188).
  *
- * ── Nama `NativeSelect` sekarang keliru, dan itu disengaja ─────────────────
- * Sampai #188 komponen ini benar-benar merender `<select>` native. Sekarang ia
- * merender `Select` AntD. Namanya TIDAK diganti karena 39 berkas mengimpornya
- * dan pemanggil belum boleh disentuh di fase B (itu #193–#200). Ganti namanya
- * di fase C, bukan di sini — rename lintas 39 berkas yang menumpang di PR
- * migrasi kulit adalah diff yang tak bisa ditinjau.
+ * ── Nama ───────────────────────────────────────────────────────────────────
+ * Sampai #188 komponen ini benar-benar merender `<select>` native; sejak itu ia
+ * `Select` AntD. Namanya sempat bertahan sebagai `NativeSelect` sepanjang fase
+ * B–C supaya pemanggil tidak ikut berubah di tengah migrasi, dan janji "native"
+ * itu menagih sekali: #259 hidup selama itu karena `focusFormField`
+ * mengandaikan `[name=…]` pasti kendali sungguhan. Sejak #264 namanya
+ * `SelectField` — pasangan telanjang dari `Select` komposit di bawah, mengikuti
+ * `PasswordField`/`PasswordInput`, dan tidak menjanjikan satu pun perilaku
+ * native.
  *
  * ── Tiga hal yang `<select>` native berikan gratis, dan cara masing-masing
  *    dipertahankan ──────────────────────────────────────────────────────────
@@ -100,16 +103,16 @@ type SelectOwnProps = BareFieldProps & {
  * `children` ikut dikeluarkan: `<select>` native menerima `<option>` sebagai
  * anak, dan tak satu pun dari 39 pemanggil memakainya (semuanya lewat
  * `options`). Menutupnya di TIPE lebih baik daripada membuangnya diam-diam saat
- * render — `<NativeSelect><option/></NativeSelect>` yang tidak muncul di layar
+ * render — `<SelectField><option/></SelectField>` yang tidak muncul di layar
  * dan tidak menghasilkan galat adalah jebakan yang mahal.
  */
-type NativeSelectProps = Omit<
+type SelectFieldProps = Omit<
   React.ComponentProps<"select">,
   "size" | "multiple" | "ref" | "children"
 > &
   SelectOwnProps;
 
-type SelectProps = NativeSelectProps & {
+type SelectProps = SelectFieldProps & {
   /** ReactNode agar label boleh membawa `TermTooltip` (issue #6) — lihat `Input`. */
   label?: React.ReactNode;
   error?: string;
@@ -136,7 +139,7 @@ function selectChangeEvent(
  * Select telanjang — satu akar elemen, tanpa pembungkus label/error. Dipakai di
  * dalam `FormControl` (MASTER.md §Konvensi Form aturan 4).
  */
-function NativeSelect({
+function SelectField({
   style,
   options,
   placeholder,
@@ -152,7 +155,7 @@ function NativeSelect({
   disabled,
   required,
   ...props
-}: NativeSelectProps) {
+}: SelectFieldProps) {
   const isInvalid = isInvalidField(invalid, props["aria-invalid"]);
   /*
    * Dibaca dari DUA sumber, persis seperti `invalid` di atas: pemanggil di luar
@@ -276,7 +279,7 @@ function Select({
           {required && <RequiredMark />}
         </Label>
       )}
-      <NativeSelect
+      <SelectField
         id={selectId}
         invalid={isInvalid}
         required={required}
@@ -299,5 +302,5 @@ function Select({
   );
 }
 
-export { Select, NativeSelect, SEARCH_THRESHOLD };
-export type { SelectProps, NativeSelectProps, SelectOption };
+export { Select, SelectField, SEARCH_THRESHOLD };
+export type { SelectProps, SelectFieldProps, SelectOption };

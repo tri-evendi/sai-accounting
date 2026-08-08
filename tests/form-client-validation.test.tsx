@@ -49,7 +49,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import { translateMessage } from "@/lib/i18n/validation";
 import { LocaleProvider } from "@/lib/i18n/client";
@@ -422,7 +422,7 @@ describe("isian pilihan wajib mengumumkan dirinya wajib", () => {
             <FormItem>
               <FormLabel required={required}>Akun</FormLabel>
               <FormControl>
-                <NativeSelect options={[{ value: "1", label: "1000 · Kas" }]} {...field} />
+                <SelectField options={[{ value: "1", label: "1000 · Kas" }]} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

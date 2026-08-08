@@ -22,7 +22,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -248,7 +248,7 @@ export function SalesTargetClient({
                       <FormItem>
                         <FormLabel required>{translate("budget.yearField")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={Array.from(
                               { length: 6 },
                               (_, i) => defaultYear + 1 - i
@@ -269,7 +269,7 @@ export function SalesTargetClient({
                       <FormItem>
                         <FormLabel required>{translate("budget.monthField")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={months.map((name, i) => ({
                               value: String(i + 1),
                               label: name,
@@ -292,7 +292,7 @@ export function SalesTargetClient({
                       <FormItem>
                         <FormLabel>{translate("budget.customerOptional")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             placeholder={translate("budget.allCustomers")}
                             options={[
                               { value: "", label: translate("budget.allCustomers") },
@@ -317,7 +317,7 @@ export function SalesTargetClient({
                       <FormItem>
                         <FormLabel>{translate("budget.itemOptional")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             placeholder={translate("budget.allItems")}
                             options={[
                               { value: "", label: translate("budget.allItems") },

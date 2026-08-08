@@ -30,7 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -509,7 +509,7 @@ export function StockUpdateForm({
                       <FormItem>
                         <FormLabel required>{t("common.item")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             placeholder={t("inventory.pickItemPlaceholder")}
                             options={items.map((item) => ({
                               value: String(item.id),
@@ -538,7 +538,7 @@ export function StockUpdateForm({
                     <FormItem>
                       <FormLabel>{t("inventory.movementTypeLabel")}</FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           options={[
                             { value: "in", label: t("inventory.movementIn") },
                             { value: "out", label: t("inventory.movementOut") },

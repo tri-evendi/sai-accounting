@@ -31,7 +31,7 @@ import { useForm, useWatch, type Resolver, type UseFormSetError } from "react-ho
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/money-input";
 import {
   Form,
@@ -254,7 +254,7 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
                   <FormItem>
                     <FormLabel required>{t("common.currency")}</FormLabel>
                     <FormControl>
-                      <NativeSelect
+                      <SelectField
                         options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
                         {...field}
                       />

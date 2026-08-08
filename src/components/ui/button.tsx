@@ -61,12 +61,35 @@
  * pendek dari `h-8` lama. Itu di bawah 40px, sama seperti sebelumnya: `sm`
  * memang dipakai di tempat yang bukan target sentuh utama.
  *
- * ── Tombol-sebagai-tautan: `<Button href>`, dan TIDAK ADA bentuk lain ──────
- * `href` membuat akar AntD-nya `<a class="ant-btn">` — satu elemen, bukan
- * `<a>` membungkus `<button>`. Sarang anchor–tombol (`<Link><Button/></Link>`)
- * DITOLAK di tempat baru: ia dua elemen interaktif bersarang — HTML yang tidak
- * sah, dan pembaca layar mengumumkannya dua kali. (Idiom itu masih terpakai di
- * 46 tempat lama; itu utang, bukan izin untuk menambahnya.)
+ * ── Tombol-sebagai-tautan: TIGA bentuk, dan cara memilih di antaranya ──────
+ * Sarang anchor–tombol (`<Link><Button/></Link>`, `<a href download><Button/></a>`)
+ * DITOLAK di mana pun: ia dua elemen interaktif bersarang — HTML yang tidak sah,
+ * dan pembaca layar mengumumkannya dua kali. Yang menggantikannya:
+ *
+ *   1. **`<Button>`** — tombol. Tidak menavigasi.
+ *   2. **`<Button href>`** — `<a class="ant-btn">` milik AntD, PEMUATAN HALAMAN
+ *      PENUH. Benar untuk tautan keluar, `download`, `target="_blank"`, dan
+ *      perpindahan yang memang ingin memuat ulang seluruh app.
+ *   3. **`<ButtonLink href>`** (#289) — `<a class="ant-btn">` yang SAMA, plus
+ *      navigasi sisi-klien dan prefetch. Benar untuk rute di dalam app.
+ *
+ * Keduanya (2 & 3) merender satu elemen `<a>` dan berbagi satu perakit
+ * (`ButtonAnchor`), jadi rupanya tidak bisa menyimpang. Yang membedakan hanya
+ * apa yang terjadi saat diklik — dan itu keputusan yang harus DITULIS, sebab
+ * keduanya terlihat identik di layar dan hanya berbeda di waktu muat.
+ *
+ * ── Hitungan sarang yang tersisa: 50 di 29 berkas (2026-08-08) ─────────────
+ * Diukur dengan parser TypeScript yang sama dengan `tests/button-emphasis.test.ts`,
+ * dan angkanya kini dijaga per-berkas di `tests/anchor-button-nesting.test.ts`
+ * (`SISA_SARANG`, daftar yang hanya boleh MENGECIL).
+ *
+ * ⚠ Dua angka lain beredar dan keduanya keliru — ditulis di sini supaya tidak
+ * dihidupkan kembali. **"46"** (yang tertulis di kepala berkas ini sampai #289)
+ * menghitung `<Link>` saja dan melewatkan 4 sarang `<a>`. **"56 di 32 berkas"**
+ * (badan issue #289) adalah sapuan regex; `[^>]` di dalam pola berhenti pada
+ * `>` milik `=>`, jadi setiap sarang di dalam `.map((x) => …)` ikut tercacah
+ * salah. Hitung dengan parser, bukan dengan regex — di #267 empat angka
+ * berturut-turut salah persis karena itu.
  *
  * ── ⚠ Kenapa `asChild` DICABUT (#250, temuan #203) ─────────────────────────
  * Ini bug produksi yang menyala di build sungguhan, jadi ditulis panjang —
@@ -117,6 +140,51 @@
  * (`/dashboard`, `/journal/…`, `/reports/…`) akan kembali menempuh pantulan
  * 307 yang justru dihapus issue #157.
  *
+ * ── ⚠ Kenapa 50 sarang itu TIDAK boleh sekadar pindah ke `<Button href>` ───
+ * Karena untuk MEREKA harganya tidak gratis. Ke-37 pemanggil #250 sudah memuat
+ * penuh sejak #187 — `asChild` pun membuang `<Link>`-nya — jadi pindah ke
+ * `<Button href>` tidak mengubah apa pun. Ke-50 sarang ini kebalikannya:
+ * `<Link>`-nya MASIH HIDUP, jadi memindahkannya apa adanya akan mencabut
+ * navigasi sisi-klien dan prefetch dari 46 tautan sekaligus — menukar bug
+ * validitas HTML dengan regresi yang terasa di setiap perpindahan halaman.
+ * Karena itu bentuk KETIGA, bukan pemindahan.
+ *
+ * ── Bagaimana `ButtonLink` mendapat keduanya, dan apa yang DITOLAK ─────────
+ * Yang dicari: SATU elemen `<a>`, bergaya tombol, dengan perilaku `next/link`.
+ * Empat jalan diukur; tiga gugur.
+ *
+ *  ✗ **Mengganti elemen akar `Button` AntD.** Tidak ada jalannya — diperiksa di
+ *    sumbernya, bukan ditebak: `antd@6.5.3` `es/button/Button.js` bercabang
+ *    `href !== undefined ? createElement("a") : createElement("button")` dan
+ *    tidak menerima `as`/`component`/`linkComponent`; `ButtonProps` juga tidak
+ *    mendeklarasikannya.
+ *  ✗ **Menyalin nama kelas cssinjs ke `<Link className>`.** `AntdProvider`
+ *    tidak menyetel `hashed: false`, jadi aturan gayanya menempel pada kelas
+ *    ber-hash (`css-<hash>`) yang berubah setiap kali token berubah. Kelas yang
+ *    disalin akan berhenti berlaku DIAM-DIAM — tombolnya menjadi teks biasa,
+ *    tanpa satu pun galat.
+ *  ✗ **`<Link legacyBehavior>` membungkus `<Button href>`.** Ini secara teknis
+ *    menghasilkan satu `<a>` (Link meng-`cloneElement` anaknya), tetapi ia
+ *    MEMBACA anaknya — kelas bug yang sama dengan `asChild`, sampai-sampai
+ *    `next/link` sendiri melempar bila anak itu simpul `react.lazy`
+ *    (`client/app-dir/link.js`, galat E863). Dan ia sudah usang: Next 16
+ *    memanggil `errorOnce("legacyBehavior is deprecated and will be removed")`.
+ *    Membangun primitif baru di atas prop yang dijadwalkan hilang, yang cara
+ *    kerjanya persis yang dicabut #250, adalah dua kesalahan sekaligus.
+ *  ✓ **`<a>` AntD sungguhan + semantik `next/link` dipasang dari luar.**
+ *    Gayanya tetap milik AntD (tidak ada kelas yang disalin), `href`-nya nyata
+ *    (klik-tengah, "buka di tab baru", salin alamat, dan pembaca layar semuanya
+ *    tetap benar), dan yang kita tambahkan hanya dua hal yang memang punya API
+ *    publik: `router.push()` pada klik biasa, dan `router.prefetch()` saat
+ *    tautannya masuk viewport.
+ *
+ * ⚠ Yang bentuk ini TIDAK berikan, supaya tidak ada yang mengira ia `next/link`
+ * seutuhnya: `useLinkStatus()` (status pending per tautan) dan prefetch-ulang
+ * otomatis saat cache segmen kedaluwarsa. Keduanya digerakkan
+ * `mountLinkInstance()`, internal `next/link` tanpa API publik. Kalau salah
+ * satunya kelak dibutuhkan, jalannya bukan menebak internal itu melainkan
+ * menunggu Next membuka `Link` untuk elemen kustom.
+ *
  * ── Atribut anchor menempel di TOMBOLNYA ──────────────────────────────────
  * `download`/`target`/`rel` dulu ditulis di `<a>` anaknya. Tanpa anak, mereka
  * ditulis di `<Button>` — dan karena `React.ComponentProps<"button">` tidak
@@ -127,9 +195,14 @@
 import { Button as AntdButton } from "antd";
 import type { ButtonProps as AntdButtonProps } from "antd";
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-import { scopedHref } from "@/components/ui/app-link";
+import {
+  amatiSekaliSaatTerlihat,
+  klikBiasa,
+  scopedHref,
+  tautanDicegat,
+} from "@/components/ui/app-link";
 
 type ButtonVariant =
   | "primary"
@@ -236,7 +309,7 @@ function Button({ href, ...props }: ButtonProps) {
    * 128 berkas ikut berlangganan perubahan alamat demi tautan yang
    * membutuhkannya.
    */
-  if (href !== undefined) return <ButtonLink href={href} {...props} />;
+  if (href !== undefined) return <ButtonAnchor href={href} {...props} />;
   return <ButtonElement {...props} />;
 }
 
@@ -268,10 +341,14 @@ function ButtonElement({
 
 /**
  * Bentuk anchor AntD: satu `<a class="ant-btn">`, bukan `<a>` membungkus
- * `<button>`. Satu-satunya jalur tautan sejak #250, dan ia tidak pernah membaca
- * `children` — itulah yang membuatnya aman di kedua sisi batas RSC.
+ * `<button>`. Ia tidak pernah membaca `children` — itulah yang membuatnya aman
+ * di kedua sisi batas RSC (#250).
+ *
+ * SATU-SATUNYA perakit `<a>` di berkas ini: `<Button href>` memakainya, dan
+ * `<ButtonLink>` juga. Itu disengaja — dua perakit berarti dua tombol tautan
+ * yang bisa berpenampilan berbeda tanpa satu pun galat.
  */
-function ButtonLink({
+function ButtonAnchor({
   /**
    * Bawaan yang SAMA dengan `ButtonElement`, dan itu harus dijaga tetap sama:
    * dua bawaan yang berbeda berarti `<Button>` dan `<Button href>` yang ditulis
@@ -312,5 +389,123 @@ function ButtonLink({
   );
 }
 
-export { Button };
-export type { ButtonProps, ButtonSize, ButtonVariant };
+type ButtonLinkProps = Omit<ButtonProps, "href" | "type" | "ref" | "onClick"> & {
+  /**
+   * Tujuan di DALAM app — jalur yang diawali `/`. Wajib, bukan opsional:
+   * `<ButtonLink>` tanpa tujuan adalah tombol, dan untuk itu sudah ada
+   * `<Button>`.
+   *
+   * Nilainya melewati `scopedHref()`, sama seperti `<Button href>` dan
+   * `<Link>`. Tanpa itu jalur bertenant kembali menempuh pantulan 307 (#157).
+   *
+   * Alamat LUAR (`https://…`, `mailto:`) boleh ditulis dan tidak akan rusak —
+   * ia hanya tidak dicegat, jadi peramban menanganinya seperti tautan biasa.
+   * Tapi untuk itu `<Button href>` lebih jujur: ia tidak menjanjikan navigasi
+   * sisi-klien yang memang tidak mungkin.
+   */
+  href: string;
+  /** `router.replace()` alih-alih `push()` — tidak menambah riwayat. */
+  replace?: boolean;
+  /**
+   * Prefetch saat tautannya masuk viewport, seperti `next/link`. `false`
+   * mematikannya untuk tautan yang jarang diklik tapi sering terlihat.
+   */
+  prefetch?: boolean;
+  /**
+   * Dijalankan SEBELUM navigasi. `preventDefault()` di dalamnya membatalkan
+   * navigasinya — perilaku yang sama dengan `onClick` pada `next/link`.
+   */
+  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
+};
+
+/**
+ * Tombol yang MENAVIGASI di sisi klien — bentuk ketiga (#289).
+ *
+ * Ia merender `<ButtonAnchor>` yang sama dengan `<Button href>`, jadi rupanya
+ * datang seluruhnya dari AntD dan tidak ada satu pun nama kelas yang disalin.
+ * Yang ditambahkan hanya dua hal, keduanya lewat API publik `next/navigation`:
+ * `router.push()` saat diklik, dan `router.prefetch()` saat tautannya terlihat.
+ *
+ * ⚠ Ia tidak membaca `children` sama sekali — tautannya dibangun dari PROP.
+ * Itu bukan gaya penulisan melainkan syarat: bentuk yang membaca anaknya
+ * (`asChild`, `<Link legacyBehavior>`) menerima simpul `react.lazy` ketika
+ * pemanggilnya server component, dan itu yang mematikan `next build` di #203.
+ * Lihat kepala berkas.
+ */
+function ButtonLink({
+  href,
+  replace = false,
+  prefetch = true,
+  onClick,
+  target,
+  download,
+  ...rest
+}: ButtonLinkProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  /*
+   * Satu `scopedHref()`, satu hasil: `ButtonAnchor` di bawah memanggil fungsi
+   * MURNI yang sama dengan `pathname` yang sama, jadi alamat di atribut `href`
+   * dan alamat yang didorong `router` tidak bisa berbeda. Menghitungnya sekali
+   * lalu menyerahkan hasilnya ke `ButtonAnchor` justru akan MEMBUAT bedanya
+   * mungkin — `ButtonAnchor` akan men-scope ulang yang sudah ter-scope.
+   */
+  const tujuan = scopedHref(href, pathname);
+  const dicegat = tautanDicegat(tujuan, { target, download });
+
+  const anchorRef = React.useRef<Element | null>(null);
+  const simpanRef = React.useCallback((el: HTMLButtonElement | null) => {
+    anchorRef.current = el;
+  }, []);
+
+  /*
+   * Prefetch viewport, seperti `next/link` (yang memprefetch saat tautannya
+   * TERLIHAT, bukan saat dihover). Dilewati di `development` karena `next/link`
+   * pun melewatinya di sana: `router.prefetch()` pada dev server memicu
+   * kompilasi rute atas permintaan, jadi memasangnya justru memperlambat menu
+   * yang sekadar terlihat.
+   *
+   * Satu pengamat per tautan, bukan satu pengamat bersama. Layar terpadat yang
+   * sudah dipindahkan (`/invoices`) memuat ENAM — dua di kepala, empat chip
+   * saringan dari `.map()` — dan tidak ada berkas tersisa yang memuat lebih
+   * dari empat sarang. Pengamat bersama menuntut peta elemen tingkat modul,
+   * yaitu keadaan global, demi penghematan sebesar itu.
+   */
+  React.useEffect(() => {
+    if (!dicegat || !prefetch) return;
+    if (process.env.NODE_ENV === "development") return;
+    return amatiSekaliSaatTerlihat(anchorRef.current, () => router.prefetch(tujuan));
+  }, [dicegat, prefetch, router, tujuan]);
+
+  const tanganiKlik = (e: React.MouseEvent<HTMLElement>) => {
+    onClick?.(e);
+    if (e.defaultPrevented) return;
+    if (!dicegat || !klikBiasa(e)) return;
+
+    e.preventDefault();
+    if (replace) router.replace(tujuan);
+    else router.push(tujuan);
+  };
+
+  return (
+    <ButtonAnchor
+      href={href}
+      target={target}
+      download={download}
+      onClick={tanganiKlik}
+      /*
+       * AntD meneruskan `ref` ke elemen yang benar-benar ia render, dan pada
+       * cabang `href` itu `<a>` (`es/button/Button.js`). Tandatangannya di
+       * `ButtonProps` tetap `HTMLButtonElement` karena di situlah 128 pemanggil
+       * lain memakainya; yang disimpan di sini hanya elemen untuk DIAMATI, jadi
+       * `Element` sudah cukup dan tidak ada tanda tangan yang perlu dilebarkan.
+       */
+      ref={simpanRef}
+      {...rest}
+    />
+  );
+}
+
+export { Button, ButtonLink };
+export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant };

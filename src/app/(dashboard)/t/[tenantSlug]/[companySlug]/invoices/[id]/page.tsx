@@ -24,7 +24,7 @@ import { DeleteDocumentButton } from "@/components/shared/delete-document-button
 import { EmptyState } from "@/components/ui/empty-state";
 import { DollarCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
@@ -340,9 +340,9 @@ export default async function InvoiceDetailPage({
               })),
             }}
           />
-          <Link href={`/invoices/${id}/edit`}>
-            <Button variant="secondary">{t("common.edit")}</Button>
-          </Link>
+          <ButtonLink href={`/invoices/${id}/edit`} variant="secondary">
+            {t("common.edit")}
+          </ButtonLink>
           {/* Cermin izin `invoice.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "invoice.delete")) && (
             <DeleteDocumentButton
@@ -354,9 +354,9 @@ export default async function InvoiceDetailPage({
               redirectTo="/invoices"
             />
           )}
-          <Link href="/invoices">
-            <Button variant="ghost">{t("common.back")}</Button>
-          </Link>
+          <ButtonLink href="/invoices" variant="ghost">
+            {t("common.back")}
+          </ButtonLink>
           </>
         }
       />

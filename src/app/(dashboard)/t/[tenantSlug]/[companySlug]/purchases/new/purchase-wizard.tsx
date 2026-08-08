@@ -420,7 +420,6 @@ export function PurchaseWizard({
                   <SearchableSelect
                     label={t("common.itemFromStockList")}
                     placeholder={t("common.pickItem")}
-                    searchPlaceholder={t("common.searchItem")}
                     emptyText={t("common.noItemMatch")}
                     options={itemOptions}
                     value={line.itemId != null ? String(line.itemId) : null}

@@ -329,6 +329,8 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 
    **Keempatnya harus berada di dalam `FormItem` yang sama, dan `FormItem` di dalam `FormField` — bukan sebaliknya (issue #262).** `aria-describedby` hanya boleh menyebut id yang simpulnya benar-benar dirender, dan yang memutuskannya adalah `FormItem`, saat render, dari anak yang dilihatnya (fragment, array, dan elemen HTML biasa ikut ditelusuri karena ketiganya pasti merender isinya). Yang tersembunyi di balik prop `render` sebuah `FormField` **di dalam** `FormItem` tidak terlihat dari sana — bentuk itu diam-diam kehilangan pautan deskripsinya. Menambal dengan `FormDescription` kosong ditolak: ia menambah simpul yang dibacakan tanpa isi. Kalau sebuah panel memang tidak punya isian (mis. "kata sandi sudah tersimpan"), tulis dua bentuk `FormItem` yang berbeda, jangan satu bentuk yang setengah ada.
 4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`SelectField`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
+
+   **`{...field}` tidak berlaku sama untuk ketiga isian pilihan.** `SelectField` menerimanya utuh (`name` ikut, dan nilainya ikut `new FormData(form)`); `SearchableSelect`/`ServerSearchableSelect` **menolak `name` di tipe** — nilainya dibaca lewat `value`/`onChange`, dan tidak pernah ikut `FormData`. Tabel lengkapnya beserta alasannya: §Primitif Wajib, "Keluarga isian pilihan".
 5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
 6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).
 7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (field bila ada `fieldErrors`, atau `root`). Field yang TIDAK punya isian di layar (mis. `invoiceId` yang disuntik server) naik menjadi galat formulir, bukan ditanam di field yang tak pernah dilihat siapa pun — acuan `applyPaymentServerErrors` di `payment-form.tsx`.
@@ -497,6 +499,18 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
   - **`[name=…]` karena itu TIDAK menunjuk kendali yang bisa difokuskan** (issue #259). Pencarian `document.querySelector('[name=…]')` pada isian pilihan berujung di hidden companion itu, dan `focus()` di sana tidak melempar galat — ia diam-diam membuang fokusnya. Kendali sungguhannya adalah `<input role="combobox">` di dalam akar yang sama; `id` yang dioper mendarat di sana. Kode yang memindahkan fokus lewat NAMA field wajib menyelesaikan hasil pencariannya dulu menjadi kendali fokusabel — `focusFormField` (`components/ui/disclosure-section.tsx`) sudah melakukannya untuk semua pemanggil.
   - **`required` TIDAK lagi divalidasi peramban.** Yang tersisa `aria-required` + tanda `*`; penjaganya validasi server (dan zod setelah #192). Isian pilihan yang wajib harus punya validasi selain `required`.
   - **Pencarian menyala sendiri di atas 12 opsi** (`SEARCH_THRESHOLD`), bisa ditimpa lewat prop `searchable`.
+- **Keluarga isian pilihan: tiga primitif, satu perbedaan** (issue #263). Ketiganya isian pilihan, ketiganya hidup di dalam pola `Form`, dan dari sisi pemanggil ketiganya terlihat setara. Yang membedakan hanya satu hal — dan hal itu tidak terlihat di layar:
+
+| Primitif | Dipakai saat | Nilainya ikut `new FormData(form)` |
+| --- | --- | --- |
+| `SelectField` (`ui/select.tsx`) | bawaan; pencarian menyala sendiri di atas 12 opsi | **ya** — primitifnya menitipkan `<input type="hidden">` bernama |
+| `SearchableSelect` (`ui/searchable-select.tsx`) | opsinya butuh **baris kedua** (negara / kontak) — sesuatu yang `SelectField` tidak punya | **tidak** |
+| `ServerSearchableSelect` (`ui/server-searchable-select.tsx`) | daftarnya terlalu besar untuk dikirim ke klien; tiap ketikan mencari ke server | **tidak** |
+
+  - **Kedua yang berpencarian TIDAK menerima `name`, dan itu dinyatakan di TIPE.** `Select` AntD bukan kontrol form — tidak ada apa pun di dalamnya yang bisa dititipi nama. Menerima `name` lalu mengabaikannya adalah bentuk kegagalan terburuk yang tersedia: formulir yang membaca `new FormData(form)` kehilangan satu field **tanpa satu galat pun** — bukan nol, bukan kosong, melainkan tidak ada di muatan, dan server menerima objek yang tampak sah. Karena itu `name` ADA di tipe kedua isian itu hanya untuk **ditolak**, dan tipenya berupa kalimat sehingga pesan `tsc`-nya menyebut sendiri apa yang harus dipakai sebagai gantinya.
+  - **Yang benar-benar ditutup adalah bentuk SEBARAN.** `name="…"` yang ditulis langsung memang sudah ditolak sebagai properti berlebih jauh sebelum #263; `{...field}` dari `react-hook-form` **tidak** — pemeriksaan properti berlebih JSX tidak berlaku untuk sebaran, hanya pemeriksaan kecocokan tipe atas properti yang **dideklarasikan**. Terukur di #263: sebelum penutupan ini, `{...field}` pada kedua isian berpencarian lolos `tsc` dengan nol galat. Penjaganya `tests/ui-fields.test.tsx` (bentuk markup-nya di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`).
+  - **Kalau nilainya harus terkirim bersama form, pilihannya dua:** pakai `SelectField`, atau baca nilainya lewat `value`/`onChange`. Ke-15 pemakaian hari ini (8 `SearchableSelect` + 7 `ServerSearchableSelect`, dihitung dengan mengurai JSX-nya, bukan `grep`) semuanya memakai jalan kedua.
+  - **`searchPlaceholder` sudah tidak ada** (dicabut #263). Ia inert sejak #188 — pada AntD yang diketik adalah pemicunya sendiri, jadi placeholder-nya `placeholder` — dan dua belas pemanggil tetap mengopernya selama fase B–C. Itu penyakit yang sama dengan `name`: prop yang menerima nilai lalu tidak melakukan apa pun dengannya.
 
 ---
 
@@ -895,6 +909,7 @@ membaca hijau dan menyimpulkan aman.
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
 | Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
+| Keluarga isian pilihan: hanya `SelectField` yang ikut `FormData`; `name` pada kedua isian berpencarian ditolak `tsc` bahkan lewat `{...field}` | `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`) |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah

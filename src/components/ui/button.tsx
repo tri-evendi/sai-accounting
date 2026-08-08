@@ -26,6 +26,31 @@
  *     issue #50) dipetakan ke pasangan `type` + `danger` milik AntD.
  *  3. **`size`.** `sm|md|lg|icon` -> `small|middle|large` + `shape="circle"`.
  *
+ * ── Bawaan `variant` = `secondary` (#267, potongan 5) ──────────────────────
+ * **`<Button>` tanpa atribut adalah tombol SEKUNDER.** Sampai potongan 5 ia
+ * `primary`, dan itulah bagaimana 120 dari 310 tombol menjadi berisi penuh
+ * tanpa seorang pun memutuskannya — sampai penekanan berhenti membedakan apa
+ * pun. Bawaan yang aman adalah bawaan yang **paling sering benar**, dan aturan
+ * di MASTER.md §Aksi utama per layar adalah *satu aksi utama per layar, nol
+ * juga sah*: dengan aturan itu, tombol yang paling sering benar adalah yang
+ * sekunder. **Penekanan tinggi sekarang harus DIMINTA** — `variant="primary"`,
+ * ditulis, terlihat di diff, satu kali per layar.
+ *
+ * Pembalikan ini sengaja dikerjakan TERAKHIR, dan itu yang membuatnya murah:
+ * potongan 1–4 lebih dulu menuliskan `variant` di **setiap** pemanggil, jadi
+ * saat bawaannya dibalik tidak ada satu pun tombol yang ikut bergerak. Diukur
+ * pada PR-nya: nol `<Button>` tanpa `variant` di seluruh `src/`, dan markup
+ * hasil render ke-305 pemanggilnya identik sebelum & sesudah. Urutan
+ * sebaliknya — bawaan dulu, audit belakangan — akan mencabut aksi utama setiap
+ * layar sekaligus.
+ *
+ * ⚠ Jangan membaliknya kembali "supaya tombol tidak perlu ditulis variannya".
+ * Yang hilang bukan pengetikan melainkan keputusan: `<Button>` polos berarti
+ * tidak ada yang memilih penekanan tombol itu. `tests/button-emphasis.test.ts`
+ * karena itu TETAP menolak `<Button>` tanpa `variant`, walau sekarang
+ * akibatnya diam (tombol jadi sekunder) alih-alih keras (biru liar) — diam
+ * justru lebih sulit terlihat mata.
+ *
  * ── Target sentuh ≥ 40px (MASTER.md) ──────────────────────────────────────
  * Tidak dipasang di sini, dan itu disengaja. Tingginya datang dari token
  * `controlHeight: 40` di `AntdProvider`; diverifikasi terhadap sumber AntD
@@ -216,7 +241,8 @@ function Button({ href, ...props }: ButtonProps) {
 }
 
 function ButtonElement({
-  variant = "primary",
+  /** Bawaannya `secondary` — lihat "Bawaan `variant`" di kepala berkas. */
+  variant = "secondary",
   size = "md",
   type,
   ref,
@@ -246,7 +272,13 @@ function ButtonElement({
  * `children` — itulah yang membuatnya aman di kedua sisi batas RSC.
  */
 function ButtonLink({
-  variant = "primary",
+  /**
+   * Bawaan yang SAMA dengan `ButtonElement`, dan itu harus dijaga tetap sama:
+   * dua bawaan yang berbeda berarti `<Button>` dan `<Button href>` yang ditulis
+   * identik berpenampilan berbeda — perbedaan yang tidak akan pernah gagal di
+   * `tsc` dan hanya terlihat kalau seseorang menaruh keduanya bersebelahan.
+   */
+  variant = "secondary",
   size = "md",
   href,
   children,

@@ -8,20 +8,28 @@
  *
  * ══ Kenapa dua penjaga, bukan satu ═════════════════════════════════════════
  *
- * `variant` pada primitif `Button` bawaannya masih `"primary"`. Artinya
- * `<Button>` tanpa atribut adalah tombol BERISI PENUH — dan itulah bagaimana
- * 120 dari 310 tombol jadi primer tanpa seorang pun memutuskannya (angka "197"
- * di badan issue adalah sapuan `grep` per-baris yang sudah dikoreksi dua kali;
- * jangan menghidupkannya kembali). Bawaan itu memang akan dibalik ke
- * `secondary` kelak, tetapi membaliknya SEBELUM auditnya selesai menurunkan
- * ratusan tombol sekaligus dan membuat setiap layar kehilangan aksi utamanya.
- * Urutannya karena itu dibalik: audit dulu (tandai varian eksplisit), baru
- * bawaannya. Pada saat itu pembalikannya tidak mengubah satu piksel pun.
+ * `variant` pada primitif `Button` **bawaannya `"secondary"` sejak potongan 5**.
+ * Sebelumnya `"primary"`, dan itulah bagaimana 120 dari 310 tombol jadi berisi
+ * penuh tanpa seorang pun memutuskannya (angka "197" di badan issue adalah
+ * sapuan `grep` per-baris yang sudah dikoreksi dua kali; jangan menghidupkannya
+ * kembali). Membalik bawaan itu SEBELUM auditnya selesai akan menurunkan
+ * ratusan tombol sekaligus dan membuat setiap layar kehilangan aksi utamanya,
+ * jadi urutannya dibalik: audit dulu (tulis varian eksplisit di mana-mana,
+ * potongan 1–4), baru bawaannya (potongan 5). Pada saat itu pembalikannya
+ * benar-benar tidak mengubah satu piksel pun — diukur, bukan diandaikan.
  *
- *   1. **Penjaga KEEKSPLISITAN** menjaga urutan itu: di area yang sudah
- *      diaudit, setiap `<Button>` menyebut `variant`-nya. Tombol implisit yang
- *      baru di sana berarti area itu diam-diam keluar lagi dari hasil audit,
- *      dan pembalikan bawaan nanti akan menurunkannya tanpa ada yang tahu.
+ *   1. **Penjaga KEEKSPLISITAN** menjaga hasil itu tetap utuh: setiap
+ *      `<Button>` menyebut `variant`-nya. **Ia TETAP diperlukan sesudah
+ *      pembalikan, dan alasannya berubah, bukan hilang.** Dulu tombol implisit
+ *      gagal dengan KERAS: satu blok biru liar yang bisa dilihat mata di sapuan
+ *      visual. Sekarang ia gagal DIAM — tombol sekunder di antara tombol
+ *      sekunder. Layar yang aksi utamanya kebetulan ditulis `<Button>` polos
+ *      tidak akan tampak salah; ia hanya akan kehilangan arah, tanpa galat,
+ *      tanpa merah, tanpa apa pun yang mengundang pertanyaan. Kegagalan yang
+ *      lebih aman justru lebih sulit ditemukan, jadi penjaganya lebih perlu —
+ *      dan pekerjaannya yang sebenarnya bukan mengatur gaya penulisan
+ *      melainkan memaksa PERTANYAANNYA dijawab satu kali, di tempat yang
+ *      terlihat di diff.
  *
  *   2. **Penjaga SATU PRIMER PER WADAH** menjaga aturannya sendiri, sejauh
  *      bentuknya memungkinkan: dua tombol primer yang bisa TERENDER BERSAMAAN
@@ -107,8 +115,8 @@ const ROOT = join(__dirname, "..");
  * tes "penjaga keeksplisitan menyentuh setiap berkas" di bawah yang merah.
  *
  * Dengan daftar ini lengkap, syarat pembalikan bawaan `variant` → `secondary`
- * (potongan 5 #267) terpenuhi: setiap pemanggil menulis variannya sendiri, jadi
- * pembalikannya tidak mengubah satu piksel pun.
+ * terpenuhi — dan potongan 5 sudah membaliknya: setiap pemanggil menulis
+ * variannya sendiri, jadi pembalikannya tidak mengubah satu piksel pun.
  */
 const AREA_TERAUDIT = [join("src", "app"), join("src", "components")];
 
@@ -169,8 +177,20 @@ const namaTag = (n: Jsx) => (ts.isJsxElement(n) ? n.openingElement.tagName : n.t
 
 /**
  * `"primary"` dan `"default"` adalah OBJEK YANG SAMA di `ui/button.tsx`
- * (`const PRIMARY`), jadi keduanya dihitung. `undefined` berarti tak ditulis —
- * dan selama bawaannya `primary`, tak ditulis BERARTI primary.
+ * (`const PRIMARY`), jadi keduanya dihitung.
+ *
+ * `undefined` — yaitu `variant` yang tak ditulis — **tidak lagi dihitung sejak
+ * potongan 5**, sebab bawaan primitifnya kini `secondary`. Penjaga #2 menjawab
+ * pertanyaan "berapa tombol yang RENDER-nya berisi penuh", dan jawabannya harus
+ * datang dari apa yang primitifnya benar-benar lakukan; penjaga yang memakai
+ * model usang tentang primitif yang dijaganya adalah persis kelas penjaga yang
+ * §Penjaga di MASTER.md daftar sebagai "terbaca benar, tidak menjaga apa pun".
+ *
+ * Yang membuat pelonggaran ini tidak membuka lubang: penjaga #1 melarang
+ * `<Button>` tanpa `variant` sama sekali di kedua akar, jadi bentuk yang
+ * kelonggaran ini abaikan tidak boleh ada sejak awal. Kalau penjaga #1 suatu
+ * hari dicabut, penjaga #2 memang jadi buta terhadap tombol implisit — tetapi
+ * di dunia itu tombol implisit memang sekunder, jadi butanya benar.
  */
 const NILAI_PRIMER = new Set(["primary", "default"]);
 
@@ -196,7 +216,7 @@ function varianDari(node: Jsx): string | undefined {
 const primer = (node: Jsx) => {
   if (namaTag(node) !== "Button") return false;
   const v = varianDari(node);
-  return v === undefined || NILAI_PRIMER.has(v);
+  return v !== undefined && NILAI_PRIMER.has(v);
 };
 
 /**
@@ -392,33 +412,51 @@ describe("penekanan tombol (#267)", () => {
     };
 
     // Dua primer bersebelahan — bentuk yang dijaga.
-    expect(uji('<div><Button variant="primary">A</Button><Button>B</Button></div>')).toBe(2);
-    // Implisit + implisit: keduanya primer, sebab bawaannya masih `primary`.
-    expect(uji("<div><Button>A</Button><Button>B</Button></div>")).toBe(2);
+    expect(uji('<div><Button variant="primary">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
     // `default` adalah alias `primary` di `ui/button.tsx`, bukan "tombol biasa".
-    expect(uji('<div><Button variant="default">A</Button><Button>B</Button></div>')).toBe(2);
+    expect(uji('<div><Button variant="default">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
     // Varian berkondisi yang salah satu cabangnya primer tetap dihitung.
-    expect(uji('<div><Button variant={x ? "primary" : "outline"}>A</Button><Button>B</Button></div>')).toBe(2);
+    expect(
+      uji('<div><Button variant={x ? "primary" : "outline"}>A</Button><Button variant="primary">B</Button></div>')
+    ).toBe(2);
 
     // …dan hijau pada yang memang benar:
-    expect(uji('<div><Button>A</Button><Button variant="outline">B</Button></div>')).toBe(1);
+    expect(uji('<div><Button variant="primary">A</Button><Button variant="outline">B</Button></div>')).toBe(1);
     // Cabang yang saling meniadakan bukan dua tombol di layar.
-    expect(uji("<div>{x ? <Button>A</Button> : <Button>B</Button>}</div>")).toBe(1);
+    expect(uji('<div>{x ? <Button variant="primary">A</Button> : <Button variant="primary">B</Button>}</div>')).toBe(1);
     // Destruktif tidak pernah dihitung sebagai aksi utama (aturannya di #219).
-    expect(uji('<div><Button>A</Button><Button variant="destructive">Hapus</Button></div>')).toBe(1);
+    expect(uji('<div><Button variant="primary">A</Button><Button variant="destructive">Hapus</Button></div>')).toBe(1);
     // Nama tag lain bukan urusan penjaga ini.
-    expect(uji("<div><IconButton>A</IconButton><Button>B</Button></div>")).toBe(1);
+    expect(uji('<div><IconButton>A</IconButton><Button variant="primary">B</Button></div>')).toBe(1);
+
+    /*
+     * Bawaan yang dibalik, dibuktikan pada pendeteksinya sendiri (potongan 5).
+     * Sebelum pembalikan kedua baris ini masing-masing 2 dan 1: `<Button>` polos
+     * dihitung primer. Sekarang NOL — dan itu harus terbaca di sini, bukan hanya
+     * di `ui/button.tsx`, sebab penjaga #2 memodelkan primitifnya dan model yang
+     * menyimpang dari primitifnya adalah penjaga yang menjawab pertanyaan lain.
+     */
+    expect(uji("<div><Button>A</Button><Button>B</Button></div>")).toBe(0);
+    expect(uji('<div><Button>A</Button><Button variant="outline">B</Button></div>')).toBe(0);
   });
 
-  it("primitifnya masih berbawaan `primary` — kalau tidak, penjaga #1 kehilangan alasannya", () => {
+  it("primitifnya berbawaan `secondary` di KEDUA bentuknya — dan penjaga ini memodelkannya", () => {
     /*
-     * Penjaga keeksplisitan berdiri di atas satu fakta: tak-ditulis = primer.
-     * Kalau bawaannya suatu hari dibalik ke `secondary` TANPA menyelesaikan
-     * audit, tombol implisit berhenti berbahaya dengan cara yang berbeda — dan
-     * daftar `AREA_TERAUDIT` harus dibaca ulang, bukan diwarisi begitu saja.
-     * Tes ini yang memaksa pembacaan itu terjadi.
+     * Versi sebelumnya menuntut `variant = "primary"`, karena penjaga #2 berdiri
+     * di atas fakta "tak-ditulis = primer". Potongan 5 membalik faktanya, jadi
+     * tes ini dibalik bersamanya alih-alih dihapus: yang dijaga bukan nilai
+     * tertentu melainkan bahwa `NILAI_PRIMER`/`primer()` di berkas ini dan
+     * bawaan di `ui/button.tsx` tidak pernah menyimpang diam-diam. Kalau
+     * bawaannya digeser lagi, yang merah adalah tes ini — bukan sebuah layar.
+     *
+     * DUA kecocokan yang dituntut, bukan satu: primitifnya punya dua bentuk
+     * (`ButtonElement` dan `ButtonLink`), masing-masing dengan bawaannya
+     * sendiri. Versi lama hanya menuntut satu, jadi ia akan tetap hijau
+     * seandainya salah satu dari keduanya digeser sendirian — persis kelas
+     * perbedaan yang tidak pernah gagal di `tsc`.
      */
     const isi = readFileSync(join(ROOT, "src", "components", "ui", "button.tsx"), "utf8");
-    expect(isi).toMatch(/variant = "primary"/);
+    expect(isi.match(/variant = "secondary"/g)).toHaveLength(2);
+    expect(isi).not.toMatch(/variant = "primary"/);
   });
 });

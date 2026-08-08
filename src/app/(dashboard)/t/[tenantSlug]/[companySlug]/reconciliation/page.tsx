@@ -194,7 +194,9 @@ export default async function ReconciliationListPage({
         description={t("reconciliation.description")}
         actions={
           <Link href="/reconciliation/new">
-            <Button>{t("reconciliation.addNew")}</Button>
+            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
+            <Button variant="primary">{t("reconciliation.addNew")}</Button>
           </Link>
         }
       />
@@ -217,7 +219,10 @@ export default async function ReconciliationListPage({
             key={f.label}
             href={f.value ? `/reconciliation?status=${f.value}` : "/reconciliation"}
           >
-            <Button variant={status === f.value ? "primary" : "secondary"} size="sm">
+            {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+                Menyaring tidak mengikat (§Aksi utama per layar); isian penuh
+                di sini bersaing dengan CTA kepala halaman. */}
+            <Button variant={status === f.value ? "secondary" : "ghost"} size="sm">
               {f.label}
             </Button>
           </Link>

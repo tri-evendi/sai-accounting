@@ -250,7 +250,9 @@ export default async function ReturnsPage({
         description={t("returns.description")}
         actions={
           <Link href={`/returns/new?type=${tab}`}>
-            <Button>
+            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
+            <Button variant="primary">
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
               <PlusOutlined aria-hidden="true" />
               {t("returns.addNew")}
@@ -284,7 +286,10 @@ export default async function ReturnsPage({
           },
         ].map((f) => (
           <Link key={f.label} href={f.href}>
-            <Button variant={f.active ? "primary" : "secondary"}>{f.label}</Button>
+            {/* Tab = KEADAAN, bukan ajakan: aktif `secondary` (berbingkai),
+                sisanya `ghost`. Berpindah tab hanya menyaring — isian penuh di
+                sini bersaing dengan "Catat Retur" di kepala halaman (#267). */}
+            <Button variant={f.active ? "secondary" : "ghost"}>{f.label}</Button>
           </Link>
         ))}
       </div>

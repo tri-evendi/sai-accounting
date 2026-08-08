@@ -235,7 +235,9 @@ export default async function ContractsPage({
         title={<TermTooltip term="kontrak">{t("contracts.title", { count: totalCount })}</TermTooltip>}
         actions={
           <Link href="/contracts/new">
-            <Button>{t("contracts.addNew")}</Button>
+            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
+            <Button variant="primary">{t("contracts.addNew")}</Button>
           </Link>
         }
       />
@@ -261,11 +263,14 @@ export default async function ContractsPage({
           const qs = query.toString();
           return (
             <Link key={status} href={`/contracts${qs ? `?${qs}` : ""}`}>
+              {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+                  Menyaring tidak mengikat (§Aksi utama per layar), dan isian
+                  penuh di sini bersaing dengan "Tambah Kontrak" di kepala. */}
               <Button
                 variant={
                   filters.status === status || (!filters.status && status === "all")
-                    ? "primary"
-                    : "secondary"
+                    ? "secondary"
+                    : "ghost"
                 }
                 size="sm"
               >
@@ -295,7 +300,12 @@ export default async function ContractsPage({
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit">{t("common.search")}</Button>
+        {/* Kirim yang hanya MENYARING — `outline`, preseden "Saring" di
+            `/operator` dan `shared/ledger-filter.tsx` (#267). Ia membaca ulang
+            daftar, tidak menulis apa pun ke buku. */}
+        <Button type="submit" variant="outline">
+          {t("common.search")}
+        </Button>
       </form>
 
       {/* Grafik: sebaran status + tren bulanan, di bawah saringan & sebelum

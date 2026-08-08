@@ -221,7 +221,9 @@ export default async function AdvancesPage({
         }
         actions={
           <Link href="/advances/new">
-            <Button>
+            {/* Aksi utama layar ini (#267): mencatat uang muka adalah satu-satunya
+                hal yang MENGIKAT di sini; sisanya membaca & menyaring. */}
+            <Button variant="primary">
               <PlusOutlined aria-hidden="true" />
               {t("advances.record")}
             </Button>
@@ -238,9 +240,14 @@ export default async function AdvancesPage({
           marginBottom: SECTION_GAP,
         }}
       >
+        {/* Chip saringan: yang aktif `secondary` (berbingkai), sisanya `ghost`
+            (tanpa bingkai) — BUKAN primer. Menyaring tidak mengikat apa pun
+            (§Aksi utama per layar), dan isian penuh di sini bersaing dengan
+            "Catat Uang Muka" di kepala halaman. Keadaan aktifnya tetap terbaca
+            dari ada/tidaknya bingkai, bukan dari warna saja. */}
         {filters.map((f) => (
           <Link key={f.key} href={f.href}>
-            <Button variant={f.active ? "primary" : "secondary"} size="sm">
+            <Button variant={f.active ? "secondary" : "ghost"} size="sm">
               {f.label}
             </Button>
           </Link>

@@ -35,6 +35,39 @@
  * batas RSC — persis keadaan yang membuat prerender mati (#203). Ia luput dari
  * hitungan awal issue #250 karena hitungannya mengecualikan `components/ui/**`;
  * yang menemukannya adalah penjaganya sendiri, `tests/button-no-aschild.test.ts`.
+ *
+ * ── ⚠ Kenapa aksinya `secondary`, bukan primer (#267, potongan 3) ──────────
+ * Ini keputusan yang paling mudah dibalik oleh orang berikutnya, jadi alasannya
+ * ditulis di tempat perubahannya akan terjadi.
+ *
+ * Pada halaman daftar yang KOSONG, dua ajakan terender bersamaan: CTA kepala
+ * halaman ("Tambah Kontrak", pojok kanan atas) dan CTA di sini — **`href` yang
+ * sama, sering label yang sama persis**. Menurut §Aksi utama per layar itu dua
+ * primer, dan salah satunya harus mengalah. Yang mengalah CTA keadaan-kosong,
+ * karena dua hal yang terukur:
+ *
+ *  1. **Kosong ≠ modul kosong.** Kesebelas halaman daftar yang memakai blok ini
+ *     merendernya juga ketika SARINGAN tidak menemukan apa-apa —
+ *     `/contracts?search=zzz` pada perusahaan dengan 400 kontrak menampilkan
+ *     "Belum ada kontrak" berikut tombolnya. CTA primer di situ menjawab
+ *     "pencarian Anda nihil" dengan "buat yang baru", yaitu jawaban yang salah.
+ *     CTA kepala tidak mengklaim apa pun; ia memang selalu di sana.
+ *  2. **Kalau yang mengalah CTA kepala, ia harus mengalah SECARA BERKONDISI** —
+ *     primer saat kosong, sekunder saat berisi — dan itu berarti tombol yang
+ *     berpindah penekanan tepat ketika baris pertama masuk, DAN modul yang
+ *     dalam keadaan normalnya (berisi) tidak punya satu pun aksi utama. Rambu
+ *     #267 menyebut persis itu: menurunkan semuanya hanya menukar satu hierarki
+ *     rata dengan hierarki rata yang lain.
+ *
+ * Yang TIDAK berubah: blok ini tetap satu-satunya tombol di dalam kotak kosong
+ * yang besar, dan CTA kepala menunjuk tempat yang sama — jadi tidak ada jalan
+ * maju yang hilang, hanya penekanan yang tidak dibelanjakan dua kali.
+ *
+ * ⚠ Ini keputusan PRIMITIF: 32 blok kosong di 30 berkas mewarisinya (dihitung
+ * dengan parser TS, bukan `grep` — lihat koreksi angka di PR potongan 3). Kalau
+ * suatu keadaan-kosong kelak sungguh SATU-SATUNYA jalan maju layarnya (kartu
+ * "buat kategori dulu" di `/fixed-assets/new` adalah kandidatnya), yang benar
+ * adalah menambah prop eskalasi di sini — bukan menaikkan bawaan ini kembali.
  */
 
 import { Empty, theme } from "antd";
@@ -99,7 +132,8 @@ export function EmptyState({
       }
     >
       {actionLabel && actionHref && (
-        <Button href={actionHref} size="sm">
+        // `secondary`, dan alasannya panjang — lihat kepala berkas.
+        <Button href={actionHref} variant="secondary" size="sm">
           {actionLabel}
         </Button>
       )}

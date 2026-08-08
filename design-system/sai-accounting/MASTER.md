@@ -483,7 +483,7 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
   - Baris total lewat prop `summary` (peta kunci kolom → isi sel) pada kedua varian; keadaan kosong lewat `empty` berisi `EmptyState`, tak pernah "No Data" bawaan AntD.
 - **Primitif JSX `Table`** (`src/components/ui/table.tsx`: `TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`) kini **lapisan gaya di bawah kedua perender di atas**, bukan API yang dipanggil halaman. Ia masih dipakai langsung oleh berkas yang belum dikonversi (fase C, #193–#200); untuk tabel BARU pakai `StaticTable`/`DataTable`. Yang tetap terlarang: `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah.
 - **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan format angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah di dalamnya.
-- **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`). Sejak issue #187 isinya AntD `Button`; **nama propnya tidak berubah** (`variant`/`size`/`type`). Perhatikan satu perangkap yang sengaja ditahan primitif: di AntD `type` berarti VARIAN VISUAL, di sini ia tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan "membetulkannya" dengan meneruskan `type` langsung ke AntD — 60 tombol kirim akan berhenti mengirim formulirnya tanpa satu galat pun.
+- **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`). Sejak issue #187 isinya AntD `Button`; **nama propnya tidak berubah** (`variant`/`size`/`type`). Perhatikan satu perangkap yang sengaja ditahan primitif: di AntD `type` berarti VARIAN VISUAL, di sini ia tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan "membetulkannya" dengan meneruskan `type` langsung ke AntD — 60 tombol kirim akan berhenti mengirim formulirnya tanpa satu galat pun. **Bawaan `variant` adalah `secondary`** (#267 potongan 5): tombol berisi penuh harus DIMINTA (`variant="primary"`), satu per layar — §Aksi utama per layar.
 - **Tombol yang menuju ke suatu tempat → `<Button href>`. `asChild` sudah TIDAK ADA (#250).** Bentuk itu membaca prop anaknya, dan dari server component anak itu bisa tiba sebagai simpul `react.lazy` yang belum punya `.props`: `React.Children.only()` melempar dan prerender-nya mati — dengan gejala yang BERPINDAH-PINDAH menurut urutan chunk, sehingga halaman yang jatuh hari ini bukan halaman yang jatuh besok. Ke-37 pemanggilnya pindah ke `href` dan propnya dicabut dari primitifnya; `tests/button-no-aschild.test.ts` menolak yang ke-38. Atribut yang dulu menempel di `<a>` anaknya (`download`/`target`/`rel`) kini ditulis di `<Button>`-nya.
 - **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan merakit tombol ikon sendiri dari padding kecil (≈28px). Antar aksi ikon yang berdampingan beri jarak **minimal 8px** (`--ant-margin-xs`) — 4px membuat dua aksi bersebelahan mudah salah tekan di layar sentuh.
 - **Tingginya datang dari token `controlHeight: 40`** di `AntdProvider`, bukan dari gaya di primitif — lihat §Jarak, radius, bayangan.
@@ -693,33 +693,54 @@ Yang **tetap berlaku penuh** di pendaratan: `variant` ditulis eksplisit (kalau
 tidak, pembalikan bawaan kelak diam-diam mencabut hero halaman pemasaran) dan
 seluruh isi `pages/landing.md` §Yang TETAP BERLAKU PENUH.
 
-### Bawaan `variant` masih `primary` — dan urutannya disengaja
+### Bawaan `variant` = `secondary` — penekanan tinggi harus DIMINTA
 
-`<Button>` tanpa atribut adalah tombol berisi penuh. Bawaan yang benar untuk
-aturan di atas jelas `secondary`: penekanan tinggi harus **diminta**. Tetapi
-membalik bawaannya sebelum auditnya selesai akan menurunkan ~200 tombol
-sekaligus dan membuat **setiap layar kehilangan aksi utamanya** sampai
-masing-masing ditandai ulang. Karena itu urutannya dibalik: **audit dulu**
-(tulis `variant` eksplisit di mana-mana, satu potongan per PR), **baru** bawaan
-dibalik — dan pada saat itu pembalikannya tidak mengubah satu piksel pun.
-Keadaan akhirnya identik, risikonya jauh berbeda.
+**`<Button>` tanpa atribut adalah tombol SEKUNDER** (sejak #267 potongan 5).
+Bawaan yang aman adalah bawaan yang **paling sering benar**; dengan aturan
+"satu aksi utama per layar, nol juga sah", tombol yang paling sering benar
+adalah yang sekunder. Penekanan tinggi karena itu ditulis: `variant="primary"`,
+sekali per layar, terlihat di diff.
 
-**Auditnya SELESAI sejak potongan 4.** `src/app` dan `src/components` kini
-seluruhnya menulis `variant`-nya — **nol** `<Button>` implisit, dihitung dengan
-parser TS yang sama dengan penjaganya. `BERKAS_TERAUDIT` (daftar 13 berkas
-satuan potongan 3) melebur menjadi satu baris direktori, persis seperti yang
-dijanjikan, dan `AREA_TERAUDIT` tinggal dua akar.
+Sampai potongan 4 bawaannya `primary`, dan itulah bagaimana **120 dari 310**
+tombol jadi berisi penuh tanpa seorang pun memutuskannya. Membalik bawaannya
+lebih dulu akan menurunkan ratusan tombol sekaligus dan membuat **setiap layar
+kehilangan aksi utamanya** sampai masing-masing ditandai ulang. Karena itu
+urutannya dibalik: **audit dulu** (tulis `variant` eksplisit di mana-mana, satu
+potongan per PR, potongan 1–4), **baru** bawaannya (potongan 5). Keadaan
+akhirnya identik, risikonya jauh berbeda.
 
-Artinya **syarat pembalikan bawaan sudah terpenuhi**: potongan 5 boleh membalik
-`variant` ke `secondary`, dan nilainya justru pada terbukti **tidak mengubah
-satu piksel pun**. Kalau pembalikan itu ternyata mengubah sesuatu di layar,
-yang salah bukan bawaannya — ada tombol yang lolos audit ini.
+Potongan 4 menuntaskan auditnya: **nol** `<Button>` implisit di `src/app` dan
+`src/components`. Ia menyentuh **53 tombol implisit di 51 berkas** — **43 tetap
+primer** (hampir seluruhnya submit formulir dan CTA kepala halaman) dan **10
+turun**, semuanya karena tabrakan yang hanya terlihat dengan membuka halamannya.
 
-Potongan 4 sendiri menyentuh **53 tombol implisit di 51 berkas** (bukan 61/55
-seperti yang diperkirakan sebelum potongan 3 mendarat): **43 tetap primer** —
-hampir seluruhnya submit formulir dan CTA kepala halaman, yaitu tebakan awal
-yang ternyata benar — dan **10 turun**, semuanya karena tabrakan yang hanya
-terlihat dengan membuka halamannya.
+**Potongan 5 karena itu tidak mengubah apa pun, dan itu DIUKUR** — bukan
+disimpulkan dari suite yang hijau, sebab tesnya tidak merender setiap layar:
+
+- Parser TS yang sama dengan penjaganya, dijalankan pada **seluruh `src/`**
+  (lebih luas dari lingkup penjaganya): **nol** `<Button>` tanpa `variant` dari
+  305 pemanggil, **nol** `<Button {...spread}>`, dan satu-satunya alias impor
+  `Button` adalah milik AntD di dalam primitifnya sendiri.
+- Kelas kebocoran yang parser **tidak** bisa lihat — komponen yang meneruskan
+  `variant` opsional ke primitifnya — ada tepat **dua** (`pdf-document-button`,
+  `confirm-dialog`), dan keduanya punya bawaannya sendiri (`"secondary"` /
+  `"danger"`), jadi `undefined` tidak pernah sampai ke primitif.
+- Sisi render: markup `renderToStaticMarkup` dari ke-305 pemanggil, dirender
+  dengan varian yang benar-benar tertulis di masing-masing, **identik** sebelum
+  & sesudah — sementara `<Button>` polos sebagai kalibrasi memang berubah
+  (`ant-btn-variant-solid` → `outlined`), yang membuktikan instrumennya tidak
+  buta.
+- Dua halaman yang benar-benar diprerender `next build` (`/privacy`, `/terms`)
+  menghasilkan HTML **byte-identik**.
+
+⚠ **Yang bukti itu TIDAK cakup:** manifes render merender tiap tombol
+sendirian, bukan di dalam pohon halamannya, dan hanya **2** halaman app ini yang
+statis — sisanya dirender sesuai permintaan, jadi tidak ada HTML sebelum/sesudah
+untuk dibandingkan. Yang dijamin adalah *markup tiap pemanggil*, bukan *tiap
+layar*. Sapuan mata #205 tetap terutang.
+
+⚠ **Jangan membaliknya kembali** "supaya tombol tidak perlu ditulis variannya".
+Yang hilang bukan pengetikan melainkan keputusan.
 
 ### Penjaganya — dan batasnya, yang harus dibaca
 
@@ -727,9 +748,20 @@ terlihat dengan membuka halamannya.
 pura menjaga yang ketiga:
 
 1. **Keeksplisitan**: setiap `<Button>` menyebut `variant`-nya. Inilah yang
-   membuat pembalikan bawaan nanti menjadi jaring pengaman, bukan perubahan.
-   Sejak potongan 4 lingkupnya **seluruh `src/app` + `src/components`, tanpa
-   satu pun pengecualian** — `BERKAS_TERAUDIT` melebur ke direktorinya.
+   membuat pembalikan bawaan potongan 5 menjadi jaring pengaman, bukan
+   perubahan. Sejak potongan 4 lingkupnya **seluruh `src/app` +
+   `src/components`, tanpa satu pun pengecualian** — `BERKAS_TERAUDIT` melebur
+   ke direktorinya.
+
+   **Ia TETAP diperlukan sesudah bawaannya dibalik, dan alasannya berubah
+   alih-alih hilang.** Dulu tombol implisit gagal dengan KERAS — satu blok biru
+   liar yang bisa ditemukan mata di sapuan visual. Sekarang ia gagal DIAM:
+   sekunder di antara sekunder. Layar yang aksi utamanya kebetulan ditulis
+   `<Button>` polos tidak akan tampak salah, ia hanya kehilangan arah — tanpa
+   galat, tanpa merah, tanpa apa pun yang mengundang pertanyaan. Kegagalan yang
+   lebih aman justru lebih sulit ditemukan. Dan pekerjaan penjaga ini yang
+   sebenarnya bukan menyeragamkan gaya penulisan melainkan memaksa
+   **pertanyaannya** dijawab satu kali, di tempat yang terlihat di diff.
 2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Cabang ternary
    dihitung sebagai alternatif (`Math.max`), bukan dijumlahkan — tanpa itu
    penjaganya merah pada kaki wisaya dan `/verify-email`, yaitu pada contoh
@@ -737,6 +769,15 @@ pura menjaga yang ketiga:
    dilonggarkan sampai tidak menjaga apa pun. Pada jalan pertamanya ia **merah
    di 13 berkas**; potongan 2 & 3 mengosongkan daftar sisanya, dan sejak
    potongan 4 daftar itu **tidak ada lagi**.
+
+   Sejak potongan 5 penjaga ini **tidak lagi menghitung `<Button>` implisit
+   sebagai primer**, sebab primitifnya tidak lagi merendernya begitu. Ia
+   menjawab pertanyaan "berapa tombol yang render-nya berisi penuh", dan
+   jawabannya harus datang dari apa yang primitifnya benar-benar lakukan —
+   penjaga yang memakai model usang tentang primitif yang dijaganya adalah
+   persis kelas penjaga yang §Penjaga di bawah daftar sebagai "terbaca benar,
+   tidak menjaga apa pun". Yang menutup lubangnya: penjaga #1 melarang bentuk
+   itu sama sekali, jadi yang diabaikan penjaga #2 tidak boleh ada sejak awal.
 
 Sejak potongan 2 ada penjaga **ketiga**, dan ia menjaga BATAS sebuah
 pengecualian, bukan aturannya: setiap tombol primer di `components/landing/**`
@@ -757,8 +798,13 @@ harus menulis ulang mekanismenya di PR-nya sendiri, terlihat di diff.
 **Yang TIDAK dijaga, dan hanya bisa dilihat mata:** pengulangan lewat `.map()`
 (satu simpul di sumber, sepuluh tombol di layar), primer yang tersebar antar
 komponen pada satu halaman, dan apakah keadaan yang menaikkan sebuah primer
-berkondisi bisa bertemu primer lain. Hijau di berkas itu **bukan** bukti aturan
-ini ditegakkan.
+berkondisi bisa bertemu primer lain — plus **antar-lingkup dalam SATU berkas**:
+kolom `StaticTable`/`DataTable` dirakit di sebuah variabel **di luar `return`**,
+jadi tombol barisnya dan tombol halamannya hidup di dua akar JSX yang berbeda
+dan `hitungPrimer` tidak pernah bertemu keduanya. **Setiap tabel di app ini
+berbentuk begitu** (66 tabel), jadi siapa pun yang menaruh primer di kolom
+render tidak akan ditegur. Hijau di berkas itu **bukan** bukti aturan ini
+ditegakkan.
 
 Dua contoh yang lolos penjaga dan ditemukan hanya dengan membaca pemanggilnya,
 keduanya diselesaikan di potongan 2 — keduanya di `src/components/shared`:
@@ -841,7 +887,8 @@ membaca hijau dan menyimpulkan aman.
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
-| Satu aksi utama per layar: `variant` eksplisit di **seluruh** `src/app` + `src/components` (tanpa daftar pengecualian sejak potongan 4, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen/antar-lingkup, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di **seluruh** `src/app` + `src/components` (tanpa daftar pengecualian sejak potongan 4, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, primer antar-lingkup dalam satu berkas — **yaitu setiap kolom tabel** — dan primer berkondisi TIDAK terlihat penjaga; lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
+| Bawaan `variant` primitif `Button` = `secondary`, di kedua bentuknya (tombol & anchor), dikunci di sumber **dan** di markup hasil render | `tests/button-emphasis.test.ts` · `tests/ui-controls-antd.test.tsx` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
@@ -879,7 +926,7 @@ menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
 - [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `SIDER_BG_DARK` dengan permukaan gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, tautan = `href` — `asChild` sudah dicabut, #250).
-- [ ] **Hitung tombol berisi penuh di layar jadi — termasuk yang lahir dari `.map()` dan dari komponen lain. Satu, atau nol.** `variant` ditulis eksplisit; §Aksi utama per layar.
+- [ ] **Hitung tombol berisi penuh di layar jadi — termasuk yang lahir dari `.map()`, dari komponen lain, dan dari kolom tabel. Satu, atau nol.** `variant` ditulis eksplisit di SETIAP `<Button>`; bawaannya `secondary`, jadi penekanan tinggi harus diminta (`variant="primary"`) — dan tombol yang variannya lupa ditulis tidak akan tampak salah, ia hanya diam-diam kehilangan penekanannya. §Aksi utama per layar.
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.
 - [ ] **`bun run verify` hijau DAN `bun run build` `EXIT=0`** — yang pertama tidak membuktikan yang kedua, lihat §Penjaga.

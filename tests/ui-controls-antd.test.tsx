@@ -164,6 +164,31 @@ describe("Button — pemetaan prop", () => {
     expect(render(<Button variant="link">x</Button>)).toContain("ant-btn-variant-link");
   });
 
+  it("`<Button>` tanpa `variant` merender SEKUNDER — bawaannya, di tingkat markup", () => {
+    /*
+     * Bawaan `variant` dibalik `primary` → `secondary` di #267 potongan 5, dan
+     * sampai saat itu TIDAK ADA satu tes pun yang mengunci bawaannya: setiap tes
+     * di berkas ini yang merender `<Button>` polos memeriksa hal yang
+     * variant-agnostik (`htmlType`, kelas ukuran, tinggi kendali, cincin fokus),
+     * jadi bawaannya bisa bergeser ke arah mana pun tanpa satu pun merah.
+     * Itu lubang yang sama bentuknya dengan yang ditutup di sini: perbedaan rupa
+     * yang tidak pernah gagal di `tsc` dan hanya terlihat kalau ada yang membuka
+     * layarnya.
+     *
+     * Ditulis sebagai KESAMAAN dengan `variant="secondary"`, bukan sebagai nama
+     * kelas AntD: yang dijanjikan adalah "tak-ditulis = sekunder", dan janji itu
+     * harus bertahan walau AntD mengganti nama kelasnya. Kedua bentuk primitif
+     * (tombol dan anchor) punya bawaannya masing-masing, jadi keduanya diuji —
+     * dua bawaan yang menyimpang sendirian adalah bug yang paling mudah lolos.
+     */
+    expect(render(<Button>x</Button>)).toBe(render(<Button variant="secondary">x</Button>));
+    expect(render(<Button href="/x">x</Button>)).toBe(
+      render(<Button href="/x" variant="secondary">x</Button>)
+    );
+    // …dan ia sungguh BUKAN primer — pembandingnya harus bisa merah.
+    expect(render(<Button>x</Button>)).not.toBe(render(<Button variant="primary">x</Button>));
+  });
+
   it("alias shadcn menghasilkan markup identik dengan nama domain", () => {
     // Kalau keduanya sempat menyimpang, tombol hapus di satu halaman bisa
     // berbeda rupa dari halaman lain tanpa ada yang sadar.

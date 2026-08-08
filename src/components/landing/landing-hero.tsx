@@ -21,8 +21,9 @@
  * gantinya: setiap tombol berisi penuh di direktori ini menuju `/register`,
  * satu ajakan yang diulang, bukan empat ajakan yang bersaing
  * (`tests/button-emphasis.test.ts`). Variannya ditulis eksplisit supaya
- * pembalikan bawaan `primary`→`secondary` kelak tidak diam-diam mencabut hero
- * halaman pemasaran.
+ * pembalikan bawaan `primary`→`secondary` tidak diam-diam mencabut hero halaman
+ * pemasaran — pembalikan itu SUDAH terjadi (potongan 5), dan berkas ini termasuk
+ * yang membuatnya lewat tanpa perubahan.
  */
 import {
   LANDING_HERO_TITLE,

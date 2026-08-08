@@ -910,6 +910,7 @@ membaca hijau dan menyimpulkan aman.
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
 | Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 | Keluarga isian pilihan: hanya `SelectField` yang ikut `FormData`; `name` pada kedua isian berpencarian ditolak `tsc` bahkan lewat `{...field}` | `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`) |
+| Tidak ada kunci kamus yang menganggur: setiap kunci di `id/en/zh.json` punya rujukan di `src/` — literal, rantai properti berakar kamus, atau bentuk dinamis yang **terdaftar** (daftarnya dijaga dua arah: entri basi merah, bentuk dinamis baru yang belum diputuskan juga merah) (⚠ subpohon yang diambil utuh, dan kunci yang hanya dirujuk dari `tests/`, TIDAK terlihat penjaga) | `tests/i18n-orphan-keys.test.ts` |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah

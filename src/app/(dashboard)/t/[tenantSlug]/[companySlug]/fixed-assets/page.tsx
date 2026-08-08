@@ -216,9 +216,9 @@ export default async function FixedAssetsPage({
             <Link href="/fixed-assets/new">
               {/* Aksi utama layar ini (#267) — dua tombol di sebelahnya sudah
                   `secondary` sejak semula, jadi ini satu-satunya di kepala.
-                  ⚠ `RunDepreciation` di bawah masih primer implisit: itu berkas
-                  `(dashboard)` di luar lingkup potongan 3, dicatat di PR-nya
-                  sebagai tabrakan antar-komponen untuk potongan 4. */}
+                  Tabrakan dengan `RunDepreciation` di bawah DISELESAIKAN di
+                  potongan 4: kartu itu turun ke `secondary`, alasannya di kepala
+                  `run-depreciation.tsx`. */}
               <Button variant="primary">
                 <PlusOutlined aria-hidden="true" />
                 {t("fixedAssets.addNew")}

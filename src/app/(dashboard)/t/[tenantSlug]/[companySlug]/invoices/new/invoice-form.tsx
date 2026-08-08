@@ -760,7 +760,7 @@ export function NewInvoiceForm({
         </div>
 
         <Flex wrap gap={token.marginSM} data-tour="faktur-simpan">
-          <Button type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("invoices.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>

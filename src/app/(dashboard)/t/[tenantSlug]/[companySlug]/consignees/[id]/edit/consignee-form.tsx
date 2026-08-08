@@ -176,7 +176,7 @@ export function EditConsigneeForm() {
         </Card>
 
         <Flex wrap gap={token.marginSM}>
-          <Button type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("common.save")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>

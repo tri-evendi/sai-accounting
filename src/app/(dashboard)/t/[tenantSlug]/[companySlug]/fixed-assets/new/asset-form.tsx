@@ -443,7 +443,7 @@ export function AssetForm({
       </Card>
 
       <Flex wrap gap={token.marginXS}>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button variant="primary" type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting && <Spin size="small" />}
           {t("fixedAssets.saveAsset")}
         </Button>

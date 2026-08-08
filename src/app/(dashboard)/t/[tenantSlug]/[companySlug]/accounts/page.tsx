@@ -214,7 +214,9 @@ export default async function AccountsPage({
               <Button variant="secondary">{t("accounts.importFromExcel")}</Button>
             </Link>
             <Link href="/accounts/new">
-              <Button>{t("accounts.addNew")}</Button>
+              {/* Aksi utama layar ini (#267) — sama seperti sembilan CTA kepala
+                  halaman daftar yang ditulis eksplisit di potongan 3. */}
+              <Button variant="primary">{t("accounts.addNew")}</Button>
             </Link>
           </>
         }
@@ -240,7 +242,12 @@ export default async function AccountsPage({
           placeholder={t("accounts.searchPlaceholder")}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit" variant="secondary" size="sm">
+        {/* `outline`, bukan `secondary`: submit yang MENYARING sudah diputuskan
+            di potongan 3 untuk lima kotak cari yang bentuknya sama
+            (`/contracts`, `/delivery-orders`, `/documents`, `/invoices`,
+            `/finance`). Ini yang keenam — dilewatkan di sana karena variannya
+            sudah tertulis, jadi ia tidak muncul di sapuan tombol implisit. */}
+        <Button type="submit" variant="outline" size="sm">
           {t("common.search")}
         </Button>
         {q && (

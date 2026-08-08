@@ -214,6 +214,7 @@ export default async function EfakturPage({
           )}
           <SellerIdentityForm
             initial={{ npwp: seller.npwp, taxName: seller.name, taxAddress: seller.address }}
+            identityIncomplete={sellerNpwpMissing}
           />
         </div>
       </Card>
@@ -317,7 +318,11 @@ export default async function EfakturPage({
             </span>
           ) : (
             <a href={downloadHref} download>
-              <Button disabled={rows.length === 0}>
+              {/* Aksi utama layar ini (#267) — dan hanya pada cabang ini ia ada.
+                  Cabang sebelahnya (NPWP kosong) tidak punya tombol sama sekali;
+                  di sana yang primer adalah simpan identitas di kartu atas,
+                  lewat eskalasi berkondisi. */}
+              <Button variant="primary" disabled={rows.length === 0}>
                 <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
                 {t("tax.downloadCsv")}
               </Button>

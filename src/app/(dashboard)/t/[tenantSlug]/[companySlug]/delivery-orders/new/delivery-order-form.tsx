@@ -587,7 +587,7 @@ export function DeliveryOrderForm({
       </Card>
 
       <Flex wrap gap={token.marginSM}>
-        <Button type="submit" disabled={loading}>
+        <Button variant="primary" type="submit" disabled={loading}>
           {loading ? t("deliveryOrders.submitting") : t("deliveryOrders.submit")}
         </Button>
         <Button type="button" variant="secondary" onClick={() => router.back()}>

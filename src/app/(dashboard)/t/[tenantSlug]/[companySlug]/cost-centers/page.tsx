@@ -164,7 +164,7 @@ export default async function CostCentersPage({
         description={t("costCenters.intro")}
         actions={
           <Link href="/cost-centers/new">
-            <Button>{t("costCenters.addNew")}</Button>
+            <Button variant="primary">{t("costCenters.addNew")}</Button>
           </Link>
         }
       />

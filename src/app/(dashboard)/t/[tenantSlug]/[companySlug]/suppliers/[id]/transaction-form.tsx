@@ -612,7 +612,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
 
           <Col span={24}>
             <Flex wrap gap={token.marginXS}>
-              <Button type="submit" size="sm" disabled={loading}>
+              <Button variant="primary" type="submit" size="sm" disabled={loading}>
                 {loading ? t("common.saving") : t("suppliers.txSubmit")}
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>

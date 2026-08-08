@@ -8,6 +8,24 @@
  * `Input` menaruh labelnya DI ATAS kotak isian, jadi meratakan ke atas akan
  * membuat tombol "Tampilkan" berdiri sejajar dengan label, bukan dengan kotak
  * yang ia jalankan.
+ *
+ * ── Kenapa kedua "Tampilkan" `outline` (#267 potongan 4) ──────────────────
+ *
+ * Keduanya MENYARING: mereka membaca ulang laporannya dengan rentang lain dan
+ * tidak menulis apa pun ke buku. §Aksi utama per layar sudah menjawab bentuk
+ * ini tiga kali (`/operator` "Saring", `shared/ledger-filter.tsx` di potongan 2,
+ * enam kotak cari halaman daftar di potongan 3); berkas ini yang keempat.
+ *
+ * Radiusnya delapan halaman laporan (neraca, laba rugi, arus kas, neraca saldo,
+ * kas & bank, penjualan per pelanggan, pembelian per pemasok, dan seterusnya) —
+ * seluruhnya layar BACA yang tombol ekspornya sudah `secondary`. **Nol aksi
+ * utama** adalah jawaban yang benar untuk layar semacam itu, dan sebelum ini
+ * satu-satunya blok biru di sana justru kendali penyaringnya.
+ *
+ * ⚠ `AsOfFilter` dan `PeriodFilter` TIDAK PERNAH terender bersamaan — tiap
+ * halaman laporan memakai satu. Alat audit yang membaca per-berkas akan
+ * melaporkannya sebagai "dua primer di satu rute"; itu artefak berkasnya, bukan
+ * layarnya.
  */
 
 import { useState } from "react";
@@ -51,7 +69,10 @@ export function AsOfFilter({ basePath, asOf }: { basePath: string; asOf: string 
           onChange={(e) => setD(e.target.value)}
         />
       </div>
-      <Button type="submit">{t("common.show")}</Button>
+      {/* Lihat catatan `outline` di kepala berkas (#267). */}
+      <Button type="submit" variant="outline">
+        {t("common.show")}
+      </Button>
     </Flex>
   );
 }
@@ -129,7 +150,10 @@ export function PeriodFilter({
           />
         </div>
       )}
-      <Button type="submit">{translate("common.show")}</Button>
+      {/* Lihat catatan `outline` di kepala berkas (#267). */}
+      <Button type="submit" variant="outline">
+        {translate("common.show")}
+      </Button>
     </Flex>
   );
 }

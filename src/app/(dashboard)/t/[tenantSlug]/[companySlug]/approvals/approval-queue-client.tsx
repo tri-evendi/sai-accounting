@@ -430,7 +430,15 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                 onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
                 style={{ width: RESUBMIT_NOTE_WIDTH }}
               />
-              <Button size="sm" disabled={busyId === row.id} onClick={() => resubmit(row)}>
+              {/* Aksi BARIS di dalam `.map()` — tidak pernah primer (#267).
+                  Jumlahnya sebanyak dokumen yang ditolak; sepuluh blok biru
+                  bukan sepuluh kali penekanan melainkan nol. */}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busyId === row.id}
+                onClick={() => resubmit(row)}
+              >
                 <UndoOutlined aria-hidden="true" />
                 {t("approvals.resubmit")}
               </Button>
@@ -579,7 +587,17 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
                       confirmVariant="primary"
                       onConfirm={() => decide(row, "approve")}
                       trigger={
-                        <Button size="sm" disabled={busyId === row.id}>
+                        /* Aksi BARIS di dalam `.map()` — tidak pernah primer
+                           (#267). Antrean berisi sepuluh dokumen akan memberi
+                           sepuluh blok biru, yaitu nol penekanan.
+                           Yang HILANG dengan menurunkannya: tidak ada. Aksi
+                           yang mengikat tetap berisi penuh, hanya di layarnya
+                           sendiri — `confirmVariant="primary"` di dalam dialog.
+                           ⚠ Ini BUKAN preseden "pemicu selalu secondary": pemicu
+                           ConfirmDialog berbeda dari pemicu yang membuka PANEL
+                           (bedanya ditulis di MASTER.md §Aksi utama per layar);
+                           yang memutuskan di sini pengulangan barisnya. */
+                        <Button variant="secondary" size="sm" disabled={busyId === row.id}>
                           <CheckCircleOutlined aria-hidden="true" />
                           {t("approvals.approve")}
                         </Button>

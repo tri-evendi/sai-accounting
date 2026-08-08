@@ -209,7 +209,7 @@ export function UploadClient() {
         </Card>
 
         <Flex gap={CONTROL_GAP}>
-          <Button type="submit" disabled={loading || !file}>
+          <Button variant="primary" type="submit" disabled={loading || !file}>
             {loading ? t("documents.uploading") : t("documents.uploadTitle")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.push("/documents")}>

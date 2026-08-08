@@ -277,7 +277,7 @@ export function ImportAccountsForm() {
               )}
 
               <Flex wrap align="center" gap={token.marginSM}>
-                <Button type="submit" disabled={loading || !file}>
+                <Button variant="primary" type="submit" disabled={loading || !file}>
                   <UploadOutlined aria-hidden="true" />
                   {loading ? t("accounts.importing") : t("accounts.importSubmit")}
                 </Button>

@@ -176,7 +176,7 @@ export default async function CustomersPage({
         title={<TermTooltip term="pelanggan">{t("customers.title", { count: totalCount })}</TermTooltip>}
         actions={
           <Link href="/customers/new">
-            <Button>{t("customers.addNew")}</Button>
+            <Button variant="primary">{t("customers.addNew")}</Button>
           </Link>
         }
       />

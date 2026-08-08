@@ -10,11 +10,13 @@
  *
  * `variant` pada primitif `Button` bawaannya masih `"primary"`. Artinya
  * `<Button>` tanpa atribut adalah tombol BERISI PENUH — dan itulah bagaimana
- * 197 dari 310 tombol jadi primer tanpa seorang pun memutuskannya. Bawaan itu
- * memang akan dibalik ke `secondary` kelak, tetapi membaliknya SEKARANG
- * menurunkan 197 tombol sekaligus dan membuat setiap layar kehilangan aksi
- * utamanya. Urutannya karena itu dibalik: audit dulu (tandai varian eksplisit),
- * baru bawaannya. Pada saat itu pembalikannya tidak mengubah satu piksel pun.
+ * 120 dari 310 tombol jadi primer tanpa seorang pun memutuskannya (angka "197"
+ * di badan issue adalah sapuan `grep` per-baris yang sudah dikoreksi dua kali;
+ * jangan menghidupkannya kembali). Bawaan itu memang akan dibalik ke
+ * `secondary` kelak, tetapi membaliknya SEBELUM auditnya selesai menurunkan
+ * ratusan tombol sekaligus dan membuat setiap layar kehilangan aksi utamanya.
+ * Urutannya karena itu dibalik: audit dulu (tandai varian eksplisit), baru
+ * bawaannya. Pada saat itu pembalikannya tidak mengubah satu piksel pun.
  *
  *   1. **Penjaga KEEKSPLISITAN** menjaga urutan itu: di area yang sudah
  *      diaudit, setiap `<Button>` menyebut `variant`-nya. Tombol implisit yang
@@ -49,24 +51,32 @@
  *
  * Pada jalannya yang pertama ia MERAH di 13 berkas — seluruhnya di
  * `src/app/(dashboard)` dan `src/components`, yaitu potongan audit berikutnya.
- * Ketiga belasnya didaftar di `SISA_AUDIT`, dan daftar itu hanya boleh
- * MENGECIL. Potongan 2 mencabut satu barisnya (`shared/stock-period-filter.tsx`);
- * **potongan 3 mencabut kedua belas sisanya, dan `SISA_AUDIT` kini KOSONG** —
- * penjaga #2 menyapu seluruh `src/app` + `src/components` tanpa pengecualian.
+ * Ketiga belasnya didaftar di `SISA_AUDIT`, daftar yang hanya boleh MENGECIL;
+ * potongan 2 mencabut satu barisnya, potongan 3 kedua belas sisanya.
  *
- * Harga dari itu, dan ia harus dikatakan: tes "SISA_AUDIT tidak memuat entri
- * basi" sekarang lulus pada daftar kosong, yaitu tanpa memeriksa apa pun. Ia
- * berguna lagi begitu ada yang menambahkan baris; sampai itu ia tidak
- * membuktikan sesuatu.
+ * ══ Potongan 4: auditnya selesai, dan daftar pengecualiannya DIHAPUS ═══════
  *
- * ══ Penjaga #4: berkas satuan di area yang belum diaudit (potongan 3) ══════
+ * Sejak potongan 4 tidak ada satu pun `<Button>` tanpa `variant` di `src/app`
+ * maupun `src/components`, jadi `AREA_TERAUDIT` cukup dua baris: kedua akar itu
+ * seluruhnya. Yang ikut hilang: `BERKAS_TERAUDIT` (daftar 13 berkas satuan
+ * potongan 3 — melebur ke direktorinya, persis seperti yang dijanjikan) berikut
+ * tes "berkasnya benar-benar ada" yang menjaganya.
  *
- * Potongan 3 mengaudit 13 berkas di dalam `(dashboard)` — sebuah area yang
- * sebagai keseluruhan masih menunggu potongan 4. Menaruh direktorinya di
- * `AREA_TERAUDIT` akan merah pada 70+ berkas yang belum gilirannya; tidak
- * menaruh apa pun berarti hasil potongan 3 tidak dijaga sama sekali. Karena itu
- * `BERKAS_TERAUDIT`: daftar BERKAS, bukan direktori, yang ikut dalam penjaga
- * keeksplisitan. Ia melebur menjadi satu baris direktori di potongan 4.
+ * **Kedua daftar pengecualian, `SISA_KEEKSPLISITAN` dan `SISA_AUDIT`, juga
+ * dihapus — bukan dikosongkan.** Potongan 3 mengosongkannya dan menulis sendiri
+ * kelemahan yang ia ciptakan: kedua tes "tidak memuat entri basi" lulus pada
+ * daftar kosong, yaitu TANPA MEMERIKSA APA PUN, sementara "8 tes hijau" terbaca
+ * lebih kuat daripada kenyataannya. Daftar kosong berikut penjaganya yang
+ * hampa adalah bentuk paling pelan sebuah penjaga berubah jadi dekorasi.
+ * Menghapusnya menutup kelemahan itu: yang tersisa adalah aturan tanpa
+ * pengecualian, dan siapa pun yang kelak butuh satu harus MENULIS ULANG
+ * mekanismenya di PR-nya sendiri — terlihat di diff, dengan alasan yang harus
+ * ia sebutkan, bukan satu baris yang diselipkan ke daftar yang sudah ada.
+ *
+ * Sebagai gantinya ada tes yang benar-benar memeriksa sesuatu: **penjaga
+ * keeksplisitan harus menyentuh SETIAP berkas `.tsx`** di kedua akar itu. Ia
+ * merah kalau ada yang mempersempit lingkupnya kembali menjadi subdirektori,
+ * atau memasang saringan pengecualian baru diam-diam.
  *
  * ══ Penjaga #3: batas pengecualian halaman pendaratan (potongan 2) ═════════
  *
@@ -81,71 +91,26 @@
  * ajakan yang diulang, bukan empat ajakan yang bersaing.
  */
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
 const ROOT = join(__dirname, "..");
 
 /**
- * Area yang sudah dilewati audit #267. Bertambah satu baris per potongan;
- * ketika `(dashboard)` dan `components` ikut, bawaan `variant` boleh dibalik.
+ * Area yang sudah dilewati audit #267 — sejak potongan 4 ini SELURUH permukaan
+ * tombol app ini, tanpa satu pun pengecualian.
+ *
+ * Kedua barisnya sengaja akar, bukan daftar subdirektori: rute atau direktori
+ * komponen yang dibuat besok ikut terjaga sejak hari pertama, bukan menunggu
+ * seseorang ingat menambahkannya ke sini. Kalau salah satunya dipersempit lagi,
+ * tes "penjaga keeksplisitan menyentuh setiap berkas" di bawah yang merah.
+ *
+ * Dengan daftar ini lengkap, syarat pembalikan bawaan `variant` → `secondary`
+ * (potongan 5 #267) terpenuhi: setiap pemanggil menulis variannya sendiri, jadi
+ * pembalikannya tidak mengubah satu piksel pun.
  */
-const AREA_TERAUDIT = [
-  join("src", "app", "(auth)"),
-  join("src", "app", "(setup)"),
-  join("src", "app", "(operator)"),
-  join("src", "app", "(tenant)"),
-  join("src", "components"),
-];
-
-/**
- * BERKAS yang sudah diaudit di dalam area yang BELUM (potongan 3).
- *
- * `(dashboard)` tidak bisa masuk `AREA_TERAUDIT` sebagai direktori: potongan 3
- * mengaudit 13 dari ~196 berkasnya, dan mendaftarkan seluruh direktori akan
- * membuat penjaga keeksplisitan merah pada 70+ berkas yang memang belum
- * gilirannya. Tanpa daftar ini, sebaliknya, ke-13 berkas itu tidak dijaga sama
- * sekali — `<Button>` implisit boleh masuk kembali diam-diam, dan pembalikan
- * bawaan kelak akan menurunkannya tanpa ada yang tahu. Persis kelas kerusakan
- * yang membuat penjaga #1 ada.
- *
- * Potongan 4 melebur daftar ini menjadi satu baris `src/app/(dashboard)` di
- * `AREA_TERAUDIT`; sampai itu, ia hanya boleh BERTAMBAH.
- */
-const BERKAS_TERAUDIT = [
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/finance/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/update/stock-form.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/[id]/reconciliation-workspace.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/returns/page.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
-];
-
-/**
- * Berkas yang masih boleh menulis `<Button>` tanpa `variant`.
- *
- * **KOSONG sejak potongan 3.** Satu-satunya penghuninya,
- * `src/components/ui/empty-state.tsx`, ditahan potongan 2 dengan alasan yang
- * habis masa berlakunya di sini: variannya adalah keputusan yang diwarisi
- * setiap keadaan-kosong, dan kedua belas layar yang mewarisinya baru bisa
- * dilihat pada potongan yang mengauditnya — yaitu potongan 3. Sudah dilihat,
- * sudah diputuskan (`variant="secondary"`, alasannya di kepala berkas itu),
- * jadi barisnya dicabut.
- *
- * ⚠ Konsekuensi yang harus dibaca: dengan daftar ini kosong, tes "tidak memuat
- * entri basi" di bawah lulus TANPA MEMERIKSA APA PUN. Itu bukan kegagalan tes
- * itu — daftar kosong memang tidak punya entri basi — tetapi ia berhenti
- * menjadi bukti tentang apa pun sampai ada yang menambahkan baris lagi.
- */
-const SISA_KEEKSPLISITAN: string[] = [];
+const AREA_TERAUDIT = [join("src", "app"), join("src", "components")];
 
 /**
  * Direktori halaman pendaratan — DIKECUALIKAN dari aturan satu-primer, dengan
@@ -162,24 +127,20 @@ const AREA_PENDARATAN = join("src", "components", "landing");
  */
 const TUJUAN_PRIMER_PENDARATAN = "/register";
 
-/** Seluruh permukaan yang dijaga penjaga #2. */
-const AREA_LUAS = [join("src", "app"), join("src", "components")];
-
 /**
- * Wadah yang MASIH memuat lebih dari satu primer — utang, bukan izin. Jalur
- * relatif terhadap akar repo; hanya boleh berkurang.
- *
- * **KOSONG sejak potongan 3.** Ketiga belas berkas yang dulu di sini sudah
- * diaudit satu per satu (daftarnya kini di `BERKAS_TERAUDIT` di atas, yang
- * menjaga hal yang berbeda: keeksplisitannya).
- *
- * ⚠ Sama seperti `SISA_KEEKSPLISITAN`: daftar kosong membuat tes "tidak memuat
- * entri basi" lulus tanpa memeriksa apa pun. Yang MASIH memeriksa sesuatu
- * adalah tes utamanya — ia kini menyapu seluruh `src/app` + `src/components`
- * tanpa satu pun pengecualian, jadi wadah dua-primer yang baru langsung merah
- * di mana pun ia ditulis.
+ * Seluruh permukaan yang dijaga penjaga #2 — sama dengan `AREA_TERAUDIT` sejak
+ * potongan 4, dan tanpa daftar pengecualian sama sekali (lihat kepala berkas).
  */
-const SISA_AUDIT: string[] = [];
+const AREA_LUAS = AREA_TERAUDIT;
+
+/** Setiap `.tsx` yang masuk lingkup penjaga keeksplisitan. */
+function berkasDijaga(): string[] {
+  const keluar = new Set<string>();
+  for (const area of AREA_TERAUDIT) {
+    for (const jalur of berkasTsx(join(ROOT, area))) keluar.add(jalur);
+  }
+  return [...keluar];
+}
 
 function berkasTsx(dir: string, keluar: string[] = []): string[] {
   for (const entri of readdirSync(dir, { withFileTypes: true })) {
@@ -331,72 +292,57 @@ function tombolImplisit(jalur: string): number[] {
 }
 
 describe("penekanan tombol (#267)", () => {
-  it("area yang sudah diaudit tidak punya satu pun <Button> tanpa `variant`", () => {
+  it("tidak ada satu pun <Button> tanpa `variant` di src/app + src/components", () => {
     /*
      * Bukan soal gaya penulisan. Selama bawaannya `primary`, `<Button>` polos
      * adalah tombol berisi penuh yang TIDAK ADA yang memutuskannya — dan
      * pembalikan bawaan nanti akan menurunkannya diam-diam. Menuliskan
      * variannya memaksa pertanyaannya dijawab sekali, di tempat yang terlihat
      * di diff.
+     *
+     * Sejak potongan 4 tesnya tanpa pengecualian: tak ada daftar berkas yang
+     * boleh melewatinya, jadi tak ada daftar yang bisa membusuk.
      */
     const pelanggar: string[] = [];
-    const diperiksa = new Set<string>();
-    for (const area of AREA_TERAUDIT) {
-      for (const jalur of berkasTsx(join(ROOT, area))) diperiksa.add(jalur);
-    }
-    // Berkas satuan di dalam area yang belum diaudit seluruhnya (potongan 3).
-    for (const rel of BERKAS_TERAUDIT) diperiksa.add(join(ROOT, rel));
-
-    for (const jalur of diperiksa) {
-      const rel = relatif(jalur);
-      if (SISA_KEEKSPLISITAN.includes(rel)) continue;
-      for (const baris of tombolImplisit(jalur)) pelanggar.push(`${rel}:${baris}`);
+    for (const jalur of berkasDijaga()) {
+      for (const baris of tombolImplisit(jalur)) pelanggar.push(`${relatif(jalur)}:${baris}`);
     }
     expect(pelanggar.sort()).toEqual([]);
   });
 
-  it("BERKAS_TERAUDIT menunjuk berkas yang benar-benar ada", () => {
+  it("penjaga keeksplisitan menyentuh SETIAP berkas .tsx di kedua akar", () => {
     /*
-     * Daftar berkas satuan punya kegagalan diam yang tidak dimiliki daftar
-     * direktori: sebuah halaman yang dipindah atau diganti nama membuat
-     * barisnya menunjuk ke tempat kosong, dan penjaga di atas hanya akan
-     * berhenti memeriksa berkas itu — hijau, tanpa satu kata pun. Ini yang
-     * membuat kegagalan itu berisik.
+     * Tes di atas hanya sekuat lingkupnya, dan lingkup itu sebuah konstanta yang
+     * bisa dipersempit dalam satu baris — `src/app` → `src/app/(auth)` akan
+     * membuatnya tetap hijau sambil berhenti memeriksa sembilan per sepuluh
+     * app ini. Ini yang membuat penyempitan semacam itu berisik.
+     *
+     * Ia menggantikan dua tes "tidak memuat entri basi" yang dihapus potongan 4.
+     * Keduanya berjaga atas daftar pengecualian yang sudah KOSONG sejak potongan
+     * 3, jadi keduanya lulus tanpa memeriksa apa pun; yang ini memeriksa hal
+     * yang sama (lingkup penjaganya utuh) dengan cara yang tidak bisa hampa.
      */
-    const hilang = BERKAS_TERAUDIT.filter((rel) => !existsSync(join(ROOT, rel)));
-    expect(hilang).toEqual([]);
+    const semua = new Set<string>();
+    for (const akar of ["src/app", "src/components"]) {
+      for (const jalur of berkasTsx(join(ROOT, akar))) semua.add(relatif(jalur));
+    }
+    const dijaga = new Set(berkasDijaga().map(relatif));
+    const terlewat = [...semua].filter((rel) => !dijaga.has(rel));
+    expect(terlewat.sort()).toEqual([]);
+    // …dan lingkupnya bukan himpunan kosong yang lulus dengan cara lain.
+    expect(dijaga.size).toBeGreaterThan(100);
   });
 
-  it("SISA_KEEKSPLISITAN tidak memuat entri basi", () => {
-    const basi = SISA_KEEKSPLISITAN.filter((rel) => tombolImplisit(join(ROOT, rel)).length === 0);
-    expect(basi).toEqual([]);
-  });
-
-  it("tidak ada wadah JSX dengan lebih dari satu tombol primer, di luar SISA_AUDIT", () => {
+  it("tidak ada wadah JSX dengan lebih dari satu tombol primer", () => {
     const pelanggar: string[] = [];
     for (const area of AREA_LUAS) {
       for (const jalur of berkasTsx(join(ROOT, area))) {
-        const rel = relatif(jalur);
-        if (SISA_AUDIT.includes(rel)) continue;
         for (const { baris, jumlah } of wadahBermasalah(jalur)) {
-          pelanggar.push(`${rel}:${baris} (${jumlah} primer)`);
+          pelanggar.push(`${relatif(jalur)}:${baris} (${jumlah} primer)`);
         }
       }
     }
     expect(pelanggar).toEqual([]);
-  });
-
-  it("SISA_AUDIT tidak memuat entri basi", () => {
-    /*
-     * Daftar pengecualian yang barisnya sudah tidak melanggar apa pun adalah
-     * cara paling pelan sebuah penjaga berubah menjadi dekorasi: ia tumbuh saat
-     * ada yang macet, tidak pernah menyusut saat ada yang beres, dan pembaca
-     * berikutnya membacanya sebagai "memang begitu di sini".
-     */
-    const basi = SISA_AUDIT.filter(
-      (rel) => wadahBermasalah(join(ROOT, rel)).length === 0
-    );
-    expect(basi).toEqual([]);
   });
 
   it("setiap tombol primer di pendaratan menuju satu tujuan yang sama", () => {

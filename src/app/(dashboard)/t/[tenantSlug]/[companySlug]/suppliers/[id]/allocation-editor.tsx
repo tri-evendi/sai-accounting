@@ -478,7 +478,7 @@ export function AllocationEditor({
       )}
 
       <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginSM }}>
-        <Button
+        <Button variant="primary"
           type="button"
           size="sm"
           disabled={saving || loading || overAllocated}

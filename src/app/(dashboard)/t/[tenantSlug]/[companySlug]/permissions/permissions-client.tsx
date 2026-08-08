@@ -293,7 +293,11 @@ export function PermissionsClient() {
               <UndoOutlined aria-hidden="true" />
               {t("permissions.resetToDefault")}
             </Button>
-            <Button disabled={saving || !isDirty} onClick={requestSave}>
+            {/* Aksi utama layar ini (#267): ia yang MENGIKAT — matriks izin di
+                kepala halaman. "Tambah peran" di kartu `RoleManager` di bawah
+                turun ke `secondary` supaya keduanya tidak menyala bersamaan;
+                tak satu pun penjaga bisa melihat pasangan itu (dua berkas). */}
+            <Button variant="primary" disabled={saving || !isDirty} onClick={requestSave}>
               <SaveOutlined aria-hidden="true" />
               {t("common.saveChanges")}
             </Button>

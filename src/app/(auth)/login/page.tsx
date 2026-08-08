@@ -187,7 +187,13 @@ function LoginForm() {
             disabled={loading}
             aria-invalid={error ? true : undefined}
           />
-          <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            style={{ width: "100%" }}
+            disabled={loading}
+          >
             {loading ? t("auth.login.submitting") : t("auth.login.submit")}
           </Button>
         </Flex>

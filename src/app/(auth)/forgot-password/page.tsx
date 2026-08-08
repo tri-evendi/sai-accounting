@@ -117,7 +117,13 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               aria-invalid={error ? true : undefined}
             />
-            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              style={{ width: "100%" }}
+              disabled={loading}
+            >
               {loading ? t("auth.forgotPassword.submitting") : t("auth.forgotPassword.submit")}
             </Button>
           </Flex>

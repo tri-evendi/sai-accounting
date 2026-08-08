@@ -125,13 +125,18 @@ export function DocumentPreview({
               <Button variant="secondary" size="sm" onClick={handlePrint}>
                 <PrinterOutlined aria-hidden="true" /> {t("documentPreview.print")}
               </Button>
+              {/* Unduh primer, Cetak `secondary` (#267). Overlay adalah
+                  LAYARNYA SENDIRI: tombol ini tidak bersaing dengan aksi utama
+                  halaman di belakang tirai. Dua cabang di bawah saling
+                  meniadakan — PDF hasil (`onDownload`) atau berkas terunggah
+                  (tautan `download`) — jadi yang tampil selalu satu. */}
               {onDownload ? (
-                <Button size="sm" onClick={onDownload}>
+                <Button size="sm" variant="primary" onClick={onDownload}>
                   <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
                 </Button>
               ) : (
                 <a href={src} download>
-                  <Button size="sm">
+                  <Button size="sm" variant="primary">
                     <DownloadOutlined aria-hidden="true" /> {t("documentPreview.download")}
                   </Button>
                 </a>

@@ -168,7 +168,7 @@ export default async function SetupDonePage({
         </CardContent>
       </Card>
 
-      <Button href="/dashboard" size="lg">
+      <Button href="/dashboard" variant="primary" size="lg">
         {t("setup.doneStartWorking")}
         <ArrowRightOutlined aria-hidden="true" />
       </Button>

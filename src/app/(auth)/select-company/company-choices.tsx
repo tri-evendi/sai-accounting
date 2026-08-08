@@ -134,8 +134,24 @@ export function CompanyChoices({
                     {t("auth.selectCompany.currentLabel")}
                   </Flex>
                 ) : (
+                  /*
+                   * ⚠ SATU-SATUNYA tempat di app ini yang aksi barisnya boleh
+                   * PRIMER, dan syaratnya ditulis di MASTER.md §Aksi utama
+                   * (pengecualian "pilihan setara"). Ketiganya berlaku di sini
+                   * dan harus tetap berlaku: labelnya identik di setiap baris,
+                   * memilih salah satu adalah SATU-SATUNYA jalan maju layar
+                   * ini, dan tidak ada tombol primer lain — kaki kartunya
+                   * (`page.tsx`) seluruhnya `outline`.
+                   *
+                   * Bandingkan dengan kisi yang SAMA di `/platform` dan
+                   * `/platform/team`: di sana layarnya juga memikul kuota,
+                   * status langganan, dan jalan lain, jadi barisnya `outline`.
+                   * Kalau suatu hari kartu peringatan mendarat di layar ini,
+                   * yang turun adalah baris ini — bukan peringatannya.
+                   */
                   <Button
                     type="button"
+                    variant="primary"
                     size="sm"
                     style={{ flexShrink: 0 }}
                     disabled={busyId !== null}

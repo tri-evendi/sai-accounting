@@ -93,7 +93,7 @@ export function OperatorLoginForm() {
                 <Alert type="error" showIcon message={state.error} />
               )}
 
-              <Button type="submit" style={{ width: "100%" }} disabled={pending}>
+              <Button type="submit" variant="primary" style={{ width: "100%" }} disabled={pending}>
                 {pending ? t("common.loading") : t("operator.login.submit")}
               </Button>
             </Flex>

@@ -91,7 +91,9 @@ export default function PlatformError({
             </Flex>
 
             <Flex wrap align="center" justify="center" gap={token.marginSM}>
-              <Button onClick={() => reset()}>{t("error.retry")}</Button>
+              <Button variant="primary" onClick={() => reset()}>
+                {t("error.retry")}
+              </Button>
               <Button href="/platform" variant="secondary">
                 {t("platform.title")}
               </Button>

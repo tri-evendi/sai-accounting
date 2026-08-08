@@ -338,7 +338,17 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
 
             <Col span={24}>
               <Flex gap={token.marginXS}>
-                <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+                {/* Aksi utama layar detail faktur/kontrak (#267): ia MENGIKAT
+                    — satu baris pembayaran masuk ke buku. Pemicunya (baris 166)
+                    `secondary`, jadi selama formulir tertutup layarnya tidak
+                    memikul satu pun primer; yang membuka formulir ini sudah
+                    memutuskan hendak mencatat. */}
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="primary"
+                  disabled={form.formState.isSubmitting}
+                >
                   {form.formState.isSubmitting ? t("common.saving") : t("payments.submit")}
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>

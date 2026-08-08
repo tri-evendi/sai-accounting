@@ -62,7 +62,15 @@ export function LedgerFilter({
             {t("ledgerFilter.overdueOnly")}
           </Checkbox>
         </Flex>
-        <Button type="submit">{t("common.show")}</Button>
+        {/* `outline`, bukan berisi penuh (#267): formulir ini MENYARING, tidak
+            mengikat apa pun. Layarnya (`/receivables`, `/payables`) adalah
+            layar BACA — ekspor PDF/Excel di kepalanya sudah `secondary`, dan
+            tidak ada satu pun aksi yang menulis ke buku. Nol aksi utama adalah
+            jawaban yang benar untuk layar seperti itu; preseden yang sama
+            dengan "Saring" di `/operator`. */}
+        <Button type="submit" variant="outline">
+          {t("common.show")}
+        </Button>
       </Flex>
       <Typography.Text
         type="secondary"

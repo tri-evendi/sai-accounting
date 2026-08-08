@@ -455,7 +455,23 @@ export function AdvanceCompensationSection({
             )}
 
             <div>
-              <Button type="submit" size="sm" disabled={saving || lines.length === 0}>
+              {/* TURUN dari berisi penuh ke `secondary` (#267). Bagian ini
+                  SELALU terbuka — tidak ada pemicu yang harus ditekan dulu —
+                  jadi setiap faktur dan setiap pemasok yang kebetulan punya
+                  uang muka menyala biru tanpa ada yang memutuskannya. Padahal
+                  aksi utama layarnya ada di tempat lain dan bertabrakan
+                  langsung dengannya: "Catat pembayaran" di `/invoices/[id]`
+                  (`shared/payment-form.tsx`) dan "Catat uang muka" di
+                  `/suppliers/[id]` (`advance-panel.tsx`). Kompensasi tetap
+                  aksi yang mengikat — ia memang memposting — tetapi ia aksi
+                  SAMPINGAN pada layar yang tugas utamanya lain, dan
+                  penekanannya harus mengatakan itu. */}
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                disabled={saving || lines.length === 0}
+              >
                 {saving ? (
                   <Spin size="small" style={{ color: "inherit" }} />
                 ) : (

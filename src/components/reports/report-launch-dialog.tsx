@@ -444,8 +444,14 @@ export function ReportLaunchDialog({
               </Button>
             </>
           )}
+          {/* Primer, meski ia NAVIGASI — dan pengecualiannya tertulis di
+              aturannya: "kecuali ia satu-satunya jalan maju" (#267). Dialog
+              ini tidak punya tugas lain; ia dibuka untuk membuka laporan.
+              Ekspor PDF/Excel di sebelahnya `secondary` karena keduanya jalan
+              samping, dan overlay adalah layarnya sendiri — tak ada tombol
+              halaman katalog di belakangnya yang ikut bersaing. */}
           {report.href && (
-            <Button type="button" onClick={openReport} disabled={busy !== null}>
+            <Button type="button" variant="primary" onClick={openReport} disabled={busy !== null}>
               {exportable ? (
                 <EyeOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 4 }} />
               ) : (

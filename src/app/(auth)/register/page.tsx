@@ -187,7 +187,13 @@ export default function RegisterPage() {
               </Text>
             )}
 
-            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              style={{ width: "100%" }}
+              disabled={loading}
+            >
               {loading ? t("auth.register.submitting") : t("auth.register.submit")}
             </Button>
           </Flex>

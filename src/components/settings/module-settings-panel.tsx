@@ -181,7 +181,15 @@ export function ModuleSettingsPanel() {
             />
 
             <Flex justify="flex-end" style={{ marginTop: token.margin }}>
-              <Button disabled={saving || !isDirty} onClick={() => setConfirm(true)}>
+              {/* Satu-satunya aksi yang MENGIKAT di `/settings` (#267): ia
+                  menyalakan/mematikan modul untuk seluruh perusahaan. Dua
+                  tombol lain di layar itu (`settings-client.tsx`) sudah
+                  `secondary`. */}
+              <Button
+                variant="primary"
+                disabled={saving || !isDirty}
+                onClick={() => setConfirm(true)}
+              >
                 <SaveOutlined aria-hidden="true" />
                 {t("common.saveChanges")}
               </Button>

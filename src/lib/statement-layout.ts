@@ -592,6 +592,210 @@ export function balanceSheetLayout(
   return rows;
 }
 
+// ─── Bentuk Neraca Saldo ─────────────────────────────────────────────────────
+
+/**
+ * Bentuk laporan Neraca Saldo — SATU penentu untuk layar, PDF, dan lembar sebar
+ * (issue #275).
+ *
+ * ── Kenapa ia ada ───────────────────────────────────────────────────────────
+ * Alasan yang sama dengan `cashFlowLayout()` (#241) dan `balanceSheetLayout()`
+ * (#258), satu laporan lebih jauh — tapi divergensinya yang paling mahal
+ * jenisnya: **cetakan membuat pernyataan yang layarnya sengaja TOLAK
+ * keluarkan.** Pada buku yang belum punya satu jurnal pun, layar tidak
+ * menggambar baris Total sama sekali, sementara PDF dan lembar sebar tetap
+ * mencetak "Total (Seimbang)".
+ *
+ * ── Keputusan: buku kosong tidak mencetak Total DI MANA PUN ─────────────────
+ * Penghilangan di layar diputuskan sadar di #198, dengan alasan yang benar:
+ * "Total Rp 0 · Seimbang" pada buku kosong terbaca seperti HASIL AUDIT,
+ * padahal ia cuma menyatakan belum ada apa-apa untuk diperiksa. Alasan itu
+ * tidak melemah ketika keluarannya berpindah ke kertas — ia MENGUAT: PDF adalah
+ * bentuk yang dilampirkan, dikirim, dan diarsipkan, dan selembar Neraca Saldo
+ * bertuliskan "Seimbang" di atas buku yang belum punya satu jurnal pun bisa
+ * dipercaya orang lain sebagai bukti pembukuan sudah diperiksa dan cocok.
+ *
+ * Jadi yang menang adalah bentuk LAYAR, dan ia menang di ketiga permukaan:
+ * buku kosong menghasilkan tepat SATU baris — kalimat yang menyebut keadaannya
+ * ("Belum ada saldo sampai tanggal ini") — dan TIDAK ADA baris Total di
+ * belakangnya. Diam saja bukan pilihan: tabel yang hanya berisi judul kolom
+ * terbaca seperti ekspor yang gagal.
+ *
+ * ── Aturannya "ada jurnal?", bukan "totalnya nol?" ──────────────────────────
+ * Baris Total hilang HANYA ketika tidak ada satu baris akun pun. Buku yang
+ * punya akun bersaldo nol di kedua sisi tetap mendapat barisnya (`getTrialBalance`
+ * sengaja mempertahankan akun yang mutasinya saling menutup — lihat catatannya
+ * di `lib/reports.ts`), dan Total nol di sana adalah pernyataan yang benar:
+ * jurnalnya ada, dan jumlahnya nol. Dua keadaan itu berbeda, dan laporan ini
+ * membedakannya.
+ *
+ * ── Nol tetap "-", seperti sebelum issue ini ────────────────────────────────
+ * Sebuah nol di Neraca Saldo berarti akun itu tidak bersaldo DI SISI ITU —
+ * ketiadaan, bukan pernyataan posisi seperti nol di Neraca (#258). Ketiga
+ * permukaan sudah sepakat sejak awal ("—" di layar lewat `Money`, "-" di
+ * kertas, ANGKA nol di lembar sebar supaya `SUM` hidup, keputusan #241), jadi
+ * tidak ada divergensi yang perlu dimenangkan siapa pun di sini.
+ */
+
+export interface TrialBalanceLineShape {
+  code: string;
+  name: string;
+  debit: number;
+  credit: number;
+}
+
+/** Struktural dengan sengaja — muat untuk hasil pembaca laporan maupun payload ekspor. */
+export interface TrialBalanceShape {
+  rows: readonly TrialBalanceLineShape[];
+  totalDebit: number;
+  totalCredit: number;
+}
+
+export type TrialBalanceRowKind = "line" | "empty" | "total";
+
+export interface TrialBalanceLayoutRow {
+  kind: TrialBalanceRowKind;
+  /** Kolom pertama — kode akun. Tak ada untuk baris yang bukan akun. */
+  code?: string;
+  /** Kolom kedua — nama akun, atau kalimat baris bukan-akun. */
+  name: string;
+  /**
+   * `code` + `name` sebagai satu teks. Permukaannya menggambar kedua kolom
+   * terpisah; ini untuk yang membaca barisnya sebagai satu label — penjaga
+   * bentuk, dan pembaca kode yang ingin tahu bunyi barisnya.
+   */
+  label: string;
+  /**
+   * `null` berarti kolom ini TIDAK BERLAKU untuk baris ini (kalimat buku
+   * kosong), dan setiap permukaan menggambarnya kosong. Ia bukan nol: buku yang
+   * belum punya jurnal tidak berdebit nol rupiah, ia tidak berdebit sama sekali
+   * (Prinsip Inti MASTER.md). Nol yang memang nol tetap nol — lihat kepala
+   * bagian ini.
+   */
+  debit: number | null;
+  credit: number | null;
+}
+
+/**
+ * Label baris yang bukan milik satu akun. Layar memasok terjemahannya; nilai
+ * Indonesia-nya SAMA PERSIS dengan `TRIAL_BALANCE_PRINT_LABELS`, dan itu yang
+ * membuat `tests/trial-balance-shape.test.ts` bisa membandingkan layar dengan
+ * cetakan tanpa tabel padanan.
+ */
+export interface TrialBalanceLabels {
+  /** Buku yang belum punya satu baris pun sampai tanggal laporan. */
+  empty: string;
+  total: string;
+}
+
+/**
+ * Label untuk DOKUMEN CETAK — bahasa Indonesia, seperti seluruh isi `lib/pdf`:
+ * berkas yang lepas dari layarnya tidak membawa pilihan bahasa penggunanya.
+ *
+ * Kamus `id.json` memuat kalimat yang SAMA PERSIS
+ * (`reports.trialBalanceEmptyTitle`, `common.total`).
+ */
+export const TRIAL_BALANCE_PRINT_LABELS: TrialBalanceLabels = {
+  empty: "Belum ada saldo sampai tanggal ini",
+  total: "Total",
+};
+
+/**
+ * Keterangan keseimbangan pada baris Total, untuk DOKUMEN CETAK.
+ *
+ * Klaimnya berbeda dari Neraca (debit = kredit, bukan A = L + E) tetapi
+ * ANOTASI-nya sama persis, jadi ia memakai ULANG kalimat itu alih-alih menulis
+ * kalimat kedua yang bisa menyimpang. Layar menyampaikannya lewat lencana —
+ * bentuk yang tidak punya padanan di kertas.
+ */
+export function trialBalanceBalanceNote(balanced: boolean): string {
+  return balanceSheetBalanceNote(balanced);
+}
+
+/**
+ * Nominal untuk DOKUMEN CETAK. Aturannya identik dengan Arus Kas — kolom yang
+ * tak berlaku KOSONG, nol "-" — jadi ia memakai fungsi itu ulang alih-alih
+ * menyalin cabangnya.
+ */
+export function trialBalancePrintAmount(
+  value: number | null,
+  format: (amount: number) => string
+): string {
+  return cashFlowPrintAmount(value, format);
+}
+
+export const TRIAL_BALANCE_COLUMNS = ["code", "name", "debit", "credit"] as const;
+
+export type TrialBalanceColumnId = (typeof TRIAL_BALANCE_COLUMNS)[number];
+
+/**
+ * Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus,
+ * yang nilai Indonesia-nya sama persis (`accounts.colCode`,
+ * `accounts.nameField`, `journal.colDebitIdr`, `journal.colCreditIdr`).
+ *
+ * PDF dulu menulis "Debit"/"Kredit" tanpa mata uangnya sementara lembar sebar
+ * menulis "Debit (IDR)"/"Kredit (IDR)" — satu berkas yang menyebut satuannya
+ * dan satu yang tidak, untuk angka yang sama.
+ */
+export const TRIAL_BALANCE_HEADERS: Record<TrialBalanceColumnId, string> = {
+  code: "Kode",
+  name: "Nama Akun",
+  debit: "Debit (IDR)",
+  credit: "Kredit (IDR)",
+};
+
+/**
+ * Badan dan kaki, dipisah dengan satu aturan alih-alih tiga. Kakinya berisi
+ * NOL ATAU SATU baris: buku yang belum punya jurnal tidak punya Total (lihat
+ * kepala bagian ini), dan itulah satu-satunya hal yang membuat ketiga permukaan
+ * bisa sepakat tentang buku kosong.
+ */
+export function splitTrialBalanceRows(rows: readonly TrialBalanceLayoutRow[]): {
+  body: TrialBalanceLayoutRow[];
+  foot: TrialBalanceLayoutRow[];
+} {
+  const hasFoot = rows.length > 0 && rows[rows.length - 1].kind === "total";
+  const cut = rows.length - (hasFoot ? 1 : 0);
+  return { body: rows.slice(0, cut), foot: rows.slice(cut) };
+}
+
+/**
+ * Seluruh baris Neraca Saldo, dalam urutan kanoniknya, dengan angkanya sudah
+ * teratasi. Yang tersisa bagi tiap permukaan hanyalah MENGGAMBAR baris — tidak
+ * ada satu pun keputusan bentuk, termasuk keputusan apakah baris Total keluar,
+ * di luar fungsi ini.
+ */
+export function trialBalanceLayout(
+  statement: TrialBalanceShape,
+  labels: TrialBalanceLabels = TRIAL_BALANCE_PRINT_LABELS
+): TrialBalanceLayoutRow[] {
+  if (statement.rows.length === 0) {
+    // Satu baris, dan TIDAK ADA Total di belakangnya — keputusan pokok #275.
+    return [
+      { kind: "empty", name: labels.empty, label: labels.empty, debit: null, credit: null },
+    ];
+  }
+
+  const rows: TrialBalanceLayoutRow[] = statement.rows.map((r) => ({
+    kind: "line" as const,
+    code: r.code,
+    name: r.name,
+    label: `${r.code}  ${r.name}`.trim(),
+    debit: r.debit,
+    credit: r.credit,
+  }));
+
+  rows.push({
+    kind: "total",
+    name: labels.total,
+    label: labels.total,
+    debit: statement.totalDebit,
+    credit: statement.totalCredit,
+  });
+
+  return rows;
+}
+
 // ─── Kolom Riwayat Stok ──────────────────────────────────────────────────────
 
 /**

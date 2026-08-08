@@ -83,6 +83,13 @@ declare module "antd/es/theme/interface/alias" {
     colorBrandText?: string;
     colorBrandTextHover?: string;
     colorBrandTextActive?: string;
+    /**
+     * Nada permukaan kepala tabel (issue #266). Alias GLOBAL, bukan token
+     * `components.Table` — alasannya di bagian "Jenjang di perender" di bawah:
+     * `StaticTable` menggambar sel judulnya sendiri dan tidak merender satu pun
+     * komponen AntD, jadi variabel token KOMPONEN tidak akan ada di dokumen.
+     */
+    colorTableHeadBg?: string;
   }
 }
 
@@ -701,13 +708,11 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
  * **#208 dan #266 terhubung lewat satu angka**, dan keduanya tidak bisa sama-
  * sama berada di ujung "tenang"-nya.
  *
- * ── Yang tersisa, dan kenapa bukan di berkas ini ─────────────────────────
+ * ── Yang tersisa, dan kenapa bukan di lapisan token ──────────────────────
  * Isyarat "terangkat" yang tidak memakai luminansi bidang dan karena itu
  * berongkos kontras NOL: **bayangan** pada kartu (`boxShadow`, MASTER.md
  * menyebut `--ant-box-shadow-tertiary` sebagai "lift halus") dan **kepala
- * tabel bernada** pada nilai yang sudah terbukti aman. Nada `#f5f5f5` di dalam
- * kartu putih tidak menambah risiko apa pun: ia latar halaman hari ini, jadi
- * setiap token di berkas ini sudah diukur di atasnya.
+ * tabel bernada** pada nilai yang sudah terbukti aman.
  *
  * Keduanya tidak bisa dijangkau dari lapisan token: `Card` AntD tidak punya
  * token bayangan sama sekali (lihat `antd/es/card/style` — `headerBg`,
@@ -715,8 +720,12 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
  * hanya mengenai `DataTable` (20 dari 66 tabel) sedangkan `StaticTable`
  * menggambar sel judulnya sendiri tanpa latar. Menyetel `Table.headerBg`
  * sendirian karena itu menghasilkan dua rupa tabel di satu produk — lebih
- * buruk dari tidak melakukan apa-apa. Keduanya pekerjaan perender, dan
- * keputusannya milik pemilik; angkanya ada di atas.
+ * buruk dari tidak melakukan apa-apa.
+ *
+ * **Pemilik memilih jalan itu**, dan ia dikerjakan di perender: bayangannya di
+ * `ui/card.tsx`, nadanya di `ui/table.tsx` + `components.Table` sekaligus.
+ * Nilai nadanya, beserta buktinya bahwa ongkos kontrasnya benar-benar nol,
+ * ada di bagian berikutnya di berkas ini.
  *
  * ── Kalau suatu hari permukaannya MEMANG digeser ─────────────────────────
  * Dua tempat di luar `ConfigProvider` ikut memikul nilainya, dan keduanya diam
@@ -733,6 +742,90 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
  * merah, permukaan sudah bergeser dan seluruh tabel di berkas ini harus
  * diturunkan ulang, bukan ditambal satu hex.
  */
+
+/* ------------------------------------------------------------------------ */
+/* Jenjang di PERENDER: nada kepala tabel (issue #266, jalan B)              */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Latar sel judul tabel — **satu nilai untuk KEDUA perender**.
+ *
+ * ── Kenapa ia token GLOBAL dan bukan `components.Table.headerBg` ──────────
+ * Karena `components.Table` hanya menjangkau `DataTable`. `StaticTable`
+ * menggambar `<th>`-nya sendiri lewat `ui/table.tsx`, yang server-safe dan
+ * karena itu tidak boleh memanggil `theme.useToken()`; satu-satunya warna yang
+ * bisa dipakainya adalah `var(--ant-…)`. Dan variabel token KOMPONEN AntD baru
+ * ada di dokumen bila komponennya benar-benar dirender — alasan yang sama yang
+ * membuat `SIDER_BG_DARK` di bawah ditulis sebagai konstanta. Sebuah halaman
+ * laporan yang hanya berisi `StaticTable` tidak merender satu pun `Table` AntD,
+ * jadi `var(--ant-table-header-bg)` di sana tidak akan pernah teratasi dan
+ * kepalanya jatuh diam-diam ke tanpa-latar.
+ *
+ * Karena itu nadanya didaftarkan sebagai ALIAS global (`colorTableHeadBg` →
+ * `--ant-color-table-head-bg`, teratasi di seluruh dokumen sejak #227), dan
+ * `AntdProvider` mengoper nilai YANG SAMA ke `components.Table.headerBg`. Dua
+ * perender, satu angka; kalau salah satunya lepas, penjaga "jenjang perender"
+ * di `tests/antd-tokens.test.ts` merah.
+ *
+ * ── Kenapa ongkos kontrasnya NOL, dan itu bukan kiasan ────────────────────
+ * Kedua nilainya adalah permukaan yang SUDAH diukur — anggota `SURFACES` yang
+ * dipakai `worst()` di seluruh berkas ini. Lebih dari itu: di masing-masing
+ * tema, nilai itu justru permukaan tempat setiap minimum yang tertulis di
+ * berkas ini diambil. Terukur ulang di atas nada kepala:
+ *
+ * | Tinta di kepala tabel                   | ambang | TERANG `#f5f5f5` | GELAP `#1f1f1f` |
+ * |-----------------------------------------|--------|------------------|-----------------|
+ * | judul kolom & tautan sortir (sekunder)  | 4,5:1  | 6,76             | 7,65            |
+ * | tautan sortir saat hover (`colorText`)  | 4,5:1  | 15,39            | 12,18           |
+ * | penanda urut nonaktif (`colorBorder`)   | 3:1    | 3,62             | 3,89            |
+ * | kisi & garis kepala (`…BorderSecondary`)| 3:1    | 3,08             | 3,05            |
+ *
+ * Keempatnya identik dengan angka "min" yang sudah tertulis di tabel-tabel di
+ * atas. Itu bukan kebetulan — itu definisi `worst()`.
+ *
+ * ── Kenapa terang TURUN dan gelap NAIK ────────────────────────────────────
+ * Bukan selera; kedua arah itu satu-satunya yang tersedia, dan yang menutup
+ * arah sebaliknya adalah tepi #208 — dinding yang sama yang menutup jalan token
+ * di bagian sebelumnya.
+ *
+ *  • **Terang.** Di atas `#ffffff` tidak ada apa pun, jadi nadanya harus lebih
+ *    gelap. Permukaan netral tergelap yang masih dilewati `colorBorderSecondary`
+ *    adalah `#f2f2f2`; `#f5f5f5` berada di sisi aman dan sudah terukur. Bedanya
+ *    ΔL* 4,51 vs 3,46 — 1,05, yang menurut pengukuran #269 tidak akan terlihat
+ *    siapa pun — ditukar dengan SELURUH margin ambang 3:1. Tidak diambil.
+ *  • **Gelap.** Permukaan gelap paling TERANG yang masih dilewati
+ *    `colorBorderSecondary` adalah `#202020`. `#1f1f1f` satu satuan di bawahnya:
+ *    ia nada paling terang yang boleh dipakai sama sekali, dan ia kebetulan
+ *    persis `colorBgElevated`. `#000000` (latar halaman gelap) juga lolos dan
+ *    memberi ΔL* lebih besar, tetapi ia lubang hitam di dalam kartu `#141414`,
+ *    dan arah "kepala = chrome yang terangkat" adalah arah yang sudah dipakai
+ *    AntD sendiri di tema gelap.
+ *
+ * ── Yang berubah di layar, jujur ─────────────────────────────────────────
+ * `DataTable` SUDAH punya kepala bernada: `Table.headerBg` bawaan AntD adalah
+ * `colorFillAlter` yang dikomposit ke `colorBgContainer` — terang `#fafafa`
+ * (α 0,02 = 2%, yaitu persis besaran yang dikeluhkan issue ini) dan gelap
+ * `#1d1d1d`. Jadi perubahannya: terang **`#fafafa` → `#f5f5f5`** (2% → 4%),
+ * gelap **`#1d1d1d` → `#1f1f1f`** (dua satuan RGB, tak terlihat) — dan
+ * `StaticTable`, 46 dari 66 tabel, mendapat nada yang sebelumnya tidak ada
+ * sama sekali. Warna judulnya ikut disamakan: bawaan `Table.headerColor` adalah
+ * `colorTextHeading` (α 0,88), sedangkan `ui/table.tsx` memakai
+ * `colorTextSecondary` (α 0,65) karena judul kolom MENAMAI angka di bawahnya
+ * dan tidak boleh bersaing dengannya. Dua perender tidak boleh memilih dua
+ * jawaban untuk itu.
+ *
+ * Yang TIDAK disamakan dan sengaja dicatat sebagai sisa: tebal huruf judul —
+ * `ui/table.tsx` memakai 500, `Table` AntD memakai `fontWeightStrong` (600) dan
+ * tidak menyediakan token untuknya. Bedanya satu anak tangga tebal pada teks
+ * 14px; menyamakannya berarti menulis CSS ke dalam komponen AntD, dan itu
+ * pekerjaan yang lebih besar dari imbalannya.
+ */
+export const TABLE_HEAD_BG_LIGHT = "#f5f5f5"; // = colorBgLayout terang
+export const TABLE_HEAD_BG_DARK = "#1f1f1f"; // = colorBgElevated gelap
+
+export function tableHeadBg(resolved: ResolvedTheme): string {
+  return resolved === "dark" ? TABLE_HEAD_BG_DARK : TABLE_HEAD_BG_LIGHT;
+}
 
 /* ------------------------------------------------------------------------ */
 /* Permukaan gelap permanen — nilai yang TIDAK punya variabel CSS (#204)     */

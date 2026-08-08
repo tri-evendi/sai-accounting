@@ -375,6 +375,10 @@ export function PermissionsClient() {
        * `stickyHead*` dikirim eksplisit karena matriks ini TIDAK berada di
        * dalam satu pun komponen AntD, sehingga bawaan `var(--ant-…)` milik
        * primitif tidak akan teratasi di sini — lihat kepala `ui/table.tsx`.
+       *
+       * Latarnya `colorTableHeadBg` sejak #266, bukan `colorBgContainer`:
+       * kepala tabel di app ini bernada, dan matriks yang tetap putih adalah
+       * rupa tabel kedua di satu produk — persis yang jalan B hindari.
        */}
       <Table
         data-permission-matrix="role"
@@ -385,7 +389,7 @@ export function PermissionsClient() {
           borderRadius: token.borderRadiusLG,
           background: token.colorBgContainer,
         }}
-        stickyHeadBackground={token.colorBgContainer}
+        stickyHeadBackground={token.colorTableHeadBg}
         stickyHeadBorderColor={token.colorBorderSecondary}
       >
         <TableHeader>

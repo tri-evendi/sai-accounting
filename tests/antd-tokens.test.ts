@@ -95,26 +95,6 @@ const LIGHT = theme.getDesignToken({ algorithm: theme.defaultAlgorithm });
 const DARK = theme.getDesignToken({ algorithm: theme.darkAlgorithm });
 
 /**
- * Ketiga latar tempat teks uang benar-benar mendarat: sel tabel biasa
- * (`colorBgContainer`), halaman/baris berselang (`colorBgLayout`), dan
- * Modal/Dropdown/Popover serta baris ter-hover (`colorBgElevated`). Yang
- * dipakai sebagai putusan adalah yang TERBURUK — bukan rata-rata.
- */
-const SURFACES = {
-  light: [LIGHT.colorBgContainer, LIGHT.colorBgLayout, LIGHT.colorBgElevated],
-  dark: [DARK.colorBgContainer, DARK.colorBgLayout, DARK.colorBgElevated],
-} as const;
-
-const worst = (color: string, mode: "light" | "dark") =>
-  Math.min(...SURFACES[mode].map((bg) => contrast(color, bg)));
-
-/** Ambang teks biasa. Berlaku di mana-mana karena `fontSize` bawaan AntD 14px. */
-const AA = 4.5;
-
-/** Ambang komponen non-teks WCAG 1.4.11 — batas kendali, kisi, tepi bidang. */
-const NON_TEXT = 3;
-
-/**
  * Token seperti yang BENAR-BENAR sampai ke komponen: seed -> map -> alias, lalu
  * override kita. Ini yang membedakan "kami menulis nilai baru" dari "nilai baru
  * itu berlaku": beberapa token yang kami perbaiki adalah induk dari token lain
@@ -128,6 +108,37 @@ const applied = (mode: "light" | "dark") =>
   });
 
 const APPLIED = { light: applied("light"), dark: applied("dark") } as const;
+
+/**
+ * Ketiga latar tempat teks uang benar-benar mendarat: sel tabel biasa
+ * (`colorBgContainer`), halaman/baris berselang (`colorBgLayout`), dan
+ * Modal/Dropdown/Popover serta baris ter-hover (`colorBgElevated`). Yang
+ * dipakai sebagai putusan adalah yang TERBURUK — bukan rata-rata.
+ *
+ * Diambil dari token TERPAKAI, bukan dari bawaan AntD (issue #266). Sampai
+ * issue itu keduanya kebetulan sama, karena permukaan memang tidak di-override
+ * — dan justru itu yang membuat perbedaannya tak terlihat: seandainya seseorang
+ * menggelapkan `colorBgLayout` di `AntdProvider`, SELURUH angka di berkas ini
+ * akan tetap hijau sambil mengukur permukaan yang sudah tidak ada lagi di
+ * layar. Sejak #266 latar yang diukur adalah latar yang benar-benar berlaku.
+ */
+const SURFACES = {
+  light: [
+    APPLIED.light.colorBgContainer,
+    APPLIED.light.colorBgLayout,
+    APPLIED.light.colorBgElevated,
+  ],
+  dark: [APPLIED.dark.colorBgContainer, APPLIED.dark.colorBgLayout, APPLIED.dark.colorBgElevated],
+} as const;
+
+const worst = (color: string, mode: "light" | "dark") =>
+  Math.min(...SURFACES[mode].map((bg) => contrast(color, bg)));
+
+/** Ambang teks biasa. Berlaku di mana-mana karena `fontSize` bawaan AntD 14px. */
+const AA = 4.5;
+
+/** Ambang komponen non-teks WCAG 1.4.11 — batas kendali, kisi, tepi bidang. */
+const NON_TEXT = 3;
 
 describe("kalibrasi rumus kontras", () => {
   it("mereproduksi angka yang sudah tertulis di MASTER.md", () => {
@@ -707,6 +718,188 @@ describe("chrome di atas permukaan gelap permanen (#205)", () => {
         "colorBorderSecondary"
       );
     }
+  });
+});
+
+/* ========================================================================== */
+/* issue #266 — jenjang permukaan: halaman vs kartu vs melayang               */
+/* ========================================================================== */
+
+/**
+ * Lightness CIE L*. Rasio WCAG dibuat untuk TINTA di atas latar; untuk dua
+ * BIDANG bersebelahan yang sama-sama terang ia memampatkan perbedaan yang masih
+ * jelas terlihat mata (putih vs `#f5f5f5` = 1,09:1, seolah tidak ada apa-apa).
+ * L* adalah satuan yang benar untuk pertanyaan "apakah dua bidang ini terbaca
+ * sebagai dua bidang", jadi ia ikut dihitung — bukan menggantikan rasionya.
+ */
+function lstar(color: string): number {
+  const { rgb } = parse(color);
+  const y = luminance(rgb);
+  return y > 216 / 24389 ? 116 * Math.cbrt(y) - 16 : (y * 24389) / 27;
+}
+
+/** Abu-abu netral (r=g=b) pada nilai kanal `v`. */
+const grey = (v: number) => `#${v.toString(16).padStart(2, "0").repeat(3)}`;
+
+/** Permukaan netral paling GELAP yang masih dilewati `fg` pada `threshold`. */
+function darkestSurface(fg: string, threshold: number): string {
+  let v = 255;
+  while (v > 0 && contrast(fg, grey(v)) >= threshold) v -= 1;
+  return grey(v + 1);
+}
+
+/** Permukaan netral paling TERANG yang masih dilewati `fg` pada `threshold`. */
+function lightestSurface(fg: string, threshold: number): string {
+  let v = 0;
+  while (v < 255 && contrast(fg, grey(v)) >= threshold) v += 1;
+  return grey(v - 1);
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+describe("jenjang permukaan (#266)", () => {
+  it("permukaan TIDAK di-override — keputusannya tercatat, bukan terlewat", () => {
+    /*
+     * Satu-satunya keluarga token warna yang tetap bawaan AntD setelah diukur.
+     * Alasannya (dua dinding di bawah) ada di `lib/theme/antd-tokens.ts`,
+     * bagian "Jenjang permukaan". Baris ini yang membuat keputusan itu tidak
+     * bisa berubah diam-diam: menambahkan `colorBgLayout` ke `AntdProvider`
+     * membuat tes ini merah, dan yang merah bersamanya adalah seluruh tabel
+     * rasio di berkas token — yang memang harus diturunkan ulang.
+     */
+    const src = readFileSync(
+      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      "utf8"
+    );
+    for (const surface of ["colorBgLayout", "colorBgContainer", "colorBgElevated"]) {
+      expect(src, `${surface} kini didaftarkan — turunkan ulang tabel kontrasnya`).not.toContain(
+        surface
+      );
+      expect(APPLIED.light[surface as "colorBgLayout"]).toBe(LIGHT[surface as "colorBgLayout"]);
+      expect(APPLIED.dark[surface as "colorBgLayout"]).toBe(DARK[surface as "colorBgLayout"]);
+    }
+  });
+
+  it("jenjangnya memang setipis yang dikeluhkan — di kedua tema", () => {
+    // Angka yang memicu issue ini, dihitung ulang alih-alih dikutip.
+    expect(round2(contrast(APPLIED.light.colorBgContainer, APPLIED.light.colorBgLayout))).toBe(1.09);
+    expect(round2(contrast(APPLIED.dark.colorBgContainer, APPLIED.dark.colorBgLayout))).toBe(1.14);
+    expect(
+      round2(lstar(APPLIED.light.colorBgContainer) - lstar(APPLIED.light.colorBgLayout))
+    ).toBe(3.46);
+    expect(round2(lstar(APPLIED.dark.colorBgContainer) - lstar(APPLIED.dark.colorBgLayout))).toBe(
+      6.32
+    );
+    // Permukaan melayang tema terang sama PERSIS dengan kartu: satu-satunya
+    // yang memisahkan dropdown dari kartu putih di bawahnya adalah bayangannya.
+    expect(APPLIED.light.colorBgElevated).toBe(APPLIED.light.colorBgContainer);
+    expect(round2(contrast(APPLIED.dark.colorBgElevated, APPLIED.dark.colorBgContainer))).toBe(1.12);
+  });
+
+  it("DINDING TERANG: tepi kartu #208 memaku setiap bidang di atas `#f2f2f2`", () => {
+    /*
+     * `colorBorderSecondary` berdiri DI ANTARA kartu putih dan halaman, jadi ia
+     * harus lolos 3:1 di kedua sisinya — dan sisi halaman itulah yang habis
+     * lebih dulu. Menggelapkan latar melewati batas ini menurunkan tepi kartu
+     * dan kisi tabel di bawah ambang yang #208 naikkan dengan sengaja.
+     */
+    expect(darkestSurface(BORDER_TOKENS_LIGHT.colorBorderSecondary, NON_TEXT)).toBe("#f2f2f2");
+    // Tinta kedua yang habis: uang-positif (green-8). Sesudah ini pun, hanya
+    // ada ~5 satuan RGB sebelum angka hijau jatuh di bawah AA.
+    expect(darkestSurface(MONEY_TOKENS_LIGHT.colorMoneyPositive, AA)).toBe("#e7e7e7");
+    expect(darkestSurface(BORDER_TOKENS_LIGHT.colorBorder, NON_TEXT)).toBe("#e1e1e1");
+    // ...dan `#f2f2f2` menyisakan ΔL* yang tidak akan terlihat siapa pun:
+    // 4,51 vs 3,46 hari ini, ditukar dengan SELURUH margin ambang 3:1.
+    expect(round2(lstar("#ffffff") - lstar("#f2f2f2"))).toBe(4.51);
+    expect(round2(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, "#f2f2f2"))).toBe(3);
+  });
+
+  it("kedua anak tangga netral AntD berikutnya menabrak dinding itu", () => {
+    /*
+     * Netral terang AntD = `colorFill*` dikomposit ke putih: α 0,02 `#fafafa` ·
+     * 0,04 `#f5f5f5` (berlaku hari ini) · 0,06 `#f0f0f0` · 0,15 `#d9d9d9`.
+     * Tidak ada anak tangga di antaranya, dan mengarang α sendiri berarti
+     * berhenti memakai paletnya — hal yang justru dihindari #186/#207/#208.
+     */
+    expect(APPLIED.light.colorBgLayout).toBe("#f5f5f5"); // α 0,04, yang berlaku hari ini
+    expect(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, "#f0f0f0")).toBeLessThan(NON_TEXT);
+    expect(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, "#d9d9d9")).toBeLessThan(NON_TEXT);
+    expect(contrast(MONEY_TOKENS_LIGHT.colorMoneyPositive, "#d9d9d9")).toBeLessThan(AA);
+  });
+
+  it("DINDING GELAP: `colorBgElevated` tinggal 3 satuan dari jatuhnya #186", () => {
+    /*
+     * Arah terbalik, hasil sama. Yang habis lebih dulu di tema gelap adalah
+     * `colorMoneyInfo` — warna yang sama dengan `colorBrandText` dan
+     * `colorLink`, jadi yang jatuh bukan satu angka melainkan setiap tautan.
+     */
+    expect(lightestSurface(MONEY_TOKENS_DARK.colorMoneyInfo, AA)).toBe("#212121");
+    expect(APPLIED.dark.colorBgElevated).toBe("#1f1f1f");
+    expect(lightestSurface(BORDER_TOKENS_DARK.colorBorderSecondary, NON_TEXT)).toBe("#202020");
+  });
+
+  it("temuan tirai #205 tak bisa diperbaiki dari lapisan token", () => {
+    /*
+     * Dua jalan keluarnya sama-sama tertutup, dan itu sebabnya angka ini
+     * dibiarkan: menaikkan panel menjatuhkan `colorMoneyInfo` (di atas), dan
+     * menggelapkan tirai tidak melakukan apa-apa karena halaman gelap SUDAH
+     * `#000000` — tirai hitam di atas hitam. Yang tersisa bayangan Modal.
+     */
+    const curtained = (bg: string) => {
+      const b = parse(bg);
+      const m = parse(APPLIED.dark.colorBgMask);
+      return `rgb(${m.rgb.map((c, i) => Math.round(c * m.alpha + b.rgb[i] * (1 - m.alpha))).join(",")})`;
+    };
+    expect(APPLIED.dark.colorBgLayout).toBe("#000000");
+    expect(curtained(APPLIED.dark.colorBgLayout)).toBe("rgb(0,0,0)");
+    expect(round2(contrast(APPLIED.dark.colorBgElevated, curtained(APPLIED.dark.colorBgLayout)))).toBe(
+      1.27
+    );
+    // Di tema terang angkanya sehat — jadi ini memang temuan tema gelap saja.
+    expect(
+      contrast(APPLIED.light.colorBgElevated, curtained(APPLIED.light.colorBgLayout))
+    ).toBeGreaterThanOrEqual(NON_TEXT);
+  });
+
+  it("satu-satunya susunan yang lolos menggelapkan SETIAP garis — karena itu ditolak", () => {
+    /*
+     * Latar `#f0f0f0` + kisi grey-4 + kendali grey-5: tak satu pun pasangan
+     * turun, dan beberapa naik. Yang membuatnya tetap salah bukan angkanya
+     * melainkan keluhannya — "outline saja". Tes ini mengunci kedua sisi
+     * pertimbangan itu supaya pilihan berikutnya dibuat dengan angka yang sama,
+     * bukan diulang dari nol.
+     */
+    const surfaces = ["#ffffff", "#f0f0f0", "#ffffff"];
+    const worstAlt = (c: string) => Math.min(...surfaces.map((bg) => contrast(c, bg)));
+    expect(worstAlt(presetPalettes.grey[3])).toBeGreaterThanOrEqual(NON_TEXT); // kisi grey-4
+    expect(worstAlt(presetPalettes.grey[4])).toBeGreaterThanOrEqual(NON_TEXT); // kendali grey-5
+    for (const role of ["colorMoneyPositive", "colorMoneyNegative", "colorMoneyPending", "colorMoneyInfo"] as const) {
+      expect(worstAlt(MONEY_TOKENS_LIGHT[role])).toBeGreaterThanOrEqual(AA);
+    }
+    // Imbalannya: ΔL* 3,46 -> 5,20. Ongkosnya: kisi 3,08 -> 3,47 di SETIAP baris
+    // tabel di seluruh aplikasi.
+    expect(round2(lstar("#ffffff") - lstar("#f0f0f0"))).toBe(5.2);
+    expect(round2(worstAlt(presetPalettes.grey[3]))).toBe(3.47);
+    expect(round2(worst(BORDER_TOKENS_LIGHT.colorBorderSecondary, "light"))).toBe(3.08);
+  });
+
+  it("nada `#f5f5f5` DI DALAM kartu tidak menambah risiko apa pun", () => {
+    /*
+     * Jalan keluar yang tersisa (kepala tabel bernada, kartu berbayang) hidup
+     * di perender, bukan di lapisan token — `Card` AntD tidak punya token
+     * bayangan, dan `Table.headerBg` hanya mengenai `DataTable`. Yang bisa
+     * dibuktikan dari sini: nadanya tidak perlu diaudit ulang, karena
+     * `#f5f5f5` adalah latar halaman hari ini dan karenanya sudah termasuk
+     * dalam `worst()` setiap token di berkas ini.
+     */
+    expect(SURFACES.light).toContain("#f5f5f5");
+    for (const role of ["colorMoneyPositive", "colorMoneyNegative", "colorMoneyPending", "colorMoneyInfo"] as const) {
+      expect(contrast(MONEY_TOKENS_LIGHT[role], "#f5f5f5")).toBeGreaterThanOrEqual(AA);
+    }
+    expect(contrast(NEUTRAL_TEXT_LIGHT.colorTextTertiary, "#f5f5f5")).toBeGreaterThanOrEqual(AA);
+    expect(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, "#f5f5f5")).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
   });
 });
 

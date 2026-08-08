@@ -608,6 +608,133 @@ export function borderTokens(resolved: ResolvedTheme): BorderTokens {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Jenjang permukaan: DIUKUR, lalu sengaja TIDAK digeser (issue #266)        */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `colorBgLayout` / `colorBgContainer` / `colorBgElevated` — tiga permukaan
+ * yang menyusun setiap layar, dan **tetap bawaan Ant Design apa adanya setelah
+ * diukur**, sama seperti `colorBgMask` (#190).
+ *
+ * Bagian ini ada supaya keputusan "tidak melakukan apa-apa" itu tercatat
+ * beserta angkanya — pola yang sama dengan `colorBgMask` (#190) di bawah.
+ * Tanpa catatan ini, orang berikutnya yang membaca issue #266 akan mengulang
+ * seluruh pengukuran di bawah dan sampai ke dinding yang sama.
+ *
+ * ── Keluhan yang memicunya ────────────────────────────────────────────────
+ * Pemilik: aplikasi terasa "dominan putih-hitam dengan **outline saja**".
+ * Terukur, latar halaman dan permukaan kartu memang nyaris sewarna:
+ *
+ * | Tema   | halaman   | kartu/tabel | melayang  | kartu vs halaman | ΔL*  |
+ * |--------|-----------|-------------|-----------|------------------|------|
+ * | terang | `#f5f5f5` | `#ffffff`   | `#ffffff` | 1,09:1           | 3,46 |
+ * | gelap  | `#000000` | `#141414`   | `#1f1f1f` | 1,14:1           | 6,32 |
+ *
+ * (ΔL* = selisih lightness CIE — satuan yang berarti untuk dua BIDANG
+ * bersebelahan; rasio WCAG dibuat untuk teks di atas latar, dan pada dua
+ * abu-abu terang ia memampatkan perbedaan yang masih terlihat mata.)
+ *
+ * ── Dinding pertama: setiap permukaan terang dipatok oleh #208 ────────────
+ * Menggelapkan latar halaman menurunkan kontras SETIAP tinta yang mendarat di
+ * atasnya. Diukur — permukaan netral (r=g=b) paling gelap yang masih
+ * dilewati tiap token, di tema terang:
+ *
+ * | Tinta                                 | ambang | permukaan tergelap |
+ * |---------------------------------------|--------|--------------------|
+ * | `colorBorderSecondary` `#8c8c8c` (#208) | 3:1  | **`#f2f2f2`**      |
+ * | `colorMoneyPositive` `#237804` (#186)   | 4,5:1| `#e7e7e7`          |
+ * | `colorBorder` `#808080` (#208)          | 3:1  | `#e1e1e1`          |
+ * | `colorMoneyInfo` / `colorBrandText`     | 4,5:1| `#dddddd`          |
+ * | `colorMoneyNegative` `#b32430`          | 4,5:1| `#d7d7d7`          |
+ * | `colorMoneyPending` `#874d00`           | 4,5:1| `#d3d3d3`          |
+ * | teks bantuan `rgba(0,0,0,0.65)` (#207)  | 4,5:1| `#a1a1a1`          |
+ *
+ * Yang mematok bukan teksnya melainkan **tepi kartu**: `colorBorderSecondary`
+ * berdiri di ANTARA kartu putih dan halaman, jadi ia harus lolos 3:1 di kedua
+ * sisinya. Latar `#f2f2f2` menyisakan ΔL* 4,51 — 1,05 lebih banyak dari hari
+ * ini, yaitu perbedaan yang tidak akan terlihat siapa pun, ditukar dengan
+ * SELURUH margin sebuah ambang yang dijaga (3,00:1 tepat). Itu bukan tukaran
+ * yang layak diambil, dan karena itu tidak diambil.
+ *
+ * Dan tangga netral AntD sendiri tidak menawarkan apa pun di antaranya. Netral
+ * terang AntD lahir dari `colorFill*` yang dikomposit ke putih — `#fafafa`
+ * (α 0,02) · `#f5f5f5` (α 0,04, yang berlaku hari ini) · `#f0f0f0` (α 0,06) ·
+ * `#d9d9d9` (α 0,15). Anak tangga berikutnya keduanya menabrak:
+ *
+ *   `#f0f0f0` -> tepi kartu 2,95:1  (GAGAL 3:1; ΔL* hanya 5,20)
+ *   `#d9d9d9` -> tepi kartu 2,38:1 dan uang-positif 3,96:1 (GAGAL keduanya)
+ *
+ * ── Dinding kedua: tema gelap dipatok oleh #186 ───────────────────────────
+ * Arahnya terbalik dan hasilnya sama. Permukaan gelap paling TERANG yang masih
+ * dilewati tiap token: `colorMoneyInfo` `#3c89e8` -> `#212121`,
+ * `colorBorderSecondary` `#6a6a6a` -> `#202020`. `colorBgElevated` gelap hari
+ * ini `#1f1f1f` — tersisa **tiga satuan RGB** sebelum warna tautan/angka
+ * informasional jatuh di bawah 4,5:1. Permukaan gelap karena itu juga tidak
+ * bisa direnggangkan.
+ *
+ * Akibat yang perlu ikut dicatat untuk #205: panel dialog gelap vs halaman
+ * bertirai (1,27:1 terukur di sini) **tidak bisa** diperbaiki dari lapisan
+ * token. Menaikkan `colorBgElevated` menjatuhkan `colorMoneyInfo`; menggelapkan
+ * `colorBgMask` tidak melakukan apa-apa karena `colorBgLayout` gelap sudah
+ * `#000000` — tirai hitam di atas hitam. Yang tersisa adalah bayangan/tepi
+ * Modal, dan itu bukan warna. (Di tema terang angkanya sehat: panel putih vs
+ * halaman bertirai `#878787` = 3,59:1.)
+ *
+ * ── Kenapa menggeser latar TETAP ditolak walau ada jalan yang "lolos" ─────
+ * Ada satu susunan yang melewati semua ambang: latar `#f0f0f0` **bersama**
+ * kisi/tepi naik ke grey-4 (`#808080`) dan batas kendali ke grey-5
+ * (`#737373`). Terukur, tak satu pun pasangan turun — kisi 3,08 -> 3,47,
+ * kendali 3,62 -> 4,16, uang-positif 5,12 -> 4,90 (tetap di atas 4,5).
+ *
+ * Ia tetap ditolak, dan alasannya membaca keluhannya, bukan angkanya: susunan
+ * itu **menggelapkan setiap garis di aplikasi** demi menambah ΔL* 1,74 pada
+ * bidangnya. Keluhannya berbunyi "outline saja" — jadi menambah bobot outline
+ * adalah arah yang salah, betapa pun sehat angkanya.
+ *
+ * Dan di situlah letak temuan yang sebenarnya. #208 menaikkan kisi dari 1,05:1
+ * (bawaan AntD — kalibrasi yang berlaku di hampir setiap aplikasi di atas
+ * pustaka ini) menjadi 3,08:1, hampir tiga kali lipat. Itu SENGAJA, supaya kisi
+ * membawa makna, dan itu keputusan aksesibilitas yang tidak boleh dibalik.
+ * Tetapi konsekuensinya baru terbaca sekarang: garis
+ * setegas itu MEMANG menjadi hal paling menonjol di layar, dan ia sekaligus
+ * yang memaku setiap bidang di dalam pita 3,5% antara `#ffffff` dan `#f2f2f2`.
+ * **#208 dan #266 terhubung lewat satu angka**, dan keduanya tidak bisa sama-
+ * sama berada di ujung "tenang"-nya.
+ *
+ * ── Yang tersisa, dan kenapa bukan di berkas ini ─────────────────────────
+ * Isyarat "terangkat" yang tidak memakai luminansi bidang dan karena itu
+ * berongkos kontras NOL: **bayangan** pada kartu (`boxShadow`, MASTER.md
+ * menyebut `--ant-box-shadow-tertiary` sebagai "lift halus") dan **kepala
+ * tabel bernada** pada nilai yang sudah terbukti aman. Nada `#f5f5f5` di dalam
+ * kartu putih tidak menambah risiko apa pun: ia latar halaman hari ini, jadi
+ * setiap token di berkas ini sudah diukur di atasnya.
+ *
+ * Keduanya tidak bisa dijangkau dari lapisan token: `Card` AntD tidak punya
+ * token bayangan sama sekali (lihat `antd/es/card/style` — `headerBg`,
+ * `actionsBg`, padding, tinggi; tidak ada `boxShadow`), dan `Table.headerBg`
+ * hanya mengenai `DataTable` (20 dari 66 tabel) sedangkan `StaticTable`
+ * menggambar sel judulnya sendiri tanpa latar. Menyetel `Table.headerBg`
+ * sendirian karena itu menghasilkan dua rupa tabel di satu produk — lebih
+ * buruk dari tidak melakukan apa-apa. Keduanya pekerjaan perender, dan
+ * keputusannya milik pemilik; angkanya ada di atas.
+ *
+ * ── Kalau suatu hari permukaannya MEMANG digeser ─────────────────────────
+ * Dua tempat di luar `ConfigProvider` ikut memikul nilainya, dan keduanya diam
+ * kalau tertinggal: nilai cadangan `var(--ant-color-bg-layout, #f5f5f5)` pada
+ * `body` di `globals.css` (dipakai halaman galat Next yang dirender DI LUAR
+ * `AntdRegistry`), dan blok `html.dark` di berkas yang sama, yang menahan latar
+ * gelap untuk pilihan "ikut sistem" sebelum hydrate. Yang tertinggal tidak
+ * menghasilkan galat — hanya satu frame, atau satu halaman galat, berlatar
+ * warna lama.
+ *
+ * Semua yang tertulis di sini dihitung ulang setiap kali suite berjalan di
+ * `tests/antd-tokens.test.ts` (bagian "jenjang permukaan"), dari paket `antd`
+ * yang benar-benar terpasang — termasuk kedua dinding di atas. Kalau bagian itu
+ * merah, permukaan sudah bergeser dan seluruh tabel di berkas ini harus
+ * diturunkan ulang, bukan ditambal satu hex.
+ */
+
+/* ------------------------------------------------------------------------ */
 /* Permukaan gelap permanen — nilai yang TIDAK punya variabel CSS (#204)     */
 /* ------------------------------------------------------------------------ */
 

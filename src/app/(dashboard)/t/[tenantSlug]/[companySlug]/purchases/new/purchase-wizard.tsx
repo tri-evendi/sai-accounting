@@ -31,7 +31,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -817,7 +817,7 @@ export function PurchaseWizard({
                 <Label htmlFor="purchaseCurrency" style={{ marginBottom: token.marginXXS }}>
                   {t("common.currencyField")}
                 </Label>
-                <NativeSelect
+                <SelectField
                   id="purchaseCurrency"
                   options={[
                     { value: "IDR", label: "IDR (Rupiah)" },

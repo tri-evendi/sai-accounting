@@ -31,7 +31,7 @@
  *    kesalahan pembukuan yang paling mahal di layar ini. Daftar datar tidak
  *    membuat kesalahan itu terlihat lebih mudah dari sekarang, tetapi pohon
  *    membuatnya terlihat SEPERTI pilihan yang sah.
- *  • `NativeSelect` sudah menyalakan pencariannya sendiri di atas 12 opsi
+ *  • `SelectField` sudah menyalakan pencariannya sendiri di atas 12 opsi
  *    (`SEARCH_THRESHOLD`), dan kode akun mengurutkan dirinya sendiri secara
  *    hierarkis — mengetik "1101" lebih cepat daripada membuka tiga cabang.
  *
@@ -47,7 +47,7 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
-import { NativeSelect, Select } from "@/components/ui/select";
+import { SelectField, Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -222,7 +222,7 @@ export function NewJournalForm() {
       align: "left",
       width: ACCOUNT_COL_WIDTH,
       render: (_v, row, index) => (
-        <NativeSelect
+        <SelectField
           aria-label={t("common.account")}
           value={row.accountId}
           onChange={(e) => updateLine(index, { accountId: e.target.value })}
@@ -268,7 +268,7 @@ export function NewJournalForm() {
       align: "left",
       width: CURRENCY_COL_WIDTH,
       render: (_v, row, index) => (
-        <NativeSelect
+        <SelectField
           aria-label={t("common.currency")}
           value={row.currency}
           onChange={(e) =>
@@ -305,7 +305,7 @@ export function NewJournalForm() {
       align: "left",
       width: COST_CENTER_COL_WIDTH,
       render: (_v, row, index) => (
-        <NativeSelect
+        <SelectField
           aria-label={t("journal.colCostCenter")}
           value={row.costCenterId}
           onChange={(e) => updateLine(index, { costCenterId: e.target.value })}

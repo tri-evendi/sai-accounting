@@ -4,7 +4,7 @@
  * ── Bug yang dijaga ────────────────────────────────────────────────────────
  * `focusFormField` mencari sasarannya lewat `#id` lalu `[name=…]`. Sejak #188
  * isian pilihan bukan lagi `<select>` native: `[name=…]` di sana adalah
- * `<input type="hidden">` yang dititipkan `NativeSelect` supaya
+ * `<input type="hidden">` yang dititipkan `SelectField` supaya
  * `new FormData(form)` dan `<form method="get">` tetap bekerja. Memfokuskan
  * simpul itu TIDAK melempar galat — ia diam-diam membuang fokusnya. Jadi saat
  * validasi menolak sebuah isian pilihan, halaman menggulir ke sana tetapi
@@ -22,7 +22,7 @@
  * seluruh tes UI-nya menyatakan sesuatu tentang markup hasil
  * `renderToStaticMarkup`. Menambah jsdom hanya demi satu berkas adalah
  * dependensi berat untuk masalah kecil; sebagai gantinya markup NYATA hasil
- * render `NativeSelect` diurai menjadi pohon sekecil mungkin yang memenuhi
+ * render `SelectField` diurai menjadi pohon sekecil mungkin yang memenuhi
  * `FocusTargetNode`, lalu `focusFormField` YANG SEBENARNYA dijalankan di
  * atasnya. Yang ditiru hanya pengurai HTML-nya; bentuk DOM yang diuji datang
  * dari komponen sungguhan, jadi perubahan bentuk DOM AntD ikut terlihat di
@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/form";
 import { focusFormField, type FocusSearchRoot, type FocusTargetNode } from "@/components/ui/disclosure-section";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { LocaleProvider } from "@/lib/i18n/client";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
@@ -249,7 +249,7 @@ function Probe() {
             <FormItem>
               <FormLabel required>Akun lawan</FormLabel>
               <FormControl>
-                <NativeSelect
+                <SelectField
                   {...field}
                   placeholder="Pilih akun"
                   options={[
@@ -265,7 +265,7 @@ function Probe() {
         {/* Isian pilihan di LUAR pola `Form` — di sini `id` memang sama dengan
             nama fieldnya (pola saringan `method="get"` dan formulir kontrak/
             faktur yang belum memakai react-hook-form). */}
-        <NativeSelect
+        <SelectField
           id="currency"
           name="currency"
           options={[
@@ -319,7 +319,7 @@ function expectKeyboardFocusable(node: TestElement): void {
   const nativelyFocusable = ["input", "select", "textarea", "button"].includes(node.tagName);
   const tabIndex = node.getAttribute("tabindex");
   expect(nativelyFocusable || (tabIndex !== null && Number(tabIndex) >= 0), what).toBe(true);
-  // Tidak berada di dalam pembungkus yang disembunyikan CSS — `NativeSelect`
+  // Tidak berada di dalam pembungkus yang disembunyikan CSS — `SelectField`
   // menaruh hidden companion-nya di `ant-select-prefix` yang `display:none`.
   for (const parent of ancestors(node)) {
     expect(

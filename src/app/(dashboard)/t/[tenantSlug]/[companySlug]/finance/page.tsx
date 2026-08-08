@@ -23,7 +23,7 @@ import { formatCurrency, formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -286,7 +286,7 @@ export default async function FinancePage({
             {filterField(
               "filter-type",
               t("finance.filterType"),
-              <NativeSelect
+              <SelectField
                 id="filter-type"
                 name="type"
                 defaultValue={filters.type || ""}
@@ -301,7 +301,7 @@ export default async function FinancePage({
             {filterField(
               "filter-currency",
               t("common.currency"),
-              <NativeSelect
+              <SelectField
                 id="filter-currency"
                 name="currency"
                 defaultValue={filters.currency || ""}
@@ -316,7 +316,7 @@ export default async function FinancePage({
             {filterField(
               "filter-year",
               t("finance.yearField"),
-              <NativeSelect
+              <SelectField
                 id="filter-year"
                 name="year"
                 defaultValue={effectiveYear != null ? String(effectiveYear) : ""}
@@ -329,7 +329,7 @@ export default async function FinancePage({
             {filterField(
               "filter-month",
               t("finance.monthField"),
-              <NativeSelect
+              <SelectField
                 id="filter-month"
                 name="month"
                 defaultValue={monthValid ? String(monthNum) : ""}

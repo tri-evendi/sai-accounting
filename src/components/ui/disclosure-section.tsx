@@ -226,7 +226,7 @@ export function DisclosureSection({
  * `focus()` pada simpul tersembunyi pun sah dan senyap. Dengan bentuk ini
  * penjaganya (`tests/focus-form-field.test.tsx`) bisa menjalankan
  * `focusFormField` YANG SEBENARNYA di atas pohon yang dibangun dari markup NYATA
- * hasil render `NativeSelect`, bukan di atas tiruan perilaku.
+ * hasil render `SelectField`, bukan di atas tiruan perilaku.
  *
  * `HTMLElement` memenuhi bentuk ini apa adanya, jadi pemanggil di peramban tidak
  * perlu tahu bahwa ia ada.
@@ -254,8 +254,8 @@ const NATIVELY_FOCUSABLE = new Set(["input", "select", "textarea", "button"]);
  * Bisakah simpul ini benar-benar menerima fokus papan tik?
  *
  * `input[type="hidden"]` sengaja disebut lebih dulu: itulah simpul yang
- * dititipkan `NativeSelect` supaya `new FormData(form)` tetap bekerja (lihat
- * catatan `NativeSelect` di MASTER.md), dan memfokuskannya adalah kegagalan
+ * dititipkan `SelectField` supaya `new FormData(form)` tetap bekerja (lihat
+ * catatan `SelectField` di MASTER.md), dan memfokuskannya adalah kegagalan
  * DIAM — peramban menerima panggilannya lalu membuang fokusnya.
  */
 function isKeyboardFocusable(node: FocusTargetNode): boolean {

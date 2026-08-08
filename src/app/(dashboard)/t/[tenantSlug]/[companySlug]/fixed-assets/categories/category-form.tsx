@@ -20,7 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -204,7 +204,7 @@ export function CategoryForm({
                     <FormItem>
                       <FormLabel>{t("fixedAssets.defaultMethodField")}</FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           disabled
                           options={[
                             {
@@ -228,7 +228,7 @@ export function CategoryForm({
                     <FormItem>
                       <FormLabel required>{t("fixedAssets.assetAccountField")}</FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           options={acctOptions(assetAccounts)}
                           placeholder={t("fixedAssets.pickAccount")}
                           {...field}
@@ -247,7 +247,7 @@ export function CategoryForm({
                         {t("fixedAssets.accumulatedAccountField")}
                       </FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           options={acctOptions(accumulatedAccounts)}
                           placeholder={t("fixedAssets.pickAccount")}
                           {...field}
@@ -264,7 +264,7 @@ export function CategoryForm({
                     <FormItem>
                       <FormLabel required>{t("fixedAssets.expenseAccountField")}</FormLabel>
                       <FormControl>
-                        <NativeSelect
+                        <SelectField
                           options={acctOptions(expenseAccounts)}
                           placeholder={t("fixedAssets.pickAccount")}
                           {...field}

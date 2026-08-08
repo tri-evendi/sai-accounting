@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextInput } from "@/components/ui/input";
 import { Money } from "@/components/ui/money";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import {
   Form,
@@ -279,7 +279,7 @@ export function AdvanceForm({
                 <FormItem>
                   <FormLabel required>{t("advances.typeField")}</FormLabel>
                   <FormControl>
-                    <NativeSelect
+                    <SelectField
                       options={[
                         { value: "sales", label: t("advances.lockedSales") },
                         { value: "purchase", label: t("advances.lockedPurchase") },
@@ -328,7 +328,7 @@ export function AdvanceForm({
                     {isSales ? t("common.customer") : t("advances.partySupplier")}
                   </FormLabel>
                   <FormControl>
-                    <NativeSelect
+                    <SelectField
                       placeholder={
                         isSales ? t("advances.pickCustomer") : t("advances.pickSupplier")
                       }
@@ -404,7 +404,7 @@ export function AdvanceForm({
               <FormItem>
                 <FormLabel>{t("common.currency")}</FormLabel>
                 <FormControl>
-                  <NativeSelect options={CURRENCY_OPTIONS} {...field} />
+                  <SelectField options={CURRENCY_OPTIONS} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

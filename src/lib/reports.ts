@@ -20,6 +20,7 @@
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
+import { balanceSheetEquityTotal } from "@/lib/statement-layout";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -287,7 +288,11 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
   }
 
   const netIncome = revenue - expense; // current-period earnings, folded into equity side
-  const totalLiabilitiesEquity = totalLiabilities + totalEquity + netIncome;
+  // Sisi kanan neraca memakai penjumlahan ekuitas yang SAMA dengan yang dibaca
+  // orang di baris "Total Ekuitas" (issue #258) — kalau keduanya dua rumus
+  // terpisah, ada hari di mana laporan menyebut dirinya seimbang sementara dua
+  // angka yang dicetaknya tidak.
+  const totalLiabilitiesEquity = totalLiabilities + balanceSheetEquityTotal({ totalEquity, netIncome });
 
   return {
     assets,

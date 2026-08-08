@@ -1635,6 +1635,7 @@
     "sectionEquity": "Ekuitas",
     "sectionTotal": "Total {section}",
     "currentNetIncome": "Akumulasi Laba/Rugi",
+    "noAccountsInSection": "Tidak ada akun bersaldo pada bagian ini.",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
     "colStatementAmount": "Jumlah (IDR)",

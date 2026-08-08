@@ -21,15 +21,20 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   agingColumns,
+  balanceSheetBalanceNote,
+  balanceSheetLayout,
   budgetColumns,
   cashBankColumns,
   cashFlowLayout,
   cashFlowReconciliationNote,
   incomeStatementLayout,
   partyRecapColumns,
+  splitBalanceSheetRows,
   stockMovementColumns,
   stockValueColumns,
   AGING_HEADERS,
+  BALANCE_SHEET_COLUMNS,
+  BALANCE_SHEET_HEADERS,
   BUDGET_HEADERS,
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
@@ -37,6 +42,8 @@ import {
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
+  type BalanceSheetColumnId,
+  type BalanceSheetLayoutRow,
   type BudgetColumnId,
   type CashBankColumnId,
   type CashFlowColumnId,
@@ -170,38 +177,49 @@ function buildIncomeStatementSheet(
   };
 }
 
+/**
+ * Lebar kolom Neraca. Lebarnya urusan lembar sebar sendiri (PDF mengatur
+ * kolomnya lain); judulnya TIDAK — itu datang dari `BALANCE_SHEET_HEADERS`
+ * bersama cetakan.
+ */
+const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
+  item: 48,
+  amount: 22,
+};
+
 function buildBalanceSheetSheet(
   p: Extract<StatementPayload, { kind: "balance-sheet" }>
 ): SheetModel {
+  // Bentuknya seluruhnya milik `balanceSheetLayout()` — urutan barisnya, tempat
+  // "Akumulasi Laba/Rugi" duduk, kalimat seksi kosong, dan penjumlahan
+  // ekuitasnya (issue #258).
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(p));
+  const cell = (r: BalanceSheetLayoutRow, label: string): SheetCell[] => {
+    const bold = r.kind !== "line";
+    /*
+     * Nol tetap ANGKA nol di sini. Satu-satunya alasan lembar sebar ada adalah
+     * agar kolomnya bisa dijumlah, dan teks di tengah kolom mematikan `SUM`.
+     * Yang TIDAK BERLAKU (judul seksi, kalimat "tidak ada akun") tetap sel
+     * kosong, bukan nol.
+     */
+    return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+  };
   const rows: SheetCell[][] = [
-    headingRow("Aset", 2),
-    ...statementLineRows(p.assets),
-    [text("Total Aset", true), money(p.totalAssets, true)],
-    headingRow("Liabilitas", 2),
-    ...statementLineRows(p.liabilities),
-    [text("Total Liabilitas", true), money(p.totalLiabilities, true)],
-    headingRow("Ekuitas", 2),
-    ...statementLineRows(p.equity),
-    [text("Akumulasi Laba/Rugi"), money(p.netIncome)],
-    [text("Total Ekuitas", true), money(p.totalEquity + p.netIncome, true)],
-    [
-      text(
-        p.balanced
-          ? "Total Liabilitas + Ekuitas (Seimbang)"
-          : "Total Liabilitas + Ekuitas (TIDAK SEIMBANG)",
-        true
-      ),
-      money(p.totalLiabilitiesEquity, true),
-    ],
+    ...body.map((r) => cell(r, r.label)),
+    // Keseimbangan adalah ANOTASI pada baris penutup terakhir — lencana di
+    // layar, tanda kurung di sini dan di PDF.
+    ...foot.map((r, i) =>
+      cell(r, i === foot.length - 1 ? `${r.label} ${balanceSheetBalanceNote(p.balanced)}` : r.label)
+    ),
   ];
   return {
     name: "Neraca",
     title: "Neraca",
     period: p.period,
-    columns: [
-      { header: "Keterangan", width: 48 },
-      { header: "Jumlah (IDR)", width: 22 },
-    ],
+    columns: BALANCE_SHEET_COLUMNS.map((c) => ({
+      header: BALANCE_SHEET_HEADERS[c],
+      width: BALANCE_SHEET_WIDTHS[c],
+    })),
     rows,
   };
 }

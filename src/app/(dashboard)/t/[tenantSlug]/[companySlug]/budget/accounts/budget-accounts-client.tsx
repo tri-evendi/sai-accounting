@@ -25,7 +25,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -267,7 +267,7 @@ export function BudgetAccountsClient({
                       <FormItem>
                         <FormLabel required>{t("common.account")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={accounts.map((a) => ({
                               value: String(a.id),
                               label: `${a.code} · ${a.name}`,
@@ -312,7 +312,7 @@ export function BudgetAccountsClient({
                       <FormItem>
                         <FormLabel required>{t("budget.yearField")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={Array.from(
                               { length: 6 },
                               (_, i) => defaultYear + 1 - i
@@ -333,7 +333,7 @@ export function BudgetAccountsClient({
                       <FormItem>
                         <FormLabel required>{t("budget.monthField")}</FormLabel>
                         <FormControl>
-                          <NativeSelect
+                          <SelectField
                             options={months.map((name, i) => ({
                               value: String(i + 1),
                               label: name,

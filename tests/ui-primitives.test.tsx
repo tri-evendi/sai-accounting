@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Card } from "@/components/ui/card";
 import { Input, TextInput } from "@/components/ui/input";
-import { NativeSelect, SEARCH_THRESHOLD, Select } from "@/components/ui/select";
+import { SelectField, SEARCH_THRESHOLD, Select } from "@/components/ui/select";
 
 /*
  * `Button` dan `Badge` sudah tidak diuji di sini sejak issue #187. Keduanya
@@ -111,7 +111,7 @@ describe("Select", () => {
     // di server component — kalau nilainya berhenti terkirim, saringannya diam-
     // diam berhenti menyaring, tanpa satu pun galat.
     const html = renderToStaticMarkup(
-      <NativeSelect
+      <SelectField
         name="status"
         defaultValue="draft"
         options={[{ value: "draft", label: "Draf" }]}
@@ -124,7 +124,7 @@ describe("Select", () => {
 
   it("tanpa `name`: tidak menambah simpul apa pun", () => {
     const html = renderToStaticMarkup(
-      <NativeSelect options={[{ value: "draft", label: "Draf" }]} />
+      <SelectField options={[{ value: "draft", label: "Draf" }]} />
     );
     expect(html).not.toContain('type="hidden"');
   });
@@ -135,15 +135,15 @@ describe("Select", () => {
 
     // Pendek: memunculkan papan tik ponsel untuk memilih satu dari empat adalah
     // langkah tambahan, bukan bantuan.
-    expect(renderToStaticMarkup(<NativeSelect options={opsi(4)} />)).not.toContain(
+    expect(renderToStaticMarkup(<SelectField options={opsi(4)} />)).not.toContain(
       "ant-select-show-search"
     );
     expect(
-      renderToStaticMarkup(<NativeSelect options={opsi(SEARCH_THRESHOLD + 1)} />)
+      renderToStaticMarkup(<SelectField options={opsi(SEARCH_THRESHOLD + 1)} />)
     ).toContain("ant-select-show-search");
     // Ambangnya boleh ditimpa eksplisit.
     expect(
-      renderToStaticMarkup(<NativeSelect searchable options={opsi(2)} />)
+      renderToStaticMarkup(<SelectField searchable options={opsi(2)} />)
     ).toContain("ant-select-show-search");
   });
 

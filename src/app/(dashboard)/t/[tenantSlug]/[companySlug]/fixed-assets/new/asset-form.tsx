@@ -27,7 +27,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -234,7 +234,7 @@ export function AssetForm({
               <FormItem>
                 <FormLabel required>{t("fixedAssets.colCategory")}</FormLabel>
                 <FormControl>
-                  <NativeSelect
+                  <SelectField
                     options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
                     {...field}
                     // Memilih kategori ikut mengisi umur manfaat & ketiga akun,
@@ -344,7 +344,7 @@ export function AssetForm({
               <FormItem>
                 <FormLabel>{t("fixedAssets.methodField")}</FormLabel>
                 <FormControl>
-                  <NativeSelect
+                  <SelectField
                     disabled
                     options={[
                       { value: "straight_line", label: t("depreciationMethod.straight_line") },
@@ -366,7 +366,7 @@ export function AssetForm({
               <FormItem>
                 <FormLabel required>{t("fixedAssets.assetAccountField")}</FormLabel>
                 <FormControl>
-                  <NativeSelect options={acctOptions(assetAccounts)} {...field} />
+                  <SelectField options={acctOptions(assetAccounts)} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -379,7 +379,7 @@ export function AssetForm({
               <FormItem>
                 <FormLabel required>{t("fixedAssets.accumulatedAccountField")}</FormLabel>
                 <FormControl>
-                  <NativeSelect options={acctOptions(accumulatedAccounts)} {...field} />
+                  <SelectField options={acctOptions(accumulatedAccounts)} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -392,7 +392,7 @@ export function AssetForm({
               <FormItem>
                 <FormLabel required>{t("fixedAssets.expenseAccountField")}</FormLabel>
                 <FormControl>
-                  <NativeSelect options={acctOptions(expenseAccounts)} {...field} />
+                  <SelectField options={acctOptions(expenseAccounts)} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -17,12 +17,31 @@
  * ⌘K (`components/layout/command-palette.tsx`), dan `Popover` masih dipakai
  * `TermTooltip`. Keduanya sekarang punya satu pemakai, bukan tiga.
  *
- * ── Yang hilang, dan harus disebut ────────────────────────────────────────
- * `searchPlaceholder` kini TIDAK berpengaruh. Pada pola lama kotak pencarian
- * hidup di dalam popover sehingga punya placeholder sendiri; pada AntD, yang
- * diketik adalah pemicunya sendiri — placeholder-nya adalah `placeholder`.
- * Prop-nya tetap diterima supaya lima pemanggilnya tidak perlu disentuh di fase
- * B; hapus di fase C (#194–#198) bersama teks kamusnya.
+ * ── Yang hilang, dan sudah selesai dibereskan ─────────────────────────────
+ * `searchPlaceholder` dicabut di #263. Pada pola lama kotak pencarian hidup di
+ * dalam popover sehingga punya placeholder sendiri; pada AntD yang diketik
+ * adalah pemicunya sendiri, jadi placeholder-nya `placeholder`. Prop itu tetap
+ * diterima sepanjang fase B–C supaya pemanggilnya tidak ikut berubah di tengah
+ * migrasi, dan selama itu ia adalah bentuk kegagalan yang sama dengan `name` di
+ * bawah: sebuah prop yang menerima nilai lalu tidak melakukan apa pun dengannya.
+ * Dua belas pemanggil mengopernya sampai hari terakhir, semuanya inert.
+ *
+ * ── Kenapa `name` ditutup di TIPE (issue #263) ────────────────────────────
+ * `SelectField` (`components/ui/select.tsx`) menitipkan `<input type="hidden">`
+ * saat diberi `name`, sehingga nilainya ikut `new FormData(form)` dan
+ * `<form method="get">`. Isian ini TIDAK, dan tidak akan: yang dirender AntD
+ * bukan kontrol form sama sekali. Ketiga isian pilihan terlihat setara dari
+ * sisi pemanggil, jadi ketiadaan itu harus dinyatakan di tempat yang dibaca
+ * mesin, bukan hanya di komentar.
+ *
+ * Yang membuatnya lebih dari kosmetik: TANPA deklarasi penolak di bawah,
+ * `name` yang datang lewat SEBARAN — `{...field}` dari `react-hook-form`, satu
+ * baris yang setiap penulis form di repo ini sudah terbiasa menulis — lolos
+ * `tsc` tanpa satu galat pun (terukur di #263: nol galat). Pemeriksaan properti
+ * berlebih JSX tidak berlaku untuk sebaran; yang berlaku hanya pemeriksaan
+ * KECOCOKAN TIPE atas properti yang dideklarasikan. Karena itu `name` harus ADA
+ * di tipe agar bisa ditolak, dan tipenya dibuat berupa kalimat supaya pesan
+ * `tsc`-nya menjelaskan sendiri apa yang harus dipakai sebagai gantinya.
  */
 
 import { Select, type SelectProps } from "antd";
@@ -37,6 +56,19 @@ export interface SearchableOption {
   description?: string;
 }
 
+/**
+ * Tipe penolak untuk prop `name` pada kedua isian pilihan berpencarian.
+ *
+ * Ia sengaja sebuah LITERAL STRING, bukan `never`: `tsc` mencetak literal itu
+ * apa adanya di pesan galatnya, sedangkan `never` hanya menghasilkan
+ * "Type 'string' is not assignable to type 'undefined'" — benar, dan tidak
+ * memberi tahu siapa pun apa yang harus dilakukan. Alias ini pun ikut
+ * dibentangkan `tsc` menjadi isinya, jadi kalimatnya benar-benar sampai ke
+ * layar orang yang menabraknya.
+ */
+export type NameTidakDiterima =
+  "isian pilihan berpencarian tidak ikut new FormData(form): pakai SelectField bila nilainya harus terkirim bersama form, atau baca nilainya lewat value/onChange (issue #263)";
+
 interface SearchableSelectProps {
   options: SearchableOption[];
   value: string | null;
@@ -44,12 +76,16 @@ interface SearchableSelectProps {
   id?: string;
   label?: string;
   placeholder?: string;
-  /** @deprecated Tidak berpengaruh sejak #188 — lihat komentar kepala berkas. */
-  searchPlaceholder?: string;
   emptyText?: string;
   /** Show a clear (×) button when a value is selected. Default true. */
   clearable?: boolean;
   disabled?: boolean;
+  /**
+   * Bukan prop: penolak bertipe. Nilainya TIDAK PERNAH dibaca komponen ini —
+   * satu-satunya tugasnya adalah membuat `name` gagal di `tsc`, termasuk saat
+   * ia datang lewat `{...field}`. Lihat komentar kepala berkas.
+   */
+  name?: NameTidakDiterima;
 }
 
 /**

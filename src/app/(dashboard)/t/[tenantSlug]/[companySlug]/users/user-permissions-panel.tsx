@@ -5,7 +5,7 @@
  * pengguna, pola inline-card yang sama dengan form "Create New User" di
  * `users-client.tsx` (bukan halaman baru).
  *
- * Per izin, pilihan tri-state lewat `NativeSelect` (issue #50):
+ * Per izin, pilihan tri-state lewat `SelectField` (issue #50):
  *   "Ikuti peran (Boleh/Tidak)"  → tidak ada baris tersimpan (default);
  *   "Selalu boleh"               → override allowed=true;
  *   "Selalu tidak"               → override allowed=false.
@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageLoader } from "@/components/ui/loading";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -511,7 +511,7 @@ function UserPermissionGroupRows({
             </TableCell>
             <TableCell>
               <Flex vertical gap={token.marginXXS}>
-                <NativeSelect
+                <SelectField
                   fieldSize="sm"
                   value={choice}
                   disabled={disabled || locked}

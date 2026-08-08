@@ -74,7 +74,7 @@ import {
 } from "@/components/ui/form";
 import { TextInput } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/client";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
@@ -332,7 +332,7 @@ function MarkPaidPanel({
               <FormItem>
                 <FormLabel>{t("operator.actions.markPaid.invoiceLabel")}</FormLabel>
                 <FormControl>
-                  <NativeSelect
+                  <SelectField
                     placeholder="—"
                     options={invoices.map((inv) => ({
                       value: inv.number,
@@ -539,7 +539,7 @@ function ChangePlanPanel({
             <FormItem>
               <FormLabel>{t("operator.actions.plan.planLabel")}</FormLabel>
               <FormControl>
-                <NativeSelect
+                <SelectField
                   placeholder="—"
                   options={plans.map((plan) => ({
                     value: plan.key,

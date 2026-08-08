@@ -45,7 +45,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { TextInput } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { applyPaymentServerErrors } from "@/components/shared/payment-form";
 import { LocaleProvider } from "@/lib/i18n/client";
@@ -240,13 +240,13 @@ describe("pautan label–isian–deskripsi–galat terpasang otomatis", () => {
 
   it("isian PILIHAN wajib ikut mengumumkannya — bukan hanya isian teks", () => {
     /*
-     * `NativeSelect` memasang `aria-required` sendiri dari prop `required`, dan
+     * `SelectField` memasang `aria-required` sendiri dari prop `required`, dan
      * atribut eksplisit itu berada SETELAH `{...props}` — jadi ia sempat
      * menimpa `aria-required` yang disuntik `FormControl` dengan `undefined`.
      * Justru isian pilihan yang paling membutuhkannya: `Select` AntD kehilangan
      * `required` native di #188 (issue #216).
      */
-    function SelectField() {
+    function IsianPilihanWajib() {
       const form = useForm<{ currency: string }>({ defaultValues: { currency: "" } });
       return (
         <Form {...form}>
@@ -257,7 +257,7 @@ describe("pautan label–isian–deskripsi–galat terpasang otomatis", () => {
               <FormItem>
                 <FormLabel required>Mata uang</FormLabel>
                 <FormControl>
-                  <NativeSelect options={[{ value: "USD", label: "USD" }]} {...field} />
+                  <SelectField options={[{ value: "USD", label: "USD" }]} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -266,7 +266,7 @@ describe("pautan label–isian–deskripsi–galat terpasang otomatis", () => {
         </Form>
       );
     }
-    expect(renderToStaticMarkup(<SelectField />)).toContain('aria-required="true"');
+    expect(renderToStaticMarkup(<IsianPilihanWajib />)).toContain('aria-required="true"');
   });
 });
 
@@ -312,7 +312,7 @@ interface Shape {
 
 function controlOf(kind: ControlKind, field: Record<string, unknown>) {
   if (kind === "select") {
-    return <NativeSelect options={[{ value: "USD", label: "USD" }]} {...field} />;
+    return <SelectField options={[{ value: "USD", label: "USD" }]} {...field} />;
   }
   if (kind === "textarea") return <Textarea rows={2} {...field} />;
   if (kind === "checkbox") return <TextInput id="probe-checkbox" type="checkbox" {...field} />;

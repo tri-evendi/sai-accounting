@@ -158,7 +158,7 @@ export default async function SuppliersPage({
         description={t("suppliers.description")}
         actions={
           <Link href="/suppliers/new">
-            <Button>{t("suppliers.addNew")}</Button>
+            <Button variant="primary">{t("suppliers.addNew")}</Button>
           </Link>
         }
       />

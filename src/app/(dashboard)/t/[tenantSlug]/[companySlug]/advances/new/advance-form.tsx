@@ -517,7 +517,7 @@ export function AdvanceForm({
       </Shell>
 
       <Flex wrap gap={token.marginXS} style={{ marginTop: locked ? token.margin : token.marginLG }}>
-        <Button type="submit" size={locked ? "sm" : undefined} disabled={form.formState.isSubmitting}>
+        <Button variant="primary" type="submit" size={locked ? "sm" : undefined} disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting && <Spin size="small" />}
           {t("advances.submit")}
         </Button>

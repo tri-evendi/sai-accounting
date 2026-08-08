@@ -261,7 +261,17 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
                 </Flex>
               </Col>
               <Col xs={24} sm={4}>
-                <Button type="submit" disabled={busy || !newKey || !newLabel}>
+                {/* `secondary` (#267 potongan 4): formulir ini memang menyimpan,
+                    tetapi ia SAMPINGAN di layar yang tugas utamanya menyunting
+                    lalu menyimpan matriks izin — dan "Simpan perubahan" di
+                    kepala `/permissions` yang memikul itu. Bentuk yang sama
+                    persis dengan "Simpan barang-baru" di `inventory/update`
+                    (potongan 3) dan kompensasi uang muka (potongan 2). */}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={busy || !newKey || !newLabel}
+                >
                   <PlusOutlined aria-hidden="true" />
                   {t("permissions.addRole")}
                 </Button>

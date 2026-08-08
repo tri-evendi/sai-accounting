@@ -123,7 +123,12 @@ export default async function StockOpnamePage({
               <Button variant="secondary">{t("opnameHistory.linkLabel")}</Button>
             </Link>
             <Link href="/inventory/update">
-              <Button>{t("common.addRemoveStock")}</Button>
+              {/* `secondary` (#267 potongan 4): ia NAVIGASI ke modul lain, dan
+                  layar ini punya aksi yang mengikat sendiri — submit
+                  `OpnameForm` di bawah. Dua blok biru dari dua berkas adalah
+                  bentuk yang tak terlihat penjaga; yang turun navigasinya,
+                  persis seperti "Buat Faktur" di `/contracts/[id]`. */}
+              <Button variant="secondary">{t("common.addRemoveStock")}</Button>
             </Link>
           </>
         }

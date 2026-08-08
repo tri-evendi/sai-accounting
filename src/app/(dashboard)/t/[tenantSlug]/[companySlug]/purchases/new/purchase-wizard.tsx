@@ -312,7 +312,7 @@ export function PurchaseWizard({
               </div>
               <Flex wrap gap={token.marginSM} style={{ marginTop: token.marginLG }}>
                 <Link href={`/suppliers/${result.supplierId}`}>
-                  <Button>{t("purchases.viewSupplier")}</Button>
+                  <Button variant="primary">{t("purchases.viewSupplier")}</Button>
                 </Link>
                 <Button
                   type="button"

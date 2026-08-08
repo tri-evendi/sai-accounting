@@ -244,7 +244,7 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
           )}
 
           <Flex wrap gap={token.marginSM}>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button variant="primary" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? t("common.saving") : t("costCenters.submit")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => router.back()}>

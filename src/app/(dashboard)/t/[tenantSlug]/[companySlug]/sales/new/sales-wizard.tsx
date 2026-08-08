@@ -489,7 +489,7 @@ export function SalesWizard({
               )}
               <Flex wrap gap={token.marginSM} style={{ marginTop: token.marginLG }}>
                 <Link href={`/invoices/${result.invoice.id}`}>
-                  <Button>{t("sales.viewInvoice")}</Button>
+                  <Button variant="primary">{t("sales.viewInvoice")}</Button>
                 </Link>
                 <Button
                   type="button"

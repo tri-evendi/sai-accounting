@@ -542,13 +542,23 @@ Yang **tidak** memenuhi syarat:
   "Kembali ke dasbor"). Layarnya tidak punya tugas; ia punya pintu.
 - **Kirim formulir yang MENYARING**, bukan mengikat. "Saring" di
   `/operator` `outline`, dan itu benar: ia membaca ulang, tidak menulis apa pun.
-  Sejak potongan 3 ini berlaku pada **enam** kotak cari/saring halaman daftar
-  (`/contracts`, `/delivery-orders`, `/documents`, `/invoices`, `/finance`) dan
-  pada `shared/ledger-filter.tsx` + `shared/stock-period-filter.tsx`.
+  Sejak potongan 4 ini berlaku pada **seluruh** kotak cari/saring app ini:
+  `/contracts`, `/delivery-orders`, `/documents`, `/invoices`, `/finance`,
+  `/accounts` (potongan 4 — variannya sudah tertulis `secondary`, jadi ia tidak
+  muncul di sapuan tombol implisit dan baru ketahuan saat dibandingkan),
+  `shared/ledger-filter.tsx`, `shared/stock-period-filter.tsx`,
+  `ledger/ledger-filter.tsx`, dan **kedua penyaring laporan**
+  (`reports/report-filters.tsx` → delapan halaman laporan, yang karena itu kini
+  sengaja **nol** aksi utama: layar baca dengan ekspor `secondary`).
 - **Chip/tab saringan, termasuk yang sedang AKTIF.** Chip aktif menyatakan
   KEADAAN ("inilah irisan yang sedang Anda lihat"), bukan ajakan — jadi ia
   `secondary` (berbingkai) dan saudaranya `ghost` (tanpa bingkai), tidak pernah
   berisi penuh. Bedanya ada pada bingkai, bukan pada warna saja.
+  Sejak potongan 4 aturan ini juga menjangkau **tombol pemilih baris**:
+  "Tinjau" di `/periods` (`periods/period-manager.tsx`) menentukan periode mana
+  yang dibaca kartu ringkasan di sebelahnya — bentuk chip, bukan aksi — dan
+  baris terpilihnya sudah bertanda lewat latar `colorPrimaryBg` serta judul
+  kartu kanan, jadi penurunannya tidak menghapus isyarat apa pun.
   ⚠ Chip granularitas `shared/stock-period-filter.tsx` **tetap** berisi penuh,
   dan itu bukan inkonsistensi: potongan 2 mempertahankannya dengan syarat yang
   ditulis di sana — *ia satu-satunya penekanan penuh di layarnya* (`/inventory/movement`
@@ -557,9 +567,26 @@ Yang **tidak** memenuhi syarat:
   memang aksi utamanya. Syaratnya yang menentukan, bukan bentuk widgetnya.
 - **Pemicu yang membuka panel.** Ia tata letak, bukan aksi: `secondary`, dan
   yang primer adalah submit DI DALAM panelnya (`shared/payment-form.tsx`,
-  `users/users-client.tsx`, `inventory/update/stock-form.tsx`). Akibatnya layar
+  `users/users-client.tsx`, `inventory/update/stock-form.tsx`,
+  `suppliers/[id]/advance-panel.tsx` sejak potongan 4). Akibatnya layar
   memikul nol primer saat panel tertutup dan tepat satu saat terbuka — bentuk
   yang paling sering benar untuk halaman detail.
+  ⚠ **Pemicu `ConfirmDialog` BUKAN pemicu panel**, dan perbedaannya bukan
+  teknis: pemicu panel membuka pekerjaan yang belum dikerjakan (isian yang masih
+  kosong), sedangkan dialog konfirmasi muncul SETELAH pekerjaannya selesai —
+  penggunanya sudah mengisi formulir atau memilih barisnya, dan yang tersisa
+  hanya membenarkan. Karena itu pemicunya BOLEH primer: `/periods` "Tutup
+  periode" dan `/inventory/opname` "Simpan hasil opname" keduanya pemicu dialog
+  dan keduanya aksi utama layarnya. Yang menurunkan pemicu "Setujui" di
+  `/approvals` karena itu bukan bentuk dialognya, melainkan pengulangan barisnya
+  (di bawah).
+- **Aksi baris yang berulang** — lihat pengecualian 1 di bawah. `/approvals`
+  adalah kasus paling terang di app ini: "Setujui" dan "Ajukan ulang" hidup di
+  dalam `.map()`, jadi antrean berisi sepuluh dokumen memberi sepuluh blok biru.
+  Keduanya `secondary` sejak potongan 4, dan tidak ada yang hilang: aksi yang
+  mengikat tetap berisi penuh di layarnya sendiri, yaitu di dalam dialognya.
+  Layar itu kini **nol** primer — benar untuk permukaan yang tugasnya menimbang,
+  bukan menjalankan.
 - **Aksi destruktif.** `variant="destructive"` tidak pernah dihitung sebagai
   aksi utama layar — ia menonjol karena bahayanya, bukan karena dimaksudkan.
   ⚠ **Angka kontrasnya bukan urusan bagian ini: tombol `danger` gagal 4,5:1 di
@@ -625,6 +652,17 @@ penekanan menjadi **jawaban atas keadaan**, bukan properti tetap tata letak.
 Yang harus dijaga: dalam keadaan yang menaikkannya, tombol itu **satu-satunya**
 primer di layar.
 
+Contoh terbaiknya lahir di potongan 4, karena syarat itu terpenuhi oleh
+halamannya sendiri, bukan oleh janji: `/tax/efaktur` memikul dua aksi mengikat
+dari dua berkas — "Simpan identitas penjual" dan "Unduh CSV". Tetapi selama NPWP
+penjual kosong, halaman itu **tidak merender tombol unduhnya sama sekali**
+(diganti catatan "NPWP diperlukan"), jadi menyimpan identitas benar-benar
+satu-satunya jalan maju. `variant={identityIncomplete ? "primary" : "secondary"}`
+karena itu bukan penyetelan selera: penekanan pindah mengikuti apa yang bisa
+dilakukan. Bandingkan dengan eskalasi yang **dicabut** di potongan 3
+(`reconciliation-workspace` menaikkan "Kunci" saat pekerjaannya justru belum
+selesai) — bentuknya sama, syaratnya yang membedakan.
+
 ### Pendaratan `/` DIKECUALIKAN — dan pengecualiannya berbatas
 
 Aturan di atas **tidak berlaku** untuk `/` dan `src/components/landing/**`.
@@ -666,49 +704,55 @@ masing-masing ditandai ulang. Karena itu urutannya dibalik: **audit dulu**
 dibalik — dan pada saat itu pembalikannya tidak mengubah satu piksel pun.
 Keadaan akhirnya identik, risikonya jauh berbeda.
 
-Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`, **seluruh
-`src/components`** (tanpa kecuali sejak potongan 3 — `ui/empty-state.tsx` yang
-ditahan potongan 2 sudah diputuskan di atas), dan **13 berkas `(dashboard)`**
-yang didaftar satu per satu di `BERKAS_TERAUDIT`. Sisa: ~70 berkas `(dashboard)`
-lain, dipecah per modul di potongan 4 — dan baru sesudahnya bawaan `variant`
-dibalik.
+**Auditnya SELESAI sejak potongan 4.** `src/app` dan `src/components` kini
+seluruhnya menulis `variant`-nya — **nol** `<Button>` implisit, dihitung dengan
+parser TS yang sama dengan penjaganya. `BERKAS_TERAUDIT` (daftar 13 berkas
+satuan potongan 3) melebur menjadi satu baris direktori, persis seperti yang
+dijanjikan, dan `AREA_TERAUDIT` tinggal dua akar.
 
-`BERKAS_TERAUDIT` adalah daftar **berkas**, bukan direktori, karena
-`(dashboard)` baru sebagian diaudit: mendaftarkan direktorinya akan merah pada
-70+ berkas yang belum gilirannya, sedangkan tidak mendaftarkan apa pun berarti
-hasil potongan 3 tidak dijaga sama sekali. Potongan 4 meleburnya jadi satu
-baris.
+Artinya **syarat pembalikan bawaan sudah terpenuhi**: potongan 5 boleh membalik
+`variant` ke `secondary`, dan nilainya justru pada terbukti **tidak mengubah
+satu piksel pun**. Kalau pembalikan itu ternyata mengubah sesuatu di layar,
+yang salah bukan bawaannya — ada tombol yang lolos audit ini.
+
+Potongan 4 sendiri menyentuh **53 tombol implisit di 51 berkas** (bukan 61/55
+seperti yang diperkirakan sebelum potongan 3 mendarat): **43 tetap primer** —
+hampir seluruhnya submit formulir dan CTA kepala halaman, yaitu tebakan awal
+yang ternyata benar — dan **10 turun**, semuanya karena tabrakan yang hanya
+terlihat dengan membuka halamannya.
 
 ### Penjaganya — dan batasnya, yang harus dibaca
 
 `tests/button-emphasis.test.ts` menjaga **dua** hal, dan sengaja tidak berpura-
 pura menjaga yang ketiga:
 
-1. **Keeksplisitan** di area yang sudah diaudit: setiap `<Button>` menyebut
-   `variant`-nya. Inilah yang membuat pembalikan bawaan nanti menjadi jaring
-   pengaman, bukan perubahan. Sejak potongan 3 lingkupnya = `AREA_TERAUDIT`
-   (direktori) **+ `BERKAS_TERAUDIT`** (13 berkas satuan di `(dashboard)`).
+1. **Keeksplisitan**: setiap `<Button>` menyebut `variant`-nya. Inilah yang
+   membuat pembalikan bawaan nanti menjadi jaring pengaman, bukan perubahan.
+   Sejak potongan 4 lingkupnya **seluruh `src/app` + `src/components`, tanpa
+   satu pun pengecualian** — `BERKAS_TERAUDIT` melebur ke direktorinya.
 2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Cabang ternary
    dihitung sebagai alternatif (`Math.max`), bukan dijumlahkan — tanpa itu
    penjaganya merah pada kaki wisaya dan `/verify-email`, yaitu pada contoh
    paling bersih dari aturannya, dan penjaga yang merah pada yang benar akan
    dilonggarkan sampai tidak menjaga apa pun. Pada jalan pertamanya ia **merah
-   di 13 berkas** `(dashboard)`/`components`, yang didaftar di `SISA_AUDIT`.
-   **Potongan 3 mengosongkan daftar itu**: penjaga ini kini menyapu seluruh
-   `src/app` + `src/components` tanpa satu pun pengecualian.
+   di 13 berkas**; potongan 2 & 3 mengosongkan daftar sisanya, dan sejak
+   potongan 4 daftar itu **tidak ada lagi**.
 
 Sejak potongan 2 ada penjaga **ketiga**, dan ia menjaga BATAS sebuah
 pengecualian, bukan aturannya: setiap tombol primer di `components/landing/**`
 harus menuju `/register` (lihat §Pendaratan `/` DIKECUALIKAN di atas).
 
-⚠ **Efek samping daftar yang kosong.** `SISA_AUDIT` dan `SISA_KEEKSPLISITAN`
-kini keduanya kosong, jadi kedua tes "tidak memuat entri basi" lulus **tanpa
-memeriksa apa pun**. Itu bukan kegagalan — daftar kosong memang tak punya entri
-basi — tetapi keduanya berhenti membuktikan sesuatu sampai ada yang menambahkan
-baris lagi. Yang masih membuktikan sesuatu adalah tes utamanya. Sebagai
-gantinya potongan 3 memasang penjaga **keempat**: `BERKAS_TERAUDIT` harus
-menunjuk berkas yang benar-benar ada — sebuah halaman yang dipindah akan
-membuat penjaga #1 diam-diam berhenti memeriksanya, hijau tanpa satu kata pun.
+**Daftar pengecualiannya DIHAPUS, bukan dikosongkan (potongan 4).** Potongan 3
+mengosongkan `SISA_AUDIT` dan `SISA_KEEKSPLISITAN` lalu menulis sendiri
+kelemahan yang ia ciptakan: kedua tes "tidak memuat entri basi" lulus pada
+daftar kosong, yaitu **tanpa memeriksa apa pun**, sementara jumlah tes hijau
+terbaca lebih kuat daripada kenyataannya. Potongan 4 menutupnya dengan mencabut
+kedua daftar berikut kedua tes hampa itu (dan `BERKAS_TERAUDIT` berikut tes
+"berkasnya ada"). Yang menggantikannya memeriksa sesuatu yang tidak bisa hampa:
+**penjaga keeksplisitan harus menyentuh SETIAP berkas `.tsx`** di kedua akar —
+merah kalau ada yang mempersempit lingkupnya kembali ke subdirektori atau
+memasang saringan pengecualian baru. Siapa pun yang kelak butuh pengecualian
+harus menulis ulang mekanismenya di PR-nya sendiri, terlihat di diff.
 
 **Yang TIDAK dijaga, dan hanya bisa dilihat mata:** pengulangan lewat `.map()`
 (satu simpul di sumber, sepuluh tombol di layar), primer yang tersebar antar
@@ -740,11 +784,37 @@ Dua lagi di potongan 3, ditemukan dengan cara yang sama:
   pembayaran, menyunting, dan mencetak PDF sama-sama tersedia. Hasilnya sama
   dengan `/invoices/[id]`: nol primer dalam keadaan bawaan, tepat satu saat
   formulir pembayaran dibuka.
-- **`fixed-assets/page.tsx` × `fixed-assets/run-depreciation.tsx`** — ⚠ **BELUM
-  diselesaikan.** Kartu "Jalankan penyusutan" merender tombol primer implisit di
-  halaman yang CTA kepalanya juga primer. `run-depreciation.tsx` berkas
-  `(dashboard)` di luar lingkup potongan 3; **utang potongan 4**, dicatat di
-  sini supaya ia tidak hilang. Bentuknya persis kelas yang tak terlihat penjaga.
+- **`fixed-assets/page.tsx` × `fixed-assets/run-depreciation.tsx`** — utang yang
+  potongan 3 catat, **dibayar di potongan 4**. Kartu "Jalankan penyusutan"
+  memposting, jadi ia memenuhi syarat aksi utama; ia tetap yang **turun**
+  (`secondary`). Yang memutuskan adalah keadaan kosongnya: hanya `hasCategories`
+  yang menyalakan kartu itu, jadi perusahaan yang sudah punya kategori tapi
+  belum punya satu aset pun akan melihat satu-satunya blok biru di layarnya
+  menjalankan penyusutan atas nol aset — sementara "Tambah Aset", satu-satunya
+  hal yang masuk akal di sana, berdiri redup. Preseden yang dipakai:
+  `advance-compensation` (potongan 2) dan "Simpan barang-baru" (potongan 3) —
+  aksi yang memposting tetapi SAMPINGAN di layar yang tugas utamanya lain.
+
+Empat lagi di potongan 4, semuanya kelas yang sama (dua primer dari dua berkas,
+atau dari dua ruang lingkup dalam satu berkas). Dua di antaranya **dibuktikan**
+tak terlihat penjaga: menaikkannya kembali tidak membuat satu tes pun merah.
+
+- **`fixed-assets` × `run-depreciation`** di atas.
+- **`periods/period-manager.tsx` dengan dirinya sendiri** — tombol baris
+  "Tinjau" yang terpilih berisi penuh, bertemu "Tutup periode" di kartu
+  sebelahnya. Penjaga #2 buta di sini bukan karena bentuk JSX-nya melainkan
+  karena **kolomnya dirakit di luar `return`**: tak ada satu wadah JSX pun yang
+  memuat keduanya. Yang turun barisnya (chip keadaan), sebab menutup periode
+  ADALAH pekerjaan halaman itu.
+- **`permissions-client.tsx` × `role-manager.tsx`** — "Simpan perubahan" matriks
+  bertemu "Tambah peran" di kartu bawah. Yang turun formulir perannya: ia
+  menyimpan, tetapi sampingan.
+- **`inventory/opname/page.tsx` × `opname-form.tsx`** — CTA kepala "Tambah/
+  Kurangi Stok" bertemu submit hasil opname. Yang turun CTA kepalanya: ia
+  NAVIGASI ke modul lain, persis bentuk "Buat Faktur" di `/contracts/[id]`.
+- **`tax/efaktur/page.tsx` × `seller-identity-form.tsx`** — diselesaikan dengan
+  eskalasi berkondisi, bukan dengan memilih pemenang tetap; lihat pengecualian 2
+  di atas.
 
 ---
 
@@ -771,7 +841,7 @@ membaca hijau dan menyimpulkan aman.
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
-| Satu aksi utama per layar: `variant` eksplisit di area **dan berkas** teraudit, tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX (tanpa pengecualian sejak potongan 3), dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di **seluruh** `src/app` + `src/components` (tanpa daftar pengecualian sejak potongan 4, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen/antar-lingkup, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |

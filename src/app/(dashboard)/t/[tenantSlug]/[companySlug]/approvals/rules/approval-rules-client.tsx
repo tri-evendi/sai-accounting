@@ -317,7 +317,7 @@ export function ApprovalRules({
                 </Flex>
 
                 <div>
-                  <Button type="submit" disabled={busy || minAmount === ""}>
+                  <Button variant="primary" type="submit" disabled={busy || minAmount === ""}>
                     <PlusOutlined aria-hidden="true" />
                     {t("approvals.submitRule")}
                   </Button>

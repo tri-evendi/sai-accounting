@@ -209,7 +209,7 @@ export function EditAccountForm() {
         </Card>
 
         <Flex wrap gap={token.marginSM}>
-          <Button type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" disabled={loading}>
             {loading ? t("common.saving") : t("common.saveChanges")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>

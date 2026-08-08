@@ -291,7 +291,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
           confirmVariant="primary"
           onConfirm={submit}
           trigger={
-            <Button disabled={changed.length === 0 || submitting}>
+            <Button variant="primary" disabled={changed.length === 0 || submitting}>
               {submitting ? t("common.saving") : t("inventory.opnameSubmit")}
             </Button>
           }

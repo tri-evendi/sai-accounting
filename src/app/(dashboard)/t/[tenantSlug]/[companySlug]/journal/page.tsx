@@ -183,7 +183,7 @@ export default async function JournalPage({
         title={t("journal.title", { count: totalCount })}
         actions={
           <Link href="/journal/new">
-            <Button>{t("journal.addNew")}</Button>
+            <Button variant="primary">{t("journal.addNew")}</Button>
           </Link>
         }
       />

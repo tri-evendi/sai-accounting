@@ -455,7 +455,7 @@ export function NewJournalForm() {
         </Card>
 
         <Flex wrap gap={token.marginSM}>
-          <Button type="submit" disabled={loading || !balanced}>
+          <Button variant="primary" type="submit" disabled={loading || !balanced}>
             {loading ? t("common.saving") : t("journal.submit")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>

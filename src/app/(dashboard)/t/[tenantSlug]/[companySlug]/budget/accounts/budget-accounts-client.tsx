@@ -358,7 +358,7 @@ export function BudgetAccountsClient({
                   </Col>
                 )}
                 <Col xs={24}>
-                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                  <Button variant="primary" type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting && <Spin size="small" />}
                     {t("budget.submitBudget")}
                   </Button>

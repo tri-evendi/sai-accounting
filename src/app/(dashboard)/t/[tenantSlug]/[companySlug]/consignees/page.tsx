@@ -146,7 +146,7 @@ export default async function ConsigneesPage({
         title={t("consignees.title", { count: totalCount })}
         actions={
           <Link href="/consignees/new">
-            <Button>{t("consignees.addNew")}</Button>
+            <Button variant="primary">{t("consignees.addNew")}</Button>
           </Link>
         }
       />

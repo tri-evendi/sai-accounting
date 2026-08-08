@@ -284,7 +284,7 @@ export function CategoryForm({
                 </div>
               )}
               <div>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button variant="primary" type="submit" disabled={form.formState.isSubmitting}>
                   {/* `Spin` menghormati `prefers-reduced-motion` lewat token gerak
                       AntD; `Loader2 animate-spin` tidak. */}
                   {form.formState.isSubmitting && <Spin size="small" />}

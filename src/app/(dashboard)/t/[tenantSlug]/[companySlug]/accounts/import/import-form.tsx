@@ -100,7 +100,8 @@ export function ImportAccountsForm() {
 
   /*
    * Alamat route-nya menyebut perusahaan (issue #158). Bukan gaya: tombol
-   * "Unduh template" adalah `<a href download>` biasa, dan sebuah tautan tidak
+   * "Unduh template" adalah `<a href download>` biasa (kini dirakit
+   * `<Button href download>`, tetap satu `<a>`), dan sebuah tautan tidak
    * melewati `apiFetch()` — tidak ada tempat menyisipkan header lingkup di
    * sana. Unggahannya memakai alamat yang SAMA, supaya tidak pernah ada dua
    * jawaban berbeda tentang "perusahaan mana" di satu layar.
@@ -209,12 +210,20 @@ export function ImportAccountsForm() {
             </Row>
 
             <div>
-              <a href={endpoint} download>
-                <Button variant="secondary" type="button">
-                  <DownloadOutlined aria-hidden="true" />
-                  {t("accounts.downloadTemplate")}
-                </Button>
-              </a>
+              {/* `<Button href download>`, BUKAN `<ButtonLink>` (#289): unduhan
+                  memang harus jatuh ke peramban. `tautanDicegat()` pun menolak
+                  mencegat `download` — dicegat berarti berkasnya tidak pernah
+                  terunduh dan yang terjadi malah pindah halaman.
+
+                  `type="button"` ikut hilang bersama elemen tombolnya: pada `<a>`
+                  atribut itu berarti tipe MIME dokumen tujuan, dan `ButtonAnchor`
+                  membuangnya. Tidak ada yang berubah — tombol ini di luar
+                  `<form>` unggahan di bawah, jadi ia tak pernah bisa
+                  mengirimkannya. */}
+              <Button href={endpoint} download variant="secondary">
+                <DownloadOutlined aria-hidden="true" />
+                {t("accounts.downloadTemplate")}
+              </Button>
             </div>
           </Flex>
         </CardContent>

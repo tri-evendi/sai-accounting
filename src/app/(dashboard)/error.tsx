@@ -20,7 +20,6 @@
 import { useEffect } from "react";
 import { Flex, Typography, theme } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
@@ -85,9 +84,25 @@ export default function DashboardError({
 
             <Flex wrap align="center" justify="center" gap={token.marginSM}>
               <Button variant="primary" onClick={() => reset()}>{t("error.retry")}</Button>
-              <Link href="/dashboard">
-                <Button variant="secondary">{t("error.toHome")}</Button>
-              </Link>
+              {/* ⚠ `<Button href>` di sini, BUKAN `<ButtonLink>` (#289), dan itu
+                  pilihan — bukan kelalaian.
+
+                  Di 18 pemindahan lain PR ini, #289 justru menuntut sebaliknya:
+                  `<Button href>` membuang `next/link`, jadi memakainya untuk
+                  perpindahan biasa berarti mencabut navigasi sisi-klien.
+                  Layar ini kebalikannya — pemuatan PENUH-lah yang diinginkan.
+                  Ini jalan keluar dari sebuah render yang GAGAL: satu-satunya
+                  cara memastikan tidak ada sisa keadaan rusak yang ikut
+                  terbawa (cache router yang memuat segmen beracun, muatan RSC
+                  yang gagal terurai, modul yang gagal termuat) adalah memulai
+                  dokumen baru. `router.push()` mempertahankan runtime yang
+                  sama persis, termasuk yang barusan meledak.
+
+                  Kembarannya `(tenant)/platform/error.tsx` sudah `<Button href>`
+                  sejak #200; dua layar galat yang berbeda perilakunya adalah
+                  cacat yang hanya terlihat kalau seseorang kebetulan memicu
+                  keduanya. */}
+              <Button href="/dashboard" variant="secondary">{t("error.toHome")}</Button>
             </Flex>
           </Flex>
         </CardContent>

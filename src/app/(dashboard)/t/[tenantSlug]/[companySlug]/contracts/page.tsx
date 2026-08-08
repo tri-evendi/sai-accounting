@@ -22,7 +22,7 @@ import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
@@ -223,22 +223,21 @@ export default async function ContractsPage({
   return (
     <div>
       {/*
-       * Tombol aksi tetap `<Link><Button/></Link>`, BUKAN `<Button href>`.
-       * Keduanya menghapus kelas yang jadi sasaran issue ini, tetapi
-       * `href` merender `<a href>` milik AntD — pemuatan halaman PENUH
-       * (lihat catatan `href` di `ui/button.tsx`). Untuk perpindahan di
-       * dalam modul yang sama, itu menukar satu kelas Tailwind dengan satu
-       * regresi kecepatan yang terasa. Sarang anchor–tombol yang tersisa
-       * adalah utang lama di 46 tempat, bukan sesuatu yang ditambah di sini.
+       * Tombol aksi memakai `<ButtonLink>` (#289) — utang yang catatan lama di
+       * sini justru menjelaskan: `<Link><Button/></Link>` dipertahankan karena
+       * satu-satunya alternatif waktu itu, `<Button href>`, merender `<a href>`
+       * AntD yaitu pemuatan halaman PENUH. Bentuk ketiga menyelesaikan pilihan
+       * palsu itu: satu `<a class="ant-btn">` DAN navigasi sisi-klien +
+       * prefetch, jadi tidak ada lagi yang perlu ditukar.
        */}
       <PageHeader
         title={<TermTooltip term="kontrak">{t("contracts.title", { count: totalCount })}</TermTooltip>}
         actions={
-          <Link href="/contracts/new">
-            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
-                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
-            <Button variant="primary">{t("contracts.addNew")}</Button>
-          </Link>
+          /* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+             yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */
+          <ButtonLink href="/contracts/new" variant="primary">
+            {t("contracts.addNew")}
+          </ButtonLink>
         }
       />
       <div style={{ marginBottom: SECTION_GAP }}>
@@ -262,21 +261,21 @@ export default async function ContractsPage({
           if (filters.search) query.set("search", filters.search);
           const qs = query.toString();
           return (
-            <Link key={status} href={`/contracts${qs ? `?${qs}` : ""}`}>
-              {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
-                  Menyaring tidak mengikat (§Aksi utama per layar), dan isian
-                  penuh di sini bersaing dengan "Tambah Kontrak" di kepala. */}
-              <Button
-                variant={
-                  filters.status === status || (!filters.status && status === "all")
-                    ? "secondary"
-                    : "ghost"
-                }
-                size="sm"
-              >
-                {statusLabels[status] ?? status}
-              </Button>
-            </Link>
+            /* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+               Menyaring tidak mengikat (§Aksi utama per layar), dan isian
+               penuh di sini bersaing dengan "Tambah Kontrak" di kepala. */
+            <ButtonLink
+              key={status}
+              href={`/contracts${qs ? `?${qs}` : ""}`}
+              variant={
+                filters.status === status || (!filters.status && status === "all")
+                  ? "secondary"
+                  : "ghost"
+              }
+              size="sm"
+            >
+              {statusLabels[status] ?? status}
+            </ButtonLink>
           );
         })}
       </div>

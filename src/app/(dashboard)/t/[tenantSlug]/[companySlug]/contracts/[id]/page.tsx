@@ -30,7 +30,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { canEffective } from "@/lib/authz-effective";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -361,9 +361,9 @@ export default async function ContractDetailPage({
 
   return (
     <div>
-      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `<Button href>`):
-          `href` merender `<a href>` AntD, yaitu pemuatan halaman PENUH —
-          lihat catatan `href` di `ui/button.tsx`. */}
+      {/* Tombol aksi memakai `<ButtonLink>` (#289): SATU `<a class="ant-btn">`,
+          bukan `<Link>` membungkus `<Button>` — dan tetap navigasi sisi-klien
+          + prefetch, yang `<Button href>` justru membuang. */}
       <PageHeader
         breadcrumbs={[
           { label: t("contracts.breadcrumb"), href: "/contracts" },
@@ -401,36 +401,34 @@ export default async function ContractDetailPage({
           />
           {/* Pola "Ambil" (issue #15): buka form faktur dengan kontrak ini terpilih,
               barisnya sudah terisi sisa yang belum difakturkan. */}
-          <Link href={`/invoices/new?contractId=${contract.id}`}>
-            {/* ── Utang potongan 2 (#267), dibayar di potongan 3 ──────────────
-             *
-             * Tombol ini dulu primer implisit dan BERTABRAKAN dengan submit
-             * `shared/payment-form.tsx` yang dirender di halaman yang sama
-             * lewat `payment-section.tsx`: begitu formulir pembayaran dibuka,
-             * layar ini memikul dua blok biru dari dua berkas berbeda —
-             * bentuk yang tidak satu pun penjaga bisa lihat (§Aksi utama per
-             * layar: "primer yang datang dari komponen BERBEDA tetap satu
-             * layar"). Potongan 2 mencatatnya alih-alih merapikannya diam-diam.
-             *
-             * Yang turun tombol INI, bukan submit pembayaran, karena "Buat
-             * Faktur" adalah NAVIGASI ke formulir lain — dan navigasi tidak
-             * memenuhi syarat aksi utama kecuali ia satu-satunya jalan maju.
-             * Di sini ia bukan: mencatat pembayaran, menyunting, dan mencetak
-             * PDF sama-sama tersedia. Submit pembayaran sebaliknya MENGIKAT.
-             *
-             * Hasilnya sama dengan `/invoices/[id]` di potongan 2: layar detail
-             * ini NOL primer dalam keadaan bawaan (ia memang layar baca — rantai
-             * dokumen, baris barang, riwayat pembayaran) dan TEPAT SATU saat
-             * formulir pembayaran dibuka. */}
-            <Button variant="secondary">
-              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
-                  primitif `Button` (`ICON_SIZE`). */}
-              <FileDoneOutlined aria-hidden="true" /> {t("contracts.createInvoice")}
-            </Button>
-          </Link>
-          <Link href={`/contracts/${contract.id}/edit`}>
-            <Button variant="secondary">{t("common.edit")}</Button>
-          </Link>
+          {/* ── Utang potongan 2 (#267), dibayar di potongan 3 ──────────────
+           *
+           * Tombol ini dulu primer implisit dan BERTABRAKAN dengan submit
+           * `shared/payment-form.tsx` yang dirender di halaman yang sama
+           * lewat `payment-section.tsx`: begitu formulir pembayaran dibuka,
+           * layar ini memikul dua blok biru dari dua berkas berbeda —
+           * bentuk yang tidak satu pun penjaga bisa lihat (§Aksi utama per
+           * layar: "primer yang datang dari komponen BERBEDA tetap satu
+           * layar"). Potongan 2 mencatatnya alih-alih merapikannya diam-diam.
+           *
+           * Yang turun tombol INI, bukan submit pembayaran, karena "Buat
+           * Faktur" adalah NAVIGASI ke formulir lain — dan navigasi tidak
+           * memenuhi syarat aksi utama kecuali ia satu-satunya jalan maju.
+           * Di sini ia bukan: mencatat pembayaran, menyunting, dan mencetak
+           * PDF sama-sama tersedia. Submit pembayaran sebaliknya MENGIKAT.
+           *
+           * Hasilnya sama dengan `/invoices/[id]` di potongan 2: layar detail
+           * ini NOL primer dalam keadaan bawaan (ia memang layar baca — rantai
+           * dokumen, baris barang, riwayat pembayaran) dan TEPAT SATU saat
+           * formulir pembayaran dibuka. */}
+          <ButtonLink href={`/invoices/new?contractId=${contract.id}`} variant="secondary">
+            {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
+                primitif `Button` (`ICON_SIZE`). */}
+            <FileDoneOutlined aria-hidden="true" /> {t("contracts.createInvoice")}
+          </ButtonLink>
+          <ButtonLink href={`/contracts/${contract.id}/edit`} variant="secondary">
+            {t("common.edit")}
+          </ButtonLink>
           {/* Cermin izin `contract.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "contract.delete")) && (
             <DeleteDocumentButton
@@ -442,9 +440,9 @@ export default async function ContractDetailPage({
               redirectTo="/contracts"
             />
           )}
-          <Link href="/contracts">
-            <Button variant="ghost">{t("common.back")}</Button>
-          </Link>
+          <ButtonLink href="/contracts" variant="ghost">
+            {t("common.back")}
+          </ButtonLink>
           </>
         }
       />

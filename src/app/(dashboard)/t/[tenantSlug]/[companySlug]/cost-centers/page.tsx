@@ -23,7 +23,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Badge } from "@/components/ui/badge";
@@ -163,9 +163,9 @@ export default async function CostCentersPage({
         title={t("costCenters.title", { count: costCenters.length })}
         description={t("costCenters.intro")}
         actions={
-          <Link href="/cost-centers/new">
-            <Button variant="primary">{t("costCenters.addNew")}</Button>
-          </Link>
+          <ButtonLink href="/cost-centers/new" variant="primary">
+            {t("costCenters.addNew")}
+          </ButtonLink>
         }
       />
 

@@ -11,7 +11,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -162,17 +162,15 @@ export default async function DeliveryOrdersPage({
         title={t("deliveryOrders.title")}
         description={t("deliveryOrders.description")}
         actions={
-          <Link href="/delivery-orders/new">
-            {/* Aksi utama layar ini (#267). CTA keadaan-kosong di bawah menunjuk
-                tempat yang sama dan sengaja `secondary` — lihat
-                `ui/empty-state.tsx`. */}
-            <Button variant="primary">
-              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
-                  primitif `Button`. */}
-              <PlusOutlined aria-hidden="true" />
-              {t("deliveryOrders.addNew")}
-            </Button>
-          </Link>
+          /* Aksi utama layar ini (#267). CTA keadaan-kosong di bawah menunjuk
+             tempat yang sama dan sengaja `secondary` — lihat
+             `ui/empty-state.tsx`. */
+          <ButtonLink href="/delivery-orders/new" variant="primary">
+            {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
+                primitif `Button`. */}
+            <PlusOutlined aria-hidden="true" />
+            {t("deliveryOrders.addNew")}
+          </ButtonLink>
         }
       />
 

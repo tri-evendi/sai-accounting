@@ -23,7 +23,7 @@ import { describe, it, expect } from "vitest";
 import { createFakeReportClient, type FakeSeedJournal } from "./fake-client";
 import { getIncomeStatement, incomeStatementSectionFor } from "@/lib/reports";
 import { ACCOUNT_TYPES, accountCategoryFor } from "@/lib/accounting";
-import { grossMarginPct, incomeStatementLayout } from "@/lib/statement-layout";
+import { grossMarginPct, incomeStatementBands } from "@/lib/statement-layout";
 
 const KAS = 1;
 const PIUTANG = 2;
@@ -192,14 +192,23 @@ describe("getIncomeStatement — the stepped and flat views cannot drift", () =>
   });
 });
 
-// ─── 4. The shape of the printed statement ──────────────────────────────────
+/*
+ * ─── 4. The shape of the printed statement ──────────────────────────────────
+ *
+ * Sejak issue #274 `incomeStatementLayout()` mengembalikan SELURUH baris laporan
+ * — label, subtotal, band kosong — untuk ketiga permukaan sekaligus, dan aturan
+ * "band mana yang layak dicetak" yang dulu ia jawab kini bernama
+ * `incomeStatementBands()`. Yang diuji di bawah tetap aturan yang sama persis;
+ * hanya namanya yang berubah, karena "layout" sekarang berarti hal yang lebih
+ * besar. Kesamaan ketiga permukaan hidup di `tests/income-statement-shape.test.ts`.
+ */
 
-describe("incomeStatementLayout — which bands get printed", () => {
+describe("incomeStatementBands — which bands get printed", () => {
   const band = (n: number) => ({ lines: Array.from({ length: n }, () => ({})), total: 0 });
 
   it("shows the full ladder when every band has lines", () => {
     expect(
-      incomeStatementLayout({ cogs: band(1), otherIncome: band(1), otherExpense: band(1) })
+      incomeStatementBands({ cogs: band(1), otherIncome: band(1), otherExpense: band(1) })
     ).toEqual({
       showCogs: true,
       showGrossProfit: true,
@@ -213,7 +222,7 @@ describe("incomeStatementLayout — which bands get printed", () => {
     // Laba Kotor would restate total revenue and Laba Usaha would restate the net
     // result — a subtotal that repeats the row above teaches readers to skip
     // subtotals. So a service company sees the report exactly as it was before.
-    const layout = incomeStatementLayout({
+    const layout = incomeStatementBands({
       cogs: band(0),
       otherIncome: band(0),
       otherExpense: band(0),
@@ -224,15 +233,15 @@ describe("incomeStatementLayout — which bands get printed", () => {
 
   it("still shows Laba Usaha when only ONE of the lain-lain bands has lines", () => {
     expect(
-      incomeStatementLayout({ cogs: band(0), otherIncome: band(1), otherExpense: band(0) })
+      incomeStatementBands({ cogs: band(0), otherIncome: band(1), otherExpense: band(0) })
         .showOperatingProfit
     ).toBe(true);
   });
 
   it("matches the real reader's output for the seeded trading month", async () => {
     const is = await march();
-    expect(incomeStatementLayout(is).showGrossProfit).toBe(true);
-    expect(incomeStatementLayout(is).showOperatingProfit).toBe(true);
+    expect(incomeStatementBands(is).showGrossProfit).toBe(true);
+    expect(incomeStatementBands(is).showOperatingProfit).toBe(true);
   });
 });
 

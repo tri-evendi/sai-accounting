@@ -241,6 +241,8 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
    }
    ```
 3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–error (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan pasang `aria-*` manual.
+
+   **Keempatnya harus berada di dalam `FormItem` yang sama, dan `FormItem` di dalam `FormField` — bukan sebaliknya (issue #262).** `aria-describedby` hanya boleh menyebut id yang simpulnya benar-benar dirender, dan yang memutuskannya adalah `FormItem`, saat render, dari anak yang dilihatnya (fragment, array, dan elemen HTML biasa ikut ditelusuri karena ketiganya pasti merender isinya). Yang tersembunyi di balik prop `render` sebuah `FormField` **di dalam** `FormItem` tidak terlihat dari sana — bentuk itu diam-diam kehilangan pautan deskripsinya. Menambal dengan `FormDescription` kosong ditolak: ia menambah simpul yang dibacakan tanpa isi. Kalau sebuah panel memang tidak punya isian (mis. "kata sandi sudah tersimpan"), tulis dua bentuk `FormItem` yang berbeda, jangan satu bentuk yang setengah ada.
 4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`NativeSelect`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
 5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
 6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).

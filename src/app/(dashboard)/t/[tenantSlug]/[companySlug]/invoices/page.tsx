@@ -25,7 +25,7 @@ import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
@@ -224,23 +224,24 @@ export default async function InvoicesPage({
 
   return (
     <div>
-      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `<Button href>`):
-          `href` merender `<a href>` AntD, yaitu pemuatan halaman PENUH. */}
+      {/* Tombol aksi memakai `<ButtonLink>` (#289): SATU `<a class="ant-btn">`,
+          bukan `<Link>` membungkus `<Button>` — dan tetap navigasi sisi-klien
+          + prefetch, yang `<Button href>` justru membuang. */}
       <PageHeader
         title={<TermTooltip term="faktur">{t("invoices.title", { count: totalCount })}</TermTooltip>}
         actions={
           <>
             {/* Alur terpandu = tombol utama (ramah amatir); formulir polos tetap
                 tersedia untuk yang sudah hafal alurnya (issue #5). */}
-            <Link href="/sales/new">
-              {/* Aksi utama layar ini (#267) — dan komentar di atas sudah
-                  menyebutnya begitu sejak #5; sekarang tertulis di variannya,
-                  bukan diwarisi dari bawaan primitif. */}
-              <Button variant="primary">{t("invoices.recordSaleGuided")}</Button>
-            </Link>
-            <Link href="/invoices/new">
-              <Button variant="secondary">{t("invoices.addNew")}</Button>
-            </Link>
+            {/* Aksi utama layar ini (#267) — dan komentar di atas sudah
+                menyebutnya begitu sejak #5; sekarang tertulis di variannya,
+                bukan diwarisi dari bawaan primitif. */}
+            <ButtonLink href="/sales/new" variant="primary">
+              {t("invoices.recordSaleGuided")}
+            </ButtonLink>
+            <ButtonLink href="/invoices/new" variant="secondary">
+              {t("invoices.addNew")}
+            </ButtonLink>
           </>
         }
       />
@@ -265,21 +266,21 @@ export default async function InvoicesPage({
           if (filters.search) query.set("search", filters.search);
           const qs = query.toString();
           return (
-            <Link key={status} href={`/invoices${qs ? `?${qs}` : ""}`}>
-              {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
-                  Menyaring tidak mengikat (§Aksi utama per layar), dan isian
-                  penuh di sini bersaing dengan "Catat Penjualan" di kepala. */}
-              <Button
-                variant={
-                  filters.status === status || (!filters.status && status === "all")
-                    ? "secondary"
-                    : "ghost"
-                }
-                size="sm"
-              >
-                {statusLabels[status] ?? status}
-              </Button>
-            </Link>
+            /* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+               Menyaring tidak mengikat (§Aksi utama per layar), dan isian
+               penuh di sini bersaing dengan "Catat Penjualan" di kepala. */
+            <ButtonLink
+              key={status}
+              href={`/invoices${qs ? `?${qs}` : ""}`}
+              variant={
+                filters.status === status || (!filters.status && status === "all")
+                  ? "secondary"
+                  : "ghost"
+              }
+              size="sm"
+            >
+              {statusLabels[status] ?? status}
+            </ButtonLink>
           );
         })}
       </div>

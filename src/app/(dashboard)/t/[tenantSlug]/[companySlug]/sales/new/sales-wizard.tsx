@@ -613,7 +613,6 @@ export function SalesWizard({
                   id="contractId"
                   label={t("sales.contractSource")}
                   placeholder={t("invoices.pickContract")}
-                  searchPlaceholder={t("invoices.searchContract")}
                   emptyText={t("invoices.noContractMatch")}
                   fetchUrl="/api/contracts?picker=1"
                   initialOption={
@@ -686,7 +685,6 @@ export function SalesWizard({
                       <SearchableSelect
                         label={t("common.itemFromStockList")}
                         placeholder={t("common.pickItem")}
-                        searchPlaceholder={t("common.searchItem")}
                         emptyText={t("common.noItemMatch")}
                         options={itemOptions}
                         value={line.itemId != null ? String(line.itemId) : null}
@@ -896,7 +894,6 @@ export function SalesWizard({
                     id="consigneeId"
                     label={t("sales.consigneeOptional")}
                     placeholder={t("sales.pickConsignee")}
-                    searchPlaceholder={t("sales.searchConsignee")}
                     emptyText={t("sales.noConsigneeMatch")}
                     fetchUrl="/api/consignees?active=1&picker=1"
                     initialOption={

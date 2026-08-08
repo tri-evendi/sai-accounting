@@ -30,16 +30,20 @@
  *     berikutnya datang, dan spinner TIDAK dimatikan oleh permintaan yang
  *     dibatalkan — kalau tidak, kolom berkedip "kosong" di antara dua ketikan.
  *
- * ── Yang hilang ───────────────────────────────────────────────────────────
- * `searchPlaceholder` tidak lagi berpengaruh (alasannya sama dengan
- * `SearchableSelect`: yang diketik sekarang pemicunya sendiri). Prop-nya tetap
- * diterima agar lima pemanggilnya tidak disentuh di fase B.
+ * ── Dua hal yang dibereskan di #263 ───────────────────────────────────────
+ * `searchPlaceholder` dicabut (alasannya sama dengan `SearchableSelect`: yang
+ * diketik sekarang pemicunya sendiri, jadi prop itu inert sejak #188), dan
+ * `name` ditutup di tipe. Isian ini sama seperti saudaranya: nilainya TIDAK
+ * ikut `new FormData(form)`, karena yang dirender AntD bukan kontrol form.
+ * Alasan lengkap penutupannya — termasuk kenapa `name` harus ADA di tipe untuk
+ * bisa ditolak — ada di kepala `searchable-select.tsx`.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Select, Spin } from "antd";
 
 import { Label } from "@/components/ui/label";
+import type { NameTidakDiterima } from "@/components/ui/searchable-select";
 import { useT } from "@/lib/i18n/client";
 import type { PickerOption } from "@/lib/picker";
 
@@ -60,12 +64,16 @@ interface ServerSearchableSelectProps {
   id?: string;
   label?: string;
   placeholder?: string;
-  /** @deprecated Tidak berpengaruh sejak #188 — lihat komentar kepala berkas. */
-  searchPlaceholder?: string;
   emptyText?: string;
   /** Show a clear (×) button when a value is selected. Default true. */
   clearable?: boolean;
   disabled?: boolean;
+  /**
+   * Bukan prop: penolak bertipe (#263). Nilainya TIDAK PERNAH dibaca komponen
+   * ini — satu-satunya tugasnya adalah membuat `name` gagal di `tsc`, termasuk
+   * saat ia datang lewat `{...field}`.
+   */
+  name?: NameTidakDiterima;
 }
 
 const PAGE_SIZE = 20;

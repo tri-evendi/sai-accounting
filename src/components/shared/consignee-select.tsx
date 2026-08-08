@@ -93,7 +93,6 @@ export function ConsigneeSelect({
         id="consigneeId"
         label={t("consignee.masterField")}
         placeholder={t("consignee.masterPlaceholder")}
-        searchPlaceholder={t("consignee.searchPlaceholder")}
         emptyText={t("consignee.noMatch")}
         options={options}
         value={consigneeId != null ? String(consigneeId) : null}

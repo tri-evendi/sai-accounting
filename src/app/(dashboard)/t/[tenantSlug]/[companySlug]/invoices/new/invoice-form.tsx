@@ -463,7 +463,6 @@ export function NewInvoiceForm({
                 id="contractId"
                 label={t("invoices.contractSourceOptional")}
                 placeholder={t("invoices.pickContract")}
-                searchPlaceholder={t("invoices.searchContract")}
                 emptyText={t("invoices.noContractMatch")}
                 fetchUrl="/api/contracts?picker=1"
                 initialOption={initialContract}

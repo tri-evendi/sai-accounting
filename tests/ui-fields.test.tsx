@@ -22,6 +22,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { PasswordField, PasswordInput } from "@/components/ui/password-input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SelectField } from "@/components/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { LocaleProvider } from "@/lib/i18n/client";
@@ -140,5 +141,89 @@ describe("ServerSearchableSelect", () => {
     );
     expect(html).toContain("INV-2026-0042");
     expect(html).not.toContain(">42<");
+  });
+});
+
+/* ------------------------------------------------------------------------ */
+/* Keluarga isian pilihan: satu perbedaan, dinyatakan (issue #263)            */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Ketiga isian pilihan repo ini terlihat setara dari sisi pemanggil, dan satu
+ * hal membedakannya: `SelectField` menitipkan kontrol tersembunyi bernama
+ * sehingga nilainya ikut `new FormData(form)`; kedua yang berpencarian tidak
+ * punya kontrol form sama sekali. Kegagalan yang dijaga di sini berbentuk
+ * paling buruk — sebuah field yang HILANG dari muatan, bukan kosong dan bukan
+ * nol, tanpa satu galat pun.
+ *
+ * Dua penjaga, dan keduanya dibutuhkan:
+ *
+ *  1. **Bentuk markup-nya** (tes di bawah). Kalau suatu saat kedua isian
+ *     berpencarian ikut diberi kontrol tersembunyi, tes ini MERAH — dan itu
+ *     memang yang diinginkan: keputusan #263 berbalik, jadi tipe & MASTER.md
+ *     harus ikut berbalik, bukan diam-diam menyimpang dari kode.
+ *
+ *  2. **Penutupan tipenya** (`penjagaTipeName`). Pembuktinya `bun run
+ *     typecheck`, bukan vitest: `@ts-expect-error` yang tidak lagi menemukan
+ *     galat adalah GALAT, jadi mencabut deklarasi penolak di primitifnya
+ *     membuat gerbang tipe merah.
+ *
+ *     Bentuk yang diuji SENGAJA sebaran, bukan `name="…"` yang ditulis
+ *     langsung. `name` yang ditulis langsung sudah ditolak sebagai properti
+ *     berlebih bahkan sebelum #263, jadi ia tidak membuktikan apa pun tentang
+ *     penutupan ini. Sebaran adalah kebalikannya: pemeriksaan properti berlebih
+ *     TIDAK berlaku untuknya, sehingga `{...field}` dari `react-hook-form` —
+ *     satu baris yang setiap penulis form di sini sudah terbiasa menulis —
+ *     lolos tanpa satu galat pun sampai `name` benar-benar ADA di tipe untuk
+ *     ditolak.
+ */
+function penjagaTipeName(rhfField: { name: string; onBlur: () => void }) {
+  // Direktifnya berdiri di baris DEKLARASI, bukan di baris sebarannya: galat
+  // ketaksesuaian tipe untuk sebuah sebaran dilaporkan `tsc` pada literal
+  // objeknya, bukan pada properti yang menyebabkannya.
+  // @ts-expect-error `name` ditolak di tipe (#263) — termasuk lewat sebaran.
+  const daftar: Parameters<typeof SearchableSelect>[0] = {
+    options: [],
+    value: null,
+    onChange: () => {},
+    ...rhfField,
+  };
+  // @ts-expect-error `name` ditolak di tipe (#263) — termasuk lewat sebaran.
+  const server: Parameters<typeof ServerSearchableSelect>[0] = {
+    fetchUrl: "/api/invoices?picker=1",
+    value: null,
+    onChange: () => {},
+    ...rhfField,
+  };
+  return [daftar, server];
+}
+
+describe("keluarga isian pilihan (#263)", () => {
+  const options = [{ value: "1", label: "PT Alfa" }];
+
+  it("SelectField menitipkan kontrol tersembunyi bernama — nilainya ikut FormData", () => {
+    const html = renderInId(<SelectField name="customerId" options={options} />);
+    expect(html).toContain('type="hidden"');
+    expect(html).toContain('name="customerId"');
+  });
+
+  it("kedua isian berpencarian tidak punya kontrol bernama sama sekali", () => {
+    const daftar = renderInId(
+      <SearchableSelect options={options} value="1" onChange={() => {}} />
+    );
+    const server = renderInId(
+      <ServerSearchableSelect fetchUrl="/api/x" value={null} onChange={() => {}} />
+    );
+    for (const html of [daftar, server]) {
+      expect(html).not.toContain('type="hidden"');
+      expect(html).not.toContain("name=");
+    }
+  });
+
+  it("`name` ditutup di tipe kedua isian berpencarian", () => {
+    // Yang membuktikan ada di `penjagaTipeName`, dan yang menjalankannya
+    // `bun run typecheck`. Di sini hanya dipastikan fungsinya masih berdiri,
+    // supaya ia tidak lenyap sebagai kode yang tampak mati.
+    expect(typeof penjagaTipeName).toBe("function");
   });
 });

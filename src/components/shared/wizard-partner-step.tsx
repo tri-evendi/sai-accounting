@@ -145,7 +145,6 @@ export function WizardPartnerStep({
               id="partnerId"
               label={t("wizard.partner.pickLabel", { noun })}
               placeholder={t("wizard.partner.pickPlaceholder", { noun })}
-              searchPlaceholder={t("wizard.partner.searchPlaceholder", { noun })}
               emptyText={t("wizard.partner.emptyText", { noun })}
               fetchUrl={fetchUrl}
               initialOption={initialOption}
@@ -165,7 +164,6 @@ export function WizardPartnerStep({
               id="partnerId"
               label={t("wizard.partner.pickLabel", { noun })}
               placeholder={t("wizard.partner.pickPlaceholder", { noun })}
-              searchPlaceholder={t("wizard.partner.searchPlaceholder", { noun })}
               emptyText={t("wizard.partner.emptyText", { noun })}
               options={options}
               value={value.id != null ? String(value.id) : null}

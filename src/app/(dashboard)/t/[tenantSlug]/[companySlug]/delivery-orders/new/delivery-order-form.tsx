@@ -368,7 +368,6 @@ export function DeliveryOrderForm({
                 id="consigneeId"
                 label={t("deliveryOrders.colConsignee")}
                 placeholder={t("deliveryOrders.pickConsignee")}
-                searchPlaceholder={t("deliveryOrders.searchConsignee")}
                 emptyText={t("deliveryOrders.noConsigneeMatch")}
                 options={consigneeOptions}
                 value={consigneeId != null ? String(consigneeId) : null}
@@ -397,7 +396,6 @@ export function DeliveryOrderForm({
               id="contractId"
               label={t("invoices.contractSourceOptional")}
               placeholder={t("invoices.pickContract")}
-              searchPlaceholder={t("invoices.searchContract")}
               emptyText={t("invoices.noContractMatch")}
               options={contractOptions}
               value={contractId != null ? String(contractId) : null}
@@ -407,7 +405,6 @@ export function DeliveryOrderForm({
               id="invoiceId"
               label={t("deliveryOrders.invoiceSourceOptional")}
               placeholder={t("deliveryOrders.pickInvoice")}
-              searchPlaceholder={t("deliveryOrders.searchInvoice")}
               emptyText={t("deliveryOrders.noInvoiceMatch")}
               options={invoiceOptions}
               value={invoiceId != null ? String(invoiceId) : null}
@@ -462,7 +459,6 @@ export function DeliveryOrderForm({
                       <SearchableSelect
                         label={t("common.item")}
                         placeholder={t("common.pickItem")}
-                        searchPlaceholder={t("common.searchItem")}
                         emptyText={t("common.noItemMatch")}
                         options={itemOptions}
                         value={line.itemId != null ? String(line.itemId) : null}

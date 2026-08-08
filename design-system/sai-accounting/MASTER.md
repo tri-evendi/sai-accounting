@@ -459,6 +459,7 @@ Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas
 - ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan; ❌ **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
 - ❌ Placeholder sebagai pengganti label.
+- ❌ Lebih dari satu tombol berisi penuh terlihat sekaligus di satu layar; ❌ menyeragamkannya dengan menurunkan SEMUA tombol jadi sekunder — itu menukar satu hierarki rata dengan hierarki rata yang lain. Lihat §Aksi utama per layar.
 - ❌ Teks < 14px untuk data penting; kontras di bawah ambang §Ambang kontras per ukuran teks.
 - ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
 - ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
@@ -499,6 +500,117 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 
 ---
 
+## Aksi utama per layar (issue #267)
+
+Penekanan visual adalah **informasi**: tombol berisi penuh memberi tahu pengguna
+aksi mana yang dimaksudkan layar ini. Ketika mayoritas tombol berisi penuh,
+penekanan berhenti membedakan apa pun — layar dengan enam tombol primer memberi
+enam ajakan setara, dan pengguna harus membaca semuanya untuk menemukan yang
+dimaksud. Di layar akuntansi aksi yang salah tekan berbiaya nyata (memposting,
+membatalkan, menyetujui), jadi ini bukan soal estetika.
+
+**Aturannya: satu aksi utama per layar. Nol juga sah.**
+
+### Yang dihitung "satu layar"
+
+Yang **terender bersamaan** pada satu URL dalam **satu keadaan** — bukan satu
+berkas, dan bukan satu komponen.
+
+- Cabang yang **saling meniadakan** bukan dua. `/verify-email` menulis tiga
+  tombol primer di satu berkas (sudah terverifikasi · sudah terdaftar ·
+  verifikasi sekarang); yang tampil selalu satu. Sama untuk kaki wisaya
+  ("Lanjut" pada langkah tengah, "Selesai" pada langkah terakhir).
+- **Overlay adalah layarnya sendiri.** Tombol utama sebuah `ConfirmDialog`/
+  `Modal` tidak bersaing dengan tombol di halaman di belakangnya.
+- **Sebaliknya**, primer yang datang dari komponen BERBEDA tetap satu layar.
+  `/platform/billing` memikul tiga tautan "Lihat paket" dari tiga berkas
+  (kepala halaman, pita masa coba, kartu naik-paket) — tidak ada penjaga yang
+  melihatnya, hanya mata.
+
+### Yang memenuhi syarat menjadi aksi utama
+
+Aksi yang **mengikat atau memajukan**: mengirim formulir yang menyimpan sesuatu,
+memposting, menyetujui, melangkah maju di wisaya, "mulai bekerja".
+
+Yang **tidak** memenuhi syarat:
+
+- **Navigasi ke layar baca lain** — kecuali ia satu-satunya jalan maju. Karena
+  itu "Tambah Perusahaan" primer di layar nol-perusahaan `/select-company` dan
+  `outline` di kaki kartu daftar, tempat ia jalan samping di sebelah pilihan
+  perusahaan. Tombol yang sama, dua peran.
+- **Jalan keluar dari layar buntu** (`/feature-inactive`, `/setup-required`:
+  "Kembali ke dasbor"). Layarnya tidak punya tugas; ia punya pintu.
+- **Kirim formulir yang MENYARING**, bukan mengikat. "Saring" di
+  `/operator` `outline`, dan itu benar: ia membaca ulang, tidak menulis apa pun.
+- **Aksi destruktif.** `variant="destructive"` tidak pernah dihitung sebagai
+  aksi utama layar — ia menonjol karena bahayanya, bukan karena dimaksudkan.
+  ⚠ **Angka kontrasnya bukan urusan bagian ini: tombol `danger` gagal 4,5:1 di
+  kedua tema dan sedang dikerjakan di #219.** Jangan memutuskannya dua kali.
+
+### Dua pengecualian — ditemukan dengan mengujinya ke layar nyata
+
+**1. Pilihan setara yang berulang.** Aksi baris di dalam `.map()` **tidak pernah
+primer**, karena jumlahnya tak terbatas dan sepuluh blok biru bukan sepuluh kali
+penekanan melainkan nol. **Kecuali** ketiga syarat ini benar sekaligus:
+
+  a. label dan akibatnya **identik** di setiap baris;
+  b. memilih salah satunya adalah **satu-satunya jalan maju** layar itu;
+  c. **tidak ada tombol primer lain** di layar itu.
+
+Satu layar memenuhinya: `/select-company` — sebuah kartu berisi daftar PT dan
+tidak ada apa pun lagi; kaki kartunya seluruhnya `outline`. Kisi yang bentuknya
+SAMA di `/platform` dan `/platform/team` **tidak** memenuhi syarat (b): kedua
+halaman itu juga memikul meteran kuota, status langganan, dan jalan lain — di
+sana barisnya `outline`. Menurunkan `/select-company` juga akan meratakan
+hierarki dari arah sebaliknya: layarnya jadi tanpa satu pun titik masuk.
+
+**2. Eskalasi berkondisi.** Sebuah tombol boleh **naik** menjadi primer hanya
+dalam keadaan tertentu — `variant={trial.urgent ? "primary" : "outline"}`
+(`platform/subscription-section.tsx`), `variant={isUpgrade ? "default" :
+"outline"}` (`billing/plans/plan-actions.tsx`). Bentuk ini disukai: ia membuat
+penekanan menjadi **jawaban atas keadaan**, bukan properti tetap tata letak.
+Yang harus dijaga: dalam keadaan yang menaikkannya, tombol itu **satu-satunya**
+primer di layar.
+
+### Bawaan `variant` masih `primary` — dan urutannya disengaja
+
+`<Button>` tanpa atribut adalah tombol berisi penuh. Bawaan yang benar untuk
+aturan di atas jelas `secondary`: penekanan tinggi harus **diminta**. Tetapi
+membalik bawaannya sebelum auditnya selesai akan menurunkan ~200 tombol
+sekaligus dan membuat **setiap layar kehilangan aksi utamanya** sampai
+masing-masing ditandai ulang. Karena itu urutannya dibalik: **audit dulu**
+(tulis `variant` eksplisit di mana-mana, satu potongan per PR), **baru** bawaan
+dibalik — dan pada saat itu pembalikannya tidak mengubah satu piksel pun.
+Keadaan akhirnya identik, risikonya jauh berbeda.
+
+Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`. Sisa:
+`(dashboard)` dan `src/components`.
+
+### Penjaganya — dan batasnya, yang harus dibaca
+
+`tests/button-emphasis.test.ts` menjaga **dua** hal, dan sengaja tidak berpura-
+pura menjaga yang ketiga:
+
+1. **Keeksplisitan** di area yang sudah diaudit: setiap `<Button>` menyebut
+   `variant`-nya. Inilah yang membuat pembalikan bawaan nanti menjadi jaring
+   pengaman, bukan perubahan.
+2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Cabang ternary
+   dihitung sebagai alternatif (`Math.max`), bukan dijumlahkan — tanpa itu
+   penjaganya merah pada kaki wisaya dan `/verify-email`, yaitu pada contoh
+   paling bersih dari aturannya, dan penjaga yang merah pada yang benar akan
+   dilonggarkan sampai tidak menjaga apa pun. Pada jalan pertamanya ia **merah
+   di 13 berkas** `(dashboard)`/`components`; ketiga belasnya di `SISA_AUDIT`,
+   daftar yang hanya boleh mengecil dan yang entri basinya ditolak tes
+   tersendiri.
+
+**Yang TIDAK dijaga, dan hanya bisa dilihat mata:** pengulangan lewat `.map()`
+(satu simpul di sumber, sepuluh tombol di layar), primer yang tersebar antar
+komponen pada satu halaman, dan apakah keadaan yang menaikkan sebuah primer
+berkondisi bisa bertemu primer lain. Hijau di berkas itu **bukan** bukti aturan
+ini ditegakkan.
+
+---
+
 ## Penjaga: aturan mana dijaga apa (issue #204)
 
 Aturan yang tidak dijaga bocor pada PR berikutnya — itu bukan dugaan melainkan
@@ -522,6 +634,7 @@ membaca hijau dan menyimpulkan aman.
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di area teraudit, dan tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
@@ -559,6 +672,7 @@ menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
 - [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `SIDER_BG_DARK` dengan permukaan gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, tautan = `href` — `asChild` sudah dicabut, #250).
+- [ ] **Hitung tombol berisi penuh di layar jadi — termasuk yang lahir dari `.map()` dan dari komponen lain. Satu, atau nol.** `variant` ditulis eksplisit; §Aksi utama per layar.
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.
 - [ ] **`bun run verify` hijau DAN `bun run build` `EXIT=0`** — yang pertama tidak membuktikan yang kedua, lihat §Penjaga.

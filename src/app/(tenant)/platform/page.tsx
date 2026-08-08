@@ -482,8 +482,27 @@ export default async function PlatformPage() {
                        * dibuka" (tata letak bertenant yang mencatatnya), jadi
                        * membuka buku = pergi ke alamatnya.
                        */}
+                      {/*
+                       * `outline`, bukan primer — dan bukan penyeragaman
+                       * (MASTER.md §Aksi utama).
+                       *
+                       * Tombol ini hidup di dalam `.map()`: jumlahnya SEBANYAK
+                       * PT yang dipegang pemiliknya. Sepuluh blok biru pekat
+                       * bukan sepuluh kali penekanan, melainkan nol — dan di
+                       * halaman ini mereka bersaing dengan satu-satunya hal
+                       * yang memang harus menarik mata saat menyala: meteran
+                       * kuota bernada `warning` dan kartu tunggakan tepat di
+                       * atasnya. Kisi yang sama di `/platform/team` sudah
+                       * `outline` sejak semula; ini menyamakannya.
+                       *
+                       * Pengecualian "pilihan setara" (yang membuat baris
+                       * `/select-company` boleh primer) TIDAK berlaku di sini:
+                       * membuka buku bukan satu-satunya jalan maju halaman ini
+                       * — ia juga pendaratan akun.
+                       */}
                       <Button
                         href={tenantPath(tenant.tenantSlug, company.slug, "/dashboard")}
+                        variant="outline"
                         size="sm"
                         style={{ width: "100%" }}
                       >

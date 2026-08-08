@@ -253,7 +253,7 @@ export function BillingProfileForm({
           />
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <Button type="submit" size="sm" disabled={saving}>
+          <Button type="submit" variant="primary" size="sm" disabled={saving}>
             {saving ? t("billing.savingProfile") : t("billing.saveProfile")}
           </Button>
         </div>

@@ -224,7 +224,7 @@ export function CompanyForm({
            * Penjaga di halaman setup tetap yang memutuskan boleh-tidaknya —
            * pintasan ini tidak melewati apa pun (keanggotaan pembuatnya sudah
            * dibuat bersamaan dengan perusahaannya). */}
-          <Button href={`/t/${tenantSlug}/${createdSlug}/setup`}>
+          <Button href={`/t/${tenantSlug}/${createdSlug}/setup`} variant="primary">
             {t("companies.openSetup")}
           </Button>
           {/* Perpindahan perusahaan lewat pemilih — pemuatan penuh, sama
@@ -335,7 +335,11 @@ export function CompanyForm({
         <ProvisionAnnouncer message={announcement} />
 
         <Flex align="center" gap={token.marginSM}>
-          <Button type="submit" disabled={running || !name.trim() || !effectiveSlug}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={running || !name.trim() || !effectiveSlug}
+          >
             {running && <LoadingOutlined data-spin aria-hidden="true" style={{ fontSize: 16 }} />}
             {running ? t("companies.creating") : t("companies.create")}
           </Button>

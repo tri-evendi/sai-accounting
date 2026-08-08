@@ -126,7 +126,13 @@ function ResetPasswordForm() {
             <Text type="secondary" style={{ fontSize: designToken.fontSizeSM }}>
               {t("auth.changePassword.hint")}
             </Text>
-            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              style={{ width: "100%" }}
+              disabled={loading}
+            >
               {loading ? t("auth.resetPassword.submitting") : t("auth.resetPassword.submit")}
             </Button>
           </Flex>

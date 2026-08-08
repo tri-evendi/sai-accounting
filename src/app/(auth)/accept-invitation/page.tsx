@@ -188,7 +188,13 @@ function AcceptInvitationForm() {
             <Text type="secondary" style={{ fontSize: designToken.fontSizeSM }}>
               {t("auth.changePassword.hint")}
             </Text>
-            <Button type="submit" size="lg" style={{ width: "100%" }} disabled={loading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              style={{ width: "100%" }}
+              disabled={loading}
+            >
               {loading ? t("invitations.submitting") : t("invitations.submit")}
             </Button>
           </Flex>

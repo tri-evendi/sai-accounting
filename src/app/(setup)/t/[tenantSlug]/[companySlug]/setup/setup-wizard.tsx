@@ -1037,13 +1037,14 @@ export function SetupWizard({
         </Button>
 
         {step < steps.length - 1 ? (
-          <Button type="button" disabled={saving} onClick={goNext}>
+          <Button type="button" variant="primary" disabled={saving} onClick={goNext}>
             {t("setup.next")}
             <ArrowRightOutlined aria-hidden="true" />
           </Button>
         ) : (
           <Button
             type="button"
+            variant="primary"
             disabled={saving || !totals.hasAny || totals.unrated > 0}
             onClick={handleSubmit}
           >

@@ -94,7 +94,21 @@ export default async function PlatformBillingPage() {
               <p style={{ ...CARD_BODY, flex: "1 1 260px" }}>
                 {t("platform.plansDescription")}
               </p>
-              <Button href="/platform/billing/plans" style={{ flexShrink: 0 }}>
+              {/*
+               * `outline`: ini SALINAN KETIGA dari tautan yang sama di satu
+               * layar — kepala halaman, pita masa coba di `SubscriptionSection`,
+               * lalu kartu ini. Yang berisi penuh sebelumnya adalah salinan
+               * ketiga itu, sehingga tiga tombol berlabel "Lihat paket"
+               * berlomba dan yang paling menonjol justru yang paling jauh dari
+               * alasan orang membuka halaman ini.
+               *
+               * Yang boleh primer di layar ini tinggal dua, dan keduanya
+               * berkondisi: pita masa coba saat `trial.urgent`
+               * (`subscription-section.tsx`), dan tombol simpan profil pajak —
+               * satu-satunya aksi MENGIKAT di halaman yang selebihnya bacaan.
+               * Lihat MASTER.md §Aksi utama.
+               */}
+              <Button href="/platform/billing/plans" variant="outline" style={{ flexShrink: 0 }}>
                 {t("platform.plansViewLabel")}
                 <ArrowRightOutlined aria-hidden="true" />
               </Button>

@@ -315,6 +315,7 @@ export default function ChangePasswordPage() {
 
             <Button
               type="submit"
+              variant="primary"
               size="lg"
               style={{ width: "100%" }}
               disabled={form.formState.isSubmitting}

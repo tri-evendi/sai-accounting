@@ -115,7 +115,11 @@ export default async function SelectCompanyPage() {
         {canCreate ? (
           <div style={{ display: "flex", flexDirection: "column", gap: STACK_MD }}>
             <p style={BODY_TEXT}>{t("auth.selectCompany.noCompanyYetOwner")}</p>
-            <Button href="/companies/new" style={FULL_WIDTH}>
+            {/* Satu-satunya jalan maju dari layar nol-perusahaan, jadi primer.
+                Bandingkan dengan kembarannya di kaki kartu daftar (bawah):
+                di sana ia jalan SAMPING di sebelah pilihan perusahaan, jadi
+                `outline`. Tombol yang sama, dua peran — MASTER.md §Aksi utama. */}
+            <Button href="/companies/new" variant="primary" style={FULL_WIDTH}>
               <PlusOutlined aria-hidden="true" />
               {t("companies.newTitle")}
             </Button>

@@ -427,9 +427,14 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
 
             <Flex vertical gap={token.marginXS} style={FULL_ROW}>
               <RootError message={form.formState.errors.root?.message} />
+              {/* Satu-satunya aksi yang MENGIKAT di `/operator/mail` (#267):
+                  ia menulis kredensial SMTP yang dipakai seluruh platform.
+                  "Uji kirim" di bawahnya `secondary` — ia memverifikasi, tidak
+                  menyimpan. */}
               <Button
                 type="submit"
                 size="sm"
+                variant="primary"
                 style={{ alignSelf: "flex-start" }}
                 disabled={!available || form.formState.isSubmitting}
               >

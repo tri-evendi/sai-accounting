@@ -241,6 +241,15 @@ export async function LandingPricing() {
                          kolomnya (`[data-landing-actions]`), bukan dari lebar
                          yang dipaksakan pada tombolnya: anak flex melar sendiri
                          di kolom, dan menyusut sendiri di baris. */
+                      /* Ini SATU-SATUNYA primer di repo ini yang lahir dari
+                         `.map()` di luar `/select-company` — dan ia lolos
+                         karena alasan yang berbeda: bukan "pilihan setara
+                         berulang", melainkan pengecualian pendaratan. Ketiga
+                         kartu paket menuju tempat yang SAMA (`/register`,
+                         tanpa `?plan=`), jadi tiga blok biru di sini adalah
+                         satu ajakan yang diulang, bukan tiga pilihan yang
+                         bersaing. Paket rundingan `outline`: tujuannya beda
+                         (mailto), dan itu memang aksi lain. */
                       <div data-landing-actions="" style={{ marginTop: "auto" }}>
                         {plan.contactOnly ? (
                           <Button
@@ -250,7 +259,9 @@ export async function LandingPricing() {
                             {t("landing.pricingContactCta")}
                           </Button>
                         ) : (
-                          <Button href="/register">{t("landing.heroPrimary")}</Button>
+                          <Button href="/register" variant="primary">
+                            {t("landing.heroPrimary")}
+                          </Button>
                         )}
                       </div>
                     )}

@@ -52,6 +52,20 @@
  * Ketiga belasnya didaftar di `SISA_AUDIT` di bawah, dan daftar itu hanya boleh
  * MENGECIL. Tes ketiga menolak entri basi, supaya daftar ini tidak berubah
  * menjadi hiasan yang setiap barisnya sudah lama tidak berarti apa-apa.
+ * Potongan kedua (`src/components`) mencabut satu barisnya:
+ * `shared/stock-period-filter.tsx`.
+ *
+ * ══ Penjaga #3: batas pengecualian halaman pendaratan (potongan 2) ═════════
+ *
+ * `/` merender EMPAT tombol berisi penuh sekaligus, dari empat komponen
+ * berbeda. Penjaga #2 tidak melihatnya (tak satu wadah JSX pun memuat dua) dan
+ * seandainya ia melihat, ia akan salah: pengulangan ajakan adalah cara halaman
+ * pendaratan bekerja, dan MASTER.md §Pemasaran vs App sudah menyebutnya
+ * sebagai salah satu dari empat dimensi yang MEMBUAT halaman itu pemasaran.
+ * Karena itu pendaratan dikecualikan secara eksplisit dari aturan satu-primer
+ * — dan penjaga ketiga menjaga BATAS pengecualiannya: setiap tombol primer di
+ * `components/landing/**` harus menuju tujuan yang sama (`/register`). Satu
+ * ajakan yang diulang, bukan empat ajakan yang bersaing.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -69,7 +83,38 @@ const AREA_TERAUDIT = [
   join("src", "app", "(setup)"),
   join("src", "app", "(operator)"),
   join("src", "app", "(tenant)"),
+  join("src", "components"),
 ];
+
+/**
+ * SATU berkas di `src/components` yang masih boleh menulis `<Button>` tanpa
+ * `variant`, dan alasannya bukan kemalasan.
+ *
+ * `EmptyState` adalah PRIMITIF: variannya bukan keputusan tentang satu layar
+ * melainkan keputusan yang diwarisi setiap keadaan-kosong di aplikasi ini. Dan
+ * keadaan-kosong itulah pola yang tersisa di potongan berikutnya — dua belas
+ * berkas `(dashboard)` di `SISA_AUDIT` di bawah semuanya bentuknya sama: CTA
+ * kepala halaman DAN CTA keadaan-kosong menyala bersamaan. Menetapkan varian
+ * `EmptyState` di sini berarti memutuskan kedua belas layar itu tanpa membuka
+ * satu pun. Barisnya dicabut di potongan yang mengaudit mereka; sampai itu, tes
+ * "tidak memuat entri basi" di bawah menjaga agar ia tidak jadi hiasan.
+ */
+const SISA_KEEKSPLISITAN = ["src/components/ui/empty-state.tsx"];
+
+/**
+ * Direktori halaman pendaratan — DIKECUALIKAN dari aturan satu-primer, dengan
+ * batas yang dijaga terpisah. Lihat MASTER.md §Aksi utama per layar →
+ * "Pendaratan `/` dikecualikan".
+ */
+const AREA_PENDARATAN = join("src", "components", "landing");
+
+/**
+ * Satu-satunya tujuan yang boleh dipakai tombol berisi penuh di pendaratan.
+ * Ini yang membuat pengecualiannya berbatas, bukan tanpa dasar: pengulangan
+ * ajakan sah karena ajakannya SATU. Dua tujuan primer yang berbeda di halaman
+ * yang sama adalah hierarki rata yang dibuka #267, dan di sinilah ia merah.
+ */
+const TUJUAN_PRIMER_PENDARATAN = "/register";
 
 /** Seluruh permukaan yang dijaga penjaga #2. */
 const AREA_LUAS = [join("src", "app"), join("src", "components")];
@@ -91,7 +136,6 @@ const SISA_AUDIT = [
   "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/page.tsx",
   "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/returns/page.tsx",
   "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
-  "src/components/shared/stock-period-filter.tsx",
 ];
 
 function berkasTsx(dir: string, keluar: string[] = []): string[] {
@@ -200,6 +244,35 @@ function wadahBermasalah(jalur: string): { baris: number; jumlah: number }[] {
   return hasil;
 }
 
+/** Nilai literal sebuah atribut, atau `undefined` bila tak ditulis / dinamis. */
+function atributLiteral(node: Jsx, nama: string): string | undefined {
+  const atribut = (ts.isJsxElement(node) ? node.openingElement : node).attributes;
+  for (const a of atribut.properties) {
+    if (!ts.isJsxAttribute(a) || a.name.getText() !== nama) continue;
+    const nilai = a.initializer;
+    if (nilai && ts.isStringLiteral(nilai)) return nilai.text;
+    return undefined;
+  }
+  return undefined;
+}
+
+/** Setiap `<Button>` primer di sebuah berkas, dengan `href`-nya. */
+function tombolPrimer(jalur: string): { baris: number; href: string | undefined }[] {
+  const src = sumber(jalur);
+  const hasil: { baris: number; href: string | undefined }[] = [];
+  const kunjungi = (node: ts.Node) => {
+    if (isJsx(node) && primer(node)) {
+      hasil.push({
+        baris: src.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+        href: atributLiteral(node, "href"),
+      });
+    }
+    ts.forEachChild(node, kunjungi);
+  };
+  kunjungi(src);
+  return hasil;
+}
+
 /** `<Button …>` tanpa `variant` — sumbernya, bukan hasil rendernya. */
 function tombolImplisit(jalur: string): number[] {
   const src = sumber(jalur);
@@ -226,10 +299,17 @@ describe("penekanan tombol (#267)", () => {
     const pelanggar: string[] = [];
     for (const area of AREA_TERAUDIT) {
       for (const jalur of berkasTsx(join(ROOT, area))) {
-        for (const baris of tombolImplisit(jalur)) pelanggar.push(`${relatif(jalur)}:${baris}`);
+        const rel = relatif(jalur);
+        if (SISA_KEEKSPLISITAN.includes(rel)) continue;
+        for (const baris of tombolImplisit(jalur)) pelanggar.push(`${rel}:${baris}`);
       }
     }
     expect(pelanggar).toEqual([]);
+  });
+
+  it("SISA_KEEKSPLISITAN tidak memuat entri basi", () => {
+    const basi = SISA_KEEKSPLISITAN.filter((rel) => tombolImplisit(join(ROOT, rel)).length === 0);
+    expect(basi).toEqual([]);
   });
 
   it("tidak ada wadah JSX dengan lebih dari satu tombol primer, di luar SISA_AUDIT", () => {
@@ -257,6 +337,44 @@ describe("penekanan tombol (#267)", () => {
       (rel) => wadahBermasalah(join(ROOT, rel)).length === 0
     );
     expect(basi).toEqual([]);
+  });
+
+  it("setiap tombol primer di pendaratan menuju satu tujuan yang sama", () => {
+    /*
+     * Halaman pendaratan DIKECUALIKAN dari "satu aksi utama per layar", dan
+     * pengecualian tanpa batas adalah izin. Ini batasnya.
+     *
+     * `/` merender empat tombol berisi penuh sekaligus — bilah atas, hero,
+     * tiap kartu paket (`.map()`), dan ajakan penutup. Menurut aturannya itu
+     * pelanggaran empat kali; menurut cara halaman pendaratan bekerja itu
+     * justru bentuk yang benar, sebab orang yang membaca sampai bawah tidak
+     * boleh disuruh menggulung balik untuk menemukan tombolnya. MASTER.md
+     * §Pemasaran vs App sudah menyebut "aksi yang SAMA diulang tiga kali"
+     * sebagai salah satu dari empat dimensi yang MEMBUAT sebuah halaman
+     * pemasaran — jadi menegakkan satu-primer di sini berarti menghapus
+     * dimensi yang dokumen lain sengaja pasang.
+     *
+     * Yang menyelamatkan pengecualian ini dari menjadi pintu belakang adalah
+     * kata "SAMA": pengulangan sah karena ajakannya satu. Begitu tombol primer
+     * kedua menuju tempat LAIN, halaman ini berhenti mengulang satu ajakan dan
+     * mulai menawarkan dua — persis hierarki rata yang dibuka #267, hanya di
+     * permukaan yang berbeda. Tes ini merah pada saat itu, dan hanya pada saat
+     * itu.
+     *
+     * ⚠ Yang tes ini TIDAK lihat: berapa KALI tombolnya muncul di layar
+     * (`.map()` paket), dan apakah label yang berbeda untuk tujuan yang sama
+     * ("Daftar" di bilah atas, "Mulai gratis" di hero) masih terbaca sebagai
+     * satu ajakan. Keduanya urusan mata.
+     */
+    const salahTujuan: string[] = [];
+    for (const jalur of berkasTsx(join(ROOT, AREA_PENDARATAN))) {
+      for (const { baris, href } of tombolPrimer(jalur)) {
+        if (href !== TUJUAN_PRIMER_PENDARATAN) {
+          salahTujuan.push(`${relatif(jalur)}:${baris} (href=${href ?? "—"})`);
+        }
+      }
+    }
+    expect(salahTujuan).toEqual([]);
   });
 
   it("pendeteksinya benar-benar bisa merah — dibuktikan di sini, bukan diandaikan", () => {

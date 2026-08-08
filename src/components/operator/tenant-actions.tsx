@@ -28,6 +28,22 @@
  * ⚠ Konsol operator berjalan di domain terpisah (`ops.`) dan tidak boleh
  * mewarisi konteks perusahaan — berkas ini tidak mengimpor apa pun yang
  * menariknya, termasuk untuk keperluan tampilan.
+ *
+ * ── Penekanan tombol (#267): satu batas yang SENGAJA diterima ──────────────
+ * Keempat pemicu panel `secondary`/`danger`, dan halaman yang memuatnya
+ * (`/operator/tenants/[id]`) tidak punya satu pun tombol berisi penuh sendiri
+ * — jadi keadaan bawaan layar ini adalah NOL aksi utama, yang benar untuk
+ * konsol baca. Begitu sebuah panel dibuka, submit-nya primer: ia mengikat, dan
+ * pasangan "submit + Batal" yang keduanya `secondary` akan meninggalkan
+ * formulir tanpa satu pun titik masuk (rambu #267: jangan meratakan dari arah
+ * sebaliknya).
+ *
+ * Yang tidak dijaga apa pun: DUA panel bisa terbuka sekaligus, dan saat itu
+ * layar memikul dua primer. Itu diterima karena keadaannya dibuat operator
+ * sendiri, satu tindakan per panel — bukan tata letak yang menyodorkan dua
+ * ajakan tanpa diminta. Yang TIDAK boleh: menaikkan pemicunya jadi primer,
+ * sebab pemicu adalah tata letak, dan empat pemicu primer berdampingan persis
+ * masalah yang dibuka #267.
  */
 
 import { useState } from "react";
@@ -405,7 +421,7 @@ function MarkPaidPanel({
         <Flex vertical gap={token.marginXS} style={FULL_ROW}>
           <RootError message={form.formState.errors.root?.message} />
           <Flex gap={token.marginXS}>
-            <Button type="submit" size="sm">
+            <Button type="submit" variant="primary" size="sm">
               {t("operator.actions.markPaid.submit")}
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
@@ -582,7 +598,7 @@ function ChangePlanPanel({
 
         <RootError message={form.formState.errors.root?.message} />
         <Flex gap={token.marginXS}>
-          <Button type="submit" size="sm">
+          <Button type="submit" variant="primary" size="sm">
             {t("operator.actions.plan.submit")}
           </Button>
           <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>

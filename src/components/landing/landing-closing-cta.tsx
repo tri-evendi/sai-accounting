@@ -10,6 +10,12 @@
  * Teksnya memakai kunci yang sama dengan tombol hero (`landing.heroPrimary`) —
  * satu janji, satu kalimat. Dua kalimat untuk tombol yang menuju tempat yang
  * sama akan berbeda pada hari salah satunya disunting.
+ *
+ * Justru pengulangan itulah yang membuat #267 TIDAK berlaku di sini: aturan
+ * "satu aksi utama per layar" melarang banyak ajakan BERBEDA, dan halaman ini
+ * hanya punya satu ajakan yang muncul berkali-kali. Batas pengecualiannya
+ * dijaga: setiap tombol primer di direktori ini harus menuju `/register`
+ * (`tests/button-emphasis.test.ts`).
  */
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Button } from "@/components/ui/button";
@@ -24,7 +30,7 @@ export async function LandingClosingCta() {
         {t("landing.ctaBody")}
       </LandingSectionIntro>
       <div style={{ marginTop: "var(--sai-landing-cta-space)" }}>
-        <Button href="/register" size="lg">
+        <Button href="/register" size="lg" variant="primary">
           {t("landing.heroPrimary")}
         </Button>
       </div>

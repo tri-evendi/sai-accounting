@@ -459,7 +459,7 @@ Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas
 - ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan; ❌ **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
 - ❌ Placeholder sebagai pengganti label.
-- ❌ Lebih dari satu tombol berisi penuh terlihat sekaligus di satu layar; ❌ menyeragamkannya dengan menurunkan SEMUA tombol jadi sekunder — itu menukar satu hierarki rata dengan hierarki rata yang lain. Lihat §Aksi utama per layar.
+- ❌ Lebih dari satu tombol berisi penuh terlihat sekaligus di satu layar (**kecuali pendaratan `/`**, yang memang mengulang SATU ajakan — §Aksi utama per layar → "Pendaratan `/` DIKECUALIKAN"); ❌ menyeragamkannya dengan menurunkan SEMUA tombol jadi sekunder — itu menukar satu hierarki rata dengan hierarki rata yang lain. Lihat §Aksi utama per layar.
 - ❌ Teks < 14px untuk data penting; kontras di bawah ambang §Ambang kontras per ukuran teks.
 - ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
 - ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
@@ -572,6 +572,36 @@ penekanan menjadi **jawaban atas keadaan**, bukan properti tetap tata letak.
 Yang harus dijaga: dalam keadaan yang menaikkannya, tombol itu **satu-satunya**
 primer di layar.
 
+### Pendaratan `/` DIKECUALIKAN — dan pengecualiannya berbatas
+
+Aturan di atas **tidak berlaku** untuk `/` dan `src/components/landing/**`.
+Halaman itu merender **empat** tombol berisi penuh sekaligus, dari empat
+komponen: bilah atas (`LandingNav`), hero (`LandingHero`), setiap kartu paket
+(`LandingPricing`, di dalam `.map()`), dan ajakan penutup (`LandingClosingCta`).
+Dihitung dengan aturan app internal itu pelanggaran empat kali.
+
+Keputusannya **mengecualikan**, bukan merapikan, karena §Pemasaran vs App sudah
+menyebut pengulangan itu sebagai salah satu dari **empat dimensi yang membuat
+sebuah halaman pemasaran**: *"aksi yang SAMA diulang tiga kali (hero, tiap kartu
+paket, penutup)"*. Menegakkan satu-primer di sana berarti mencabut dimensi yang
+dokumen ini sengaja pasang, dan menyuruh orang yang membaca sampai ujung
+menggulung balik untuk menemukan tombolnya. `pages/landing.md` melonggarkan hero
+& CTA dengan kalimat yang sama sejak #245; bagian ini hanya membuat konsekuensi
+tombolnya tertulis, bukan tersirat.
+
+**Batasnya ada pada kata "SAMA".** Pengulangan sah karena ajakannya **satu**:
+keempat tombol itu menuju `/register`. Tombol primer kedua yang menuju tempat
+lain berarti halaman ini berhenti mengulang satu ajakan dan mulai menawarkan
+dua — hierarki rata yang sama, hanya di permukaan yang berbeda. Karena itu
+batasnya **dijaga**: `tests/button-emphasis.test.ts` menolak tombol primer di
+`components/landing/**` yang `href`-nya bukan `/register`. Yang tidak dijaga:
+berapa **kali** ia muncul di layar, dan apakah label berbeda untuk tujuan yang
+sama masih terbaca sebagai satu ajakan.
+
+Yang **tetap berlaku penuh** di pendaratan: `variant` ditulis eksplisit (kalau
+tidak, pembalikan bawaan kelak diam-diam mencabut hero halaman pemasaran) dan
+seluruh isi `pages/landing.md` §Yang TETAP BERLAKU PENUH.
+
 ### Bawaan `variant` masih `primary` — dan urutannya disengaja
 
 `<Button>` tanpa atribut adalah tombol berisi penuh. Bawaan yang benar untuk
@@ -583,8 +613,14 @@ masing-masing ditandai ulang. Karena itu urutannya dibalik: **audit dulu**
 dibalik — dan pada saat itu pembalikannya tidak mengubah satu piksel pun.
 Keadaan akhirnya identik, risikonya jauh berbeda.
 
-Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`. Sisa:
-`(dashboard)` dan `src/components`.
+Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`, dan **seluruh
+`src/components`** kecuali satu berkas. Sisa: `(dashboard)` — dan
+`components/ui/empty-state.tsx`, yang sengaja ditahan: variannya bukan keputusan
+tentang satu layar melainkan yang **diwarisi setiap keadaan-kosong**, dan
+kedua belas layar `(dashboard)` yang tersisa semuanya berbentuk sama (CTA kepala
+halaman + CTA keadaan-kosong menyala bersamaan). Memutuskannya sebelum melihat
+mereka berarti memutuskan mereka tanpa membukanya. Barisnya ada di
+`SISA_KEEKSPLISITAN`, dan tes menolaknya begitu ia jadi basi.
 
 ### Penjaganya — dan batasnya, yang harus dibaca
 
@@ -603,11 +639,29 @@ pura menjaga yang ketiga:
    daftar yang hanya boleh mengecil dan yang entri basinya ditolak tes
    tersendiri.
 
+Sejak potongan 2 ada penjaga **ketiga**, dan ia menjaga BATAS sebuah
+pengecualian, bukan aturannya: setiap tombol primer di `components/landing/**`
+harus menuju `/register` (lihat §Pendaratan `/` DIKECUALIKAN di atas).
+
 **Yang TIDAK dijaga, dan hanya bisa dilihat mata:** pengulangan lewat `.map()`
 (satu simpul di sumber, sepuluh tombol di layar), primer yang tersebar antar
 komponen pada satu halaman, dan apakah keadaan yang menaikkan sebuah primer
 berkondisi bisa bertemu primer lain. Hijau di berkas itu **bukan** bukti aturan
 ini ditegakkan.
+
+Dua contoh yang lolos penjaga dan ditemukan hanya dengan membaca pemanggilnya,
+keduanya diselesaikan di potongan 2 — keduanya di `src/components/shared`:
+
+- **`advance-compensation.tsx`** selalu terbuka (tanpa pemicu), jadi submitnya
+  yang dulu berisi penuh menyala di setiap `/invoices/[id]` dan
+  `/suppliers/[id]` yang kebetulan punya uang muka — bertabrakan langsung
+  dengan "Catat pembayaran" (`payment-form.tsx`) dan "Catat uang muka"
+  (`advance-panel.tsx`). Ia **turun** ke `secondary`: tetap aksi yang
+  memposting, tetapi aksi SAMPINGAN pada layar yang tugas utamanya lain.
+- **`stock-period-filter.tsx`** memasang dua penekanan penuh berdampingan:
+  tombol "Tampilkan" rentang khusus dan chip granularitas yang sedang aktif.
+  Tombolnya **turun** ke `outline` (ia menyaring); chipnya tetap penuh karena
+  artinya bukan "tekan saya" melainkan "inilah periode yang sedang Anda lihat".
 
 ---
 
@@ -634,7 +688,7 @@ membaca hijau dan menyimpulkan aman.
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
-| Satu aksi utama per layar: `variant` eksplisit di area teraudit, dan tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di area teraudit, tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |

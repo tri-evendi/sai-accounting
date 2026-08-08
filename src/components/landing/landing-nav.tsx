@@ -13,6 +13,13 @@
  * Pemilih bahasa dan tema ikut di sini, bukan hanya di dalam aplikasi: orang
  * yang belum punya akun tidak bisa membuka menu akun, dan halaman inilah satu-
  * satunya tempat ia bisa memilih membaca dalam bahasanya sendiri.
+ *
+ * "Daftar" berisi penuh, "Masuk" `ghost`: bilah ini MENEMPEL, jadi tombolnya
+ * ikut ke seluruh gulungan halaman dan bertemu ajakan yang sama di hero, di
+ * tiap kartu paket, dan di penutup. Empat kali ajakan yang SAMA adalah cara
+ * halaman pendaratan bekerja, bukan pelanggaran #267 — lihat MASTER.md §Aksi
+ * utama per layar → "Pendaratan `/` dikecualikan", dan batasnya (semua primer
+ * menuju `/register`) di `tests/button-emphasis.test.ts`.
  */
 import Link from "next/link";
 
@@ -96,7 +103,9 @@ export async function LandingNav() {
           <Button href="/login" variant="ghost">
             {t("landing.signIn")}
           </Button>
-          <Button href="/register">{t("landing.signUp")}</Button>
+          <Button href="/register" variant="primary">
+            {t("landing.signUp")}
+          </Button>
         </div>
       </nav>
     </header>

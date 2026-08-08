@@ -36,7 +36,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Flex, theme, Typography } from "antd";
 import { Link } from "@/components/ui/app-link";
 import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/select";
@@ -488,9 +488,22 @@ export function SalesWizard({
                 </div>
               )}
               <Flex wrap gap={token.marginSM} style={{ marginTop: token.marginLG }}>
-                <Link href={`/invoices/${result.invoice.id}`}>
-                  <Button variant="primary">{t("sales.viewInvoice")}</Button>
-                </Link>
+                {/*
+                  `<ButtonLink>`, bukan `<Button href>` — alasan yang sama persis
+                  dengan kembarannya di `purchases/new/purchase-wizard.tsx`, dan
+                  ditulis di sini juga supaya keduanya tidak menyimpang: draf
+                  sudah dihapus `clear()`, tujuannya rute lain (jadi wisaya ini
+                  dilepas oleh navigasi mana pun), dan `router.refresh()` setelah
+                  simpan hanya berarti sesuatu bagi navigasi sisi-klien. Jalur
+                  sebelahnya (`cancel()` -> `router.push("/invoices")`) pun sudah
+                  sisi-klien.
+
+                  Tautan teks ke faktur yang sama, beberapa baris di atas, tetap
+                  `<Link>`: ia bukan tombol, jadi ia tidak pernah menjadi sarang.
+                */}
+                <ButtonLink href={`/invoices/${result.invoice.id}`} variant="primary">
+                  {t("sales.viewInvoice")}
+                </ButtonLink>
                 <Button
                   type="button"
                   variant="secondary"

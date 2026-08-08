@@ -23,12 +23,11 @@
  */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -289,12 +288,12 @@ export default async function SupplierDetailPage({
         title={supplier.name}
         actions={
           <>
-            <Link href={`/suppliers/${id}/edit`}>
-              <Button variant="secondary">{t("common.edit")}</Button>
-            </Link>
-            <Link href="/suppliers">
-              <Button variant="ghost">{t("common.back")}</Button>
-            </Link>
+            <ButtonLink href={`/suppliers/${id}/edit`} variant="secondary">
+              {t("common.edit")}
+            </ButtonLink>
+            <ButtonLink href="/suppliers" variant="ghost">
+              {t("common.back")}
+            </ButtonLink>
           </>
         }
       />

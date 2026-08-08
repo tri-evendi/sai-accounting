@@ -13,12 +13,11 @@
  * DALAM `<Card>` (lihat kepala `shared/aging.tsx`). Arahnya tetap tidak
  * bergantung warna: baris "Masuk"/"Keluar" di bawahnya menyebutkannya.
  */
-import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateShort, parsePageParam } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
@@ -260,11 +259,11 @@ export default async function FinancePage({
         actions={
           <>
             <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
-            <Link href="/finance/new">
-              {/* Aksi utama layar ini (#267): mencatat transaksi kas/bank adalah
-                  satu-satunya hal yang MENGIKAT; ekspor & saringan membaca. */}
-              <Button variant="primary">{t("finance.addNew")}</Button>
-            </Link>
+            {/* Aksi utama layar ini (#267): mencatat transaksi kas/bank adalah
+                satu-satunya hal yang MENGIKAT; ekspor & saringan membaca. */}
+            <ButtonLink href="/finance/new" variant="primary">
+              {t("finance.addNew")}
+            </ButtonLink>
           </>
         }
       />
@@ -346,11 +345,15 @@ export default async function FinancePage({
             <Button type="submit" variant="outline" size="sm">
               {t("finance.filterSubmit")}
             </Button>
-            <Link href="/finance">
-              <Button type="button" variant="ghost" size="sm">
-                {t("finance.filterClear")}
-              </Button>
-            </Link>
+            {/* "Bersihkan" BUKAN kendali formulir: ia menavigasi ke `/finance`
+                tanpa querystring, jadi ia tautan — dan `type="button"` yang dulu
+                menahannya mengirim formulir ini gugur bersama elemen tombolnya.
+                Pada sebuah anchor atribut itu berarti tipe MIME dokumen tujuan,
+                dan anchor tidak pernah bisa mengirim formulir yang
+                membungkusnya. */}
+            <ButtonLink href="/finance" variant="ghost" size="sm">
+              {t("finance.filterClear")}
+            </ButtonLink>
           </form>
         </CardContent>
       </Card>

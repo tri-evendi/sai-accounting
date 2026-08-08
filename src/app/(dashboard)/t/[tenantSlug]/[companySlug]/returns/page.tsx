@@ -6,13 +6,12 @@
  * origin document and carries a nota-retur PDF. Values are shown in the return's
  * own currency (inherited from the origin), right-aligned and tabular, per MASTER.
  */
-import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
@@ -249,22 +248,21 @@ export default async function ReturnsPage({
         title={t("returns.title")}
         description={t("returns.description")}
         actions={
-          <Link href={`/returns/new?type=${tab}`}>
-            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
-                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
-            <Button variant="primary">
-              {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
-              <PlusOutlined aria-hidden="true" />
-              {t("returns.addNew")}
-            </Button>
-          </Link>
+          /* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+             yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */
+          <ButtonLink href={`/returns/new?type=${tab}`} variant="primary">
+            {/* Jarak ikon–teks dari `iconGap` `.ant-btn`. */}
+            <PlusOutlined aria-hidden="true" />
+            {t("returns.addNew")}
+          </ButtonLink>
         }
       />
 
       {/* Tab penjualan/pembelian. Dulu `<a>` bergaya tombol yang dirakit dari
-          kelas; kini `Button` primitif — target sentuh 40px, ring fokus, dan
-          warna aktif semuanya datang dari token, bukan dari kelas yang harus
-          dijaga sendiri. */}
+          kelas; kini `ButtonLink` — target sentuh 40px, ring fokus, dan warna
+          aktif semuanya datang dari token, bukan dari kelas yang harus dijaga
+          sendiri. Ia kembali menjadi SATU `<a>` (#289), kali ini yang gayanya
+          milik AntD dan navigasinya tetap sisi-klien. */}
       <div
         style={{
           display: "flex",
@@ -285,12 +283,13 @@ export default async function ReturnsPage({
             active: tab === "purchase",
           },
         ].map((f) => (
-          <Link key={f.label} href={f.href}>
-            {/* Tab = KEADAAN, bukan ajakan: aktif `secondary` (berbingkai),
-                sisanya `ghost`. Berpindah tab hanya menyaring — isian penuh di
-                sini bersaing dengan "Catat Retur" di kepala halaman (#267). */}
-            <Button variant={f.active ? "secondary" : "ghost"}>{f.label}</Button>
-          </Link>
+          /* Tab = KEADAAN, bukan ajakan: aktif `secondary` (berbingkai),
+             sisanya `ghost`. Berpindah tab hanya menyaring — isian penuh di
+             sini bersaing dengan "Catat Retur" di kepala halaman (#267). `key`
+             pindah ke elemen terluar yang tersisa, yang kini satu-satunya. */
+          <ButtonLink key={f.label} href={f.href} variant={f.active ? "secondary" : "ghost"}>
+            {f.label}
+          </ButtonLink>
         ))}
       </div>
 

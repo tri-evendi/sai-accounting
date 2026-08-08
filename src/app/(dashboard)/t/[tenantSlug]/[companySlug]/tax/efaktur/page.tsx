@@ -317,16 +317,27 @@ export default async function EfakturPage({
               {t("tax.npwpNeededToDownload")}
             </span>
           ) : (
-            <a href={downloadHref} download>
-              {/* Aksi utama layar ini (#267) — dan hanya pada cabang ini ia ada.
-                  Cabang sebelahnya (NPWP kosong) tidak punya tombol sama sekali;
-                  di sana yang primer adalah simpan identitas di kartu atas,
-                  lewat eskalasi berkondisi. */}
-              <Button variant="primary" disabled={rows.length === 0}>
-                <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
-                {t("tax.downloadCsv")}
-              </Button>
-            </a>
+            /* Aksi utama layar ini (#267) — dan hanya pada cabang ini ia ada.
+               Cabang sebelahnya (NPWP kosong) tidak punya tombol sama sekali;
+               di sana yang primer adalah simpan identitas di kartu atas, lewat
+               eskalasi berkondisi.
+
+               `<Button href download>`, BUKAN `<ButtonLink>`: tujuannya sebuah
+               route API yang mengalirkan CSV, dan unduhan harus jatuh ke
+               peramban. `tautanDicegat()` pun menolak mencegat `download`, jadi
+               `<ButtonLink>` di sini hanya menjanjikan navigasi sisi-klien yang
+               tidak akan pernah terjadi. `downloadHref` diawali `/api/…`, yang
+               bukan segmen bertenant, jadi `scopedHref()` melewatkannya utuh.
+
+               `disabled` sekarang benar-benar menonaktifkan TAUTANNYA: AntD
+               melepas `href` dan memasang `aria-disabled` pada cabang anchornya.
+               Sebelumnya atribut itu hanya melumpuhkan elemen di dalam anchor,
+               sementara anchornya sendiri tetap bisa difokus dan diaktifkan
+               dengan Enter — unduhan kosong yang hanya bisa dicapai papan tik. */
+            <Button href={downloadHref} download variant="primary" disabled={rows.length === 0}>
+              <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
+              {t("tax.downloadCsv")}
+            </Button>
           )}
         </div>
       </Card>

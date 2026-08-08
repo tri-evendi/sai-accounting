@@ -9,7 +9,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
@@ -182,9 +182,9 @@ export default async function JournalPage({
       <PageHeader
         title={t("journal.title", { count: totalCount })}
         actions={
-          <Link href="/journal/new">
-            <Button variant="primary">{t("journal.addNew")}</Button>
-          </Link>
+          <ButtonLink href="/journal/new" variant="primary">
+            {t("journal.addNew")}
+          </ButtonLink>
         }
       />
 

@@ -27,6 +27,7 @@ import {
   cashFlowReconciliationNote,
   partyRecapColumns,
   splitBalanceSheetRows,
+  splitIncomeStatementRows,
   splitTrialBalanceRows,
   stockMovementColumns,
   stockValueColumns,
@@ -40,6 +41,8 @@ import {
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
   CASH_FLOW_HEADERS,
+  INCOME_STATEMENT_COLUMNS,
+  INCOME_STATEMENT_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -50,6 +53,8 @@ import {
   type BudgetColumnId,
   type CashBankColumnId,
   type CashFlowCategoryId,
+  type IncomeStatementLayoutRow,
+  type IncomeStatementRowKind,
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
@@ -406,33 +411,6 @@ function header(doc: jsPDF, title: string, period: string, company: { name: stri
   return y + 8;
 }
 
-/** A section heading + its rows, as one two-column money table. */
-function moneySection(
-  doc: jsPDF,
-  startY: number,
-  heading: string,
-  rows: StatementRow[],
-  totalLabel: string,
-  total: number
-) {
-  autoTable(doc, {
-    startY,
-    head: [[heading, "Jumlah"]],
-    body: rows.length
-      ? // `.trim()` seperti di seluruh berkas ini (dan di `report-export.ts`):
-        // tanpanya akun berkode kosong tercetak menjorok dua spasi di PDF saja.
-        // Sejak #258 Neraca tidak lagi lewat sini — pemakainya tinggal Laba/Rugi.
-        rows.map((r) => [`${r.code}  ${r.name}`.trim(), rp(r.amount)])
-      : [["Tidak ada data.", "-"]],
-    foot: [[totalLabel, rp(total)]],
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: BRAND },
-    footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
-    columnStyles: { 1: { halign: "right" } },
-  });
-  return afterTable(doc) + 8;
-}
-
 /**
  * Badan + kaki tabel Arus Kas sebagai teks — dipisah dari penggambarnya supaya
  * bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa satu byte PDF pun
@@ -522,9 +500,44 @@ export function trialBalancePrintRows(
   };
 }
 
+/**
+ * Badan + kaki tabel Laba/Rugi sebagai teks — dipisah dari penggambarnya supaya
+ * bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa satu byte PDF pun
+ * (issue #274, pola yang sama dengan tiga laporan sebelumnya). Bentuknya
+ * seluruhnya milik `incomeStatementLayout()`; di sini hanya ada penulisan angka,
+ * takuk baris akun, dan penempelan anotasi.
+ */
+export function incomeStatementPrintRows(
+  payload: Extract<StatementPayload, { kind: "income-statement" }>
+): { body: string[][]; foot: string[][]; bodyKinds: IncomeStatementRowKind[] } {
+  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(payload));
+  const cell = (r: IncomeStatementLayoutRow): string[] => [
+    // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
+    // `paddingInlineStart`. Anotasi (marjin kotor, arah hasil) dalam tanda
+    // kurung; di layar ia span kecil berwarna.
+    (r.kind === "line" ? `   ${r.label}` : r.label) + (r.note === undefined ? "" : ` (${r.note})`),
+    // Kolom yang tidak berlaku tetap KOSONG, tak pernah "Rp 0" (Prinsip Inti
+    // MASTER.md). Nol yang memang nol tertulis apa adanya — di laporan laba/rugi
+    // ia pernyataan tentang periodenya, bukan ketiadaan arus seperti di Arus Kas.
+    r.amount === null ? "" : rp(r.amount),
+  ];
+  return {
+    body: body.map(cell),
+    foot: foot.map(cell),
+    bodyKinds: body.map((r) => r.kind),
+  };
+}
+
 export function generateStatementPDF(payload: StatementPayload, company: { name: string; address: string }): jsPDF {
   const doc = new jsPDF();
-  let y = header(doc, STATEMENT_TITLES[payload.kind], payload.period, company);
+  /*
+   * `const` sejak issue #274: Laba/Rugi adalah cabang TERAKHIR yang menggeser
+   * titik tulis sendiri — satu `autoTable` per band, lalu `doc.text()` di
+   * antaranya. Sekarang keempat laporan keuangan menggambar SATU tabel yang
+   * dimulai tepat di bawah kepala dokumen, jadi tidak ada lagi kursor vertikal
+   * yang berjalan.
+   */
+  const y = header(doc, STATEMENT_TITLES[payload.kind], payload.period, company);
 
   if (payload.kind === "trial-balance") {
     const { body, foot } = trialBalancePrintRows(payload);
@@ -541,65 +554,30 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "income-statement") {
-    const layout = incomeStatementLayout(payload);
-
-    /** A bold subtotal line between two sections (Laba Kotor, Laba Usaha). */
-    const subtotal = (label: string, amount: number, atY: number) => {
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text(label, 14, atY);
-      doc.text(rp(amount), doc.internal.pageSize.getWidth() - 14, atY, { align: "right" });
-      return atY + 8;
-    };
-
-    y = moneySection(doc, y, "Pendapatan", payload.sales.lines, "Total Pendapatan", payload.sales.total);
-    if (layout.showCogs) {
-      y = moneySection(
-        doc,
-        y,
-        "Beban Pokok Penjualan",
-        payload.cogs.lines,
-        "Total Beban Pokok Penjualan",
-        payload.cogs.total
-      );
-    }
-    if (layout.showGrossProfit) y = subtotal("LABA KOTOR", payload.grossProfit, y);
-    y = moneySection(
-      doc,
-      y,
-      "Beban Operasional",
-      payload.operatingExpense.lines,
-      "Total Beban Operasional",
-      payload.operatingExpense.total
-    );
-    if (layout.showOperatingProfit) y = subtotal("LABA USAHA", payload.operatingProfit, y);
-    if (layout.showOtherIncome) {
-      y = moneySection(
-        doc,
-        y,
-        "Pendapatan Lain-lain",
-        payload.otherIncome.lines,
-        "Total Pendapatan Lain-lain",
-        payload.otherIncome.total
-      );
-    }
-    if (layout.showOtherExpense) {
-      y = moneySection(
-        doc,
-        y,
-        "Beban Lain-lain",
-        payload.otherExpense.lines,
-        "Total Beban Lain-lain",
-        payload.otherExpense.total
-      );
-    }
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    const label = payload.netIncome >= 0 ? "LABA BERSIH" : "RUGI BERSIH";
-    doc.text(label, 14, y + 2);
-    doc.text(rp(payload.netIncome), doc.internal.pageSize.getWidth() - 14, y + 2, {
-      align: "right",
+    /*
+     * SATU tabel, bukan satu per band (issue #274) — dan tidak satu pun baris
+     * yang digambar `doc.text()`. Dulu tiap band punya tabelnya sendiri dengan
+     * judul band sebagai KEPALA tabel, sementara "LABA KOTOR", "LABA USAHA" dan
+     * "LABA BERSIH" berdiri di luar tabel mana pun sebagai teks lepas: tidak
+     * bisa dijumlah, tidak ikut tersalin, dan lepas dari perataan kolomnya.
+     *
+     * Judul band & subtotal kehilangan latar berwarnanya, jadi ketebalan huruf
+     * yang menggantikannya — sama persis dengan Neraca (#258).
+     */
+    const { body, foot, bodyKinds } = incomeStatementPrintRows(payload);
+    autoTable(doc, {
+      startY: y,
+      head: [INCOME_STATEMENT_COLUMNS.map((c) => INCOME_STATEMENT_HEADERS[c])],
+      body,
+      foot,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles: { 1: { halign: "right" } },
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        if (bodyKinds[data.row.index] !== "line") data.cell.styles.fontStyle = "bold";
+      },
     });
   }
 

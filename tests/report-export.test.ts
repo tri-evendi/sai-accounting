@@ -88,10 +88,27 @@ describe("buildReportSheet — income statement", () => {
     ]);
   });
 
+  /*
+   * Label anak tangganya BERGESER di issue #274, dan itu disengaja: "LABA
+   * KOTOR" huruf besar semua adalah string mati yang tidak ada di kamus mana
+   * pun — bentuk ketiga di samping "Laba Kotor" milik layar. Sejak #274
+   * ketiganya membaca satu penentu, jadi bunyinya kini sama persis dengan
+   * kamus Indonesia-nya, dan marjin kotornya ikut tercetak sebagai anotasi
+   * (yang dulu hanya ada di layar). ANGKANYA tidak berubah sedikit pun — itulah
+   * yang tetap dikunci di sini.
+   */
   it("prints the two step subtotals with their exact values", () => {
     const sheet = buildReportSheet(payload);
-    expect(cellFor(sheet, (l) => l === "LABA KOTOR")[1].value).toBe(834_568.28);
-    expect(cellFor(sheet, (l) => l === "LABA USAHA")[1].value).toBe(434_567.95);
+    expect(cellFor(sheet, (l) => l.startsWith("Laba Kotor"))[1].value).toBe(834_568.28);
+    expect(cellFor(sheet, (l) => l === "Laba Usaha")[1].value).toBe(434_567.95);
+  });
+
+  it("carries the gross margin next to Laba Kotor, as the screen has always done", () => {
+    const sheet = buildReportSheet(payload);
+    // 834.568,28 / 1.734.568,39 = 48,1% — satu desimal, seperti di layar.
+    expect(cellFor(sheet, (l) => l.startsWith("Laba Kotor"))[0].value).toBe(
+      "Laba Kotor (48,1% dari pendapatan)"
+    );
   });
 
   /**
@@ -111,8 +128,11 @@ describe("buildReportSheet — income statement", () => {
       netIncome: 1_334_568.06,
     });
     const labels = sheet.rows.map((r) => String(r[0]?.value ?? ""));
-    expect(labels).not.toContain("LABA KOTOR");
-    expect(labels).not.toContain("LABA USAHA");
+    // Nama barisnya berganti di #274 (lihat catatan di atas), jadi yang
+    // dipastikan tidak ada pun ikut berganti — dengan `startsWith`, karena
+    // "Laba Kotor" kini membawa marjinnya di belakang label.
+    expect(labels.some((l) => l.startsWith("Laba Kotor"))).toBe(false);
+    expect(labels.some((l) => l.startsWith("Laba Usaha"))).toBe(false);
     expect(labels.filter((l) => l.startsWith("Total "))).toEqual([
       "Total Pendapatan",
       "Total Beban Operasional",
@@ -127,16 +147,25 @@ describe("buildReportSheet — income statement", () => {
     ]);
   });
 
-  it("labels a positive net as LABA BERSIH and keeps the exact value", () => {
-    const sheet = buildReportSheet(payload);
-    const row = cellFor(sheet, (l) => l.startsWith("LABA BERSIH"));
-    expect(row[1].value).toBe(439_567.95);
-  });
+  /*
+   * Baris penutupnya tidak lagi BERGANTI NAMA menurut tanda angkanya
+   * ("LABA BERSIH" / "RUGI BERSIH"); ia selalu "Laba / Rugi Bersih" — nama yang
+   * dipakai layar sejak #123 — dan arahnya menempel sebagai anotasi "(Laba)" /
+   * "(Rugi)", penanda non-warna bagi nominal yang di layar diwarnai. Sebuah
+   * baris yang berganti nama menurut tandanya membuat dua periode yang
+   * dibandingkan berdampingan tampak punya baris yang berbeda. Nilainya, lagi,
+   * tidak berubah.
+   */
+  it("keeps one net-result row and states its direction as an annotation", () => {
+    const laba = buildReportSheet(payload);
+    const barisLaba = cellFor(laba, (l) => l.startsWith("Laba / Rugi Bersih"));
+    expect(barisLaba[0].value).toBe("Laba / Rugi Bersih (Laba)");
+    expect(barisLaba[1].value).toBe(439_567.95);
 
-  it("labels a negative net as RUGI BERSIH", () => {
-    const sheet = buildReportSheet({ ...payload, netIncome: -50_000 });
-    const row = cellFor(sheet, (l) => l.startsWith("RUGI"));
-    expect(row[1].value).toBe(-50_000);
+    const rugi = buildReportSheet({ ...payload, netIncome: -50_000 });
+    const barisRugi = cellFor(rugi, (l) => l.startsWith("Laba / Rugi Bersih"));
+    expect(barisRugi[0].value).toBe("Laba / Rugi Bersih (Rugi)");
+    expect(barisRugi[1].value).toBe(-50_000);
   });
 
   it("does not stringify or re-round a fractional rupiah value", () => {

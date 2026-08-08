@@ -54,6 +54,99 @@ export function scopedHref(href: string, pathname: string | null): string {
   return tenantPath(scope.tenantSlug, scope.companySlug, href);
 }
 
+/* ══ Semantik `next/link` untuk elemen yang BUKAN `<Link>` (issue #289) ══════
+ *
+ * `<ButtonLink>` merender `<a class="ant-btn">` milik AntD — satu elemen, rupa
+ * tombol, tanpa satu pun nama kelas yang disalin. Harganya: `next/link` tidak
+ * ikut, jadi dua hal yang biasa ia berikan harus dipasang dari luar. Keduanya
+ * hidup DI SINI, bukan di `ui/button.tsx`, karena keduanya pengetahuan tentang
+ * `next/link` — sama seperti `scopedHref` di atas — dan karena begitu keduanya
+ * bisa diuji sebagai fungsi, bukan lewat sebuah komponen yang perlu DOM.
+ *
+ * Rujukannya `next/link` versi terpasang (`client/app-dir/link.js`:
+ * `isModifiedEvent` + `linkClicked`), disempitkan ke bentuk yang app ini pakai.
+ */
+
+/**
+ * Apakah TAUTANNYA boleh dicegat menjadi navigasi sisi-klien — pertanyaan
+ * statis, dijawab dari sifat tautannya saja.
+ *
+ * Ketiga sebab di bawah harus tetap jatuh ke peramban, dan ketiganya pernah
+ * jadi bug di aplikasi nyata:
+ *  • `download` — dicegat berarti berkasnya tidak pernah terunduh dan yang
+ *    terjadi malah pindah halaman;
+ *  • `target` selain `_self` — dicegat berarti "buka di tab baru" membuka di
+ *    tab yang sama;
+ *  • alamat luar / protokol lain (`https:`, `mailto:`, `//host`) — router hanya
+ *    mengerti rute app ini.
+ */
+export function tautanDicegat(
+  href: string,
+  opsi: { target?: string; download?: unknown } = {}
+): boolean {
+  // `download={false}` berarti "bukan unduhan" — React pun tidak menuliskannya
+  // ke DOM, jadi memperlakukannya sebagai unduhan akan mematikan navigasi
+  // sisi-klien pada tautan yang justru menyatakan dirinya bukan unduhan.
+  if (opsi.download !== undefined && opsi.download !== false) return false;
+  if (opsi.target !== undefined && opsi.target !== "_self") return false;
+  return href.startsWith("/") && !href.startsWith("//");
+}
+
+/** Bentuk minimum kejadian klik yang dibutuhkan `klikBiasa`. */
+export type KlikTautan = Pick<
+  MouseEvent,
+  "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey"
+>;
+
+/**
+ * Apakah KEJADIANNYA klik biasa — kiri, tanpa modifier.
+ *
+ * Yang tidak dicegat di sini bukan kekurangan melainkan seluruh alasan bentuk
+ * `<a href>` dipilih: Ctrl/Cmd-klik, Shift-klik, dan klik tengah tetap membuka
+ * tab atau jendela baru, dan mereka bekerja justru karena kita membiarkannya.
+ * Tombol dengan `onClick` yang menavigasi kehilangan semua itu tanpa bisa
+ * menggantinya.
+ */
+export function klikBiasa(e: KlikTautan): boolean {
+  if (e.button !== 0) return false;
+  return !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+}
+
+/**
+ * Jalankan `sekali` saat `el` pertama kali terlihat, lalu berhenti mengamati —
+ * pengganti prefetch-saat-masuk-viewport milik `next/link`.
+ *
+ * Sekali saja, dan itu disengaja: hasilnya sudah masuk cache router, jadi
+ * mengulanginya setiap kali tautannya lewat layar hanya menambah permintaan.
+ * (`next/link` memang memperbarui yang sudah basi lewat `mountLinkInstance`,
+ * internal yang tidak punya API publik — lihat kepala `ui/button.tsx`.)
+ *
+ * Mengembalikan pembersih, atau `undefined` bila lingkungannya tidak punya
+ * `IntersectionObserver` (SSR, atau peramban lama): di situ prefetch memang
+ * tidak terjadi, dan tautannya tetap berfungsi penuh.
+ */
+export function amatiSekaliSaatTerlihat(
+  el: Element | null,
+  sekali: () => void
+): (() => void) | undefined {
+  if (!el || typeof IntersectionObserver === "undefined") return undefined;
+  /*
+   * `disconnect()` saja tidak cukup untuk menjamin "sekali": ia menghentikan
+   * pengamatan BERIKUTNYA, bukan panggilan balik yang sudah dijadwalkan. Bendera
+   * ini yang membuat jaminannya milik fungsi ini sendiri, bukan milik perilaku
+   * `IntersectionObserver` yang kebetulan.
+   */
+  let sudah = false;
+  const pengamat = new IntersectionObserver((entries) => {
+    if (sudah || !entries.some((entri) => entri.isIntersecting)) return;
+    sudah = true;
+    pengamat.disconnect();
+    sekali();
+  });
+  pengamat.observe(el);
+  return () => pengamat.disconnect();
+}
+
 export function Link({ href, ...props }: AppLinkProps) {
   const pathname = usePathname();
   /*

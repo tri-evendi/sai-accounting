@@ -26,7 +26,7 @@
  *
  * ══ Kenapa PETA HITUNGAN, bukan daftar berkas ══════════════════════════════
  *
- * 45 sarang masih tersisa di 27 berkas, dan issue #289 sendiri meminta
+ * 24 sarang masih tersisa di 14 berkas, dan issue #289 sendiri meminta
  * pekerjaannya dipecah per modul — jadi penjaga ini terpaksa hidup berdampingan
  * dengan utang yang belum lunas. Daftar pengecualian dalam bentuk NAMA BERKAS
  * akan lumpuh justru di situ: berkas yang sudah ada di daftar boleh menambah
@@ -97,28 +97,17 @@ const BUTTON = join(SRC, "components", "ui", "button.tsx");
 const ANCHOR = new Set(["Link", "NextLink", "AppLink", "a"]);
 
 /**
- * Sisa utang per 2026-08-08, SESUDAH modul faktur dipindahkan (#289 PR 1).
- * 45 sarang di 27 berkas. Hanya boleh mengecil; lihat kepala berkas untuk
- * kenapa ini peta hitungan dan bukan daftar nama.
+ * Sisa utang per 2026-08-08, SESUDAH paruh pertama sisa modul (#289 PR 2).
+ * **24 sarang di 14 berkas**, turun dari 45 di 27: 21 sarang di 13 berkas
+ * dicabut sekaligus. Hanya boleh mengecil; lihat kepala berkas untuk kenapa
+ * ini peta hitungan dan bukan daftar nama.
  *
- * Urutan modulnya kelak: yang terpadat lebih dulu — `fixed-assets` (4),
- * `accounts`/`contracts`/`inventory` (masing-masing 3–5 bila detail & daftarnya
- * dihitung bersama), lalu sisanya.
+ * Paruh keduanya, yang tersisa di bawah: `fixed-assets` (4), `inventory` (3 +
+ * 2 di `opname`), `finance`/`reconciliation`/`returns`/`suppliers` (2
+ * masing-masing), lalu `documents`, `journal`, `purchases`, `sales`,
+ * `tax/efaktur`, dan `components/shared/document-preview.tsx`.
  */
 const SISA_SARANG: Record<string, number> = {
-  "app/(dashboard)/error.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/page.tsx": 3,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/page.tsx": 3,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/cost-centers/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/[id]/page.tsx": 2,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/page.tsx": 1,
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/document-preview-button.tsx": 1,
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/page.tsx": 1,
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/finance/page.tsx": 2,
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/page.tsx": 4,
@@ -140,8 +129,24 @@ const SISA_SARANG: Record<string, number> = {
  * membuat kemajuan tidak bisa mundur diam-diam: peta di atas menjaga jumlah
  * total, daftar ini menjaga bahwa modul yang sudah selesai tidak menerima
  * sarang baru sekalipun modul lain kebetulan kehilangan satu.
+ *
+ * ⚠ `documents` sengaja TIDAK di sini: `document-preview-button.tsx` sudah
+ * dipindahkan tapi `documents/page.tsx` belum, jadi modulnya belum nol.
+ * Menuliskannya sekarang akan membuat tes di bawah merah pada pekerjaan yang
+ * memang belum selesai — dan orang berikutnya akan menghapus entrinya alih-alih
+ * menyelesaikannya.
  */
-const MODUL_SELESAI = ["app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices"];
+const TENANT = "app/(dashboard)/t/[tenantSlug]/[companySlug]";
+const MODUL_SELESAI = [
+  `${TENANT}/accounts`,
+  `${TENANT}/advances`,
+  `${TENANT}/consignees`,
+  `${TENANT}/contracts`,
+  `${TENANT}/cost-centers`,
+  `${TENANT}/customers`,
+  `${TENANT}/delivery-orders`,
+  `${TENANT}/invoices`,
+];
 
 function berkasTsx(dir: string, keluar: string[] = []): string[] {
   for (const entri of readdirSync(dir, { withFileTypes: true })) {
@@ -337,7 +342,7 @@ describe("sarang anchor–tombol (#289)", () => {
   it("pendeteksinya benar-benar bisa merah — dibuktikan di sini, bukan diandaikan", () => {
     const uji = (kode: string) => sarang("uji.tsx", kode).length;
 
-    // Bentuk yang dijaga, persis seperti yang ada di 45 berkas tersisa.
+    // Bentuk yang dijaga, persis seperti yang ada di 14 berkas tersisa.
     expect(uji("<Link href=\"/x\"><Button variant=\"primary\">A</Button></Link>")).toBe(1);
     expect(uji("<a href=\"/f.csv\" download><Button variant=\"outline\">Unduh</Button></a>")).toBe(1);
     // Pembungkus di tengah tidak menyelamatkan apa pun di DOM.

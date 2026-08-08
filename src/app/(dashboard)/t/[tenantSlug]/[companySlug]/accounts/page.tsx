@@ -26,7 +26,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { TextInput } from "@/components/ui/input";
@@ -210,14 +210,14 @@ export default async function AccountsPage({
         title={t("accounts.title", { count: rows.length })}
         actions={
           <>
-            <Link href="/accounts/import">
-              <Button variant="secondary">{t("accounts.importFromExcel")}</Button>
-            </Link>
-            <Link href="/accounts/new">
-              {/* Aksi utama layar ini (#267) — sama seperti sembilan CTA kepala
-                  halaman daftar yang ditulis eksplisit di potongan 3. */}
-              <Button variant="primary">{t("accounts.addNew")}</Button>
-            </Link>
+            <ButtonLink href="/accounts/import" variant="secondary">
+              {t("accounts.importFromExcel")}
+            </ButtonLink>
+            {/* Aksi utama layar ini (#267) — sama seperti sembilan CTA kepala
+                halaman daftar yang ditulis eksplisit di potongan 3. */}
+            <ButtonLink href="/accounts/new" variant="primary">
+              {t("accounts.addNew")}
+            </ButtonLink>
           </>
         }
       />
@@ -251,11 +251,14 @@ export default async function AccountsPage({
           {t("common.search")}
         </Button>
         {q && (
-          <Link href="/accounts">
-            <Button type="button" variant="ghost" size="sm">
-              {t("accounts.clearSearch")}
-            </Button>
-          </Link>
+          /* `type="button"` ikut hilang dan itu benar: ia dulu ada supaya tombol
+             DI DALAM `<form>` ini tidak ikut mengirimkannya. Sekarang yang
+             dirender `<a class="ant-btn">` — sebuah anchor tidak pernah menjadi
+             tombol kirim sebuah formulir, jadi penjaganya tidak lagi punya yang
+             perlu dijaga. */
+          <ButtonLink href="/accounts" variant="ghost" size="sm">
+            {t("accounts.clearSearch")}
+          </ButtonLink>
         )}
       </form>
 

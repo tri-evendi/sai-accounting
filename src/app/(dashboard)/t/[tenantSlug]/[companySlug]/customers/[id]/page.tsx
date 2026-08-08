@@ -8,11 +8,10 @@
  */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
@@ -63,12 +62,12 @@ export default async function CustomerDetailPage({
         title={customer.name}
         actions={
           <>
-            <Link href={`/customers/${customer.id}/edit`}>
-              <Button variant="secondary">{t("common.edit")}</Button>
-            </Link>
-            <Link href="/customers">
-              <Button variant="ghost">{t("common.back")}</Button>
-            </Link>
+            <ButtonLink href={`/customers/${customer.id}/edit`} variant="secondary">
+              {t("common.edit")}
+            </ButtonLink>
+            <ButtonLink href="/customers" variant="ghost">
+              {t("common.back")}
+            </ButtonLink>
           </>
         }
       />

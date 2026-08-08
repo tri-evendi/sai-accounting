@@ -7,11 +7,10 @@
  */
 import { notFound } from "next/navigation";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -69,12 +68,12 @@ export default async function ConsigneeDetailPage({
         }
         actions={
           <>
-            <Link href={`/consignees/${consignee.id}/edit`}>
-              <Button variant="secondary">{t("common.edit")}</Button>
-            </Link>
-            <Link href="/consignees">
-              <Button variant="ghost">{t("common.back")}</Button>
-            </Link>
+            <ButtonLink href={`/consignees/${consignee.id}/edit`} variant="secondary">
+              {t("common.edit")}
+            </ButtonLink>
+            <ButtonLink href="/consignees" variant="ghost">
+              {t("common.back")}
+            </ButtonLink>
           </>
         }
       />

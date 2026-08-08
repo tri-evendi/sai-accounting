@@ -78,10 +78,14 @@
  * apa yang terjadi saat diklik — dan itu keputusan yang harus DITULIS, sebab
  * keduanya terlihat identik di layar dan hanya berbeda di waktu muat.
  *
- * ── Hitungan sarang yang tersisa: 50 di 29 berkas (2026-08-08) ─────────────
+ * ── Hitungan sarang yang tersisa: 24 di 14 berkas (2026-08-08) ─────────────
  * Diukur dengan parser TypeScript yang sama dengan `tests/button-emphasis.test.ts`,
  * dan angkanya kini dijaga per-berkas di `tests/anchor-button-nesting.test.ts`
- * (`SISA_SARANG`, daftar yang hanya boleh MENGECIL).
+ * (`SISA_SARANG`, daftar yang hanya boleh MENGECIL). Jejaknya: **50 di 29**
+ * saat issue #289 dibuka, **45 di 27** setelah modul faktur (PR 1), **24 di
+ * 14** setelah paruh pertama sisa modul (PR 2). Angka di sini akan basi lebih
+ * cepat daripada `SISA_SARANG`; kalau keduanya berbeda, yang benar adalah
+ * penjaganya.
  *
  * ⚠ Dua angka lain beredar dan keduanya keliru — ditulis di sini supaya tidak
  * dihidupkan kembali. **"46"** (yang tertulis di kepala berkas ini sampai #289)

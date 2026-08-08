@@ -336,8 +336,14 @@ export function Wizard({
           <ArrowLeftOutlined aria-hidden="true" /> {t("common.back")}
         </Button>
 
+        {/* Satu-satunya aksi utama layar wisaya, dan dua cabang yang saling
+            meniadakan: "Lanjut" di langkah tengah, "Selesai" di langkah
+            terakhir (#267). "Kembali" `secondary` dan "Batal" `ghost` — dua
+            jalan keluar, bukan dua ajakan. Layar SUKSES yang menggantikan
+            wisaya ini (`purchase-wizard`/`sales-wizard`) memasang primernya
+            sendiri; ia tidak pernah terender bersamaan dengan kaki ini. */}
         {isLast ? (
-          <Button type="button" onClick={finish} disabled={busy}>
+          <Button type="button" variant="primary" onClick={finish} disabled={busy}>
             {busy ? (
               <>
                 {/* Pemutar AntD, bukan `Loader2` + `animate-spin`: animasinya
@@ -354,7 +360,7 @@ export function Wizard({
             )}
           </Button>
         ) : (
-          <Button type="button" onClick={goNext} disabled={busy}>
+          <Button type="button" variant="primary" onClick={goNext} disabled={busy}>
             {t("wizard.next")} <ArrowRightOutlined aria-hidden="true" />
           </Button>
         )}

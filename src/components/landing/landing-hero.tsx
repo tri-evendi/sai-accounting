@@ -14,6 +14,15 @@
  * untuk orang yang BELUM punya akun; yang sudah punya tahu jalannya dan tetap
  * menemukannya di bilah atas. Keduanya `size="lg"` (48px), melebar penuh di
  * layar sempit karena kolomnya `flex-direction: column` di bawah 576px.
+ *
+ * ══ `variant="primary"` DITULIS, DAN ITU BUKAN SEKADAR KERAPIAN (#267) ══════
+ * Aturan "satu aksi utama per layar" TIDAK berlaku di halaman ini — MASTER.md
+ * §Aksi utama per layar → "Pendaratan `/` dikecualikan". Yang berlaku sebagai
+ * gantinya: setiap tombol berisi penuh di direktori ini menuju `/register`,
+ * satu ajakan yang diulang, bukan empat ajakan yang bersaing
+ * (`tests/button-emphasis.test.ts`). Variannya ditulis eksplisit supaya
+ * pembalikan bawaan `primary`→`secondary` kelak tidak diam-diam mencabut hero
+ * halaman pemasaran.
  */
 import {
   LANDING_HERO_TITLE,
@@ -53,7 +62,7 @@ export async function LandingHero() {
             {t("landing.heroBody")}
           </p>
           <div data-landing-actions="" style={{ marginTop: "var(--sai-landing-cta-space)" }}>
-            <Button href="/register" size="lg">
+            <Button href="/register" size="lg" variant="primary">
               {t("landing.heroPrimary")}
             </Button>
             <Button href="/login" size="lg" variant="outline">

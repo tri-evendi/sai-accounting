@@ -117,7 +117,15 @@ export function StockPeriodFilter({
         <Flex component="form" wrap align="flex-end" gap={token.marginSM} onSubmit={submitCustom}>
           <Input id="from" type="date" label={t("common.from")} value={f} onChange={(e) => setF(e.target.value)} />
           <Input id="to" type="date" label={t("common.to")} value={to} onChange={(e) => setTo(e.target.value)} />
-          <Button type="submit">{t("common.show")}</Button>
+          {/* `outline` (#267): rentang khusus MENYARING, tidak mengikat. Dulu
+              berisi penuh, dan akibatnya di layar bukan "satu aksi utama"
+              melainkan DUA — tombol ini berdampingan dengan chip granularitas
+              yang sedang aktif, yang juga berisi penuh. Yang tersisa berisi
+              penuh sekarang hanya chip itu, dan artinya bukan "tekan saya"
+              melainkan "inilah periode yang sedang Anda lihat". */}
+          <Button type="submit" variant="outline">
+            {t("common.show")}
+          </Button>
         </Flex>
       ) : (
         <Flex align="center" gap={token.marginSM}>

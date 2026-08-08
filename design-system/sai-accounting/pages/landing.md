@@ -23,6 +23,7 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 | `PageHeader` wajib untuk judul | **Tidak berlaku**: `PageHeader` membawa breadcrumb & kerangka dasbor. Halaman ini menulis `<h1>` sendiri, satu buah, di hero |
 | Density 6/10 (nyaman untuk data) | Lebih longgar — `--sai-landing-rhythm` (64px → 96px) antar-seksi. Tidak ada tabel data di sini |
 | Lebar penuh area kerja | Kolom baca dikurung: 72rem per seksi, 42rem per kolom teks, keduanya di tengah |
+| Satu aksi utama per layar (#267) | **Tidak berlaku**: halaman ini merender empat tombol berisi penuh sekaligus — bilah atas, hero, tiap kartu paket, penutup — dan itu memang bentuknya. **Batasnya**: keempatnya harus menuju tempat yang SAMA (`/register`), sebab yang sah adalah satu ajakan yang diulang, bukan empat ajakan yang bersaing. Dijaga `tests/button-emphasis.test.ts`; alasan lengkapnya di MASTER.md §Aksi utama per layar |
 
 ## Bagaimana bentuk itu ditulis (bukan lagi kelas)
 
@@ -40,6 +41,11 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 
 ## Yang TETAP BERLAKU PENUH (jangan tawar)
 
+- **`variant` ditulis eksplisit di setiap `<Button>`** — pengecualian di atas
+  membebaskan halaman ini dari BERAPA BANYAK primer, bukan dari menuliskannya.
+  Bawaan `primary` akan dibalik ke `secondary` setelah audit #267 selesai;
+  tombol pendaratan yang mengandalkan bawaan akan turun pada hari itu, dan
+  halaman pemasaran kehilangan seluruh ajakannya tanpa satu diff pun menyebutnya.
 - **Primitif** — tombol lewat `Button` (ikon `size="icon"`), kartu lewat `Card`.
   Dijaga `tests/design-system-primitives.test.ts` (lingkupnya mencakup
   `src/components`, jadi `src/components/landing/**` ikut terjaga).

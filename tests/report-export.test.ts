@@ -171,6 +171,11 @@ describe("buildReportSheet — balance sheet", () => {
       5_000_000, // Modal
       2_000_000, // Laba / Rugi Berjalan
       7_000_000, // Total Ekuitas = totalEquity + netIncome
+      // Penutupnya menyebut KEDUA sisi klaim neraca sejak issue #258 — "Total
+      // Aset" diulang di sebelah "Total Liabilitas + Ekuitas", supaya kata
+      // "Seimbang" bisa diperiksa dan bukan hanya dipercaya. Baris inilah yang
+      // bertambah; angkanya tidak satu pun berubah.
+      9_000_000, // Total Aset (sisi kiri klaim)
       9_000_000, // Total Liabilitas + Ekuitas
     ]);
   });

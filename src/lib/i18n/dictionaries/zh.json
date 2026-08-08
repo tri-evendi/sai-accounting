@@ -1635,6 +1635,7 @@
     "sectionEquity": "所有者权益",
     "sectionTotal": "{section}合计",
     "currentNetIncome": "累计利润",
+    "noAccountsInSection": "本节没有余额科目。",
     "totalAssets": "资产合计",
     "totalLiabilitiesEquity": "负债与所有者权益合计",
     "colStatementAmount": "金额 (IDR)",

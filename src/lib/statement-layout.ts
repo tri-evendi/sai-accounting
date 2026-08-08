@@ -330,6 +330,268 @@ export function cashFlowLayout(
   return rows;
 }
 
+// ─── Bentuk Neraca ───────────────────────────────────────────────────────────
+
+/**
+ * Bentuk laporan Neraca — SATU penentu untuk layar, PDF, dan lembar sebar
+ * (issue #258).
+ *
+ * ── Kenapa ia ada ───────────────────────────────────────────────────────────
+ * Sama persis dengan alasan `cashFlowLayout()` di atas, satu laporan lebih
+ * jauh. Neraca digambar TIGA kali: halaman `reports/balance-sheet` (dengan
+ * penolong `section()` lokalnya sendiri), `buildBalanceSheetSheet()` di
+ * `report-export.ts`, dan cabang `balance-sheet` di `pdf/statement-pdf.ts`.
+ * Ketiganya hijau di tesnya masing-masing, karena masing-masing benar menurut
+ * sumbernya sendiri; yang tidak diuji siapa pun adalah KESAMAAN di antara
+ * ketiganya — dan itu satu-satunya sifat yang penting bagi orang yang
+ * mencocokkan layar dengan lampiran yang ia kirim ke bank.
+ *
+ * Yang paling gawat: **aritmetika ekuitas ditulis ulang di setiap tempat.**
+ * `totalEquity + netIncome` hidup di halaman, di lembar sebar, di PDF, dan di
+ * `report-summary.ts` — empat salinan sebuah rumus akuntansi adalah empat
+ * tempat ia bisa menyimpang, dan yang kalah selalu yang tidak terlihat.
+ * Sekarang ia hidup sekali, di `balanceSheetEquityTotal()`.
+ *
+ * ── Empat keputusan yang diambil sadar ──────────────────────────────────────
+ *  1. **Baris penutup ada DUA, di ketiganya: "Total Aset" lalu "Total
+ *     Liabilitas + Ekuitas".** Satu-satunya klaim neraca adalah A = L + E;
+ *     laporan yang hanya mencetak satu sisi di penutupnya meminta pembacanya
+ *     menggulung balik dan menahan angka di kepala, lalu percaya begitu saja
+ *     pada kata "Seimbang". Aturan yang sama persis dengan "awal + perubahan =
+ *     akhir harus ada DI DALAM tabel arus kas" (keputusan 4 di #241). Layar
+ *     sudah punya keduanya; PDF & lembar sebar MENDAPAT baris "Total Aset" —
+ *     ia menambah, tidak mengambil.
+ *  2. **Label baris penutup menamai ANGKANYA: "Total Liabilitas + Ekuitas".**
+ *     PDF dulu menulis "Aset = Liabilitas + Ekuitas" di sebelah angka yang
+ *     bukan aset, dan "Aset =/= Liabilitas + Ekuitas" di sebelah angka yang
+ *     sama — sebuah label yang menyatakan hubungan, bukan menamai bilangannya.
+ *     Keadaan seimbang jadi ANOTASI (lencana di layar, tanda kurung di
+ *     cetakan), persis seperti rekonsiliasi arus kas.
+ *  3. **Seksi kosong menyebut alasannya**, bukan "—" (layar) atau "Tidak ada
+ *     data." (cetakan). Sebuah tanda hubung tidak mengatakan apa pun kepada
+ *     pembaca layar, dan "tidak ada data" terbaca seperti laporan yang gagal
+ *     memuat. Yang benar: tidak ada AKUN BERSALDO di bagian itu — `getBalanceSheet`
+ *     memang membuang akun bersaldo nol.
+ *  4. **"Akumulasi Laba/Rugi" adalah BARIS AKUN di dalam blok ekuitas**, bukan
+ *     baris tersendiri sesudahnya (bentuk lembar sebar yang lama). Ia memang
+ *     komponen ekuitas — "Total Ekuitas" menjumlahkannya — dan seseorang yang
+ *     menyorot baris-baris ekuitas di Excel lalu menekan `SUM` harus mendapat
+ *     angka yang sama dengan subtotalnya. Karena ia bukan akun, kodenya kosong;
+ *     labelnya karena itu `.trim()`, seperti seluruh baris akun di app ini.
+ */
+
+export type BalanceSheetSectionId = "assets" | "liabilities" | "equity";
+
+export interface BalanceSheetLineShape {
+  code: string;
+  name: string;
+  amount: number;
+}
+
+/** Struktural dengan sengaja — muat untuk hasil pembaca laporan maupun payload ekspor. */
+export interface BalanceSheetShape {
+  assets: readonly BalanceSheetLineShape[];
+  liabilities: readonly BalanceSheetLineShape[];
+  equity: readonly BalanceSheetLineShape[];
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquity: number;
+  netIncome: number;
+  totalLiabilitiesEquity: number;
+  balanced: boolean;
+}
+
+/**
+ * Ekuitas SEBAGAIMANA TERBACA DI LAPORAN: saldo akun-akun ekuitas
+ * (`totalEquity`) ditambah hasil periode berjalan (`netIncome`), yang belum
+ * ditutup ke akun laba ditahan mana pun.
+ *
+ * **Satu-satunya tempat rumus ini ditulis.** Sebelum #258 ia ditulis ulang di
+ * empat berkas; sebuah rumus akuntansi yang punya empat salinan punya empat
+ * tempat untuk menyimpang, dan salinan yang salah selalu yang paling jarang
+ * dilihat orang. `getBalanceSheet()` memakainya untuk menyusun
+ * `totalLiabilitiesEquity`, jadi neraca tidak bisa "seimbang" menurut satu
+ * penjumlahan dan tidak seimbang menurut penjumlahan yang lain.
+ */
+export function balanceSheetEquityTotal(statement: {
+  totalEquity: number;
+  netIncome: number;
+}): number {
+  return statement.totalEquity + statement.netIncome;
+}
+
+export type BalanceSheetRowKind = "section" | "line" | "empty" | "subtotal" | "total";
+
+export interface BalanceSheetLayoutRow {
+  kind: BalanceSheetRowKind;
+  /** Seksi asal; tak ada untuk baris penutup. */
+  section?: BalanceSheetSectionId;
+  label: string;
+  /** Hanya `kind: "line"` — kode akun, dipisah dari namanya agar layar bisa menggayainya. */
+  code?: string;
+  name?: string;
+  /**
+   * `null` berarti kolom nominal TIDAK BERLAKU untuk baris ini (judul seksi,
+   * kalimat "tidak ada akun"), dan setiap permukaan menggambarnya kosong.
+   *
+   * Nol tetap NOL, dan tertulis apa adanya di ketiga permukaan — berbeda dari
+   * Arus Kas yang menuliskannya "-". Di neraca sebuah nol adalah pernyataan
+   * posisi ("bagian ini memang nol per tanggal itu"), bukan "tidak ada arus";
+   * dan tidak ada satu pun permukaan yang hari ini menuliskannya lain, jadi
+   * tidak ada divergensi yang perlu dimenangkan siapa pun di sini.
+   */
+  amount: number | null;
+}
+
+/**
+ * Label baris yang bukan milik satu akun. Layar memasok terjemahannya; nilai
+ * Indonesia-nya SAMA PERSIS dengan `BALANCE_SHEET_PRINT_LABELS`, dan itu yang
+ * membuat `tests/balance-sheet-shape.test.ts` bisa membandingkan layar dengan
+ * cetakan tanpa tabel padanan.
+ */
+export interface BalanceSheetLabels {
+  assets: string;
+  liabilities: string;
+  equity: string;
+  /** Subtotal seksi — bentuk fungsi karena susunan katanya berbeda per bahasa. */
+  sectionTotal: (section: string) => string;
+  /** Hasil periode berjalan, sebagai baris akun di dalam blok ekuitas. */
+  currentNetIncome: string;
+  empty: string;
+  totalAssets: string;
+  totalLiabilitiesEquity: string;
+}
+
+/**
+ * Label untuk DOKUMEN CETAK — bahasa Indonesia, seperti seluruh isi `lib/pdf`:
+ * berkas yang lepas dari layarnya tidak membawa pilihan bahasa penggunanya.
+ *
+ * Kamus `id.json` memuat kalimat yang SAMA PERSIS (`reports.sectionAssets`,
+ * `reports.sectionLiabilities`, `reports.sectionEquity`,
+ * `reports.sectionTotal`, `reports.currentNetIncome`,
+ * `reports.noAccountsInSection`, `reports.totalAssets`,
+ * `reports.totalLiabilitiesEquity`).
+ */
+export const BALANCE_SHEET_PRINT_LABELS: BalanceSheetLabels = {
+  assets: "Aset",
+  liabilities: "Liabilitas",
+  equity: "Ekuitas",
+  sectionTotal: (section) => `Total ${section}`,
+  currentNetIncome: "Akumulasi Laba/Rugi",
+  empty: "Tidak ada akun bersaldo pada bagian ini.",
+  totalAssets: "Total Aset",
+  totalLiabilitiesEquity: "Total Liabilitas + Ekuitas",
+};
+
+/**
+ * Keterangan keseimbangan pada baris penutup, untuk DOKUMEN CETAK.
+ *
+ * Layar menyampaikan hal yang sama lewat lencana di sebelah label — bentuk yang
+ * tidak punya padanan di kertas. Karena itu ia ANOTASI, bukan bagian labelnya:
+ * penjaga bentuk membandingkan label pokoknya, lalu memeriksa anotasi ini
+ * terpisah. Bentuknya mengikuti `cashFlowReconciliationNote()`.
+ */
+export function balanceSheetBalanceNote(balanced: boolean): string {
+  return balanced ? "(Seimbang)" : "(TIDAK SEIMBANG — periksa jurnal)";
+}
+
+export const BALANCE_SHEET_COLUMNS = ["item", "amount"] as const;
+
+export type BalanceSheetColumnId = (typeof BALANCE_SHEET_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const BALANCE_SHEET_HEADERS: Record<BalanceSheetColumnId, string> = {
+  item: "Keterangan",
+  amount: "Jumlah (IDR)",
+};
+
+/**
+ * Berapa baris terakhir `balanceSheetLayout()` yang merupakan KAKI laporan.
+ * Dua: "Total Aset" dan "Total Liabilitas + Ekuitas" — dua sisi klaim yang
+ * dibaca berdampingan (keputusan 1). Yang TERAKHIR selalu sisi liabilitas +
+ * ekuitas, dan itu yang membawa anotasi keseimbangan.
+ */
+export const BALANCE_SHEET_FOOT_ROWS = 2;
+
+/**
+ * Badan dan kaki, dipisah dengan satu aturan alih-alih tiga. Di layar kaki
+ * menjadi prop `summary`, di cetakan `foot` autoTable, di lembar sebar dua
+ * baris terakhir — tempat yang berbeda, isi yang sama.
+ */
+export function splitBalanceSheetRows(rows: readonly BalanceSheetLayoutRow[]): {
+  body: BalanceSheetLayoutRow[];
+  foot: BalanceSheetLayoutRow[];
+} {
+  return {
+    body: rows.slice(0, -BALANCE_SHEET_FOOT_ROWS),
+    foot: rows.slice(-BALANCE_SHEET_FOOT_ROWS),
+  };
+}
+
+/**
+ * Seluruh baris Neraca, dalam urutan kanoniknya, dengan angkanya sudah
+ * teratasi. Yang tersisa bagi tiap permukaan hanyalah MENGGAMBAR baris — tidak
+ * ada satu pun keputusan bentuk, dan tidak satu pun penjumlahan, di luar
+ * fungsi ini.
+ */
+export function balanceSheetLayout(
+  statement: BalanceSheetShape,
+  labels: BalanceSheetLabels = BALANCE_SHEET_PRINT_LABELS
+): BalanceSheetLayoutRow[] {
+  const rows: BalanceSheetLayoutRow[] = [];
+
+  const section = (
+    id: BalanceSheetSectionId,
+    title: string,
+    lines: readonly BalanceSheetLineShape[],
+    total: number
+  ) => {
+    rows.push({ kind: "section", section: id, label: title, amount: null });
+    if (lines.length === 0) {
+      rows.push({ kind: "empty", section: id, label: labels.empty, amount: null });
+    } else {
+      for (const l of lines) {
+        rows.push({
+          kind: "line",
+          section: id,
+          label: `${l.code}  ${l.name}`.trim(),
+          code: l.code,
+          name: l.name,
+          amount: l.amount,
+        });
+      }
+    }
+    rows.push({
+      kind: "subtotal",
+      section: id,
+      label: labels.sectionTotal(title),
+      amount: total,
+    });
+  };
+
+  section("assets", labels.assets, statement.assets, statement.totalAssets);
+  section("liabilities", labels.liabilities, statement.liabilities, statement.totalLiabilities);
+  // Hasil periode berjalan adalah komponen ekuitas, jadi ia baris akun DI DALAM
+  // bloknya — lihat keputusan 4 di kepala bagian ini. Karena itu pula blok
+  // ekuitas tak pernah kosong: paling tidak angka periode berjalan selalu ada,
+  // meski nol.
+  section(
+    "equity",
+    labels.equity,
+    [...statement.equity, { code: "", name: labels.currentNetIncome, amount: statement.netIncome }],
+    balanceSheetEquityTotal(statement)
+  );
+
+  rows.push({ kind: "total", label: labels.totalAssets, amount: statement.totalAssets });
+  rows.push({
+    kind: "total",
+    label: labels.totalLiabilitiesEquity,
+    amount: statement.totalLiabilitiesEquity,
+  });
+
+  return rows;
+}
+
 // ─── Kolom Riwayat Stok ──────────────────────────────────────────────────────
 
 /**

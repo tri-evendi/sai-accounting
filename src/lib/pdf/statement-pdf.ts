@@ -18,15 +18,20 @@ import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
   agingColumns,
+  balanceSheetBalanceNote,
+  balanceSheetLayout,
   budgetColumns,
   cashBankColumns,
   cashFlowLayout,
   cashFlowPrintAmount,
   cashFlowReconciliationNote,
   partyRecapColumns,
+  splitBalanceSheetRows,
   stockMovementColumns,
   stockValueColumns,
   AGING_HEADERS,
+  BALANCE_SHEET_COLUMNS,
+  BALANCE_SHEET_HEADERS,
   BUDGET_HEADERS,
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
@@ -34,6 +39,8 @@ import {
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   type AgingColumnId,
+  type BalanceSheetLayoutRow,
+  type BalanceSheetRowKind,
   type BudgetColumnId,
   type CashBankColumnId,
   type CashFlowCategoryId,
@@ -406,8 +413,8 @@ function moneySection(
     head: [[heading, "Jumlah"]],
     body: rows.length
       ? // `.trim()` seperti di seluruh berkas ini (dan di `report-export.ts`):
-        // tanpanya akun berkode kosong — "Akumulasi Laba/Rugi" di Neraca —
-        // tercetak menjorok dua spasi di PDF saja.
+        // tanpanya akun berkode kosong tercetak menjorok dua spasi di PDF saja.
+        // Sejak #258 Neraca tidak lagi lewat sini — pemakainya tinggal Laba/Rugi.
         rows.map((r) => [`${r.code}  ${r.name}`.trim(), rp(r.amount)])
       : [["Tidak ada data.", "-"]],
     foot: [[totalLabel, rp(total)]],
@@ -441,6 +448,40 @@ export function cashFlowPrintRows(payload: Extract<StatementPayload, { kind: "ca
   const foot = rows[rows.length - 1];
   foot[0] = `${foot[0]} ${cashFlowReconciliationNote(payload.reconciled)}`;
   return { body: rows.slice(0, -1), foot };
+}
+
+/**
+ * Badan + kaki tabel Neraca sebagai teks — dipisah dari penggambarnya supaya
+ * bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa satu byte PDF pun
+ * (issue #258, pola yang sama dengan `cashFlowPrintRows`). Bentuknya seluruhnya
+ * milik `balanceSheetLayout()`; di sini hanya ada penulisan angka dan takuk
+ * baris akun.
+ */
+export function balanceSheetPrintRows(
+  payload: Extract<StatementPayload, { kind: "balance-sheet" }>
+): { body: string[][]; foot: string[][]; bodyKinds: BalanceSheetRowKind[] } {
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload));
+  const cell = (r: BalanceSheetLayoutRow, label: string): string[] => [
+    // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
+    // `paddingInlineStart`.
+    r.kind === "line" ? `   ${label}` : label,
+    // Kolom yang tidak berlaku tetap KOSONG, tak pernah "Rp 0" (Prinsip Inti
+    // MASTER.md). Nol yang memang nol tertulis apa adanya — di neraca ia
+    // pernyataan posisi, bukan ketiadaan arus.
+    r.amount === null ? "" : rp(r.amount),
+  ];
+  return {
+    body: body.map((r) => cell(r, r.label)),
+    // Keseimbangan adalah ANOTASI pada baris penutup terakhir — lencana di
+    // layar, tanda kurung di sini dan di lembar sebar.
+    foot: foot.map((r, i) =>
+      cell(
+        r,
+        i === foot.length - 1 ? `${r.label} ${balanceSheetBalanceNote(payload.balanced)}` : r.label
+      )
+    ),
+    bodyKinds: body.map((r) => r.kind),
+  };
 }
 
 export function generateStatementPDF(payload: StatementPayload, company: { name: string; address: string }): jsPDF {
@@ -538,28 +579,30 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "balance-sheet") {
-    y = moneySection(doc, y, "Aset", payload.assets, "Total Aset", payload.totalAssets);
-    y = moneySection(doc, y, "Liabilitas", payload.liabilities, "Total Liabilitas", payload.totalLiabilities);
-    y = moneySection(
-      doc,
-      y,
-      "Ekuitas",
-      [...payload.equity, { code: "", name: "Akumulasi Laba/Rugi", amount: payload.netIncome }],
-      "Total Ekuitas",
-      payload.totalEquity + payload.netIncome
-    );
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      payload.balanced
-        ? "Aset = Liabilitas + Ekuitas (Seimbang)"
-        : "Aset =/= Liabilitas + Ekuitas (TIDAK SEIMBANG)",
-      14,
-      y + 2
-    );
-    doc.text(rp(payload.totalLiabilitiesEquity), doc.internal.pageSize.getWidth() - 14, y + 2, {
-      align: "right",
+    /*
+     * SATU tabel, bukan tiga (issue #258). Dulu tiap seksi punya tabelnya
+     * sendiri — dengan judul seksi sebagai KEPALA tabel — sehingga urutan &
+     * jumlah barisnya tak bisa dibandingkan dengan layar maupun lembar sebar,
+     * dan baris penutupnya berdiri di luar tabel mana pun sebagai teks lepas.
+     *
+     * Judul seksi & subtotal kehilangan latar berwarnanya, jadi ketebalan huruf
+     * yang menggantikannya: sebuah laporan keuangan yang seluruh barisnya
+     * serupa tidak bisa dibaca sekilas.
+     */
+    const { body, foot, bodyKinds } = balanceSheetPrintRows(payload);
+    autoTable(doc, {
+      startY: y,
+      head: [BALANCE_SHEET_COLUMNS.map((c) => BALANCE_SHEET_HEADERS[c])],
+      body,
+      foot,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles: { 1: { halign: "right" } },
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        if (bodyKinds[data.row.index] !== "line") data.cell.styles.fontStyle = "bold";
+      },
     });
   }
 

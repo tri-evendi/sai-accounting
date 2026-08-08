@@ -163,7 +163,10 @@ export default async function DeliveryOrdersPage({
         description={t("deliveryOrders.description")}
         actions={
           <Link href="/delivery-orders/new">
-            <Button>
+            {/* Aksi utama layar ini (#267). CTA keadaan-kosong di bawah menunjuk
+                tempat yang sama dan sengaja `secondary` — lihat
+                `ui/empty-state.tsx`. */}
+            <Button variant="primary">
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button`. */}
               <PlusOutlined aria-hidden="true" />
@@ -211,7 +214,11 @@ export default async function DeliveryOrdersPage({
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit">{t("common.search")}</Button>
+        {/* Kirim yang hanya MENYARING — `outline` (#267), preseden "Saring" di
+            `/operator` dan `shared/ledger-filter.tsx`. */}
+        <Button type="submit" variant="outline">
+          {t("common.search")}
+        </Button>
       </form>
 
       {orders.length === 0 ? (

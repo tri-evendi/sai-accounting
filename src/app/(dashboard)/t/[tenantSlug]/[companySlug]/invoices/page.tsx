@@ -233,7 +233,10 @@ export default async function InvoicesPage({
             {/* Alur terpandu = tombol utama (ramah amatir); formulir polos tetap
                 tersedia untuk yang sudah hafal alurnya (issue #5). */}
             <Link href="/sales/new">
-              <Button>{t("invoices.recordSaleGuided")}</Button>
+              {/* Aksi utama layar ini (#267) — dan komentar di atas sudah
+                  menyebutnya begitu sejak #5; sekarang tertulis di variannya,
+                  bukan diwarisi dari bawaan primitif. */}
+              <Button variant="primary">{t("invoices.recordSaleGuided")}</Button>
             </Link>
             <Link href="/invoices/new">
               <Button variant="secondary">{t("invoices.addNew")}</Button>
@@ -263,11 +266,14 @@ export default async function InvoicesPage({
           const qs = query.toString();
           return (
             <Link key={status} href={`/invoices${qs ? `?${qs}` : ""}`}>
+              {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+                  Menyaring tidak mengikat (§Aksi utama per layar), dan isian
+                  penuh di sini bersaing dengan "Catat Penjualan" di kepala. */}
               <Button
                 variant={
                   filters.status === status || (!filters.status && status === "all")
-                    ? "primary"
-                    : "secondary"
+                    ? "secondary"
+                    : "ghost"
                 }
                 size="sm"
               >
@@ -297,7 +303,11 @@ export default async function InvoicesPage({
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit">{t("common.search")}</Button>
+        {/* Kirim yang hanya MENYARING — `outline` (#267), preseden "Saring" di
+            `/operator` dan `shared/ledger-filter.tsx`. */}
+        <Button type="submit" variant="outline">
+          {t("common.search")}
+        </Button>
       </form>
 
       <Card>

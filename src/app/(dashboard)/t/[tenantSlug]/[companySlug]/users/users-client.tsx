@@ -392,7 +392,11 @@ export function UsersClient({
         title={t("users.title")}
         actions={
           canInvite ? (
-            <Button onClick={() => setShowInvite(!showInvite)}>
+            /* PEMICU, bukan aksi (#267): ia membuka panel, tidak mengirim apa
+               pun. Preseden `shared/payment-form.tsx` — pemicu `secondary`,
+               submit di dalam panelnya primer. Akibatnya layar ini nol primer
+               saat panel tertutup, tepat satu saat terbuka. */
+            <Button variant="secondary" onClick={() => setShowInvite(!showInvite)}>
               <UserAddOutlined aria-hidden="true" />
               {showInvite ? t("common.cancel") : t("users.inviteUser")}
             </Button>
@@ -431,7 +435,9 @@ export function UsersClient({
                   />
                 </Col>
                 <Col span={24}>
-                  <Button type="submit" disabled={inviting}>
+                  {/* Aksi utama layar ini saat panel terbuka (#267): ia
+                      MENGIKAT — undangan terkirim dan kursi terpakai. */}
+                  <Button type="submit" variant="primary" disabled={inviting}>
                     {inviting ? t("users.inviting") : t("users.sendInvite")}
                   </Button>
                 </Col>

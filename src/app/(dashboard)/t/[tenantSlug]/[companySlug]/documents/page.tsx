@@ -186,7 +186,9 @@ export default async function DocumentsPage({
         title={t("nav.items.documents")}
         actions={
           <Link href="/documents/upload">
-            <Button>{t("documents.addNew")}</Button>
+            {/* Aksi utama layar ini (#267). CTA keadaan-kosong menunjuk tempat
+                yang sama dan sengaja `secondary` — lihat `ui/empty-state.tsx`. */}
+            <Button variant="primary">{t("documents.addNew")}</Button>
           </Link>
         }
       />
@@ -208,7 +210,11 @@ export default async function DocumentsPage({
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
-        <Button type="submit">{t("common.search")}</Button>
+        {/* Kirim yang hanya MENYARING — `outline` (#267), preseden "Saring" di
+            `/operator` dan `shared/ledger-filter.tsx`. */}
+        <Button type="submit" variant="outline">
+          {t("common.search")}
+        </Button>
       </form>
 
       <Card>

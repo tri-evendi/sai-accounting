@@ -35,12 +35,15 @@ import {
   NEUTRAL_TEXT_LIGHT,
   PRIMARY_BUTTON_DARK,
   PRIMARY_BUTTON_LIGHT,
+  TABLE_HEAD_BG_DARK,
+  TABLE_HEAD_BG_LIGHT,
   borderTokens,
   brandTextTokens,
   moneyPalette,
   moneyTokens,
   neutralTextTokens,
   primaryButtonTokens,
+  tableHeadBg,
   type BorderTokens,
   type BrandTextTokens,
   type MoneyTokens,
@@ -900,6 +903,183 @@ describe("jenjang permukaan (#266)", () => {
     expect(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, "#f5f5f5")).toBeGreaterThanOrEqual(
       NON_TEXT
     );
+  });
+});
+
+/* ========================================================================== */
+/* issue #266 jalan B — jenjang di PERENDER: nada kepala tabel & bayangan kartu */
+/* ========================================================================== */
+
+/**
+ * Bagian sebelumnya membuktikan lapisan token buntu. Bagian ini menjaga jalan
+ * yang diambil sebagai gantinya, dan yang dijaganya BUKAN "apakah kelihatan
+ * bagus" — itu di luar jangkauan sebuah suite Node. Yang dijaganya tiga hal
+ * yang semuanya bisa putus diam-diam:
+ *
+ *  1. **Nadanya tetap permukaan yang sudah diukur.** Begitu seseorang menulis
+ *     hex "yang kelihatan lebih enak", ongkos kontras nol itu berhenti berlaku
+ *     dan tak ada yang memberitahunya.
+ *  2. **Kedua perender tetap memakai angka yang sama.** `Table.headerBg` hanya
+ *     menjangkau `DataTable` (20 dari 66 tabel); yang mudah terjadi adalah
+ *     salah satu sisi diubah dan sisi lain tertinggal — dua rupa tabel di satu
+ *     produk, yang tidak akan gagal di mana pun.
+ *  3. **Kepala tidak berganti warna saat menempel** (#229) — dijaga di
+ *     `tests/permission-matrix-sticky.test.tsx`, karena di sanalah markup-nya
+ *     benar-benar dirender.
+ */
+const readSrc = (relative: string) => readFileSync(join(__dirname, "..", relative), "utf8");
+
+const PROVIDER = "src/components/providers/antd-provider.tsx";
+const TABLE_PRIMITIVE = "src/components/ui/table.tsx";
+const STATIC_TABLE = "src/components/ui/static-table.tsx";
+const CARD = "src/components/ui/card.tsx";
+
+describe("jenjang perender (#266)", () => {
+  it("nadanya BUKAN warna baru — ia permukaan yang sudah masuk hitungan `worst()`", () => {
+    /*
+     * Inti seluruh jalan B: ongkos kontrasnya nol MENURUT KONSTRUKSI, bukan
+     * menurut pengukuran ulang. Nada terang persis latar halaman hari ini dan
+     * nada gelap persis permukaan melayang — keduanya anggota `SURFACES`, jadi
+     * setiap angka "min" di `antd-tokens.ts` sudah diambil di atasnya.
+     */
+    expect(TABLE_HEAD_BG_LIGHT).toBe(APPLIED.light.colorBgLayout);
+    expect(TABLE_HEAD_BG_DARK).toBe(APPLIED.dark.colorBgElevated);
+    expect(SURFACES.light).toContain(TABLE_HEAD_BG_LIGHT);
+    expect(SURFACES.dark).toContain(TABLE_HEAD_BG_DARK);
+    expect(tableHeadBg("light")).toBe(TABLE_HEAD_BG_LIGHT);
+    expect(tableHeadBg("dark")).toBe(TABLE_HEAD_BG_DARK);
+  });
+
+  it("arah nadanya dipatok #208 di KEDUA tema — bukan dipilih dengan mata", () => {
+    /*
+     * Terang tidak punya apa pun di atas `#ffffff`, jadi ia harus turun; dan
+     * turunnya berhenti di `#f2f2f2`, permukaan tergelap yang masih dilewati
+     * tepi kartu. Gelap boleh naik, tetapi hanya sampai `#202020` — dan
+     * `#1f1f1f` adalah satu satuan di bawah dinding itu, yaitu nada paling
+     * terang yang boleh dipakai sama sekali di tema gelap.
+     */
+    expect(darkestSurface(BORDER_TOKENS_LIGHT.colorBorderSecondary, NON_TEXT)).toBe("#f2f2f2");
+    expect(lightestSurface(BORDER_TOKENS_DARK.colorBorderSecondary, NON_TEXT)).toBe("#202020");
+    expect(contrast(BORDER_TOKENS_LIGHT.colorBorderSecondary, TABLE_HEAD_BG_LIGHT)).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+    expect(contrast(BORDER_TOKENS_DARK.colorBorderSecondary, TABLE_HEAD_BG_DARK)).toBeGreaterThanOrEqual(
+      NON_TEXT
+    );
+    // Nadanya benar-benar terbaca sebagai bidang lain dari kartunya.
+    expect(round2(lstar(APPLIED.light.colorBgContainer) - lstar(TABLE_HEAD_BG_LIGHT))).toBe(3.46);
+    expect(round2(lstar(TABLE_HEAD_BG_DARK) - lstar(APPLIED.dark.colorBgContainer))).toBe(5.44);
+  });
+
+  it("setiap tinta yang kini duduk di kepala tabel diukur ULANG di atas nadanya", () => {
+    /*
+     * Judul kolom, tautan sortir (#265), dan penanda urutnya. Angkanya identik
+     * dengan "min" yang sudah tertulis di `antd-tokens.ts` — itu bukan
+     * kebetulan melainkan definisi `worst()`, dan justru itu yang dibuktikan.
+     */
+    const table = [
+      // [tinta, ambang, terang, gelap]
+      [
+        "judul kolom & tautan sortir",
+        AA,
+        APPLIED.light.colorTextSecondary,
+        APPLIED.dark.colorTextSecondary,
+        6.76,
+        7.65,
+      ],
+      ["tautan sortir :hover", AA, APPLIED.light.colorText, APPLIED.dark.colorText, 15.39, 12.18],
+      [
+        "penanda urut nonaktif",
+        NON_TEXT,
+        BORDER_TOKENS_LIGHT.colorBorder,
+        BORDER_TOKENS_DARK.colorBorder,
+        3.62,
+        3.89,
+      ],
+      [
+        "kisi & garis kepala",
+        NON_TEXT,
+        BORDER_TOKENS_LIGHT.colorBorderSecondary,
+        BORDER_TOKENS_DARK.colorBorderSecondary,
+        3.08,
+        3.05,
+      ],
+    ] as const;
+
+    for (const [name, threshold, lightInk, darkInk, lightRatio, darkRatio] of table) {
+      expect(round2(contrast(lightInk, TABLE_HEAD_BG_LIGHT)), `${name} terang`).toBe(lightRatio);
+      expect(round2(contrast(darkInk, TABLE_HEAD_BG_DARK)), `${name} gelap`).toBe(darkRatio);
+      expect(contrast(lightInk, TABLE_HEAD_BG_LIGHT)).toBeGreaterThanOrEqual(threshold);
+      expect(contrast(darkInk, TABLE_HEAD_BG_DARK)).toBeGreaterThanOrEqual(threshold);
+    }
+  });
+
+  it("penanda urut nonaktif berhenti memakai kuartener — dan alasannya terkunci", () => {
+    /*
+     * `colorTextQuaternary` (α 0,25) adalah satu-satunya isyarat "kolom ini
+     * bisa diurutkan" sejak #265, dan ia terukur di bawah ambang grafis 3:1 di
+     * KEDUA tema, di atas nada baru maupun di atas kartu putih. Tes ini
+     * mengunci kegagalan itu supaya penggantinya tidak dianggap selera.
+     */
+    expect(contrast(APPLIED.light.colorTextQuaternary, TABLE_HEAD_BG_LIGHT)).toBeLessThan(NON_TEXT);
+    expect(contrast(APPLIED.dark.colorTextQuaternary, TABLE_HEAD_BG_DARK)).toBeLessThan(NON_TEXT);
+    const src = readSrc(STATIC_TABLE);
+    expect(src, "penanda urut masih memakai kuartener").not.toContain(
+      "--ant-color-text-quaternary"
+    );
+    expect(src).toContain('color: "var(--ant-color-border)"');
+  });
+
+  it("KEDUA perender memakai satu angka — bukan dua yang kebetulan sama", () => {
+    const provider = readSrc(PROVIDER);
+    // Satu variabel dihitung sekali...
+    expect(provider).toMatch(/const headBg = tableHeadBg\(resolved\);/);
+    // ...lalu dipakai di kedua sisi: alias global (StaticTable) & token Table
+    // (DataTable). Kalau salah satu diketik ulang dengan nilai lain, di sinilah
+    // ia tertangkap.
+    expect(provider).toMatch(/colorTableHeadBg:\s*headBg/);
+    expect(provider).toMatch(/Table:\s*\{\s*headerBg:\s*headBg/);
+    /*
+     * Sisi server: primitifnya membaca alias yang sama sebagai variabel CSS.
+     * Dibaca dari BARIS KODEnya, bukan dari seluruh berkas — kalau tidak, satu
+     * kalimat di komentar sudah cukup membuat tes ini hijau selamanya.
+     */
+    const headBgLine = readSrc(TABLE_PRIMITIVE)
+      .split("\n")
+      .find((line) => line.startsWith("const HEAD_BG"));
+    expect(headBgLine, "table.tsx tidak lagi punya konstanta HEAD_BG").toBeDefined();
+    expect(headBgLine).toContain("--ant-color-table-head-bg");
+  });
+
+  it("judul kolom kedua perender sewarna", () => {
+    // Bawaan `Table.headerColor` AntD adalah `colorTextHeading` (α 0,88);
+    // primitifnya memakai `colorTextSecondary` (α 0,65). Dua jawaban untuk satu
+    // pertanyaan = dua rupa tabel, hanya lebih halus dari latar yang berbeda.
+    expect(readSrc(PROVIDER)).toContain('headerColor: "var(--ant-color-text-secondary)"');
+    expect(readSrc(TABLE_PRIMITIVE)).toContain('color: "var(--ant-color-text-secondary)"');
+  });
+
+  it("kartu berbayang dari TOKEN, dan tidak ada `box-shadow` tulisan tangan", () => {
+    const card = readSrc(CARD);
+    expect(card).toContain('boxShadow: "var(--ant-box-shadow-tertiary)"');
+    // MASTER.md §Jarak, radius, bayangan: nilainya berlapis tiga dan disetel
+    // per algoritma tema — sebuah `0 1px 2px rgba(...)` tulisan tangan akan
+    // menjadi bayangan HITAM di halaman gelap yang sudah `#000000`.
+    expect(card).not.toMatch(/boxShadow:\s*"[^"]*\d+px/);
+  });
+
+  it("tidak ada pita baris — penanda 'belum dibaca' /approvals tetap satu-satunya latar baris", () => {
+    /*
+     * Issue #266 menawarkan pita baris sebagai butir ketiga, dan ia SENGAJA
+     * tidak diambil: `rowStyle` sudah dipakai /approvals untuk menandai
+     * keputusan yang belum dibaca (`colorWarningBg`), dan sebuah pita bawaan
+     * akan berselang-seling di belakangnya sehingga "baris ini baru" berubah
+     * menjadi "baris ini genap". Guard ini menolak pita yang ditambahkan
+     * belakangan tanpa memutuskan ulang hal itu.
+     */
+    const rules = readSrc(TABLE_PRIMITIVE);
+    expect(rules).not.toContain("nth-child");
+    expect(rules).not.toContain("nth-of-type");
   });
 });
 

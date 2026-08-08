@@ -156,15 +156,48 @@ itulah yang paling menonjol di layar, dan garis itu juga yang mengurung setiap
 bidang di dalam pita 3,5% antara `#ffffff` dan `#f2f2f2`.** #208 dan #266
 terhubung lewat satu angka dan tidak bisa sama-sama berada di ujung "tenang"-nya.
 
-**Yang tersisa berongkos kontras NOL, dan letaknya di perender — bukan di token:**
-bayangan kartu (`--ant-box-shadow-tertiary`) dan **kepala tabel bernada**. Nada
-`#f5f5f5` di dalam kartu putih tidak perlu diaudit ulang: ia latar halaman hari
-ini, jadi sudah termasuk dalam `worst()` setiap token. Keduanya tak terjangkau
-dari `ConfigProvider` — `Card` AntD tidak punya token bayangan, dan
-`Table.headerBg` hanya mengenai `DataTable` (20 dari 66 tabel) sedangkan
-`StaticTable` menggambar sel judulnya sendiri; menyetelnya sendirian menghasilkan
-dua rupa tabel di satu produk. Angkanya ada di `lib/theme/antd-tokens.ts`;
-keputusannya milik pemilik.
+### Jalan yang diambil: jenjangnya dikerjakan di PERENDER (issue #266)
+
+Karena lapisan token buntu, jenjangnya dibuat di dalam bidang yang sudah ada —
+**berongkos kontras NOL menurut konstruksi**, bukan menurut pengukuran ulang.
+
+| Yang ditambahkan | Di mana | Nilai |
+|---|---|---|
+| Bayangan kartu | `ui/card.tsx` | `--ant-box-shadow-tertiary` |
+| Nada kepala tabel | `ui/table.tsx` **dan** `components.Table.headerBg` | terang `#f5f5f5` · gelap `#1f1f1f` |
+
+- **Nadanya bukan warna baru.** Terang `#f5f5f5` = `colorBgLayout`; gelap
+  `#1f1f1f` = `colorBgElevated`. Keduanya anggota `SURFACES`, jadi setiap angka
+  "min" di `antd-tokens.ts` memang sudah diambil di atasnya. Terukur di atas
+  nada: judul kolom & tautan sortir **6,76 / 7,65** · hover **15,39 / 12,18** ·
+  penanda urut **3,62 / 3,89** · kisi **3,08 / 3,05** (terang/gelap).
+- **Arahnya dipatok #208, bukan dipilih dengan mata.** Terang tidak punya apa pun
+  di atas `#ffffff` sehingga harus turun, dan turunnya berhenti di `#f2f2f2`.
+  Gelap boleh naik, tetapi hanya sampai `#202020` — `#1f1f1f` satu satuan di
+  bawah dinding itu, yaitu nada paling terang yang boleh dipakai sama sekali.
+- **`Table.headerBg` sendirian TIDAK cukup**: ia hanya mengenai `DataTable` (20
+  dari 66 tabel); `StaticTable` menggambar sel judulnya sendiri. Karena itu
+  nadanya berdiri sebagai alias GLOBAL `colorTableHeadBg`
+  (`var(--ant-color-table-head-bg)`) — variabel token KOMPONEN tidak ada di
+  dokumen bila komponennya tidak dirender — dan `AntdProvider` mengoper nilai
+  yang SAMA ke keduanya. `headerColor` ikut disamakan ke `colorTextSecondary`.
+- **Sel judul lengket memakai latar yang sama** (#229). Nada di jalur biasa
+  dengan bawaan lengket yang tertinggal = kepala yang berganti warna saat
+  menempel, dan hanya terlihat oleh orang yang sedang menggulung matriks izin.
+- **Penanda urut nonaktif (#265) naik dari `colorTextQuaternary` ke
+  `colorBorder`.** Kuartener terukur 1,83:1 di atas putih — di bawah ambang 3:1
+  untuk grafis non-teks, padahal ia satu-satunya isyarat "kolom ini bisa
+  diurutkan".
+- **Pita baris SENGAJA tidak diambil** (butir 3 issue #266): `rowStyle` sudah
+  dipakai /approvals untuk menandai keputusan yang belum dibaca, dan pita bawaan
+  akan mengubah "baris ini baru" menjadi "baris ini genap".
+- **Tema gelap, jujur:** algoritma AntD membalik bayangan menjadi CAHAYA
+  (`boxShadowTertiary` gelap = `rgba(255,255,255,0.01)`), jadi bayangan kartu
+  adalah separuh TERANG dari jawaban ini. Di tema gelap yang memisahkan kartu
+  dari halaman tetap tepinya (3,05:1 sejak #208) plus nada kepala di dalamnya.
+
+Semua angka di atas dihitung ulang setiap kali suite berjalan —
+`tests/antd-tokens.test.ts` → "jenjang perender (#266)".
 
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
@@ -484,6 +517,8 @@ membaca hijau dan menyimpulkan aman.
 | Barrel `@ant-design/icons` tak menyentuh lapisan RSC | `tests/icon-rsc-boundary.test.ts` + `modularizeImports` di `next.config.ts` |
 | Angka kontras token, dihitung ulang dari paket `antd` yang terpasang | `tests/antd-tokens.test.ts`, `tests/ui-controls-antd.test.tsx`, `tests/chart-tokens.test.tsx` |
 | Permukaan (`colorBgLayout`/`Container`/`Elevated`) tidak bergeser tanpa menurunkan ulang seluruh tabel kontras | `tests/antd-tokens.test.ts` → "jenjang permukaan (#266)" |
+| Nada kepala tabel tetap permukaan terukur, KEDUA perender memakai satu angka, kartu berbayang dari token, tanpa pita baris | `tests/antd-tokens.test.ts` → "jenjang perender (#266)" |
+| Kepala tabel tidak berganti warna saat menempel | `tests/permission-matrix-sticky.test.tsx` |
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |

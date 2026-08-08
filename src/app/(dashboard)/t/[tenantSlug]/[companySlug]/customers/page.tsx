@@ -8,6 +8,17 @@
  * Pelanggan DINONAKTIFKAN, tidak dihapus: baris nonaktif tetap ditampilkan
  * (diurutkan belakangan) dan diberi lencana, karena itulah satu-satunya
  * penjelasan mengapa nama tersebut tak lagi muncul di pemilih faktur.
+ *
+ * ── Sortir kolom lewat URL (issue #265) ────────────────────────────────────
+ * Hanya kolom Nama, dan itu keputusan: alamat/telepon/email/PIC disimpan
+ * sebagai teks bebas yang boleh kosong, dan mengurutkannya menaik akan menaikkan
+ * blok baris "-" ke puncak (MySQL menganggap string kosong maupun NULL paling
+ * kecil, dan tidak punya `NULLS LAST` — lihat kepala `lib/table-sort.ts`).
+ *
+ * Perhatikan `SORTABLE.name`: `isActive` tetap kunci PERTAMA di kedua arah,
+ * jadi pelanggan nonaktif tidak naik ke puncak hanya karena pengguna membalik
+ * urutan nama. Urutan bawaan halaman ini memang bertingkat, dan sortir kolom
+ * mengganti tingkat KEDUAnya saja.
  */
 import { parsePageParam } from "@/lib/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -25,7 +36,22 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { TeamOutlined } from "@ant-design/icons";
+import {
+  parseSort,
+  sortOrderBy,
+  sortableKeys,
+  type SortSpec,
+} from "@/lib/table-sort";
+import type { Prisma } from "@/generated/prisma/client";
 export const dynamic = "force-dynamic";
+
+/**
+ * Kunci kolom yang bisa diurutkan → `orderBy` Prisma-nya (issue #265).
+ * `isActive` tetap kunci pertama — lihat kepala berkas.
+ */
+const SORTABLE: SortSpec<Prisma.CustomerOrderByWithRelationInput[]> = {
+  name: (dir) => [{ isActive: "desc" }, { name: dir }, { id: dir }],
+};
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
@@ -47,7 +73,7 @@ export default async function CustomersPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
 }) {
   await requirePagePermission("customer.read", params);
   const t = await getT();
@@ -55,10 +81,13 @@ export default async function CustomersPage({
   const page = parsePageParam(filters.page);
   const perPage = 10;
 
+  // Tanpa `?sort=` urutannya persis seperti sebelum #265.
+  const sort = parseSort(filters, SORTABLE);
+
   const [customers, totalCount] = await Promise.all([
     prisma.customer.findMany({
       // Nonaktif diurutkan belakangan & diberi lencana — pola consignees.
-      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      orderBy: sortOrderBy(sort, SORTABLE, [{ isActive: "desc" }, { name: "asc" }]),
       skip: (page - 1) * perPage,
       take: perPage,
     }),
@@ -86,6 +115,7 @@ export default async function CustomersPage({
       dataIndex: "name",
       title: t("common.name"),
       align: "left",
+      sorter: true,
       render: (_v, row) => (
         <span
           style={{
@@ -156,6 +186,12 @@ export default async function CustomersPage({
           columns={columns}
           rows={rows}
           rowKey={(row) => row.id}
+          sort={{
+            basePath: "/customers",
+            params: filters,
+            keys: sortableKeys(SORTABLE),
+            active: sort,
+          }}
           empty={
             <EmptyState
               icon={<TeamOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}

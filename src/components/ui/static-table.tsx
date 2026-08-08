@@ -69,8 +69,36 @@
  *
  * `rowCells` fungsi MURNI atas barisnya, persis seperti `rowStyle` — berkas ini
  * tetap server, tetap tanpa JavaScript.
+ *
+ * ── Sortir kolom, dan kenapa ia TIDAK membuat berkas ini client (issue #265) ─
+ * Sampai #265 berkas ini MENGABAIKAN `sorter` sepenuhnya, padahal `moneyColumn`
+ * dan `qtyColumn` menyalakannya secara bawaan: 30 dari 62 tabel membawa prop
+ * yang tidak melakukan apa pun, dan kolom uang yang tampak bisa diurutkan
+ * menurut kode ternyata tidak bisa diklik di layar.
+ *
+ * Perbaikannya BUKAN memindahkan tabelnya ke `DataTable` — rc-table terukur
+ * +80 KB gzip per rute (#199) dan memaksa halamannya jadi client, yang untuk 62
+ * tabel membatalkan taruhan yang dimenangkan seluruh epik #206. Sortirnya
+ * dijalankan di SERVER, dikendalikan URL: judul kolom menjadi `<Link>` ke
+ * `?sort=…&dir=…`, halaman dirender ulang, dan `orderBy` Prisma yang mengurutkan
+ * SELURUH data — bukan hanya baris yang sedang tampil. Aturan pembangunan URL,
+ * daftar putihnya, dan keputusan penempatan `NULL` ada di `lib/table-sort.ts`.
+ *
+ * Yang menyeberang hanyalah `Link` — daun client yang memang sudah dipakai 114
+ * tautan lain, dan yang memberi tautan sortir cakupan tenant lewat `scopedHref`
+ * tanpa halaman ini perlu tahu slug perusahaannya. Berkas ini tetap SERVER dan
+ * `AMBANG_KLIEN` tidak bergerak.
+ *
+ * Satu hal yang sengaja BERISIK: kolom yang menyatakan `sorter` tanpa prop
+ * `sort` (atau dengan kunci yang tidak ada di `sort.keys`) MELEMPAR. Diam
+ * adalah persis keadaan yang issue ini tutup — sebuah kendali yang tidak bisa
+ * merakit URL-nya lebih baik gagal keras di satu halaman daripada tampil
+ * seperti bisa diklik di 62 halaman.
  */
 
+import { CaretDownOutlined, CaretUpOutlined, SwapOutlined } from "@ant-design/icons";
+
+import { Link } from "@/components/ui/app-link";
 import {
   Table,
   TableBody,
@@ -81,6 +109,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import { nextSort, sortHref, type ActiveSort, type SortParams } from "@/lib/table-sort";
 
 /**
  * Sel baris kaki. Bentuk polos = isi sel; bentuk objek dipakai ketika satu
@@ -142,6 +171,110 @@ const DENSITY: Record<string, React.CSSProperties | undefined> = {
   middle: undefined,
   large: { paddingBlock: 16 },
 };
+
+/**
+ * Konteks sortir — satu-satunya hal yang tidak bisa disimpulkan sendiri oleh
+ * sebuah tabel yang dirender di server.
+ *
+ * Bentuknya sengaja MENIRU `Pagination` (`basePath` + `searchParams`): halaman
+ * daftar di app ini sudah menuliskan keduanya untuk paginasi, jadi memasang
+ * sortir tidak memperkenalkan bentuk kedua untuk hal yang sama.
+ */
+export interface StaticTableSort {
+  /** Jalur daftar tanpa query, mis. `"/documents"` — sama seperti `Pagination.basePath`. */
+  basePath: string;
+  /**
+   * `searchParams` halaman APA ADANYA. Semuanya dipertahankan di tautan sortir
+   * (saringan, pencarian, halaman); hanya `sort`/`dir` yang diganti.
+   */
+  params?: SortParams;
+  /**
+   * Kunci kolom yang benar-benar punya `orderBy` di kueri — biasanya
+   * `sortableKeys(SPEC)` dari `lib/table-sort.ts`.
+   *
+   * Ada supaya kedua sisi terbukti sejalan: sebuah kolom yang menyatakan
+   * `sorter` tetapi tidak ada di sini akan MELEMPAR, alih-alih memasang kendali
+   * yang tautannya diabaikan `parseSort` dan tidak mengurutkan apa pun.
+   */
+  keys: readonly string[];
+  /** Urutan yang sedang berlaku — hasil `parseSort`. */
+  active?: ActiveSort | null;
+}
+
+/** Ikon indikator; ukurannya `fontSize`, tidak pernah prop `size` (MASTER.md). */
+const SORT_ICON_SIZE = 12;
+
+/**
+ * Kendali urut pada judul kolom.
+ *
+ * Sebuah TAUTAN, bukan tombol: ia menuju ke sebuah alamat, jadi klik tengah,
+ * Ctrl-klik, dan "salin alamat tautan" bekerja seperti seharusnya, dan
+ * kendalinya sudah benar sebelum satu baris JavaScript pun dijalankan. Pola
+ * WAI-ARIA untuk tabel yang bisa diurutkan tidak minta label tambahan: keadaan
+ * urutnya diumumkan `aria-sort` pada `<th>`-nya, jadi teks tautannya tetap
+ * NAMA KOLOM saja. Ikonnya karena itu `aria-hidden` — ia penanda kedua untuk
+ * mata, bukan sumber informasi.
+ */
+function SortControl({
+  columnKey,
+  title,
+  sort,
+}: {
+  columnKey: string;
+  title: React.ReactNode;
+  sort: StaticTableSort;
+}) {
+  const active = sort.active ?? null;
+  const dir = active !== null && active.key === columnKey ? active.dir : null;
+  const icon =
+    dir === "asc" ? (
+      <CaretUpOutlined aria-hidden="true" style={{ fontSize: SORT_ICON_SIZE }} />
+    ) : dir === "desc" ? (
+      <CaretDownOutlined aria-hidden="true" style={{ fontSize: SORT_ICON_SIZE }} />
+    ) : (
+      // Berputar 90° = dua panah atas-bawah: "kolom ini bisa diurutkan, dan
+      // sekarang belum". Warnanya lebih pudar dari yang aktif, tapi bedanya
+      // bukan hanya warna — bentuk ikonnya sendiri berbeda.
+      <SwapOutlined
+        aria-hidden="true"
+        rotate={90}
+        style={{ fontSize: SORT_ICON_SIZE, color: "var(--ant-color-text-quaternary)" }}
+      />
+    );
+
+  return (
+    <Link
+      data-slot="table-sort"
+      href={sortHref(sort.basePath, sort.params, nextSort(columnKey, active))}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "var(--ant-margin-xxs)",
+        color: "inherit",
+        cursor: "pointer",
+      }}
+    >
+      {title}
+      {icon}
+    </Link>
+  );
+}
+
+/** Nilai `aria-sort` untuk kolom yang bisa diurutkan. */
+function ariaSort(columnKey: string, sort: StaticTableSort): "ascending" | "descending" | "none" {
+  const active = sort.active ?? null;
+  if (active === null || active.key !== columnKey) return "none";
+  return active.dir === "asc" ? "ascending" : "descending";
+}
+
+/**
+ * `sorter` sebagai sifat, bukan sebagai pembanding: di sini yang berarti hanya
+ * "kolom ini menawarkan kendali urut". `false` adalah bawaan pembantu kolom
+ * sejak #265, jadi ia harus dibaca sebagai TIDAK.
+ */
+function declaresSorter(sorter: unknown): boolean {
+  return sorter !== undefined && sorter !== false;
+}
 
 interface StaticTableProps<T> {
   columns: SaiColumns<T>;
@@ -214,6 +347,11 @@ interface StaticTableProps<T> {
   maxHeight?: number | string;
   /** Gaya elemen `<table>` — pengganti `className` yang dicabut di #203. */
   style?: React.CSSProperties;
+  /**
+   * Sortir lewat URL (issue #265). WAJIB ada begitu satu kolom pun menyatakan
+   * `sorter` — tanpanya perendernya MELEMPAR, bukan diam. Lihat kepala berkas.
+   */
+  sort?: StaticTableSort;
 }
 
 /** Nilai sel: `render` bila ada, kalau tidak nilai `dataIndex` apa adanya. */
@@ -345,6 +483,7 @@ export function StaticTable<T>({
   sticky,
   maxHeight,
   style,
+  sort,
 }: StaticTableProps<T>) {
   const density = DENSITY[size];
   // Tinggi 44px milik primitif memaksa tinggi baris judul; kerapatan yang bukan
@@ -357,28 +496,66 @@ export function StaticTable<T>({
     <Table style={style} maxHeight={maxHeight}>
       <TableHeader>
         <TableRow>
-          {columns.map((column) => (
-            <TableHead
-              key={column.key}
-              sticky={sticky}
+          {columns.map((column) => {
+            const sortable = declaresSorter(column.sorter);
+            if (sortable && (sort === undefined || !sort.keys.includes(column.key))) {
               /*
-               * `column.cellStyle` SENGAJA tidak ikut ke sini — ia menggayai
-               * SEL, dan sel laporan kerap berwarna menurut arah angkanya
-               * ("Masuk" hijau, "Keluar" merah). Menerapkannya ke header akan
-               * mewarnai judul kolomnya juga, yang mengubah judul menjadi
-               * penanda status palsu. Yang dibagi header dan sel hanyalah
-               * PERATAAN, karena angka rata kanan di bawah judul rata kiri
-               * terbaca seperti kolom yang berbeda.
+               * Kegagalan yang KERAS, dan itu inti issue #265. Sampai #265
+               * perender ini mengabaikan `sorter` tanpa suara, sehingga 30
+               * tabel memasang prop mati yang tidak pernah dilaporkan siapa
+               * pun. Sebuah kendali urut yang tidak bisa merakit URL-nya —
+               * atau yang kuncinya tidak dikenal kueri, sehingga tautannya
+               * disaring habis `parseSort` — adalah prop mati yang sama, hanya
+               * lebih meyakinkan karena kali ini ia bisa diklik.
                */
-              style={{
-                ...headDensity,
-                ...alignStyle(column.align),
-                ...(column.width === undefined ? undefined : { width: column.width }),
-              }}
-            >
-              {column.title}
-            </TableHead>
-          ))}
+              throw new Error(
+                `StaticTable: kolom "${column.key}" menyatakan \`sorter\`, tetapi ` +
+                  (sort === undefined
+                    ? "tabel ini tidak diberi prop `sort`."
+                    : `"${column.key}" tidak ada di \`sort.keys\` (${sort.keys.join(", ") || "kosong"}).`) +
+                  " Sortir di StaticTable dijalankan basis data lewat URL: buat" +
+                  " `SortSpec` di halamannya (lib/table-sort.ts), oper" +
+                  " `sort={{ basePath, params, keys: sortableKeys(SPEC), active }}`," +
+                  " dan pakai `sortOrderBy(...)` sebagai `orderBy`. Kalau kolom ini" +
+                  " memang tidak bisa diurutkan basis data — mis. nilainya dihitung" +
+                  " di memori dari baris lain — hapus `sorter`-nya."
+              );
+            }
+
+            return (
+              <TableHead
+                key={column.key}
+                sticky={sticky}
+                /*
+                 * Tanpa ini pembaca layar tidak tahu tabelnya terurut, apalagi
+                 * ke arah mana. `none` pada kolom yang bisa diurutkan tapi
+                 * belum aktif adalah bagian dari pola yang sama — ia yang
+                 * mengumumkan bahwa kolomnya PUNYA sortir.
+                 */
+                aria-sort={sortable && sort !== undefined ? ariaSort(column.key, sort) : undefined}
+                /*
+                 * `column.cellStyle` SENGAJA tidak ikut ke sini — ia menggayai
+                 * SEL, dan sel laporan kerap berwarna menurut arah angkanya
+                 * ("Masuk" hijau, "Keluar" merah). Menerapkannya ke header akan
+                 * mewarnai judul kolomnya juga, yang mengubah judul menjadi
+                 * penanda status palsu. Yang dibagi header dan sel hanyalah
+                 * PERATAAN, karena angka rata kanan di bawah judul rata kiri
+                 * terbaca seperti kolom yang berbeda.
+                 */
+                style={{
+                  ...headDensity,
+                  ...alignStyle(column.align),
+                  ...(column.width === undefined ? undefined : { width: column.width }),
+                }}
+              >
+                {sortable && sort !== undefined ? (
+                  <SortControl columnKey={column.key} title={column.title} sort={sort} />
+                ) : (
+                  column.title
+                )}
+              </TableHead>
+            );
+          })}
         </TableRow>
       </TableHeader>
 

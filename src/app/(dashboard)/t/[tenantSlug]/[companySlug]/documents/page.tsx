@@ -12,6 +12,13 @@ import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileTextOutlined } from "@ant-design/icons";
+import {
+  parseSort,
+  sortOrderBy,
+  sortableKeys,
+  type SortSpec,
+} from "@/lib/table-sort";
+import type { Prisma } from "@/generated/prisma/client";
 import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -23,6 +30,17 @@ export const dynamic = "force-dynamic";
  * Daftar Dokumen — dikonversi ke `StaticTable` + token AntD (issue #198).
  * **Tetap server component**; pratinjau berkasnya (`DocumentPreviewButton`)
  * yang menjadi pulau client, seperti sebelumnya.
+ *
+ * ── Sortir kolom lewat URL (issue #265) ────────────────────────────────────
+ * Halaman ini pembuktian sisi NULL-nya. `documents.type` adalah `String?` —
+ * dokumen tanpa jenis memang ada, dan tabelnya menuliskannya "-". Kolom itu
+ * SENGAJA tidak ditawarkan sortirnya: MySQL menganggap NULL nilai terkecil dan
+ * tidak punya `NULLS LAST` sama sekali (opsi `nulls` Prisma hanya ada di
+ * compiler PostgreSQL/CockroachDB), jadi mengurutkannya menaik akan menaikkan
+ * blok baris "-" ke puncak — persis yang dilarang butir 4 Prinsip Inti
+ * MASTER.md. Alasan panjangnya di kepala `lib/table-sort.ts`.
+ *
+ * Yang ditawarkan hanya kolom NOT NULL: nama berkas dan waktu unggah.
  */
 
 /** `margin` 16 · `marginXS` 8 — token AntD sebagai angka (berkas ini server). */
@@ -34,6 +52,15 @@ const EMPTY_ICON_SIZE = 48;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
 
 const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+
+/**
+ * Kunci kolom yang bisa diurutkan → `orderBy` Prisma-nya (issue #265).
+ * `id` sebagai pemutus seri — lihat catatan urutan bawaan di bawah.
+ */
+const SORTABLE: SortSpec<Prisma.DocumentOrderByWithRelationInput[]> = {
+  filename: (dir) => [{ filename: dir }, { id: dir }],
+  uploadedAt: (dir) => [{ createdAt: dir }, { id: dir }],
+};
 
 /** Satu baris daftar, diratakan dari Prisma supaya kolomnya bertipe penuh. */
 interface DocumentRow {
@@ -50,7 +77,7 @@ export default async function DocumentsPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   await requirePagePermission("document.read", params);
   const t = await getT();
@@ -70,13 +97,16 @@ export default async function DocumentsPage({
     ];
   }
 
+  // Tanpa `?sort=` urutannya persis seperti sebelum #265.
+  const sort = parseSort(filters, SORTABLE);
+
   const [documents, totalCount] = await Promise.all([
     prisma.document.findMany({
       where,
       // `id` sebagai pemutus seri — beberapa unggahan bisa berbagi detik
       // `createdAt` yang sama, dan tanpa urutan total baris bisa berpindah
       // halaman antar permintaan (paginasi jadi tampak "loncat").
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: sortOrderBy(sort, SORTABLE, [{ createdAt: "desc" }, { id: "desc" }]),
       include: { contract: true },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -100,6 +130,7 @@ export default async function DocumentsPage({
       dataIndex: "filename",
       title: t("documents.colFilename"),
       align: "left",
+      sorter: true,
       // Berkas yang diunggah dibuka di tab baru — tautan KELUAR dari aplikasi,
       // jadi ia `<a>` biasa dan bukan `Link` bertenant.
       render: (_v, row) => (
@@ -136,6 +167,7 @@ export default async function DocumentsPage({
       dataIndex: "uploadedAt",
       title: t("documents.colUploadedAt"),
       align: "left",
+      sorter: true,
       render: (_v, row) => <span style={MUTED}>{row.uploadedAt}</span>,
     },
     {
@@ -194,6 +226,13 @@ export default async function DocumentsPage({
           columns={columns}
           rows={rows}
           rowKey={(row) => row.id}
+          sort={{
+            basePath: "/documents",
+            // Kata kunci pencarian dan nomor halaman ikut di tautan sortir.
+            params: filters,
+            keys: sortableKeys(SORTABLE),
+            active: sort,
+          }}
           empty={
             <EmptyState
               icon={<FileTextOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}

@@ -39,7 +39,8 @@ export function moneyColumn<T>({
   dataIndex,
   title,
   key,
-  sorter = true,
+  // Bawaan MATI sejak #265 — lihat catatan `sorter` di `SaiColumn`.
+  sorter = false,
   width,
   currency = "IDR",
   hideCurrency,

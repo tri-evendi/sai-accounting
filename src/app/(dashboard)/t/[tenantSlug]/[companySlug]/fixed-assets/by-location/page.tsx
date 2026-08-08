@@ -6,7 +6,6 @@
  * baris totalnya kini `summary` milik `StaticTable`, dipetakan per KUNCI kolom
  * sehingga ia tak bisa meleset satu kolom.
  */
-import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getFixedAssets, groupByLocation, type LocationGroup } from "@/lib/fixed-assets";
@@ -122,11 +121,11 @@ export default async function AssetsByLocationPage({
 
       {/* Tautan kembali berdiri di LUAR `<Card>`, tempat `--ant-color-link`
           tidak teratasi (lihat kepala `shared/aging.tsx`). Karena itu ia
-          `Button asChild variant="link"`: warnanya dari AntD sendiri, dan
+          `Button href variant="link"`: warnanya dari AntD sendiri, dan
           target sentuhnya ikut naik ke ukuran kendali. */}
       <div style={{ marginTop: SECTION_GAP }}>
-        <Button asChild variant="link" size="sm">
-          <Link href="/fixed-assets">{t("fixedAssets.backToList")}</Link>
+        <Button href="/fixed-assets" variant="link" size="sm">
+          {t("fixedAssets.backToList")}
         </Button>
       </div>
     </div>

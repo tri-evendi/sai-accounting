@@ -6,6 +6,19 @@
  * dirinya sendiri dan dari variabel `--ant-…` yang hanya dipakai di dalam
  * pohon komponen AntD (di sini: `<Card>`) — alasannya ditulis panjang di
  * kepala `contracts/page.tsx` dan `shared/aging.tsx`.
+ *
+ * ── Sortir kolom lewat URL (issue #265) ────────────────────────────────────
+ * Halaman ini pembuktian batas bentuk itu. Nomor, tanggal, dan status adalah
+ * kolom basis data, jadi ketiganya diurutkan `orderBy` — dan tautannya membawa
+ * `status`, `search`, serta `page` yang sedang berlaku, sehingga menyortir
+ * tidak diam-diam membuang saringan yang sudah dipasang pengguna.
+ *
+ * Kolom "Nilai" TIDAK bisa: nilainya dihitung di memori dari baris barang +
+ * PPN (`inv.items.reduce(...)`), bukan kolom yang bisa diurutkan basis data.
+ * Mengurutkan 10 baris halaman ini saja akan menghasilkan "terbesar" yang
+ * berubah-ubah per halaman — lebih buruk daripada tidak ada sortir sama sekali.
+ * Karena itu ia tetap tanpa `sorter`; sortir nilai baru mungkin setelah faktur
+ * punya kolom total yang tersimpan (dan yang dijaga tetap sinkron).
  */
 
 import { Link } from "@/components/ui/app-link";
@@ -19,6 +32,13 @@ import { StaticTable } from "@/components/ui/static-table";
 import { statusColumn } from "@/components/ui/status-column";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import {
+  parseSort,
+  sortOrderBy,
+  sortableKeys,
+  type SortSpec,
+} from "@/lib/table-sort";
+import type { Prisma } from "@/generated/prisma/client";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -40,6 +60,16 @@ const SEARCH_MAX_WIDTH = 448;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
 
+/**
+ * Kunci kolom yang bisa diurutkan → `orderBy` Prisma-nya (issue #265).
+ * Ketiganya kolom NOT NULL; `id` pemutus serinya.
+ */
+const SORTABLE: SortSpec<Prisma.InvoiceOrderByWithRelationInput[]> = {
+  invoiceNo: (dir) => [{ invoiceNo: dir }, { id: dir }],
+  date: (dir) => [{ date: dir }, { id: dir }],
+  status: (dir) => [{ status: dir }, { id: dir }],
+};
+
 /** Satu baris daftar, diratakan dari Prisma supaya kolomnya bertipe penuh. */
 interface InvoiceRow {
   id: number;
@@ -57,7 +87,13 @@ export default async function InvoicesPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ status?: string; search?: string; page?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    search?: string;
+    page?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }) {
   await requirePagePermission("invoice.read", params);
   const t = await getT();
@@ -75,10 +111,13 @@ export default async function InvoicesPage({
     where.invoiceNo = { contains: filters.search };
   }
 
+  // Tanpa `?sort=` urutannya persis seperti sebelum #265.
+  const sort = parseSort(filters, SORTABLE);
+
   const [invoices, totalCount] = await Promise.all([
     prisma.invoice.findMany({
       where,
-      orderBy: { date: "desc" },
+      orderBy: sortOrderBy(sort, SORTABLE, [{ date: "desc" }]),
       include: {
         items: true,
         payments: true,
@@ -128,6 +167,7 @@ export default async function InvoicesPage({
       dataIndex: "invoiceNo",
       title: t("invoices.colNo"),
       align: "left",
+      sorter: true,
       render: (_v, row) => (
         <Link
           href={`/invoices/${row.id}`}
@@ -142,6 +182,7 @@ export default async function InvoicesPage({
       dataIndex: "date",
       title: t("common.date"),
       align: "left",
+      sorter: true,
       render: (_v, row) => (
         <span
           style={{
@@ -167,19 +208,24 @@ export default async function InvoicesPage({
       align: "right",
       render: (_v, row) => count(row.paymentCount),
     },
+    // Tanpa `sorter`: `total` dihitung di memori, bukan kolom basis data —
+    // lihat kepala berkas.
     moneyColumn<InvoiceRow>({
       dataIndex: "total",
       title: t("invoices.colValue"),
-      sorter: false,
       currency: (row) => row.currency,
     }),
-    statusColumn<InvoiceRow>({ dataIndex: "status", title: t("common.status") }),
+    statusColumn<InvoiceRow>({
+      dataIndex: "status",
+      title: t("common.status"),
+      sorter: true,
+    }),
   ];
 
   return (
     <div>
-      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `Button asChild`):
-          `asChild` merender `<a href>` AntD, yaitu pemuatan halaman PENUH. */}
+      {/* Tombol aksi tetap `<Link><Button/></Link>` (bukan `<Button href>`):
+          `href` merender `<a href>` AntD, yaitu pemuatan halaman PENUH. */}
       <PageHeader
         title={<TermTooltip term="faktur">{t("invoices.title", { count: totalCount })}</TermTooltip>}
         actions={
@@ -259,6 +305,14 @@ export default async function InvoicesPage({
           columns={columns}
           rows={rows}
           rowKey={(row) => row.id}
+          sort={{
+            basePath: "/invoices",
+            // `status`, `search`, dan `page` yang sedang berlaku ikut — sortir
+            // tidak boleh membuang saringan yang sudah dipasang pengguna.
+            params: filters,
+            keys: sortableKeys(SORTABLE),
+            active: sort,
+          }}
           empty={
             <EmptyState
               icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}

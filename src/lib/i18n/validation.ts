@@ -299,4 +299,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.mailHostRequired": "Host SMTP wajib diisi untuk transport SMTP",
   "validation.mailPortRequired": "Port SMTP wajib diisi untuk transport SMTP",
   "validation.mailPortInvalid": "Port harus angka 1–65535",
+  "validation.amountRequired": "Jumlah wajib diisi",
+  "validation.amountNotNegative": "Jumlah tidak boleh negatif",
+  "validation.amountTooLarge": "Jumlah terlalu besar",
+  "validation.categoryRequired": "Kategori wajib dipilih",
 };

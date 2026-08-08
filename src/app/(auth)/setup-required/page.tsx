@@ -19,7 +19,6 @@
  * ternyata setup SUDAH selesai, atau pembukanya memang berhak menjalankan
  * wizard, ia mengarahkan ke tujuan yang benar.
  */
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LockOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
@@ -100,8 +99,8 @@ export default async function SetupRequiredPage() {
        * menuju beranda, gerbang berjalan lagi, dan hasilnya benar ke dua arah.
        */}
       <div style={EXIT_ROW}>
-        <Button asChild variant="outline" style={{ width: "100%" }}>
-          <Link href="/dashboard">{t("auth.setupRequired.retry")}</Link>
+        <Button href="/dashboard" variant="outline" style={{ width: "100%" }}>
+          {t("auth.setupRequired.retry")}
         </Button>
       </div>
     </AuthShell>

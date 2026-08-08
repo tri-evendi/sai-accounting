@@ -18,7 +18,7 @@
  * ── Kenapa ia TETAP `<Link>`, bukan `Typography.Link` AntD (issue #190) ────
  * Ini satu-satunya primitif fase B4 yang tidak merender komponen AntD, dan
  * alasannya sama dengan alasan komponen ini wajib client: ia dipakai DI DALAM
- * formulir. `Typography.Link` (juga `Button href` — lihat catatan `asChild` di
+ * formulir. `Typography.Link` (juga `<Button href>` — lihat catatan `href` di
  * `button.tsx`) adalah `<a href>` biasa, yang berarti pemuatan halaman PENUH.
  * Ditekan dari tengah formulir stok atau transaksi keuangan yang setengah
  * terisi, pemuatan penuh membuang seluruh isian yang belum disimpan — untuk

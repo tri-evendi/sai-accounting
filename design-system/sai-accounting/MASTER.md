@@ -114,6 +114,58 @@ mendarat sebagai TEKS 12px di tempat lain pada grafik yang sama. Karena itu
 `dashboard-charts.tsx` mengambil paletnya dari `moneyPalette()` — token teks —
 bukan dari `colorSuccess`/`colorError`; dijaga `tests/chart-tokens.test.tsx`.
 
+### Jenjang permukaan: kenapa latar halaman tidak bisa lebih gelap (issue #266)
+
+Keluhan pemilik — aplikasi terbaca "dominan putih-hitam dengan **outline saja**"
+— benar dan terukur: latar halaman dan kartu praktis sewarna, sehingga yang
+memisahkan wilayah tinggal tepinya.
+
+| Tema | halaman `colorBgLayout` | kartu `colorBgContainer` | melayang `colorBgElevated` | kartu vs halaman | ΔL\* |
+|---|---|---|---|---|---|
+| terang | `#f5f5f5` | `#ffffff` | `#ffffff` | 1,09:1 | 3,46 |
+| gelap | `#000000` | `#141414` | `#1f1f1f` | 1,14:1 | 6,32 |
+
+**Ketiganya tetap bawaan AntD — setelah diukur, bukan karena terlewat.** Sebabnya
+dua dinding, dan keduanya dipasang oleh keputusan yang benar:
+
+- **Terang: tepi kartu #208 memaku setiap bidang di atas `#f2f2f2`.**
+  `colorBorderSecondary` (`#8c8c8c`) berdiri DI ANTARA kartu putih dan halaman,
+  jadi ia harus lolos 3:1 di **kedua** sisinya — dan sisi halaman habis lebih
+  dulu. Permukaan tergelap yang masih dilewati: `#f2f2f2` (tepi kartu) ·
+  `#e7e7e7` (uang-positif) · `#e1e1e1` (batas kendali). `#f2f2f2` hanya menambah
+  ΔL\* 1,05 sambil menghabiskan SELURUH margin ambang 3:1 — bukan tukaran yang
+  layak. Anak tangga netral AntD berikutnya (`#f0f0f0` α 0,06 · `#d9d9d9` α 0,15)
+  keduanya menabrak: 2,95:1 dan 2,38:1 pada tepi kartu, dan `#d9d9d9` menjatuhkan
+  angka hijau ke 3,96:1.
+- **Gelap: `colorMoneyInfo` #186 memaku permukaan melayang.** Permukaan gelap
+  paling terang yang masih dilewatinya `#212121` — tiga satuan RGB dari
+  `colorBgElevated` hari ini. Karena warna itu juga `colorLink`, yang jatuh bukan
+  satu angka melainkan setiap tautan. Akibatnya temuan tirai #205 (panel dialog vs
+  halaman bertirai, **1,27:1** terukur) **tidak bisa** diperbaiki dari lapisan
+  token: menaikkan panel menjatuhkan tautan, dan menggelapkan `colorBgMask` tidak
+  melakukan apa-apa karena halaman gelap sudah `#000000`.
+
+**Temuannya, ditulis eksplisit karena berlawanan dengan dugaan:** ada satu susunan
+yang melewati semua ambang — latar `#f0f0f0` **bersama** kisi naik ke grey-4 dan
+kendali ke grey-5 (tak satu pun pasangan turun; kisi 3,08 → 3,47). Ia tetap
+ditolak, karena ia **menggelapkan setiap garis** demi menambah ΔL\* 1,74 pada
+bidangnya — arah yang berlawanan dengan keluhannya. #208 menaikkan kisi dari
+1,05:1 (bawaan AntD) menjadi 3,08:1, hampir tiga kali lipat; itu SENGAJA dan
+tidak boleh dibalik, tetapi konsekuensinya baru terbaca sekarang: **garis setegas
+itulah yang paling menonjol di layar, dan garis itu juga yang mengurung setiap
+bidang di dalam pita 3,5% antara `#ffffff` dan `#f2f2f2`.** #208 dan #266
+terhubung lewat satu angka dan tidak bisa sama-sama berada di ujung "tenang"-nya.
+
+**Yang tersisa berongkos kontras NOL, dan letaknya di perender — bukan di token:**
+bayangan kartu (`--ant-box-shadow-tertiary`) dan **kepala tabel bernada**. Nada
+`#f5f5f5` di dalam kartu putih tidak perlu diaudit ulang: ia latar halaman hari
+ini, jadi sudah termasuk dalam `worst()` setiap token. Keduanya tak terjangkau
+dari `ConfigProvider` — `Card` AntD tidak punya token bayangan, dan
+`Table.headerBg` hanya mengenai `DataTable` (20 dari 66 tabel) sedangkan
+`StaticTable` menggambar sel judulnya sendiri; menyetelnya sendirian menghasilkan
+dua rupa tabel di satu produk. Angkanya ada di `lib/theme/antd-tokens.ts`;
+keputusannya milik pemilik.
+
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
 **Server component boleh memakai warna token, dan tidak perlu menyeberang jadi client untuk itu.** `AntdProvider` memberi `cssVar` sebuah kunci tetap (`ANTD_CSS_VAR_KEY` di `src/lib/theme/antd-tokens.ts`) dan root layout memasang kunci itu sebagai kelas di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri di `<head>` pada HTML pertama dan diwarisi seluruh dokumen — juga oleh pohon yang tidak punya satu pun komponen AntD di atasnya.
@@ -241,6 +293,8 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
    }
    ```
 3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–error (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan pasang `aria-*` manual.
+
+   **Keempatnya harus berada di dalam `FormItem` yang sama, dan `FormItem` di dalam `FormField` — bukan sebaliknya (issue #262).** `aria-describedby` hanya boleh menyebut id yang simpulnya benar-benar dirender, dan yang memutuskannya adalah `FormItem`, saat render, dari anak yang dilihatnya (fragment, array, dan elemen HTML biasa ikut ditelusuri karena ketiganya pasti merender isinya). Yang tersembunyi di balik prop `render` sebuah `FormField` **di dalam** `FormItem` tidak terlihat dari sana — bentuk itu diam-diam kehilangan pautan deskripsinya. Menambal dengan `FormDescription` kosong ditolak: ia menambah simpul yang dibacakan tanpa isi. Kalau sebuah panel memang tidak punya isian (mis. "kata sandi sudah tersimpan"), tulis dua bentuk `FormItem` yang berbeda, jangan satu bentuk yang setengah ada.
 4. **Isian di dalam `FormControl` harus telanjang** — `TextInput`/`NativeSelect`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
 5. **Nominal pakai `MoneyInput`** — tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
 6. **Progressive disclosure di tempat yang tepat:** field yang bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya di kondisi itu (`superRefine`).
@@ -388,13 +442,15 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
   - **`StaticTable`** (`src/components/ui/static-table.tsx`) — **BAWAAN.** Untuk laporan & daftar yang dipaginasi server: dirender di server, tanpa satu baris JavaScript pun. Dipakai 46 dari 66 tabel app ini.
   - **`DataTable`** (`src/components/ui/data-table.tsx`) — di atas AntD `Table`, komponen client. Dipakai **hanya** bila datanya memang sudah di client dan pengguna diuntungkan sortir/filter/paginasi seketika. Ongkosnya **terukur: +80 KB gzip per rute** (rc-table + hidrasinya), di atas penyalinan seluruh `dataSource` ke peramban. Untuk tabel yang cuma menampilkan, itu biaya tanpa imbalan — dan halaman neraca saldo dengan 2.000 akun berhenti menjadi HTML.
   - Kolomnya sama untuk keduanya: `textColumn`/`qtyColumn` (`table-columns.tsx`), `moneyColumn` (`money-column.tsx`), `statusColumn` (`status-column.tsx`). **Pembantu yang membawa komponen client tinggal di modulnya sendiri**, supaya halaman tanpa kolom uang tidak ikut menyeret `money.tsx` ke sisi client.
+  - **Sortir BUKAN alasan memilih `DataTable` (issue #265).** `StaticTable` mengurutkan lewat URL: judul kolom menjadi tautan `?sort=…&dir=…` dan `orderBy` Prisma yang mengurutkan SELURUH data — bukan hanya baris yang sedang tampil. Halamannya menulis satu `SortSpec` (`src/lib/table-sort.ts`), memakainya sebagai daftar putih `parseSort` sekaligus pembangun `orderBy`, lalu mengoper `sort={{ basePath, params, keys, active }}`. **`sorter` sekarang berarti hal yang sama di kedua perender**, bawaannya MATI di semua pembantu kolom (menyalakannya keputusan HALAMAN, karena hanya halaman yang tahu apakah kolomnya punya `orderBy`), dan `StaticTable` **MELEMPAR** bila sebuah kolom menyatakan `sorter` tanpa konteks `sort` — sampai #265 ia diam, dan 30 berkas karena itu memasang kendali yang tidak pernah ada di layar.
+  - **Kunci yang bisa diurutkan hanya boleh kolom NOT NULL.** MySQL tidak punya `NULLS LAST`, dan opsi `nulls` Prisma hanya ada di query compiler PostgreSQL/CockroachDB (terukur dari paket yang terpasang) — jadi penempatan NULL tidak bisa dipilih di sini. Kolom yang nilainya bisa belum diketahui karena itu tidak ditawarkan sortirnya sama sekali; menawarkannya berarti membalik arah menaikkan blok baris "—" ke puncak, tepat yang dilarang butir 4 Prinsip Inti. Kolom yang nilainya DIHITUNG DI MEMORI (total faktur dari baris barangnya) juga tidak: "terbesar"-nya akan berubah-ubah per halaman.
   - Keduanya membawa geser-sendiri: `StaticTable` lewat pembungkus ber-`overflow-x: auto`, `DataTable` lewat `scroll={{ x: "max-content" }}` yang dipasang primitif sebagai **bawaan**. AntD `Table` **tanpa** `scroll.x` tidak menggulung sendiri — yang menggulung halamannya, dan itu tidak terlihat di layar 1440px tempat kodenya ditulis. Jangan mengosongkan bawaan itu.
   - **Header lengket butuh `sticky` DAN `maxHeight`, selalu berpasangan.** `position: sticky` dihitung terhadap kotak bergulir TERDEKAT; tanpa `maxHeight`, pembungkusnya tidak pernah menggulung vertikal dan properti itu tidak melakukan apa pun — kode yang terbaca benar dan tak berpengaruh. Salah satu tanpa yang lain adalah bug; lihat komentar kepala `components/ui/table.tsx` dan `tests/permission-matrix-sticky.test.tsx`.
   - Baris total lewat prop `summary` (peta kunci kolom → isi sel) pada kedua varian; keadaan kosong lewat `empty` berisi `EmptyState`, tak pernah "No Data" bawaan AntD.
 - **Primitif JSX `Table`** (`src/components/ui/table.tsx`: `TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`) kini **lapisan gaya di bawah kedua perender di atas**, bukan API yang dipanggil halaman. Ia masih dipakai langsung oleh berkas yang belum dikonversi (fase C, #193–#200); untuk tabel BARU pakai `StaticTable`/`DataTable`. Yang tetap terlarang: `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah.
 - **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan format angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah di dalamnya.
 - **Tombol → `Button`** (`src/components/ui/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`). Sejak issue #187 isinya AntD `Button`; **nama propnya tidak berubah** (`variant`/`size`/`type`). Perhatikan satu perangkap yang sengaja ditahan primitif: di AntD `type` berarti VARIAN VISUAL, di sini ia tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan "membetulkannya" dengan meneruskan `type` langsung ke AntD — 60 tombol kirim akan berhenti mengirim formulirnya tanpa satu galat pun.
-- **Tombol yang menuju ke suatu tempat → `<Button href>`, BUKAN `<Button asChild>`.** Keduanya merender satu `<a>` bergaya tombol, tetapi `asChild` **tidak aman dipanggil dari server component**: anaknya bisa tiba sebagai simpul `react.lazy` yang belum punya `.props`, `React.Children.only()` melempar, dan prerender-nya mati — dengan gejala yang BERPINDAH-PINDAH menurut urutan chunk, sehingga halaman yang jatuh hari ini bukan halaman yang jatuh besok. `href` melewati seluruh jalur itu. 52 pemanggil `asChild` yang tersisa dilacak di **#250**; jangan menambah yang ke-53.
+- **Tombol yang menuju ke suatu tempat → `<Button href>`. `asChild` sudah TIDAK ADA (#250).** Bentuk itu membaca prop anaknya, dan dari server component anak itu bisa tiba sebagai simpul `react.lazy` yang belum punya `.props`: `React.Children.only()` melempar dan prerender-nya mati — dengan gejala yang BERPINDAH-PINDAH menurut urutan chunk, sehingga halaman yang jatuh hari ini bukan halaman yang jatuh besok. Ke-37 pemanggilnya pindah ke `href` dan propnya dicabut dari primitifnya; `tests/button-no-aschild.test.ts` menolak yang ke-38. Atribut yang dulu menempel di `<a>` anaknya (`download`/`target`/`rel`) kini ditulis di `<Button>`-nya.
 - **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan merakit tombol ikon sendiri dari padding kecil (≈28px). Antar aksi ikon yang berdampingan beri jarak **minimal 8px** (`--ant-margin-xs`) — 4px membuat dua aksi bersebelahan mudah salah tekan di layar sentuh.
 - **Tingginya datang dari token `controlHeight: 40`** di `AntdProvider`, bukan dari gaya di primitif — lihat §Jarak, radius, bayangan.
 - **Badge status → `Badge`** (`src/components/ui/badge.tsx`), yang sejak #187 merender AntD **`Tag`** — bukan `Badge` AntD, yang itu titik notifikasi tanpa kata. Warna teksnya dari token `components.Tag` (lihat `lib/theme/antd-tokens.ts`); bawaan AntD menaruh "Lunas" pada 2,21:1. Badge tetap **wajib berteks**.
@@ -402,8 +458,9 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
 - **Bukan tombol, jadi di luar aturan ini:** `<input type="radio">` native dan `<input type="file">` tersembunyi — belum ada primitifnya dan penggunaannya tetap sah.
 - **Pesan di dalam halaman → `Alert` AntD, dan `role`-nya TIDAK bisa dipilih.** Terukur: `Alert` selalu merender `role="alert"` — wilayah live **asertif**, yang memotong bacaan pembaca layar yang sedang berjalan — dan **membuang** `role` yang dioper. `<Alert role="status">` karena itu adalah kode yang terbaca sopan dan berperilaku sebaliknya; `tsc` tidak menyebutkannya, dan di layar tidak ada bedanya sama sekali. Untuk pesan yang TIDAK mendesak (ringkasan yang berubah, hitungan yang diperbarui) bungkus isinya dengan elemen ber-`role="status"` sendiri dan jangan pakai `Alert` — pola `components/shared/wizard.tsx`. Dijaga `tests/design-system-primitives.test.ts`.
 - **Notifikasi melayang → `useToast()`** (`components/ui/toast.tsx`), bukan `import { message } from "antd"`. Jalur statis AntD membuat akar React-nya sendiri di luar `ConfigProvider` dan muncul dengan token BAWAAN — kotak putih di halaman gelap. `useToast` juga yang memasang wilayah live-nya: `message` AntD tidak punya `aria-live` sama sekali.
-- **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Tiga akibat yang harus diketahui sebelum memakainya:
+- **`NativeSelect` bukan lagi `<select>` native** (issue #188). Namanya bertahan supaya 39 pemanggil tidak ikut berubah di fase B, tetapi ia kini `Select` AntD. Empat akibat yang harus diketahui sebelum memakainya:
   - **`name` tetap terkirim** — primitifnya menitipkan `<input type="hidden">` di dalam kontrolnya sendiri, jadi `new FormData(form)` dan `<form method="get">` tetap bekerja.
+  - **`[name=…]` karena itu TIDAK menunjuk kendali yang bisa difokuskan** (issue #259). Pencarian `document.querySelector('[name=…]')` pada isian pilihan berujung di hidden companion itu, dan `focus()` di sana tidak melempar galat — ia diam-diam membuang fokusnya. Kendali sungguhannya adalah `<input role="combobox">` di dalam akar yang sama; `id` yang dioper mendarat di sana. Kode yang memindahkan fokus lewat NAMA field wajib menyelesaikan hasil pencariannya dulu menjadi kendali fokusabel — `focusFormField` (`components/ui/disclosure-section.tsx`) sudah melakukannya untuk semua pemanggil.
   - **`required` TIDAK lagi divalidasi peramban.** Yang tersisa `aria-required` + tanda `*`; penjaganya validasi server (dan zod setelah #192). Isian pilihan yang wajib harus punya validasi selain `required`.
   - **Pencarian menyala sendiri di atas 12 opsi** (`SEARCH_THRESHOLD`), bisa ditimpa lewat prop `searchable`.
 
@@ -426,10 +483,14 @@ membaca hijau dan menyimpulkan aman.
 | Halaman tetap server component; batas client berhenti di primitif | `tests/rsc-boundary.test.ts` (ambang 158) |
 | Barrel `@ant-design/icons` tak menyentuh lapisan RSC | `tests/icon-rsc-boundary.test.ts` + `modularizeImports` di `next.config.ts` |
 | Angka kontras token, dihitung ulang dari paket `antd` yang terpasang | `tests/antd-tokens.test.ts`, `tests/ui-controls-antd.test.tsx`, `tests/chart-tokens.test.tsx` |
+| Permukaan (`colorBgLayout`/`Container`/`Elevated`) tidak bergeser tanpa menurunkan ulang seluruh tabel kontras | `tests/antd-tokens.test.ts` → "jenjang permukaan (#266)" |
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
+| `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
+| `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
+| Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah
@@ -462,7 +523,7 @@ menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
 - [ ] Reuse komponen `src/components/ui`; warna & jarak dari token AntD (`var(--ant-...)` atau `theme.useToken()`), bukan nilai mentah.
 - [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `SIDER_BG_DARK` dengan permukaan gelap tidak terlihat dari kode.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
-- [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, tautan = `href` bukan `asChild`).
+- [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`, tautan = `href` — `asChild` sudah dicabut, #250).
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.
 - [ ] **`bun run verify` hijau DAN `bun run build` `EXIT=0`** — yang pertama tidak membuktikan yang kedua, lihat §Penjaga.

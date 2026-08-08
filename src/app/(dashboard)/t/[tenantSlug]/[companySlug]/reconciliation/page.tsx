@@ -4,6 +4,19 @@
  * Dikonversi ke token Ant Design pada issue #197; **tetap server component**,
  * jadi `antd` tidak diimpor di sini dan warna hanya datang dari primitif serta
  * dari variabel `--ant-…` di dalam `<Card>`.
+ *
+ * ── Sortir kolom lewat URL (issue #265) ────────────────────────────────────
+ * Halaman ini adalah pembuktian bentuk baru itu untuk kolom UANG: `opening_
+ * balance` dan `closing_balance` adalah `Decimal(15,2)` di basis data, jadi
+ * `orderBy` mengurutkannya sebagai ANGKA. Diurutkan sebagai teks hasil format,
+ * "Rp 1.000" akan mendarat sebelum "Rp 9" dan daftar saldo terbesar jadi salah
+ * tanpa satu pun tanda di layar.
+ *
+ * Yang TIDAK ditawarkan sortirnya, dan itu disengaja: kolom "Baris koran"
+ * (`_count.lines`) dan kolom status. Yang pertama bisa saja diurutkan Prisma
+ * lewat `{ lines: { _count: dir } }`, tapi belum ada yang memintanya; yang
+ * kedua urutan abjad nilai enum-nya (`draft`, `locked`) tidak berarti apa-apa
+ * bagi pengguna — saringan status di atas tabel yang menjawab kebutuhan itu.
  */
 import { Link } from "@/components/ui/app-link";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
@@ -17,6 +30,13 @@ import { StaticTable } from "@/components/ui/static-table";
 import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { Pagination } from "@/components/ui/pagination";
+import {
+  parseSort,
+  sortOrderBy,
+  sortableKeys,
+  type SortSpec,
+} from "@/lib/table-sort";
+import type { Prisma } from "@/generated/prisma/client";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -30,6 +50,23 @@ export const dynamic = "force-dynamic";
 const SECTION_GAP = 24;
 const CONTROL_GAP = 8;
 const EMPTY_ICON_SIZE = 48;
+
+/**
+ * Kunci kolom yang bisa diurutkan → `orderBy` Prisma-nya (issue #265).
+ *
+ * Semuanya kolom NOT NULL — syarat `lib/table-sort.ts`: MySQL tidak bisa
+ * menaruh NULL di belakang pada KEDUA arah, jadi kolom yang nilainya bisa
+ * belum diketahui (`locked_at`, `note`) tidak ditawarkan sortirnya sama sekali.
+ *
+ * `id` sebagai pemutus seri ikut membalik arah: tanpa urutan total, baris bisa
+ * berpindah halaman antar permintaan dan paginasi tampak "loncat" — alasan yang
+ * sama dengan urutan bawaan di bawah.
+ */
+const SORTABLE: SortSpec<Prisma.BankStatementOrderByWithRelationInput[]> = {
+  period: (dir) => [{ periodEnd: dir }, { id: dir }],
+  opening: (dir) => [{ openingBalance: dir }, { id: dir }],
+  closing: (dir) => [{ closingBalance: dir }, { id: dir }],
+};
 
 /** Satu baris daftar, diratakan supaya kolomnya bertipe penuh. */
 interface StatementRow {
@@ -48,7 +85,7 @@ export default async function ReconciliationListPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   await requirePagePermission("reconciliation.read", params);
   const t = await getT();
@@ -62,10 +99,14 @@ export default async function ReconciliationListPage({
     filters.status === "locked" || filters.status === "draft" ? filters.status : undefined;
   const where = status ? { status } : {};
 
+  // Tanpa `?sort=` urutannya persis seperti sebelum #265 — memasang sortir
+  // tidak boleh mengubah tampilan bawaan halaman mana pun.
+  const sort = parseSort(filters, SORTABLE);
+
   const [statements, totalCount] = await Promise.all([
     prisma.bankStatement.findMany({
       where,
-      orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
+      orderBy: sortOrderBy(sort, SORTABLE, [{ periodEnd: "desc" }, { id: "desc" }]),
       include: { _count: { select: { lines: true } } },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -92,24 +133,31 @@ export default async function ReconciliationListPage({
   }));
 
   const columns: SaiColumns<StatementRow> = [
-    { key: "period", dataIndex: "period", title: t("reconciliation.colPeriod"), align: "left" },
+    {
+      key: "period",
+      dataIndex: "period",
+      title: t("reconciliation.colPeriod"),
+      align: "left",
+      sorter: true,
+    },
     { key: "account", dataIndex: "account", title: t("reconciliation.colAccount"), align: "left" },
     moneyColumn<StatementRow>({
       dataIndex: "openingBalance",
+      key: "opening",
       title: t("reconciliation.colOpening"),
-      sorter: false,
+      sorter: true,
       currency: (r) => r.currency,
     }),
     moneyColumn<StatementRow>({
       dataIndex: "closingBalance",
+      key: "closing",
       title: t("reconciliation.colClosing"),
-      sorter: false,
+      sorter: true,
       currency: (r) => r.currency,
     }),
     qtyColumn<StatementRow>({
       dataIndex: "lineCount",
       title: t("reconciliation.colStatementLines"),
-      sorter: false,
     }),
     {
       key: "status",
@@ -189,7 +237,19 @@ export default async function ReconciliationListPage({
           <CardHeader>
             <CardTitle>{t("reconciliation.listTitle", { count: totalCount })}</CardTitle>
           </CardHeader>
-          <StaticTable<StatementRow> columns={columns} rows={rows} rowKey={(r) => r.id} />
+          <StaticTable<StatementRow>
+            columns={columns}
+            rows={rows}
+            rowKey={(r) => r.id}
+            sort={{
+              basePath: "/reconciliation",
+              // Seluruh query yang sedang berlaku ikut — saringan status dan
+              // nomor halaman tidak boleh hilang karena pengguna menyortir.
+              params: filters,
+              keys: sortableKeys(SORTABLE),
+              active: sort,
+            }}
+          />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

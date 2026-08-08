@@ -10,18 +10,40 @@
  * pengeluaran melebihi saldo — ditambah satu ketukan konfirmasi untuk
  * pengeluaran besar. Tidak satu pun menggantikan penjaga di `/api/inventory`,
  * yang tetap menolak hal yang sama di dalam transaksinya sendiri.
+ *
+ * ── issue #216: mesinnya react-hook-form + zod ─────────────────────────────
+ * Sampai #188 pemilih barang adalah `<select required>`, jadi "pilih barang"
+ * muncul sebagai gelembung peramban seketika, tanpa jaringan. `Select` AntD
+ * bukan kontrol native dan kehilangan itu; yang tersisa hanyalah `FormData`
+ * yang dibaca sendiri lalu satu perjalanan bolak-balik ke server. Sekarang
+ * `stockUpdateSchema` — skema yang SAMA dengan yang diurai `/api/inventory`,
+ * diimpor bukan disalin — menolak barang/kuantitas/tanggal yang kosong di
+ * client, dengan pesan inline berbahasa pengguna. Penjaga khas layar ini
+ * (periode tertutup, saldo tak cukup, konfirmasi pengeluaran besar) berjalan
+ * SESUDAHNYA, karena ketiganya butuh data yang tidak ada di dalam muatan.
  */
 
 import { useState } from "react";
 import { Flex } from "antd";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { TextInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ContainerOutlined, ExclamationCircleOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -33,16 +55,21 @@ import {
 import { formatNumber } from "@/lib/utils";
 import {
   closedPeriodIssue,
-  humanizeFieldMessage,
   isLargeStockOut,
   largeStockOutMessage,
-  negativeValueIssue,
   stockShortfallMessage,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { applyServerFieldErrors } from "@/lib/form-server-errors";
+import {
+  itemSchema,
+  stockUpdateSchema,
+  type ItemInput,
+  type StockUpdateInput,
+} from "@/lib/validations/inventory";
 
 /** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
 const SECTION_GAP = 24;
@@ -107,6 +134,29 @@ interface StockPayload {
   costCenterId: number | null;
 }
 
+/**
+ * Isian sebagaimana DIKETIK/DIPILIH — string, seperti nilai kontrol HTML. Bukan
+ * skema kedua: aturannya seluruhnya milik `stockUpdateSchema`.
+ */
+interface StockFormValues {
+  itemId: string;
+  type: "in" | "out";
+  quantity: string;
+  /** `undefined` saat kosong: harga pokok yang tak diisi BUKAN harga nol. */
+  unitCost?: string;
+  date: string;
+  note: string;
+}
+
+/** Isian gerakan stok yang ada di layar — sisanya naik jadi galat formulir. */
+const STOCK_FIELDS = ["itemId", "type", "quantity", "unitCost", "date", "note"] as const;
+/** Isian barang baru yang ada di layar. */
+const ITEM_FIELDS = ["name", "unit"] as const;
+
+function todayISO() {
+  return new Date().toISOString().split("T")[0];
+}
+
 export function StockUpdateForm({
   items: initialItems,
   closedPeriods,
@@ -117,26 +167,54 @@ export function StockUpdateForm({
   const t = useT();
   const router = useAppRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [items, setItems] = useState<StockItemOption[]>(initialItems);
-  // Cost is captured on the way in; on the way out it is derived (weighted
-  // average) and posted as HPP, so the field only applies to `in`.
-  const [movementType, setMovementType] = useState<"in" | "out">("in");
-  const [itemId, setItemId] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [pending, setPending] = useState<StockPayload | null>(null);
   // issue #98 — pengeluaran stok MANUAL adalah satu-satunya jalur HPP tanpa
   // dokumen sumber untuk diwarisi, jadi dimensinya hanya bisa datang dari sini.
   const costCenters = useCostCenters();
+  /*
+   * Pusat biaya sengaja TIDAK ikut ke dalam state formulir: ia tidak pernah
+   * wajib ("belum ditetapkan" adalah nilai yang sah, lihat `cost-center-field`),
+   * jadi tidak ada satu pun aturan validasi yang bisa dilanggarnya. Nilainya
+   * disatukan ke muatan saat dikirim.
+   */
   const [costCenterId, setCostCenterId] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
   // New item form
   const [showNewItem, setShowNewItem] = useState(false);
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemUnit, setNewItemUnit] = useState("kg");
+
+  const form = useForm<StockFormValues, unknown, StockUpdateInput>({
+    // Cast HANYA menyelaraskan tipe statis; validasi runtime tetap milik skema.
+    resolver: zodResolver(stockUpdateSchema) as unknown as Resolver<
+      StockFormValues,
+      unknown,
+      StockUpdateInput
+    >,
+    defaultValues: {
+      itemId: "",
+      // Cost is captured on the way in; on the way out it is derived (weighted
+      // average) and posted as HPP, so the field only applies to `in`.
+      type: "in",
+      quantity: "",
+      unitCost: undefined,
+      date: todayISO(),
+      note: "",
+    },
+  });
+
+  const itemForm = useForm<ItemInput>({
+    resolver: zodResolver(itemSchema) as Resolver<ItemInput>,
+    defaultValues: { name: "", unit: "kg" },
+  });
+
+  /* `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
+     memoisasi komponen ini. */
+  const [itemId, movementType, quantity, date] = useWatch({
+    control: form.control,
+    name: ["itemId", "type", "quantity", "date"],
+  });
 
   const selected = items.find((i) => String(i.id) === itemId) ?? null;
   const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal pergerakan stok");
@@ -161,27 +239,22 @@ export function StockUpdateForm({
     );
   }
 
-  async function handleCreateItem(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+  async function onCreateItem(values: ItemInput) {
     const res = await apiFetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create_item", name: newItemName, unit: newItemUnit }),
+      body: JSON.stringify({ action: "create_item", ...values }),
     });
 
     if (res.ok) {
-      setNewItemName("");
-      setNewItemUnit("kg");
+      itemForm.reset();
       setShowNewItem(false);
       await refreshItems();
       setSuccess(t("inventory.itemSaved"));
       setTimeout(() => setSuccess(""), 3000);
     } else {
       const data = await res.json().catch(() => null);
-      setError(
-        humanizeFieldMessage("itemName", data?.error ?? t("inventory.itemSaveFailed"))
-      );
+      applyServerFieldErrors(itemForm.setError, data ?? {}, ITEM_FIELDS, t("inventory.itemSaveFailed"));
     }
   }
 
@@ -195,88 +268,66 @@ export function StockUpdateForm({
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      const fieldErrors = data?.details?.fieldErrors as
-        | Record<string, string[] | undefined>
-        | undefined;
-      const firstField = fieldErrors
-        ? Object.entries(fieldErrors).find(([, msgs]) => msgs?.length)
-        : undefined;
-      setError(
-        firstField
-          ? humanizeFieldMessage(firstField[0], firstField[1]?.[0])
-          : humanizeFieldMessage(null, data?.error ?? t("inventory.movementSaveFailed"))
+      applyServerFieldErrors(
+        form.setError,
+        data ?? {},
+        STOCK_FIELDS,
+        t("inventory.movementSaveFailed")
       );
       setLoading(false);
     } else {
       setSuccess(t("inventory.movementSaved"));
       setLoading(false);
-      setQuantity("");
+      form.resetField("quantity");
       await refreshItems();
       router.refresh();
       setTimeout(() => setSuccess(""), 3000);
     }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
+  /**
+   * Dijalankan HANYA setelah `stockUpdateSchema` menerima isiannya. Yang tersisa
+   * di sini adalah tiga penjaga yang tidak bisa dilihat dari muatan saja: apakah
+   * periodenya sudah ditutup, apakah saldonya cukup, dan apakah pengeluarannya
+   * cukup besar untuk perlu dikonfirmasi.
+   */
+  function onSubmit(values: StockUpdateInput) {
     setSuccess("");
 
-    const formData = new FormData(e.currentTarget);
-    const itemIdVal = Number(formData.get("itemId")) || 0;
-    if (!itemIdVal) {
-      setError(t("inventory.pickItemFirst"));
-      return;
-    }
-
     if (periodIssue) {
-      setError(periodIssue);
+      form.setError("date", { type: "guard", message: periodIssue });
       return;
     }
 
-    const unitCost = Number(formData.get("unitCost"));
-    const negative = negativeValueIssue([
-      { field: "quantity", value: qtyValue },
-      ...(movementType === "in" ? [{ field: "unitCost", value: unitCost }] : []),
-    ]);
-    if (negative) {
-      setError(negative.message);
-      return;
-    }
-    if (!(qtyValue > 0)) {
-      setError(t("inventory.qtyPositive"));
-      return;
-    }
-
-    const item = items.find((i) => i.id === itemIdVal);
-    if (movementType === "out" && item) {
+    const item = items.find((i) => i.id === values.itemId);
+    if (values.type === "out" && item) {
       // Penjaga yang sama dengan surat jalan & `/api/inventory`: stok tidak
       // pernah boleh negatif.
       const shortfall = stockShortfallMessage(
         findStockShortfalls(
-          [{ itemId: item.id, itemName: item.name, kg: qtyValue }],
+          [{ itemId: item.id, itemName: item.name, kg: values.quantity }],
           new Map([[item.id, item.currentStock]])
         )
       );
       if (shortfall) {
-        setError(shortfall);
+        form.setError("quantity", { type: "guard", message: shortfall });
         return;
       }
     }
 
     const body: StockPayload = {
-      itemId: itemIdVal,
-      quantity: qtyValue,
-      type: movementType,
-      date: String(formData.get("date") ?? ""),
-      unitCost: movementType === "in" ? unitCost || undefined : undefined,
-      note: String(formData.get("note") ?? ""),
+      itemId: values.itemId,
+      quantity: values.quantity,
+      type: values.type,
+      date: values.date,
+      unitCost: values.type === "in" ? values.unitCost : undefined,
+      note: values.note ?? "",
       costCenterId: costCenterPayload(costCenterId),
     };
 
-    if (movementType === "out" && item && isLargeStockOut(qtyValue, item.currentStock)) {
+    if (values.type === "out" && item && isLargeStockOut(values.quantity, item.currentStock)) {
       setConfirmMessage(
-        largeStockOutMessage(item.name, qtyValue, item.currentStock, item.unit || "kg")
+        largeStockOutMessage(item.name, values.quantity, item.currentStock, item.unit || "kg")
       );
       setPending(body);
       return;
@@ -284,6 +335,11 @@ export function StockUpdateForm({
 
     void send(body);
   }
+
+  /* Kedua formulir di layar ini menaruh galat non-field di kotak yang sama —
+     hanya satu di antaranya yang bisa terisi pada satu waktu. */
+  const noticeError =
+    form.formState.errors.root?.message ?? itemForm.formState.errors.root?.message ?? "";
 
   return (
     <div style={{ width: "100%" }}>
@@ -313,7 +369,9 @@ export function StockUpdateForm({
         <LearnMore term="hpp" label={t("inventory.learnMoreCogs")} />
       </div>
 
-      {error && (
+      {/* Galat TINGKAT FORMULIR: kegagalan yang tidak menunjuk satu isian pun
+          (jaringan, mesin posting). Yang menunjuk isian mendarat di isiannya. */}
+      {noticeError && (
         <div
           style={{
             ...NOTICE,
@@ -323,7 +381,7 @@ export function StockUpdateForm({
           role="alert"
         >
           <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-          <span>{error}</span>
+          <span>{noticeError}</span>
         </div>
       )}
       {success && (
@@ -353,15 +411,52 @@ export function StockUpdateForm({
             </h2>
           </div>
           <div style={{ padding: "var(--ant-padding-lg)" }}>
-            <Flex component="form" onSubmit={handleCreateItem} align="flex-end" gap={CONTROL_GAP}>
-              <div style={{ flex: 1 }}>
-                <Input id="newItemName" label={t("common.itemName")} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} required />
-              </div>
-              <div style={{ width: UNIT_WIDTH }}>
-                <Input id="newItemUnit" label={t("common.unit")} value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} />
-              </div>
-              <Button type="submit" size="sm">{t("common.save")}</Button>
-            </Flex>
+            <Form {...itemForm}>
+              {/* `noValidate`: validasinya milik `itemSchema` sekarang. */}
+              {/* `<form>` biasa, bukan `Flex component="form"`: tipe `Flex`
+                  tidak mengenal atribut `<form>` (`noValidate`), dan
+                  memaksakannya lewat cast akan menyembunyikan atribut lain yang
+                  memang perlu. Tata letaknya tetap flex sebaris. */}
+              <form
+                onSubmit={itemForm.handleSubmit(onCreateItem)}
+                noValidate
+                style={{ display: "flex", alignItems: "flex-end", gap: CONTROL_GAP }}
+              >
+                <div style={{ flex: 1 }}>
+                  <FormField
+                    control={itemForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.itemName")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div style={{ width: UNIT_WIDTH }}>
+                  <FormField
+                    control={itemForm.control}
+                    name="unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("common.unit")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Button type="submit" size="sm" disabled={itemForm.formState.isSubmitting}>
+                  {t("common.save")}
+                </Button>
+              </form>
+            </Form>
           </div>
         </Card>
       )}
@@ -386,144 +481,208 @@ export function StockUpdateForm({
               description={t("inventory.emptyFormDescription")}
             />
           ) : (
-            /* Sengaja `<form>` biasa, bukan `Flex component="form"`: penangannya
-               membaca `e.currentTarget` sebagai `HTMLFormElement`
-               (`new FormData(...)`), sedangkan `Flex` mengetik kejadiannya
-               sebagai `HTMLElement`. Tata letaknya tetap flex sebaris. */
-            <form
-              onSubmit={handleSubmit}
-              style={{ display: "flex", flexDirection: "column", gap: FIELD_GAP }}
-            >
-              <div>
-                <Select
-                  id="itemId"
-                  name="itemId"
-                  label={t("common.item")}
-                  placeholder={t("inventory.pickItemPlaceholder")}
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                  options={items.map((item) => ({
-                    value: String(item.id),
-                    label: `${item.name}${item.unit ? ` (${item.unit})` : ""}`,
-                  }))}
-                  required
-                />
-                {selected && (
-                  <p style={{ ...HINT, fontVariantNumeric: "tabular-nums" }}>
-                    {t("inventory.currentStockHint", {
-                      qty: formatNumber(selected.currentStock),
-                      unit: selected.unit || "kg",
-                    })}
-                  </p>
-                )}
-              </div>
-              <Select
-                id="type"
-                name="type"
-                label={t("inventory.movementTypeLabel")}
-                value={movementType}
-                onChange={(e) => setMovementType(e.target.value as "in" | "out")}
-                options={[
-                  { value: "in", label: t("inventory.movementIn") },
-                  { value: "out", label: t("inventory.movementOut") },
-                ]}
-              />
-              <div>
-                <Input
-                  id="quantity"
-                  name="quantity"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  style={NUMERIC_FIELD}
-                  label={t("common.quantity")}
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  required
-                />
-                {overStock && selected && (
-                  <p style={FIELD_WARNING} role="alert">
-                    <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-                    <span>
-                      {t("inventory.overStockWarning", {
+            <Form {...form}>
+              {/* `noValidate`: validasinya milik zod sekarang, dan gelembung
+                  peramban di samping pesan inline adalah dua bahasa galat di
+                  satu layar. */}
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                noValidate
+                style={{ display: "flex", flexDirection: "column", gap: FIELD_GAP }}
+              >
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="itemId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.item")}</FormLabel>
+                        <FormControl>
+                          <NativeSelect
+                            placeholder={t("inventory.pickItemPlaceholder")}
+                            options={items.map((item) => ({
+                              value: String(item.id),
+                              label: `${item.name}${item.unit ? ` (${item.unit})` : ""}`,
+                            }))}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {selected && (
+                    <p style={{ ...HINT, fontVariantNumeric: "tabular-nums" }}>
+                      {t("inventory.currentStockHint", {
                         qty: formatNumber(selected.currentStock),
                         unit: selected.unit || "kg",
                       })}
-                    </span>
-                  </p>
-                )}
-              </div>
-              {movementType === "in" ? (
-                <div>
-                  <Input
-                    id="unitCost"
-                    name="unitCost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    style={NUMERIC_FIELD}
-                    label={<TermTooltip term="hpp">{t("inventory.unitCostLabel")}</TermTooltip>}
-                    required
-                  />
-                  <p style={HINT}>{t("inventory.unitCostHint")}</p>
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 6,
-                    margin: 0,
-                    padding: "8px 12px",
-                    borderRadius: "var(--ant-border-radius)",
-                    background: "var(--ant-color-fill-quaternary)",
-                    fontSize: "var(--ant-font-size-sm)",
-                    color: "var(--ant-color-text-secondary)",
-                  }}
-                >
-                  <InfoCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-                  <span>{t("inventory.cogsAutoHint")}</span>
-                </p>
-              )}
-              <div>
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  label={t("common.date")}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("inventory.movementTypeLabel")}</FormLabel>
+                      <FormControl>
+                        <NativeSelect
+                          options={[
+                            { value: "in", label: t("inventory.movementIn") },
+                            { value: "out", label: t("inventory.movementOut") },
+                          ]}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                {periodIssue && (
-                  <p style={FIELD_WARNING} role="alert">
-                    <LockOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-                    <span>{periodIssue}</span>
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.quantity")}</FormLabel>
+                        <FormControl>
+                          <TextInput
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            style={NUMERIC_FIELD}
+                            {...field}
+                          />
+                        </FormControl>
+                        {/* Saldo tak cukup mendarat di sini juga — penjaganya
+                            berjalan setelah skema, tetapi galatnya milik isian
+                            yang sama. */}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {overStock && selected && (
+                    <p style={FIELD_WARNING} role="alert">
+                      <ExclamationCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
+                      <span>
+                        {t("inventory.overStockWarning", {
+                          qty: formatNumber(selected.currentStock),
+                          unit: selected.unit || "kg",
+                        })}
+                      </span>
+                    </p>
+                  )}
+                </div>
+                {movementType === "in" ? (
+                  /* Wajib HANYA di arah ini — sama persis dengan yang dituntut
+                     `superRefine` pada `stockUpdateSchema`. */
+                  <FormField
+                    control={form.control}
+                    name="unitCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>
+                          <TermTooltip term="hpp">{t("inventory.unitCostLabel")}</TermTooltip>
+                        </FormLabel>
+                        <FormControl>
+                          <TextInput
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            style={NUMERIC_FIELD}
+                            {...field}
+                            value={field.value ?? ""}
+                            /* Kosong = harga pokok TIDAK DIISI, bukan harga nol:
+                               `""` akan ter-coerce menjadi 0 dan mengeluh
+                               "harus lebih besar dari 0" alih-alih "wajib
+                               diisi untuk barang masuk". */
+                            onChange={(e) =>
+                              field.onChange(e.target.value === "" ? undefined : e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormDescription>{t("inventory.unitCostHint")}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <p
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 6,
+                      margin: 0,
+                      padding: "8px 12px",
+                      borderRadius: "var(--ant-border-radius)",
+                      background: "var(--ant-color-fill-quaternary)",
+                      fontSize: "var(--ant-font-size-sm)",
+                      color: "var(--ant-color-text-secondary)",
+                    }}
+                  >
+                    <InfoCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
+                    <span>{t("inventory.cogsAutoHint")}</span>
                   </p>
                 )}
-              </div>
-              <Input id="note" name="note" label={t("common.notesOptional")} />
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.date")}</FormLabel>
+                        <FormControl>
+                          <TextInput type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {periodIssue && (
+                    <p style={FIELD_WARNING} role="alert">
+                      <LockOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
+                      <span>{periodIssue}</span>
+                    </p>
+                  )}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="note"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("common.notesOptional")}</FormLabel>
+                      <FormControl>
+                        <TextInput {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <CostCenterField
-                costCenters={costCenters}
-                value={costCenterId}
-                onChange={setCostCenterId}
-                hint={t("costCenters.stockPickerHint")}
-              />
+                {/* Di luar state formulir dengan sengaja — lihat catatan pada
+                    `costCenterId` di atas. */}
+                <CostCenterField
+                  costCenters={costCenters}
+                  value={costCenterId}
+                  onChange={setCostCenterId}
+                  hint={t("costCenters.stockPickerHint")}
+                />
 
-              <Flex gap={CONTROL_GAP}>
-                <Button type="submit" disabled={loading}>
-                  {loading ? t("common.saving") : t("inventory.submitMovement")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => router.push("/inventory")}
-                >
-                  {t("inventory.backToInventory")}
-                </Button>
-              </Flex>
-            </form>
+                <Flex gap={CONTROL_GAP}>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? t("common.saving") : t("inventory.submitMovement")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => router.push("/inventory")}
+                  >
+                    {t("inventory.backToInventory")}
+                  </Button>
+                </Flex>
+              </form>
+            </Form>
           )}
         </div>
       </Card>

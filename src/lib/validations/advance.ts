@@ -18,6 +18,20 @@ export const advanceTypeEnum = z.enum(["sales", "purchase"]);
 const MONEY_EPSILON = 0.005;
 
 /**
+ * Id yang datang dari sebuah isian PILIHAN, dan yang boleh tidak dipilih.
+ *
+ * Yang dikerjakan `preprocess` (issue #216): pilihan kosong tiba sebagai `""`
+ * atau `null`, dan `Number("")` adalah `0` — id yang tak pernah ada. Tanpa
+ * normalisasi ini `optional()` tak pernah tercapai, dan yang muncul di layar
+ * adalah keluhan zod tentang angka yang terlalu kecil, bukan kalimat
+ * "Pelanggan wajib dipilih" yang disusun `superRefine` di bawah.
+ */
+const pickedId = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.coerce.number().int().positive().optional()
+);
+
+/**
  * Recording an advance: money moved with no document to settle.
  *
  * The party is required and must match the direction — a sales advance without a
@@ -30,10 +44,10 @@ export const advancePaymentSchema = z
   .object({
     type: advanceTypeEnum,
     date: z.string().min(1, vmsg("validation.dateRequired")),
-    customerId: z.coerce.number().int().positive().optional(),
-    supplierId: z.coerce.number().int().positive().optional(),
+    customerId: pickedId,
+    supplierId: pickedId,
     /** Optional link to the contract the advance was received against. */
-    contractId: z.coerce.number().int().positive().optional(),
+    contractId: pickedId,
     amount: z.coerce.number().positive(vmsg("validation.advanceAmountPositive")),
     currency: currencyEnum.default("IDR"),
     rate: rateField,

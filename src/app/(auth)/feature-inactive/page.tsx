@@ -29,7 +29,6 @@
  * yang dulu dipakai sudah dicabut `globals.css` oleh #203. Tombolnya mewarnai
  * dirinya sendiri.
  */
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CloseSquareOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
@@ -94,8 +93,8 @@ export default async function FeatureInactivePage({
       </div>
 
       <div style={EXIT_ROW}>
-        <Button asChild variant="outline" style={{ width: "100%" }}>
-          <Link href="/dashboard">{t("modules.inactiveBack")}</Link>
+        <Button href="/dashboard" variant="outline" style={{ width: "100%" }}>
+          {t("modules.inactiveBack")}
         </Button>
       </div>
     </AuthShell>

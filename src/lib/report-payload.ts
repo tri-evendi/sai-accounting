@@ -326,6 +326,10 @@ export async function buildReportPayload(
         kind: "cash-flow",
         period: periodLabel(from, to, null),
         groups: cf.groups.map((g) => ({
+          // Ikut sejak issue #241 — `cashFlowLayout()` membedakan ember
+          // diagnostik "Belum Terkategori" dari tiga seksi baku lewat kategori,
+          // bukan lewat label yang bisa saja sudah diterjemahkan.
+          category: g.category,
           label: g.label,
           lines: g.lines.map((l) => ({
             code: l.code,

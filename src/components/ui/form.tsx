@@ -60,6 +60,35 @@
  * Yang BERTAMBAH di #192: `aria-required`, yang selama ini tidak ada — isian
  * wajib hanya bertanda `*` (lihat #216).
  *
+ * ── `aria-describedby` hanya menyebut simpul yang DIRENDER (issue #262) ─────
+ * Sampai #262 `FormControl` menyebut `formDescriptionId` tanpa syarat, padahal
+ * simpulnya hanya ada bila pemanggil menulis `<FormDescription>`: 16 dari 83
+ * isian. 67 sisanya menunjuk id yang tidak ada di dokumen. Itu tidak terlihat
+ * di mana pun — HTML-nya sah, `tsc` diam, ESLint diam, layarnya sama — tetapi
+ * sebagian pembaca layar menjatuhkan SELURUH daftar `aria-describedby` begitu
+ * satu idref di dalamnya mati, dan yang ikut jatuh adalah pesan galatnya.
+ * Penyakit yang sama ada pada `formMessageId`: dua isian tidak menulis
+ * `<FormMessage>` sama sekali, dan `FormMessage` sendiri mengembalikan `null`
+ * bila galatnya datang tanpa kalimat (`setError` tanpa `message`).
+ *
+ * Perbaikannya harus benar di HTML PERTAMA — pendaftaran lewat `useEffect`
+ * tidak bisa: efek berjalan setelah hidrasi, jadi cat pertama tetap membawa
+ * idref menggantung dan berubah sesudahnya. Karena itu daftar id dirakit SAAT
+ * RENDER, di `FormItem`, dari simpul yang benar-benar ada di antara anaknya
+ * (`findSlot`), lalu diturunkan lewat konteks. `FormItem` merender lebih dulu
+ * daripada anaknya, jadi keputusannya sudah jadi sebelum `FormControl` menulis
+ * atributnya — dalam render server maupun di peramban.
+ *
+ * Konsekuensinya untuk pemanggil: `FormDescription`/`FormMessage` harus berada
+ * di antara ANAK `FormItem` yang sama (fragment & array ikut ditelusuri, sebab
+ * keduanya pasti ikut dirender). Yang tersembunyi di balik prop `render`
+ * sebuah `FormField` tidak bisa dilihat siapa pun saat `FormItem` dirender —
+ * satu-satunya bentuk seperti itu (panel kata sandi `mail-settings-form.tsx`)
+ * dibalik di #262 menjadi `FormField → FormItem`, bentuk baku MASTER.md.
+ * Menebak lebih dalam ditolak dengan sengaja: komponen yang MENERIMA anak
+ * belum tentu merendernya, dan tebakan yang meleset ke arah itu mengembalikan
+ * persis idref menggantung yang sedang ditutup.
+ *
  * ── Kenapa API-nya tidak berubah untuk pemanggil ───────────────────────────
  * Aturan fase B: primitif ditulis ulang di atas AntD dengan API yang sama,
  * supaya pemanggilnya tidak ikut berubah (itu fase C). Karena AntD memegang
@@ -67,12 +96,10 @@
  * `FormItem` mengangkat `<FormLabel>` dari daftar anaknya ke prop `label`
  * `Form.Item`. Pengangkatan itu sengaja dibatasi pada anak LANGSUNG dan pada
  * satu jenis elemen saja; `FormDescription` dan `FormMessage` tidak diangkat
- * ke `extra`/`help` justru supaya letaknya sama di semua kasus — termasuk saat
- * keduanya berada di dalam `FormField` (mis. `mail-settings-form.tsx`), yang
- * tidak bisa dijangkau pengangkatan apa pun.
+ * ke `extra`/`help` justru supaya letaknya sama di semua kasus.
  */
 
-import { Children, createContext, isValidElement, useContext, useId } from "react";
+import { Children, Fragment, createContext, isValidElement, useContext, useId } from "react";
 import { Form as AntdForm } from "antd";
 import { Slot } from "radix-ui";
 import {
@@ -81,9 +108,11 @@ import {
   useFormContext,
   useFormState,
   type ControllerProps,
+  type FieldError,
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
+import { describedByWith } from "@/components/ui/input";
 import { Label, RequiredMark } from "@/components/ui/label";
 import { useDictionary } from "@/lib/i18n/client";
 import { translateMessage } from "@/lib/i18n/validation";
@@ -99,12 +128,24 @@ type FormFieldContextValue<
 
 const FormFieldContext = createContext<FormFieldContextValue>({} as FormFieldContextValue);
 
+/**
+ * `TTransformedValues` diteruskan apa adanya ke `Controller` (issue #216).
+ *
+ * Generik ketiga itu adalah bentuk nilai SESUDAH skema mengubahnya — yang di
+ * app ini berbeda dari bentuk isiannya setiap kali sebuah skema memakai
+ * `z.coerce`: isian pilihan menyimpan `"7"`, skema menyerahkan `7`, dan
+ * `handleSubmit` menerima yang kedua. Tanpa generik ini `control` dari
+ * `useForm<Isian, unknown, Muatan>` ditolak `tsc` di setiap `FormField` —
+ * bukan karena ada yang salah, melainkan karena bawaannya menganggap keduanya
+ * sama.
+ */
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+  TTransformedValues = TFieldValues,
 >({
   ...props
-}: ControllerProps<TFieldValues, TName>) => {
+}: ControllerProps<TFieldValues, TName, TTransformedValues>) => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
@@ -116,6 +157,13 @@ type FormItemContextValue = {
   id: string;
   /** Diangkat dari `<FormLabel required>` — dipakai `FormControl` untuk `aria-required`. */
   required: boolean;
+  /**
+   * Daftar id `aria-describedby` yang simpulnya BENAR-BENAR dirender di
+   * `FormItem` ini (issue #262) — dirakit saat render, bukan didaftarkan
+   * belakangan lewat efek. `undefined` berarti tidak ada yang menjelaskan
+   * isian ini, dan atributnya karena itu tidak ditulis sama sekali.
+   */
+  describedBy?: string;
 };
 
 const FormItemContext = createContext<FormItemContextValue>({} as FormItemContextValue);
@@ -139,7 +187,7 @@ const useFormField = () => {
     throw new Error("useFormField harus dipakai di dalam <FormField>");
   }
 
-  const { id, required } = itemContext;
+  const { id, required, describedBy } = itemContext;
 
   return {
     id,
@@ -148,6 +196,8 @@ const useFormField = () => {
     formItemId: `${id}-form-item`,
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
+    /** Lihat `FormItemContextValue.describedBy` — sudah disaring, siap dipakai. */
+    describedBy,
     ...fieldState,
   };
 };
@@ -202,6 +252,64 @@ function liftLabel(children: React.ReactNode) {
 }
 
 /**
+ * Cari simpul bertipe `type` di antara anak yang PASTI ikut dirender (#262).
+ *
+ * "Pasti ikut dirender" adalah seluruh isi aturannya, dan itu yang menentukan
+ * sejauh mana penelusuran boleh masuk:
+ *
+ *   • anak langsung — ada di daftar, jadi ia dirender;
+ *   • fragment & array — keduanya merender SELURUH isinya, tanpa syarat, jadi
+ *     menelusurinya tidak bisa salah. `Children.toArray` meratakan array tetapi
+ *     TIDAK meratakan `<>…</>`, jadi fragment ditelusuri di sini;
+ *   • elemen HOST (`<div>`, `<label>`, tipenya sebuah string) — React merender
+ *     anaknya apa adanya, jadi jaminannya sama. Ini yang membuat baris centang
+ *     (`<label><FormControl>…`) di `cost-center-form` / `customer-form` tetap
+ *     terlihat dari sini;
+ *   • `{syarat && <FormDescription/>}` dan ternary sudah selesai dinilai oleh
+ *     pemanggil sebelum `FormItem` dipanggil — yang sampai ke sini hanya cabang
+ *     yang menang (yang kalah menjadi `false`/`null` dan dibuang `toArray`).
+ *
+ * Yang sengaja TIDAK ditelusuri: anak sebuah KOMPONEN. Sebuah komponen bebas
+ * mengabaikan `children`-nya atau merendernya bersyarat, dan tebakan yang
+ * meleset ke arah itu menulis kembali idref menggantung yang ditutup #262.
+ * Kekeliruan ke arah sebaliknya (deskripsi yang ada tapi tak terlihat dari
+ * sini) hanya kehilangan satu pautan — tidak pernah membuat pautan palsu.
+ */
+function findSlot(
+  children: React.ReactNode,
+  type: React.ElementType
+): React.ReactElement | undefined {
+  for (const node of Children.toArray(children)) {
+    if (!isValidElement(node)) continue;
+    if (node.type === type) return node;
+    if (node.type === Fragment || typeof node.type === "string") {
+      const inner = (node.props as { children?: React.ReactNode }).children;
+      const found = findSlot(inner, type);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Apakah `FormMessage` akan benar-benar merender simpulnya?
+ *
+ * Satu-satunya sumber untuk dua pembaca: `FormMessage` sendiri (yang memakainya
+ * untuk memutuskan `null`) dan `FormItem` (yang memakainya untuk memutuskan
+ * apakah `formMessageId` boleh disebut). Keduanya WAJIB sepakat — kalau tidak,
+ * galat tanpa kalimat (`form.setError(name, { type: "manual" })`) menghasilkan
+ * `aria-describedby` yang menunjuk simpul yang tak pernah dirender.
+ *
+ * `translateMessage` tidak ikut dipanggil di sini dengan sengaja: ia
+ * mengembalikan masukannya apa adanya untuk string kosong, dan tidak pernah
+ * mengosongkan pesan yang tidak kosong — jadi kekosongan bisa diputuskan
+ * sebelum kamusnya dibutuhkan.
+ */
+function hasMessageBody(error: FieldError | undefined, fallback: React.ReactNode): boolean {
+  return error ? Boolean(String(error.message ?? "")) : Boolean(fallback);
+}
+
+/**
  * Props `FormItem` dipersempit dari `React.ComponentProps<"div">` menjadi dua
  * yang benar-benar dipakai. Itu disengaja: sisa atribut `<div>` dulu mendarat
  * di simpul yang kita kendalikan sendiri, sedangkan sekarang ia akan mendarat
@@ -224,8 +332,26 @@ function FormItem({ style, children }: FormItemProps) {
   const { error } = useFieldState();
   const { label, required, content } = liftLabel(children);
 
+  /*
+   * Daftar `aria-describedby` dirakit DI SINI, bukan di `FormControl` (#262).
+   * `FormItem` adalah satu-satunya tempat yang memegang seluruh saudara isian
+   * sebelum satu pun dari mereka dirender, jadi ia bisa menjawab "apakah
+   * simpulnya ada" tanpa menunggu efek — dan jawabannya sudah benar di HTML
+   * pertama, termasuk di render server.
+   */
+  const messageNode = findSlot(content, FormMessage);
+  const describedBy = describedByWith(
+    findSlot(content, FormDescription) !== undefined && `${id}-form-item-description`,
+    // Pesan hanya dirujuk saat ia memang muncul: ada galatnya, ada simpulnya,
+    // dan galatnya membawa kalimat.
+    Boolean(error) &&
+      messageNode !== undefined &&
+      hasMessageBody(error, (messageNode.props as { children?: React.ReactNode }).children) &&
+      `${id}-form-item-message`
+  );
+
   return (
-    <FormItemContext.Provider value={{ id, required }}>
+    <FormItemContext.Provider value={{ id, required, describedBy }}>
       {/* Tanpa `data-slot`: sisa prop `Form.Item` mendarat di baris DALAM
           (`.ant-form-item-row`), bukan di simpul terluar, jadi penanda di sana
           akan menunjuk elemen yang salah. Penanda simpul ini adalah kelas
@@ -237,7 +363,12 @@ function FormItem({ style, children }: FormItemProps) {
            bentuk yang tidak dipakai satu pun formulir di aplikasi ini. */
         layout="vertical"
         label={label}
-        htmlFor={`${id}-form-item`}
+        /* Penyakit yang sama seperti `aria-describedby`, hanya di atribut lain:
+           `<label for>` yang menunjuk isian yang tidak dirender. Satu-satunya
+           bentuk semacam itu di app ini adalah panel yang berisi keterangan +
+           tombol saja (kata sandi surel yang sudah tersimpan). Labelnya tetap
+           dibacakan sebagai teks; yang dibuang hanya pautan ke ruang kosong. */
+        htmlFor={findSlot(content, FormControl) !== undefined ? `${id}-form-item` : undefined}
         /* Hanya penanda keadaan: pesannya tetap `FormMessage` (lihat kepala
            berkas). Yang dikerjakannya di sini adalah menyalakan gaya error
            pada isian AntD di dalamnya lewat `StatusProvider`. */
@@ -282,14 +413,17 @@ function FormLabel({ required, children, style, ...props }: FormLabelProps) {
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot.Root>) {
-  const { error, required, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const { error, required, formItemId, describedBy } = useFormField();
   return (
     <Slot.Root
       data-slot="form-control"
       id={formItemId}
-      aria-describedby={
-        !error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`
-      }
+      /* Sudah disaring `FormItem`: hanya id yang simpulnya ada di markup yang
+         sama (#262). `undefined` berarti atributnya tidak ditulis — sebuah
+         `aria-describedby` yang menunjuk ke ruang kosong lebih buruk daripada
+         tidak ada, karena sebagian pembaca layar menjatuhkan seluruh daftarnya
+         beserta pesan galat yang ikut di dalamnya. */
+      aria-describedby={describedBy}
       aria-invalid={!!error}
       // Sejak #192: isian wajib mengumumkan dirinya wajib, bukan hanya
       // bertanda `*` di label. `Select` AntD kehilangan `required` native di
@@ -336,9 +470,12 @@ function FormDescription({ style, ...props }: React.ComponentProps<"p">) {
 function FormMessage({ style, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField();
   const dictionary = useDictionary();
-  const body = error ? translateMessage(dictionary, String(error?.message ?? "")) : props.children;
 
-  if (!body) return null;
+  // Predikat yang sama dipakai `FormItem` untuk memutuskan apakah id ini boleh
+  // disebut `aria-describedby` (#262) — dua tempat, satu aturan.
+  if (!hasMessageBody(error, props.children)) return null;
+
+  const body = error ? translateMessage(dictionary, String(error.message ?? "")) : props.children;
 
   return (
     <p

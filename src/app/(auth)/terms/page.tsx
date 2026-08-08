@@ -160,12 +160,11 @@ export default function TermsPage() {
         </section>
 
         <footer style={FOOTER}>
-          {/* `href` LANGSUNG, bukan `asChild` membungkus `<Link>`: berkas ini
-              server component, dan `asChild` harus membaca prop anaknya —
-              anak yang menyeberangi batas RSC bisa tiba sebagai simpul `lazy`
-              tanpa prop, yang mematikan prerender halaman ini. Alasan
-              lengkapnya di kepala `ui/button.tsx`; keluarannya `<a>` yang sama
-              persis. */}
+          {/* `href` LANGSUNG, bukan tombol yang membungkus `<Link>`: bentuk
+              pembungkus itu harus membaca prop anaknya, dan anak yang
+              menyeberangi batas RSC bisa tiba sebagai simpul `lazy` tanpa prop
+              — yang mematikan prerender halaman ini. Sejak #250 bentuk itu
+              tidak ada lagi; alasan lengkapnya di kepala `ui/button.tsx`. */}
           <Button href="/privacy" variant="outline">
             Kebijakan Privasi
           </Button>

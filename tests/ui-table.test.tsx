@@ -296,7 +296,15 @@ describe("DataTable — varian interaktif di atas AntD", () => {
     // "Rp 10.000" dan daftar nilai terbesar jadi salah — kesalahan yang
     // sangat mudah lolos dari mata. Pembandingnya diuji langsung, karena
     // pengurutan AntD terjadi saat diklik, bukan saat dirender.
-    const sorter = columns[1].sorter;
+    //
+    // `sorter: true` DITULIS di sini: sejak #265 bawaannya mati, karena kolom
+    // yang menyalakan sortirnya sendiri menghasilkan 30 berkas berisi prop
+    // yang tidak melakukan apa pun di `StaticTable`.
+    const sorter = moneyColumn<Row>({
+      dataIndex: "amount",
+      title: "Nilai",
+      sorter: true,
+    }).sorter;
     expect(typeof sorter).toBe("function");
     const compare = sorter as (a: Row, b: Row) => number;
     const sorted = [...rows].sort(compare).map((r) => r.doc);
@@ -304,8 +312,30 @@ describe("DataTable — varian interaktif di atas AntD", () => {
   });
 
   it("header kolom yang bisa diurutkan mengumumkan dirinya ke pembaca layar", () => {
-    const html = renderData();
+    const html = renderToStaticMarkup(
+      <DataTable<Row>
+        columns={[
+          columns[0],
+          moneyColumn<Row>({ dataIndex: "amount", title: "Nilai", sorter: true }),
+        ]}
+        data={rows}
+        rowKey={rowKey}
+      />
+    );
     expect(html).toContain('aria-description="sortable"');
+  });
+
+  it("pembantu kolom TIDAK lagi menyalakan sortir sendiri (issue #265)", () => {
+    /*
+     * Bawaan yang menyala adalah asal-usul seluruh issue #265: `moneyColumn`
+     * dan `qtyColumn` menghidupkan `sorter`, `StaticTable` mengabaikannya, dan
+     * 30 berkas karena itu memasang kendali yang tidak pernah ada di layar.
+     * Sortir hanya bisa dinyalakan HALAMAN, karena hanya halaman yang tahu
+     * apakah kolomnya punya `orderBy` di basis data.
+     */
+    expect(moneyColumn<Row>({ dataIndex: "amount", title: "Nilai" }).sorter).toBe(false);
+    expect(qtyColumn<Row>({ dataIndex: "amount", title: "Qty" }).sorter).toBe(false);
+    expect(textColumn<Row>({ dataIndex: "doc", title: "Dokumen" }).sorter).toBeUndefined();
   });
 });
 

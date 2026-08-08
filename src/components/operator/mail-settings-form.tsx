@@ -180,6 +180,64 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
     router.refresh();
   }
 
+  /*
+   * Tombol-tombol di bawah isian kata sandi — sama persis di kedua bentuk
+   * panelnya (sedang mengganti / sudah tersimpan), jadi ditulis sekali di sini.
+   *
+   * Kenapa panelnya sampai punya DUA bentuk: `aria-describedby` hanya boleh
+   * menyebut id yang simpulnya benar-benar dirender (#262), dan `FormItem`
+   * memutuskannya dari anak yang dilihatnya saat render. Bentuk lama menaruh
+   * `FormControl`/`FormDescription`/`FormMessage` di dalam prop `render` sebuah
+   * `FormField` DI DALAM `FormItem` — tempat yang tidak bisa dilihat `FormItem`
+   * (prop `render` baru dipanggil belakangan, oleh `Controller`), sehingga
+   * pautan deskripsi–isian yang selama ini benar justru ikut hilang. Bentuk di
+   * bawah adalah bentuk baku MASTER.md §Konvensi Form aturan 3, `FormField →
+   * FormItem → …`, yang tidak punya sudut gelap itu.
+   */
+  const passwordExtras = (
+    <>
+      <Flex wrap gap={token.marginXS} style={{ paddingTop: token.paddingXXS }}>
+        {settings?.hasPassword && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!available}
+            onClick={() => {
+              setChangingPassword((open) => !open);
+              form.setValue("password", "");
+            }}
+          >
+            <KeyOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+            {changingPassword
+              ? t("operator.mail.passwordCancel")
+              : t("operator.mail.passwordChange")}
+          </Button>
+        )}
+        {settings?.hasPassword && (
+          <Button
+            type="button"
+            variant={clearPassword ? "danger" : "outline"}
+            size="sm"
+            disabled={!available}
+            aria-pressed={clearPassword === true}
+            onClick={() => {
+              form.setValue("clearPassword", !clearPassword);
+              form.setValue("password", "");
+            }}
+          >
+            {t("operator.mail.passwordClear")}
+          </Button>
+        )}
+      </Flex>
+      {clearPassword && (
+        <p style={{ margin: 0, color: money.colorMoneyPending }}>
+          {t("operator.mail.passwordClearHint")}
+        </p>
+      )}
+    </>
+  );
+
   return (
     <section style={panelBox(token)}>
       <Flex vertical gap={token.marginSM}>
@@ -333,71 +391,36 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
                 </div>
 
                 <div style={FULL_ROW}>
-                  <FormItem>
-                    <FormLabel>{t("operator.mail.passwordLabel")}</FormLabel>
-                    {changingPassword ? (
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <>
-                            <FormControl>
-                              <PasswordField
-                                autoComplete="new-password"
-                                {...field}
-                                value={field.value ?? ""}
-                                disabled={!available || clearPassword === true}
-                              />
-                            </FormControl>
-                            <FormDescription>{t("operator.mail.passwordHint")}</FormDescription>
-                            <FormMessage />
-                          </>
-                        )}
-                      />
-                    ) : (
+                  {changingPassword ? (
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("operator.mail.passwordLabel")}</FormLabel>
+                          <FormControl>
+                            <PasswordField
+                              autoComplete="new-password"
+                              {...field}
+                              value={field.value ?? ""}
+                              disabled={!available || clearPassword === true}
+                            />
+                          </FormControl>
+                          <FormDescription>{t("operator.mail.passwordHint")}</FormDescription>
+                          <FormMessage />
+                          {passwordExtras}
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    /* Tanpa isian: yang tersisa hanyalah keterangan bahwa kata
+                       sandinya sudah tersimpan, dan tombol untuk menggantinya. */
+                    <FormItem>
+                      <FormLabel>{t("operator.mail.passwordLabel")}</FormLabel>
                       <FormDescription>{t("operator.mail.passwordStored")}</FormDescription>
-                    )}
-
-                    <Flex wrap gap={token.marginXS} style={{ paddingTop: token.paddingXXS }}>
-                      {settings?.hasPassword && (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={!available}
-                          onClick={() => {
-                            setChangingPassword((open) => !open);
-                            form.setValue("password", "");
-                          }}
-                        >
-                          <KeyOutlined aria-hidden="true" style={{ fontSize: 16 }} />
-                          {changingPassword
-                            ? t("operator.mail.passwordCancel")
-                            : t("operator.mail.passwordChange")}
-                        </Button>
-                      )}
-                      {settings?.hasPassword && (
-                        <Button
-                          type="button"
-                          variant={clearPassword ? "danger" : "outline"}
-                          size="sm"
-                          disabled={!available}
-                          aria-pressed={clearPassword === true}
-                          onClick={() => {
-                            form.setValue("clearPassword", !clearPassword);
-                            form.setValue("password", "");
-                          }}
-                        >
-                          {t("operator.mail.passwordClear")}
-                        </Button>
-                      )}
-                    </Flex>
-                    {clearPassword && (
-                      <p style={{ margin: 0, color: money.colorMoneyPending }}>
-                        {t("operator.mail.passwordClearHint")}
-                      </p>
-                    )}
-                  </FormItem>
+                      {passwordExtras}
+                    </FormItem>
+                  )}
                 </div>
               </>
             )}

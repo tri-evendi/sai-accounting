@@ -572,7 +572,7 @@ export function ReturnForm({
       </Card>
 
       <Flex wrap gap={token.marginXS}>
-        <Button type="submit" disabled={saving}>
+        <Button variant="primary" type="submit" disabled={saving}>
           {/* `Spin` menggantikan `Loader2 animate-spin`: gerakannya mengikuti
               token gerak AntD, yang menghormati `prefers-reduced-motion`. */}
           {saving && <Spin size="small" />}

@@ -346,7 +346,19 @@ export function SupplierAdvancePanel({
         </div>
       ) : (
         <div>
-          <Button type="button" size="sm" onClick={() => setRecording(true)}>
+          {/* PEMICU yang membuka panel — `secondary` (#267): yang primer adalah
+              submit di dalam `AdvanceForm` yang ia buka. Akibatnya
+              `/suppliers/[id]` memikul NOL primer dalam keadaan bawaan dan tepat
+              satu saat panelnya dibuka. Sebelum ini ia berdampingan dengan
+              pemicu `secondary` "Catat transaksi" dan kompensasi uang muka yang
+              sudah turun di potongan 2 — satu-satunya blok biru di halaman baca
+              justru pemicunya. */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setRecording(true)}
+          >
             <PlusOutlined aria-hidden="true" />
             {t("suppliers.recordAdvance")}
           </Button>

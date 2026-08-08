@@ -305,7 +305,7 @@ export function UserPermissionsPanel({
               <UndoOutlined aria-hidden="true" />
               {t("users.followRoleFully")}
             </Button>
-            <Button size="sm" disabled={saving || !isDirty} onClick={requestSave}>
+            <Button variant="primary" size="sm" disabled={saving || !isDirty} onClick={requestSave}>
               <SaveOutlined aria-hidden="true" />
               {t("common.save")}
             </Button>

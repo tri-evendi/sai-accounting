@@ -227,9 +227,19 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       key: "review",
       title: "",
       align: "right",
+      /* "Tinjau" memilih periode mana yang dibaca kartu ringkasan di sebelah —
+         itu KEADAAN, bukan ajakan, dan bentuknya sama dengan chip saringan aktif
+         yang turun di potongan 3: aktif `secondary` (berbingkai), sisanya
+         `ghost` (tanpa bingkai). Sebelum #267 potongan 4 baris terpilih berisi
+         penuh dan bertabrakan dengan "Tutup periode" di kartu kanan — dua blok
+         biru sekaligus. Penjaganya buta di sini, dan itu DICOBA: kolom dirakit
+         di luar `return`, jadi tak ada satu wadah JSX pun yang memuat keduanya
+         dan `tests/button-emphasis.test.ts` tetap hijau pada pelanggarannya.
+         Keadaan terpilih tidak bergantung bingkai saja: barisnya juga berlatar
+         `colorPrimaryBg` dan judul kartu kanan menyebut periodenya. */
       render: (_v, row) => (
         <Button
-          variant={isSelected(row) ? "primary" : "secondary"}
+          variant={isSelected(row) ? "secondary" : "ghost"}
           size="sm"
           onClick={() => setSelected({ year: row.year, month: row.month })}
         >
@@ -477,7 +487,16 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
                         confirmVariant="primary"
                         onConfirm={onClose}
                         trigger={
-                          <Button size="sm" disabled={busy || !summary.canClose}>
+                          /* Aksi utama layar ini (#267). Ia TETAP primer meski
+                             "Kunci" di `reconciliation-workspace` turun di
+                             potongan 3, dan bedanya bukan selera: di sana
+                             penguncian menyala saat pekerjaan sesungguhnya
+                             ("Cocokkan") belum selesai — di sini menutup periode
+                             ADALAH pekerjaan halaman ini, dan tombolnya hanya
+                             hidup ketika `summary.canClose`, yaitu ketika
+                             pemeriksaannya sudah lulus. Penekanan sebagai
+                             jawaban atas keadaan, bukan atas tata letak. */
+                          <Button variant="primary" size="sm" disabled={busy || !summary.canClose}>
                             <LockOutlined aria-hidden="true" />
                             {t("periods.closeAction")}
                           </Button>

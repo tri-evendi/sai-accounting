@@ -22,8 +22,16 @@ const ICON_SIZE = 16;
 
 export function SellerIdentityForm({
   initial,
+  identityIncomplete,
 }: {
   initial: { npwp: string | null; taxName: string | null; taxAddress: string | null };
+  /**
+   * NPWP penjual belum terisi — halaman ini TIDAK merender tombol unduh pada
+   * keadaan itu (lihat `page.tsx`), jadi menyimpan identitas adalah satu-satunya
+   * jalan maju layarnya. Dipakai untuk eskalasi berkondisi di tombol simpan;
+   * lihat catatan di sana.
+   */
+  identityIncomplete: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -90,7 +98,28 @@ export function SellerIdentityForm({
         />
       </Col>
       <Col span={24}>
-        <Button type="button" onClick={handleSave} disabled={saving}>
+        {/*
+          ESKALASI BERKONDISI (#267 potongan 4) — bentuk yang MASTER.md sebut
+          disukai, dan syaratnya benar-benar terpenuhi di sini.
+
+          `/tax/efaktur` memikul dua aksi yang mengikat dari dua berkas: menyimpan
+          identitas penjual (di sini) dan mengunduh CSV-nya (`page.tsx`). Dua blok
+          biru sekaligus — dan tak satu penjaga pun bisa melihatnya.
+
+          Yang menyelesaikannya bukan memilih salah satu selamanya, melainkan
+          kenyataan halamannya: ketika NPWP belum terisi, tombol unduh TIDAK
+          dirender sama sekali (diganti catatan "NPWP diperlukan"), jadi mengisi
+          identitas adalah satu-satunya jalan maju dan ia satu-satunya primer.
+          Begitu identitasnya lengkap, menyimpannya berubah menjadi penyuntingan
+          pemeliharaan, dan penekanan pindah ke unduhan — alasan orang membuka
+          halaman ini.
+        */}
+        <Button
+          type="button"
+          variant={identityIncomplete ? "primary" : "secondary"}
+          onClick={handleSave}
+          disabled={saving}
+        >
           <SaveOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
           {saving ? t("common.saving") : t("tax.saveIdentity")}
         </Button>

@@ -235,7 +235,7 @@ export default async function InventoryPage({
                 tanpa periode; pertanyaan "apa yang bergerak bulan lalu" dijawab
                 Kartu Stok, yang punya saldo awal & akhir sendiri (issue #126). */}
             <Link href="/inventory/movement"><Button variant="secondary">{t("stockMovement.linkLabel")}</Button></Link>
-            <Link href="/inventory/update"><Button>{t("common.addRemoveStock")}</Button></Link>
+            <Link href="/inventory/update"><Button variant="primary">{t("common.addRemoveStock")}</Button></Link>
             <Link href="/inventory/opname"><Button variant="secondary">{t("nav.items.inventoryOpname")}</Button></Link>
           </>
         }

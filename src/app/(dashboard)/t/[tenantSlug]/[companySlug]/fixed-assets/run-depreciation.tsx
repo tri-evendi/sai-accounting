@@ -8,6 +8,41 @@
  * is safe; a closed period is refused with the server's not-saved notice.
  *
  * Dikonversi ke token Ant Design pada issue #197 — kulitnya saja.
+ *
+ * ── Kenapa tombolnya `secondary` (#267 potongan 4) ────────────────────────
+ *
+ * Kartu ini MEMPOSTING (jurnal penyusutan untuk setiap aset aktif), dan
+ * memposting memang memenuhi syarat aksi utama. Tetapi ia dirender di
+ * `/fixed-assets`, yang kepala halamannya sudah memikul "Tambah Aset" primer
+ * sejak potongan 3 — dua blok biru dari dua berkas, bentuk yang tak satu pun
+ * penjaga bisa lihat (dibuktikan: menaikkannya kembali TIDAK membuat
+ * `tests/button-emphasis.test.ts` merah). Ini utang yang potongan 3 catat
+ * alih-alih dirapikan diam-diam; ini penyelesaiannya.
+ *
+ * Yang turun kartunya, bukan CTA kepalanya, karena tiga hal:
+ *
+ *   1. **Preseden yang sudah dua kali dipakai:** aksi yang memposting tetapi
+ *      merupakan tugas SAMPINGAN di layar yang tugas utamanya lain sudah turun
+ *      dua kali — `shared/advance-compensation.tsx` (potongan 2) dan
+ *      `inventory/update/stock-form.tsx` "Simpan barang-baru" (potongan 3).
+ *      Halaman ini adalah DAFTAR ASET; penyusutan adalah pekerjaan berkala di
+ *      atasnya.
+ *   2. **Keadaan daftar kosong memutuskannya.** `hasCategories` saja yang
+ *      menyalakan kartu ini — jadi perusahaan yang baru mengisi kategori tapi
+ *      belum punya satu aset pun akan melihat SATU-SATUNYA tombol biru di
+ *      layarnya menjalankan penyusutan atas nol aset, sementara satu-satunya
+ *      hal yang masuk akal dilakukan ("Tambah Aset") berdiri `secondary`.
+ *      Membalik pilihannya membuat penekanan tertinggi halaman ini menunjuk
+ *      pekerjaan yang belum bisa dikerjakan.
+ *   3. **Ongkos turunnya nol.** Kartu ini punya judul, dua pemilih periode, dan
+ *      SATU tombol; tak ada yang bisa tertukar dengannya di dalam kartu itu.
+ *
+ * ⚠ Yang TIDAK boleh dijadikan jalan pintas: menaikkannya kembali "karena
+ * penyusutan itu penting". Kalau kelak ia harus menonjol pada keadaan tertentu
+ * (mis. bulan berjalan belum diposting), bentuk yang benar adalah eskalasi
+ * BERKONDISI — dan syaratnya tertulis di MASTER.md: dalam keadaan yang
+ * menaikkannya, ia harus satu-satunya primer di layar, yang berarti CTA kepala
+ * harus ikut turun pada keadaan yang sama.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -102,7 +137,9 @@ export function RunDepreciation() {
               options={years.map((y) => ({ value: String(y), label: String(y) }))}
             />
           </div>
-          <Button onClick={run} disabled={running}>
+          {/* `secondary`, bukan primer (#267 potongan 4) — alasannya di kepala
+              berkas ini. */}
+          <Button variant="secondary" onClick={run} disabled={running}>
             {running && <Spin size="small" />}
             {t("fixedAssets.runAction")}
           </Button>

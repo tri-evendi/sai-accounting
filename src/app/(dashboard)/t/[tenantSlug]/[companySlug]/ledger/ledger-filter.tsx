@@ -85,7 +85,11 @@ export function LedgerFilter({
           />
         </Col>
         <Col flex="none">
-          <Button type="submit" disabled={!acc}>
+          {/* MENYARING, tidak mengikat — `outline` (#267). Bentuk dan alasannya
+              sama persis dengan `shared/ledger-filter.tsx` yang turun di
+              potongan 2; berkasnya kebetulan berbeda, layarnya tidak.
+              `/ledger` adalah layar BACA: nol aksi utama adalah jawabannya. */}
+          <Button type="submit" variant="outline" disabled={!acc}>
             {translate("common.show")}
           </Button>
         </Col>

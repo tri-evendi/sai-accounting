@@ -84,7 +84,7 @@ export default function DashboardError({
             </Flex>
 
             <Flex wrap align="center" justify="center" gap={token.marginSM}>
-              <Button onClick={() => reset()}>{t("error.retry")}</Button>
+              <Button variant="primary" onClick={() => reset()}>{t("error.retry")}</Button>
               <Link href="/dashboard">
                 <Button variant="secondary">{t("error.toHome")}</Button>
               </Link>

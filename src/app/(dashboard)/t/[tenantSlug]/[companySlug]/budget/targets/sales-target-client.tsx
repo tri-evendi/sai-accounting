@@ -373,7 +373,7 @@ export function SalesTargetClient({
                   </Col>
                 )}
                 <Col xs={24}>
-                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                  <Button variant="primary" type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting && <Spin size="small" />}
                     {translate("budget.submitTarget")}
                   </Button>

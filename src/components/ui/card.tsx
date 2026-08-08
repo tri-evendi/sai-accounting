@@ -34,11 +34,14 @@
  *
  * ── Yang BERUBAH rupanya, dan itu memang keputusan epik #206 ───────────────
  * Sudut kartu kini `borderRadiusLG` AntD (8px), bukan `rounded-lg` (12px), dan
- * bayangan `shadow-sm` hilang karena `Card` bervarian `outlined` tidak
+ * bayangan `shadow-sm` sempat hilang karena `Card` bervarian `outlined` tidak
  * berbayang. Keduanya adalah "identitas visual = palet & token bawaan AntD",
  * keputusan yang sudah diambil di epik. Kalau pemilik ingin 12px MASTER.md
  * kembali, itu SATU token di `ConfigProvider` (`components.Card.borderRadiusLG`)
  * — bukan kelas yang ditulis ulang di 107 berkas.
+ *
+ * **Bayangannya kembali di #266**, kali ini dari token AntD dan bukan dari
+ * kelas Tailwind — lihat `SURFACE` di bawah beserta alasannya.
  *
  * ── Sub-komponennya: dari kelas Tailwind ke gaya sebaris (issue #203) ──────
  * Sampai fase C berkas ini sengaja MEMPERTAHANKAN kelas Tailwind pada
@@ -74,8 +77,49 @@ const DIVIDER = "1px solid var(--ant-color-border-secondary)";
  */
 const BODY_STYLES = { body: { display: "contents" } } as const;
 
-function Card(props: DivProps) {
-  return <AntdCard data-slot="card" styles={BODY_STYLES} {...props} />;
+/**
+ * Bayangan kartu — jawaban #266 di sisi `Card` (jalan B).
+ *
+ * ── Kenapa di sini dan bukan di `ConfigProvider` ──────────────────────────
+ * `Card` AntD **tidak punya token bayangan sama sekali**: dibaca dari
+ * `antd/es/card/style`, token komponennya `headerBg`, `actionsBg`, padding, dan
+ * tinggi — tidak ada `boxShadow`. Yang ada hanya `cardShadow`
+ * (= `boxShadowCard`), dan itu bayangan keadaan HOVER untuk
+ * `.ant-card-hoverable`; kartu di app ini tidak hoverable. Jadi satu-satunya
+ * tempat keputusan ini bisa dipasang adalah primitifnya.
+ *
+ * ── Kenapa `boxShadowTertiary` ────────────────────────────────────────────
+ * Karena MASTER.md menamainya "lift halus", dan Variance app ini 3/10. Yang
+ * dicari #266 adalah kartu yang terbaca sebagai kartu di atas halaman yang
+ * hanya 2% berbeda — bukan kartu yang melayang. `boxShadowCard` (α 0,16/0,12/
+ * 0,09) tiga kali lebih pekat dan sudah punya peran lain di atas.
+ *
+ * **Yang harus ikut ditulis karena ia berlawanan dengan dugaan:** di tema gelap
+ * algoritma AntD membalik bayangan menjadi CAHAYA — `boxShadowTertiary` gelap
+ * adalah `rgba(255,255,255,0.01)`, yaitu praktis nol. Jadi baris ini adalah
+ * separuh TERANG dari jawaban #266; di tema gelap yang memisahkan kartu dari
+ * halaman tetap tepinya (`colorBorderSecondary`, 3,05:1 minimum sejak #208) dan
+ * nada kepala tabel di dalamnya. Menggantinya dengan bayangan gelap tulisan
+ * tangan akan melanggar aturan "jangan menulis `box-shadow` sendiri"
+ * (MASTER.md §Jarak, radius, bayangan) sekaligus menaruh bayangan hitam di
+ * halaman yang sudah `#000000` — dua kali tidak berguna.
+ *
+ * Ongkos kontrasnya nol: bayangan bukan bidang, tidak ada teks yang mendarat di
+ * atasnya, dan tak satu pun token permukaan bergeser.
+ */
+const SURFACE: React.CSSProperties = {
+  boxShadow: "var(--ant-box-shadow-tertiary)",
+};
+
+function Card({ style, ...props }: DivProps) {
+  return (
+    <AntdCard
+      data-slot="card"
+      styles={BODY_STYLES}
+      style={{ ...SURFACE, ...style }}
+      {...props}
+    />
+  );
 }
 
 function CardHeader({ style, ...props }: DivProps) {

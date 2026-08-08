@@ -8,45 +8,31 @@
  *
  * Saldo NOL tetap ditulis "—", bukan "Rp 0": nol di sini berarti akun itu tidak
  * bersaldo di sisi tersebut, dan `Money` sudah menulis "—" untuk nilai yang
- * tidak ada — jadi selnya tidak lagi punya cabang teks sendiri.
+ * tidak ada.
  *
- * Satu perbedaan perilaku yang disengaja: baris Total kini hanya muncul bila
- * ada baris yang ditotal (aturan `StaticTable`). Sebelumnya ia tetap digambar
- * di bawah keadaan kosong, sebagai "Total Rp 0 · Seimbang" pada buku yang belum
- * punya satu pun jurnal — pernyataan yang terdengar seperti hasil audit.
+ * ── Tabelnya pindah ke `<TrialBalanceStatement>` (issue #275) ──────────────
+ * Bentuknya — termasuk keputusan #198 bahwa buku kosong TIDAK menggambar baris
+ * Total — kini datang dari `trialBalanceLayout()`, penentu yang sama yang
+ * dipakai tombol PDF dan tombol Excel di sebelah judul halaman ini. Sebelumnya
+ * keputusan itu hanya berlaku di layar, sementara kedua berkas ekspor tetap
+ * mencetak "Total (Seimbang)" di atas buku yang belum punya satu jurnal pun.
+ * Halaman ini karena itu tinggal menyiapkan payload-nya, sekali, untuk ketiga
+ * permukaan.
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getTrialBalance } from "@/lib/reports";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import { TrialBalanceStatement } from "@/components/reports/trial-balance-statement";
 import { resolveAsOf } from "@/lib/report-catalog";
 import { formatDate } from "@/lib/utils";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ReconciliationOutlined } from "@ant-design/icons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-
-/** Ikon keadaan kosong — `h-12 w-12` lama. */
-const EMPTY_ICON_SIZE = 48;
-
-/** Satu baris neraca saldo. */
-type TrialBalanceRow = Awaited<ReturnType<typeof getTrialBalance>>["rows"][number];
-
-/** Kode akun: monospace + tabular supaya digitnya berbaris lurus ke bawah. */
-const CODE_STYLE: React.CSSProperties = {
-  fontFamily: "var(--ant-font-family-code)",
-  fontVariantNumeric: "tabular-nums",
-};
 
 export default async function TrialBalancePage({
   params,
@@ -73,42 +59,6 @@ export default async function TrialBalancePage({
     balanced: tb.balanced,
   };
 
-  const columns: SaiColumns<TrialBalanceRow> = [
-    {
-      ...textColumn<TrialBalanceRow>({ dataIndex: "code", title: t("accounts.colCode") }),
-      render: (raw) => <span style={CODE_STYLE}>{String(raw)}</span>,
-    },
-    textColumn<TrialBalanceRow>({ dataIndex: "name", title: t("accounts.nameField") }),
-    {
-      // Saldo nol = tidak bersaldo di sisi ini; `Money` menulis "—" untuk nilai
-      // yang tidak ada, jadi nolnya diterjemahkan di SINI, sekali.
-      ...moneyColumn<TrialBalanceRow>({ dataIndex: "debit", title: t("common.debit") }),
-      render: (_v, r) => <Money value={r.debit > 0 ? r.debit : undefined} currency="IDR" />,
-    },
-    {
-      ...moneyColumn<TrialBalanceRow>({ dataIndex: "credit", title: t("common.credit") }),
-      render: (_v, r) => <Money value={r.credit > 0 ? r.credit : undefined} currency="IDR" />,
-    },
-  ];
-
-  /** Kaki: label + lencana membentang dua kolom pertama, lalu kedua totalnya. */
-  const totalLabel: SummaryCell = {
-    content: (
-      <span
-        style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
-      >
-        {t("common.total")}
-        {tb.balanced ? (
-          <Badge variant="success">{t("reports.balanced")}</Badge>
-        ) : (
-          <Badge variant="danger">{t("reports.unbalanced")}</Badge>
-        )}
-      </span>
-    ),
-    colSpan: 2,
-    scope: "row",
-  };
-
   return (
     <div>
       <PageHeader
@@ -129,28 +79,11 @@ export default async function TrialBalancePage({
       <AsOfFilter basePath="/reports/trial-balance" asOf={asOfISO} />
 
       <Card>
-        <StaticTable<TrialBalanceRow>
-          columns={columns}
-          rows={tb.rows}
-          rowKey={(r) => r.code}
-          summary={[
-            {
-              cells: {
-                code: totalLabel,
-                debit: <Money value={tb.totalDebit} currency="IDR" />,
-                credit: <Money value={tb.totalCredit} currency="IDR" />,
-              },
-            },
-          ]}
-          empty={
-            <EmptyState
-              icon={<ReconciliationOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
-              title={t("reports.trialBalanceEmptyTitle")}
-              description={t("reports.trialBalanceEmptyDescription")}
-              actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}
-              actionHref={canRecordCash ? "/finance/new" : undefined}
-            />
-          }
+        <TrialBalanceStatement
+          payload={payload}
+          t={t}
+          actionLabel={canRecordCash ? t("reports.recordTransaction") : undefined}
+          actionHref={canRecordCash ? "/finance/new" : undefined}
         />
       </Card>
     </div>

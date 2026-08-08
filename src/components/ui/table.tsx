@@ -62,21 +62,27 @@
  * itu sendiri — satu kotak, bukan dua seperti solusi lama — sehingga ia mulai
  * menggulung vertikal dan `top: 0` punya sesuatu untuk ditempeli.
  *
- * ── Warna sel judul lengket, di berkas yang tak boleh memakai hook ─────────
+ * ── Warna sel judul, di berkas yang tak boleh memakai hook ─────────────────
  * Sel judul yang menempel WAJIB berlatar pekat; tanpa itu baris yang lewat di
  * belakangnya terbaca menembus judul kolom. Berkas ini server-safe dan karena
  * itu tidak bisa memanggil `theme.useToken()`, jadi warnanya disalurkan lewat
  * PROPERTI KUSTOM CSS — satu-satunya nilai yang benar-benar DIWARISI dari
  * pembungkus ke `<th>` di dalamnya.
  *
- * Bawaannya `var(--ant-color-bg-container)`, yang sejak #227 teratasi di mana
- * pun: root layout memasang kelas pemikul blok token (`ANTD_CSS_VAR_KEY`) pada
- * `<html>`, jadi tabel di LUAR komponen AntD mana pun tetap mewarisinya.
+ * **Sejak #266 latar itu dipasang pada SETIAP sel judul, bukan hanya yang
+ * menempel**, dan bawaannya berubah dari `var(--ant-color-bg-container)`
+ * (putih) menjadi `var(--ant-color-table-head-bg)` — nada kepala tabel. Kedua
+ * hal itu satu keputusan: kalau kepala diberi nada tanpa menyesuaikan bawaan
+ * jalur lengketnya, kepalanya bernada saat diam dan PUTIH saat menempel, dan
+ * yang melihatnya hanya orang yang sedang menggulung matriks izin. Keduanya
+ * teratasi di mana pun sejak #227: root layout memasang kelas pemikul blok
+ * token (`ANTD_CSS_VAR_KEY`) pada `<html>`, jadi tabel di LUAR komponen AntD
+ * mana pun tetap mewarisinya.
  *
- * Prop `stickyHeadBackground` tetap ada, dan bukan sisa: kedua matriks izin
- * berdiri di atas permukaan yang bukan `colorBgContainer`, dan sel judul yang
- * menempel harus berlatar sama dengan permukaan di belakangnya — kalau tidak,
- * baris yang lewat terbaca menembus judul kolom.
+ * Prop `stickyHeadBackground` tetap ada, dan bukan sisa: sebuah tabel bisa
+ * berdiri di atas permukaan yang bukan permukaan kartu, dan sel judulnya harus
+ * berlatar yang cocok dengan permukaan itu — kalau tidak, baris yang lewat
+ * terbaca menembus judul kolom.
  */
 
 /**
@@ -123,11 +129,47 @@ const TABLE_STYLE: React.CSSProperties = {
 const ROW_BORDER = "1px solid var(--ant-color-border-secondary)";
 
 /**
+ * Properti kustom yang menyalurkan warna permukaan dari pembungkus `Table` ke
+ * setiap `<TableHead>` di bawahnya. Bukan variabel global: nilainya dipasang
+ * per tabel, sehingga dua tabel di satu halaman bisa berdiri di atas permukaan
+ * yang berbeda.
+ *
+ * Sejak #266 ia menyalurkan latar SETIAP sel judul, bukan hanya yang menempel —
+ * lihat catatan di `HEAD_BG` di bawah.
+ */
+const STICKY_HEAD_BG = "--sai-table-head-bg";
+const STICKY_HEAD_LINE = "--sai-table-head-line";
+
+/**
  * Sel judul kolom. Tingginya 44px — target sentuh MASTER.md, sekaligus yang
  * membuat baris judul jelas lebih tinggi dari baris isi (12+12). Warnanya
  * sekunder: judul kolom menamai angka di bawahnya dan tidak boleh bersaing
  * dengannya.
+ *
+ * ── Latarnya BERNADA, dan itu jawaban #266 (jalan B) ──────────────────────
+ * Latar halaman (`#f5f5f5`) dan kartu (`#ffffff`) hanya berbeda ~2%, jadi
+ * kartu berhenti terbaca sebagai kartu dan yang memisahkan wilayah tinggal
+ * tepinya. #269 membuktikan lapisan token buntu: setiap geseran permukaan
+ * menjatuhkan ambang yang dijaga #208/#186. Yang tersisa dan berongkos kontras
+ * NOL adalah nada di dalam bidang yang sudah ada — dan itu pekerjaan perender,
+ * yaitu berkas ini.
+ *
+ * `--ant-color-table-head-bg` adalah alias GLOBAL, bukan token `Table`: berkas
+ * ini server-safe dan sebuah halaman laporan bisa tidak merender satu pun
+ * komponen AntD, sehingga variabel token komponen tidak akan ada di dokumen.
+ * `AntdProvider` mengoper nilai yang sama ke `components.Table.headerBg`,
+ * sehingga `DataTable` dan `StaticTable` menggambar kepala yang identik.
+ * Nilai, pengukuran, dan alasan arah nadanya per tema ada di
+ * `lib/theme/antd-tokens.ts`, bagian "Jenjang di perender".
+ *
+ * Latarnya ditulis lewat `--sai-table-head-bg` — properti kustom yang SAMA
+ * yang dipakai sel judul lengket. Itu bukan kerapian: kalau kepala bernada
+ * hanya dipasang di sini sementara jalur lengketnya jatuh ke bawaan lain,
+ * kepalanya akan BERGANTI WARNA saat menempel (#229), dan hanya terlihat oleh
+ * orang yang menggulung matriks izin.
  */
+const HEAD_BG = `var(${STICKY_HEAD_BG}, var(--ant-color-table-head-bg))`;
+
 const HEAD_STYLE: React.CSSProperties = {
   height: 44,
   paddingInline: "var(--ant-padding-lg)",
@@ -136,6 +178,7 @@ const HEAD_STYLE: React.CSSProperties = {
   fontWeight: 500,
   whiteSpace: "nowrap",
   color: "var(--ant-color-text-secondary)",
+  background: HEAD_BG,
 };
 
 /** Sel isi: 24px mendatar (sesumbu dengan judul), 12px vertikal. */
@@ -146,25 +189,19 @@ const CELL_STYLE: React.CSSProperties = {
 };
 
 /**
- * Properti kustom yang menyalurkan warna permukaan dari pembungkus `Table` ke
- * setiap `<TableHead sticky>` di bawahnya. Bukan variabel global: nilainya
- * dipasang per tabel, sehingga dua tabel di satu halaman bisa berdiri di atas
- * permukaan yang berbeda.
- */
-const STICKY_HEAD_BG = "--sai-table-head-bg";
-const STICKY_HEAD_LINE = "--sai-table-head-line";
-
-/**
  * Gaya sel judul yang menempel. `boxShadow` (bukan `border-bottom`) karena
  * batas milik BARIS judul menggulung bersama tabelnya — yang menempel hanyalah
  * selnya — sehingga garis pemisah judul–isi akan hilang persis saat ia paling
  * dibutuhkan.
+ *
+ * Latarnya TIDAK disebut lagi di sini (#266): ia sudah datang dari `HEAD_STYLE`,
+ * lewat properti kustom yang sama. Dua deklarasi latar untuk satu sel adalah
+ * persis cara kepala tabel berganti warna saat menempel.
  */
 const STICKY_HEAD_STYLE: React.CSSProperties = {
   position: "sticky",
   top: 0,
   zIndex: 1,
-  background: `var(${STICKY_HEAD_BG}, var(--ant-color-bg-container))`,
   boxShadow: `inset 0 -1px 0 var(${STICKY_HEAD_LINE}, var(--ant-color-border-secondary))`,
 };
 

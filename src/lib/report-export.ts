@@ -21,28 +21,47 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   agingColumns,
+  balanceSheetBalanceNote,
+  balanceSheetLayout,
   budgetColumns,
   cashBankColumns,
   cashFlowLayout,
   cashFlowReconciliationNote,
   incomeStatementLayout,
   partyRecapColumns,
+  splitBalanceSheetRows,
+  splitIncomeStatementRows,
+  splitTrialBalanceRows,
   stockMovementColumns,
   stockValueColumns,
+  trialBalanceBalanceNote,
+  trialBalanceLayout,
   AGING_HEADERS,
+  BALANCE_SHEET_COLUMNS,
+  BALANCE_SHEET_HEADERS,
   BUDGET_HEADERS,
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
   CASH_FLOW_HEADERS,
+  INCOME_STATEMENT_COLUMNS,
+  INCOME_STATEMENT_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
+  TRIAL_BALANCE_COLUMNS,
+  TRIAL_BALANCE_HEADERS,
   type AgingColumnId,
+  type BalanceSheetColumnId,
+  type BalanceSheetLayoutRow,
   type BudgetColumnId,
   type CashBankColumnId,
   type CashFlowColumnId,
+  type IncomeStatementColumnId,
+  type IncomeStatementLayoutRow,
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
+  type TrialBalanceColumnId,
+  type TrialBalanceLayoutRow,
 } from "@/lib/statement-layout";
 
 /**
@@ -112,127 +131,141 @@ function opnameSheetDate(iso: string): string {
   return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(d);
 }
 
-/** A section heading spanning the label column, with the rest of the row blank. */
-function headingRow(label: string, cols: number): SheetCell[] {
-  const row: SheetCell[] = [text(label, true)];
-  while (row.length < cols) row.push(text(null));
-  return row;
-}
-
-function statementLineRows(
-  lines: { code: string; name: string; amount: number }[]
-): SheetCell[][] {
-  if (lines.length === 0) return [[text("Tidak ada data."), text(null)]];
-  return lines.map((l) => [text(`${l.code}  ${l.name}`.trim()), money(l.amount)]);
-}
-
-/** A whole band of the multi-step Laba/Rugi: heading, its lines, its total. */
-function sectionRows(
-  heading: string,
-  s: { lines: { code: string; name: string; amount: number }[]; total: number }
-): SheetCell[][] {
-  return [
-    headingRow(heading, 2),
-    ...statementLineRows(s.lines),
-    [text(`Total ${heading}`, true), money(s.total, true)],
-  ];
-}
+/**
+ * Lebar kolom Laba/Rugi. Lebarnya urusan lembar sebar sendiri (PDF mengatur
+ * kolomnya lain); judulnya TIDAK — itu datang dari `INCOME_STATEMENT_HEADERS`
+ * bersama cetakan. Angkanya sama dengan Neraca karena tabelnya memang sama
+ * bentuknya: keterangan lebar, satu kolom nominal.
+ */
+const INCOME_STATEMENT_WIDTHS: Record<IncomeStatementColumnId, number> = {
+  item: 48,
+  amount: 22,
+};
 
 function buildIncomeStatementSheet(
   p: Extract<StatementPayload, { kind: "income-statement" }>
 ): SheetModel {
-  // Same bands, same collapse rule as the screen and the PDF — one helper decides.
-  const layout = incomeStatementLayout(p);
-  const rows: SheetCell[][] = [
-    ...sectionRows("Pendapatan", p.sales),
-    ...(layout.showCogs ? sectionRows("Beban Pokok Penjualan", p.cogs) : []),
-    ...(layout.showGrossProfit ? [[text("LABA KOTOR", true), money(p.grossProfit, true)]] : []),
-    ...sectionRows("Beban Operasional", p.operatingExpense),
-    ...(layout.showOperatingProfit
-      ? [[text("LABA USAHA", true), money(p.operatingProfit, true)]]
-      : []),
-    ...(layout.showOtherIncome ? sectionRows("Pendapatan Lain-lain", p.otherIncome) : []),
-    ...(layout.showOtherExpense ? sectionRows("Beban Lain-lain", p.otherExpense) : []),
-    [
-      text(p.netIncome >= 0 ? "LABA BERSIH" : "RUGI BERSIH", true),
-      money(p.netIncome, true),
-    ],
-  ];
+  // Bentuknya seluruhnya milik `incomeStatementLayout()` — band mana yang
+  // tampil, urutan barisnya, kalimat band kosong, label anak tangganya, dan
+  // anotasinya (issue #274).
+  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(p));
+  const cell = (r: IncomeStatementLayoutRow): SheetCell[] => {
+    const bold = r.kind !== "line";
+    // Anotasi (marjin kotor, arah hasil) dalam tanda kurung — di layar ia span
+    // kecil berwarna; di sini dan di PDF ia mengikuti labelnya.
+    const label = r.note === undefined ? r.label : `${r.label} (${r.note})`;
+    /*
+     * Nol tetap ANGKA nol di sini. Satu-satunya alasan lembar sebar ada adalah
+     * agar kolomnya bisa dijumlah, dan teks di tengah kolom mematikan `SUM`.
+     * Yang TIDAK BERLAKU (judul band, kalimat band kosong) tetap sel kosong,
+     * bukan nol.
+     */
+    return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+  };
   return {
     name: "Laba Rugi",
     title: "Laporan Laba / Rugi",
     period: p.period,
-    columns: [
-      { header: "Keterangan", width: 48 },
-      { header: "Jumlah (IDR)", width: 22 },
-    ],
-    rows,
+    columns: INCOME_STATEMENT_COLUMNS.map((c) => ({
+      header: INCOME_STATEMENT_HEADERS[c],
+      width: INCOME_STATEMENT_WIDTHS[c],
+    })),
+    rows: [...body.map(cell), ...foot.map(cell)],
   };
 }
+
+/**
+ * Lebar kolom Neraca. Lebarnya urusan lembar sebar sendiri (PDF mengatur
+ * kolomnya lain); judulnya TIDAK — itu datang dari `BALANCE_SHEET_HEADERS`
+ * bersama cetakan.
+ */
+const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
+  item: 48,
+  amount: 22,
+};
 
 function buildBalanceSheetSheet(
   p: Extract<StatementPayload, { kind: "balance-sheet" }>
 ): SheetModel {
+  // Bentuknya seluruhnya milik `balanceSheetLayout()` — urutan barisnya, tempat
+  // "Akumulasi Laba/Rugi" duduk, kalimat seksi kosong, dan penjumlahan
+  // ekuitasnya (issue #258).
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(p));
+  const cell = (r: BalanceSheetLayoutRow, label: string): SheetCell[] => {
+    const bold = r.kind !== "line";
+    /*
+     * Nol tetap ANGKA nol di sini. Satu-satunya alasan lembar sebar ada adalah
+     * agar kolomnya bisa dijumlah, dan teks di tengah kolom mematikan `SUM`.
+     * Yang TIDAK BERLAKU (judul seksi, kalimat "tidak ada akun") tetap sel
+     * kosong, bukan nol.
+     */
+    return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+  };
   const rows: SheetCell[][] = [
-    headingRow("Aset", 2),
-    ...statementLineRows(p.assets),
-    [text("Total Aset", true), money(p.totalAssets, true)],
-    headingRow("Liabilitas", 2),
-    ...statementLineRows(p.liabilities),
-    [text("Total Liabilitas", true), money(p.totalLiabilities, true)],
-    headingRow("Ekuitas", 2),
-    ...statementLineRows(p.equity),
-    [text("Akumulasi Laba/Rugi"), money(p.netIncome)],
-    [text("Total Ekuitas", true), money(p.totalEquity + p.netIncome, true)],
-    [
-      text(
-        p.balanced
-          ? "Total Liabilitas + Ekuitas (Seimbang)"
-          : "Total Liabilitas + Ekuitas (TIDAK SEIMBANG)",
-        true
-      ),
-      money(p.totalLiabilitiesEquity, true),
-    ],
+    ...body.map((r) => cell(r, r.label)),
+    // Keseimbangan adalah ANOTASI pada baris penutup terakhir — lencana di
+    // layar, tanda kurung di sini dan di PDF.
+    ...foot.map((r, i) =>
+      cell(r, i === foot.length - 1 ? `${r.label} ${balanceSheetBalanceNote(p.balanced)}` : r.label)
+    ),
   ];
   return {
     name: "Neraca",
     title: "Neraca",
     period: p.period,
-    columns: [
-      { header: "Keterangan", width: 48 },
-      { header: "Jumlah (IDR)", width: 22 },
-    ],
+    columns: BALANCE_SHEET_COLUMNS.map((c) => ({
+      header: BALANCE_SHEET_HEADERS[c],
+      width: BALANCE_SHEET_WIDTHS[c],
+    })),
     rows,
   };
 }
 
+/**
+ * Lebar kolom Neraca Saldo. Lebarnya urusan lembar sebar sendiri (PDF mengatur
+ * kolomnya lain); judulnya TIDAK — itu datang dari `TRIAL_BALANCE_HEADERS`
+ * bersama cetakan.
+ */
+const TRIAL_BALANCE_WIDTHS: Record<TrialBalanceColumnId, number> = {
+  code: 12,
+  name: 40,
+  debit: 20,
+  credit: 20,
+};
+
 function buildTrialBalanceSheet(
   p: Extract<StatementPayload, { kind: "trial-balance" }>
 ): SheetModel {
-  const rows: SheetCell[][] = p.rows.length
-    ? p.rows.map((r) => [
-        text(r.code),
-        text(r.name),
-        money(r.debit),
-        money(r.credit),
-      ])
-    : [[text(""), text("Belum ada saldo."), text(null), text(null)]];
-  rows.push([
-    text(""),
-    text(p.balanced ? "Total (Seimbang)" : "Total (TIDAK SEIMBANG)", true),
-    money(p.totalDebit, true),
-    money(p.totalCredit, true),
-  ]);
+  // Bentuknya seluruhnya milik `trialBalanceLayout()` — termasuk keputusan
+  // bahwa buku yang belum punya satu jurnal pun TIDAK mendapat baris Total,
+  // sama seperti di layar (issue #275).
+  const { body, foot } = splitTrialBalanceRows(trialBalanceLayout(p));
+  const cell = (r: TrialBalanceLayoutRow, name: string): SheetCell[] => {
+    const bold = r.kind !== "line";
+    /*
+     * Nol tetap ANGKA nol di sini, bukan "-" seperti di layar dan PDF. Ini
+     * pengecualian yang disengaja (#241): satu-satunya alasan lembar sebar ada
+     * adalah agar kolomnya bisa dijumlah, dan sebuah "-" di tengah kolom
+     * mematikan `SUM`. Yang TIDAK BERLAKU tetap sel kosong, bukan nol.
+     */
+    const amount = (value: number | null): SheetCell =>
+      value === null ? text(null) : money(value, bold);
+    return [text(r.code ?? null, bold), text(name, bold), amount(r.debit), amount(r.credit)];
+  };
+  const rows: SheetCell[][] = [
+    ...body.map((r) => cell(r, r.name)),
+    // Keseimbangan adalah ANOTASI pada baris Total — lencana di layar, tanda
+    // kurung di sini dan di PDF.
+    ...foot.map((r) => cell(r, `${r.name} ${trialBalanceBalanceNote(p.balanced)}`)),
+  ];
   return {
     name: "Neraca Saldo",
     title: "Neraca Saldo",
     period: p.period,
-    columns: [
-      { header: "Kode", width: 12 },
-      { header: "Nama Akun", width: 40 },
-      { header: "Debit (IDR)", width: 20 },
-      { header: "Kredit (IDR)", width: 20 },
-    ],
+    columns: TRIAL_BALANCE_COLUMNS.map((c) => ({
+      header: TRIAL_BALANCE_HEADERS[c],
+      width: TRIAL_BALANCE_WIDTHS[c],
+    })),
     rows,
   };
 }
@@ -270,7 +303,8 @@ function buildCashFlowSheet(
     const amount = (value: number | null): SheetCell =>
       value === null ? text(null) : money(value, bold);
     return [
-      // Baris kelompok membentang sendiri di kolom pertama, seperti `headingRow`.
+      // Baris kelompok berdiri sendiri di kolom pertama; kolom nominalnya tak
+      // berlaku, jadi selnya kosong (bukan nol).
       text(label, bold),
       amount(r.inflow),
       amount(r.outflow),

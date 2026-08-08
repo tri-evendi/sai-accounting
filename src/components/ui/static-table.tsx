@@ -232,13 +232,26 @@ function SortControl({
     ) : dir === "desc" ? (
       <CaretDownOutlined aria-hidden="true" style={{ fontSize: SORT_ICON_SIZE }} />
     ) : (
-      // Berputar 90° = dua panah atas-bawah: "kolom ini bisa diurutkan, dan
-      // sekarang belum". Warnanya lebih pudar dari yang aktif, tapi bedanya
-      // bukan hanya warna — bentuk ikonnya sendiri berbeda.
+      /*
+       * Berputar 90° = dua panah atas-bawah: "kolom ini bisa diurutkan, dan
+       * sekarang belum". Warnanya lebih pudar dari yang aktif, tapi bedanya
+       * bukan hanya warna — bentuk ikonnya sendiri berbeda.
+       *
+       * Warnanya `colorBorder`, bukan `colorTextQuaternary` (issue #266).
+       * Kuartener adalah α 0,25 dan terukur **1,83:1** di atas putih — di bawah
+       * ambang 3:1 untuk grafis non-teks sejak #265, jadi satu-satunya isyarat
+       * "kolom ini bisa diurutkan" praktis tak terlihat. Nada kepala baru
+       * membuatnya sedikit lebih buruk lagi (1,82:1), dan sebuah penanda yang
+       * kini duduk di atas permukaan baru harus diukur, bukan diwarisi.
+       * `colorBorder` (#208) adalah tinta yang memang diturunkan untuk peran
+       * ini — batas & grafis non-teks pada 3:1 — dan terukur di atas nada
+       * kepala: **3,62:1 terang · 3,89:1 gelap**. Ia tetap jelas lebih pudar
+       * dari judul kolomnya (6,76:1), jadi hierarkinya tidak berbalik.
+       */
       <SwapOutlined
         aria-hidden="true"
         rotate={90}
-        style={{ fontSize: SORT_ICON_SIZE, color: "var(--ant-color-text-quaternary)" }}
+        style={{ fontSize: SORT_ICON_SIZE, color: "var(--ant-color-border)" }}
       />
     );
 

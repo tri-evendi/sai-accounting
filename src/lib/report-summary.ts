@@ -25,7 +25,7 @@
  * kini dalam bahasa pengguna.
  */
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { grossMarginPct } from "@/lib/statement-layout";
+import { balanceSheetEquityTotal, grossMarginPct } from "@/lib/statement-layout";
 import type { TranslateFn } from "@/lib/i18n/client";
 
 /** Same literal union as `SummaryCard`'s `MoneyDirection`, structurally assignable. */
@@ -191,7 +191,9 @@ export function balanceSheetSummary(
   asOfLabel: string,
   t: TranslateFn
 ): ReportSummary {
-  const equityTotal = bs.totalEquity + bs.netIncome;
+  // Penjumlahan ekuitas yang sama dengan baris "Total Ekuitas" di tabelnya —
+  // satu rumus, satu tempat (issue #258).
+  const equityTotal = balanceSheetEquityTotal(bs);
   const narrative = bs.balanced
     ? t("reportSummary.bsBalanced", {
         asOf: asOfLabel,

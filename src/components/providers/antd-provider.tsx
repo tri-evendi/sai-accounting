@@ -58,6 +58,7 @@ import {
   moneyTokens,
   neutralTextTokens,
   primaryButtonTokens,
+  tableHeadBg,
   tagStatusTokens,
 } from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
@@ -113,6 +114,15 @@ export function AntdProvider({
   // ulang turunan token dan seluruh pohon di bawahnya ikut render.
   const theme = useMemo(() => {
     const brand = brandTextTokens(resolved);
+    /*
+     * Nada kepala tabel (issue #266). Dihitung SEKALI dan dipakai dua kali di
+     * bawah — sebagai alias global (untuk `StaticTable`, yang menggambar sel
+     * judulnya sendiri di server) dan sebagai token `Table` (untuk
+     * `DataTable`). Dua pemakaian, satu angka: itu satu-satunya yang mencegah
+     * dua rupa tabel di satu produk. Alasan & pengukurannya di
+     * `lib/theme/antd-tokens.ts`, bagian "Jenjang di perender".
+     */
+    const headBg = tableHeadBg(resolved);
     return {
       algorithm:
         resolved === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -195,6 +205,14 @@ export function AntdProvider({
          * Nilainya memakai ulang `colorBrandText` #186 — tidak ada hex baru.
          */
         colorPrimaryBorder: focusRingColor(resolved),
+        /*
+         * Nada kepala tabel sebagai alias GLOBAL (issue #266). Ia harus global
+         * karena pemakainya yang terbesar — `ui/table.tsx`, 46 tabel yang
+         * dirender di server — tidak punya hook dan hanya bisa memakai
+         * `var(--ant-…)`, sedangkan variabel token KOMPONEN cuma ada di dokumen
+         * ketika komponennya benar-benar dirender.
+         */
+        colorTableHeadBg: headBg,
       },
       components: {
         /*
@@ -260,6 +278,18 @@ export function AntdProvider({
          * satu pun pemanggil disentuh.
          */
         Form: { itemMarginBottom: 0 },
+        /*
+         * Sisi `DataTable` dari nada kepala (issue #266). Nilainya nilai yang
+         * SAMA dengan alias global di atas — bukan disalin, melainkan variabel
+         * yang sama — supaya sebuah tabel tidak berubah rupa hanya karena
+         * variannya diganti.
+         *
+         * `headerColor` ikut disebut: bawaannya `colorTextHeading` (α 0,88),
+         * sedangkan `ui/table.tsx` memakai `colorTextSecondary` (α 0,65) karena
+         * judul kolom menamai angka di bawahnya dan tidak boleh bersaing
+         * dengannya. Terukur di atas nada baru: 6,76:1 terang · 7,65:1 gelap.
+         */
+        Table: { headerBg: headBg, headerColor: "var(--ant-color-text-secondary)" },
       },
     };
   }, [resolved]);

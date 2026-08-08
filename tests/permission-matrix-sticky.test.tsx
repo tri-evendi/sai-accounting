@@ -45,8 +45,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { theme } from "antd";
 
 import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { tableHeadBg } from "@/lib/theme/antd-tokens";
 
 const token = theme.getDesignToken();
+
+/**
+ * Latar sel judul lengket = nada kepala tabel (#266), bukan permukaan kartu.
+ * Diambil dari fungsi yang sama yang dipakai `AntdProvider`, bukan diketik
+ * ulang: kalau nadanya bergeser, markup di bawah ikut bergeser bersamanya.
+ */
+const HEAD_BG = tableHeadBg("light");
 
 const MATRIX_FILES = [
   "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
@@ -62,7 +70,7 @@ function stickyMarkup() {
   return renderToStaticMarkup(
     <Table
       maxHeight="70vh"
-      stickyHeadBackground={token.colorBgContainer}
+      stickyHeadBackground={HEAD_BG}
       stickyHeadBorderColor={token.colorBorderSecondary}
     >
       <TableHeader>
@@ -99,12 +107,41 @@ describe("matriks izin — header tetap terbaca saat digulir", () => {
      * satu-satunya cara `table.tsx` (server-safe, tanpa hook) bisa memakai
      * token AntD sama sekali.
      */
-    expect(markup).toContain(`--sai-table-head-bg:${token.colorBgContainer}`);
+    expect(markup).toContain(`--sai-table-head-bg:${HEAD_BG}`);
     expect(markup).toContain("background:var(--sai-table-head-bg");
-    // `colorBgContainer` bukan warna beralfa di kedua algoritma AntD — kalau
-    // suatu saat ia menjadi `rgba(...)`, baris yang lewat akan terbaca
-    // menembusnya dan tes ini yang lebih dulu berteriak.
-    expect(token.colorBgContainer).not.toContain("rgba");
+    // Nada kepala bukan warna beralfa di kedua tema — kalau suatu saat ia
+    // menjadi `rgba(...)`, baris yang lewat akan terbaca menembusnya dan tes
+    // ini yang lebih dulu berteriak.
+    expect(HEAD_BG).not.toContain("rgba");
+  });
+
+  it("sel judul BIASA memakai latar yang sama — kepala tak berganti warna saat menempel", () => {
+    /*
+     * Jebakan #266 yang paling mudah lolos: nada dipasang di jalur biasa,
+     * bawaan jalur LENGKET dibiarkan `colorBgContainer`, dan kepalanya menjadi
+     * putih persis saat ia menempel. Yang membuktikan keduanya sepakat bukan
+     * dua nilai yang kebetulan sama, melainkan SATU properti kustom yang sama
+     * dengan SATU cadangan yang sama.
+     */
+    const plain = renderToStaticMarkup(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Izin</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>
+    );
+    const fallback = "background:var(--sai-table-head-bg, var(--ant-color-table-head-bg))";
+    expect(plain).toContain(fallback);
+    /*
+     * Dan jalur LENGKETnya menghasilkan deklarasi yang sama persis — dibaca
+     * dari gaya `<th>` yang benar-benar dirender, bukan dari sumbernya: sebuah
+     * latar kedua yang ditulis sesudahnya akan menang tanpa satu pun galat.
+     */
+    const stickyHeadStyle = /<th[^>]*style="([^"]*)"/.exec(stickyMarkup())?.[1] ?? "";
+    expect(stickyHeadStyle).toContain(fallback);
+    expect(stickyHeadStyle).not.toContain("bg-container");
   });
 
   it("garis pemisah judul–isi ikut menempel", () => {
@@ -153,7 +190,7 @@ describe("matriks izin — header tetap terbaca saat digulir", () => {
       const code = source(file);
       expect(code, `${file} tidak membatasi tingginya`).toContain("maxHeight={MATRIX_MAX_HEIGHT}");
       expect(code, `${file} tidak mengirim latar sel judulnya`).toContain(
-        "stickyHeadBackground={token.colorBgContainer}"
+        "stickyHeadBackground={token.colorTableHeadBg}"
       );
       expect(code, `${file} tidak melengketkan judul kolomnya`).toMatch(/<TableHead\s+sticky/);
     }

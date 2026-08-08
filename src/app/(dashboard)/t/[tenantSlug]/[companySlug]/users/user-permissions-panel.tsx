@@ -372,7 +372,8 @@ export function UserPermissionsPanel({
 
         {/* Satu kotak, bukan dua — lihat catatan yang sama di
             `permissions/permissions-client.tsx`. `stickyHead*` dikirim
-            eksplisit karena panel ini berdiri di luar pohon komponen AntD. */}
+            eksplisit karena panel ini berdiri di luar pohon komponen AntD;
+            latarnya nada kepala tabel (#266), bukan permukaan kartu. */}
         <Table
           data-permission-matrix="user"
           style={{ minWidth: MATRIX_MIN_WIDTH }}
@@ -382,7 +383,7 @@ export function UserPermissionsPanel({
             borderRadius: token.borderRadiusLG,
             background: token.colorBgContainer,
           }}
-          stickyHeadBackground={token.colorBgContainer}
+          stickyHeadBackground={token.colorTableHeadBg}
           stickyHeadBorderColor={token.colorBorderSecondary}
         >
           <TableHeader>

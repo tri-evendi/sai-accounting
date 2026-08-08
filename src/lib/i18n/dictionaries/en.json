@@ -1635,6 +1635,7 @@
     "sectionEquity": "Equity",
     "sectionTotal": "Total {section}",
     "currentNetIncome": "Accumulated Profit / Loss",
+    "noAccountsInSection": "No account carries a balance in this section.",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",
     "colStatementAmount": "Amount (IDR)",

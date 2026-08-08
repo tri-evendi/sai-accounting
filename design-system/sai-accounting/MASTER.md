@@ -542,10 +542,63 @@ Yang **tidak** memenuhi syarat:
   "Kembali ke dasbor"). Layarnya tidak punya tugas; ia punya pintu.
 - **Kirim formulir yang MENYARING**, bukan mengikat. "Saring" di
   `/operator` `outline`, dan itu benar: ia membaca ulang, tidak menulis apa pun.
+  Sejak potongan 3 ini berlaku pada **enam** kotak cari/saring halaman daftar
+  (`/contracts`, `/delivery-orders`, `/documents`, `/invoices`, `/finance`) dan
+  pada `shared/ledger-filter.tsx` + `shared/stock-period-filter.tsx`.
+- **Chip/tab saringan, termasuk yang sedang AKTIF.** Chip aktif menyatakan
+  KEADAAN ("inilah irisan yang sedang Anda lihat"), bukan ajakan — jadi ia
+  `secondary` (berbingkai) dan saudaranya `ghost` (tanpa bingkai), tidak pernah
+  berisi penuh. Bedanya ada pada bingkai, bukan pada warna saja.
+  ⚠ Chip granularitas `shared/stock-period-filter.tsx` **tetap** berisi penuh,
+  dan itu bukan inkonsistensi: potongan 2 mempertahankannya dengan syarat yang
+  ditulis di sana — *ia satu-satunya penekanan penuh di layarnya* (`/inventory/movement`
+  dan `/inventory/opname/history` sengaja nol primer). Enam halaman daftar di
+  potongan 3 gagal syarat itu: masing-masing memikul CTA kepala halaman yang
+  memang aksi utamanya. Syaratnya yang menentukan, bukan bentuk widgetnya.
+- **Pemicu yang membuka panel.** Ia tata letak, bukan aksi: `secondary`, dan
+  yang primer adalah submit DI DALAM panelnya (`shared/payment-form.tsx`,
+  `users/users-client.tsx`, `inventory/update/stock-form.tsx`). Akibatnya layar
+  memikul nol primer saat panel tertutup dan tepat satu saat terbuka — bentuk
+  yang paling sering benar untuk halaman detail.
 - **Aksi destruktif.** `variant="destructive"` tidak pernah dihitung sebagai
   aksi utama layar — ia menonjol karena bahayanya, bukan karena dimaksudkan.
   ⚠ **Angka kontrasnya bukan urusan bagian ini: tombol `danger` gagal 4,5:1 di
   kedua tema dan sedang dikerjakan di #219.** Jangan memutuskannya dua kali.
+
+### CTA kepala halaman vs CTA keadaan-kosong — kepala yang menang
+
+Pada halaman daftar yang **kosong**, dua ajakan terender bersamaan dan keduanya
+menunjuk `href` yang sama, sering dengan label yang sama persis: tombol di kanan
+atas `PageHeader`, dan tombol di dalam `EmptyState`. Menurut aturan di atas itu
+dua primer. **Yang menang CTA kepala; `EmptyState` merender aksinya `secondary`**
+(keputusannya di primitifnya, `components/ui/empty-state.tsx`, berikut alasan
+panjangnya).
+
+Dua hal yang memutuskannya, dan keduanya terukur — bukan selera:
+
+1. **Kosong ≠ modul kosong.** Halaman-halaman itu merender keadaan-kosong juga
+   ketika SARINGAN tidak menemukan apa-apa. `/contracts?search=zzz` pada
+   perusahaan dengan 400 kontrak menampilkan "Belum ada kontrak" berikut
+   tombolnya; CTA primer di situ menjawab "pencarian Anda nihil" dengan "buat
+   yang baru", jawaban yang salah. CTA kepala tidak mengklaim apa pun.
+2. **Alternatifnya harus BERKONDISI, dan ongkosnya dua.** Kalau yang mengalah
+   CTA kepala, ia hanya boleh mengalah saat daftarnya berisi — artinya tombol
+   yang berpindah penekanan tepat saat baris pertama masuk, **dan** modul yang
+   dalam keadaan normalnya (berisi) tidak punya satu pun aksi utama. Rambu #267
+   menyebut persis itu: menyeragamkan dengan menurunkan semuanya hanya menukar
+   satu hierarki rata dengan yang lain.
+
+Ini **tidak** bertentangan dengan "Tambah Perusahaan" di `/select-company` di
+atas. Di sana layar nol-perusahaan tidak punya tombol lain sama sekali — CTA-nya
+memang **satu-satunya jalan maju**. Di halaman daftar, CTA kepala selalu ikut
+terender di sebelahnya.
+
+⚠ Konsekuensinya berlaku ke seluruh app: **32 blok keadaan-kosong di 30 berkas**
+mewarisi keputusan ini (dihitung dengan parser TS; sapuan `grep` atas nama prop
+yang salah pernah melaporkan angka **2** untuk hal yang sama — koreksi ketiga
+atas pengukuran di issue ini). Kalau kelak ada keadaan-kosong yang sungguh
+satu-satunya jalan maju layarnya, yang benar adalah menambah prop eskalasi di
+primitifnya, bukan menaikkan bawaannya kembali.
 
 ### Dua pengecualian — ditemukan dengan mengujinya ke layar nyata
 
@@ -613,14 +666,18 @@ masing-masing ditandai ulang. Karena itu urutannya dibalik: **audit dulu**
 dibalik — dan pada saat itu pembalikannya tidak mengubah satu piksel pun.
 Keadaan akhirnya identik, risikonya jauh berbeda.
 
-Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`, dan **seluruh
-`src/components`** kecuali satu berkas. Sisa: `(dashboard)` — dan
-`components/ui/empty-state.tsx`, yang sengaja ditahan: variannya bukan keputusan
-tentang satu layar melainkan yang **diwarisi setiap keadaan-kosong**, dan
-kedua belas layar `(dashboard)` yang tersisa semuanya berbentuk sama (CTA kepala
-halaman + CTA keadaan-kosong menyala bersamaan). Memutuskannya sebelum melihat
-mereka berarti memutuskan mereka tanpa membukanya. Barisnya ada di
-`SISA_KEEKSPLISITAN`, dan tes menolaknya begitu ia jadi basi.
+Sudah diaudit: `(auth)`, `(setup)`, `(operator)`, `(tenant)`, **seluruh
+`src/components`** (tanpa kecuali sejak potongan 3 — `ui/empty-state.tsx` yang
+ditahan potongan 2 sudah diputuskan di atas), dan **13 berkas `(dashboard)`**
+yang didaftar satu per satu di `BERKAS_TERAUDIT`. Sisa: ~70 berkas `(dashboard)`
+lain, dipecah per modul di potongan 4 — dan baru sesudahnya bawaan `variant`
+dibalik.
+
+`BERKAS_TERAUDIT` adalah daftar **berkas**, bukan direktori, karena
+`(dashboard)` baru sebagian diaudit: mendaftarkan direktorinya akan merah pada
+70+ berkas yang belum gilirannya, sedangkan tidak mendaftarkan apa pun berarti
+hasil potongan 3 tidak dijaga sama sekali. Potongan 4 meleburnya jadi satu
+baris.
 
 ### Penjaganya — dan batasnya, yang harus dibaca
 
@@ -629,19 +686,29 @@ pura menjaga yang ketiga:
 
 1. **Keeksplisitan** di area yang sudah diaudit: setiap `<Button>` menyebut
    `variant`-nya. Inilah yang membuat pembalikan bawaan nanti menjadi jaring
-   pengaman, bukan perubahan.
+   pengaman, bukan perubahan. Sejak potongan 3 lingkupnya = `AREA_TERAUDIT`
+   (direktori) **+ `BERKAS_TERAUDIT`** (13 berkas satuan di `(dashboard)`).
 2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Cabang ternary
    dihitung sebagai alternatif (`Math.max`), bukan dijumlahkan — tanpa itu
    penjaganya merah pada kaki wisaya dan `/verify-email`, yaitu pada contoh
    paling bersih dari aturannya, dan penjaga yang merah pada yang benar akan
    dilonggarkan sampai tidak menjaga apa pun. Pada jalan pertamanya ia **merah
-   di 13 berkas** `(dashboard)`/`components`; ketiga belasnya di `SISA_AUDIT`,
-   daftar yang hanya boleh mengecil dan yang entri basinya ditolak tes
-   tersendiri.
+   di 13 berkas** `(dashboard)`/`components`, yang didaftar di `SISA_AUDIT`.
+   **Potongan 3 mengosongkan daftar itu**: penjaga ini kini menyapu seluruh
+   `src/app` + `src/components` tanpa satu pun pengecualian.
 
 Sejak potongan 2 ada penjaga **ketiga**, dan ia menjaga BATAS sebuah
 pengecualian, bukan aturannya: setiap tombol primer di `components/landing/**`
 harus menuju `/register` (lihat §Pendaratan `/` DIKECUALIKAN di atas).
+
+⚠ **Efek samping daftar yang kosong.** `SISA_AUDIT` dan `SISA_KEEKSPLISITAN`
+kini keduanya kosong, jadi kedua tes "tidak memuat entri basi" lulus **tanpa
+memeriksa apa pun**. Itu bukan kegagalan — daftar kosong memang tak punya entri
+basi — tetapi keduanya berhenti membuktikan sesuatu sampai ada yang menambahkan
+baris lagi. Yang masih membuktikan sesuatu adalah tes utamanya. Sebagai
+gantinya potongan 3 memasang penjaga **keempat**: `BERKAS_TERAUDIT` harus
+menunjuk berkas yang benar-benar ada — sebuah halaman yang dipindah akan
+membuat penjaga #1 diam-diam berhenti memeriksanya, hijau tanpa satu kata pun.
 
 **Yang TIDAK dijaga, dan hanya bisa dilihat mata:** pengulangan lewat `.map()`
 (satu simpul di sumber, sepuluh tombol di layar), primer yang tersebar antar
@@ -662,6 +729,22 @@ keduanya diselesaikan di potongan 2 — keduanya di `src/components/shared`:
   tombol "Tampilkan" rentang khusus dan chip granularitas yang sedang aktif.
   Tombolnya **turun** ke `outline` (ia menyaring); chipnya tetap penuh karena
   artinya bukan "tekan saya" melainkan "inilah periode yang sedang Anda lihat".
+
+Dua lagi di potongan 3, ditemukan dengan cara yang sama:
+
+- **`contracts/[id]/page.tsx` × `shared/payment-form.tsx`** — utang yang
+  potongan 2 catat alih-alih rapikan diam-diam. "Buat Faktur" di kepala halaman
+  kontrak bertemu submit pembayaran begitu formulirnya dibuka: dua blok biru
+  dari dua berkas. **"Buat Faktur" yang turun** (`secondary`), sebab ia
+  NAVIGASI ke formulir lain dan bukan satu-satunya jalan maju — mencatat
+  pembayaran, menyunting, dan mencetak PDF sama-sama tersedia. Hasilnya sama
+  dengan `/invoices/[id]`: nol primer dalam keadaan bawaan, tepat satu saat
+  formulir pembayaran dibuka.
+- **`fixed-assets/page.tsx` × `fixed-assets/run-depreciation.tsx`** — ⚠ **BELUM
+  diselesaikan.** Kartu "Jalankan penyusutan" merender tombol primer implisit di
+  halaman yang CTA kepalanya juga primer. `run-depreciation.tsx` berkas
+  `(dashboard)` di luar lingkup potongan 3; **utang potongan 4**, dicatat di
+  sini supaya ia tidak hilang. Bentuknya persis kelas yang tak terlihat penjaga.
 
 ---
 
@@ -688,7 +771,7 @@ membaca hijau dan menyimpulkan aman.
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
-| Satu aksi utama per layar: `variant` eksplisit di area teraudit, tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di area **dan berkas** teraudit, tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX (tanpa pengecualian sejak potongan 3), dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, dan primer berkondisi TIDAK terlihat penjaga — lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |

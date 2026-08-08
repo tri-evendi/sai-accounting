@@ -261,7 +261,9 @@ export default async function FinancePage({
           <>
             <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
             <Link href="/finance/new">
-              <Button>{t("finance.addNew")}</Button>
+              {/* Aksi utama layar ini (#267): mencatat transaksi kas/bank adalah
+                  satu-satunya hal yang MENGIKAT; ekspor & saringan membaca. */}
+              <Button variant="primary">{t("finance.addNew")}</Button>
             </Link>
           </>
         }
@@ -339,7 +341,9 @@ export default async function FinancePage({
               />
             )}
 
-            <Button type="submit" size="sm">
+            {/* Kirim yang hanya MENYARING — `outline` (#267), preseden "Saring"
+                di `/operator` dan `shared/ledger-filter.tsx`. */}
+            <Button type="submit" variant="outline" size="sm">
               {t("finance.filterSubmit")}
             </Button>
             <Link href="/finance">

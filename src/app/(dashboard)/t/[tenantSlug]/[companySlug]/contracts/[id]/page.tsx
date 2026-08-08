@@ -402,7 +402,27 @@ export default async function ContractDetailPage({
           {/* Pola "Ambil" (issue #15): buka form faktur dengan kontrak ini terpilih,
               barisnya sudah terisi sisa yang belum difakturkan. */}
           <Link href={`/invoices/new?contractId=${contract.id}`}>
-            <Button>
+            {/* ── Utang potongan 2 (#267), dibayar di potongan 3 ──────────────
+             *
+             * Tombol ini dulu primer implisit dan BERTABRAKAN dengan submit
+             * `shared/payment-form.tsx` yang dirender di halaman yang sama
+             * lewat `payment-section.tsx`: begitu formulir pembayaran dibuka,
+             * layar ini memikul dua blok biru dari dua berkas berbeda —
+             * bentuk yang tidak satu pun penjaga bisa lihat (§Aksi utama per
+             * layar: "primer yang datang dari komponen BERBEDA tetap satu
+             * layar"). Potongan 2 mencatatnya alih-alih merapikannya diam-diam.
+             *
+             * Yang turun tombol INI, bukan submit pembayaran, karena "Buat
+             * Faktur" adalah NAVIGASI ke formulir lain — dan navigasi tidak
+             * memenuhi syarat aksi utama kecuali ia satu-satunya jalan maju.
+             * Di sini ia bukan: mencatat pembayaran, menyunting, dan mencetak
+             * PDF sama-sama tersedia. Submit pembayaran sebaliknya MENGIKAT.
+             *
+             * Hasilnya sama dengan `/invoices/[id]` di potongan 2: layar detail
+             * ini NOL primer dalam keadaan bawaan (ia memang layar baca — rantai
+             * dokumen, baris barang, riwayat pembayaran) dan TEPAT SATU saat
+             * formulir pembayaran dibuka. */}
+            <Button variant="secondary">
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button` (`ICON_SIZE`). */}
               <FileDoneOutlined aria-hidden="true" /> {t("contracts.createInvoice")}

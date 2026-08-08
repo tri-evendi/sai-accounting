@@ -370,8 +370,16 @@ export function ReconciliationWorkspace({
             ) : (
               <Badge variant="warning">{t("reconciliation.statusDraft")}</Badge>
             )}
+            {/* ⚠ Turun dari `locked ? "secondary" : "primary"` ke `secondary`
+                selalu (#267). Ini eskalasi berkondisi yang menaikkan tombolnya
+                pada keadaan yang SALAH: saat rekonsiliasi masih terbuka —
+                yaitu justru saat pekerjaannya belum selesai — "Kunci" menjadi
+                hal paling menyala di layar, di atas "Cocokkan" yang merupakan
+                kerja sesungguhnya. Mengunci periode lebih awal berbiaya nyata
+                (buku beku, harus dibuka kembali), persis kelas kesalahan yang
+                dibuka #267. Aksi utama ruang kerja ini adalah Cocokkan. */}
             <Button
-              variant={locked ? "secondary" : "primary"}
+              variant="secondary"
               size="sm"
               disabled={busy}
               onClick={toggleLock}
@@ -533,7 +541,13 @@ export function ReconciliationWorkspace({
       {!locked && (
         <Card>
           <Flex wrap align="center" gap={token.marginSM} style={{ padding: token.paddingSM }}>
+            {/* Aksi utama ruang kerja ini (#267): mencocokkan baris buku dengan
+                baris rekening koran adalah kata kerja halaman ini, dan ia
+                MENGIKAT. Saat tiba ia `disabled` (belum ada yang dipilih) —
+                dan itu justru informatif: satu-satunya blok penuh di layar
+                menunjukkan apa yang harus dilakukan begitu dua baris dipilih. */}
             <Button
+              variant="primary"
               size="sm"
               disabled={busy || selectedBook == null || selectedLine == null}
               onClick={doMatch}
@@ -627,7 +641,11 @@ export function ReconciliationWorkspace({
                   />
                 </Col>
                 <Col xs={24}>
-                  <Button type="submit" size="sm" disabled={busy}>
+                  {/* Aksi SAMPINGAN: memasukkan baris rekening koran adalah
+                      MEMASOK bahan untuk dicocokkan, bukan pekerjaannya. Ia
+                      juga berdampingan dengan impor CSV di bawah — jalur kedua
+                      untuk hal yang sama, dan itu sebuah tautan. (#267) */}
+                  <Button type="submit" variant="secondary" size="sm" disabled={busy}>
                     {t("reconciliation.addLineAction")}
                   </Button>
                 </Col>

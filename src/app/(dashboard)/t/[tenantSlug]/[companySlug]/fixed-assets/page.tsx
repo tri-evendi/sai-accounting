@@ -214,7 +214,12 @@ export default async function FixedAssetsPage({
               </Button>
             </Link>
             <Link href="/fixed-assets/new">
-              <Button>
+              {/* Aksi utama layar ini (#267) — dua tombol di sebelahnya sudah
+                  `secondary` sejak semula, jadi ini satu-satunya di kepala.
+                  ⚠ `RunDepreciation` di bawah masih primer implisit: itu berkas
+                  `(dashboard)` di luar lingkup potongan 3, dicatat di PR-nya
+                  sebagai tabrakan antar-komponen untuk potongan 4. */}
+              <Button variant="primary">
                 <PlusOutlined aria-hidden="true" />
                 {t("fixedAssets.addNew")}
               </Button>
@@ -244,9 +249,12 @@ export default async function FixedAssetsPage({
           marginBlock: SECTION_GAP,
         }}
       >
+        {/* Chip saringan: aktif `secondary` (berbingkai), sisanya `ghost`.
+            Menyaring tidak mengikat (§Aksi utama per layar); isian penuh di
+            sini bersaing dengan "Tambah Aset" di kepala halaman. */}
         {filters.map((f) => (
           <Link key={f.key} href={f.href}>
-            <Button variant={f.active ? "primary" : "secondary"} size="sm">
+            <Button variant={f.active ? "secondary" : "ghost"} size="sm">
               {f.label}
             </Button>
           </Link>

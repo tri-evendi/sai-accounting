@@ -452,7 +452,18 @@ export function StockUpdateForm({
                     )}
                   />
                 </div>
-                <Button type="submit" size="sm" disabled={itemForm.formState.isSubmitting}>
+                {/* Aksi SAMPINGAN (#267): membuat barang master di sini
+                    memang mengikat, tetapi tugas layar ini adalah mencatat
+                    PERGERAKAN stok — panel ini hanya jalan pintas supaya
+                    barang yang belum terdaftar tidak memaksa keluar halaman.
+                    Bentuknya sama dengan `shared/advance-compensation.tsx`
+                    di potongan 2: memposting, tapi bukan maksud layarnya. */}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="sm"
+                  disabled={itemForm.formState.isSubmitting}
+                >
                   {t("common.save")}
                 </Button>
               </form>
@@ -670,7 +681,8 @@ export function StockUpdateForm({
                 />
 
                 <Flex gap={CONTROL_GAP}>
-                  <Button type="submit" disabled={loading}>
+                  {/* Aksi utama layar ini (#267): pergerakan stok masuk buku. */}
+                  <Button type="submit" variant="primary" disabled={loading}>
                     {loading ? t("common.saving") : t("inventory.submitMovement")}
                   </Button>
                   <Button

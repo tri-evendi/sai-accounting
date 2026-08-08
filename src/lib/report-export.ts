@@ -30,8 +30,11 @@ import {
   incomeStatementLayout,
   partyRecapColumns,
   splitBalanceSheetRows,
+  splitTrialBalanceRows,
   stockMovementColumns,
   stockValueColumns,
+  trialBalanceBalanceNote,
+  trialBalanceLayout,
   AGING_HEADERS,
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
@@ -41,6 +44,8 @@ import {
   CASH_FLOW_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
+  TRIAL_BALANCE_COLUMNS,
+  TRIAL_BALANCE_HEADERS,
   type AgingColumnId,
   type BalanceSheetColumnId,
   type BalanceSheetLayoutRow,
@@ -50,6 +55,8 @@ import {
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
+  type TrialBalanceColumnId,
+  type TrialBalanceLayoutRow,
 } from "@/lib/statement-layout";
 
 /**
@@ -224,33 +231,51 @@ function buildBalanceSheetSheet(
   };
 }
 
+/**
+ * Lebar kolom Neraca Saldo. Lebarnya urusan lembar sebar sendiri (PDF mengatur
+ * kolomnya lain); judulnya TIDAK — itu datang dari `TRIAL_BALANCE_HEADERS`
+ * bersama cetakan.
+ */
+const TRIAL_BALANCE_WIDTHS: Record<TrialBalanceColumnId, number> = {
+  code: 12,
+  name: 40,
+  debit: 20,
+  credit: 20,
+};
+
 function buildTrialBalanceSheet(
   p: Extract<StatementPayload, { kind: "trial-balance" }>
 ): SheetModel {
-  const rows: SheetCell[][] = p.rows.length
-    ? p.rows.map((r) => [
-        text(r.code),
-        text(r.name),
-        money(r.debit),
-        money(r.credit),
-      ])
-    : [[text(""), text("Belum ada saldo."), text(null), text(null)]];
-  rows.push([
-    text(""),
-    text(p.balanced ? "Total (Seimbang)" : "Total (TIDAK SEIMBANG)", true),
-    money(p.totalDebit, true),
-    money(p.totalCredit, true),
-  ]);
+  // Bentuknya seluruhnya milik `trialBalanceLayout()` — termasuk keputusan
+  // bahwa buku yang belum punya satu jurnal pun TIDAK mendapat baris Total,
+  // sama seperti di layar (issue #275).
+  const { body, foot } = splitTrialBalanceRows(trialBalanceLayout(p));
+  const cell = (r: TrialBalanceLayoutRow, name: string): SheetCell[] => {
+    const bold = r.kind !== "line";
+    /*
+     * Nol tetap ANGKA nol di sini, bukan "-" seperti di layar dan PDF. Ini
+     * pengecualian yang disengaja (#241): satu-satunya alasan lembar sebar ada
+     * adalah agar kolomnya bisa dijumlah, dan sebuah "-" di tengah kolom
+     * mematikan `SUM`. Yang TIDAK BERLAKU tetap sel kosong, bukan nol.
+     */
+    const amount = (value: number | null): SheetCell =>
+      value === null ? text(null) : money(value, bold);
+    return [text(r.code ?? null, bold), text(name, bold), amount(r.debit), amount(r.credit)];
+  };
+  const rows: SheetCell[][] = [
+    ...body.map((r) => cell(r, r.name)),
+    // Keseimbangan adalah ANOTASI pada baris Total — lencana di layar, tanda
+    // kurung di sini dan di PDF.
+    ...foot.map((r) => cell(r, `${r.name} ${trialBalanceBalanceNote(p.balanced)}`)),
+  ];
   return {
     name: "Neraca Saldo",
     title: "Neraca Saldo",
     period: p.period,
-    columns: [
-      { header: "Kode", width: 12 },
-      { header: "Nama Akun", width: 40 },
-      { header: "Debit (IDR)", width: 20 },
-      { header: "Kredit (IDR)", width: 20 },
-    ],
+    columns: TRIAL_BALANCE_COLUMNS.map((c) => ({
+      header: TRIAL_BALANCE_HEADERS[c],
+      width: TRIAL_BALANCE_WIDTHS[c],
+    })),
     rows,
   };
 }

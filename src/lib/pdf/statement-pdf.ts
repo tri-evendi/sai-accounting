@@ -27,8 +27,12 @@ import {
   cashFlowReconciliationNote,
   partyRecapColumns,
   splitBalanceSheetRows,
+  splitTrialBalanceRows,
   stockMovementColumns,
   stockValueColumns,
+  trialBalanceBalanceNote,
+  trialBalanceLayout,
+  trialBalancePrintAmount,
   AGING_HEADERS,
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
@@ -38,6 +42,8 @@ import {
   CASH_FLOW_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
+  TRIAL_BALANCE_COLUMNS,
+  TRIAL_BALANCE_HEADERS,
   type AgingColumnId,
   type BalanceSheetLayoutRow,
   type BalanceSheetRowKind,
@@ -47,6 +53,7 @@ import {
   type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
+  type TrialBalanceLayoutRow,
 } from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
@@ -484,30 +491,48 @@ export function balanceSheetPrintRows(
   };
 }
 
+/**
+ * Badan + kaki tabel Neraca Saldo sebagai teks — dipisah dari penggambarnya
+ * supaya bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa satu byte PDF
+ * pun (issue #275, pola yang sama dengan `cashFlowPrintRows` dan
+ * `balanceSheetPrintRows`). Bentuknya seluruhnya milik `trialBalanceLayout()`;
+ * di sini hanya ada penulisan angka.
+ *
+ * `foot` KOSONG pada buku yang belum punya satu jurnal pun — `autoTable`
+ * menggambar tabel tanpa kaki, jadi cetakannya tidak lagi menyatakan "Total
+ * (Seimbang)" tentang buku yang tidak berisi apa-apa.
+ */
+export function trialBalancePrintRows(
+  payload: Extract<StatementPayload, { kind: "trial-balance" }>
+): { body: string[][]; foot: string[][] } {
+  const { body, foot } = splitTrialBalanceRows(trialBalanceLayout(payload));
+  const cell = (r: TrialBalanceLayoutRow, name: string): string[] => [
+    r.code ?? "",
+    name,
+    // Kolom yang tidak berlaku tetap KOSONG, tak pernah "Rp 0" (Prinsip Inti
+    // MASTER.md); nol ditulis "-" — akun yang tidak bersaldo di sisi itu.
+    trialBalancePrintAmount(r.debit, rp),
+    trialBalancePrintAmount(r.credit, rp),
+  ];
+  return {
+    body: body.map((r) => cell(r, r.name)),
+    // Keseimbangan adalah ANOTASI pada baris Total — lencana di layar, tanda
+    // kurung di sini dan di lembar sebar.
+    foot: foot.map((r) => cell(r, `${r.name} ${trialBalanceBalanceNote(payload.balanced)}`)),
+  };
+}
+
 export function generateStatementPDF(payload: StatementPayload, company: { name: string; address: string }): jsPDF {
   const doc = new jsPDF();
   let y = header(doc, STATEMENT_TITLES[payload.kind], payload.period, company);
 
   if (payload.kind === "trial-balance") {
+    const { body, foot } = trialBalancePrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [["Kode", "Nama Akun", "Debit", "Kredit"]],
-      body: payload.rows.length
-        ? payload.rows.map((r) => [
-            r.code,
-            r.name,
-            r.debit > 0 ? rp(r.debit) : "-",
-            r.credit > 0 ? rp(r.credit) : "-",
-          ])
-        : [["", "Belum ada saldo.", "-", "-"]],
-      foot: [
-        [
-          "",
-          payload.balanced ? "Total (Seimbang)" : "Total (TIDAK SEIMBANG)",
-          rp(payload.totalDebit),
-          rp(payload.totalCredit),
-        ],
-      ],
+      head: [TRIAL_BALANCE_COLUMNS.map((c) => TRIAL_BALANCE_HEADERS[c])],
+      body,
+      foot,
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },

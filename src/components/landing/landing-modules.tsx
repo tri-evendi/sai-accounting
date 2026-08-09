@@ -34,7 +34,13 @@
  * paling merusak kepercayaan: halaman yang dibaca sebelum orang percaya.
  */
 import { CheckOutlined } from "@ant-design/icons";
-import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
+import {
+  LANDING_NOTE,
+  LANDING_SURFACE,
+  landingChip,
+  landingFill,
+  landingGrid,
+} from "@/components/landing/landing-scale";
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,13 +59,20 @@ export async function LandingModules() {
   ];
 
   return (
-    <LandingSection id="modul">
+    <LandingSection id="modul" tone="cyan">
       <LandingSectionIntro title={t("landing.modulesHeading")}>
         {t("landing.modulesBody")}
       </LandingSectionIntro>
 
       {/* Strip fakta: tiga angka yang menjawab "seberapa banyak" sebelum
-          orang menyusuri sepuluh kartu di bawahnya. */}
+          orang menyusuri sepuluh kartu di bawahnya.
+
+          Ketiganya berisi nada TERKUAT di seksi ini (`chip-brand`, 28%) dan
+          itu disengaja: angka adalah hal pertama yang dicari mata di wilayah
+          ini, dan sebelumnya ia kotak putih bergaris di antara sepuluh kotak
+          putih bergaris lain. Nada birunya berbeda hue dari pita cyan
+          seksinya, jadi ia terpisah dari pita bukan hanya oleh terang-gelap
+          (1,16:1 terang · 1,29:1 gelap). */}
       <dl style={{ ...landingGrid(3, 200), margin: 0, marginTop: "var(--ant-margin-lg)" }}>
         {facts.map((fact) => (
           <div
@@ -67,7 +80,7 @@ export async function LandingModules() {
             style={{
               borderRadius: "var(--ant-border-radius-lg)",
               border: "1px solid var(--ant-color-border-secondary)",
-              background: "var(--ant-color-bg-container)",
+              background: landingChip("brand"),
               padding: "var(--ant-padding)",
             }}
           >
@@ -101,7 +114,20 @@ export async function LandingModules() {
           const core = module === CORE_MODULE;
           return (
             <li key={module}>
-              <Card style={{ height: "100%" }}>
+              {/* Sepuluh kartu di atas pita berwarna: badannya
+                  `--sai-landing-surface` (melayang), BUKAN nada — sepuluh
+                  kotak bernada di atas pita sehue akan melebur jadi satu blok
+                  di tema terang. Yang dibedakan nada hanyalah modul INTI, satu
+                  buah, karena ia memang satu-satunya yang berbeda status; dan
+                  pembedanya tetap berlapis — lencana berteks + tepi merek —
+                  bukan warna saja. */}
+              <Card
+                style={{
+                  height: "100%",
+                  background: core ? landingFill("brand") : LANDING_SURFACE,
+                  ...(core ? { borderColor: "var(--ant-color-primary)" } : null),
+                }}
+              >
                 <CardContent>
                   <div
                     style={{

@@ -67,6 +67,162 @@
  */
 import type { CSSProperties } from "react";
 
+/* ------------------------------------------------------------------------ */
+/* NADA PEKAT — pita seksi & kartu berisi solid (permintaan pemilik)          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Empat nada halaman ini, dinamai menurut PERANNYA, bukan menurut anak tangga
+ * paletnya.
+ *
+ * ══ Kenapa hanya empat, dan kenapa keempatnya dingin ═══════════════════════
+ * Keluhan pemilik ("gunakan warna solid juga, jangan hanya outline atau border
+ * saja") menarik ke arah yang berlawanan dengan pola yang memang benar untuk
+ * produk keuangan: navy/abu korporat, biru kepercayaan, aksen hanya untuk CTA.
+ * Yang menyelesaikan tegangan itu bukan kompromi jumlah warna melainkan
+ * PERANNYA — warna di sini membawa hierarki (mana wilayah, mana yang disorot),
+ * bukan hiasan.
+ *
+ * Karena itu paletnya dikurung pada empat hue yang di aplikasi ini **tidak
+ * memikul arti apa pun**: biru merek, cyan, indigo (`geekblue`), dan violet.
+ * Hijau, merah, emas, dan jingga sengaja TIDAK dipakai sebagai nada dekoratif —
+ * keempatnya sudah menjadi bahasa uang & status (`colorMoney*`, `colorSuccess`,
+ * `colorWarning`, `colorError`). Pita hijau selebar layar di halaman yang
+ * menjual pembukuan akan terbaca sebagai pernyataan tentang angka, bukan
+ * sebagai wilayah.
+ *
+ * ══ Kenapa `color-mix()`, bukan anak tangga palet langsung ═════════════════
+ * Tangga warna AntD ADA sebagai variabel (`--ant-blue-1` … `--ant-blue-10`,
+ * terukur: 110 variabel palet di blok token, di kedua tema) dan ia MEMBALIK di
+ * tema gelap: `blue-1` terang `#e6f4ff`, `blue-1` gelap `#111a2c`. Balikan itu
+ * berguna untuk teks, tetapi tidak untuk PERMUKAAN: `blue-1` gelap (`#111a2c`)
+ * praktis sewarna latar halaman gelap (`#141414`) — pita yang hilang di satu
+ * tema tanpa ada yang gagal.
+ *
+ * `color-mix()` menyelesaikannya dengan satu resep untuk kedua tema: hue pekat
+ * (`--ant-<hue>-6`) dicampur ke permukaan yang SEDANG berlaku
+ * (`--ant-color-bg-container` / `--ant-color-bg-elevated`). Hasilnya opak —
+ * benar-benar bidang berisi, bukan `colorFillQuaternary` yang translusen — dan
+ * ia otomatis menjadi tint terang di tema terang dan tint gelap di tema gelap,
+ * tanpa satu pun cabang tema di kode ini.
+ *
+ * ══ Kadar campurannya BUKAN selera — ia dibatasi tombol primer ═════════════
+ * Isian tombol primer di tema gelap (`#1668dc`) hanya berjarak 3,55:1 dari
+ * latar halaman. Setiap tint menerangkan latar itu dan karena itu MEMAKAN
+ * jarak tersebut; ambang 3:1 (grafis non-teks, MASTER.md §Ambang kontras)
+ * tercapai di sekitar 18%. Karena itu:
+ *
+ *   • pita (`band-*`) berhenti di 10%, pita ajakan di 16% — ketiganya masih
+ *     ≥3,11:1 terhadap tombol primer di tema gelap, jadi tombol boleh berdiri
+ *     di ATAS pita;
+ *   • kartu berisi (`fill-*`, 14%) dan kotak ikon (`chip-*`, 28%) dicampur ke
+ *     `colorBgElevated` dan sudah DI BAWAH ambang itu (2,82 / 2,44) — jadi
+ *     **tidak boleh ada tombol primer di atas `fill-*`/`chip-*`**. Kartu paket,
+ *     satu-satunya kartu yang memikul tombol, karena itu berbadan
+ *     `--sai-landing-surface` dan hanya KEPALANYA yang berisi nada.
+ *
+ * Angkanya dihitung ulang setiap kali suite berjalan di
+ * `tests/landing-colors.test.ts`, dari token yang benar-benar terpasang — jadi
+ * versi AntD baru tidak bisa menggeser satu pun di antaranya diam-diam.
+ */
+export const LANDING_HUES = ["brand", "cyan", "indigo", "violet"] as const;
+
+export type LandingHue = (typeof LANDING_HUES)[number];
+
+/** Peran → keluarga palet AntD. Satu-satunya tempat pemetaan ini ditulis. */
+export const LANDING_HUE_TOKEN: Record<LandingHue, string> = {
+  brand: "blue",
+  cyan: "cyan",
+  indigo: "geekblue",
+  violet: "purple",
+};
+
+/** Kadar campuran per peran, dalam persen. Alasannya di komentar di atas. */
+export const LANDING_MIX = { band: 10, accent: 16, fill: 14, chip: 28 } as const;
+
+const mix = (hue: LandingHue, pct: number, base: string) =>
+  `color-mix(in srgb, var(--ant-${LANDING_HUE_TOKEN[hue]}-6) ${pct}%, var(${base}))`;
+
+/**
+ * Deklarasi nada, DIBANGKITKAN dari satu resep.
+ *
+ * Ditulis bangkit, bukan dua belas baris tangan, karena yang harus tidak bisa
+ * menyimpang justru resepnya: dua belas baris tangan akan berbeda kadarnya pada
+ * hari seseorang menyetel satu di antaranya dan lupa sebelas sisanya.
+ */
+const NADA = LANDING_HUES.flatMap((hue) => [
+  `--sai-landing-fill-${hue}:${mix(hue, LANDING_MIX.fill, "--ant-color-bg-elevated")};`,
+  `--sai-landing-chip-${hue}:${mix(hue, LANDING_MIX.chip, "--ant-color-bg-elevated")};`,
+]).join("");
+
+const PITA = [
+  `--sai-landing-band-brand:${mix("brand", LANDING_MIX.band, "--ant-color-bg-container")};`,
+  `--sai-landing-band-cyan:${mix("cyan", LANDING_MIX.band, "--ant-color-bg-container")};`,
+  `--sai-landing-band-indigo:${mix("indigo", LANDING_MIX.band, "--ant-color-bg-container")};`,
+  `--sai-landing-band-accent:${mix("brand", LANDING_MIX.accent, "--ant-color-bg-container")};`,
+].join("");
+
+/**
+ * Warna GLIF di dalam kotak ikon sehue.
+ *
+ * Anak tangga ke-8, dan justru di sini balikan tangga AntD bekerja untuk kita:
+ * `-8` gelap di tema terang dan terang di tema gelap, sedangkan kotaknya
+ * (`chip-*`) bergerak ke arah yang sama. Satu nama token, dua tema, terukur
+ * 4,51–8,27:1 — jauh di atas ambang ikon 3:1.
+ */
+const GLYPH: Record<LandingHue, string> = {
+  brand: "var(--ant-blue-8)",
+  cyan: "var(--ant-cyan-8)",
+  indigo: "var(--ant-geekblue-8)",
+  violet: "var(--ant-purple-8)",
+};
+
+export const landingGlyph = (hue: LandingHue) => GLYPH[hue];
+
+/**
+ * Nada isi kartu (14%) dan nada kotak ikon / kepala kartu tersorot (28%).
+ *
+ * Nama variabelnya ditulis UTUH di kedua peta ini, tidak dirangkai dari
+ * `hue` — dan itu bukan kerapian. `tests/landing-boundary.test.ts` mencocokkan
+ * setiap `var(--sai-landing-…)` yang dipakai dengan yang dideklarasikan; nama
+ * yang dirangkai lewat template hanya terbaca sebagai `--sai-landing-fill-` di
+ * pemindainya, sehingga satu salah ketik pada hue akan lolos penjaga DAN lolos
+ * peramban (properti kustom yang tak teratasi tidak menghasilkan galat apa
+ * pun — elemennya diam-diam mewarisi latar induknya). Ditulis utuh, keduanya
+ * juga bisa di-grep.
+ */
+const FILL: Record<LandingHue, string> = {
+  brand: "var(--sai-landing-fill-brand)",
+  cyan: "var(--sai-landing-fill-cyan)",
+  indigo: "var(--sai-landing-fill-indigo)",
+  violet: "var(--sai-landing-fill-violet)",
+};
+
+const CHIP: Record<LandingHue, string> = {
+  brand: "var(--sai-landing-chip-brand)",
+  cyan: "var(--sai-landing-chip-cyan)",
+  indigo: "var(--sai-landing-chip-indigo)",
+  violet: "var(--sai-landing-chip-violet)",
+};
+
+export const landingFill = (hue: LandingHue) => FILL[hue];
+
+export const landingChip = (hue: LandingHue) => CHIP[hue];
+
+/**
+ * Permukaan kartu yang berdiri DI ATAS pita berwarna.
+ *
+ * `colorBgElevated`, bukan `colorBgContainer`: di tema gelap permukaan halaman
+ * (`#141414`) lebih gelap daripada pita mana pun di atas, jadi kartu
+ * `colorBgContainer` akan terbaca CEKUNG — kebalikan dari yang dimaksud. Yang
+ * jujur harus ikut ditulis: jenjangnya tetap tipis (1,01–1,06:1 di tema gelap),
+ * dan yang benar-benar memisahkan kartu dari pitanya di sana adalah tepinya
+ * (`colorBorderSecondary`, ≥3,05:1 sejak #208) — persis keadaan yang sudah
+ * berlaku di seluruh app dan dicatat MASTER.md §Jenjang permukaan. Karena itu
+ * kartu di atas pita TIDAK boleh kehilangan `border`-nya.
+ */
+export const LANDING_SURFACE = "var(--sai-landing-surface)";
+
 /**
  * Titik patah tunggal halaman ini = `screenSM` AntD (576px), bukan `sm:`
  * Tailwind (640px). Angkanya ditulis tangan karena token layar TIDAK ikut
@@ -115,6 +271,9 @@ export const LANDING_STYLE = `
   --sai-landing-measure-copy:42rem;
   --sai-landing-cta-gap:var(--ant-margin-sm);
   --sai-landing-cta-space:var(--ant-margin-xl);
+  --sai-landing-surface:var(--ant-color-bg-elevated);
+  ${PITA}
+  ${NADA}
 }
 [data-landing-skip]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 [data-landing-skip]:focus{position:absolute;top:var(--ant-margin);left:var(--ant-margin);z-index:1000;width:auto;height:auto;clip:auto;padding:var(--ant-padding-xs) var(--ant-padding);border-radius:var(--ant-border-radius);background:var(--ant-color-primary);color:var(--ant-color-text-light-solid);text-decoration:none}

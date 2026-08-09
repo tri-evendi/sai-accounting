@@ -2130,6 +2130,8 @@
     "disposalGain": "Laba pelepasan:",
     "disposalLoss": "Rugi pelepasan:",
     "disposeAction": "Catat Pelepasan",
+    "disposeConfirmTitle": "Lepas aset ini sekarang?",
+    "disposeConfirmMessage": "Pelepasan langsung memposting jurnal — kas, akumulasi penyusutan, nilai aset, dan laba/rugi pelepasan — lalu menandai aset ini \"Dilepas\" untuk selamanya. Aplikasi ini tidak punya cara membatalkannya: memutarnya kembali menuntut jurnal balik yang dibuat manual.",
     "disposeFailed": "Gagal mencatat pelepasan.",
     "disposeSaved": "Pelepasan tercatat dan sudah dijurnal."
   },

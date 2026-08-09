@@ -18,6 +18,7 @@ import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
   agingColumns,
+  agingHeaders,
   balanceSheetBalanceNote,
   balanceSheetLayout,
   budgetColumns,
@@ -34,7 +35,6 @@ import {
   trialBalanceBalanceNote,
   trialBalanceLayout,
   trialBalancePrintAmount,
-  AGING_HEADERS,
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
   BUDGET_HEADERS,
@@ -899,8 +899,6 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   }
 
   if (payload.kind === "receivables" || payload.kind === "payables") {
-    const party = payload.kind === "receivables" ? "Pelanggan" : "Pemasok";
-
     // Ringkasan ember lebih dulu: pertanyaan pertama yang dibawa orang ke
     // laporan ini adalah "berapa yang sudah lewat 90 hari", bukan "dokumen apa
     // saja". Daftar dokumennya menyusul sebagai buktinya.
@@ -915,7 +913,9 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     });
 
     const cols = agingColumns(payload);
-    const headers: Record<AgingColumnId, string> = { ...AGING_HEADERS, party };
+    // Judul kolomnya — termasuk kolom pihak — datang dari `statement-layout.ts`,
+    // satu penentu untuk PDF dan lembar sebar (#310).
+    const headers = agingHeaders(payload.kind);
     const cell = (r: (typeof payload.rows)[number], c: AgingColumnId): string => {
       switch (c) {
         case "party":

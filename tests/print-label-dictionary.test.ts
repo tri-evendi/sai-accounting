@@ -53,6 +53,16 @@
  * cetakan harus muncul di salah satu dari tiga daftar itu. Kolom baru tidak bisa
  * lahir tanpa satu keputusan sadar tentang bunyinya.
  *
+ * ── Cakupannya bisa BERTAMBAH, dan sekali sudah ────────────────────────────
+ * Kalimat cetakan yang ditulis sebaris di dalam badan fungsi ekspor tidak bisa
+ * dijangkau berkas ini — bukan karena tak layak dijaga, melainkan karena tak ada
+ * yang bisa diimpor. Jalan keluarnya memindahkannya ke konstanta, dan itulah
+ * yang #310 lakukan pada judul kolom pihak Umur Piutang/Utang: dua kalimat yang
+ * kemarin tak terjaga kini dipasangkan di sini (`AGING_PARTY_HEADERS`), dan satu
+ * di antaranya langsung menunjukkan ketidakcocokan yang selama ini tak terlihat.
+ * Daftar "yang sengaja dilewati" di bawah adalah keadaan hari ini, bukan batas
+ * permanen.
+ *
  * ── Yang sengaja DILEWATI penjaga ini, dan sebabnya ─────────────────────────
  *  • **Nama lembar & judul dokumen** (`name`/`title` di `report-export.ts`:
  *    "Neraca", "Laporan Arus Kas", "Kartu Stok / Mutasi Persediaan", …). Mereka
@@ -61,12 +71,6 @@
  *    keuangan diberi awalan "Laporan" di berkasnya ("Laporan Arus Kas" vs
  *    "Arus Kas" di layar) dan dua lainnya tidak ("Neraca", "Neraca Saldo").
  *    Menyamakannya adalah keputusan penamaan, bukan pekerjaan penjaga.
- *  • **Judul kolom pihak pada Umur Piutang/Utang.** Yang benar-benar tercetak
- *    adalah string sebaris di `report-export.ts` dan `statement-pdf.ts`
- *    ("Pelanggan" / "Pemasok") — bukan `AGING_HEADERS.party`, yang keduanya
- *    timpa dan karena itu tidak pernah sampai ke kertas (lihat `TANPA_PADANAN`).
- *    String sebaris di dalam badan fungsi tidak bisa dijangkau tanpa memindahkan
- *    kode produksi, dan itu bukan pekerjaan penjaga.
  *  • **Kalimat keadaan kosong & catatan kaki** yang ditulis sebaris di lapisan
  *    ekspor ("Tidak ada dokumen pada periode ini.", catatan valas tanpa kurs).
  *    Alasannya sama: mereka tidak berbentuk konstanta.
@@ -84,6 +88,7 @@ import { PARTY_RECAP_HEADERS } from "@/lib/pdf/statement-pdf";
 import { formatNumber } from "@/lib/utils";
 import {
   AGING_HEADERS,
+  AGING_PARTY_HEADERS,
   BALANCE_SHEET_HEADERS,
   BALANCE_SHEET_PRINT_LABELS,
   BUDGET_HEADERS,
@@ -236,6 +241,10 @@ const PADANAN: Padanan[] = [
   { di: "AGING_HEADERS.outstanding", cetak: AGING_HEADERS.outstanding, kunci: "common.remainingIdr" },
   // Satu konstanta, dua layar. Piutang setuju; utang tidak — lihat BEDA_HARI_INI.
   { di: "AGING_HEADERS.total", cetak: AGING_HEADERS.total, kunci: "receivables.colDocumentValue" },
+  // Kolom pihak — terjangkau penjaga ini sejak #310 memindahkannya ke
+  // `statement-layout.ts`; sebelumnya ia string sebaris di dua lapisan ekspor.
+  // Sisi utangnya TIDAK sama dengan layarnya — lihat BEDA_HARI_INI.
+  { di: "AGING_PARTY_HEADERS.receivables", cetak: AGING_PARTY_HEADERS.receivables, kunci: "common.customer" },
 
   // ── Realisasi vs Anggaran ─────────────────────────────────────────────────
   { di: "BUDGET_HEADERS.account", cetak: BUDGET_HEADERS.account, kunci: "common.account" },
@@ -342,6 +351,23 @@ const BEDA_HARI_INI: Beda[] = [
     kamus: "Pembelian (IDR)",
     sebab: "Sama dengan Penjualan per Pelanggan.",
   },
+  /*
+   * Baru terlihat di #310, bukan baru terjadi: judul kolom pihak Umur Utang
+   * tadinya string sebaris di dalam badan fungsi ekspor, di luar jangkauan
+   * penjaga ini. Setelah ia pindah ke `statement-layout.ts`, ketidakcocokan
+   * yang sudah ada sejak dulu ikut kelihatan — dan diperlakukan seperti
+   * ketidakcocokan lain di daftar ini: dipatok, tidak diperbaiki (rambu #298).
+   */
+  {
+    di: "AGING_PARTY_HEADERS.payables",
+    cetak: AGING_PARTY_HEADERS.payables,
+    patok: "Pemasok",
+    kunci: "payables.colSupplier",
+    kamus: "Supplier",
+    sebab:
+      "Kertas menulis \"Pemasok\", layar \"Supplier\" — dan aplikasi ini memakai " +
+      "kedua kata di tempat berbeda (menu \"Pemasok\", halaman utang \"Supplier\").",
+  },
 ];
 
 interface TanpaPadanan {
@@ -363,16 +389,6 @@ const TANPA_PADANAN: TanpaPadanan[] = [
       "Ia bukan kalimat melainkan penerus: cetakan mengembalikan `printLabel` apa " +
       "adanya, dan bunyi yang sesungguhnya datang dari CASH_FLOW_CATEGORY_LABELS " +
       "— yang dijaga terpisah di PADANAN.",
-  },
-  {
-    di: "AGING_HEADERS.party",
-    cetak: AGING_HEADERS.party,
-    patok: "Mitra",
-    sebab:
-      "TIDAK PERNAH SAMPAI KE KERTAS. Kedua permukaan menimpanya dengan " +
-      "\"Pelanggan\"/\"Pemasok\" (report-export.ts, statement-pdf.ts), jadi " +
-      "\"Mitra\" adalah nilai bawaan yang tak pernah terbaca siapa pun. " +
-      "Temuan #298; pencabutannya keputusan tersendiri.",
   },
   {
     di: "BUDGET_HEADERS.variancePct",
@@ -408,6 +424,7 @@ const TABEL: Record<string, object> = {
   STOCK_VALUE_HEADERS,
   CASH_BANK_HEADERS,
   AGING_HEADERS,
+  AGING_PARTY_HEADERS,
   BUDGET_HEADERS,
   "PARTY_RECAP_HEADERS.sales-by-customer": PARTY_RECAP_HEADERS["sales-by-customer"],
   "PARTY_RECAP_HEADERS.purchases-by-supplier": PARTY_RECAP_HEADERS["purchases-by-supplier"],

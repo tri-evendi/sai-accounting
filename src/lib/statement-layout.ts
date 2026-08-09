@@ -1286,9 +1286,39 @@ export const AGING_COLUMNS = [
 
 export type AgingColumnId = (typeof AGING_COLUMNS)[number];
 
-/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
-export const AGING_HEADERS: Record<AgingColumnId, string> = {
-  party: "Mitra",
+/**
+ * Umur Piutang & Umur Utang adalah SATU bentuk laporan dengan dua nama pihak.
+ * Ditulis ulang di sini alih-alih diimpor dari `StatementPayload["kind"]`:
+ * modul ini tidak mengimpor apa pun (lihat kepala berkas), dan `tsc` tetap
+ * menolak di titik `agingHeaders(payload.kind)` kalau keduanya berbeda —
+ * duplikasi yang dijaga tipe, bukan kebiasaan.
+ */
+export type AgingKind = "receivables" | "payables";
+
+/**
+ * Judul kolom pihak — SATU-SATUNYA judul yang berbeda antara kedua laporan.
+ *
+ * Ia tinggal di sini, bukan di lapisan ekspor, karena issue #310: sebelumnya
+ * `AGING_HEADERS.party` berbunyi "Mitra" dan KEDUA permukaan menimpanya dengan
+ * string sebarisnya sendiri sebelum menggambar. Bawaan yang selalu kalah adalah
+ * penjaga palsu berbentuk konstanta — orang menyuntingnya, membangun, dan
+ * menemukan kolomnya tidak berubah. Sekarang tidak ada bawaan: judulnya dipilih
+ * di sini, sekali, dan `agingHeaders()` yang menyerahkannya utuh.
+ */
+export const AGING_PARTY_HEADERS: Record<AgingKind, string> = {
+  receivables: "Pelanggan",
+  payables: "Pemasok",
+};
+
+/**
+ * Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus.
+ *
+ * TANPA kolom pihak dengan sengaja (#310): ia satu-satunya yang bergantung pada
+ * laporannya, jadi ia bukan bawaan melainkan parameter. Tipenya yang memaksa —
+ * pemanggil tidak bisa mengindeks `AGING_HEADERS["party"]`, ia harus lewat
+ * `agingHeaders(kind)`.
+ */
+export const AGING_HEADERS: Record<Exclude<AgingColumnId, "party">, string> = {
   documentNo: "Dokumen",
   date: "Tanggal",
   dueDate: "Jatuh Tempo",
@@ -1297,6 +1327,15 @@ export const AGING_HEADERS: Record<AgingColumnId, string> = {
   total: "Nilai Dokumen",
   outstanding: "Sisa (IDR)",
 };
+
+/**
+ * SELURUH judul kolom Umur Piutang/Utang untuk satu laporan — satu-satunya
+ * jalan ke judul kolom pihak, dan karena itu satu-satunya tempat "Pelanggan"
+ * dan "Pemasok" ditentukan untuk kedua permukaan ekspor (#310).
+ */
+export function agingHeaders(kind: AgingKind): Record<AgingColumnId, string> {
+  return { ...AGING_HEADERS, party: AGING_PARTY_HEADERS[kind] };
+}
 
 export function agingColumns(report: { visibleColumns?: string[] }): AgingColumnId[] {
   return selectColumns(AGING_COLUMNS, report.visibleColumns, "party");

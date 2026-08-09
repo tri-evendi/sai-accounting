@@ -21,6 +21,7 @@
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   agingColumns,
+  agingHeaders,
   balanceSheetBalanceNote,
   balanceSheetLayout,
   budgetColumns,
@@ -36,7 +37,6 @@ import {
   stockValueColumns,
   trialBalanceBalanceNote,
   trialBalanceLayout,
-  AGING_HEADERS,
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
   BUDGET_HEADERS,
@@ -513,7 +513,9 @@ function buildAgingSheet(
   p: Extract<StatementPayload, { kind: "receivables" | "payables" }>
 ): SheetModel {
   const receivable = p.kind === "receivables";
-  const party = receivable ? "Pelanggan" : "Pemasok";
+  // Judul kolomnya — termasuk kolom pihak — datang dari `statement-layout.ts`,
+  // satu penentu untuk lembar sebar dan PDF (#310).
+  const headers = agingHeaders(p.kind);
 
   const cols = agingColumns(p);
   const rows: SheetCell[][] = [];
@@ -596,7 +598,7 @@ function buildAgingSheet(
     title: receivable ? "Piutang & Umur Piutang" : "Utang & Umur Utang",
     period: p.period,
     columns: cols.map((c) => ({
-      header: c === "party" ? party : AGING_HEADERS[c],
+      header: headers[c],
       width: AGING_WIDTHS[c],
     })),
     rows,

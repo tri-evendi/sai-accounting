@@ -340,8 +340,10 @@ const BEDA_HARI_INI: Beda[] = [
       "Saldo Akhir Kas & Bank) — jadi \"Sisa Stok\" yang lebih jujur. Tapi " +
       "keduanya tidak bisa didamaikan dari sisi layar: `inventory.colCurrentStock` " +
       "juga judul kolom halaman Persediaan, permukaan awam yang justru butuh " +
-      "kata biasa. Mendamaikannya berarti kertas (dan label pemilih kolom di " +
-      "report-catalog.ts) yang ikut — yaitu mengubah berkas yang sudah dikirim. " +
+      "kata biasa. Mendamaikannya berarti KERTAS yang ikut — yaitu mengubah " +
+      "berkas yang sudah dikirim. (Label pemilih kolom sudah tidak ikut sejak " +
+      "#316: ia membaca kunci kamus ini, jadi dialognya menyebut \"Sisa Stok\" " +
+      "seperti layarnya; lihat tests/report-catalog-column-labels.test.ts.) " +
       "Menunggu keputusan pemilik laporan.",
   },
   {

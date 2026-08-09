@@ -76,7 +76,11 @@ export default async function CashBankReportPage({
 
   const cols = cashBankColumns(payload);
   const HEADERS: Record<CashBankColumnId, string> = {
-    account: t("reports.perCashAccountTitle"),
+    // Judul KOLOM, bukan judul kartu. Sampai #309 baris ini membaca
+    // `reports.perCashAccountTitle` — kunci milik kartu "Rincian per Akun Kas &
+    // Bank" di halaman Arus Kas — sehingga kolomnya berbunyi "Rincian per …"
+    // sementara PDF & lembar sebarnya menulis "Akun Kas & Bank".
+    account: t("reports.colCashBankAccount"),
     opening: t("reports.colOpeningBalance"),
     net: t("reports.colChange"),
     closing: t("reports.colClosingBalance"),

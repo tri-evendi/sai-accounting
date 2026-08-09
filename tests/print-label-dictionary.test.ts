@@ -45,6 +45,9 @@
  *    bisa bergeser diam-diam — dan memeriksa bahwa keduanya MASIH berbeda,
  *    supaya entri yang sudah didamaikan harus pindah ke `PADANAN` alih-alih
  *    tertinggal sebagai pengecualian yang tidak lagi mengecualikan apa pun.
+ *    #309 memutuskan kedelapan temuan #298 satu per satu: tiga didamaikan dari
+ *    sisi LAYAR dan pindah ke `PADANAN`, lima tinggal di sini dengan sebab yang
+ *    kini menyebutkan sisi mana yang benar dan apa akibat mengubahnya.
  *  • `TANPA_PADANAN` — kalimat cetakan yang memang tidak punya lawan di kamus,
  *    beserta sebabnya. Pengecualian yang ditulis lebih baik daripada penjaga
  *    yang dilonggarkan.
@@ -228,6 +231,10 @@ const PADANAN: Padanan[] = [
   { di: "STOCK_VALUE_HEADERS.stockValue", cetak: STOCK_VALUE_HEADERS.stockValue, kunci: "inventory.colValue", bentuk: "kamus+IDR" },
 
   // ── Kas & Bank ────────────────────────────────────────────────────────────
+  // Didamaikan di #309: layar dulu memakai `reports.perCashAccountTitle` —
+  // kunci JUDUL KARTU — sebagai judul kolom. Kuncinya sendiri tetap ada dan
+  // tetap dipakai kartunya di halaman Arus Kas; yang lahir adalah kunci kolom.
+  { di: "CASH_BANK_HEADERS.account", cetak: CASH_BANK_HEADERS.account, kunci: "reports.colCashBankAccount" },
   { di: "CASH_BANK_HEADERS.opening", cetak: CASH_BANK_HEADERS.opening, kunci: "reports.colOpeningBalance", bentuk: "kamus+IDR" },
   { di: "CASH_BANK_HEADERS.net", cetak: CASH_BANK_HEADERS.net, kunci: "reports.colChange", bentuk: "kamus+IDR" },
   { di: "CASH_BANK_HEADERS.closing", cetak: CASH_BANK_HEADERS.closing, kunci: "reports.colClosingBalance", bentuk: "kamus+IDR" },
@@ -253,10 +260,19 @@ const PADANAN: Padanan[] = [
   { di: "BUDGET_HEADERS.variance", cetak: BUDGET_HEADERS.variance, kunci: "budget.variance", bentuk: "kamus+IDR" },
 
   // ── Penjualan per Pelanggan / Pembelian per Pemasok ───────────────────────
+  // Judul kolom uang di sini membawa "(IDR)" di KEDUA sisi (bentuk "sama",
+  // bukan "kamus+IDR"): selnya digambar `Money hideCurrency`, jadi layar pun
+  // harus menyebut satuannya di judul — lihat `party-recap-table.tsx`.
   { di: "PARTY_RECAP_HEADERS.sales-by-customer.party", cetak: PARTY_RECAP_HEADERS["sales-by-customer"].party, kunci: "reports.colCustomer" },
+  // Didamaikan di #309, dan itu perbaikan KEBENARAN bukan pilihan kata: kolom
+  // ini menggambar `grossBase` — nilai SEBELUM retur, yang kolom Retur di
+  // sebelahnya kurangkan menjadi Bersih. Layar menghilangkan kata "Kotor" dari
+  // judulnya; angkanya tidak pernah salah, namanya yang kurang menyebutkan.
+  { di: "PARTY_RECAP_HEADERS.sales-by-customer.gross", cetak: PARTY_RECAP_HEADERS["sales-by-customer"].gross, kunci: "reports.colGrossSales" },
   { di: "PARTY_RECAP_HEADERS.sales-by-customer.returns", cetak: PARTY_RECAP_HEADERS["sales-by-customer"].returns, kunci: "reports.colReturns" },
   { di: "PARTY_RECAP_HEADERS.sales-by-customer.net", cetak: PARTY_RECAP_HEADERS["sales-by-customer"].net, kunci: "reports.colNet" },
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.party", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].party, kunci: "reports.colSupplier" },
+  { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.gross", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].gross, kunci: "reports.colGrossPurchases" },
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.returns", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].returns, kunci: "reports.colReturns" },
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.net", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].net, kunci: "reports.colNet" },
 ];
@@ -276,6 +292,27 @@ interface Beda {
 /**
  * Ketidakcocokan yang SUDAH ADA hari ini. Temuan, bukan pekerjaan: keluarannya
  * tidak diubah di sini (rambu #298 — berkas ekspor sudah dikirim orang).
+ *
+ * ── Yang tersisa setelah #309 ───────────────────────────────────────────────
+ * #298 menemukan DELAPAN. #309 memutuskan kedelapannya satu per satu dan
+ * mendamaikan yang bisa didamaikan dari SISI LAYAR — layar tidak pernah
+ * diarsipkan siapa pun, jadi memperbaikinya tidak menyentuh berkas yang sudah
+ * dikirim:
+ *  • `CASH_BANK_HEADERS.account` — layar salah kunci (judul kartu dipakai
+ *    sebagai judul kolom); lahir `reports.colCashBankAccount`.
+ *  • `…gross` ×2 — layar menghilangkan kata "Kotor" dari kolom yang memang
+ *    memuat nilai sebelum retur; kamusnya yang diperbaiki.
+ *
+ * LIMA yang tinggal di bawah ini menunggu keputusan pemilik laporan, dan
+ * masing-masing menuliskan sebabnya — satu kalimat yang sama bentuknya: sisi
+ * mana yang menurut #309 benar, dan apa yang harus ikut berubah kalau
+ * keputusannya diambil. Tiga (currentStock, docCount ×2) hanya bisa didamaikan
+ * ke arah yang benar dengan mengubah bunyi CETAKAN — yaitu berkas yang sudah
+ * dikirim & diarsipkan orang; satu (BUDGET_HEADERS.status) diusulkan TETAP
+ * berbeda karena bedanya beralasan pada bentuk permukaannya; dan satu
+ * (AGING_HEADERS.total) sebetulnya bisa didamaikan dari sisi layar, tapi
+ * bentuk `AGING_HEADERS` sedang disentuh #310 dan dua PR tidak boleh
+ * memindahkan konstanta yang sama.
  */
 const BEDA_HARI_INI: Beda[] = [
   {
@@ -286,18 +323,14 @@ const BEDA_HARI_INI: Beda[] = [
     kamus: "Sisa Stok",
     sebab:
       "Kertas menulis \"Saldo\", layar \"Sisa Stok\" — dua nama untuk satu kolom, " +
-      "dan keduanya benar menurut sumbernya sendiri.",
-  },
-  {
-    di: "CASH_BANK_HEADERS.account",
-    cetak: CASH_BANK_HEADERS.account,
-    patok: "Akun Kas & Bank",
-    kunci: "reports.perCashAccountTitle",
-    kamus: "Rincian per Akun Kas & Bank",
-    sebab:
-      "Halaman memakai kunci JUDUL KARTU sebagai judul kolom, jadi kolomnya " +
-      "berbunyi \"Rincian per Akun Kas & Bank\" di layar dan \"Akun Kas & Bank\" " +
-      "di berkas.",
+      "dan keduanya benar menurut sumbernya sendiri. #309: kolomnya KUANTITAS, " +
+      "sementara \"Saldo\" di seluruh laporan lain berarti uang (Saldo Awal / " +
+      "Saldo Akhir Kas & Bank) — jadi \"Sisa Stok\" yang lebih jujur. Tapi " +
+      "keduanya tidak bisa didamaikan dari sisi layar: `inventory.colCurrentStock` " +
+      "juga judul kolom halaman Persediaan, permukaan awam yang justru butuh " +
+      "kata biasa. Mendamaikannya berarti kertas (dan label pemilih kolom di " +
+      "report-catalog.ts) yang ikut — yaitu mengubah berkas yang sudah dikirim. " +
+      "Menunggu keputusan pemilik laporan.",
   },
   {
     di: "AGING_HEADERS.total",
@@ -307,7 +340,10 @@ const BEDA_HARI_INI: Beda[] = [
     kamus: "Nilai Pembelian",
     sebab:
       "Satu konstanta melayani dua laporan: Piutang setuju (\"Nilai Dokumen\"), " +
-      "Utang menyebutnya \"Nilai Pembelian\" di layar.",
+      "Utang menyebutnya \"Nilai Pembelian\" di layar. #309: mendamaikannya " +
+      "TIDAK harus memecah konstantanya — cukup layar Utang ikut menyebut " +
+      "\"Nilai Dokumen\" seperti kembarannya di Piutang. Ditinggalkan sebagai " +
+      "keputusan karena bentuk AGING_HEADERS sedang disentuh #310.",
   },
   {
     di: "BUDGET_HEADERS.status",
@@ -315,7 +351,14 @@ const BEDA_HARI_INI: Beda[] = [
     patok: "Keterangan",
     kunci: "common.status",
     kamus: "Status",
-    sebab: "Layar \"Status\", kertas \"Keterangan\".",
+    sebab:
+      "Layar \"Status\", kertas \"Keterangan\". #309: ini satu-satunya dari " +
+      "delapan yang bedanya BERALASAN pada bentuk permukaannya — layar " +
+      "menggambar `VarianceBadge` (lencana keadaan, jadi \"Status\"), kertas " +
+      "menulis kalimat \"Di atas / Di bawah / Sesuai anggaran\" dan pada baris " +
+      "totalnya \"N akun melewati ambang\", yang memang keterangan dan bukan " +
+      "status. Mendamaikannya juga tidak murah: layar memakai `common.status`, " +
+      "kunci milik BERSAMA belasan halaman. Usul #309: TETAP BERBEDA.",
   },
   {
     di: "PARTY_RECAP_HEADERS.sales-by-customer.docCount",
@@ -323,7 +366,15 @@ const BEDA_HARI_INI: Beda[] = [
     patok: "Dokumen",
     kunci: "reports.colDocuments",
     kamus: "Jumlah Dokumen",
-    sebab: "Layar \"Jumlah Dokumen\" (ia cacah), kertas \"Dokumen\".",
+    sebab:
+      "Layar \"Jumlah Dokumen\" (ia cacah), kertas \"Dokumen\". #309: di sini " +
+      "LAYAR yang lebih tepat, jadi mendamaikannya dari sisi layar justru " +
+      "menurunkan ketepatan — \"Dokumen\" sudah dipakai kolom NOMOR dokumen di " +
+      "Umur Piutang/Utang (`common.document`), dan satu kata untuk dua arti di " +
+      "keluarga laporan yang sama membingungkan. Dialog parameter pun " +
+      "menamainya \"Jumlah Dokumen\" (report-catalog.ts). Usulannya: kertas " +
+      "ikut menjadi \"Jumlah Dokumen\" — tapi itu mengubah berkas yang sudah " +
+      "dikirim, jadi ia keputusan pemilik laporan, bukan perapian.",
   },
   {
     di: "PARTY_RECAP_HEADERS.purchases-by-supplier.docCount",
@@ -332,24 +383,6 @@ const BEDA_HARI_INI: Beda[] = [
     kunci: "reports.colDocuments",
     kamus: "Jumlah Dokumen",
     sebab: "Sama dengan Penjualan per Pelanggan — satu kunci kamus, dua laporan.",
-  },
-  {
-    di: "PARTY_RECAP_HEADERS.sales-by-customer.gross",
-    cetak: PARTY_RECAP_HEADERS["sales-by-customer"].gross,
-    patok: "Penjualan Kotor (IDR)",
-    kunci: "reports.colGrossSales",
-    kamus: "Penjualan (IDR)",
-    sebab:
-      "Kertas menyebut \"Kotor\" (dan kolom Retur di sebelahnya yang " +
-      "menguranginya), layar tidak.",
-  },
-  {
-    di: "PARTY_RECAP_HEADERS.purchases-by-supplier.gross",
-    cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].gross,
-    patok: "Pembelian Kotor (IDR)",
-    kunci: "reports.colGrossPurchases",
-    kamus: "Pembelian (IDR)",
-    sebab: "Sama dengan Penjualan per Pelanggan.",
   },
   /*
    * Baru terlihat di #310, bukan baru terjadi: judul kolom pihak Umur Utang

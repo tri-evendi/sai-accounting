@@ -3789,5 +3789,27 @@
       "lastTestNever": "尚未从本页面测试过。",
       "auditNote": "每一次保存和每一次测试发送都会写入运营审计日志——记录您的姓名，但绝不记录密码。"
     }
+  },
+  "docs": {
+    "title": "使用文档",
+    "description": "本应用如何运作，以及为何这样运作。",
+    "openApp": "登录应用",
+    "backToIndex": "全部文档",
+    "branchCustomer": "面向客户",
+    "branchCustomerDescription": "套餐、配额、第二家公司，以及您的数据。",
+    "branchUser": "面向日常使用者",
+    "branchUserDescription": "日常工作——销售、现金、库存——以及背后的记账。",
+    "languageNotice": "文档正文目前仅提供印尼语版本。",
+    "languageNoticeWhy": "这是有意的选择，而非遗漏的翻译：每当底层机制发生变化，指南正文都必须重写；承诺三种语言，就等于在每一次变化时都作出承诺。",
+    "termsHeading": "本页用到的术语",
+    "termsSource": "释义来自应用内的术语表——只书写一次，在此读取。",
+    "matrixTitle": "默认权限矩阵",
+    "matrixColModule": "模块",
+    "matrixColPermission": "权限",
+    "matrixHeld": "是",
+    "matrixNotHeld": "否",
+    "helpMenuTitle": "本页面指南",
+    "helpMenuIndex": "全部文档",
+    "helpMenuNone": "本页面尚无对应的文档页面。"
   }
 }

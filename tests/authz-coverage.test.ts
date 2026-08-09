@@ -88,6 +88,27 @@ const OPERATOR_PAGE_EXCEPTIONS = new Set([
  */
 const UNGUARDED_PAGE_GROUPS = ["(auth)"];
 
+/**
+ * Grup rute PUBLIK — dokumentasi sistem (issue #300).
+ *
+ * Sengaja BUKAN `UNGUARDED_PAGE_GROUPS`. Daftar itu berarti "sah tanpa penjaga
+ * izin"; grup ini menyatakan sesuatu yang lebih keras dan yang benar-benar
+ * dibuktikan describe-nya sendiri di bawah: halaman di dalamnya **tidak boleh
+ * memanggil penjaga apa pun, tidak boleh menyentuh sesi, dan tidak boleh
+ * menyentuh Prisma**. Publik di sini adalah SIFAT, bukan pengecualian.
+ *
+ * Kenapa itu perlu dinyatakan: sebagian pertanyaan yang paling sering
+ * ditanyakan lahir persis ketika orang TIDAK BISA masuk ("paket mana yang punya
+ * multi-PT", "kenapa akun saya ditolak"). Sebuah `requirePagePermission` yang
+ * tak sengaja masuk ke sini akan memantulkan justru pembaca yang halamannya
+ * dibuat untuknya — dan pantulan itu terlihat seperti halaman yang bekerja.
+ *
+ * Pasangannya di runtime adalah `isPublicPath` di `src/proxy.ts`, yang
+ * melepaskan subpohon `/docs` lewat `isDocsPath()`; tanpa keduanya, salah satu
+ * saja sudah cukup membuat halamannya tidak terbaca tanpa sesi.
+ */
+const PUBLIC_PAGE_GROUPS = ["(docs)"];
+
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
   // Beranda terbuka untuk semua peran, jadi tidak ada satu izin yang bisa ia
@@ -210,6 +231,7 @@ describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)",
       ...TENANT_PAGE_GROUPS,
       ...OPERATOR_PAGE_GROUPS,
       ...UNGUARDED_PAGE_GROUPS,
+      ...PUBLIC_PAGE_GROUPS,
     ]);
     const unregistered = readdirSync(APP_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
@@ -283,6 +305,54 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
     // Disengaja (#154): permukaan API operator di `src/app/api` akan tercakup
     // penjaga izin PELANGGAN, yang justru bidang yang salah.
     const group = join(APP_DIR, "(operator)");
+    const routes = existsSync(group) ? filesNamed(group, "route.ts") : [];
+    expect(routes).toEqual([]);
+  });
+});
+
+describe("permukaan PUBLIK: dokumentasi sistem (issue #300)", () => {
+  const pages = PUBLIC_PAGE_GROUPS.flatMap((group) =>
+    existsSync(join(APP_DIR, group)) ? filesNamed(join(APP_DIR, group), "page.tsx") : []
+  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
+
+  it("grup (docs) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages).toContain("(docs)/docs/page.tsx");
+    expect(pages).toContain("(docs)/docs/[...slug]/page.tsx");
+  });
+
+  it("tidak satu pun halamannya memanggil penjaga — publik adalah SIFAT, bukan kelalaian", () => {
+    for (const rel of pages) {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      for (const penjaga of [
+        "requirePagePermission(",
+        "requireTenantPagePermission(",
+        "requireOperatorPage(",
+        "requirePageSession(",
+        "requireAccountantPage(",
+      ]) {
+        expect(src, `${rel} memanggil ${penjaga} di permukaan publik`).not.toContain(penjaga);
+      }
+    }
+  });
+
+  it("tidak menyentuh sesi maupun basis data", () => {
+    /*
+     * Halaman publik yang memanggil `auth()` tidak GAGAL — ia hanya menerima
+     * `null` dan bekerja seperti biasa, sampai seseorang menambahkan satu
+     * cabang yang memakainya. Prisma lebih buruk lagi: ia menuntut konteks
+     * perusahaan yang di sini memang tidak ada, dan aturan pertama
+     * docs/MULTI-COMPANY.md menuntut keadaan itu MELEMPAR.
+     */
+    for (const rel of pages) {
+      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      expect(src, `${rel} mengimpor auth`).not.toContain("@/lib/auth");
+      expect(src, `${rel} mengimpor prisma`).not.toContain("@/lib/prisma");
+    }
+  });
+
+  it("tidak ada route API di bawah (docs) — permukaan ini hanya membaca berkas sumber", () => {
+    const group = join(APP_DIR, "(docs)");
     const routes = existsSync(group) ? filesNamed(group, "route.ts") : [];
     expect(routes).toEqual([]);
   });

@@ -31,7 +31,7 @@
  * peramban modern) tanpa satu baris skrip.
  */
 import { DownOutlined } from "@ant-design/icons";
-import { LANDING_NOTE } from "@/components/landing/landing-scale";
+import { LANDING_NOTE, LANDING_SURFACE } from "@/components/landing/landing-scale";
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
@@ -53,11 +53,22 @@ export async function LandingFaq() {
     <LandingSection id="tanya" width="narrow">
       <LandingSectionIntro title={t("landing.faqHeading")} />
 
+      {/* Seksi ini sengaja seksi POLOS — dua wilayah berwarna berturut-turut
+          (harga, lalu ajakan penutup) membutuhkan satu tempat istirahat di
+          antaranya. Yang menggantikan warna di sini adalah PERMUKAAN: enam
+          pertanyaan dikurung dalam satu bidang melayang, bukan dibiarkan
+          menjadi enam garis di atas latar halaman. */}
       <dl
         style={{
+          /* Tanpa `overflow: hidden` — ia akan memotong cincin fokus
+             `summary` (outline-offset 2px) tepat di baris pertama & terakhir,
+             yaitu satu-satunya penanda yang dimiliki pengguna keyboard. */
           margin: 0,
           marginTop: "var(--ant-margin-lg)",
-          borderBlock: "1px solid var(--ant-color-border-secondary)",
+          borderRadius: "var(--ant-border-radius-lg)",
+          border: "1px solid var(--ant-color-border-secondary)",
+          background: LANDING_SURFACE,
+          paddingInline: "var(--ant-padding-lg)",
         }}
       >
         {items.map((item, index) => (

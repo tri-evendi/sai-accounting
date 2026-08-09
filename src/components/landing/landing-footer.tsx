@@ -32,7 +32,12 @@ export async function LandingFooter() {
     <footer
       style={{
         borderTop: "1px solid var(--ant-color-border-secondary)",
-        background: "var(--ant-color-fill-quaternary)",
+        /* Nada indigo yang sama dengan pita harga — bukan kebetulan: keduanya
+           mengapit ajakan penutup, jadi halaman berakhir sebagai bingkai, bukan
+           sebagai ekor abu-abu. `colorFillQuaternary` yang berdiri di sini
+           sebelumnya translusen 2–4%: di layar ia praktis tidak ada, yaitu
+           persis keluhan "outline saja" yang tercatat di issue #266. */
+        background: "var(--sai-landing-band-indigo)",
       }}
     >
       <div

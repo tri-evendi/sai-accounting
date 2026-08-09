@@ -24,7 +24,13 @@
  * boleh mengosongkan halaman yang menjelaskan produknya.
  */
 import { CheckOutlined } from "@ant-design/icons";
-import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
+import {
+  LANDING_NOTE,
+  LANDING_SURFACE,
+  landingChip,
+  landingFill,
+  landingGrid,
+} from "@/components/landing/landing-scale";
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,19 +83,19 @@ export async function LandingPricing() {
   const contactEmail = process.env.PLATFORM_CONTACT_EMAIL?.trim();
 
   return (
-    <LandingSection id="harga" tone="muted">
+    <LandingSection id="harga" tone="indigo">
       <LandingSectionIntro title={t("landing.pricingHeading")}>
         {t("landing.pricingBody")}
       </LandingSectionIntro>
 
       {plans === null ? (
-        <Card style={{ marginTop: "var(--ant-margin-lg)" }}>
+        <Card style={{ marginTop: "var(--ant-margin-lg)", background: LANDING_SURFACE }}>
           <CardContent>
             <p style={LANDING_NOTE}>{t("landing.pricingUnavailable")}</p>
           </CardContent>
         </Card>
       ) : plans.length === 0 ? (
-        <Card style={{ marginTop: "var(--ant-margin-lg)" }}>
+        <Card style={{ marginTop: "var(--ant-margin-lg)", background: LANDING_SURFACE }}>
           <CardContent>
             <p style={LANDING_NOTE}>{t("landing.pricingEmpty")}</p>
           </CardContent>
@@ -107,14 +113,30 @@ export async function LandingPricing() {
           >
             {plans.map((plan) => (
               <li key={plan.key}>
+                {/* ══ KENAPA BADAN KARTU TETAP POLOS ═══════════════════════
+                    Kartu inilah satu-satunya di halaman ini yang MEMIKUL
+                    TOMBOL, dan itu yang menentukan warnanya. Isian tombol
+                    primer di tema gelap (`#1668dc`) berjarak 3,18:1 dari
+                    `colorBgElevated` — sudah tipis. Menaruh nada 14% di
+                    bawahnya menjatuhkannya ke 2,82:1, di bawah ambang 3:1
+                    untuk grafis non-teks (MASTER.md §Ambang kontras), dan
+                    tombolnya berhenti bisa ditemukan sebagai bidang.
+
+                    Karena itu nada dipindahkan ke KEPALA kartu, tempat yang
+                    hanya berisi teks: kepala bernada + badan `surface`. Paket
+                    yang disarankan mendapat nada terkuat (`chip-brand`, 28%),
+                    sisanya nada tenang sehue pita (`fill-indigo`) — sorotan
+                    yang penuh untuk satu kartu, tanpa tiga kartu yang
+                    berteriak bersamaan. */}
                 <Card
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
+                    background: LANDING_SURFACE,
                     /* Sorotan paket: tepi merek + cincin setebal 1px. Ia
-                       penanda KEDUA — yang pertama lencana berteks di
-                       kepalanya. */
+                       penanda KETIGA — yang pertama lencana berteks di
+                       kepalanya, yang kedua nada kepala itu sendiri. */
                     ...(plan.isRecommended
                       ? {
                           borderColor: "var(--ant-color-primary)",
@@ -130,6 +152,18 @@ export async function LandingPricing() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: "var(--ant-margin-xs)",
+                      background: plan.isRecommended
+                        ? landingChip("brand")
+                        : landingFill("indigo"),
+                      /* Kepala kartu adalah anak PERTAMA `.ant-card` (badan
+                         kartu `display: contents`, lihat `ui/card.tsx`), dan
+                         `.ant-card` TIDAK memasang `overflow: hidden`. Tanpa
+                         dua radius ini bidang berwarnanya menyembul sebagai
+                         dua sudut siku di luar tepi kartu yang membulat —
+                         cacat yang hanya terlihat sesudah kepalanya berwarna,
+                         jadi ia tidak pernah muncul sebelum perubahan ini. */
+                      borderTopLeftRadius: "var(--ant-border-radius-lg)",
+                      borderTopRightRadius: "var(--ant-border-radius-lg)",
                     }}
                   >
                     <h3

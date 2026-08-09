@@ -42,10 +42,21 @@ export async function LandingHero() {
         position: "relative",
         overflow: "hidden",
         borderBottom: "1px solid var(--ant-color-border-secondary)",
-        /* Pita merek yang sama dengan panel brand layar masuk: satu token
-           (`colorPrimaryBg`), lembut di kedua tema, dan tanpa satu pun elemen
-           berlapis yang bisa memakan klik. */
-        background: "var(--ant-color-primary-bg)",
+        /* ══ BIDANG WARNA, BUKAN TEKS DI ATAS PUTIH ═══════════════════════
+           Dua nada pendaratan yang sama yang dipakai pita seksi di bawahnya
+           (`landing-scale.ts`), dibentangkan sebagai satu bidang: sudut hero
+           adalah nada TERKUAT halaman (`band-accent`), sisi jauhnya cyan.
+           Keduanya `color-mix` opak di atas `colorBgContainer`, jadi arah
+           terang/gelapnya mengikuti tema dengan sendirinya — tidak ada cabang
+           tema di berkas ini.
+
+           Sebelumnya di sini berdiri `colorPrimaryBg` telanjang. Ia tidak
+           salah, hanya datar: satu tint, satu arah, dan hero yang terbaca
+           sebagai kotak pucat. Yang tidak berubah adalah alasan aslinya —
+           latarnya tetap SATU properti pada seksinya sendiri, tanpa elemen
+           berlapis yang bisa memakan klik tombol di atasnya. */
+        background:
+          "linear-gradient(135deg, var(--sai-landing-band-accent) 0%, var(--sai-landing-band-cyan) 100%)",
         paddingBlock: "var(--sai-landing-rhythm)",
       }}
     >

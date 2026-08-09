@@ -28,16 +28,33 @@ import {
  */
 const ANCHOR_OFFSET = LANDING_NAV_HEIGHT + 16;
 
+/**
+ * Nada pita seksi — penanda WILAYAH, dan satu-satunya cara halaman ini terbaca
+ * sebagai beberapa tempat alih-alih satu daftar panjang berpemisah garis.
+ *
+ * Sampai perubahan ini hanya ada dua nilai (`plain` / `muted`), dan `muted`
+ * adalah `colorFillQuaternary` — warna TRANSLUSEN 2–4% yang, digambar di atas
+ * latar halaman, praktis tak terlihat di kedua tema. Akibatnya halaman ini
+ * memang persis keluhan yang tercatat di issue #266: putih-hitam dengan garis.
+ *
+ * Nada di bawah opak (`color-mix` di atas permukaan yang sedang berlaku,
+ * `landing-scale.ts`), jadi pita benar-benar bidang berwarna. `accent` dipakai
+ * SATU kali — ajakan penutup — karena nada terkuat halaman kehilangan artinya
+ * kalau muncul dua kali.
+ */
+export type LandingTone = "plain" | "brand" | "cyan" | "indigo" | "accent";
+
+const TONE_BG: Record<Exclude<LandingTone, "plain">, string> = {
+  brand: "var(--sai-landing-band-brand)",
+  cyan: "var(--sai-landing-band-cyan)",
+  indigo: "var(--sai-landing-band-indigo)",
+  accent: "var(--sai-landing-band-accent)",
+};
+
 export interface LandingSectionProps {
   /** Jangkar untuk tautan bilah atas (`#modul`, `#harga`, `#tanya`). */
   id?: string;
-  /**
-   * `muted` memberi pita berlatar tipis — penanda bahwa isinya beda jenis
-   * (harga), bukan hiasan. Nilainya `colorFillQuaternary`, warna TRANSLUSEN
-   * yang bekerja di kedua tema; token permukaan pekat (`colorBgLayout`) justru
-   * melebur dengan latar di tema gelap.
-   */
-  tone?: "plain" | "muted";
+  tone?: LandingTone;
   /** Seksi pertama sesudah hero tidak memerlukan garis kedua di atasnya. */
   divider?: boolean;
   /** `narrow` untuk isi yang dibaca berurutan (FAQ), bukan dipindai. */
@@ -58,8 +75,11 @@ export function LandingSection({
     paddingBlock: "var(--sai-landing-rhythm)",
     scrollMarginTop: ANCHOR_OFFSET,
   };
+  /* Garisnya TETAP ada di setiap batas pita, juga ketika nadanya sudah
+     berbeda: di tema gelap selisih pita terhadap latar halaman hanya
+     1,06–1,14:1, jadi warna saja belum tentu menggambar batasnya. */
   if (divider) outer.borderTop = "1px solid var(--ant-color-border-secondary)";
-  if (tone === "muted") outer.background = "var(--ant-color-fill-quaternary)";
+  if (tone !== "plain") outer.background = TONE_BG[tone];
 
   return (
     <section id={id} style={outer}>

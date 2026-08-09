@@ -84,6 +84,11 @@
  *    keuangan diberi awalan "Laporan" di berkasnya ("Laporan Arus Kas" vs
  *    "Arus Kas" di layar) dan dua lainnya tidak ("Neraca", "Neraca Saldo").
  *    Menyamakannya adalah keputusan penamaan, bukan pekerjaan penjaga.
+ *    Yang dilewati di sini hanya pertanyaan LAYAR vs KERTAS. Pertanyaan
+ *    keduanya — PDF vs lembar sebar, dua berkas ekspor dari laporan yang sama —
+ *    dijawab `tests/statement-title-shape.test.ts` sejak #323: nama dokumen &
+ *    nama lembar kini datang dari `STATEMENT_TITLES` / `SHEET_NAMES` di
+ *    `statement-layout.ts`, dan tidak boleh ditulis sebaris di lapisan ekspor.
  *  • **Kalimat keadaan kosong & catatan kaki** yang ditulis sebaris di lapisan
  *    ekspor ("Tidak ada dokumen pada periode ini.", catatan valas tanpa kurs).
  *    Alasannya sama: mereka tidak berbentuk konstanta — dan JANGAN mengira

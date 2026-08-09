@@ -1459,3 +1459,101 @@ export const BUDGET_HEADERS: Record<BudgetColumnId, string> = {
 export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColumnId[] {
   return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
 }
+
+// ─── Nama dokumen & nama lembar ──────────────────────────────────────────────
+
+/**
+ * Jenis laporan yang punya berkas ekspor.
+ *
+ * Sengaja ditulis ulang di sini alih-alih diimpor dari `pdf/statement-pdf.ts`:
+ * modul ini TIDAK mengimpor apa pun (lihat kepala berkas), dan modul itu
+ * menyeret jsPDF. Kalau daftarnya suatu saat berbeda, `tsc` menolak di titik
+ * `STATEMENT_TITLES[payload.kind]` — jadi duplikasi ini dijaga tipe, bukan
+ * kebiasaan (pola yang sama dengan `CashFlowCategoryId`, `AgingKind`, dan
+ * `PartyRecapKind`).
+ */
+export type StatementKind =
+  | "trial-balance"
+  | "income-statement"
+  | "balance-sheet"
+  | "cash-flow"
+  | "stock-movement"
+  | "opname-history"
+  | "sales-by-customer"
+  | "purchases-by-supplier"
+  | "receivables"
+  | "payables"
+  | "stock-value"
+  | "cash-bank"
+  | "budget-realization";
+
+/**
+ * Nama DOKUMEN — judul yang tercetak di kepala PDF, judul yang jadi baris
+ * pertama lembar sebar, dan dasar nama berkas kedua-duanya.
+ *
+ * ── Kenapa ia di sini, bukan di `pdf/statement-pdf.ts` (issue #323) ──────────
+ * Ia dulu tinggal di modul PDF, dan lapisan lembar sebar tidak membacanya: tiap
+ * `build…Sheet()` di `report-export.ts` menuliskan judulnya sendiri sebagai
+ * string sebaris. Ketiga belasnya kebetulan sama huruf demi huruf — dan justru
+ * itu bahayanya, karena tidak ada apa pun yang memaksanya tetap begitu: satu
+ * suntingan di modul PDF mengubah kertasnya dan meninggalkan Excel-nya. Bentuk
+ * cacat yang sama persis dengan judul kolom rekap mitra di #315, satu tingkat
+ * lebih atas.
+ *
+ * Rumahnya jadi berkas ini karena di sinilah penentu bentuk laporan tinggal
+ * (#310, #315), dan karena berkas ini tidak mengimpor apa pun: rute ekspor
+ * Excel dulu menarik seluruh jsPDF ke dalam graf modulnya hanya untuk membaca
+ * satu judul.
+ *
+ * Mengubah salah satu kalimat di sini mengubah berkas yang sudah dikirim &
+ * diarsipkan orang — rambu #298 berlaku sama seperti pada judul kolom.
+ */
+export const STATEMENT_TITLES: Record<StatementKind, string> = {
+  "trial-balance": "Neraca Saldo",
+  "income-statement": "Laporan Laba / Rugi",
+  "balance-sheet": "Neraca",
+  "cash-flow": "Laporan Arus Kas",
+  "stock-movement": "Kartu Stok / Mutasi Persediaan",
+  "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Piutang & Umur Piutang",
+  payables: "Utang & Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Laporan Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
+};
+
+/**
+ * Nama LEMBAR — tulisan di tab bawah jendela Excel. Bukan nama dokumen, dan
+ * tidak boleh disamakan dengannya (issue #323).
+ *
+ * ── Kenapa ia tabel TERSENDIRI, bukan turunan `STATEMENT_TITLES` ────────────
+ * Nama tab punya aturan yang judul dokumen tidak punya: maksimal 31 huruf, dan
+ * `[ ] : * ? / \` terlarang. Tiga dari tiga belas judul melanggarnya —
+ * "Laporan Laba / Rugi" dan "Kartu Stok / Mutasi Persediaan" memuat garis
+ * miring, dan "Riwayat Hitung Ulang Stok (Stok Opname)" 39 huruf. Menyamakan
+ * kedua tabel bukan perapian melainkan pemotongan diam-diam oleh
+ * `buildWorkbookBuffer()`, yang memenggal di huruf ke-31.
+ *
+ * Empat sisanya (Arus Kas, Umur Piutang, Umur Utang, Kas & Bank) sah sebagai
+ * nama tab tapi tetap dipendekkan — dan itu pilihan penamaan yang sudah dipakai
+ * orang di berkas yang sudah dikirim, bukan kelalaian. Ketujuh perbedaannya
+ * DIPATOK di `tests/statement-title-shape.test.ts`, jadi tidak satu pun bisa
+ * bergeser — atau diam-diam didamaikan — tanpa terlihat di diff.
+ */
+export const SHEET_NAMES: Record<StatementKind, string> = {
+  "trial-balance": "Neraca Saldo",
+  "income-statement": "Laba Rugi",
+  "balance-sheet": "Neraca",
+  "cash-flow": "Arus Kas",
+  "stock-movement": "Kartu Stok",
+  "opname-history": "Riwayat Opname",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Umur Piutang",
+  payables: "Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
+};

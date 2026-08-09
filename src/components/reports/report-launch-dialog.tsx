@@ -373,7 +373,17 @@ export function ReportLaunchDialog({
               >
                 {/* Kotak centang AntD SUDAH sebuah `<label>` yang membungkus
                     isian dan katanya, jadi target sentuhnya seluruh baris —
-                    bukan kotak 20px-nya saja. */}
+                    bukan kotak 20px-nya saja.
+
+                    Judul kolomnya lewat KAMUS (#316). Ia dulu `{c.label}` apa
+                    adanya — satu-satunya string di dialog ini yang tidak lewat
+                    `t()` — sehingga pembaca `en`/`zh` mendapat kerangka dialog
+                    dalam bahasanya dan daftar kolom dalam bahasa Indonesia.
+                    Kuncinya adalah kunci yang dipakai tabel layar laporan itu,
+                    jadi kolom yang dicentang di sini bernama sama persis dengan
+                    kolom yang muncul setelah Pratinjau ditekan. Berkas ekspor
+                    TIDAK ikut: judul kertas hidup di `statement-layout.ts` dan
+                    tetap berbahasa Indonesia (#278). */}
                 {columnSpecs.map((c) => (
                   <Checkbox
                     key={c.id}
@@ -383,7 +393,7 @@ export function ReportLaunchDialog({
                     onCheckedChange={(checked) => toggleColumn(c.id, checked === true)}
                     style={OPTION_ROW}
                   >
-                    {c.label}
+                    {t(c.labelKey)}
                   </Checkbox>
                 ))}
               </div>

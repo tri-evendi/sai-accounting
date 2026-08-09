@@ -10,6 +10,26 @@
  * product is visible) but never fakes a number: `coming_soon` is the truthful
  * alternative to a broken link or an empty page dressed up as a report.
  *
+ * ── Bahasanya hidup di KAMUS, bukan di sini (issue #316) ─────────────────────
+ * Berkas ini tidak memuat satu pun kalimat yang dibaca pengguna. Judul &
+ * penjelasan tiap laporan ada di `reports.catalogReport.<id>`, judul & penjelasan
+ * kategori di `reports.catalogCategory.<kategori>`, dan judul kolom yang boleh
+ * dipilih adalah KUNCI kamus (`ReportColumnSpec.labelKey`). Yang tinggal di sini
+ * adalah struktur: id, kategori, status, alamat, bentuk parameter, daftar kolom.
+ *
+ * Sebelumnya ketiganya ditulis dua kali — kalimat Indonesia di sini sebagai
+ * "cadangan" dan kalimat sungguhan di kamus. Cadangan itu tidak pernah menyala
+ * (keenam belas laporan dan keenam kategori sudah punya entri), jadi yang
+ * sesungguhnya ada hanyalah 44 kalimat yang bisa disunting orang tanpa satu
+ * piksel pun berubah — dan satu daftar kolom yang memancarkan bahasa Indonesia
+ * mati ke dialog trilingual. Keduanya kini mustahil: id dan kategori BERTIPE
+ * kunci kamus.
+ *
+ * Catatan yang ikut pindah bersama kalimatnya, karena JSON tak bisa memuat
+ * komentar: penjelasan kategori Pajak sengaja menyebut pajak KELUARAN saja —
+ * menjanjikan PPN Masukan yang tidak ada di modulnya membuat kategori itu
+ * berbohong (audit 2026-07).
+ *
  * ── Parameter parsing is pure and validated ──────────────────────────────────
  * `resolvePeriod` / `resolveAsOf` turn raw URL params into the exact Date bounds
  * the readers expect, rejecting anything that is not a real calendar date
@@ -19,8 +39,18 @@
  * and the report pages byte-for-byte.
  */
 import { toISODate } from "@/lib/dashboard-summary";
+import type { Dictionary, DictionaryKey } from "@/lib/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
+/**
+ * Kategori — TERIKAT pada kamus (issue #316).
+ *
+ * `satisfies` di sini bukan hiasan: kartu katalog membaca judul & penjelasan
+ * kategorinya dari `reports.catalogCategory`, jadi kategori yang lahir tanpa
+ * entri kamus adalah judul yang hilang di layar. Sekarang ia galat `tsc`.
+ * Arah sebaliknya — entri kamus tanpa kategori — dijaga
+ * `tests/report-catalog-column-labels.test.ts`.
+ */
 export const REPORT_CATEGORIES = [
   "keuangan",
   "penjualan",
@@ -28,31 +58,44 @@ export const REPORT_CATEGORIES = [
   "stok",
   "kas_bank",
   "pajak",
-] as const;
+] as const satisfies readonly (keyof Dictionary["reports"]["catalogCategory"])[];
 
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
-export const CATEGORY_LABELS: Record<ReportCategory, string> = {
-  keuangan: "Keuangan",
-  penjualan: "Penjualan",
-  pembelian: "Pembelian",
-  stok: "Stok",
-  kas_bank: "Kas & Bank",
-  pajak: "Pajak",
-};
-
-export const CATEGORY_DESCRIPTIONS: Record<ReportCategory, string> = {
-  keuangan: "Laba/rugi, neraca, arus kas dan realisasi anggaran.",
-  penjualan: "Piutang pelanggan dan realisasi target penjualan.",
-  pembelian: "Utang ke pemasok dan analisa pembelian.",
-  stok: "Nilai dan pergerakan persediaan.",
-  kas_bank: "Posisi kas & bank dan rekonsiliasi.",
-  // Hanya pajak KELUARAN yang diekspor — menjanjikan PPN Masukan yang tidak
-  // ada di modulnya membuat kategori ini berbohong (audit 2026-07).
-  pajak: "Ekspor pajak keluaran (e-Faktur / CTAS).",
-};
-
 export type ReportStatus = "available" | "coming_soon";
+
+/**
+ * Kunci entri kamus judul & penjelasan sebuah laporan (`reports.catalogReport.*`).
+ */
+export type ReportTextKey = keyof Dictionary["reports"]["catalogReport"];
+
+type UnderscoreToDash<S extends string> = S extends `${infer A}_${infer B}`
+  ? `${A}-${UnderscoreToDash<B>}`
+  : S;
+
+/**
+ * Id laporan — TERIKAT pada kamus (issue #316).
+ *
+ * Katalog dulu menyimpan `title` & `description` bahasa Indonesia sendiri, dan
+ * halaman katalog memakainya sebagai CADANGAN bila kamus tak punya entrinya.
+ * Cadangan itu tak pernah menyala — keenam belas laporan sudah punya entri —
+ * sehingga yang tersisa hanyalah 32 kalimat yang bisa disunting orang tanpa
+ * satu piksel pun berubah di layar: "penjaga palsu berbentuk konstanta" yang
+ * persis sama dengan temuan #310. Sekarang tidak ada cadangan: kamus adalah
+ * satu-satunya sumber, dan id yang belum punya entri ditolak `tsc`.
+ */
+export type ReportId = UnderscoreToDash<ReportTextKey & string>;
+
+/**
+ * Id laporan → kunci kamusnya ("trial-balance" → "trial_balance").
+ *
+ * Penggantinya di tingkat TIPE-lah yang menjaga: `ReportId` diturunkan dari
+ * kunci kamus, jadi `replace` di sini tidak pernah bisa menghasilkan kunci yang
+ * tidak ada — pengecekannya sudah terjadi di `tsc` saat entri katalog ditulis.
+ */
+export function reportTextKey(id: ReportId): ReportTextKey {
+  return id.replace(/-/g, "_") as ReportTextKey;
+}
 
 /**
  * Which parameter form a report asks for — drives the filter UI on its page.
@@ -85,12 +128,29 @@ export type ReportFilterId = "costCenter";
  * `fixed` menandai kolom identitas baris (kode akun, nama barang) — ia tetap
  * dirender di daftar sebagai tercentang-mati, sebab laporan tanpa kolom
  * identitas hanya berisi angka tanpa keterangan.
+ *
+ * ── Judulnya KUNCI KAMUS, bukan kalimat (issue #316) ────────────────────────
+ * Ia dulu string bahasa Indonesia, dan komentarnya menjanjikan kamus
+ * "meng-override lewat `reports.column.<id>`" — mekanisme yang tidak pernah
+ * ada. Akibatnya dua: kedelapan judul kolom Umur Piutang/Utang tertulis untuk
+ * KETIGA kalinya di berkas ini, dan dialog pilih-kolom memancarkan bahasa
+ * Indonesia mati kepada pembaca `en`/`zh` sementara setiap kalimat lain di
+ * dialog yang sama sudah lewat kamus.
+ *
+ * Kuncinya adalah kunci yang SAMA dengan yang dipakai tabel layar laporan itu
+ * (mis. `payables/page.tsx` menamai kolom pihaknya `payables.colSupplier`) —
+ * jadi dialognya menyebut kolom dengan nama yang benar-benar akan dibaca
+ * penggunanya setelah menekan Pratinjau. Ia sengaja BUKAN judul kertas: kertas
+ * menyebut satuannya ("Saldo Awal (IDR)") karena selnya menyimpan angka
+ * telanjang, layar tidak perlu karena `Money` selalu membawa "Rp" — aturan
+ * `kamus+IDR` milik #298. `tests/report-catalog-column-labels.test.ts` memaku
+ * hubungan itu kolom demi kolom.
  */
 export interface ReportColumnSpec {
   /** Id stabil — dipakai di URL (`?cols=`), di layar, dan di berkas ekspor. */
   id: string;
-  /** Judul kolom bahasa Indonesia; kamus meng-override lewat `reports.column.<id>`. */
-  label: string;
+  /** Kunci kamus judul kolom — kunci yang sama dengan tabel layar laporan ini. */
+  labelKey: DictionaryKey;
   /** Kolom identitas baris: selalu ikut, tak bisa dimatikan. */
   fixed?: boolean;
   /** Ikut secara bawaan. Tak diisi = ikut. */
@@ -98,9 +158,12 @@ export interface ReportColumnSpec {
 }
 
 export interface ReportDefinition {
-  id: string;
-  title: string;
-  description: string;
+  /**
+   * Id laporan; judul & penjelasannya hidup di `reports.catalogReport.<id>`
+   * dengan `-` menjadi `_`. Lihat `ReportId` — kamusnya yang menentukan id mana
+   * yang sah, jadi laporan tanpa entri kamus ditolak `tsc`.
+   */
+  id: ReportId;
   category: ReportCategory;
   status: ReportStatus;
   /** Route for an `available` report; undefined for `coming_soon`. */
@@ -170,8 +233,6 @@ export const REPORTS: ReportDefinition[] = [
   // ── Keuangan ──────────────────────────────────────────────────────────────
   {
     id: "trial-balance",
-    title: "Neraca Saldo",
-    description: "Saldo debit/kredit seluruh akun pada satu tanggal — harus seimbang.",
     category: "keuangan",
     status: "available",
     href: "/reports/trial-balance",
@@ -181,9 +242,6 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "income-statement",
-    title: "Laba / Rugi",
-    description:
-      "Bertingkat: penjualan − HPP = laba kotor, dikurangi beban jadi laba bersih, plus ringkasan bahasa awam.",
     category: "keuangan",
     status: "available",
     href: "/reports/income-statement",
@@ -196,8 +254,6 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "balance-sheet",
-    title: "Neraca",
-    description: "Posisi Aset = Liabilitas + Ekuitas pada satu tanggal.",
     category: "keuangan",
     status: "available",
     href: "/reports/balance-sheet",
@@ -207,8 +263,6 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "cash-flow",
-    title: "Arus Kas",
-    description: "Kas masuk dan keluar per kategori: operasi, investasi, pendanaan.",
     category: "keuangan",
     status: "available",
     href: "/reports/cash-flow",
@@ -218,8 +272,6 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "budget-realization",
-    title: "Realisasi vs Anggaran",
-    description: "Bandingkan anggaran dengan realisasi dari Laba/Rugi, beserta selisihnya.",
     category: "keuangan",
     status: "available",
     // `/budget` hanyalah HUB berisi tiga tautan; laporannya ada satu klik lebih
@@ -237,8 +289,6 @@ export const REPORTS: ReportDefinition[] = [
   // ── Penjualan ─────────────────────────────────────────────────────────────
   {
     id: "receivables",
-    title: "Piutang & Umur Piutang",
-    description: "Tagihan pelanggan yang belum lunas, dikelompokkan per umur.",
     category: "penjualan",
     status: "available",
     href: "/receivables",
@@ -246,20 +296,18 @@ export const REPORTS: ReportDefinition[] = [
     icon: "HandCoins",
     payloadKind: "receivables",
     columns: [
-      { id: "party", label: "Pelanggan", fixed: true },
-      { id: "documentNo", label: "Dokumen" },
-      { id: "date", label: "Tanggal" },
-      { id: "dueDate", label: "Jatuh Tempo" },
-      { id: "age", label: "Umur" },
-      { id: "status", label: "Status" },
-      { id: "total", label: "Nilai Dokumen" },
-      { id: "outstanding", label: "Sisa (IDR)" },
+      { id: "party", labelKey: "common.customer", fixed: true },
+      { id: "documentNo", labelKey: "common.document" },
+      { id: "date", labelKey: "common.date" },
+      { id: "dueDate", labelKey: "common.dueDate" },
+      { id: "age", labelKey: "common.age" },
+      { id: "status", labelKey: "common.status" },
+      { id: "total", labelKey: "receivables.colDocumentValue" },
+      { id: "outstanding", labelKey: "common.remainingIdr" },
     ],
   },
   {
     id: "sales-target",
-    title: "Realisasi Target Penjualan",
-    description: "Target penjualan dibanding penjualan riil dari buku besar.",
     category: "penjualan",
     status: "available",
     // Realisasi target penjualan hidup di halaman yang SAMA dengan realisasi
@@ -271,8 +319,6 @@ export const REPORTS: ReportDefinition[] = [
   },
   {
     id: "sales-by-customer",
-    title: "Penjualan per Pelanggan",
-    description: "Rekap penjualan per pelanggan pada suatu periode.",
     category: "penjualan",
     status: "available",
     href: "/reports/sales-by-customer",
@@ -280,18 +326,16 @@ export const REPORTS: ReportDefinition[] = [
     icon: "Users",
     payloadKind: "sales-by-customer",
     columns: [
-      { id: "party", label: "Pelanggan", fixed: true },
-      { id: "docCount", label: "Jumlah Dokumen" },
-      { id: "gross", label: "Penjualan Kotor" },
-      { id: "returns", label: "Retur" },
-      { id: "net", label: "Bersih" },
+      { id: "party", labelKey: "reports.colCustomer", fixed: true },
+      { id: "docCount", labelKey: "reports.colDocuments" },
+      { id: "gross", labelKey: "reports.colGrossSales" },
+      { id: "returns", labelKey: "reports.colReturns" },
+      { id: "net", labelKey: "reports.colNet" },
     ],
   },
   // ── Pembelian ─────────────────────────────────────────────────────────────
   {
     id: "payables",
-    title: "Utang & Umur Utang",
-    description: "Tagihan pemasok yang belum Anda bayar, dikelompokkan per umur.",
     category: "pembelian",
     status: "available",
     href: "/payables",
@@ -299,20 +343,18 @@ export const REPORTS: ReportDefinition[] = [
     icon: "Wallet",
     payloadKind: "payables",
     columns: [
-      { id: "party", label: "Pemasok", fixed: true },
-      { id: "documentNo", label: "Dokumen" },
-      { id: "date", label: "Tanggal" },
-      { id: "dueDate", label: "Jatuh Tempo" },
-      { id: "age", label: "Umur" },
-      { id: "status", label: "Status" },
-      { id: "total", label: "Nilai Dokumen" },
-      { id: "outstanding", label: "Sisa (IDR)" },
+      { id: "party", labelKey: "payables.colSupplier", fixed: true },
+      { id: "documentNo", labelKey: "common.document" },
+      { id: "date", labelKey: "common.date" },
+      { id: "dueDate", labelKey: "common.dueDate" },
+      { id: "age", labelKey: "common.age" },
+      { id: "status", labelKey: "common.status" },
+      { id: "total", labelKey: "payables.colPurchaseValue" },
+      { id: "outstanding", labelKey: "common.remainingIdr" },
     ],
   },
   {
     id: "purchases-by-supplier",
-    title: "Pembelian per Pemasok",
-    description: "Rekap pembelian per pemasok pada suatu periode.",
     category: "pembelian",
     status: "available",
     href: "/reports/purchases-by-supplier",
@@ -320,18 +362,16 @@ export const REPORTS: ReportDefinition[] = [
     icon: "Truck",
     payloadKind: "purchases-by-supplier",
     columns: [
-      { id: "party", label: "Pemasok", fixed: true },
-      { id: "docCount", label: "Jumlah Dokumen" },
-      { id: "gross", label: "Pembelian Kotor" },
-      { id: "returns", label: "Retur" },
-      { id: "net", label: "Bersih" },
+      { id: "party", labelKey: "reports.colSupplier", fixed: true },
+      { id: "docCount", labelKey: "reports.colDocuments" },
+      { id: "gross", labelKey: "reports.colGrossPurchases" },
+      { id: "returns", labelKey: "reports.colReturns" },
+      { id: "net", labelKey: "reports.colNet" },
     ],
   },
   // ── Stok ──────────────────────────────────────────────────────────────────
   {
     id: "stock-value",
-    title: "Nilai Persediaan",
-    description: "Kuantitas dan nilai persediaan terkini per komoditas.",
     category: "stok",
     status: "available",
     // Halaman laporannya SENDIRI, bukan `/inventory`. Halaman modul itu adalah
@@ -342,20 +382,18 @@ export const REPORTS: ReportDefinition[] = [
     icon: "Package",
     payloadKind: "stock-value",
     columns: [
-      { id: "name", label: "Barang", fixed: true },
-      { id: "unit", label: "Satuan" },
-      { id: "currentStock", label: "Saldo" },
-      { id: "unitCost", label: "Biaya/Unit" },
-      { id: "stockValue", label: "Nilai Persediaan" },
+      { id: "name", labelKey: "common.item", fixed: true },
+      { id: "unit", labelKey: "common.unit" },
+      { id: "currentStock", labelKey: "inventory.colCurrentStock" },
+      { id: "unitCost", labelKey: "inventory.colUnitCost" },
+      { id: "stockValue", labelKey: "inventory.colValue" },
     ],
   },
   {
     id: "stock-movement",
-    // Nama awam di permukaan, istilah bakunya hidup di glosarium & judul
-    // cetakan — pola yang sama dengan "Hitung Ulang Stok" (stok opname) dan
-    // "Cocokkan Rekening Koran" (rekonsiliasi bank).
-    title: "Riwayat Stok",
-    description: "Saldo awal, masuk-keluar, dan saldo akhir tiap komoditas — per minggu, bulan atau tahun.",
+    // Judulnya ("Riwayat Stok", di kamus) sengaja awam; istilah bakunya hidup
+    // di glosarium & judul cetakan — pola yang sama dengan "Hitung Ulang Stok"
+    // (stok opname) dan "Cocokkan Rekening Koran" (rekonsiliasi bank).
     category: "stok",
     status: "available",
     href: "/inventory/movement",
@@ -366,13 +404,13 @@ export const REPORTS: ReportDefinition[] = [
     // centang di sini boleh MENGHILANGKAN kolom, tak pernah memunculkannya
     // (laporannya sendiri yang memutuskan lewat `hasProcess`).
     columns: [
-      { id: "name", label: "Barang", fixed: true },
-      { id: "unit", label: "Satuan" },
-      { id: "opening", label: "Saldo Awal" },
-      { id: "movedIn", label: "Masuk" },
-      { id: "movedOut", label: "Keluar" },
-      { id: "processed", label: "Diolah" },
-      { id: "closing", label: "Saldo Akhir" },
+      { id: "name", labelKey: "common.item", fixed: true },
+      { id: "unit", labelKey: "common.unit" },
+      { id: "opening", labelKey: "stockMovement.colOpening" },
+      { id: "movedIn", labelKey: "stockMovement.colIn" },
+      { id: "movedOut", labelKey: "stockMovement.colOut" },
+      { id: "processed", labelKey: "stockMovement.colProcessed" },
+      { id: "closing", labelKey: "stockMovement.colClosing" },
     ],
   },
   {
@@ -380,8 +418,6 @@ export const REPORTS: ReportDefinition[] = [
     // Jalan masuk BACA ke riwayat opname (issue #129): tautan lamanya hanya
     // hidup di halaman hitung ulang yang berizin tulis, sehingga pemegang
     // izin baca-saja tidak pernah bisa sampai ke sana (audit 2026-07).
-    title: "Riwayat Hitung Ulang Stok",
-    description: "Hasil hitung ulang (stok opname) per periode: lebih, susut, dan selisih bersihnya.",
     category: "stok",
     status: "available",
     href: "/inventory/opname/history",
@@ -392,8 +428,6 @@ export const REPORTS: ReportDefinition[] = [
   // ── Kas & Bank ────────────────────────────────────────────────────────────
   {
     id: "cash-bank",
-    title: "Laporan Kas & Bank",
-    description: "Saldo dan mutasi tiap akun kas & bank.",
     category: "kas_bank",
     status: "available",
     // Halaman laporannya sendiri, dengan alasan yang sama seperti Nilai
@@ -405,16 +439,14 @@ export const REPORTS: ReportDefinition[] = [
     icon: "Landmark",
     payloadKind: "cash-bank",
     columns: [
-      { id: "account", label: "Akun Kas & Bank", fixed: true },
-      { id: "opening", label: "Saldo Awal" },
-      { id: "net", label: "Perubahan" },
-      { id: "closing", label: "Saldo Akhir" },
+      { id: "account", labelKey: "reports.colCashBankAccount", fixed: true },
+      { id: "opening", labelKey: "reports.colOpeningBalance" },
+      { id: "net", labelKey: "reports.colChange" },
+      { id: "closing", labelKey: "reports.colClosingBalance" },
     ],
   },
   {
     id: "bank-reconciliation",
-    title: "Rekonsiliasi Bank",
-    description: "Cocokkan mutasi buku dengan rekening koran bank.",
     category: "kas_bank",
     status: "available",
     href: "/reconciliation",
@@ -424,8 +456,6 @@ export const REPORTS: ReportDefinition[] = [
   // ── Pajak ─────────────────────────────────────────────────────────────────
   {
     id: "efaktur",
-    title: "Ekspor e-Faktur (DJP/CTAS)",
-    description: "Ekspor faktur pajak keluaran ke format impor DJP.",
     category: "pajak",
     status: "available",
     href: "/tax/efaktur",
@@ -441,17 +471,21 @@ export const REPORTS: ReportDefinition[] = [
 
 export interface CategoryGroup {
   category: ReportCategory;
-  label: string;
-  description: string;
   reports: ReportDefinition[];
 }
 
-/** The catalogue grouped by category, in the canonical category order. */
+/**
+ * The catalogue grouped by category, in the canonical category order.
+ *
+ * Tanpa `label`/`description`: keduanya dulu kalimat bahasa Indonesia yang
+ * halaman katalog pakai sebagai CADANGAN kamus, dan cadangan yang tak pernah
+ * menyala hanyalah kalimat yang bisa berbeda diam-diam (#316). Judulnya kini
+ * dibaca langsung dari `reports.catalogCategory[category]`, yang `tsc` pastikan
+ * ada untuk keenam kategori.
+ */
 export function reportsByCategory(): CategoryGroup[] {
   return REPORT_CATEGORIES.map((category) => ({
     category,
-    label: CATEGORY_LABELS[category],
-    description: CATEGORY_DESCRIPTIONS[category],
     reports: REPORTS.filter((r) => r.category === category),
   }));
 }

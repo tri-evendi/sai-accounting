@@ -3,7 +3,7 @@
  * MFA WAJIB tanpa pengecualian, jawaban gagal seragam.
  */
 import { hash } from "bcrypt";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { parseOperatorAccounts, verifyOperatorLogin } from "@/lib/operator/credentials";
 import { totpAt } from "@/lib/operator/totp";
@@ -132,5 +132,84 @@ describe("verifyOperatorLogin — ketiganya wajib benar sekaligus", () => {
       now: NOW,
     });
     expect(account?.name).toBe("vyn");
+  });
+});
+
+/* ========================================================================== */
+/* Saklar OPERATOR_MFA=off                                                    */
+/* ========================================================================== */
+
+describe("saklar OPERATOR_MFA", () => {
+  /* FUNGSI, bukan konstanta: badan `describe` dievaluasi SEBELUM `beforeAll`,
+   * jadi `PASSWORD_HASH` masih `undefined` di sana dan entrinya lahir salah
+   * bentuk — lalu tesnya gagal karena alasan yang sama sekali lain. */
+  const raw = () => `vyn:${PASSWORD_HASH}:${TOTP_SECRET}`;
+
+  afterEach(() => {
+    delete process.env.OPERATOR_MFA;
+  });
+
+  it("bawaannya HIDUP — tanpa env, kode TOTP salah tetap ditolak", async () => {
+    expect(
+      await verifyOperatorLogin({
+        username: "vyn",
+        password: "kata-sandi-operator",
+        totpCode: "000000",
+        accountsRaw: raw(),
+      })
+    ).toBeNull();
+  });
+
+  it("`off` melewatkan TOTP — tapi kata sandi TETAP diperiksa", async () => {
+    process.env.OPERATOR_MFA = "off";
+    expect(
+      await verifyOperatorLogin({
+        username: "vyn",
+        password: "kata-sandi-operator",
+        totpCode: "000000",
+        accountsRaw: raw(),
+      })
+    ).not.toBeNull();
+    /* Yang paling mudah salah dibuat: mematikan MFA sekalian mematikan kata
+     * sandinya. Kalau baris ini hijau dengan sandi salah, saklarnya bukan
+     * "tanpa MFA" melainkan "tanpa autentikasi". */
+    expect(
+      await verifyOperatorLogin({
+        username: "vyn",
+        password: "sandi-yang-salah",
+        totpCode: "000000",
+        accountsRaw: raw(),
+      })
+    ).toBeNull();
+  });
+
+  it("hanya `off` PERSIS yang mematikan — ejaan lain berarti TETAP HIDUP", async () => {
+    for (const nilai of ["false", "0", "no", "OFFF", "", " "]) {
+      process.env.OPERATOR_MFA = nilai;
+      expect(
+        await verifyOperatorLogin({
+          username: "vyn",
+          password: "kata-sandi-operator",
+          totpCode: "000000",
+          accountsRaw: raw(),
+        }),
+        `OPERATOR_MFA="${nilai}" tidak boleh mematikan MFA`
+      ).toBeNull();
+    }
+  });
+
+  it("`OFF`/` off ` tetap dikenali — huruf besar & spasi bukan salah ketik", async () => {
+    for (const nilai of ["OFF", " off ", "Off"]) {
+      process.env.OPERATOR_MFA = nilai;
+      expect(
+        await verifyOperatorLogin({
+          username: "vyn",
+          password: "kata-sandi-operator",
+          totpCode: "000000",
+          accountsRaw: raw(),
+        }),
+        `OPERATOR_MFA="${nilai}" seharusnya mematikan MFA`
+      ).not.toBeNull();
+    }
   });
 });

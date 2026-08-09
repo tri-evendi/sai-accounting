@@ -97,7 +97,48 @@ export async function verifyOperatorLogin(params: {
   const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO7ZBpDLbaB6iy1RwXjbQXBEO3kbpm9tC";
 
   const passwordOk = await compare(params.password, account?.passwordHash ?? DUMMY_HASH);
-  const totpOk = account ? verifyTotp(account.totpSecret, params.totpCode.trim(), params.now) : false;
+  const totpOk = mfaDisabled()
+    ? true
+    : account
+      ? verifyTotp(account.totpSecret, params.totpCode.trim(), params.now)
+      : false;
 
   return account && passwordOk && totpOk ? account : null;
+}
+
+/**
+ * Saklar MATIKAN MFA — dan kenapa bentuknya seperti ini.
+ *
+ * Konsol operator mengatur tenant, tagihan, penjadwal, dan pengaturan surel
+ * SEMUA pelanggan. Mematikan MFA di sana adalah penurunan keamanan sungguhan,
+ * bukan penyetelan kenyamanan: yang tersisa hanya nama + kata sandi, dan kata
+ * sandi bawaan pemasangan ini tertulis di repositori sampai diputar.
+ *
+ * Karena itu bentuknya dipilih supaya **mahal untuk tidak sengaja menyala dan
+ * murah untuk dimatikan lagi**:
+ *
+ *  • Hanya nilai PERSIS `"off"` yang mematikannya. `"false"`, `"0"`, `"no"`,
+ *    string kosong — semuanya berarti MFA TETAP HIDUP. Saklar keamanan yang
+ *    menerima banyak ejaan adalah saklar yang menyala karena salah ketik.
+ *  • Bawaannya HIDUP. Tidak ada env = MFA wajib, seperti sebelum #154 dan
+ *    seperti seharusnya.
+ *  • Ia berteriak di log SETIAP kali dipakai, bukan sekali saat boot. Saklar
+ *    sementara yang diam akan menjadi saklar permanen yang dilupakan — dan
+ *    satu-satunya yang tahu adalah orang yang membaca `.env` berbulan-bulan
+ *    kemudian.
+ *
+ * Rahasia TOTP TIDAK dicabut saat saklar ini menyala: entri tanpa rahasia
+ * tetap SALAH BENTUK (lihat `parseOperatorAccounts`). Jadi menyalakan MFA
+ * kembali tidak menuntut kredensial dibuat ulang — cukup cabut env-nya dan
+ * buat ulang kontainernya.
+ */
+function mfaDisabled(): boolean {
+  const off = process.env.OPERATOR_MFA?.trim().toLowerCase() === "off";
+  if (off) {
+    console.warn(
+      "[operator] ⚠ OPERATOR_MFA=off — kode TOTP TIDAK diperiksa. Konsol operator " +
+        "hanya berpagar nama + kata sandi. Cabut env ini begitu tidak diperlukan lagi."
+    );
+  }
+  return off;
 }

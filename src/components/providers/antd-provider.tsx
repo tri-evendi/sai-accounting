@@ -54,6 +54,7 @@ import {
   PRIMARY_BUTTON_DARK,
   borderTokens,
   brandTextTokens,
+  dangerButtonTokens,
   focusRingColor,
   moneyTokens,
   neutralTextTokens,
@@ -221,7 +222,19 @@ export function AntdProvider({
          * warna itu (4,10:1). `colorPrimary` global tetap utuh untuk aksen dan
          * permukaan gelap. Angkanya di antd-tokens.ts.
          */
-        Button: primaryButtonTokens(resolved),
+        /*
+         * Isian tombol DESTRUKTIF (issue #219) — kegagalan yang sama, warna
+         * yang lain: label putih di atas `colorError` bawaan 3,27:1 (terang) /
+         * 4,24:1 (gelap). Ikut ke `components.Button` supaya `colorError`
+         * GLOBAL tetap bawaan AntD untuk ikon `Alert`, garis isian bergalat,
+         * dan `Progress`, di mana ambangnya 3:1 non-teks.
+         *
+         * Tema gelap SENGAJA diperlakukan berbeda dari terang di sini —
+         * keadaan diamnya 2,69:1 terhadap latar, di bawah 3:1 — dan alasannya
+         * ditulis di `antd-tokens.ts` serta di MASTER.md §Aksi destruktif,
+         * supaya ia tidak terbaca sebagai ketidaksengajaan lalu "dirapikan".
+         */
+        Button: { ...primaryButtonTokens(resolved), ...dangerButtonTokens(resolved) },
         /*
          * Warna TEKS label status (issue #187). `Tag` memakai `colorSuccess`
          * dkk. sebagai warna teks 12px di atas latar tipisnya — 2,21:1 untuk

@@ -105,8 +105,15 @@ teks aplikasi ini justru berada di sisi yang KETAT:
 
 Karena baris pertama itulah anak tangga ke-6 palet AntD gagal: sebagai teks 14px
 `colorSuccess` 2,27:1 · `colorWarning` 1,90:1 · `colorError` 3,27:1. Ketiganya
-akan LOLOS kalau dipakai sebagai isian pekat berlatar putih atau sebagai ikon —
-dan di sanalah mereka memang tetap dipakai.
+akan LOLOS kalau dipakai sebagai ikon atau sebagai isian yang tidak memikul apa
+pun — dan di sanalah mereka memang tetap dipakai.
+
+⚠ **"Isian pekat" bukan izin otomatis, dan #219 menemukan batasnya:** isian yang
+MEMIKUL TEKS 14px di atasnya (tombol berisian) tetap terikat baris pertama tabel
+— label putih di atas `colorError` bawaan hanya 3,27:1 (terang) / 4,24:1 (gelap).
+Isian tombol karena itu harus lolos **dua** ambang sekaligus: label ≥ 4,5:1
+**dan** isian vs latar ≥ 3:1. Nilainya di `dangerButtonTokens` /
+`primaryButtonTokens`, lingkupnya `components.Button` saja.
 
 **Ambang ini berlaku juga DI DALAM SVG.** Recharts menyalin warna seri ke label
 irisan dan ke baris tooltip, jadi sebuah `fill` yang sah sebagai bilah 3:1
@@ -209,6 +216,8 @@ Semua angka di atas dihitung ulang setiap kali suite berjalan —
 - Aturan lama tetap berlaku di atasnya: warna **tidak pernah** penanda tunggal, dan ambang kontrasnya tidak berubah. Buktinya SSR ada di `tests/antd-css-var-ssr.test.tsx`.
 
 *Dark mode:* algoritma gelap AntD, dipilih `AntdProvider` dari cookie yang dibaca root layout, jadi blok token yang benar sudah ikut pada HTML pertama tanpa kedipan sebelum hydrate. Semantik warna dan ambang kontrasnya tidak berubah antar-tema; nilai gelapnya berdiri di sebelah nilai terangnya di `antd-tokens.ts`.
+
+> **Satu tema TIDAK diperlakukan sama, dan itu keputusan tertulis (#219).** Isian tombol destruktif di tema gelap sengaja **gagal** ambang 3:1 "isian vs latar" (2,69:1) demi menahan labelnya di 6,13:1; di tema terang keduanya lolos. Alasannya di §Aksi destruktif di bawah. Jangan "menyeragamkannya" tanpa membaca bagian itu lebih dulu.
 
 Satu pengecualian yang tersisa: pilihan **"ikut sistem"**. Preferensi OS tak terlihat dari server, jadi HTML pertamanya selalu membawa token terang; yang memperbaikinya sebelum cat pertama adalah skrip sinkron di `<head>` yang memasang kelas `.dark`, dan dua variabel di `globals.css` yang menempel pada kelas itu (latar halaman + warna teks). Sisa tokennya baru benar setelah hydrate - dicatat sebagai kekurangan yang diketahui, bukan sebagai desain.
 
@@ -603,8 +612,64 @@ Yang **tidak** memenuhi syarat:
   bukan menjalankan.
 - **Aksi destruktif.** `variant="destructive"` tidak pernah dihitung sebagai
   aksi utama layar — ia menonjol karena bahayanya, bukan karena dimaksudkan.
-  ⚠ **Angka kontrasnya bukan urusan bagian ini: tombol `danger` gagal 4,5:1 di
-  kedua tema dan sedang dikerjakan di #219.** Jangan memutuskannya dua kali.
+  Angka kontrasnya diputuskan di #219 dan ditulis di §Aksi destruktif: warna
+  di bawah ini.
+
+### Aksi destruktif: warna — dan kenapa tema gelap SENGAJA berbeda (#219)
+
+Aturan bentuknya tidak berubah: **destruktif = merah + konfirmasi** (§Pola
+Komponen). Yang diputuskan #219 adalah merah yang mana. Isian `danger` bawaan
+AntD menjatuhkan label putihnya di bawah 4,5:1 di **kedua** tema — 3,27:1
+terang, 4,24:1 gelap — dan tombol "Hapus" adalah tempat terakhir yang boleh
+dibiarkan ambigu.
+
+Tombol berisian harus lolos dua ambang yang tarik-menarik: **label putih ≥
+4,5:1** (teks 14px) dan **isian vs latar ≥ 3:1** (grafis non-teks, supaya
+tombolnya terbaca sebagai tombol). Di tema terang tangga merah AntD punya anak
+tangga yang lolos keduanya. **Di tema gelap tidak ada satu pun** — red-6
+`#dc4446` memberi label 4,24 (gagal), red-5 `#ad393a` memberi isian 2,69
+(gagal).
+
+**Keputusan pemilik: utamakan LABEL.** Tema gelap memakai red-5 dan menerima
+isian 2,69:1. Alasannya bukan aritmetika: aksi destruktif di app ini **wajib**
+lewat `ConfirmDialog`, jadi risiko "tidak melihat ada tombol destruktif di
+sana" sudah ditutup dialognya — sedangkan risiko "salah membaca tombolnya"
+tidak ditutup apa pun. Membayar keterbacaan label demi bidang merah yang lebih
+tegas berarti membeli perlindungan yang sudah kita punya.
+
+| Keadaan | TERANG | label | isian min | GELAP | label | isian min |
+|---|---|---|---|---|---|---|
+| diam  | `#d9363e` | 4,62 | 4,24 | `#ad393a` | 6,13 | **2,69** |
+| hover | `#b32430` | 6,54 | 6,00 | `#7e2e2f` | 9,06 | 1,82 |
+| aktif | `#8c1523` | 9,35 | 8,57 | `#5b2526` | 12,09 | 1,36 |
+
+Isian **menggelap** saat disentuh di kedua tema — aturan yang sudah berlaku
+untuk tombol primer sejak #187, dan karena sebab yang sama: menerangkannya di
+tema gelap menjatuhkan labelnya. Ambang 3:1 karena itu diberlakukan pada
+keadaan **diam** saja; saat hover, kursor pengguna sendiri sudah menandai letak
+tombolnya.
+
+Tiga hal yang tidak boleh hilang dari sini:
+
+- **Ini pengecualian yang disengaja, bukan kelalaian.** Tema gelap di app ini
+  diperlakukan berbeda dari terang tepat pada satu angka. Seseorang yang
+  menemukan 2,69:1 lalu "memperbaikinya" ke red-6 sedang membatalkan keputusan
+  ini, bukan menambal bug.
+- **Prasyaratnya adalah dialognya.** Kalau sebuah tombol destruktif hidup TANPA
+  `ConfirmDialog`, alasan di atas tidak berlaku untuknya — di sana risiko
+  "tidak melihatnya" memang tidak tertutup apa pun. Tambahkan dialognya, bukan
+  warna khusus.
+- **Ada alternatif terukur yang belum diambil.** Palet `red` resmi AntD
+  (`presetDarkPalettes`, keluarga yang sama yang dipakai #208 untuk `grey`)
+  punya satu anak tangga yang melewati KEDUA ambang di tema gelap: `#d32029`,
+  label 5,24 · isian 3,15. Ia tidak dipakai karena keputusan di atas diambil
+  sebelum pengukurannya ada, dan harganya adalah label yang turun dari 6,13 ke
+  5,24 serta merah yang berpindah keluarga. Angkanya dikunci di
+  `tests/antd-tokens.test.ts` supaya pilihan itu tetap terbuka.
+
+Seluruh angka di tabel dihitung ulang dari paket `antd` yang terpasang setiap
+kali suite berjalan — `tests/antd-tokens.test.ts` → "label tombol destruktif
+(#219)".
 
 ### CTA kepala halaman vs CTA keadaan-kosong — kepala yang menang
 

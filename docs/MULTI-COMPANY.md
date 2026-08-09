@@ -532,6 +532,35 @@ penyaring.
 dan justru berbahaya: orang akan mengira ia melihat PT yang biasa dibukanya,
 lalu mencatat transaksi ke buku yang salah.
 
+**PT yang baru DIBUAT adalah pengecualiannya (issue #339).** Sesudah
+`/companies/new` selesai, perusahaan yang barusan lahir menjadi yang sedang
+dibuka — **hanya bila sesi itu belum menunjuk perusahaan mana pun**. Tidak ada
+tebakan di situ: yang diambil bukan "yang pertama menurut abjad" melainkan yang
+orang itu sendiri buat sedetik sebelumnya. Sebaliknya, orang yang sedang bekerja
+di PT A lalu membuat PT B **tidak** dipindahkan bukunya; jalan ke PT baru tetap
+berupa tautan yang ia tekan sendiri. Keputusannya murni dan teruji di
+`lib/company-selection.ts`; angkanya tetap melewati `update({ companyId })` yang
+memeriksa ulang keanggotaan ke basis data kendali.
+
+**Sesi sah tanpa peran adalah keadaan yang mungkin, dan ia menyembuhkan diri
+sendiri (issue #339, `4c1424b`).** `role: null` dengan `companyCount ≥ 1` punya
+perlakuan yang ditulis: di rute yang JALURNYA menyebut perusahaan, kerangka
+dasbor tetap memasang `{children}` — tersembunyi — supaya `CompanySessionSync`
+di dalamnya berjalan dan menambal token lewat `update({ companyId })`; satu
+putaran render kemudian perannya datang dan halaman muncul utuh. Sebelumnya ia
+memutar "Memuat sesi…" tanpa batas: penjaga jalur bertenant mengambil perusahaan
+dari JALUR sehingga menjawab 200 dan tidak pernah memantulkan, sementara
+`{children}` yang tidak dirender membuat satu-satunya penambal terkunci di dalam
+pintu yang ia sendiri harus buka. Di luar rute berperusahaan (mis. `/dashboard`
+telanjang) penjaganya memang memantulkan ke `/select-company`, jadi tidak ada
+yang perlu ditambal diam-diam.
+
+Pemilihan otomatis di atas menutup jalan yang paling sering menghasilkan keadaan
+itu, tetapi tidak semuanya — ia masih bisa lahir dari luar `/companies/new`:
+akses yang dicabut lalu diberikan lagi saat sesi hidup, keanggotaan yang ditulis
+skrip CLI (`create-company`, `adopt-existing-company`), atau token yang lebih tua
+daripada perubahan ini. Karena itu kedua sisinya tetap ada.
+
 ---
 
 ### Gladi resik sebelum menyentuh produksi

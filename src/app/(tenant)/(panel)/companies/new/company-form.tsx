@@ -20,6 +20,12 @@
  * adalah cara paling mudah membuatnya mencatat ke tempat yang salah. Yang
  * muncul adalah tautan yang harus ia tekan sendiri.
  *
+ * Yang BERUBAH di issue #339 hanyalah sesinya, bukan halamannya: bila sesi itu
+ * belum menunjuk perusahaan mana pun, PT yang baru lahir menjadi yang sedang
+ * dibuka. Tidak ada perpindahan buku di situ — sebelumnya tidak ada buku sama
+ * sekali. Sesi yang SUDAH menunjuk sebuah PT tidak disentuh; alasan lengkapnya
+ * di `selectIfUnset`.
+ *
  * ⚠ Pita galat tetap `role="alert"`, dan perannya tinggal di PEMBUNGKUS
  * `Alert`: `Alert` AntD menyaring propnya lewat `pickAttrs(props, { aria: true,
  * data: true })`, jadi `role` yang dioper langsung ke sana hilang tanpa satu
@@ -29,12 +35,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Alert, Flex, Typography, theme } from "antd";
 import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fieldGrid } from "@/lib/layout-width";
 import { useT } from "@/lib/i18n/client";
+import { companyToAdoptAfterCreate } from "@/lib/company-selection";
 import {
   databaseNameForSlug,
   normalizeSlug,
@@ -71,6 +79,8 @@ export function CompanyForm({
   const t = useT();
   const { token } = theme.useToken();
   const router = useRouter();
+  /* Sesi dibaca DAN ditulis di sini (issue #339) — lihat `selectIfUnset`. */
+  const { data: session, update } = useSession();
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -119,6 +129,27 @@ export function CompanyForm({
     });
   }
 
+  /**
+   * ══ PT YANG BARU LAHIR LANGSUNG DIPILIH — HANYA BILA BELUM ADA (#339) ═════
+   *
+   * Bug produksinya: pendaftar baru masuk ketika perusahaannya masih NOL, jadi
+   * tokennya terbit tanpa `companyId`. Pemilihan otomatis di `lib/auth.ts`
+   * hanya terjadi saat LOGIN, dan revalidasi berkala cuma bisa MELEPAS
+   * perusahaan yang aksesnya dicabut — tidak ada satu pun jalur yang memilihkan
+   * perusahaan yang lahir SESUDAH sesinya. Yang ia lihat berikutnya adalah
+   * chrome dasbor tanpa peran, yaitu layar memuat yang tidak pernah selesai.
+   *
+   * KEPUTUSANNYA — termasuk apa yang terjadi pada perusahaan KEDUA — hidup di
+   * `lib/company-selection.ts`, murni dan teruji. Yang tinggal di sini hanya
+   * pelaksanaannya: angka yang keluar dari sana tetap diperiksa ULANG ke
+   * keanggotaan di server (callback `jwt`, `lib/auth.ts`).
+   */
+  async function selectIfUnset(createdCompanyId: number | undefined) {
+    const adopt = companyToAdoptAfterCreate(session?.user?.companyId, createdCompanyId);
+    if (adopt == null) return;
+    await update({ companyId: adopt });
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (running) return;
@@ -165,6 +196,8 @@ export function CompanyForm({
             message: string;
             detail?: string;
             progress?: number;
+            /** Hanya pada `done` — lihat `selectIfUnset` (issue #339). */
+            companyId?: number;
           };
           try {
             event = JSON.parse(raw);
@@ -186,7 +219,12 @@ export function CompanyForm({
             setAnnouncement(event.message);
           }
 
-          if (event.phase === "done") setCreatedSlug(effectiveSlug);
+          if (event.phase === "done") {
+            setCreatedSlug(effectiveSlug);
+            /* Sesudah kartu sukses tampil, bukan sebelumnya: pemilihan sesi
+               tidak boleh menahan kabar bahwa perusahaannya sudah jadi. */
+            await selectIfUnset(event.companyId);
+          }
         }
       }
     } catch {

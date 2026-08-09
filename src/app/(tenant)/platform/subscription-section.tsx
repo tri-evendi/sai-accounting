@@ -41,6 +41,7 @@
  * di sini (#227). Tidak ada satu pun token `:root` aplikasi yang dipakai.
  */
 import { CalendarOutlined } from "@ant-design/icons";
+import { platformHead } from "@/components/tenant/platform-tone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -88,6 +89,25 @@ const SMALL: React.CSSProperties = {
   color: "var(--ant-color-text-secondary)",
 };
 
+/**
+ * Kepala kartu langganan — nada `brand`, wilayah "akun & langganan" (#303).
+ *
+ * ⚠ **Kartu RIWAYAT TAGIHAN di bawah sengaja TIDAK bernada.** Ia satu-satunya
+ * kartu di halaman ini yang isinya nominal yang harus dibayar, dan nada
+ * dekoratif di kepalanya akan terbaca sebagai pernyataan tentang tagihannya —
+ * bidang berwarna di atas tabel uang adalah bentuk paling murni "warna sebagai
+ * penanda yang tidak dimaksudkan" (MASTER.md §Anti-Patterns). Warna di halaman
+ * ini membawa wilayah; tabel tagihan bukan wilayah, ia isi.
+ *
+ * ⚠ Radius atas wajib — kepala adalah anak pertama `.ant-card`, yang tidak
+ * memasang `overflow: hidden` (lihat `ui/card.tsx`).
+ */
+const PLAN_HEAD: React.CSSProperties = {
+  background: platformHead("brand"),
+  borderTopLeftRadius: "var(--ant-border-radius-lg)",
+  borderTopRightRadius: "var(--ant-border-radius-lg)",
+};
+
 const STACK_SM: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 8 };
 const STACK_MD: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 16 };
 
@@ -103,7 +123,7 @@ export async function SubscriptionSection({
   if (!overview) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader style={PLAN_HEAD}>
           <h2 style={CARD_HEADING}>{t("tenantSettings.title")}</h2>
         </CardHeader>
         <CardContent>
@@ -203,7 +223,7 @@ export async function SubscriptionSection({
           Berdampingan pada layar lebar: keduanya menjawab satu pertanyaan
           ("apa yang saya punya, dan berapa yang sudah terpakai"). */}
       <Card>
-        <CardHeader>
+        <CardHeader style={PLAN_HEAD}>
           <h2 style={CARD_HEADING}>{t("tenantSettings.title")}</h2>
           <p style={{ ...BODY, marginTop: "var(--ant-margin-xxs)" }}>
             {t("tenantSettings.description")}
@@ -252,7 +272,21 @@ export async function SubscriptionSection({
                * yang tertagih.
                *
                * Warna TIDAK sendirian: ada ikon dan ada kalimat yang menyebut
-               * sisa harinya (MASTER.md §Anti-Patterns). */
+               * sisa harinya (MASTER.md §Anti-Patterns).
+               *
+               * ⚠ DUA KEADAAN, DUA KOSAKATA WARNA (#303). Keadaan MENDESAK
+               * tetap `colorWarningBg` + `colorMoneyPending`: itu pernyataan
+               * tentang uang yang akan ditagih, dan emas adalah bahasanya.
+               * Keadaan tenang dulu `colorFillQuaternary` — translusen 2–4%,
+               * yaitu pita yang secara harfiah tidak ada di layar — dan kini
+               * `platformHead("brand")`, nada wilayah yang sama dengan
+               * kepala kartunya. Nadanya opak dan BUKAN warna status, jadi
+               * "amber = ada yang harus diurus" tidak kehilangan artinya.
+               *
+               * Tombolnya `outline` selama tenang, jadi yang harus tetap ≥3:1
+               * di atas nada adalah TEPI tombol — 3,22:1 (terang) / 3,81:1
+               * (gelap) pada 16%. Saat mendesak tombolnya primer, dan latarnya
+               * memang bukan nada melainkan `colorWarningBg`. */
               <div
                 style={{
                   display: "flex",
@@ -264,9 +298,9 @@ export async function SubscriptionSection({
                   border: `1px solid var(${
                     trial.urgent ? "--ant-color-warning-border" : "--ant-color-border-secondary"
                   })`,
-                  background: `var(${
-                    trial.urgent ? "--ant-color-warning-bg" : "--ant-color-fill-quaternary"
-                  })`,
+                  background: trial.urgent
+                    ? "var(--ant-color-warning-bg)"
+                    : platformHead("brand"),
                   color: `var(${
                     trial.urgent ? "--ant-color-money-pending" : "--ant-color-text"
                   })`,

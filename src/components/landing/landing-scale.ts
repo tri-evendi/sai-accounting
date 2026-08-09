@@ -67,6 +67,8 @@
  */
 import type { CSSProperties } from "react";
 
+import { TONE_HUES, TONE_HUE_TOKEN, toneMix, type ToneHue } from "@/lib/theme/tone-recipe";
+
 /* ------------------------------------------------------------------------ */
 /* NADA PEKAT — pita seksi & kartu berisi solid (permintaan pemilik)          */
 /* ------------------------------------------------------------------------ */
@@ -106,6 +108,13 @@ import type { CSSProperties } from "react";
  * ia otomatis menjadi tint terang di tema terang dan tint gelap di tema gelap,
  * tanpa satu pun cabang tema di kode ini.
  *
+ * ⚠ Sejak #303 aritmetika itu tidak lagi tinggal di berkas ini melainkan di
+ * `@/lib/theme/tone-recipe` — permukaan kedua (`/platform`) mendeklarasikan
+ * nadanya sendiri dari resep yang SAMA, dengan lingkup `[data-platform]`
+ * sendiri. Yang diangkat hanya resepnya; ANGKA di bawah tetap milik halaman
+ * ini, sebab kadar campuran dibatasi tombol dan latar yang dipikul masing-
+ * masing permukaan — dan keduanya berbeda di sana.
+ *
  * ══ Kadar campurannya BUKAN selera — ia dibatasi tombol primer ═════════════
  * Isian tombol primer di tema gelap (`#1668dc`) hanya berjarak 3,55:1 dari
  * latar halaman. Setiap tint menerangkan latar itu dan karena itu MEMAKAN
@@ -125,23 +134,25 @@ import type { CSSProperties } from "react";
  * `tests/landing-colors.test.ts`, dari token yang benar-benar terpasang — jadi
  * versi AntD baru tidak bisa menggeser satu pun di antaranya diam-diam.
  */
-export const LANDING_HUES = ["brand", "cyan", "indigo", "violet"] as const;
+export const LANDING_HUES = TONE_HUES;
 
-export type LandingHue = (typeof LANDING_HUES)[number];
+export type LandingHue = ToneHue;
 
-/** Peran → keluarga palet AntD. Satu-satunya tempat pemetaan ini ditulis. */
-export const LANDING_HUE_TOKEN: Record<LandingHue, string> = {
-  brand: "blue",
-  cyan: "cyan",
-  indigo: "geekblue",
-  violet: "purple",
-};
+/**
+ * Peran → keluarga palet AntD.
+ *
+ * Sejak #303 pemetaannya milik `@/lib/theme/tone-recipe` — dua permukaan
+ * memakainya, dan dua salinan akan berbeda pada hari salah satunya disetel.
+ * Nama lama dipertahankan sebagai alias supaya pemanggil di direktori ini
+ * tidak perlu tahu bahwa sumbernya pindah.
+ */
+export const LANDING_HUE_TOKEN = TONE_HUE_TOKEN;
 
 /** Kadar campuran per peran, dalam persen. Alasannya di komentar di atas. */
 export const LANDING_MIX = { band: 10, accent: 16, fill: 14, chip: 28 } as const;
 
-const mix = (hue: LandingHue, pct: number, base: string) =>
-  `color-mix(in srgb, var(--ant-${LANDING_HUE_TOKEN[hue]}-6) ${pct}%, var(${base}))`;
+const mix = (hue: LandingHue, pct: number, base: "container" | "elevated") =>
+  toneMix(hue, pct, base);
 
 /**
  * Deklarasi nada, DIBANGKITKAN dari satu resep.
@@ -151,15 +162,15 @@ const mix = (hue: LandingHue, pct: number, base: string) =>
  * hari seseorang menyetel satu di antaranya dan lupa sebelas sisanya.
  */
 const NADA = LANDING_HUES.flatMap((hue) => [
-  `--sai-landing-fill-${hue}:${mix(hue, LANDING_MIX.fill, "--ant-color-bg-elevated")};`,
-  `--sai-landing-chip-${hue}:${mix(hue, LANDING_MIX.chip, "--ant-color-bg-elevated")};`,
+  `--sai-landing-fill-${hue}:${mix(hue, LANDING_MIX.fill, "elevated")};`,
+  `--sai-landing-chip-${hue}:${mix(hue, LANDING_MIX.chip, "elevated")};`,
 ]).join("");
 
 const PITA = [
-  `--sai-landing-band-brand:${mix("brand", LANDING_MIX.band, "--ant-color-bg-container")};`,
-  `--sai-landing-band-cyan:${mix("cyan", LANDING_MIX.band, "--ant-color-bg-container")};`,
-  `--sai-landing-band-indigo:${mix("indigo", LANDING_MIX.band, "--ant-color-bg-container")};`,
-  `--sai-landing-band-accent:${mix("brand", LANDING_MIX.accent, "--ant-color-bg-container")};`,
+  `--sai-landing-band-brand:${mix("brand", LANDING_MIX.band, "container")};`,
+  `--sai-landing-band-cyan:${mix("cyan", LANDING_MIX.band, "container")};`,
+  `--sai-landing-band-indigo:${mix("indigo", LANDING_MIX.band, "container")};`,
+  `--sai-landing-band-accent:${mix("brand", LANDING_MIX.accent, "container")};`,
 ].join("");
 
 /**

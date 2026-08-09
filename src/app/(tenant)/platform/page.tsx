@@ -51,9 +51,30 @@
  * berkas kini satu sumber, token AntD — dan memang harus, sebab #203 mencabut
  * token `:root` itu dari `globals.css`. Kartu angkanya (`StatCard`,
  * `QuotaMeter`) mewarnai dirinya sendiri.
+ *
+ * ══ NADA WILAYAH (issue #303) ══════════════════════════════════════════════
+ * Kepala kartu & kotak ikon memakai nada `components/tenant/platform-tone.ts` —
+ * bidang opak yang dideklarasikan `PlatformShell` di dalam `[data-platform]`.
+ * Yang TIDAK ikut bernada, dan itu keputusan bukan kelalaian:
+ *
+ *   • **baris ringkasan** (`StatCard`, `QuotaMeter`) — isinya uang dan status
+ *     langganan. Warnanya sudah bahasa (`tone="warning"` untuk hanya-baca,
+ *     `success` untuk aktif); nada dekoratif di sekitarnya akan bersaing
+ *     dengan satu-satunya warna di halaman ini yang berarti sesuatu;
+ *   • **pita penangguhan** `READ_ONLY_NOTE` — `colorWarningBg` +
+ *     `colorMoneyPending`, dan keduanya pernyataan tentang keadaan akun.
+ *
+ * Aturannya satu kalimat: di halaman yang menampilkan uang, hue yang sudah
+ * punya arti tidak pernah dipakai ulang sebagai hiasan (#186/#187).
  */
 import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
 import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  platformChip,
+  platformGlyph,
+  platformHead,
+  type PlatformHue,
+} from "@/components/tenant/platform-tone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -128,8 +149,20 @@ const TRUNCATE: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-/** Kotak ikon perusahaan — bekas `h-9 w-9` / `h-10 w-10`. */
-function iconBox(size: number): React.CSSProperties {
+/**
+ * Kotak ikon — bekas `h-9 w-9` / `h-10 w-10`, kini BERNADA (#303).
+ *
+ * Latarnya dulu `colorFillQuaternary`: warna translusen 2–4% yang, digambar di
+ * atas kartu, praktis tidak ada di layar — persis keluhan yang melahirkan
+ * issue #266. `platformChip` opak (32% hue di atas `colorBgContainer`) dan
+ * glifnya anak tangga -8 sehue, pasangan yang bergerak SEARAH saat tema
+ * berbalik: terukur 4,83–7,69:1, jauh di atas ambang ikon 3:1.
+ *
+ * Hue-nya WILAYAH, bukan baris: setiap kartu perusahaan memakai nada yang
+ * sama. Nada yang berputar per baris akan menjanjikan pengelompokan yang tidak
+ * ada di data mana pun.
+ */
+function iconBox(size: number, hue: PlatformHue): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "center",
@@ -138,8 +171,27 @@ function iconBox(size: number): React.CSSProperties {
     width: size,
     height: size,
     borderRadius: "var(--ant-border-radius)",
-    background: "var(--ant-color-fill-quaternary)",
-    color: "var(--ant-color-text-secondary)",
+    background: platformChip(hue),
+    color: platformGlyph(hue),
+  };
+}
+
+/**
+ * Kepala kartu bernada — 16%, dan kadar itu diikat tombol GARIS.
+ *
+ * Kepala kartu "Perusahaan" memikul `<Button variant="outline">`, yang
+ * dikenali dari TEPINYA (`colorBorder`, ambang 3:1 sebagai grafis non-teks).
+ * Pada 16% tepi itu 3,05–3,22:1 di tema terang; pada 18% violet sudah 2,94:1.
+ * Lihat `components/tenant/platform-tone.ts`.
+ *
+ * ⚠ Radius atas wajib: kepala adalah anak pertama `.ant-card`, dan `.ant-card`
+ * tidak memasang `overflow: hidden`.
+ */
+function cardHead(hue: PlatformHue): React.CSSProperties {
+  return {
+    background: platformHead(hue),
+    borderTopLeftRadius: "var(--ant-border-radius-lg)",
+    borderTopRightRadius: "var(--ant-border-radius-lg)",
   };
 }
 
@@ -329,12 +381,15 @@ export default async function PlatformPage() {
             bilah atas; yang tinggal di sini adalah slug teknisnya, yang dipakai
             saat menyebut akun ini kepada dukungan. */}
         <Card>
-          <CardHeader>
+          {/* `brand` = wilayah "akun & langganan": siapa saya, apa yang saya
+              punya. Ketiga hue `/platform` dan pembagiannya di
+              `components/tenant/platform-tone.ts`. */}
+          <CardHeader style={cardHead("brand")}>
             <h2 style={CARD_HEADING}>{t("platform.tenantHeading")}</h2>
           </CardHeader>
           <CardContent>
             <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-              <span style={iconBox(40)} aria-hidden="true">
+              <span style={iconBox(40, "brand")} aria-hidden="true">
                 <ShopOutlined style={{ fontSize: 20 }} />
               </span>
               <div style={{ minWidth: 0 }}>
@@ -365,8 +420,12 @@ export default async function PlatformPage() {
 
         {/* Perusahaan yang boleh DIA buka — dari keanggotaannya sendiri. */}
         <Card>
+          {/* `indigo` = wilayah "perusahaan / buku". Kepala ini MEMIKUL tombol
+              garis, jadi kadarnya yang 16% — bukan 32% — yang berlaku di sini:
+              yang harus tetap ≥3:1 adalah tepi tombolnya. */}
           <CardHeader
             style={{
+              ...cardHead("indigo"),
               display: "flex",
               flexWrap: "wrap",
               alignItems: "center",
@@ -448,7 +507,7 @@ export default async function PlatformPage() {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
-                        <span style={iconBox(36)} aria-hidden="true">
+                        <span style={iconBox(36, "indigo")} aria-hidden="true">
                           <ShopOutlined style={{ fontSize: 16 }} />
                         </span>
                         <div style={{ minWidth: 0 }}>

@@ -85,6 +85,7 @@ import type { MenuProps } from "antd";
 import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { PLATFORM_STYLE } from "@/components/tenant/platform-tone";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
@@ -296,7 +297,18 @@ export function PlatformShell({ children, tenantName, nav, account }: PlatformSh
   );
 
   return (
-    <Layout style={{ height: "100vh" }}>
+    /*
+     * `data-platform` = AKAR NADA `/platform` (#303), dan ia dipasang tepat di
+     * sini. Deklarasi nadanya hidup di dalam selektor itu, bukan di `:root`,
+     * jadi menyalin salah satu nama variabelnya ke halaman buku besar tidak
+     * menghasilkan nada melainkan properti yang tak pernah teratasi.
+     * `<style href precedence>` ditiadakan gandanya dan dinaikkan ke `<head>`
+     * oleh React 19 — pola yang sama dengan `LandingShell`.
+     */
+    <Layout data-platform="" style={{ height: "100vh" }}>
+      <style href="sai-platform" precedence="default">
+        {PLATFORM_STYLE}
+      </style>
       {/* Kolom tetap: laci tidak pernah ikut dirender, jadi tidak ada salinan
           kedua menu ini di mana pun. */}
       {lebar ? (

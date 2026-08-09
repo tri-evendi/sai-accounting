@@ -66,6 +66,16 @@
  * Daftar "yang sengaja dilewati" di bawah adalah keadaan hari ini, bukan batas
  * permanen.
  *
+ * Ada bentuk kedua dari kekurangan yang sama, dan ia TIDAK menambah satu pun
+ * pasangan di sini: sebuah kalimat yang sudah dipatok di berkas ini boleh saja
+ * hanya menjangkau SEBAGIAN permukaan cetak. `PARTY_RECAP_HEADERS` dipatok sejak
+ * #298, tapi sampai #315 ia hanya dibaca lapisan PDF — lembar sebarnya
+ * menyimpan salinan sebaris yang identik huruf demi huruf, jadi patok di sini
+ * hijau sementara Excel-nya bebas bergeser. #315 membuat kedua lapisan membaca
+ * konstanta ini; jumlah pasangannya tetap, yang berubah adalah berapa banyak
+ * dokumen yang benar-benar terikat pada patoknya. Yang menjaga PEMAKAIAN-nya —
+ * bukan bunyinya — adalah `tests/party-recap-header-shape.test.ts`.
+ *
  * ── Yang sengaja DILEWATI penjaga ini, dan sebabnya ─────────────────────────
  *  • **Nama lembar & judul dokumen** (`name`/`title` di `report-export.ts`:
  *    "Neraca", "Laporan Arus Kas", "Kartu Stok / Mutasi Persediaan", …). Mereka
@@ -87,7 +97,6 @@ import { describe, expect, it } from "vitest";
 import id from "@/lib/i18n/dictionaries/id.json";
 import { translate } from "@/lib/i18n/dictionary";
 import { CASH_FLOW_CATEGORY_LABELS } from "@/lib/reports";
-import { PARTY_RECAP_HEADERS } from "@/lib/pdf/statement-pdf";
 import { formatNumber } from "@/lib/utils";
 import {
   AGING_HEADERS,
@@ -100,6 +109,7 @@ import {
   CASH_FLOW_PRINT_LABELS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
+  PARTY_RECAP_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_HEADERS,
@@ -260,6 +270,8 @@ const PADANAN: Padanan[] = [
   { di: "BUDGET_HEADERS.variance", cetak: BUDGET_HEADERS.variance, kunci: "budget.variance", bentuk: "kamus+IDR" },
 
   // ── Penjualan per Pelanggan / Pembelian per Pemasok ───────────────────────
+  // Konstantanya tinggal di `statement-layout.ts` sejak #315 dan kini dibaca
+  // KEDUA lapisan ekspor; sebelumnya patok di bawah hanya mengikat PDF-nya.
   // Judul kolom uang di sini membawa "(IDR)" di KEDUA sisi (bentuk "sama",
   // bukan "kamus+IDR"): selnya digambar `Money hideCurrency`, jadi layar pun
   // harus menyebut satuannya di judul — lihat `party-recap-table.tsx`.
@@ -328,8 +340,10 @@ const BEDA_HARI_INI: Beda[] = [
       "Saldo Akhir Kas & Bank) — jadi \"Sisa Stok\" yang lebih jujur. Tapi " +
       "keduanya tidak bisa didamaikan dari sisi layar: `inventory.colCurrentStock` " +
       "juga judul kolom halaman Persediaan, permukaan awam yang justru butuh " +
-      "kata biasa. Mendamaikannya berarti kertas (dan label pemilih kolom di " +
-      "report-catalog.ts) yang ikut — yaitu mengubah berkas yang sudah dikirim. " +
+      "kata biasa. Mendamaikannya berarti KERTAS yang ikut — yaitu mengubah " +
+      "berkas yang sudah dikirim. (Label pemilih kolom sudah tidak ikut sejak " +
+      "#316: ia membaca kunci kamus ini, jadi dialognya menyebut \"Sisa Stok\" " +
+      "seperti layarnya; lihat tests/report-catalog-column-labels.test.ts.) " +
       "Menunggu keputusan pemilik laporan.",
   },
   {

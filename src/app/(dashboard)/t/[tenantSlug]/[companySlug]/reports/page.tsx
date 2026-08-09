@@ -6,7 +6,7 @@ import { ReportLaunchDialog } from "@/components/reports/report-launch-dialog";
 import { costCenterFilterOptions } from "@/lib/cost-center-options";
 import { AccountBookOutlined, AimOutlined, ArrowRightOutlined, BankOutlined, ContainerOutlined, FileExcelOutlined, FundOutlined, HistoryOutlined, MoneyCollectOutlined, ReconciliationOutlined, RiseOutlined, TeamOutlined, TransactionOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@/lib/icons";
-import { reportsByCategory, type ReportDefinition } from "@/lib/report-catalog";
+import { reportsByCategory, reportTextKey, type ReportDefinition } from "@/lib/report-catalog";
 import { PageHeader } from "@/components/ui/page-header";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/dictionary";
@@ -71,20 +71,6 @@ const ICONS: Record<string, IconComponent> = {
   FileSpreadsheet: FileExcelOutlined,
 };
 
-/**
- * Judul & penjelasan laporan hidup di kamus, dikunci dari `id` katalog
- * ("trial-balance" → "trial_balance"). Katalog di `lib/report-catalog.ts` tetap
- * pemilik struktur, status, dan href-nya; bila suatu id belum ada di kamus,
- * teks bahasa Indonesia dari katalog yang dipakai.
- */
-function catalogText(
-  dictionary: Dictionary,
-  id: string
-): { title: string; description: string } | undefined {
-  const entries = dictionary.reports.catalogReport;
-  return entries[id.replace(/-/g, "_") as keyof typeof entries];
-}
-
 function ReportCard({
   report,
   dictionary,
@@ -98,9 +84,11 @@ function ReportCard({
 }) {
   const Icon = ICONS[report.icon] ?? FundOutlined;
   const soon = report.status === "coming_soon";
-  const text = catalogText(dictionary, report.id);
-  const title = text?.title ?? report.title;
-  const description = text?.description ?? report.description;
+  // Judul & penjelasan hidup di kamus, dikunci dari `id` katalog
+  // ("trial-balance" → "trial_balance"). TANPA cadangan sejak #316: `ReportId`
+  // diturunkan dari kunci kamus, jadi entri yang hilang adalah galat `tsc` —
+  // bukan kalimat Indonesia yang diam-diam muncul di layar berbahasa lain.
+  const { title, description } = dictionary.reports.catalogReport[reportTextKey(report.id)];
 
   const inner = (
     <Card
@@ -211,10 +199,10 @@ export default async function ReportsPage({
                   fontWeight: "var(--ant-font-weight-strong)",
                 }}
               >
-                {categoryText[group.category]?.label ?? group.label}
+                {categoryText[group.category].label}
               </h2>
               <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
-                {categoryText[group.category]?.description ?? group.description}
+                {categoryText[group.category].description}
               </p>
             </div>
             <div

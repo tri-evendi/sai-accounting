@@ -32,11 +32,23 @@
  *
  * `enterCompanyContext()` (memakai `als.enterWith`) dipakai gerbang
  * halaman/API, sebab sebuah penjaga tidak bisa "membungkus" render yang terjadi
- * SETELAH ia selesai. Tapi rambatannya ke kelanjutan PEMANGGIL tergantung
- * lingkungan — diprobe langsung: di Node polos ia merambat, di dalam vitest
- * dengan API yang sama persis tidak. Karena itu ia diperlakukan sebagai JALAN
- * PINTAS, bukan jaminan: untuk permintaan HTTP, kebenaran ditopang oleh SESI
- * (lihat `current-company.ts`), bukan oleh rambatan ALS.
+ * SETELAH ia selesai. Berkas ini dulu menyebut rambatannya "jalan pintas yang
+ * tergantung lingkungan". Diukur ulang di issue #333 (Node 22.22, dan di dalam
+ * route handler & render Next 16.2.1 yang sungguhan), batasnya ternyata bukan
+ * soal lingkungan melainkan soal `await`:
+ *
+ *   • `enterWith` yang dipanggil SEBELUM `await` apa pun di fungsi itu →
+ *     merambat ke kelanjutan pemanggilnya. ✅
+ *   • `enterWith` yang dipanggil SESUDAH sebuah `await` → **tidak** merambat.
+ *     Pemanggil melihat store lamanya, atau tidak sama sekali. ❌
+ *
+ * Sebuah penjaga selalu berada di kasus kedua: ia membaca basis data kendali
+ * lebih dulu, baru menanam. Jadi konteks yang ditanam `enterCompanyContext()`
+ * dari penjaga TIDAK PERNAH sampai ke badan route maupun ke komponen halaman —
+ * terukur `null` di keduanya. Ia tetap ada untuk pemanggil yang menanam tanpa
+ * `await` lebih dulu, tetapi untuk permintaan HTTP kebenarannya ditopang
+ * penyimpan PER-PERMINTAAN di `current-company.ts` — bukan rambatan ALS, dan
+ * (sejak #158) bukan pula sesi.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";

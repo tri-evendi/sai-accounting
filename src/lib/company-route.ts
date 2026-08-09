@@ -40,7 +40,7 @@
 
 import "server-only";
 
-import { enterCompanyContext, getCompanyContext } from "@/lib/company-context";
+import { enterCompanyContext } from "@/lib/company-context";
 import { routeCompany, setRouteCompany } from "@/lib/current-company";
 import { controlDb } from "@/lib/control-db";
 import { membershipFor } from "@/lib/company-registry";
@@ -215,25 +215,31 @@ export async function enterCompanyFromRoute(params: {
     databaseName: membership.company.databaseName,
   };
   enterCompanyContext(context);
-  setRouteCompany(context);
+  await setRouteCompany(context);
 
   /*
-   * DIBUKTIKAN, bukan diasumsikan.
+   * DIBUKTIKAN, bukan diasumsikan — dan sejak #333 dibuktikan pada sabuk yang
+   * BENAR.
    *
-   * Dua sabuk dipasang di atas — konteks ALS dan penyimpan per-permintaan — dan
-   * masing-masing punya cara gagal yang SUNYI: rambatan `enterWith` disebut
-   * jalan pintas (bukan jaminan) oleh `company-context.ts`, dan `cache()` React
-   * hanya mengingat di dalam lingkup permintaan. Bila KEDUANYA gagal,
-   * `currentCompany()` melempar — dan sejak #158 itu memang satu-satunya
-   * kelanjutannya, sebab tidak ada lagi perusahaan sesi untuk dijatuhi. Yang
-   * dijaga di sini adalah membuat kegagalan itu terjadi DI PENJAGA, sebelum
-   * satu query pun berjalan, bukan di tengah-tengah sebuah transaksi.
+   * Bentuk lamanya `getCompanyContext() ?? routeCompany()`, dan itulah cacat
+   * yang membuat #333 bisa hidup delapan bulan tanpa terlihat: `enterWith` yang
+   * baru saja dipanggil SELALU terbaca di frame yang sama, jadi cabang pertama
+   * lulus tanpa syarat dan cabang kedua — satu-satunya sabuk yang benar-benar
+   * bertahan sampai badan route — tidak pernah diperiksa sama sekali. Sebuah
+   * pembuktian yang selalu lulus bukan pembuktian.
    *
-   * Satu pembacaan murah di sini mengubah kegagalan itu dari sunyi menjadi
-   * berisik: halaman gagal terbuka hari ini, alih-alih pembukuan tercampur yang
-   * baru ketahuan berbulan-bulan kemudian (doktrin docs/MULTI-COMPANY.md §2).
+   * Yang diperiksa sekarang adalah penyimpan per-permintaan, yaitu persis apa
+   * yang akan dibaca `currentCompany()` di query pertama. Diukur di route
+   * handler Next yang sungguhan (lihat kepala `current-company.ts`): konteks ALS
+   * yang ditanam penjaga terbaca `null` baik di badan route maupun di komponen
+   * halaman, sebab penjaga selalu menanamnya SESUDAH sebuah `await`. Karena itu
+   * ia tidak lagi boleh menjadi bukti bahwa konteksnya mendarat.
+   *
+   * Satu pembacaan murah di sini mengubah kegagalan dari sunyi menjadi berisik:
+   * halaman gagal terbuka hari ini, alih-alih pembukuan tercampur yang baru
+   * ketahuan berbulan-bulan kemudian (doktrin docs/MULTI-COMPANY.md §2).
    */
-  const planted = getCompanyContext() ?? routeCompany();
+  const planted = await routeCompany();
   if (planted?.companyId !== context.companyId) {
     throw new Error(
       `Konteks perusahaan dari jalur gagal ditanam (${params.tenantSlug}/${params.companySlug}). ` +

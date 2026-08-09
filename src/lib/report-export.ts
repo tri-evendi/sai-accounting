@@ -45,6 +45,7 @@ import {
   CASH_FLOW_HEADERS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
+  PARTY_RECAP_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -439,13 +440,10 @@ function buildPartyRecapSheet(
 ): SheetModel {
   const cols = partyRecapColumns(p);
   const sales = p.kind === "sales-by-customer";
-  const HEADERS: Record<PartyRecapColumnId, string> = {
-    party: sales ? "Pelanggan" : "Pemasok",
-    docCount: "Dokumen",
-    gross: sales ? "Penjualan Kotor (IDR)" : "Pembelian Kotor (IDR)",
-    returns: "Retur (IDR)",
-    net: "Bersih (IDR)",
-  };
+  // Judul kolomnya datang dari `statement-layout.ts`, satu penentu untuk lembar
+  // sebar dan PDF (#315). Lebarnya TIDAK ikut: itu urusan lembar sebar, dan
+  // PDF-nya tidak memakainya sama sekali.
+  const headers = PARTY_RECAP_HEADERS[p.kind];
   const WIDTHS: Record<PartyRecapColumnId, number> = {
     party: 36,
     docCount: 12,
@@ -493,7 +491,7 @@ function buildPartyRecapSheet(
     name: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
     title: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
     period: p.period,
-    columns: cols.map((id) => ({ header: HEADERS[id], width: WIDTHS[id] })),
+    columns: cols.map((id) => ({ header: headers[id], width: WIDTHS[id] })),
     rows,
   };
 }

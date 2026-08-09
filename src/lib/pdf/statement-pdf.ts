@@ -43,6 +43,7 @@ import {
   CASH_FLOW_HEADERS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
+  PARTY_RECAP_HEADERS,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -55,7 +56,6 @@ import {
   type CashFlowCategoryId,
   type IncomeStatementLayoutRow,
   type IncomeStatementRowKind,
-  type PartyRecapColumnId,
   type StockMovementColumnId,
   type StockValueColumnId,
   type TrialBalanceLayoutRow,
@@ -320,34 +320,6 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
   "stock-value": "Nilai Persediaan",
   "cash-bank": "Laporan Kas & Bank",
   "budget-realization": "Realisasi vs Anggaran",
-};
-
-/**
- * Judul kolom rekap mitra untuk DOKUMEN CETAK — bahasa Indonesia, seperti
- * seluruh isi modul ini. Kolom pihaknya berbeda per laporan; sisanya sama.
- *
- * DIEKSPOR hanya supaya `tests/print-label-dictionary.test.ts` bisa
- * membandingkannya dengan nilai kamus Indonesia yang dibaca layar (issue #298);
- * tidak ada kode produksi lain yang memakainya.
- */
-export const PARTY_RECAP_HEADERS: Record<
-  "sales-by-customer" | "purchases-by-supplier",
-  Record<PartyRecapColumnId, string>
-> = {
-  "sales-by-customer": {
-    party: "Pelanggan",
-    docCount: "Dokumen",
-    gross: "Penjualan Kotor (IDR)",
-    returns: "Retur (IDR)",
-    net: "Bersih (IDR)",
-  },
-  "purchases-by-supplier": {
-    party: "Pemasok",
-    docCount: "Dokumen",
-    gross: "Pembelian Kotor (IDR)",
-    returns: "Retur (IDR)",
-    net: "Bersih (IDR)",
-  },
 };
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
@@ -696,6 +668,9 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
 
   if (payload.kind === "sales-by-customer" || payload.kind === "purchases-by-supplier") {
     const cols = partyRecapColumns(payload);
+    // Judul kolomnya datang dari `statement-layout.ts`, satu penentu untuk PDF
+    // dan lembar sebar (#315) — lembar sebarnya dulu menyimpan salinannya
+    // sendiri di dalam badan fungsi, di luar jangkauan penjaga mana pun.
     const headers = PARTY_RECAP_HEADERS[payload.kind];
     // Baris tanpa mitra tercatat: layar menuliskannya sebagai teks redup, dan
     // cetakan tidak punya warna redup — jadi ia diberi nama di sini, bukan

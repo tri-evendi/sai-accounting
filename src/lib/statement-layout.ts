@@ -1224,6 +1224,52 @@ export const PARTY_RECAP_COLUMNS = ["party", "docCount", "gross", "returns", "ne
 
 export type PartyRecapColumnId = (typeof PARTY_RECAP_COLUMNS)[number];
 
+/**
+ * Penjualan per Pelanggan & Pembelian per Pemasok adalah SATU bentuk laporan
+ * dengan dua nama pihak. Ditulis ulang di sini alih-alih diimpor dari
+ * `StatementPayload["kind"]`: modul ini tidak mengimpor apa pun (lihat kepala
+ * berkas), dan `tsc` tetap menolak di titik `PARTY_RECAP_HEADERS[payload.kind]`
+ * kalau keduanya berbeda — duplikasi yang dijaga tipe, bukan kebiasaan. Pola
+ * yang sama dengan `AgingKind` dan `CashFlowCategoryId`.
+ */
+export type PartyRecapKind = "sales-by-customer" | "purchases-by-supplier";
+
+/**
+ * Judul kolom rekap mitra untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai
+ * kamus. Kolom pihak dan kolom kotornya berbeda per laporan, jadi tabelnya
+ * berjenjang: satu himpunan judul utuh per laporan.
+ *
+ * ── Kenapa ia di SINI ───────────────────────────────────────────────────────
+ * Sampai #315 ia tinggal di `pdf/statement-pdf.ts` dengan komentar yang
+ * menyatakan "tidak ada kode produksi lain yang memakainya" — dan itu tidak
+ * benar: `buildPartyRecapSheet()` di `report-export.ts` menyimpan salinannya
+ * sendiri, huruf demi huruf. Keduanya identik karena kebetulan, bukan karena
+ * ada yang memaksanya; penjaga #298 hanya menjangkau salinan PDF-nya, jadi
+ * lembar sebarnya bisa bergeser tanpa suara, dan orang yang percaya komentar
+ * itu akan menyunting satu tempat lalu mengirim Excel yang berbunyi lain.
+ * Sekarang kedua lapisan ekspor mengindeks tabel ini dengan `payload.kind`.
+ *
+ * Yang TIDAK ikut pindah: lebar kolom (`WIDTHS` di `report-export.ts`). Itu
+ * urusan lembar sebar, bukan urusan bunyi — PDF-nya tidak memakainya sama
+ * sekali.
+ */
+export const PARTY_RECAP_HEADERS: Record<PartyRecapKind, Record<PartyRecapColumnId, string>> = {
+  "sales-by-customer": {
+    party: "Pelanggan",
+    docCount: "Dokumen",
+    gross: "Penjualan Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
+  "purchases-by-supplier": {
+    party: "Pemasok",
+    docCount: "Dokumen",
+    gross: "Pembelian Kotor (IDR)",
+    returns: "Retur (IDR)",
+    net: "Bersih (IDR)",
+  },
+};
+
 export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
   return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
 }

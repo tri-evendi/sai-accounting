@@ -460,6 +460,16 @@ Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya
 
 Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
 
+### Permukaan KETIGA: `/platform`, dan bagaimana ia boleh berwarna tanpa menembus batas (issue #303)
+
+`/platform` bukan pendaratan dan bukan buku besar — ia panel tempat pelanggan **membeli dan mengelola langganannya**. Ketika ia diminta ikut berwarna, jawabannya bukan mengimpor `landing-scale.ts` (ditolak penjaga, dan penolakan itu benar) dan bukan menyalin resepnya ke berkas kedua (dua salinan yang akan menyimpang). Yang diangkat adalah **RESEPNYA, bukan tokennya**:
+
+- `src/lib/theme/tone-recipe.ts` — netral-permukaan. Ia tidak mendeklarasikan satu pun variabel CSS dan tidak tahu apa-apa tentang halaman mana pun; isinya hanya bentuk `color-mix(in srgb, var(--ant-<hue>-6) N%, var(--ant-color-bg-*))` + peta peran→keluarga palet. `components/landing/**` memang sudah boleh mengimpor `@/lib/**`, jadi **penjaga #245 tidak dilonggarkan sedikit pun**.
+- Setiap permukaan **MENDEKLARASIKAN nadanya sendiri**, dengan nama & lingkup `data-*` sendiri: `--sai-landing-*` di `[data-landing]`, `--sai-platform-*` di `[data-platform]`. Menyalin nama variabel satu dunia ke dunia lain tetap menghasilkan properti yang tak pernah teratasi.
+- **ANGKANYA tidak ikut jadi milik bersama.** Kadar campuran dibatasi oleh tombol dan latar yang dipikul permukaannya: pendaratan diikat isian tombol PRIMER di tema gelap (pita 10/16%, kartu 14/28%), `/platform` diikat tepi tombol GARIS di tema TERANG (kepala 16%, chip 32%). Menyalin angka antar-permukaan menghasilkan angka yang benar untuk halaman lain — rinciannya di `pages/platform.md`.
+
+Aturannya untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur kadarnya sendiri, deklarasikan di lingkup `data-*` sendiri, dan tulis penjaganya sendiri.
+
 ---
 
 ## Anti-Patterns (JANGAN)
@@ -965,6 +975,8 @@ membaca hijau dan menyimpulkan aman.
 | Kepala tabel tidak berganti warna saat menempel | `tests/permission-matrix-sticky.test.tsx` |
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
+| Nada pekat pendaratan: teks/tombol/glif/lantai "nadanya terlihat", dihitung ulang dari token terpasang + resep yang dirender | `tests/landing-colors.test.ts` |
+| Nada pekat `/platform`: kadar diikat tepi tombol garis, badan kartu tetap telanjang, dan nadanya terkurung di `[data-platform]` | `tests/platform-colors.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
 | Tak ada `<a>` yang membungkus `<button>`: jumlah sarang anchor–tombol per berkas hanya boleh MENGECIL, modul yang sudah dibersihkan tetap nol, `legacyBehavior` tidak dipakai (⚠ sarang yang dirakit antar-berkas dan alias impor baru TIDAK terlihat penjaga) | `tests/anchor-button-nesting.test.ts` |
 | `<ButtonLink>` benar-benar menavigasi di sisi klien: satu `<a class="ant-btn">`, `href` ter-scope tenant, `router.push` pada klik biasa, dan Ctrl/klik-tengah/`download`/alamat luar tetap milik peramban | `tests/button-link-navigation.test.tsx` |

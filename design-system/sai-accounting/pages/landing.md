@@ -62,7 +62,10 @@ disorot — bukan hiasan.
    pita hijau selebar layar di halaman yang menjual pembukuan terbaca sebagai
    pernyataan tentang angka.
 2. **`color-mix()` di atas permukaan yang sedang berlaku, bukan anak tangga
-   palet telanjang.** Tangga AntD (`--ant-blue-1` … `-10`) MEMBALIK di tema
+   palet telanjang.** (Sejak #303 resepnya milik `src/lib/theme/tone-recipe.ts`,
+   modul netral-permukaan yang juga dipakai `/platform` — lihat MASTER.md
+   §Permukaan KETIGA. Yang dibagi hanya BENTUK `color-mix`-nya; kadar di bawah
+   tetap milik halaman ini.) Tangga AntD (`--ant-blue-1` … `-10`) MEMBALIK di tema
    gelap, jadi `blue-1` gelap (`#111a2c`) praktis sewarna latar halaman gelap
    (`#141414`): pita yang lenyap di satu tema tanpa ada yang gagal. Resepnya
    satu — `color-mix(in srgb, var(--ant-<hue>-6) N%, var(--ant-color-bg-*))` —
@@ -93,10 +96,16 @@ sebagai bidang rata.
 
 - **Pita ajakan penutup berisi biru pekat dengan teks putih.** Terukur, dan ia
   gagal karena aritmetika, bukan selera: tangga biru membalik di tema gelap,
-  jadi tidak ada SATU anak tangga yang bisa memikul teks putih di kedua tema
-  (`blue-7` terang 6,16:1 tapi gelap ≈3,4:1; `blue-6` gelap 5,19:1 tapi terang
-  4,10:1). Memaksanya berarti mencabang tema di dalam blok gaya pendaratan,
-  yaitu mekanisme tema KEDUA di satu halaman.
+  jadi tidak ada SATU anak tangga BIRU yang bisa memikul teks putih di kedua
+  tema (`blue-7` terang 6,16:1 tapi gelap 3,54:1; `blue-6` gelap 5,19:1 tapi
+  terang 4,10:1). Memaksanya berarti mencabang tema di dalam blok gaya
+  pendaratan, yaitu mekanisme tema KEDUA di satu halaman.
+  ⚠ **Diukur ulang di #303: kalimat itu berlaku untuk BIRU, bukan untuk setiap
+  hue.** `geekblue-6` memikul teks putih 5,85:1 (terang) / 7,13:1 (gelap) dan
+  `purple-6` 6,94 / 8,27 — keduanya lolos 4,5:1 di kedua tema. Yang tetap
+  menjatuhkan bidang pekat adalah elemen LAIN di atasnya (teks sekunder, tepi
+  tombol garis, isian tombol, latar lencana); angkanya di `pages/platform.md`
+  §Yang DITOLAK. Jangan mengutip kalimat di atas sebagai aturan umum.
 - **Permukaan gelap permanen (`SIDER_BG_DARK`) sebagai pita penutup.** Bekerja
   untuk teksnya, tetapi isian tombol primer tema terang (`#0958d9`) di atasnya
   hanya 2,99:1 — angka yang sudah tercatat di `lib/theme/antd-tokens.ts` dan

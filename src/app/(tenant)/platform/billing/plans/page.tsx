@@ -48,8 +48,18 @@
  * Kerapatan MASTER.md (6/10) berlaku penuh di sini; kelonggaran `py-16 sm:py-24`
  * di `design-system/sai-accounting/pages/landing.md` berlaku HANYA untuk `/`.
  * Berkas ini juga tidak mengimpor satu pun komponen dari `components/landing/**`.
+ *
+ * ⚠ **Sejak #303 halaman ini BERWARNA, dan itu tidak melonggarkan satu pun
+ * kalimat di atas.** Kepala kartu paket memakai nada
+ * (`components/tenant/platform-tone.ts`) — resep `color-mix` yang sama dengan
+ * pendaratan, kadar yang diukur sendiri, lingkup `[data-platform]` sendiri, dan
+ * NOL impor lintas batas. Ketiga penjaga bentuk tetap berlaku: masih ada
+ * `PageHeader` + breadcrumb, masih tidak ada hero, dan masih tidak ada kartu
+ * "paling populer" — nada terkuat halaman ini menandai paket **yang sedang
+ * berjalan**, sebuah fakta tentang tenant ini, bukan sebuah anjuran membeli.
  */
 import { CheckOutlined } from "@ant-design/icons";
+import { platformChip, platformHead } from "@/components/tenant/platform-tone";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -90,6 +100,25 @@ const PRICE: React.CSSProperties = {
   fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
   fontVariantNumeric: "tabular-nums",
   color: "var(--ant-color-text)",
+};
+
+/**
+ * Kepala kartu paket — bidang bernada (#303).
+ *
+ * ⚠ Dua radius itu WAJIB dan hanya terlihat sesudah kepalanya berwarna: kepala
+ * adalah anak PERTAMA `.ant-card` (badan kartu `display: contents`, lihat
+ * `ui/card.tsx`), dan `.ant-card` tidak memasang `overflow: hidden`. Tanpa
+ * keduanya bidang berwarnanya menyembul sebagai dua sudut siku di luar tepi
+ * kartu yang membulat.
+ */
+const PLAN_HEADER: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  borderTopLeftRadius: "var(--ant-border-radius-lg)",
+  borderTopRightRadius: "var(--ant-border-radius-lg)",
 };
 
 /** Kisi paket yang membagi lebarnya sendiri — bekas `sm:grid-cols-2 lg:grid-cols-3`. */
@@ -157,9 +186,9 @@ export default async function PlatformPlansPage() {
               const current = plan.key === currentKey;
               return (
                 <li key={plan.key}>
-                  {/* Paket berjalan ditandai TEPI + LENCANA BERTEKS; ia tidak
-                      dibesarkan atau ditinggikan — tak ada paket yang "dijual
-                      lebih keras" di sini. */}
+                  {/* Paket berjalan ditandai TEPI + LENCANA BERTEKS + NADA
+                      TERKUAT; ia tidak dibesarkan atau ditinggikan — tak ada
+                      paket yang "dijual lebih keras" di sini. */}
                   <Card
                     style={{
                       height: "100%",
@@ -171,13 +200,31 @@ export default async function PlatformPlansPage() {
                         : null),
                     }}
                   >
+                    {/* ══ KENAPA KEPALANYA BERNADA DAN BADANNYA TIDAK ══════
+                        Badan kartu inilah yang MEMIKUL TOMBOL ("Pilih paket
+                        ini", `variant="default"` = isian primer). Isian itu
+                        berjarak 3,55:1 dari `colorBgContainer` di tema gelap —
+                        sudah tipis, dan setiap nada menerangkan latarnya
+                        sehingga MEMAKAN jarak tersebut. Nada 32% menjatuhkannya
+                        ke 2,59–2,97:1, di bawah ambang 3:1 untuk grafis
+                        non-teks (MASTER.md §Ambang kontras): tombolnya berhenti
+                        bisa ditemukan sebagai bidang.
+
+                        Karena itu nada tinggal di KEPALA, tempat yang hanya
+                        berisi teks dan lencana. Angkanya dihitung ulang tiap
+                        suite di `tests/platform-colors.test.ts`.
+
+                        Hue-nya SATU untuk semua kartu (violet = wilayah
+                        "katalog paket"). Hue yang berputar per kartu akan
+                        terbaca sebagai peringkat yang tidak ada — tidak ada
+                        pembaca yang bisa menyimpulkan "violet lebih tinggi
+                        dari cyan". Yang membedakan kartu berjalan dari sisanya
+                        adalah KADAR-nya (32% vs 16%), dan itu pun penanda
+                        ketiga sesudah lencana berteks dan tepi merek. */}
                     <CardHeader
                       style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
+                        ...PLAN_HEADER,
+                        background: current ? platformChip("violet") : platformHead("violet"),
                       }}
                     >
                       <h2 style={CARD_HEADING}>{plan.name}</h2>
@@ -278,7 +325,7 @@ export default async function PlatformPlansPage() {
         {/* Prosesnya apa adanya. Tidak menyebutkannya sama sekali akan membuat
             halaman ini terlihat seperti toko yang tombol belinya hilang. */}
         <Card>
-          <CardHeader>
+          <CardHeader style={{ ...PLAN_HEADER, background: platformHead("violet") }}>
             <h2 style={CARD_HEADING}>{t("platform.plansUpgradeHeading")}</h2>
           </CardHeader>
           <CardContent>

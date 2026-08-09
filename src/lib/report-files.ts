@@ -17,6 +17,10 @@
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { apiFetch } from "@/lib/api-fetch";
+// Nama dokumennya datang dari penentu bentuk laporan (#323). Ia statis dengan
+// sengaja: `statement-layout.ts` tidak mengimpor apa pun, jadi ia tak menyeret
+// jsPDF — yang tetap dimuat malas di `downloadStatementPdf()` di bawah.
+import { STATEMENT_TITLES } from "@/lib/statement-layout";
 
 /** Tanggal berkas — hari ini, bukan periode laporan (dua hal berbeda). */
 function stamp(): string {
@@ -53,7 +57,7 @@ export async function downloadStatementPdf(
   payload: StatementPayload,
   company: { name: string; address: string }
 ): Promise<void> {
-  const { generateStatementPDF, STATEMENT_TITLES } = await import("@/lib/pdf/statement-pdf");
+  const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
   const doc = generateStatementPDF(payload, company);
   doc.save(`${slug(STATEMENT_TITLES[payload.kind])}_${stamp()}.pdf`);
 }

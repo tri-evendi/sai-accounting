@@ -44,6 +44,8 @@ import {
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
+  PARTY_RECAP_NO_PARTY,
+  STATEMENT_TITLES,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -306,21 +308,16 @@ export type StatementPayload =
       suspectUnrated: number;
     };
 
-export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
-  "trial-balance": "Neraca Saldo",
-  "income-statement": "Laporan Laba / Rugi",
-  "balance-sheet": "Neraca",
-  "cash-flow": "Laporan Arus Kas",
-  "stock-movement": "Kartu Stok / Mutasi Persediaan",
-  "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
-  "sales-by-customer": "Penjualan per Pelanggan",
-  "purchases-by-supplier": "Pembelian per Pemasok",
-  receivables: "Piutang & Umur Piutang",
-  payables: "Utang & Umur Utang",
-  "stock-value": "Nilai Persediaan",
-  "cash-bank": "Laporan Kas & Bank",
-  "budget-realization": "Realisasi vs Anggaran",
-};
+/*
+ * Nama dokumen tiap laporan tinggal di `statement-layout.ts` sejak #323 —
+ * bersama penentu bentuk laporan lainnya, dan terjangkau lapisan lembar sebar
+ * tanpa menyeret jsPDF. `STATEMENT_TITLES` TIDAK lagi diekspor dari berkas ini;
+ * pemanggilnya (`report-files.ts`, rute ekspor Excel) mengimpornya dari sana.
+ *
+ * Kesejajaran daftarnya dengan `StatementPayload` dijaga `tsc` di titik
+ * pemakaian di bawah — `STATEMENT_TITLES[payload.kind]` menolak `kind` yang
+ * belum punya nama dokumen.
+ */
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
 function opnameDate(iso: string): string {
@@ -673,9 +670,12 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     // sendiri di dalam badan fungsi, di luar jangkauan penjaga mana pun.
     const headers = PARTY_RECAP_HEADERS[payload.kind];
     // Baris tanpa mitra tercatat: layar menuliskannya sebagai teks redup, dan
-    // cetakan tidak punya warna redup — jadi ia diberi nama di sini, bukan
-    // dibiarkan sebagai sel kosong yang terbaca sebagai kelalaian.
-    const noParty = payload.kind === "sales-by-customer" ? "Tanpa pelanggan" : "Tanpa pemasok";
+    // cetakan tidak punya warna redup — jadi ia diberi nama, bukan dibiarkan
+    // sebagai sel kosong yang terbaca sebagai kelalaian. Namanya datang dari
+    // `statement-layout.ts` (#322): ia dulu ditulis sebaris di sini DAN di
+    // `report-export.ts`, dua salinan di dalam badan fungsi yang tak terjangkau
+    // penjaga mana pun.
+    const noParty = PARTY_RECAP_NO_PARTY[payload.kind];
     const cell = (
       r: (typeof payload.rows)[number] | (typeof payload.totals & { partyName: string })
     ) => ({

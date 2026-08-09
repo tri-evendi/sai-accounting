@@ -17,7 +17,11 @@ import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { STATEMENT_TITLES, type StatementPayload } from "@/lib/pdf/statement-pdf";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+// Nama dokumennya datang dari penentu bentuk laporan, bukan dari modul PDF
+// (#323) — rute ini dulu menarik seluruh jsPDF ke graf modulnya hanya untuk
+// membaca satu judul; `statement-layout.ts` tidak mengimpor apa pun.
+import { STATEMENT_TITLES } from "@/lib/statement-layout";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 

@@ -1270,6 +1270,52 @@ export const PARTY_RECAP_HEADERS: Record<PartyRecapKind, Record<PartyRecapColumn
   },
 };
 
+/**
+ * Nama pengganti untuk baris yang mitranya TIDAK tercatat — isi SEL, bukan judul
+ * kolom (issue #322).
+ *
+ * ── Kenapa ia berdiri sendiri, di luar `PARTY_RECAP_HEADERS` ────────────────
+ * Berkas ini memuat dua jenis kalimat: judul kolom (`*_HEADERS`) dan label baris
+ * (`*_PRINT_LABELS`). Kalimat ini bukan keduanya — ia nilai yang digambar DI
+ * DALAM sel `party` ketika sebuah dokumen tidak punya pelanggan/pemasok.
+ * Menumpangkannya ke tabel judul akan membuatnya menyamar sebagai kolom keenam
+ * yang tidak pernah ada, dan penjaga kelengkapan #298 akan memperlakukannya
+ * sebagai judul yang belum diputuskan nasibnya. Jadi ia diberi tabelnya sendiri,
+ * dengan nama yang menyatakan apa ia sebenarnya.
+ *
+ * ── Kenapa ia pindah ke sini ────────────────────────────────────────────────
+ * Sampai #322 kalimat ini ditulis DUA kali, dan keduanya di dalam BADAN FUNGSI —
+ * `generateStatementPDF()` (`pdf/statement-pdf.ts`) dan `buildPartyRecapSheet()`
+ * (`report-export.ts`). Salinan di dalam badan fungsi tak bisa diimpor siapa
+ * pun, jadi ia di luar jangkauan `tests/print-label-dictionary.test.ts`:
+ * menyunting satu sisi membuat PDF dan Excel dari laporan yang SAMA berhenti
+ * sepakat, tanpa satu tes pun merah. Bentuknya sama persis dengan cacat #315
+ * pada judul kolom, satu tingkat lebih kecil.
+ *
+ * Layar menggambar baris yang sama lewat `reports.noCustomerLabel` /
+ * `reports.noSupplierLabel`, yang hari ini berbunyi SAMA huruf demi huruf —
+ * kini dipasangkan di `tests/print-label-dictionary.test.ts`, jadi kesamaan itu
+ * berhenti menjadi kebetulan.
+ *
+ * Cetakan tidak punya warna redup seperti layar, jadi baris ini memang harus
+ * DIBERI NAMA: sel kosong di kertas terbaca sebagai kelalaian, bukan sebagai
+ * "dokumen tanpa mitra".
+ *
+ * ── Yang BELUM ikut, dan itu disengaja ──────────────────────────────────────
+ * Kalimat keadaan ekspor lain masih ditulis sebaris, dan sebagiannya juga punya
+ * dua salinan ("Tidak ada dokumen pada periode ini.", "Belum ada barang.", …).
+ * Mereka tidak ikut karena tiap satunya menuntut keputusan sendiri: bunyi
+ * layarnya BERBEDA dari bunyi cetakannya (layar rekap mitra berkata "Tidak ada
+ * tagihan penjualan pada periode ini."), jadi memindahkannya berarti sekalian
+ * memutuskan sisi mana yang menang — dan itu mengubah dokumen yang sudah
+ * dikirim orang. Kalimat ini tidak menuntut keputusan semacam itu: kedua
+ * sisinya sudah sama.
+ */
+export const PARTY_RECAP_NO_PARTY: Record<PartyRecapKind, string> = {
+  "sales-by-customer": "Tanpa pelanggan",
+  "purchases-by-supplier": "Tanpa pemasok",
+};
+
 export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
   return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
 }
@@ -1413,3 +1459,101 @@ export const BUDGET_HEADERS: Record<BudgetColumnId, string> = {
 export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColumnId[] {
   return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
 }
+
+// ─── Nama dokumen & nama lembar ──────────────────────────────────────────────
+
+/**
+ * Jenis laporan yang punya berkas ekspor.
+ *
+ * Sengaja ditulis ulang di sini alih-alih diimpor dari `pdf/statement-pdf.ts`:
+ * modul ini TIDAK mengimpor apa pun (lihat kepala berkas), dan modul itu
+ * menyeret jsPDF. Kalau daftarnya suatu saat berbeda, `tsc` menolak di titik
+ * `STATEMENT_TITLES[payload.kind]` — jadi duplikasi ini dijaga tipe, bukan
+ * kebiasaan (pola yang sama dengan `CashFlowCategoryId`, `AgingKind`, dan
+ * `PartyRecapKind`).
+ */
+export type StatementKind =
+  | "trial-balance"
+  | "income-statement"
+  | "balance-sheet"
+  | "cash-flow"
+  | "stock-movement"
+  | "opname-history"
+  | "sales-by-customer"
+  | "purchases-by-supplier"
+  | "receivables"
+  | "payables"
+  | "stock-value"
+  | "cash-bank"
+  | "budget-realization";
+
+/**
+ * Nama DOKUMEN — judul yang tercetak di kepala PDF, judul yang jadi baris
+ * pertama lembar sebar, dan dasar nama berkas kedua-duanya.
+ *
+ * ── Kenapa ia di sini, bukan di `pdf/statement-pdf.ts` (issue #323) ──────────
+ * Ia dulu tinggal di modul PDF, dan lapisan lembar sebar tidak membacanya: tiap
+ * `build…Sheet()` di `report-export.ts` menuliskan judulnya sendiri sebagai
+ * string sebaris. Ketiga belasnya kebetulan sama huruf demi huruf — dan justru
+ * itu bahayanya, karena tidak ada apa pun yang memaksanya tetap begitu: satu
+ * suntingan di modul PDF mengubah kertasnya dan meninggalkan Excel-nya. Bentuk
+ * cacat yang sama persis dengan judul kolom rekap mitra di #315, satu tingkat
+ * lebih atas.
+ *
+ * Rumahnya jadi berkas ini karena di sinilah penentu bentuk laporan tinggal
+ * (#310, #315), dan karena berkas ini tidak mengimpor apa pun: rute ekspor
+ * Excel dulu menarik seluruh jsPDF ke dalam graf modulnya hanya untuk membaca
+ * satu judul.
+ *
+ * Mengubah salah satu kalimat di sini mengubah berkas yang sudah dikirim &
+ * diarsipkan orang — rambu #298 berlaku sama seperti pada judul kolom.
+ */
+export const STATEMENT_TITLES: Record<StatementKind, string> = {
+  "trial-balance": "Neraca Saldo",
+  "income-statement": "Laporan Laba / Rugi",
+  "balance-sheet": "Neraca",
+  "cash-flow": "Laporan Arus Kas",
+  "stock-movement": "Kartu Stok / Mutasi Persediaan",
+  "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Piutang & Umur Piutang",
+  payables: "Utang & Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Laporan Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
+};
+
+/**
+ * Nama LEMBAR — tulisan di tab bawah jendela Excel. Bukan nama dokumen, dan
+ * tidak boleh disamakan dengannya (issue #323).
+ *
+ * ── Kenapa ia tabel TERSENDIRI, bukan turunan `STATEMENT_TITLES` ────────────
+ * Nama tab punya aturan yang judul dokumen tidak punya: maksimal 31 huruf, dan
+ * `[ ] : * ? / \` terlarang. Tiga dari tiga belas judul melanggarnya —
+ * "Laporan Laba / Rugi" dan "Kartu Stok / Mutasi Persediaan" memuat garis
+ * miring, dan "Riwayat Hitung Ulang Stok (Stok Opname)" 39 huruf. Menyamakan
+ * kedua tabel bukan perapian melainkan pemotongan diam-diam oleh
+ * `buildWorkbookBuffer()`, yang memenggal di huruf ke-31.
+ *
+ * Empat sisanya (Arus Kas, Umur Piutang, Umur Utang, Kas & Bank) sah sebagai
+ * nama tab tapi tetap dipendekkan — dan itu pilihan penamaan yang sudah dipakai
+ * orang di berkas yang sudah dikirim, bukan kelalaian. Ketujuh perbedaannya
+ * DIPATOK di `tests/statement-title-shape.test.ts`, jadi tidak satu pun bisa
+ * bergeser — atau diam-diam didamaikan — tanpa terlihat di diff.
+ */
+export const SHEET_NAMES: Record<StatementKind, string> = {
+  "trial-balance": "Neraca Saldo",
+  "income-statement": "Laba Rugi",
+  "balance-sheet": "Neraca",
+  "cash-flow": "Arus Kas",
+  "stock-movement": "Kartu Stok",
+  "opname-history": "Riwayat Opname",
+  "sales-by-customer": "Penjualan per Pelanggan",
+  "purchases-by-supplier": "Pembelian per Pemasok",
+  receivables: "Umur Piutang",
+  payables: "Umur Utang",
+  "stock-value": "Nilai Persediaan",
+  "cash-bank": "Kas & Bank",
+  "budget-realization": "Realisasi vs Anggaran",
+};

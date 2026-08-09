@@ -34,6 +34,7 @@
     "db:seed:plans": "tsx scripts/seed-plans.ts",
     "efaktur:platform": "tsx scripts/efaktur-platform.ts",
     "change-plan": "tsx scripts/change-tenant-plan.ts",
+    "bootstrap": "tsx scripts/bootstrap.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "setup": "bash scripts/setup.sh",

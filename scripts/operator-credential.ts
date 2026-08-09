@@ -65,7 +65,15 @@ async function main() {
     process.exit(1);
   }
 
-  const password = await askHidden(`Kata sandi untuk operator "${name}": `);
+  /*
+   * Jalur non-interaktif untuk `scripts/bootstrap.ts`. Lewat ENV, bukan
+   * argumen: argumen terlihat di `ps` dan mendarat di `~/.bash_history`,
+   * sedangkan env sebuah anak proses hanya terbaca oleh pemiliknya. Prompt
+   * tetap jalur BAWAAN — ini hanya dipakai saat bootstrap memang tidak punya
+   * manusia di depan terminalnya.
+   */
+  const fromEnv = process.env.OPERATOR_BOOTSTRAP_PASSWORD?.trim();
+  const password = fromEnv || (await askHidden(`Kata sandi untuk operator "${name}": `));
   if (password.length < 12) {
     console.error("✗ Kata sandi operator minimal 12 karakter.");
     process.exit(1);

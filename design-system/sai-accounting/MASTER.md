@@ -295,7 +295,7 @@ Sejak buku besar tiap PT hidup di basis datanya sendiri, satu pertanyaan berdiri
 ## Pola Komponen (khusus domain)
 - **Kartu KPI dashboard**: judul bahasa awam + angka besar tabular + delta berwarna (hijau/merah) dengan tanda +/−; sub-teks periode.
 - **Tabel transaksi**: kolom nominal rata-kanan + tabular-nums; kolom status pakai **badge** (Lunas=hijau, Sebagian=amber, Belum/Jatuh Tempo=merah) — badge selalu berteks, bukan warna saja.
-- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; destruktif = merah + konfirmasi. **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` di `src/components/ui/form.tsx` (RHF sebagai mesin, `Form.Item` AntD sebagai kulit - lihat "Konvensi Form" di bawah), bukan `useState` manual.
+- **Form**: label terlihat (bukan placeholder), validasi inline dekat field, helper text, progressive disclosure ("Detail lengkap"). Tombol primer = aksi simpan; **destruktif = merah + konfirmasi** — dan "konfirmasi" berarti `ConfirmDialog`, dijaga `tests/destructive-confirm.test.ts` sejak #308: setiap `<Button>` yang bisa bernilai `danger`/`destructive` harus berpasangan dengan sebuah dialog, entah sebagai `trigger`-nya atau lewat bentuk terkendali (`open` + `onOpenChange`) di berkas yang sama. Pesannya menyebut **akibatnya** (apa yang hilang, jurnal apa yang lahir, apa yang tak bisa dibalik), bukan "Anda yakin?". Formulir berisian **bukan** pengganti dialog: yang isiannya opsional berjarak satu klik persis seperti tombol hapus telanjang (#308). **Implementasi:** `react-hook-form` + `zodResolver` dengan pola `Form` di `src/components/ui/form.tsx` (RHF sebagai mesin, `Form.Item` AntD sebagai kulit - lihat "Konvensi Form" di bawah), bukan `useState` manual.
 - **Empty state**: 1 kalimat + tombol aksi ("Belum ada faktur. Buat tagihan pertama →").
 - **Uang/mata uang**: selalu tampilkan kode mata uang; konversi/kurs ditampilkan bila valas (konteks ekspor CNY/USD).
 
@@ -753,10 +753,21 @@ Tiga hal yang tidak boleh hilang dari sini:
   diperlakukan berbeda dari terang tepat pada satu angka. Seseorang yang
   menemukan 2,69:1 lalu "memperbaikinya" ke red-6 sedang membatalkan keputusan
   ini, bukan menambal bug.
-- **Prasyaratnya adalah dialognya.** Kalau sebuah tombol destruktif hidup TANPA
-  `ConfirmDialog`, alasan di atas tidak berlaku untuknya — di sana risiko
-  "tidak melihatnya" memang tidak tertutup apa pun. Tambahkan dialognya, bukan
-  warna khusus.
+- **Prasyaratnya adalah dialognya — dan sejak #308 ia DIJAGA.** Kalau sebuah
+  tombol destruktif hidup TANPA `ConfirmDialog`, alasan di atas tidak berlaku
+  untuknya: di sana risiko "tidak melihatnya" memang tidak tertutup apa pun,
+  dan tombol itu menanggung kedua kelemahan sekaligus. Tambahkan dialognya,
+  bukan warna khusus.
+
+  Sampai #308 prasyarat ini adalah **kebiasaan, bukan aturan**, dan ia sudah
+  bocor sekali: pelepasan aset tetap (`fixed-assets/[id]/asset-actions.tsx`)
+  memposting jurnal pelepasan dan menyetel `status: "disposed"` — yang tidak
+  punya endpoint pembatalan — dalam satu klik. Formulirnya (tanggal, hasil,
+  catatan) terlihat seperti gesekan tetapi bukan: tanggalnya sudah terisi hari
+  ini dan dua isian lainnya opsional, jadi dari halaman yang baru dimuat
+  pelepasan berjarak tepat satu klik. #308 memasang dialognya dan
+  `tests/destructive-confirm.test.ts` yang membuat kalimat ini benar untuk
+  seterusnya — lihat §Penjaga untuk apa yang bisa dan tidak bisa dilihatnya.
 - **Ada alternatif terukur yang belum diambil.** Palet `red` resmi AntD
   (`presetDarkPalettes`, keluarga yang sama yang dipakai #208 untuk `grey`)
   punya satu anak tangga yang melewati KEDUA ambang di tema gelap: `#d32029`,
@@ -1070,6 +1081,7 @@ membaca hijau dan menyimpulkan aman.
 | `<ButtonLink>` benar-benar menavigasi di sisi klien: satu `<a class="ant-btn">`, `href` ter-scope tenant, `router.push` pada klik biasa, dan Ctrl/klik-tengah/`download`/alamat luar tetap milik peramban | `tests/button-link-navigation.test.tsx` |
 | Satu aksi utama per layar: `variant` eksplisit di **seluruh** `src/app` + `src/components` (tanpa daftar pengecualian sejak potongan 4, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, primer antar-lingkup dalam satu berkas — **yaitu setiap kolom tabel** — dan primer berkondisi TIDAK terlihat penjaga; lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Bawaan `variant` primitif `Button` = `secondary`, di kedua bentuknya (tombol & anchor), dikunci di sumber **dan** di markup hasil render | `tests/button-emphasis.test.ts` · `tests/ui-controls-antd.test.tsx` |
+| Destruktif = merah **+ konfirmasi**: setiap `<Button>` yang bisa bernilai `danger`/`destructive` berpasangan dengan `ConfirmDialog` (sebagai `trigger`, atau bentuk terkendali di berkas yang sama); satu-satunya pengecualian berbentuk ATRIBUT (`aria-pressed` = saklar, yang menekannya lagi mengembalikannya), bukan daftar nama berkas — jadi tak ada daftar yang bisa membusuk. ⚠ TIDAK terlihat penjaga: dialog mana untuk tombol mana (bentuk terkendali dinilai per-BERKAS), apakah pesannya menyebut akibatnya, tombol destruktif yang tidak berwarna merah, dan perakitan antar-berkas | `tests/destructive-confirm.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |

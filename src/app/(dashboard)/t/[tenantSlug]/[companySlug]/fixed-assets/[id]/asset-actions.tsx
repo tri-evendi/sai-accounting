@@ -9,12 +9,36 @@
  * Dikonversi ke token Ant Design pada issue #197. Pratinjau laba/rugi kini
  * lewat `Money signed`: tandanya (+/−) dan katanya ("Laba"/"Rugi") yang
  * membedakan arah — warna hanya saluran ketiga.
+ *
+ * ── Kenapa pelepasan lewat `ConfirmDialog` (issue #308) ────────────────────
+ * Sampai #308 tombol ini adalah SATU-SATUNYA tombol destruktif di seluruh repo
+ * yang bekerja dalam satu klik — dan ia yang paling berat akibatnya dari
+ * beberapa yang sudah punya dialog. Yang terjadi saat diklik: `disposeAsset()`
+ * menyetel `status: "disposed"` (dan melempar `Aset … sudah dilepas sebelumnya`
+ * kalau diulang, jadi tidak ada jalan kembali lewat jalur yang sama), lalu
+ * `postForSource()` **memposting jurnal pelepasan** — kas, akumulasi
+ * penyusutan, aktiva tetap, dan laba/rugi pelepasan. Tidak ada endpoint
+ * `undispose` di `src/app/api/fixed-assets/[id]/`; membatalkannya menuntut
+ * jurnal balik yang dibuat manual berikut suntingan status lewat jalur yang
+ * tidak ada di UI.
+ *
+ * ⚠ Formulirnya BUKAN gesekan yang cukup, dan itu terukur: tanggal sudah
+ * terisi `todayISO()`, sedangkan hasil pelepasan dan catatan **opsional**.
+ * Dari halaman yang baru dimuat, pelepasan karena itu berjarak tepat satu klik
+ * — persis sejauh sebuah tombol hapus telanjang.
+ *
+ * Bentuknya **terkendali** (`open` + `onOpenChange`), bukan `trigger`: tombolnya
+ * `type="submit"`, jadi membungkusnya sebagai pemicu akan membuat satu klik
+ * mengirim formulirnya SEKALIGUS membuka dialognya. Lewat `onSubmit` urutannya
+ * benar dan validasi bawaan peramban (tanggal `required`) tetap berjalan LEBIH
+ * DULU — dialog tidak pernah muncul di atas formulir yang belum sah.
  */
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
@@ -44,6 +68,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
   const [dNote, setDNote] = useState("");
   const [disposing, setDisposing] = useState(false);
   const [dError, setDError] = useState<string | null>(null);
+  const [confirmingDispose, setConfirmingDispose] = useState(false);
 
   // Transfer
   const [tDate, setTDate] = useState(todayISO());
@@ -58,8 +83,19 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
     return Math.round((p - bookValue) * 100) / 100;
   }, [proceeds, bookValue]);
 
-  async function dispose(e: React.FormEvent) {
+  /**
+   * Klik "Catat Pelepasan" TIDAK melepas apa pun — ia hanya membuka dialognya.
+   * `preventDefault()` tetap di sini karena validasi bawaan peramban sudah
+   * berjalan sebelum `submit` sampai ke fungsi ini; yang dicegah hanyalah
+   * pengirimannya sungguhan.
+   */
+  function askDispose(e: React.FormEvent) {
     e.preventDefault();
+    setDError(null);
+    setConfirmingDispose(true);
+  }
+
+  async function dispose() {
     setDError(null);
     setDisposing(true);
     try {
@@ -192,7 +228,7 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
           >
             {t("fixedAssets.disposeHint")}
           </Typography.Paragraph>
-          <form onSubmit={dispose}>
+          <form onSubmit={askDispose}>
             <Flex vertical gap={token.marginSM}>
               <Input
                 id="d-date"
@@ -260,6 +296,20 @@ export function AssetActions({ assetId, bookValue }: { assetId: number; bookValu
               </div>
             </Flex>
           </form>
+
+          {/* Pesannya menyebut AKIBATNYA — jurnal yang lahir dan status yang
+              tak bisa dibalik — bukan "Anda yakin?". Yang membuat seseorang
+              berhenti bukan pertanyaannya melainkan kalimat yang memberitahunya
+              apa yang belum ia ketahui. */}
+          <ConfirmDialog
+            open={confirmingDispose}
+            onOpenChange={setConfirmingDispose}
+            title={t("fixedAssets.disposeConfirmTitle")}
+            message={t("fixedAssets.disposeConfirmMessage")}
+            confirmLabel={t("fixedAssets.disposeAction")}
+            confirmVariant="danger"
+            onConfirm={dispose}
+          />
         </div>
       </Card>
     </div>

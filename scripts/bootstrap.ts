@@ -249,6 +249,15 @@ async function main() {
   const adminName = args["admin-name"]?.trim() ?? (useDefaults ? DEFAULTS.adminName : undefined);
   const operatorName =
     args["operator-name"]?.trim() ?? (useDefaults ? DEFAULTS.operatorName : undefined);
+  /*
+   * Jalur "basis data dibuat manual". WAJIB ada di sini, bukan hanya di
+   * `create-company.ts`: pengguna basis data aplikasi seringkali TIDAK boleh
+   * `CREATE DATABASE` (terukur di produksi — `Access denied for user 'sai'@'%'`,
+   * kode 1044), dan tanpa bendera ini pesan galatnya menyuruh memakai
+   * `--database` yang tak punya jalan masuk dari bootstrap. Menyuruh orang
+   * melakukan sesuatu yang tidak disediakan adalah jalan buntu, bukan petunjuk.
+   */
+  const companyDatabase = args["company-database"]?.trim();
 
   if (
     !tenantSlug ||
@@ -337,13 +346,26 @@ async function main() {
       companyName,
       "--tenant",
       tenantSlug,
+      ...(companyDatabase ? ["--database", companyDatabase] : []),
     ]);
     if (company !== 0) {
       console.error(
         "✗ penyediaan perusahaan gagal.\n" +
-          "  Penyebab paling sering: pengguna basis data tidak boleh CREATE DATABASE.\n" +
-          "  Buat basis datanya manual, lalu ulangi dengan `--database <nama>` di\n" +
-          "  scripts/create-company.ts."
+          "\n" +
+          "  Penyebab paling sering: pengguna basis data aplikasi tidak boleh\n" +
+          "  CREATE DATABASE (galat 1044 `Access denied`). Itu bukan salah\n" +
+          "  konfigurasi — banyak pemasangan memang sengaja tidak memberikannya.\n" +
+          "\n" +
+          "  Buat basis datanya sebagai root — DAN beri hak pakainya, karena\n" +
+          "  membuat saja tidak cukup:\n" +
+          "\n" +
+          "    CREATE DATABASE `<nama>` DEFAULT CHARACTER SET utf8mb4\n" +
+          "      COLLATE utf8mb4_unicode_ci;\n" +
+          "    GRANT ALL PRIVILEGES ON `<nama>`.* TO '<pengguna-app>'@'%';\n" +
+          "    FLUSH PRIVILEGES;\n" +
+          "\n" +
+          "  Lalu ulangi bootstrap dengan `--company-database <nama>`. Tenant dan\n" +
+          "  paket yang sudah dibuat TIDAK diulang — skrip ini idempoten."
       );
       process.exit(1);
     }

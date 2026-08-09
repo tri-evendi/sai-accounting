@@ -47,6 +47,8 @@ import {
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
   PARTY_RECAP_NO_PARTY,
+  SHEET_NAMES,
+  STATEMENT_TITLES,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -89,10 +91,19 @@ export interface SheetColumn {
   width: number;
 }
 
+/**
+ * Satu lembar sebar yang sudah jadi model.
+ *
+ * `name` dan `title` TIDAK disusun di berkas ini: keduanya datang dari
+ * `SHEET_NAMES` / `STATEMENT_TITLES` di `statement-layout.ts`, tabel yang sama
+ * yang menamai PDF-nya (#323). Sampai issue itu tiap `build…Sheet()` menuliskan
+ * judulnya sendiri sebagai string sebaris — bunyinya kebetulan sama dengan
+ * PDF-nya, tanpa ada yang memaksanya tetap begitu.
+ */
 export interface SheetModel {
-  /** Worksheet tab name (≤ 31 chars, no Excel-forbidden chars). */
+  /** Nama tab lembar — `SHEET_NAMES[kind]` (≤ 31 huruf, tanpa huruf terlarang Excel). */
   name: string;
-  /** Human title printed as the first row. */
+  /** Nama dokumen, tercetak sebagai baris pertama — `STATEMENT_TITLES[kind]`. */
   title: string;
   /** Period / as-of caption printed under the title. */
   period: string;
@@ -165,8 +176,8 @@ function buildIncomeStatementSheet(
     return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
   };
   return {
-    name: "Laba Rugi",
-    title: "Laporan Laba / Rugi",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: INCOME_STATEMENT_COLUMNS.map((c) => ({
       header: INCOME_STATEMENT_HEADERS[c],
@@ -212,8 +223,8 @@ function buildBalanceSheetSheet(
     ),
   ];
   return {
-    name: "Neraca",
-    title: "Neraca",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: BALANCE_SHEET_COLUMNS.map((c) => ({
       header: BALANCE_SHEET_HEADERS[c],
@@ -261,8 +272,8 @@ function buildTrialBalanceSheet(
     ...foot.map((r) => cell(r, `${r.name} ${trialBalanceBalanceNote(p.balanced)}`)),
   ];
   return {
-    name: "Neraca Saldo",
-    title: "Neraca Saldo",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: TRIAL_BALANCE_COLUMNS.map((c) => ({
       header: TRIAL_BALANCE_HEADERS[c],
@@ -314,8 +325,8 @@ function buildCashFlowSheet(
     ];
   });
   return {
-    name: "Arus Kas",
-    title: "Laporan Arus Kas",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: CASH_FLOW_COLUMNS.map((c) => ({
       header: CASH_FLOW_HEADERS[c],
@@ -379,7 +390,7 @@ function buildStockMovementSheet(
     ]);
   }
 
-  return { name: "Kartu Stok", title: "Kartu Stok / Mutasi Persediaan", period: p.period, columns, rows };
+  return { name: SHEET_NAMES[p.kind], title: STATEMENT_TITLES[p.kind], period: p.period, columns, rows };
 }
 
 function buildOpnameHistorySheet(
@@ -423,8 +434,8 @@ function buildOpnameHistorySheet(
   ]);
 
   return {
-    name: "Riwayat Opname",
-    title: "Riwayat Hitung Ulang Stok (Stok Opname)",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: [
       { header: "Tanggal / Barang", width: 40 },
@@ -493,8 +504,8 @@ function buildPartyRecapSheet(
   }
 
   return {
-    name: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
-    title: sales ? "Penjualan per Pelanggan" : "Pembelian per Pemasok",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: cols.map((id) => ({ header: headers[id], width: WIDTHS[id] })),
     rows,
@@ -515,7 +526,6 @@ const AGING_WIDTHS: Record<AgingColumnId, number> = {
 function buildAgingSheet(
   p: Extract<StatementPayload, { kind: "receivables" | "payables" }>
 ): SheetModel {
-  const receivable = p.kind === "receivables";
   // Judul kolomnya — termasuk kolom pihak — datang dari `statement-layout.ts`,
   // satu penentu untuk lembar sebar dan PDF (#310).
   const headers = agingHeaders(p.kind);
@@ -597,8 +607,8 @@ function buildAgingSheet(
   }
 
   return {
-    name: receivable ? "Umur Piutang" : "Umur Utang",
-    title: receivable ? "Piutang & Umur Piutang" : "Utang & Umur Utang",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: cols.map((c) => ({
       header: headers[c],
@@ -656,8 +666,8 @@ function buildStockValueSheet(
   }
 
   return {
-    name: "Nilai Persediaan",
-    title: "Nilai Persediaan",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: cols.map((c) => ({ header: STOCK_VALUE_HEADERS[c], width: WIDTHS[c] })),
     rows,
@@ -693,8 +703,8 @@ function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>)
   rows.push(cols.map((c) => totals[c]));
 
   return {
-    name: "Kas & Bank",
-    title: "Laporan Kas & Bank",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: cols.map((c) => ({ header: CASH_BANK_HEADERS[c], width: WIDTHS[c] })),
     rows,
@@ -784,8 +794,8 @@ function buildBudgetSheet(
   }
 
   return {
-    name: "Realisasi vs Anggaran",
-    title: "Realisasi vs Anggaran",
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
     period: p.period,
     columns: cols.map((c) => ({ header: BUDGET_HEADERS[c], width: WIDTHS[c] })),
     rows,

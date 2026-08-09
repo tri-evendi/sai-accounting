@@ -5,10 +5,10 @@
  * Dua sumber, berurutan:
  *
  *   1. **Konteks `AsyncLocalStorage`** — dipasang `runWithCompany()` (skrip,
- *      cron, seed, tes) dan oleh penjaga halaman/API lewat
- *      `enterCompanyContext()`.
+ *      cron, seed, tes), yang memakai `als.run()` dan karena itu merambat ke
+ *      SELURUH pekerjaan di dalam callback-nya.
  *   2. **Penyimpan per-permintaan** — ditulis penjaga jalur/permintaan; lihat
- *      `setRouteCompany` di bawah.
+ *      `setRouteCompany` di bawah. Inilah sumber yang melayani permintaan HTTP.
  *
  * Kalau keduanya kosong: **MELEMPAR**. Tidak pernah ada perusahaan bawaan.
  *
@@ -23,52 +23,105 @@
  *
  * Menghapusnya mengubah "lupa membawa perusahaan" dari sunyi menjadi berisik:
  * `MissingCompanyContextError`, di query pertama, bukan neraca yang tidak cocok
- * berbulan-bulan kemudian.
+ * berbulan-bulan kemudian. Itu tetap berlaku dan tidak boleh dibatalkan.
  *
- * Dan satu sifat `enterWith` yang diukur langsung (`node --input-type=module`,
- * bukan diduga), sebab ia menentukan mengapa sumber pertama bisa diandalkan
- * untuk permintaan HTTP:
+ * ══ APA YANG DIUKUR DI ISSUE #333 ══════════════════════════════════════════
+ * Berkas ini dulu menyandarkan sumber kedua pada `cache()` React, dengan
+ * kalimat "`cache()` React mengembalikan objek yang sama sepanjang satu render".
+ * Kalimat itu benar — dan justru di situ letak lubangnya: ROUTE HANDLER BUKAN
+ * SEBUAH RENDER. Diukur di dalam route handler Next 16.2.1 yang sungguhan
+ * (`next dev`, Node 22.22):
  *
- *   • Bila BELUM ada store, `enterWith` di dalam fungsi async MERAMBAT ke
- *     kelanjutan pemanggilnya. Setiap permintaan HTTP mulai TANPA store, jadi
- *     konteks yang ditanam penjaga memang terlihat oleh kode sesudahnya.
- *   • Bila SUDAH ada store, `enterWith` di fungsi yang di-`await` TIDAK
- *     menimpanya untuk pemanggil — pemanggil tetap melihat store lama.
+ *   • di dalam ROUTE HANDLER: `holder() === holder()` → **false**. `cache()`
+ *     tanpa dispatcher React menjalankan fungsinya lagi setiap kali, jadi
+ *     `setRouteCompany()` menulis ke satu objek dan pembacaan berikutnya
+ *     menerima `{ value: null }` yang LAIN. Sumber kedua tidak pernah bekerja
+ *     untuk API — sekali pun.
+ *   • di dalam RENDER halaman: `holder() === holder()` → **true**, dan nilainya
+ *     terbaca sampai ke komponen anak. Itulah sebabnya halaman selamat dan
+ *     hanya route handler yang menjawab 500.
  *
- * Sifat kedua itu yang berbahaya: satu pekerjaan latar yang membungkus dirinya
- * dengan `runWithCompany(PT_A)` lalu memanggil sesuatu yang menanam PT B akan
- * tetap menulis ke PT A. Karena itu urutannya dibuat eksplisit di sini —
- * konteks ALS SELALU menang. Tidak ada tebak-tebakan siapa yang menang.
+ * Sekarang penyimpannya tidak lagi bertanya kepada React. Ia dikunci pada objek
+ * yang Next sendiri lingkupkan per permintaan: hasil `await headers()`. Diukur
+ * di kedua tempat — route handler DAN render — dua pemanggilan `headers()`
+ * dalam satu permintaan mengembalikan objek yang IDENTIK, dan permintaan lain
+ * mendapat objek lain. `WeakMap` di atasnya karena itu otomatis per-permintaan:
+ * tidak ada kebocoran antar-permintaan maupun antar-pengguna, dan entrinya mati
+ * bersama permintaannya tanpa perlu dibersihkan.
+ *
+ * ══ DAN SATU SIFAT `enterWith` YANG DIUKUR ULANG ═══════════════════════════
+ * Berkas ini dulu menulis bahwa `enterWith` "merambat ke kelanjutan pemanggil
+ * bila belum ada store". Yang benar lebih sempit, dan selisihnya menentukan:
+ *
+ *   • `enterWith` yang dipanggil SEBELUM `await` apa pun di fungsi itu →
+ *     merambat ke pemanggil. ✅
+ *   • `enterWith` yang dipanggil SESUDAH sebuah `await` → **tidak** merambat;
+ *     pemanggil melihat store lamanya (atau tidak sama sekali). ❌
+ *
+ * Penjaga SELALU berada di kasus kedua — ia menanam konteks setelah membaca
+ * basis data kendali. Karena itu `enterCompanyContext()` di penjaga tidak
+ * pernah sampai ke badan route maupun ke komponen halaman: diukur `null` di
+ * keduanya. Ia dipertahankan untuk pemanggil yang menanam TANPA await lebih
+ * dulu, tetapi kebenaran permintaan HTTP bertumpu pada sumber kedua di bawah —
+ * bukan pada rambatan ALS.
  */
 
-import { cache } from "react";
+import { headers } from "next/headers";
+
 import { getCompanyContext, MissingCompanyContextError, type CompanyContext } from "@/lib/company-context";
 
-/**
- * Perusahaan menurut PERMINTAAN ini (issue #157) — sabuk kedua di samping ALS.
- *
- * `company-context.ts` menegaskan rambatan `enterWith` adalah JALAN PINTAS,
- * bukan jaminan. Selama sesi masih menjadi sumber ketiga, kegagalan rambatan
- * itu SUNYI: query jatuh ke perusahaan di cookie dan halaman PT A menulis ke
- * buku PT B tanpa satu pun galat. Karena itu penjaga menuliskan perusahaannya
- * DI SINI juga, di penyimpan yang lingkupnya satu permintaan (`cache()` React
- * mengembalikan objek yang sama sepanjang satu render, dan objek berbeda untuk
- * permintaan lain — jadi tidak ada kebocoran antar-permintaan maupun
- * antar-pengguna).
- *
- * Sejak sesi dihapus (#158) sabuk ini berhenti menjadi penambal dan menjadi
- * apa adanya: pembanding yang dibaca ulang penjaga untuk MEMBUKTIKAN
- * konteksnya benar-benar mendarat sebelum satu query pun berjalan.
- */
-const routeCompanyHolder = cache(function routeCompanyHolder(): {
+interface RouteCompanyHolder {
   value: CompanyContext | null;
-} {
-  return { value: null };
-});
+}
 
-/** Dipanggil penjaga jalur (`enterCompanyFromRoute`) — bukan oleh kode halaman. */
-export function setRouteCompany(context: CompanyContext): void {
-  routeCompanyHolder().value = context;
+/**
+ * Penyimpan per-permintaan, dikunci pada objek permintaan milik Next.
+ *
+ * `WeakMap`, bukan `Map`: kuncinya hidup persis selama permintaannya, jadi
+ * entrinya lenyap sendiri. Sebuah `Map` di sini akan menjadi kebocoran memori
+ * yang tumbuh satu baris per permintaan seumur proses.
+ */
+const holders = new WeakMap<object, RouteCompanyHolder>();
+
+/**
+ * Penyimpan milik permintaan yang sedang berjalan, atau `null` bila memang
+ * tidak ada permintaan.
+ *
+ * `headers()` MELEMPAR di luar lingkup permintaan (skrip, cron, seed, tes unit).
+ * Itu bukan kegagalan melainkan jawaban — sama seperti di
+ * `companyScopeFromRequest()`: di sana tidak ada permintaan yang bisa membawa
+ * lingkup, jadi pemanggilnya harus menyebut perusahaannya sendiri lewat
+ * `runWithCompany()`. Yang TIDAK terjadi di sini: menebak perusahaan.
+ */
+async function requestHolder(create: boolean): Promise<RouteCompanyHolder | null> {
+  let anchor: object;
+  try {
+    anchor = await headers();
+  } catch {
+    return null;
+  }
+  if (!anchor || typeof anchor !== "object") return null;
+
+  const existing = holders.get(anchor);
+  if (existing) return existing;
+  if (!create) return null;
+
+  const fresh: RouteCompanyHolder = { value: null };
+  holders.set(anchor, fresh);
+  return fresh;
+}
+
+/**
+ * Dipanggil penjaga jalur (`enterCompanyFromRoute`) — bukan oleh kode halaman.
+ *
+ * Sengaja TIDAK melempar saat tidak ada permintaan: yang berhak melempar adalah
+ * pembuktian di `enterCompanyFromRoute`, supaya doktrin "konteks harus benar-
+ * benar mendarat" hanya ditulis di satu tempat dan pesannya menyebut jalur yang
+ * gagal.
+ */
+export async function setRouteCompany(context: CompanyContext): Promise<void> {
+  const holder = await requestHolder(true);
+  if (holder) holder.value = context;
 }
 
 /**
@@ -79,8 +132,8 @@ export function setRouteCompany(context: CompanyContext): void {
  * pernah memanggil ini — pertanyaan "perusahaan mana?" hanya punya satu jawaban,
  * dan jawabannya `currentCompany()`.
  */
-export function routeCompany(): CompanyContext | null {
-  return routeCompanyHolder().value;
+export async function routeCompany(): Promise<CompanyContext | null> {
+  return (await requestHolder(false))?.value ?? null;
 }
 
 /** Konteks perusahaan yang berlaku sekarang — atau melempar. */
@@ -88,7 +141,7 @@ export async function currentCompany(): Promise<CompanyContext> {
   const fromContext = getCompanyContext();
   if (fromContext) return fromContext;
 
-  const fromRoute = routeCompanyHolder().value;
+  const fromRoute = await routeCompany();
   if (fromRoute) return fromRoute;
 
   throw new MissingCompanyContextError();

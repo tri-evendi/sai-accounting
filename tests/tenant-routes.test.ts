@@ -258,6 +258,19 @@ describe("penjaga membaca URL, bukan sesi", () => {
     expect(guard).toContain("setRouteCompany(");
   });
 
+  it("pembuktiannya membaca sabuk yang BERTAHAN, bukan yang baru saja ditulis (issue #333)", () => {
+    /*
+     * Bentuk lamanya `getCompanyContext() ?? routeCompany()` — dan cabang
+     * pertamanya SELALU lulus, sebab `enterWith` yang baru dipanggil pasti
+     * terbaca di frame yang sama. Pembuktian yang selalu lulus tidak pernah
+     * memeriksa apa pun, dan itulah yang membuat #333 hidup delapan bulan:
+     * penyimpan per-permintaan — satu-satunya sabuk yang bertahan sampai badan
+     * route — tidak pernah tersentuh olehnya.
+     */
+    expect(guard).toContain("const planted = await routeCompany();");
+    expect(guard).not.toMatch(/const planted\s*=\s*getCompanyContext\(\)/);
+  });
+
   it("`currentCompany()` TIDAK PUNYA jawaban cadangan dari sesi (issue #158)", () => {
     /*
      * Selama sesi masih menjawab di sana, setiap jalur yang lupa membawa
@@ -268,7 +281,15 @@ describe("penjaga membaca URL, bukan sesi", () => {
      * melempar.
      */
     const current = readFileSync(join(SRC, "lib", "current-company.ts"), "utf8");
-    expect(current).toContain("routeCompanyHolder().value");
+    /*
+     * Sejak #333 penyimpan per-permintaan tidak lagi bertanya kepada `cache()`
+     * React — yang memoisasi HANYA di dalam render, sehingga route handler
+     * mendapat objek baru setiap kali dan sabuk kedua tidak pernah bekerja
+     * untuk API. Jangkarnya kini objek permintaan milik Next sendiri.
+     */
+    expect(current).toContain("const fromRoute = await routeCompany();");
+    expect(current).toContain("new WeakMap<object, RouteCompanyHolder>()");
+    expect(current).not.toContain('from "react"');
     expect(current).toContain("throw new MissingCompanyContextError()");
     expect(current).not.toContain("companyFromSession");
     // Sesi tidak boleh masuk kembali lewat pintu belakang.

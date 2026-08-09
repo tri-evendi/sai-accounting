@@ -152,10 +152,22 @@ dan `prisma` memakainya **saat query dipanggil**:
 3. **melempar**.
 
 **Kenapa sumber kedua ada** padahal penjaga juga memanggil
-`enterCompanyContext()`: rambatan `enterWith` adalah jalan pintas, bukan
-jaminan (lihat bagian berikutnya). Penjaga menulis ke keduanya lalu **membaca
-kembali** untuk membuktikan konteksnya mendarat — kalau tidak, ia melempar
-sebelum satu query pun berjalan.
+`enterCompanyContext()`: rambatan `enterWith` tidak pernah sampai dari penjaga
+ke badan route (lihat bagian berikutnya). Sumber keduanyalah yang sebenarnya
+melayani setiap permintaan HTTP. Penjaga menulis ke keduanya lalu **membaca
+kembali sumber kedua** untuk membuktikan konteksnya mendarat — kalau tidak, ia
+melempar sebelum satu query pun berjalan.
+
+**Jangkar sumber kedua (issue #333).** Penyimpan itu dulu `cache()` React.
+`cache()` memoisasi HANYA di dalam sebuah render, dan **route handler bukan
+render**: diukur di route handler Next 16.2.1 yang sungguhan,
+`holder() === holder()` → `false`, sehingga penjaga menulis ke satu objek dan
+pembacaan berikutnya menerima objek lain. Sabuk kedua karena itu tidak pernah
+bekerja untuk API sekali pun — halaman selamat (di render `cache()` memang
+memoisasi), route handler menjawab 500. Jangkarnya sekarang objek permintaan
+milik Next sendiri: hasil `await headers()`, yang diukur identik di sepanjang
+satu permintaan dan berbeda untuk permintaan lain, dengan `WeakMap` di atasnya
+sehingga entrinya mati bersama permintaannya.
 
 **Route self-scoped menyebut perusahaannya sendiri.** `/api/user/permissions`,
 `/api/user/accountant-mode`, dan `/api/company/identity` sengaja tanpa
@@ -168,18 +180,25 @@ sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
 
 ### Kenapa `enterWith` tidak boleh diandalkan
 
-Rambatan `AsyncLocalStorage.enterWith()` dari fungsi yang di-`await` ke
-**kelanjutan pemanggilnya** tergantung lingkungan. Diprobe langsung: di Node
-polos ia merambat; di dalam vitest, dengan API yang sama persis, tidak — bedanya
-pada rantai async resource yang sudah dibuat pemanggilnya lebih dulu.
+Bagian ini dulu menyebut rambatannya "tergantung lingkungan". Diukur ulang di
+issue #333 (Node 22.22, dan di dalam route handler & render Next 16.2.1 yang
+sungguhan), batasnya ternyata bukan soal lingkungan melainkan soal `await`:
 
-Kesimpulannya: `enterCompanyContext()` di penjaga adalah **jalan pintas**, bukan
-jaminan. Yang dijamin:
+- `enterWith` yang dipanggil **sebelum** `await` apa pun di fungsi itu →
+  merambat ke kelanjutan pemanggilnya. ✅
+- `enterWith` yang dipanggil **sesudah** sebuah `await` → tidak merambat;
+  pemanggil melihat store lamanya, atau tidak sama sekali. ❌
+
+Sebuah penjaga selalu berada di kasus kedua — ia membaca basis data kendali
+lebih dulu, baru menanam. Karena itu konteks yang ditanam `enterCompanyContext()`
+dari penjaga **tidak pernah** sampai ke badan route maupun ke komponen halaman:
+terukur `null` di keduanya. Yang dijamin:
 
 - `runWithCompany()` memakai `run()` — selalu bisa diandalkan, termasuk melewati
   batas async. Inilah cara skrip/cron/tes menyebut perusahaannya.
-- Untuk permintaan HTTP, kebenarannya bertumpu pada **sesi**, bukan pada
-  rambatan ALS.
+- Untuk permintaan HTTP, kebenarannya bertumpu pada **penyimpan per-permintaan**
+  di `lib/current-company.ts` — bukan rambatan ALS, dan (sejak #158) bukan pula
+  sesi.
 
 Dan satu sifat yang tetap penting: konteks yang sedang berjalan **tidak**
 tertimpa dari dalam — pekerjaan latar yang membungkus dirinya dengan

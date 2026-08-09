@@ -46,6 +46,7 @@ import {
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
+  PARTY_RECAP_NO_PARTY,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -451,7 +452,11 @@ function buildPartyRecapSheet(
     returns: 20,
     net: 22,
   };
-  const noParty = sales ? "Tanpa pelanggan" : "Tanpa pemasok";
+  // Nama baris tanpa mitra tercatat datang dari `statement-layout.ts` (#322).
+  // Ia dulu ditulis sebaris di sini DAN di `statement-pdf.ts` — dua salinan di
+  // dalam badan fungsi, jadi menyunting satu sisi membuat Excel dan PDF laporan
+  // yang sama berhenti sepakat tanpa satu tes pun merah.
+  const noParty = PARTY_RECAP_NO_PARTY[p.kind];
 
   // Jumlah dokumen adalah CACAH, bukan uang: formatnya tak boleh meminjam
   // topeng rupiah (12 dokumen bukan "Rp 12").

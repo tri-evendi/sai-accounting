@@ -1270,6 +1270,52 @@ export const PARTY_RECAP_HEADERS: Record<PartyRecapKind, Record<PartyRecapColumn
   },
 };
 
+/**
+ * Nama pengganti untuk baris yang mitranya TIDAK tercatat — isi SEL, bukan judul
+ * kolom (issue #322).
+ *
+ * ── Kenapa ia berdiri sendiri, di luar `PARTY_RECAP_HEADERS` ────────────────
+ * Berkas ini memuat dua jenis kalimat: judul kolom (`*_HEADERS`) dan label baris
+ * (`*_PRINT_LABELS`). Kalimat ini bukan keduanya — ia nilai yang digambar DI
+ * DALAM sel `party` ketika sebuah dokumen tidak punya pelanggan/pemasok.
+ * Menumpangkannya ke tabel judul akan membuatnya menyamar sebagai kolom keenam
+ * yang tidak pernah ada, dan penjaga kelengkapan #298 akan memperlakukannya
+ * sebagai judul yang belum diputuskan nasibnya. Jadi ia diberi tabelnya sendiri,
+ * dengan nama yang menyatakan apa ia sebenarnya.
+ *
+ * ── Kenapa ia pindah ke sini ────────────────────────────────────────────────
+ * Sampai #322 kalimat ini ditulis DUA kali, dan keduanya di dalam BADAN FUNGSI —
+ * `generateStatementPDF()` (`pdf/statement-pdf.ts`) dan `buildPartyRecapSheet()`
+ * (`report-export.ts`). Salinan di dalam badan fungsi tak bisa diimpor siapa
+ * pun, jadi ia di luar jangkauan `tests/print-label-dictionary.test.ts`:
+ * menyunting satu sisi membuat PDF dan Excel dari laporan yang SAMA berhenti
+ * sepakat, tanpa satu tes pun merah. Bentuknya sama persis dengan cacat #315
+ * pada judul kolom, satu tingkat lebih kecil.
+ *
+ * Layar menggambar baris yang sama lewat `reports.noCustomerLabel` /
+ * `reports.noSupplierLabel`, yang hari ini berbunyi SAMA huruf demi huruf —
+ * kini dipasangkan di `tests/print-label-dictionary.test.ts`, jadi kesamaan itu
+ * berhenti menjadi kebetulan.
+ *
+ * Cetakan tidak punya warna redup seperti layar, jadi baris ini memang harus
+ * DIBERI NAMA: sel kosong di kertas terbaca sebagai kelalaian, bukan sebagai
+ * "dokumen tanpa mitra".
+ *
+ * ── Yang BELUM ikut, dan itu disengaja ──────────────────────────────────────
+ * Kalimat keadaan ekspor lain masih ditulis sebaris, dan sebagiannya juga punya
+ * dua salinan ("Tidak ada dokumen pada periode ini.", "Belum ada barang.", …).
+ * Mereka tidak ikut karena tiap satunya menuntut keputusan sendiri: bunyi
+ * layarnya BERBEDA dari bunyi cetakannya (layar rekap mitra berkata "Tidak ada
+ * tagihan penjualan pada periode ini."), jadi memindahkannya berarti sekalian
+ * memutuskan sisi mana yang menang — dan itu mengubah dokumen yang sudah
+ * dikirim orang. Kalimat ini tidak menuntut keputusan semacam itu: kedua
+ * sisinya sudah sama.
+ */
+export const PARTY_RECAP_NO_PARTY: Record<PartyRecapKind, string> = {
+  "sales-by-customer": "Tanpa pelanggan",
+  "purchases-by-supplier": "Tanpa pemasok",
+};
+
 export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyRecapColumnId[] {
   return selectColumns(PARTY_RECAP_COLUMNS, report.visibleColumns, "party");
 }

@@ -86,7 +86,32 @@
  *    Menyamakannya adalah keputusan penamaan, bukan pekerjaan penjaga.
  *  • **Kalimat keadaan kosong & catatan kaki** yang ditulis sebaris di lapisan
  *    ekspor ("Tidak ada dokumen pada periode ini.", catatan valas tanpa kurs).
- *    Alasannya sama: mereka tidak berbentuk konstanta.
+ *    Alasannya sama: mereka tidak berbentuk konstanta — dan JANGAN mengira
+ *    mereka tunggal. #322 menghitungnya: SEPULUH kalimat keadaan ekspor punya
+ *    DUA salinan yang bunyinya sama, satu di `report-export.ts` dan satu di
+ *    `pdf/statement-pdf.ts`, keduanya di dalam badan fungsi. Tujuh identik huruf
+ *    demi huruf ("Tidak ada mutasi pada periode ini." 362/620, "Tidak ada hitung
+ *    ulang stok pada periode ini." 413/654, "Tidak ada dokumen pada periode
+ *    ini." 483/707, "Tidak ada dokumen yang belum lunas." 551/934, "Belum ada
+ *    barang." 637/857, "Tidak ada akun kas & bank yang bergerak pada periode
+ *    ini." 682/825, "Belum ada anggaran untuk periode ini." 745/773), satu
+ *    catatan kaki umur piutang/utang identik (587/942), dan dua catatan valas
+ *    yang hanya berbeda nama variabelnya (490/724 dan 591/946). Menyunting satu
+ *    sisi mana pun membuat PDF dan Excel dari laporan yang SAMA berhenti
+ *    sepakat, tanpa satu tes pun merah.
+ *
+ *    Yang KESEBELAS sudah keluar dari daftar ini: nama baris tanpa mitra
+ *    ("Tanpa pelanggan"/"Tanpa pemasok") pindah ke `PARTY_RECAP_NO_PARTY` di
+ *    `statement-layout.ts` (#322) dan kini dipasangkan di `PADANAN` — ia isi
+ *    SEL, jadi ia tidak menumpang di tabel judul kolom. Sepuluh sisanya tidak
+ *    ikut karena masing-masing menuntut keputusan tersendiri, bukan sekadar
+ *    pemindahan: bunyi layarnya BERBEDA dari bunyi cetakannya — layar rekap
+ *    mitra berkata "Tidak ada tagihan penjualan pada periode ini."
+ *    (`reports.salesByCustomerEmpty`) sementara kertasnya berkata "Tidak ada
+ *    dokumen pada periode ini." — jadi memindahkannya berarti sekalian memilih
+ *    sisi mana yang menang, dan itu mengubah berkas yang sudah dikirim orang.
+ *    Kalimat yang pindah di #322 tidak menuntut pilihan semacam itu: kedua
+ *    sisinya sudah berbunyi sama.
  *  • **Anotasi** — `cashFlowReconciliationNote()`, `balanceSheetBalanceNote()`,
  *    marjin kotor, arah hasil. Bentuknya memang BERBEDA per permukaan (lencana
  *    di layar, tanda kurung di kertas); `tests/*-shape.test.ts` sudah
@@ -110,6 +135,7 @@ import {
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
   PARTY_RECAP_HEADERS,
+  PARTY_RECAP_NO_PARTY,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_HEADERS,
@@ -287,6 +313,14 @@ const PADANAN: Padanan[] = [
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.gross", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].gross, kunci: "reports.colGrossPurchases" },
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.returns", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].returns, kunci: "reports.colReturns" },
   { di: "PARTY_RECAP_HEADERS.purchases-by-supplier.net", cetak: PARTY_RECAP_HEADERS["purchases-by-supplier"].net, kunci: "reports.colNet" },
+
+  // Isi SEL, bukan judul kolom — dan kalimat cetakan pertama yang masuk ke
+  // jangkauan berkas ini bukan sebagai judul (#322). Sampai #322 ia ditulis
+  // sebaris di KEDUA lapisan ekspor, jadi tak ada yang bisa diimpor ke sini;
+  // sekarang kedua permukaan menyebut baris tanpa mitra dengan kata yang sama
+  // sebagai syarat, bukan sebagai kebetulan.
+  { di: "PARTY_RECAP_NO_PARTY.sales-by-customer", cetak: PARTY_RECAP_NO_PARTY["sales-by-customer"], kunci: "reports.noCustomerLabel" },
+  { di: "PARTY_RECAP_NO_PARTY.purchases-by-supplier", cetak: PARTY_RECAP_NO_PARTY["purchases-by-supplier"], kunci: "reports.noSupplierLabel" },
 ];
 
 interface Beda {
@@ -475,6 +509,7 @@ const TABEL: Record<string, object> = {
   BUDGET_HEADERS,
   "PARTY_RECAP_HEADERS.sales-by-customer": PARTY_RECAP_HEADERS["sales-by-customer"],
   "PARTY_RECAP_HEADERS.purchases-by-supplier": PARTY_RECAP_HEADERS["purchases-by-supplier"],
+  PARTY_RECAP_NO_PARTY,
 };
 
 /** `FOO.bar()` dan `FOO.bar(laba)` sama-sama menyebut kunci `bar`. */

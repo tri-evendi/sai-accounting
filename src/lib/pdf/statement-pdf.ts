@@ -44,6 +44,7 @@ import {
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
+  PARTY_RECAP_NO_PARTY,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
   TRIAL_BALANCE_COLUMNS,
@@ -673,9 +674,12 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     // sendiri di dalam badan fungsi, di luar jangkauan penjaga mana pun.
     const headers = PARTY_RECAP_HEADERS[payload.kind];
     // Baris tanpa mitra tercatat: layar menuliskannya sebagai teks redup, dan
-    // cetakan tidak punya warna redup — jadi ia diberi nama di sini, bukan
-    // dibiarkan sebagai sel kosong yang terbaca sebagai kelalaian.
-    const noParty = payload.kind === "sales-by-customer" ? "Tanpa pelanggan" : "Tanpa pemasok";
+    // cetakan tidak punya warna redup — jadi ia diberi nama, bukan dibiarkan
+    // sebagai sel kosong yang terbaca sebagai kelalaian. Namanya datang dari
+    // `statement-layout.ts` (#322): ia dulu ditulis sebaris di sini DAN di
+    // `report-export.ts`, dua salinan di dalam badan fungsi yang tak terjangkau
+    // penjaga mana pun.
+    const noParty = PARTY_RECAP_NO_PARTY[payload.kind];
     const cell = (
       r: (typeof payload.rows)[number] | (typeof payload.totals & { partyName: string })
     ) => ({

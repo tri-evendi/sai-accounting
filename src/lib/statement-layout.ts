@@ -21,6 +21,15 @@
  * dengan kertas tanpa tabel padanan). Yang tersisa bagi tiap permukaan hanyalah
  * MENGGAMBAR baris.
  *
+ * ── "SAMA PERSIS" itu dijaga, bukan diharapkan (issue #298) ─────────────────
+ * Kalimat cetakan di berkas ini dan kalimat kamus yang dibaca layar adalah DUA
+ * tempat untuk satu bunyi, dan mengganti kata di `id.json` adalah pekerjaan yang
+ * wajar dan sering. `tests/print-label-dictionary.test.ts` memasangkan setiap
+ * kalimat di sini dengan kunci kamusnya dan menolak keduanya menyimpang —
+ * termasuk kalau sebuah kolom baru lahir tanpa pasangan. Kamus TIDAK dijadikan
+ * sumber tunggal dengan sengaja: ekspor tetap berbahasa Indonesia (#278), dan
+ * modul ini tidak boleh mengimpor apa pun (lihat di bawah).
+ *
  * Urutannya di berkas ini urutan lahirnya: Arus Kas (#241), Neraca (#258),
  * Neraca Saldo (#275), Laba/Rugi (#274).
  */
@@ -145,7 +154,14 @@ export interface CashFlowLabels {
   total: string;
   empty: string;
   subtotal: (group: string) => string;
-  /** `printLabel` = `group.label`; layar mengabaikannya dan memakai kamus. */
+  /**
+   * `printLabel` = `group.label`; layar mengabaikannya dan memakai kamus.
+   *
+   * Dua sumber untuk satu bunyi, dan itu disengaja (#298): `printLabel` datang
+   * dari `CASH_FLOW_CATEGORY_LABELS` di `lib/reports.ts`, layar dari
+   * `cashFlowCategory.*`. Keduanya diikat `tests/print-label-dictionary.test.ts`
+   * — kalau salah satunya berganti kata, tesnya merah.
+   */
   group: (category: CashFlowCategoryId, printLabel: string) => string;
 }
 

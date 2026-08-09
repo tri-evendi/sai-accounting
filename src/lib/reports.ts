@@ -372,6 +372,11 @@ export function cashFlowCategoryFor(accountType: string): CashFlowCategory {
   return CATEGORY_BY_ACCOUNT_TYPE[accountType] ?? "uncategorised";
 }
 
+/**
+ * Nama kelompok untuk DOKUMEN CETAK. Layar memakai `cashFlowCategory.*` dari
+ * kamus, yang berbunyi SAMA PERSIS — diikat `tests/print-label-dictionary.test.ts`
+ * (issue #298), jadi kalimatnya tidak bisa berganti di satu sisi saja.
+ */
 export const CASH_FLOW_CATEGORY_LABELS: Record<CashFlowCategory, string> = {
   operating: "Aktivitas Operasi",
   investing: "Aktivitas Investasi",

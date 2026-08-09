@@ -325,8 +325,12 @@ export const STATEMENT_TITLES: Record<StatementPayload["kind"], string> = {
 /**
  * Judul kolom rekap mitra untuk DOKUMEN CETAK — bahasa Indonesia, seperti
  * seluruh isi modul ini. Kolom pihaknya berbeda per laporan; sisanya sama.
+ *
+ * DIEKSPOR hanya supaya `tests/print-label-dictionary.test.ts` bisa
+ * membandingkannya dengan nilai kamus Indonesia yang dibaca layar (issue #298);
+ * tidak ada kode produksi lain yang memakainya.
  */
-const PARTY_RECAP_HEADERS: Record<
+export const PARTY_RECAP_HEADERS: Record<
   "sales-by-customer" | "purchases-by-supplier",
   Record<PartyRecapColumnId, string>
 > = {

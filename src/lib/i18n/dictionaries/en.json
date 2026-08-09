@@ -2130,6 +2130,8 @@
     "disposalGain": "Gain on disposal:",
     "disposalLoss": "Loss on disposal:",
     "disposeAction": "Record Disposal",
+    "disposeConfirmTitle": "Dispose of this asset now?",
+    "disposeConfirmMessage": "Disposal posts a journal straight away — cash, accumulated depreciation, the asset's value, and the gain or loss on disposal — then marks this asset \"Disposed\" for good. This app has no way to undo it: reversing it takes a manually written reversing journal.",
     "disposeFailed": "Could not record the disposal.",
     "disposeSaved": "The disposal has been recorded and journalised."
   },

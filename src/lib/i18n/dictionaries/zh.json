@@ -2130,6 +2130,8 @@
     "disposalGain": "处置利得：",
     "disposalLoss": "处置损失：",
     "disposeAction": "记录处置",
+    "disposeConfirmTitle": "现在处置这项资产？",
+    "disposeConfirmMessage": "处置会立即生成记账凭证——现金、累计折旧、资产原值以及处置损益——并把该资产永久标记为“已处置”。本系统没有撤销途径：要恢复，只能手工编制冲回凭证。",
     "disposeFailed": "记录处置失败。",
     "disposeSaved": "处置已记录并生成记账凭证。"
   },

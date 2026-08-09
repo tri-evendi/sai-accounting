@@ -162,19 +162,43 @@ function run(script: string, args: string[], env?: Record<string, string>): Prom
  * dijalankan ulang. Empat kali gagal berturut-turut karena satu variabel baru
  * ketahuan setiap kali adalah cara termudah membuat orang menyerah di langkah
  * pertama.
+ *
+ * ⚠ **Yang WAJIB hanyalah yang dipakai lima langkah di bawah** — dan
+ * pembedaan itu mahal dipelajari: versi pertama berkas ini menuntut
+ * `SETTINGS_ENCRYPTION_KEY` dan `NEXTAUTH_SECRET`, lalu menolak berjalan di
+ * pemasangan yang sebenarnya SEHAT. Keduanya keliru dengan cara yang berbeda:
+ *
+ *  • `SETTINGS_ENCRYPTION_KEY` memang ada dan memang penting — tapi ia milik
+ *    pengaturan surel (#169), yang disetel BELAKANGAN lewat `/operator/mail`.
+ *    Tidak satu pun dari lima langkah di bawah menyentuhnya.
+ *  • `NEXTAUTH_SECRET` **tidak pernah ada di repo ini**; namanya `AUTH_SECRET`.
+ *    Nama itu dikarang, dan `grep` seluruh `src/` + `scripts/` hanya menemukan
+ *    satu kemunculan: baris yang menuntutnya di sini.
+ *
+ * Pelajarannya bukan "kurangi pemeriksaan" melainkan **pisahkan dua
+ * pertanyaan**: "apakah skrip ini bisa berjalan" (memblokir) dan "apakah
+ * pemasangannya siap dipakai" (memberi tahu). Preflight yang mencampur
+ * keduanya akan menghentikan pekerjaan yang tidak bergantung padanya.
  */
 const REQUIRED_ENV = [
-  ["CONTROL_DATABASE_URL", "basis data kendali — pengguna, tenant, daftar perusahaan (#104)"],
+  ["CONTROL_DATABASE_URL", "basis data kendali — tenant, pengguna, daftar perusahaan (#104)"],
   ["DATABASE_URL", "buku besar perusahaan pertama"],
   ["PLATFORM_DATABASE_URL", "paket & langganan (#137)"],
-  ["SETTINGS_ENCRYPTION_KEY", "kunci enkripsi pengaturan surel (#169)"],
-  ["NEXTAUTH_SECRET", "penandatangan sesi"],
 ] as const;
 
-function preflight(): string[] {
-  return REQUIRED_ENV.filter(([key]) => !process.env[key]?.trim()).map(
-    ([key, why]) => `  ${key} — ${why}`
-  );
+/**
+ * Dibutuhkan pemasangan yang UTUH, tapi bukan oleh bootstrap. Dilaporkan
+ * sebagai peringatan supaya ketiadaannya tetap terlihat — tanpa memblokir.
+ */
+const RECOMMENDED_ENV = [
+  ["AUTH_SECRET", "penandatangan sesi — tanpa ini tidak ada yang bisa MASUK"],
+  ["SETTINGS_ENCRYPTION_KEY", "kunci enkripsi pengaturan surel (#169), dipakai /operator/mail"],
+] as const;
+
+function missing(vars: readonly (readonly [string, string])[]): string[] {
+  return vars
+    .filter(([key]) => !process.env[key]?.trim())
+    .map(([key, why]) => `  ${key} — ${why}`);
 }
 
 /* ── Utama ───────────────────────────────────────────────────────────────── */
@@ -182,10 +206,25 @@ function preflight(): string[] {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  const missingEnv = preflight();
-  if (missingEnv.length > 0) {
-    console.error("ERROR: environment belum lengkap:\n" + missingEnv.join("\n"));
+  const wajibHilang = missing(REQUIRED_ENV);
+  if (wajibHilang.length > 0) {
+    console.error(
+      "ERROR: bootstrap tidak bisa berjalan — environment belum lengkap:\n" +
+        wajibHilang.join("\n") +
+        "\n\nCatatan: hostname `db` hanya ada di dalam jaringan compose, jadi di\n" +
+        "server produksi jalankan lewat kontainer:\n" +
+        "  docker compose run --rm migrate bun run bootstrap -- --defaults"
+    );
     process.exit(1);
+  }
+
+  const sebaiknyaHilang = missing(RECOMMENDED_ENV);
+  if (sebaiknyaHilang.length > 0) {
+    console.warn(
+      "⚠ Bootstrap tetap berjalan, tapi pemasangannya belum utuh:\n" +
+        sebaiknyaHilang.join("\n") +
+        "\n"
+    );
   }
 
   /* `--defaults` adalah bendera tanpa nilai, jadi ia dibaca dari argv mentah. */
@@ -210,6 +249,15 @@ async function main() {
   const adminName = args["admin-name"]?.trim() ?? (useDefaults ? DEFAULTS.adminName : undefined);
   const operatorName =
     args["operator-name"]?.trim() ?? (useDefaults ? DEFAULTS.operatorName : undefined);
+  /*
+   * Jalur "basis data dibuat manual". WAJIB ada di sini, bukan hanya di
+   * `create-company.ts`: pengguna basis data aplikasi seringkali TIDAK boleh
+   * `CREATE DATABASE` (terukur di produksi — `Access denied for user 'sai'@'%'`,
+   * kode 1044), dan tanpa bendera ini pesan galatnya menyuruh memakai
+   * `--database` yang tak punya jalan masuk dari bootstrap. Menyuruh orang
+   * melakukan sesuatu yang tidak disediakan adalah jalan buntu, bukan petunjuk.
+   */
+  const companyDatabase = args["company-database"]?.trim();
 
   if (
     !tenantSlug ||
@@ -298,13 +346,26 @@ async function main() {
       companyName,
       "--tenant",
       tenantSlug,
+      ...(companyDatabase ? ["--database", companyDatabase] : []),
     ]);
     if (company !== 0) {
       console.error(
         "✗ penyediaan perusahaan gagal.\n" +
-          "  Penyebab paling sering: pengguna basis data tidak boleh CREATE DATABASE.\n" +
-          "  Buat basis datanya manual, lalu ulangi dengan `--database <nama>` di\n" +
-          "  scripts/create-company.ts."
+          "\n" +
+          "  Penyebab paling sering: pengguna basis data aplikasi tidak boleh\n" +
+          "  CREATE DATABASE (galat 1044 `Access denied`). Itu bukan salah\n" +
+          "  konfigurasi — banyak pemasangan memang sengaja tidak memberikannya.\n" +
+          "\n" +
+          "  Buat basis datanya sebagai root — DAN beri hak pakainya, karena\n" +
+          "  membuat saja tidak cukup:\n" +
+          "\n" +
+          "    CREATE DATABASE `<nama>` DEFAULT CHARACTER SET utf8mb4\n" +
+          "      COLLATE utf8mb4_unicode_ci;\n" +
+          "    GRANT ALL PRIVILEGES ON `<nama>`.* TO '<pengguna-app>'@'%';\n" +
+          "    FLUSH PRIVILEGES;\n" +
+          "\n" +
+          "  Lalu ulangi bootstrap dengan `--company-database <nama>`. Tenant dan\n" +
+          "  paket yang sudah dibuat TIDAK diulang — skrip ini idempoten."
       );
       process.exit(1);
     }
